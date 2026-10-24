@@ -296,7 +296,8 @@ export function wireInput(app: App): void {
       e.preventDefault();
       shell.measure.focus();
       shell.measure.value = e.key;
-      return;
+      // Set from here, the value fires no input event: refresh the preview for it as typing does.
+      return app.refresh();
     }
     if (e.key === 'Escape') {
       if (gestures.cancel()) {
