@@ -1467,7 +1467,8 @@ select {
     display: none;
   }
   .layer-row {
-    grid-template-columns: var(--sp-5) minmax(0, 1fr) minmax(0, 1fr) auto;
+    /* The material takes twice the thickness's share: a name is longer than "0,015". */
+    grid-template-columns: var(--sp-5) minmax(0, 1fr) minmax(0, 2fr) auto;
     grid-template-areas:
       'n fn fn act'
       'th th mat core';
