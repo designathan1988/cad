@@ -6,6 +6,9 @@ import { vec } from '../../../src/core/vector';
 import type { WallLayer } from '../../../src/elements/wall/schema';
 import { geometry, layer, testWall, type TestWall } from './fixtures';
 import { shoelace } from './oracle';
+import { setPrecision, union } from 'polyclip-ts';
+
+setPrecision(1e-9);
 
 const SPEC_ARC_SAG = 5e-4;
 const segmentsFor = (sweep: number, rMax: number) => Math.max(1, Math.ceil(Math.abs(sweep) / (2 * Math.acos(1 - SPEC_ARC_SAG / rMax))));
@@ -127,11 +130,11 @@ describe('arc and straight wall at a right angle', () => {
 });
 
 describe('Ts and Xs against an arc', () => {
-  it('a straight wall wider than one chord, abutting the arc, warns complexJoin and stays square', () => {
+  it('a straight wall wider than one chord, abutting the arc, warns arcJoinUnsupported and stays square', () => {
     // r = 3, chords of about 11 cm; a 30 cm wall cannot meet a single chord.
     const walls = [arc('arc', [0, 0], [6, 0], -1, 0.2), testWall('t', vec(3, 1), vec(3, 2.95), 0.3)];
     const g = geometry(walls);
-    expect(g.warnings).toEqual([{ kind: 'complexJoin', walls: ['t', 'arc'] }]);
+    expect(g.warnings).toEqual([{ kind: 'arcJoinUnsupported', walls: ['t', 'arc'] }]);
     expect(g.pieces.get('t')).toHaveLength(1);
   });
 
@@ -149,9 +152,37 @@ describe('Ts and Xs against an arc', () => {
     expect(reach).toBeCloseTo(2.9 * Math.cos(Math.PI / n / 2), 12);
   });
 
-  it('a straight wall crossing an arc warns complexJoin', () => {
+  // An arc ending against a straight plastered wall, from the side: the T is carried back along the
+  // chord segments that still reach into the host, each kept inside its own wedge.
+  describe('an arc ending against a straight wall', () => {
+    for (const [bulge, start] of [
+      [0.3, [1, 4]],
+      [0.5, [1, 1]],
+      [-0.3, [1, 4]],
+      [1, [1, 4]],
+    ] as const) {
+      it(`bulge ${bulge} from (${start.join(', ')}): joins without a warning, no gap, no overlap, nothing past the core face`, () => {
+        // Host x = 5 from y 0 to 8; its near (−x) side: finish2 from x 4.90 to 4.93, core from 4.93.
+        const walls = [testWall('s', vec(5, 0), vec(5, 8), plastered), arc('arc', [start[0], start[1]], [5, 4], bulge, plastered)];
+        const g = geometry(walls);
+        expect(g.warnings).toEqual([]);
+        for (const p of g.pieces.get('arc')!) for (const v of p.polygon) expect(v.x).toBeLessThanOrEqual(4.93 + 1e-9);
+        // Tiling: the pieces' areas add up to the area of their union, which is one outline with no hole.
+        const all = [...g.pieces.get('arc')!, ...g.pieces.get('s')!];
+        const sum = all.reduce((t, p) => t + shoelace(p.polygon), 0);
+        const [first, ...rest] = all.map((p) => [p.polygon.map((v) => [v.x, v.y] as [number, number])]);
+        const u = union(first!, ...rest);
+        expect(u).toHaveLength(1);
+        expect(u[0]!).toHaveLength(1);
+        const ring = u[0]![0]!.map(([x, y]) => ({ x, y }));
+        expect(Math.abs(shoelace(ring))).toBeCloseTo(sum, 6);
+      });
+    }
+  });
+
+  it('a straight wall crossing an arc warns arcJoinUnsupported', () => {
     const walls = [arc('arc', [0, 0], [6, 0], -1, 0.2), testWall('x', vec(3, 2), vec(3, 4), 0.1)];
     const g = geometry(walls);
-    expect(g.warnings).toEqual([{ kind: 'complexJoin', walls: ['x', 'arc'] }]);
+    expect(g.warnings).toEqual([{ kind: 'arcJoinUnsupported', walls: ['x', 'arc'] }]);
   });
 });
