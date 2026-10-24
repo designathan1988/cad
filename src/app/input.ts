@@ -419,6 +419,7 @@ export function wireInput(app: App): void {
     if (e.key === '?') return showHelp(app);
     if (e.shiftKey && key === 'l') return app.setLanguage(app.otherLanguage());
     if (e.shiftKey && key === 'w') return app.setTool('window');
+    if (e.shiftKey && key === 'n') return app.stepSelection(-1);
     if (e.shiftKey) return;
     if (key === 'w') return app.setTool('wall');
     if (key === 'a' && ui.tool === 'wall') return app.wallEvent({ kind: 'arc' });
@@ -427,6 +428,15 @@ export function wireInput(app: App): void {
     if (key === 'l') return app.setTool('floor');
     if (key === 'v') return app.setTool('select');
     if (key === 'f') return app.frameSelection();
+    // Choosing and moving elements without a mouse: N / Shift+N go through the level's elements;
+    // the arrows move the selected walls by 5 cm (1 cm with Alt is taken by the browser: Ctrl).
+    if (key === 'n') return app.stepSelection(e.shiftKey ? -1 : 1);
+    const arrows: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
+    const arrow = arrows[e.key];
+    if (arrow && ui.selection.size > 0 && ui.view === 'plan') {
+      e.preventDefault();
+      return app.nudgeSelection(arrow[0] * 0.05, arrow[1] * 0.05);
+    }
     if (key === 's') return app.toggleSnaps();
     if (key === '1') return app.setView('3d');
     if (key === '2') return app.setView('plan');
@@ -460,6 +470,8 @@ function showHelp(app: App): void {
     ['Ctrl+S', t('pal.save')],
     ['Ctrl+K', t('pal.commands')],
     ['Shift+L', t('pal.language')],
+    ['N / Shift+N', t('pal.stepSelection')],
+    [t('help.arrowsKey'), t('help.arrows')],
     ['?', t('pal.shortcuts')],
     [t('help.wheelKey'), t('help.wheel')],
     [t('help.middleKey'), t('help.middle')],

@@ -7,7 +7,7 @@ import { createStore, type Store } from '../core/store';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { arcOf } from '../elements/wall/geometry/arc';
-import { addWalls, resetWallsToType, updateWalls } from '../elements/wall/commands';
+import { addWalls, resetWallsToType, setWalls, updateWalls } from '../elements/wall/commands';
 import {
   addOpening,
   alignHeads,
@@ -35,7 +35,9 @@ import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui
 import { snapLabel, type Snap } from '../tools/snap';
 import { bulgeThrough, IDLE, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, dragTransform, hull } from './select-drag';
-import { moveRooms } from './carry';
+import { moveRooms, roomsGoingWith } from './carry';
+import { stepSelection } from './keyboard-select';
+import { moveWalls } from '../tools/edit';
 import { type Doc, type DocWall, elementIds, newDocument, type WallDefaults, wallNumber, wallOverrides } from './document';
 
 /** The snap labels that name their wall. */
@@ -513,6 +515,41 @@ export class App {
     if (this.ui.hidden.has('walls')) this.ui.info = t('hint.wallsHidden');
     else for (const w of this.store.get().walls) if (w.levelId === this.ui.levelId) this.ui.selection.add(w.id);
     this.refresh();
+  }
+
+  /**
+   * The next (or previous) element of the level shown, as the selection: walls by number, then doors
+   * and windows, rooms, floors (ref/chat.txt:242). In plan the view slides to show it.
+   */
+  stepSelection(dir: 1 | -1): void {
+    this.setTool('select');
+    const g = this.visibleGeometry();
+    const order = [...g.solids.keys(), ...g.openings.keys(), ...g.rooms.keys(), ...g.floors.keys()];
+    const next = stepSelection(order, [...this.ui.selection], dir);
+    if (!next) return;
+    this.ui.selection = new Set([next]);
+    if (this.ui.view === 'plan') {
+      const box = boundsOf(this.geometry, this.ui.selection);
+      const vp = this.shell.viewport.getBoundingClientRect();
+      if (box) {
+        const a = this.plan.toScreen({ x: box.min.x, y: box.max.y });
+        const b = this.plan.toScreen({ x: box.max.x, y: box.min.y });
+        const off = a.x < 0 || a.y < 0 || b.x > vp.width || b.y > vp.height;
+        if (off) this.plan.panBy(vp.width / 2 - (a.x + b.x) / 2, vp.height / 2 - (a.y + b.y) / 2);
+      }
+    }
+    this.refresh();
+  }
+
+  /** Moves the selected walls by a step (one undo step), the rooms they surround going along. */
+  nudgeSelection(dx: number, dy: number): void {
+    const doc = this.store.get();
+    const ids = [...this.ui.selection].filter((id) => doc.walls.some((w) => w.id === id));
+    if (ids.length === 0) return;
+    const going = roomsGoingWith(doc, this.geometry, new Set(ids));
+    const walls = moveWalls(doc, ids, { x: dx, y: dy });
+    const rooms = moveRooms(doc.rooms, going, (p) => ({ x: p.x + dx, y: p.y + dy }));
+    this.store.dispatch({ label: 'cmd.updateWalls', apply: (d) => ({ ...setWalls(walls).apply(d), rooms }) });
   }
 
   clearSelection(): void {

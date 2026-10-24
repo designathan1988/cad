@@ -65,6 +65,8 @@ export function appActions(app: App, open: Openers): Action[] {
     make('edit.delete', 'pal.delete', edit, () => app.deleteSelection(), { keys: 'Del', enabled: has }),
     make('edit.selectAll', 'pal.selectAll', edit, () => app.selectAllWalls(), { keys: 'Ctrl+A' }),
     make('edit.clearSelection', 'pal.clearSelection', edit, () => app.clearSelection(), { keys: 'Esc', enabled: has }),
+    make('edit.next', 'pal.stepSelection', edit, () => app.stepSelection(1), { keys: 'N' }),
+    make('edit.previous', 'pal.stepBack', edit, () => app.stepSelection(-1), { keys: 'Shift+N' }),
     make('file.open', 'pal.open', file, open.openFile, { keys: 'Ctrl+O' }),
     make('file.save', 'pal.save', file, () => app.saveFile(), { keys: 'Ctrl+S' }),
     make('settings.snaps', 'pal.snaps', settings, () => app.toggleSnaps(), { keys: 'S' }),
