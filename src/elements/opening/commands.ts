@@ -155,19 +155,37 @@ export function referenceCandidates(doc: Doc, id: OpeningId): Opening[] {
   return doc.openings.filter((o) => o.id !== id && o.wallId === me.wallId && !dependsOn(doc.openings, o.id, id));
 }
 
-/** Openings `id` may be aligned with: on another straight wall, both walls straight, no loop. */
+/** Whether `id`, aligned with `refId` by `edge`, stays inside its own wall. */
+export function alignFits(doc: Doc, id: OpeningId, refId: OpeningId, edge: AlignEdge): boolean {
+  const openings = doc.openings.map((o) => (o.id === id ? { ...o, rule: { kind: 'aligned' as const, openingId: refId, edge } } : o));
+  const placed = deriveOpenings(openings, hostsOf(doc), doc.openingGroups).placed.get(id);
+  return placed !== undefined && !placed.warnings.includes('openingOutside') && !placed.warnings.includes('openingBadReference');
+}
+
+/**
+ * Openings `id` may be aligned with: on another straight wall, both walls straight, no loop, and
+ * across from it within its own wall (by the centres): one whose projection falls past the wall's
+ * ends would put the opening outside it.
+ */
 export function alignCandidates(doc: Doc, id: OpeningId): Opening[] {
   const me = doc.openings.find((o) => o.id === id);
   const hosts = hostsOf(doc);
   if (!me || !hosts.get(me.wallId)?.line) return [];
-  return doc.openings.filter((o) => o.id !== id && o.wallId !== me.wallId && hosts.get(o.wallId)?.line !== undefined && !dependsOn(doc.openings, o.id, id));
+  return doc.openings.filter(
+    (o) =>
+      o.id !== id &&
+      o.wallId !== me.wallId &&
+      hosts.get(o.wallId)?.line !== undefined &&
+      !dependsOn(doc.openings, o.id, id) &&
+      alignFits(doc, id, o.id, 'center'),
+  );
 }
 
 /** Aligns each of `ids` with `refId` (by `edge`); the ones that cannot be aligned with it are left as they are. */
 export const alignOpenings = (refId: OpeningId, ids: readonly OpeningId[], edge: AlignEdge): Command<Doc> => ({
   label: 'cmd.alignOpenings',
   apply: (doc) => {
-    const can = new Set(ids.filter((id) => id !== refId && alignCandidates(doc, id).some((o) => o.id === refId)));
+    const can = new Set(ids.filter((id) => id !== refId && alignCandidates(doc, id).some((o) => o.id === refId) && alignFits(doc, id, refId, edge)));
     if (can.size === 0) return doc;
     const openings = doc.openings.map((o) => (can.has(o.id) ? { ...o, rule: { kind: 'aligned' as const, openingId: refId, edge } } : o));
     return settleGroups(doc, { ...doc, openings });

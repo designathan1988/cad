@@ -6,7 +6,7 @@ import type { OpeningSolid } from '../../app/geometry';
 import { el, numberField, row, section, segmented, select } from '../../ui/controls';
 import { num, t, type MessageKey } from '../../ui/i18n';
 import { icon } from '../../ui/icons';
-import { alignCandidates, referenceCandidates } from './commands';
+import { alignCandidates, alignFits, referenceCandidates } from './commands';
 import type { OpeningWarning } from './derive';
 import {
   type AlignEdge,
@@ -107,7 +107,15 @@ export function openingPanel(
         row(t('panel.alignWith'), select(aligns.map((r) => ({ value: r.id, label: label(r) })), rule.openingId, (id) => act.update(ids, { rule: { ...rule, openingId: id } }))),
         row(
           t('panel.alignBy'),
-          segmented((['start', 'center', 'end'] as const).map((v) => ({ value: v, label: t(`edge.${v}`) })), rule.edge, (edge) => act.update(ids, { rule: { ...rule, edge } }), true),
+          // Only the edges that keep the opening inside its wall.
+          segmented(
+            (['start', 'center', 'end'] as const)
+              .filter((v) => v === rule.edge || alignFits(doc, o.id, rule.openingId, v))
+              .map((v) => ({ value: v, label: t(`edge.${v}`) })),
+            rule.edge,
+            (edge) => act.update(ids, { rule: { ...rule, edge } }),
+            true,
+          ),
         ),
       );
     }
