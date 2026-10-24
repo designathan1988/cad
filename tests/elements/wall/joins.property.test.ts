@@ -33,7 +33,10 @@ function expectExact(walls: readonly Wall[], region: Region, sampleSeed: number)
 }
 
 /** I6 by layer and I10, for one T. Counts checked points so I10 cannot pass vacuously. */
-const notch = { joints: 0, points: 0 };
+// Each seed tried passes a layer outside the core in ~550 T joints and ~11 000 points.
+const PRIORITY_JOINTS = 300;
+const PRIORITY_POINTS = 5_000;
+const notch = { joints: 0, points: 0, priorityJoints: 0, priorityPoints: 0 };
 function expectAbutment(
   abutting: Wall,
   end: 'start' | 'end',
@@ -47,6 +50,8 @@ function expectAbutment(
   expect(fill.bad, JSON.stringify(walls)).toBe(0);
   if (fill.checked > 0) notch.joints++;
   notch.points += fill.checked;
+  if (fill.passedOutsideCore > 0) notch.priorityJoints++;
+  notch.priorityPoints += fill.passedOutsideCore;
 }
 
 /** Counts how many corners actually had their layer continuity checked, so I9 cannot pass vacuously. */
@@ -168,6 +173,9 @@ describe('layer checks were really exercised', () => {
     console.log(`I10 checked on ${notch.joints} T joints, ${notch.points} points`);
     expect(notch.joints).toBeGreaterThan(300 * scale);
     expect(notch.points).toBeGreaterThan(20_000 * scale);
+    console.log(`priority: a layer outside the core passed host layers in ${notch.priorityJoints} T joints, ${notch.priorityPoints} points`);
+    expect(notch.priorityJoints).toBeGreaterThan(PRIORITY_JOINTS * scale);
+    expect(notch.priorityPoints).toBeGreaterThan(PRIORITY_POINTS * scale);
     expect(crossing.scenes).toBe(600 * scale);
   });
 });

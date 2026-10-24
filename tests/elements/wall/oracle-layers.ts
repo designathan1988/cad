@@ -157,9 +157,10 @@ export function notchFill(
   host: Wall,
   walls: readonly Wall[],
   seed: number,
-): { checked: number; bad: number } {
+): { checked: number; bad: number; passedOutsideCore: number } {
   const { fh, near, coreFace, stops } = tFaces(abutting, end, host);
-  if (Math.abs(near - coreFace) < 1e-9) return { checked: 0, bad: 0 };
+  if (Math.abs(near - coreFace) < 1e-9) return { checked: 0, bad: 0, passedOutsideCore: 0 };
+  const [a0, a1] = coreLayersOf(abutting);
   const { pieces } = geometry(walls);
   const fa = frameOf(abutting);
   const aOffs = layerOffsetsOf(abutting);
@@ -175,6 +176,7 @@ export function notchFill(
   const rnd = () => ((r = (Math.imul(r, 1664525) + 1013904223) >>> 0) / 4294967296);
   let checked = 0;
   let bad = 0;
+  let passedOutsideCore = 0;
   for (let i = 0; i < 400; i++) {
     const o = lo + (hi - lo) * rnd();
     const p = plus(plus(host.start, times(fh.d, s0 + reach * (2 * rnd() - 1))), times(fh.n, o));
@@ -190,10 +192,11 @@ export function notchFill(
     const k = aOffs.findIndex((b, i) => i + 1 < aOffs.length && ao > b && ao < aOffs[i + 1]!);
     const stop = stops[k]!;
     const passed = pastFree < 0 && Math.min(near, stop) < o && o < Math.max(near, stop);
+    if (passed && (k < a0 || k > a1)) passedOutsideCore++;
     const owner = walls.find((w) => (pieces.get(w.id) ?? []).some((piece) => inside(piece.polygon, p)));
     const ownerPiece = owner && (pieces.get(owner.id) ?? []).find((piece) => inside(piece.polygon, p));
     const ok = passed ? owner?.id === abutting.id && ownerPiece!.layerIndex === k : owner?.id === host.id;
     if (!ok) bad++;
   }
-  return { checked, bad };
+  return { checked, bad, passedOutsideCore };
 }
