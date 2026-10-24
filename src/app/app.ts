@@ -2,7 +2,7 @@
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
 import * as THREE from 'three';
-import { parseLength, parseLengthAngle } from '../core/measure';
+import { parseLength, parseLengthAngle, parsePoint } from '../core/measure';
 import { createStore, type Store } from '../core/store';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
@@ -401,6 +401,22 @@ export class App {
       }
       this.ui.error = null;
       this.wallEvent({ kind: 'typedRadius', radius: radius.value });
+      return true;
+    }
+    // "x;y": a point, as a click there would be: the start or the next point of a wall, a floor's
+    // corner, a room's point. So drawing needs no mouse (ref/chat.txt:207, 242).
+    const point = parsePoint(text);
+    if (point.ok) {
+      const wall = this.ui.tool === 'wall' && this.ui.wall.kind !== 'bend';
+      if (!wall && this.ui.tool !== 'floor' && this.ui.tool !== 'room') {
+        this.ui.error = t('hint.pointHere', { text });
+        this.renderChrome();
+        return false;
+      }
+      this.ui.error = null;
+      if (wall) this.wallEvent({ kind: 'click', point: point.value });
+      else if (this.ui.tool === 'floor') this.floorClick(point.value, 0);
+      else this.roomClick(point.value);
       return true;
     }
     const r = parseLengthAngle(text);
@@ -902,12 +918,24 @@ export class App {
         : [keyHint('Ctrl K', t('key.commands')), keyHint('Ctrl A', t('key.selectAll')), keyHint('?', t('key.shortcuts'))];
     shell.keys.replaceChildren(...keys);
     const lengthMode = drawing && w.kind === 'drawing';
+    // Where a point is asked for: the wall's start, a floor's corners, a room's point.
+    const pointMode = (drawing && w.kind === 'idle') || ui.tool === 'floor' || ui.tool === 'room';
     const distanceMode = aiming || (ui.selection.size === 1 && this.selectedOpenings().length === 1);
     const withAngle = lengthMode && shell.measure.value.includes('<');
     shell.measureLabel.textContent = t(
-      drawing && w.kind === 'bend' ? 'foot.radius' : withAngle ? 'foot.lengthAngle' : lengthMode ? 'foot.length' : distanceMode ? 'foot.distance' : 'foot.measure',
+      drawing && w.kind === 'bend'
+        ? 'foot.radius'
+        : withAngle
+          ? 'foot.lengthAngle'
+          : lengthMode
+            ? 'foot.length'
+            : pointMode
+              ? 'foot.point'
+              : distanceMode
+                ? 'foot.distance'
+                : 'foot.measure',
     );
-    shell.measure.placeholder = t(lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
+    shell.measure.placeholder = t(lengthMode ? 'foot.lengthHint' : pointMode ? 'foot.pointHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
     shell.toolWall.classList.toggle('arc-mode', drawing && arc);
     shell.coords.textContent = ui.cursor ? `x ${num(ui.cursor.x)} m  y ${num(ui.cursor.y)} m` : '';
     this.placeFloatBar();

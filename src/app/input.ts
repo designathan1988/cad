@@ -277,8 +277,10 @@ export function wireInput(app: App): void {
         shell.measure.blur();
         app.render();
       } else if (text.trim() === '') {
+        // An empty Enter does what Enter does outside the field: end the wall chain, close the floor.
         shell.measure.blur();
         if (ui.tool === 'wall') app.wallEvent({ kind: 'enter' });
+        if (ui.tool === 'floor') app.floorFinish();
       }
     } else if (e.key === 'Escape') {
       const had = shell.measure.value.trim() !== '';
@@ -325,8 +327,8 @@ export function wireInput(app: App): void {
     // Typing a number goes straight to the measure field, as in Revit and SketchUp, while a measure is
     // being asked for: drawing a wall or aiming an opening. A selection is edited by clicking its
     // temporary dimensions or in the panel, so 1 and 2 keep switching the view.
-    const typing = ui.tool === 'wall' ? ui.wall.kind !== 'idle' : app.openingKind() ? ui.opening.kind === 'aiming' : false;
-    if (/^[\d.,]$/.test(e.key) && typing) {
+    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' ? true : app.openingKind() ? ui.opening.kind === 'aiming' : false;
+    if (/^[\d.,-]$/.test(e.key) && typing) {
       e.preventDefault();
       shell.measure.focus();
       shell.measure.value = e.key;

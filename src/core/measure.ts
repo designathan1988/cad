@@ -12,6 +12,15 @@ export function parseLength(text: string): Parsed<number> {
   return value !== null && p.done() && Number.isFinite(value) ? { ok: true, value } : { ok: false };
 }
 
+/** "x;y": a point in metres, each coordinate a length (units and expressions as parseLength). */
+export function parsePoint(text: string): Parsed<{ x: number; y: number }> {
+  const parts = text.split(';');
+  if (parts.length !== 2) return { ok: false };
+  const x = parseLength(parts[0]!);
+  const y = parseLength(parts[1]!);
+  return x.ok && y.ok ? { ok: true, value: { x: x.value, y: y.value } } : { ok: false };
+}
+
 /** "length<angle": the length in metres and the angle in degrees (counter-clockwise from +x). */
 export function parseLengthAngle(text: string): Parsed<{ length: number; angle: number | null }> {
   const [l, a, ...rest] = text.split('<');
