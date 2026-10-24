@@ -3,7 +3,7 @@
 // since bulge = tan(θ/4) and s / (c/2) = tan(θ/4).
 
 import { describe, expect, it } from 'vitest';
-import { arcMiddle, bulgeKeepingSide, bulgeFromMiddle } from '../../src/tools/arc-edit';
+import { arcMiddle, bulgeKeepingSide, bulgeFromMiddle, straightNear } from '../../src/tools/arc-edit';
 
 const a = { x: 0, y: 0 };
 const b = { x: 2, y: 0 };
@@ -43,5 +43,16 @@ describe('bulgeKeepingSide', () => {
   });
   it('a radius shorter than half the chord cannot be: null', () => {
     expect(bulgeKeepingSide(2, 0.5, 0.99)).toBeNull();
+  });
+});
+
+// The tester's K18: let go 4 px (about 3 cm) off the chord, the arc became R 39.62 m; the snap to
+// straight was 2.5 cm in the world, so only a few pixels at most zooms. Now it is measured on screen.
+describe('straightNear', () => {
+  it('a sagitta under the given reach makes the wall straight', () => {
+    // Chord 2, bulge 0.03: sagitta 0.03 m; within 8 px at 100 px/m (0.08 m) it is straight.
+    expect(straightNear(0.03, 2, 8 / 100)).toBe(0);
+    expect(straightNear(0.1, 2, 8 / 100)).toBe(0.1);
+    expect(straightNear(-0.03, 2, 8 / 100)).toBe(0);
   });
 });

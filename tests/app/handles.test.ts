@@ -48,6 +48,18 @@ describe('handles', () => {
     expect(handleAt(h, { x: 103, y: 538 }, 8)).toEqual({ kind: 'bulge', id: 'a' });
   });
 
+  it('a major arc: the turn handle is centred under the whole arc, not under its chord', () => {
+    // Bulge 2 on the chord (0, 0)-(2, 0): sweep 4·atan 2 = 253.7°, radius 1.25, centre (1, -0.75); the
+    // arc spans x from -0.25 to 2.25 and goes down to y = -2: its middle x is 1, under y = -2: (100, 700).
+    const h = handlesFor([wall('a', [0, 0], [2, 0], 2)], toScreen);
+    // It runs counter-clockwise from 143.1° at (0, 0) to 36.8° at (2, 0) the long way, through 180°,
+    // 270° and 360°, below the chord: the top of its circle (90°) is not on it. Extent in y: -2 to 0,
+    // centre -1 (the ends alone gave 0); in x: -0.25 to 2.25, centre 1.
+    expect(h.rotate!.pivot.x).toBeCloseTo(1, 6);
+    expect(h.rotate!.pivot.y).toBeCloseTo(-1, 6);
+    expect(h.rotate!.at.y).toBeCloseTo(700 + 28, 6);
+  });
+
   it('a straight wall has no curvature handle', () => {
     expect(handlesFor([wall('w', [1, 1], [4, 1])], toScreen).bulge).toBeNull();
   });

@@ -93,10 +93,12 @@ describe('temporary dimensions', () => {
     expect(dims.map((x) => x.id)).toEqual(['a:chord', 'a:radius']);
     expect(dims[0]!.value).toBeCloseTo(2, 12);
     expect(dims[1]!.value).toBeCloseTo(1, 12);
-    // The radius runs from the centre to the middle of the arc.
+    // The radius runs from the centre along the radius at 30 % of the sweep, not the middle one, so its
+    // value stays clear of the chord's (the tester's K03): angle π + 0.3π, (1 + cos 1.3π, sin 1.3π).
     expect(dims[1]!.a.x).toBeCloseTo(1, 12);
     expect(dims[1]!.a.y).toBeCloseTo(0, 12);
-    expect(dims[1]!.b.y).toBeCloseTo(-1, 12);
+    expect(dims[1]!.b.x).toBeCloseTo(1 + Math.cos(1.3 * Math.PI), 12);
+    expect(dims[1]!.b.y).toBeCloseTo(Math.sin(1.3 * Math.PI), 12);
   });
 
   it('typing a chord moves the end along it and keeps the sweep; typing a radius keeps the ends', () => {
