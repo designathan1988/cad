@@ -3,7 +3,7 @@
 
 import type { Point2 } from '../core/vector';
 import { snap } from '../tools/snap';
-import { getLang, t } from '../ui/i18n';
+import { t } from '../ui/i18n';
 import { el } from '../ui/controls';
 import { openingAt, wallAt } from './geometry';
 import { aimAt, OPENING_PREVIEW_ID } from './opening-ui';
@@ -375,9 +375,36 @@ export function wireInput(app: App): void {
 
 function showHelp(app: App): void {
   const back = app.shell.helpBack;
-  const rows: [string, string][] = getLang() === 'pt'
-    ? [['V', 'Selecionar'], ['W', 'Desenhar parede'], ['A', 'Arco (desenhando parede)'], ['D', 'Colocar porta'], ['Shift+W', 'Colocar janela'], ['R', 'Criar cômodo'], ['L', 'Criar piso'], ['1 / 2', '3D / Planta'], ['Enter', 'Terminar a sequência'], ['Tab', 'Do comprimento para o ângulo (no campo Medida)'], ['Esc', 'Cancelar / limpar seleção'], ['Del', 'Apagar seleção'], ['F / Home', 'Enquadrar seleção / tudo'], ['S', 'Encaixes'], ['Shift', 'Ângulo reto ao desenhar; somar à seleção'], ['Ctrl+A', 'Selecionar todas as paredes do pavimento'], ['Ctrl+Z / Ctrl+Shift+Z', 'Desfazer / refazer'], ['Ctrl+Y', 'Refazer'], ['Ctrl+O / Ctrl+S', 'Abrir / salvar projeto'], ['Shift+L', 'Idioma'], ['Ctrl+K', 'Comandos: achar qualquer ação pelo nome'], ['?', 'Esta ajuda'], ['Rodinha', 'Aproximar no cursor'], ['Botão do meio', 'Mover a vista'], ['Shift + meio', 'Girar (3D)']]
-    : [['V', 'Select'], ['W', 'Draw wall'], ['A', 'Arc (while drawing walls)'], ['D', 'Place door'], ['Shift+W', 'Place window'], ['R', 'Add room'], ['L', 'Add floor'], ['1 / 2', '3D / Plan'], ['Enter', 'Finish the chain'], ['Tab', 'From length to angle (in the Measure field)'], ['Esc', 'Cancel / clear selection'], ['Del', 'Delete selection'], ['F / Home', 'Frame selection / all'], ['S', 'Snaps'], ['Shift', 'Right angle while drawing; add to selection'], ['Ctrl+A', 'Select every wall of the level'], ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo'], ['Ctrl+Y', 'Redo'], ['Ctrl+O / Ctrl+S', 'Open / save project'], ['Shift+L', 'Language'], ['Ctrl+K', 'Commands: find any action by name'], ['?', 'This help'], ['Wheel', 'Zoom at the cursor'], ['Middle button', 'Pan'], ['Shift + middle', 'Orbit (3D)']];
+  // The same names as the palette, buttons and menus (ref/chat.txt:200): read from the same messages.
+  const rows: [string, string][] = [
+    ['V', t('tool.select')],
+    ['W', t('tool.wall')],
+    ['W, A', t('pal.arcWall')],
+    ['D', t('tool.door')],
+    ['Shift+W', t('tool.window')],
+    ['R', t('tool.room')],
+    ['L', t('tool.floor')],
+    ['1 / 2', `${t('view.3d')} / ${t('view.plan')}`],
+    ['Enter', t('help.enter')],
+    ['Tab', t('help.tab')],
+    ['Esc', t('help.esc')],
+    ['Del', t('pal.delete')],
+    ['F', t('pal.frameSelection')],
+    ['Home', t('pal.frameAll')],
+    ['S', t('pal.snaps')],
+    ['Shift', t('help.shift')],
+    ['Ctrl+A', t('pal.selectAll')],
+    ['Ctrl+Z', t('pal.undo')],
+    ['Ctrl+Shift+Z / Ctrl+Y', t('pal.redo')],
+    ['Ctrl+O', t('pal.open')],
+    ['Ctrl+S', t('pal.save')],
+    ['Ctrl+K', t('pal.commands')],
+    ['Shift+L', t('pal.language')],
+    ['?', t('pal.shortcuts')],
+    [t('help.wheelKey'), t('help.wheel')],
+    [t('help.middleKey'), t('help.middle')],
+    [t('help.orbitKey'), t('help.orbit')],
+  ];
   const close = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
   const dl = el('dl');
   for (const [k, v] of rows) dl.append(el('dt', {}, el('span', { class: 'kbd' }, k)), el('dd', {}, v));

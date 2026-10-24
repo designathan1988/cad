@@ -1183,6 +1183,16 @@ select {
   font-size: var(--fs-sm);
 }
 
+/* Read by screen readers, not shown (and out of any grid flow). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 /* Levels dialog */
 .dialog-wide {
   width: min(560px, calc(100vw - 32px));

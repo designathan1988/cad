@@ -29,11 +29,11 @@ export function appActions(app: App, open: Openers): Action[] {
   const { ui, store } = app;
   const doc = store.get();
   const has = ui.selection.size > 0;
-  const make = (id: string, key: MessageKey, group: MessageKey, run: () => void, extra: { keys?: string; enabled?: boolean } = {}): Action => ({
+  const make = (id: string, key: MessageKey, group: MessageKey, run: () => void, extra: { keys?: string; enabled?: boolean; keywords?: string } = {}): Action => ({
     id,
     label: t(key),
     group: t(group),
-    keywords: tBoth(key),
+    keywords: `${tBoth(key)} ${extra.keywords ?? ''}`.trim(),
     enabled: extra.enabled ?? true,
     run,
     ...(extra.keys ? { keys: extra.keys } : {}),
@@ -69,7 +69,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('file.save', 'pal.save', file, () => app.saveFile(), { keys: 'Ctrl+S' }),
     make('settings.snaps', 'pal.snaps', settings, () => app.toggleSnaps(), { keys: 'S' }),
     make('settings.theme', 'pal.theme', settings, () => app.toggleTheme()),
-    make('settings.language', 'pal.language', settings, () => app.setLanguage(app.otherLanguage()), { keys: 'Shift+L' }),
+    make('settings.language', 'pal.language', settings, () => app.setLanguage(app.otherLanguage()), { keys: 'Shift+L', keywords: 'English Português' }),
     make('settings.panel', 'pal.panel', settings, () => app.togglePanel()),
     make('settings.browser', 'pal.browser', settings, () => app.toggleBrowser()),
     ...(['walls', 'openings', 'rooms', 'floors'] as const).map((c) =>

@@ -517,14 +517,14 @@ export class App {
    * When the selection changes and the panel lying over the drawing would hide it (the sheet on a
    * phone, the drawer on a tablet), the plan slides just enough to show it beside the panel.
    */
-  private keepSelectionInView(): void {
+  private keepSelectionInView(): boolean {
     const key = [...this.ui.selection].join(',');
-    if (key === this.seenSelection) return;
+    if (key === this.seenSelection) return false;
     this.seenSelection = key;
     const covered = this.covered();
-    if (key === '' || (covered.right === 0 && covered.bottom === 0)) return;
+    if (key === '' || (covered.right === 0 && covered.bottom === 0)) return false;
     const box = boundsOf(this.geometry, this.ui.selection);
-    if (!box) return;
+    if (!box) return false;
     const vp = this.shell.viewport.getBoundingClientRect();
     const a = this.plan.toScreen({ x: box.min.x, y: box.max.y });
     const b = this.plan.toScreen({ x: box.max.x, y: box.min.y });
@@ -534,7 +534,9 @@ export class App {
     // Never past the top or left edge: a selection taller than the free part keeps its top in view.
     const up = Math.min(dy, Math.max(0, a.y - margin));
     const left = Math.min(dx, Math.max(0, a.x - margin));
-    if (up > 0 || left > 0) this.plan.panBy(-left, -up);
+    if (up <= 0 && left <= 0) return false;
+    this.plan.panBy(-left, -up);
+    return true;
   }
 
   /** How much the panel covers of the viewport, at its right (drawer) or bottom (phone sheet). */
@@ -642,7 +644,6 @@ export class App {
     // to show, so it never covers the model for nothing. Set first: what it covers shapes the view.
     const narrow = matchMedia('(max-width: 900px)').matches;
     shell.panel.hidden = !ui.panelOpen || (narrow && ui.selection.size === 0 && ui.tool === 'select');
-    if (plan) this.keepSelectionInView();
     shell.planCanvas.classList.toggle('hidden', !plan);
     shell.glCanvas.classList.toggle('hidden', plan);
     this.cube.root.hidden = plan;
@@ -706,7 +707,7 @@ export class App {
     const openingKey = JSON.stringify([ui.openingDefaults, this.geometry.openingWarnings, this.selectedOpenings().map((o) => [o.start, o.end])]);
     const panelKey = [ui.tool, [...ui.selection].sort().join(','), getLang(), JSON.stringify(ui.defaults), JSON.stringify(this.geometry.warnings), openingKey].join('|');
     const placing = this.openingKind();
-    if (doc === this.panelDoc && panelKey === this.panelKey) return;
+    if (doc === this.panelDoc && panelKey === this.panelKey) return this.afterPanel();
     this.panelDoc = doc;
     this.panelKey = panelKey;
     renderPanel(
@@ -762,6 +763,15 @@ export class App {
         },
       },
     );
+    this.afterPanel();
+  }
+
+  /**
+   * After the panel has its content: a new selection the panel would hide (sheet or drawer over the
+   * plan) brings the plan into view, and the plan is drawn again where it now is.
+   */
+  private afterPanel(): void {
+    if (this.ui.view === 'plan' && this.keepSelectionInView()) this.render();
   }
 
   /** Temporary dimensions of the one selected element, while selecting (not while dragging). */

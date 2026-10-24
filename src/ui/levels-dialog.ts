@@ -40,9 +40,16 @@ export function showLevels(app: App): void {
       del.innerHTML = icon('trash', 16);
       const blocker = deleteBlocker(doc, l.id);
       del.disabled = blocker !== null;
-      del.title = blocker === 'last' ? t('levels.cantDeleteLast') : blocker === 'walls' ? t('levels.cantDeleteWalls') : t('levels.delete');
+      // Named by what it does; when it cannot, the reason is its description (and its tooltip).
+      del.setAttribute('aria-label', t('levels.deleteNamed', { name: label }));
+      const why = blocker === 'last' ? t('levels.cantDeleteLast') : blocker === 'walls' ? t('levels.cantDeleteWalls') : null;
+      del.title = why ?? t('levels.deleteNamed', { name: label });
+      if (why) {
+        const id = `why-${l.id}`;
+        rows.append(el('span', { id, class: 'sr-only' }, why));
+        del.setAttribute('aria-describedby', id);
+      }
       del.dataset.focus = `del:${l.id}`;
-      del.setAttribute('aria-label', del.title);
       del.addEventListener('click', () => {
         app.store.dispatch(deleteLevel(l.id));
         if (app.ui.levelId === l.id) app.ui.levelId = app.store.get().levels[0]!.id;
