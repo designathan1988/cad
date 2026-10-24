@@ -31,7 +31,7 @@ const doc: Doc = {
 
 describe('actions for the selection', () => {
   it('a wall: flip, frame, properties, delete', () => {
-    expect(contextIds(doc, ['w'])).toEqual(['flipWall', 'frameSelection', 'properties', 'delete']);
+    expect(contextIds(doc, ['w'])).toEqual(['flipWall', 'editType', 'frameSelection', 'properties', 'delete']);
   });
 
   it('a door: flip hinge, flip swing, frame, properties, delete', () => {

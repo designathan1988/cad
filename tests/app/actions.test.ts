@@ -14,7 +14,7 @@ function fakeApp(selection: string[] = [], view: '3d' | 'plan' = 'plan') {
   const store = createStore(addLevel('lvl_up', 'Upper').apply(newDocument()));
   return { store, ui: { selection: new Set(selection), view, levelId: 'lvl_ground', hidden: new Set() } } as unknown as App;
 }
-const openers = { help: () => {}, levels: () => {}, tour: () => {}, openFile: () => {} };
+const openers = { help: () => {}, levels: () => {}, wallTypes: () => {}, tour: () => {}, openFile: () => {} };
 
 describe('palette actions', () => {
   afterEach(() => setLang('en'));

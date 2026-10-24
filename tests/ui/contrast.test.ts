@@ -49,11 +49,13 @@ const pairs: [string, string, number, string][] = [
   ['--wall-sel', '--canvas', 3, 'selection on the drawing'],
   ['--accent', '--bg', 3, 'focus ring and pressed tools'],
   ['--border-strong', '--bg', 3, 'dialog edges'],
-  // Walls in plan by layer: the outline and the lines between layers on every layer's colour.
-  ['--wall-line', '--layer-structure', 3, 'line on a core layer'],
-  ['--wall-line', '--layer-substrate', 3, 'line on a substrate layer'],
-  ['--wall-line', '--layer-thermal', 3, 'line on an insulation layer'],
-  ['--wall-line', '--layer-finish', 3, 'line on a finish layer'],
+  // Walls in plan by layer: the outline and the lines between layers on every layer's colour. A line
+  // is 1 px and antialiasing takes some of it (the tester measured 2.95 on a pixel at a 3.1 token
+  // pair): 4.5 between the tokens keeps it above 3 on screen.
+  ['--wall-line', '--layer-structure', 4.5, 'line on a core layer'],
+  ['--wall-line', '--layer-substrate', 4.5, 'line on a substrate layer'],
+  ['--wall-line', '--layer-thermal', 4.5, 'line on an insulation layer'],
+  ['--wall-line', '--layer-finish', 4.5, 'line on a finish layer'],
 ];
 
 describe('contrast of the design tokens', () => {
