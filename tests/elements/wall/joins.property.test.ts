@@ -4,7 +4,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { geometry, layer, testWall, type TestWall as Wall } from './fixtures';
-import type { P } from './oracle';
+import { type P, rectOf, shoelace } from './oracle';
 import {
   checkAgainst,
   expectedRoom,
@@ -13,7 +13,7 @@ import {
 } from './oracle';
 import { abutmentPenetration, layerContainmentViolations, layerContinuity, notchFill } from './oracle-layers';
 import { cornerJoin, crossingOf, expectedCorner, expectedX, sidesOf, throughOf } from './oracle-x';
-import { crossedScene, lScene, type Mode, roomScene, tScene, xScene } from './scenes';
+import { crossedScene, lScene, type Mode, nodeScene, roomScene, tScene, xScene } from './scenes';
 
 const seed = Number(process.env.FUZZ_SEED ?? 20261024);
 const scale = Number(process.env.FUZZ_SCALE ?? 1);
@@ -36,6 +36,8 @@ function expectExact(walls: readonly Wall[], region: Region, sampleSeed: number)
 const PRIORITY_JOINTS = 300;
 // The fixed seed checks ~1 400 butt corners; other seeds tried gave 1 300 to 2 800.
 const BUTT_CORNERS = 600;
+// The fixed seed checks I10 on 220 stems (stems without finishes on that side have nothing to check).
+const NODE_STEMS = 100;
 const PRIORITY_POINTS = 5_000;
 const notch = { joints: 0, points: 0, priorityJoints: 0, priorityPoints: 0 };
 /** I6 by layer and I10, for one T. Counts checked points so I10 cannot pass vacuously. */
@@ -189,6 +191,36 @@ describe('room with a divider', () => {
   }, TIMEOUT);
 });
 
+const node = { scenes: 0, stems: 0 };
+describe('node with a passage in line', () => {
+  it('covers the passage band and each stem beyond its face; each stem behaves as a T against the passage', () => {
+    fc.assert(
+      fc.property(nodeScene(), fc.nat(), ({ passage, stems }, sampleSeed) => {
+        const walls = [...passage, ...stems.map((s) => s.wall)];
+        expect(geometry(walls).warnings, JSON.stringify(walls)).toEqual([]);
+        // The passage as one host: the same type drawn head to tail is one straight band.
+        const host: Wall = { ...passage[0], id: 'passage', end: passage[1].end };
+        const parts = stems.map((s) => expectedT(s.wall, s.end, host));
+        const hostArea = shoelace(rectOf(host));
+        const region: Region = {
+          area: parts.reduce((sum, r) => sum + r.area - hostArea, hostArea),
+          contains: (p) => parts.some((r) => r.contains(p)),
+          edges: parts.flatMap((r) => r.edges),
+        };
+        expectExact(walls, region, sampleSeed);
+        stems.forEach((s, k) => {
+          expect(abutmentPenetration(s.wall, s.end, host, walls), JSON.stringify(walls)).toBeLessThanOrEqual(1e-12);
+          const fill = notchFill(s.wall, s.end, host, walls, sampleSeed + k, [passage[0].id, passage[1].id]);
+          expect(fill.bad, JSON.stringify(walls)).toBe(0);
+          if (fill.checked > 0) node.stems++;
+        });
+        node.scenes++;
+      }),
+      runs(300),
+    );
+  }, TIMEOUT);
+});
+
 describe('regressions found by larger runs', () => {
   it('butt against a short through wall (FUZZ_SEED=55555, FUZZ_SCALE=10)', () => {
     // Same type, but b on its exterior face reads its layers reversed from the corner: a butt at 170°
@@ -219,6 +251,9 @@ describe('layer checks were really exercised', () => {
     expect(notch.priorityJoints).toBeGreaterThan(PRIORITY_JOINTS * scale);
     expect(notch.priorityPoints).toBeGreaterThan(PRIORITY_POINTS * scale);
     expect(crossing.scenes).toBe(600 * scale);
+    console.log(`node scenes: ${node.scenes}, stems with I10 checked: ${node.stems}`);
+    expect(node.scenes).toBe(300 * scale);
+    expect(node.stems).toBeGreaterThan(NODE_STEMS * scale);
     console.log(`butt corners checked as T: ${butt.corners}`);
     expect(butt.corners).toBeGreaterThan(BUTT_CORNERS * scale);
   });

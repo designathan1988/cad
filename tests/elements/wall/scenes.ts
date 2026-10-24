@@ -379,3 +379,59 @@ export function xScene(mode: Mode): fc.Arbitrary<XScene> {
       return true;
     });
 }
+
+export interface NodeScene {
+  /** In line, drawn head to tail with the same type: `passage[0]` ends at the node, `[1]` starts there. */
+  readonly passage: readonly [Wall, Wall];
+  /** One stem per side, each with the end that sits on the node. */
+  readonly stems: readonly { readonly wall: Wall; readonly end: WallEnd }[];
+}
+
+/** Three or four ends at one point: a straight passage and one stem on one or both sides. */
+export function nodeScene(): fc.Arbitrary<NodeScene> {
+  return fc
+    .record({
+      node: fc.tuple(num(-5, 5), num(-5, 5)),
+      heading: num(0, 360),
+      lens: fc.tuple(num(2, 6), num(2, 6)),
+      t: num(0.05, 0.4),
+      recipe,
+      pRef: ref,
+      stems: fc.array(
+        fc.record({ theta: num(30, 150), len: num(1.5, 5), t: num(0.05, 0.4), recipe, ref, away: fc.boolean() }),
+        { minLength: 1, maxLength: 2 },
+      ),
+    })
+    .map((r) => {
+      const x = pt(r.node[0], r.node[1]);
+      const u = dir(r.heading);
+      const ls = layersOf(r.t, r.recipe);
+      const passage = [
+        make('p0', plus(x, times(u, -r.lens[0])), x, ls, r.pRef),
+        make('p1', x, plus(x, times(u, r.lens[1])), ls, r.pRef),
+      ] as const;
+      // The first stem on the left of u, the second on the right.
+      const thetas = r.stems.map((s, i) => (i === 0 ? s.theta : -s.theta));
+      const stems = r.stems.map((s, i) => {
+        const far = plus(x, times(rot(u, thetas[i]!), s.len));
+        const sl = layersOf(s.t, s.recipe);
+        const id = `s${i}`;
+        return s.away
+          ? { wall: make(id, x, far, sl, s.ref), end: 'start' as WallEnd }
+          : { wall: make(id, far, x, sl, s.ref), end: 'end' as WallEnd };
+      });
+      return { passage, stems, thetas };
+    })
+    .filter((s) => {
+      // The two stems must not be nearly in line with each other, or they would be the passage.
+      if (s.thetas.length === 2 && Math.abs(180 - (Math.abs(s.thetas[0]!) + Math.abs(s.thetas[1]!))) < 15) return false;
+      // Each stem's far end clear of the passage band.
+      const f = frameOf(s.passage[0]);
+      return s.stems.every(({ wall, end }) => {
+        const farEnd = end === 'start' ? wall.end : wall.start;
+        const o = dotp(f.n, pt(farEnd.x - s.passage[0].end.x, farEnd.y - s.passage[0].end.y));
+        return Math.abs(o) > Math.max(Math.abs(f.o0), Math.abs(f.o1)) + wall.thickness + 0.1;
+      });
+    })
+    .map(({ passage, stems }) => ({ passage, stems }));
+}

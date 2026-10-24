@@ -176,6 +176,8 @@ export function notchFill(
   host: Wall,
   walls: readonly Wall[],
   seed: number,
+  /** Walls that count as the host: a passage of two walls in line is one host. */
+  hostIds: readonly string[] = [host.id],
 ): { checked: number; bad: number; passedOutsideCore: number } {
   const { fh, near, coreFace, stops } = tFaces(abutting, end, host);
   if (Math.abs(near - coreFace) < 1e-9) return { checked: 0, bad: 0, passedOutsideCore: 0 };
@@ -218,7 +220,7 @@ export function notchFill(
     if (passed && (k < a0 || k > a1)) passedOutsideCore++;
     const owner = walls.find((w) => (pieces.get(w.id) ?? []).some((piece) => inside(piece.polygon, p)));
     const ownerPiece = owner && (pieces.get(owner.id) ?? []).find((piece) => inside(piece.polygon, p));
-    const ok = passed ? owner?.id === abutting.id && ownerPiece!.layerIndex === k : owner?.id === host.id;
+    const ok = passed ? owner?.id === abutting.id && ownerPiece!.layerIndex === k : owner !== undefined && hostIds.includes(owner.id);
     if (!ok) bad++;
   }
   return { checked, bad, passedOutsideCore };
