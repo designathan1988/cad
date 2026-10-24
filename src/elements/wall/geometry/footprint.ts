@@ -37,13 +37,14 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   warnings.push(...graph.warnings);
   const byId = new Map(shapes.map((w) => [w.id, w]));
   const endCuts = new Map<string, EndCut>();
+  const notches: Notch[] = [];
   for (const { ends: [ra, rb], node } of graph.corners) {
     const result = resolveCorner(byId.get(ra.wallId)!, ra.end, byId.get(rb.wallId)!, rb.end, node);
     if (result.a) endCuts.set(keyOf(ra), result.a);
     if (result.b) endCuts.set(keyOf(rb), result.b);
     if (result.warning) warnings.push(result.warning);
+    notches.push(...result.notches);
   }
-  const notches: Notch[] = [];
   for (const { abutting, hostId } of graph.abutments) {
     const { cut, notches: own } = resolveAbutment(byId.get(abutting.wallId)!, abutting.end, byId.get(hostId)!);
     endCuts.set(keyOf(abutting), cut);

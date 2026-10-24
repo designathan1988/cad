@@ -292,6 +292,27 @@ o ângulo entre elas. *(Regras revisadas pelo spike — ver §16.)*
   miter viraria uma rampa de metros.
 - θ < 90° e o canto externo a mais de `MITER_LIMIT × max(T)` → mantém o miter e
   **chanfra a ponta** com um semiplano perpendicular a P→canto, a essa distância.
+- **Miter ou butt** *(entrega 4, decisão do usuário)*: se a sequência de
+  camadas **lida a partir da face externa do canto** é a mesma nas duas paredes
+  (mesmas funções, espessuras a menos de `POINT_TOLERANCE`), o canto é o miter
+  acima. Senão é **butt**: passa a parede de **núcleo mais grosso** (empate a
+  menos de `POINT_TOLERANCE`: menor ID, a mesma regra do X). Ela é cortada na
+  linha da **face externa** da outra, e a outra **encosta nela como um T**, com
+  a regra de prioridade e o entalhe da §7.2. Uma parede desenhada ao contrário
+  lê as camadas invertidas e por isso entra em butt.
+- O butt cobre a **mesma região** do miter (faces externas até o canto externo,
+  internas até o interno), então todas as regras de canto acima valem para ele.
+  Ele tem mais pontos próprios, e cada um tem a sua regra:
+  - o **canto do butt**: a face interna da que passa na face externa da outra,
+    onde o corte reto alcança a largura toda;
+  - os **pontos mais fundos** de cada camada que encosta: as bordas da faixa
+    dela na face onde para.
+
+  Qualquer desses pontos além de uma ponta livre → sem junta, aviso
+  `WallsOverlap` (a ponta engole a parede curta). Ângulo θ ≥ 90° com o canto do
+  butt a mais de `MITER_LIMIT × max(T)` de P → **corte único por P**, como no
+  miter (a ponta reta viraria uma cunha de metros). No chanfro, o mesmo semiplano
+  corta as duas paredes.
 - Se `config` do override for `butt`: a parede com prioridade (override, senão
   núcleo mais grosso, senão menor ID) passa reto e é cortada quadrada; a outra é
   cortada na **face** da primeira.
@@ -315,9 +336,9 @@ nas duas paredes, a camada *k* de *a* encontra a camada *k* de *b* ao longo da
 diagonal — reboco com reboco, tijolo com tijolo. Isso vale para qualquer linha
 de referência; o que importa é a ordem das camadas vista do canto. Uma parede
 desenhada no sentido inverso (exterior virado para dentro do canto) lê as
-camadas ao contrário, e elas se encontram invertidas, que é o que de fato está
-desenhado. Sequências diferentes: a mesma diagonal corta todas as camadas e
-elas se encontram onde caírem.
+camadas ao contrário, e por isso a sequência deixa de ser a mesma: vira butt
+(acima). *(Até a entrega 4, sequências diferentes recebiam a mesma diagonal, e as
+camadas se encontravam onde caíssem.)*
 
 ### 7.2 Abutment — T
 
@@ -469,6 +490,9 @@ regra que o elimina.
 | obtuso, canto além de `10 × max(T)` | um único corte por P (degrau) |
 | agudo, ponta externa além de `10 × max(T)` | miter com chanfro na ponta |
 | canto além da ponta livre de uma das paredes | sem junta; `WallsOverlap` |
+| sequências de camadas diferentes no canto | butt: o núcleo mais grosso passa, a outra encosta como T |
+| butt: canto próprio ou camada que encosta além de uma ponta livre | sem junta; `WallsOverlap` |
+| butt obtuso, canto próprio além de `10 × max(T)` | um único corte por P (degrau) |
 | ponta de cada uma dentro da faixa da outra | um canto, nó na interseção das linhas de referência |
 | idem, com o nó a mais de `10 × max(T)` das pontas | sem junta; `WallsOverlap` |
 | comprimento `< 1 mm` | parede inválida; não participa de junta |
@@ -750,6 +774,35 @@ Achados:
    não muda nada, porque a tolerância já absorve 1 ulp. O mutante que importa é
    tirar a tolerância, e ele é morto por dois núcleos a 0,5 mm um do outro.
 
+### Entrega 4, parte 2 — butt no L entre sequências diferentes
+
+Decisão do usuário, 24/10/2026: no L entre tipos diferentes, butt com a regra
+de prioridade (§7.1). Com a mesma sequência, o miter fica.
+
+| Medida | Resultado |
+|---|---|
+| Testes | 79/79, suíte inteira em ~8 s |
+| Casos à mão novos ou mudados | 8 |
+| Butt conferido como T (I6 por camada e I10) | 1 395 cantos na seed fixa (piso: 600) |
+| Seeds extras (1, 777, 4242, 9, 31337), 2 000 cenas cada | sem falha no código final |
+| Mutantes de `cut-l.ts` | 12/12 detectados (um sobreviveu de início: o caso de 1 mm era fraco e foi reforçado) |
+
+Achados, todos pelo gerador e não pela mesa:
+
+1. **Regra que faltava:** o butt tem um canto que o miter não tem. A ponta reta
+   da parede que passa alcança a face externa da outra na largura toda, e o
+   canto dessa largura caía 0,05 mm além da ponta livre de uma parede curta. →
+   aviso, como o canto do miter.
+2. **Regra que faltava:** a 177°, paredes de 5 cm, esse mesmo canto ficava a
+   1,1 m do nó. A cunha virava lascas abaixo de `AREA_EPSILON`, que eram
+   descartadas e abriam fresta. → corte único, como o miter obtuso.
+3. **Regra que faltava** (seed 1): o núcleo que encosta entra nos acabamentos da
+   que passa, como num T, mas a que passa era curta. O núcleo saía 0,12 mm além
+   da ponta livre dela. → os pontos mais fundos das camadas que encostam também
+   não podem passar das pontas.
+4. **Erro meu num teste:** um vértice procurado com `===` num valor calculado.
+   Corrigido no teste.
+
 ### Entrega 4, parte 1 — prioridade de camadas no T e no X
 
 A regra foi conferida de novo na página da Autodesk ("Function and Priority of
@@ -774,11 +827,7 @@ parede que encosta no lado do acabamento 2 da hospedeira agora atravessa até o
 núcleo (4 é maior que 5). Antes ele parava na face. É a divergência que a §17
 apontou, não um afrouxamento.
 
-**Pendente, parte 2: o L.** A documentação do Revit dá a regra de prioridade,
-mas **não descreve a geometria do canto** entre tipos diferentes, e a regra
-"ganha a de maior prioridade" aplicada célula a célula no canto deixa o núcleo
-de uma parede aflorar na face externa da outra. Isso fica para decisão antes de
-implementar. Até lá, o L continua com uma diagonal só (§7.1).
+**Parte 2, o L:** ver abaixo.
 
 **Numeração:** a §17 pôs a prioridade como entrega 4. A tabela da §15 ainda
 lista os nós de 3 a 5+ pontas como entrega 4, e eles passam a ser a 5; as

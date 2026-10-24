@@ -3,17 +3,26 @@
 // host layers of strictly lower priority, and stops on the first of equal or higher priority (the
 // host core at the latest). Each host layer it passes is notched exactly where it passes.
 
-import { add, dot, scale } from '../../../core/vector';
+import { MITER_LIMIT } from '../../../core/tolerance';
+import { add, dot, intersectLines, type Point2, scale } from '../../../core/vector';
 import { type HalfPlane, halfPlaneThrough } from '../geometry/convex';
-import { endPoint, intoBody, wallNormal } from '../geometry/offset';
+import { endPoint, intoBody, wallDirection, wallNormal } from '../geometry/offset';
 import type { WallShape } from '../geometry/shape';
 import { LAYER_PRIORITY, type WallEnd } from '../schema';
-import { joinExtension } from './cut-l';
 import type { EndCut, Notch } from './types';
+
+/**
+ * Band to add past a joined end before cutting. Discovery keeps every end within MITER_LIMIT·T of the
+ * node, and every cut reaches at most MITER_LIMIT·T past it, so 2·(MITER_LIMIT + 1)·T always suffices.
+ */
+export const joinExtension = (a: WallShape, b: WallShape): number =>
+  2 * (MITER_LIMIT + 1) * Math.max(a.thickness, b.thickness);
 
 export interface AbutmentResult {
   readonly cut: EndCut;
   readonly notches: readonly Notch[];
+  /** How far into the host the abutting layers reach: their band edges on the faces they stop on. */
+  readonly deepest: readonly Point2[];
 }
 
 export function resolveAbutment(abutting: WallShape, end: WallEnd, host: WallShape): AbutmentResult {
@@ -44,10 +53,17 @@ export function resolveAbutment(abutting: WallShape, end: WallEnd, host: WallSha
     cuts: [],
     layerCuts: depth.map((d) => [halfPlaneThrough(along(faceAt(d)), inward)]),
   };
-  // Each passing run of abutting layers, exactly where it is: its band, short of the free end (which
-  // can reach into the host's finishes when the wall is short, thick and shallow).
   const m = wallNormal(abutting);
   const side = (offset: number) => add(abutting.start, scale(m, offset));
+  const deepest = depth.flatMap((d, k) =>
+    [abutting.layerOffsets[k]!, abutting.layerOffsets[k + 1]!].flatMap((o) => {
+      const p = intersectLines(side(o), wallDirection(abutting), along(faceAt(d)), wallDirection(host));
+      return p ? [p] : [];
+    }),
+  );
+
+  // Each passing run of abutting layers, exactly where it is: its band, short of the free end (which
+  // can reach into the host's finishes when the wall is short, thick and shallow).
   const freeEnd = end === 'start' ? 'end' : 'start';
   const shortOfFreeEnd = halfPlaneThrough(endPoint(abutting, freeEnd), intoBody(abutting, freeEnd));
   const notches: Notch[] = [];
@@ -61,7 +77,7 @@ export function resolveAbutment(abutting: WallShape, end: WallEnd, host: WallSha
       notches.push({ wallId: host.id, region, layers: [h.layer, h.layer] });
     }
   });
-  return { cut, notches };
+  return { cut, notches, deepest };
 }
 
 /** Maximal runs of consecutive true entries, as inclusive index pairs. */

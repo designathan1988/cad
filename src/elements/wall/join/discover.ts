@@ -86,7 +86,7 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
 
 /**
  * Pairs whose reference lines cross inside both walls, with no end of either inside the other's
- * band (that would be a T or a corner). The thicker core goes through; a tie goes to the lower id.
+ * band (that would be a T or a corner). The through wall is chosen by goesThrough.
  */
 function findCrossings(walls: readonly WallShape[]): Crossing[] {
   const crossings: Crossing[] = [];
@@ -96,15 +96,22 @@ function findCrossings(walls: readonly WallShape[]): Crossing[] {
       const point = intersectLines(a.start, wallDirection(a), b.start, wallDirection(b));
       if (point === null || !interior(a, point) || !interior(b, point)) return;
       if ([a.start, a.end].some((p) => withinBand(b, p)) || [b.start, b.end].some((p) => withinBand(a, p))) return;
-      // Summed from the layers, not subtracted from offsets: walls of one type on different reference
-      // lines must tie exactly. Cores within POINT_TOLERANCE tie, and the lower id goes through.
-      const coreA = coreThickness(a);
-      const coreB = coreThickness(b);
-      const aThrough = Math.abs(coreA - coreB) <= POINT_TOLERANCE ? a.id < b.id : coreA > coreB;
+      const aThrough = goesThrough(a, b);
       crossings.push({ throughId: aThrough ? a.id : b.id, cutId: aThrough ? b.id : a.id, point });
     });
   });
   return crossings;
+}
+
+/**
+ * Whether `a` goes through `b` where one must (X, butt L): the thicker core does. Summed from the
+ * layers, not subtracted from offsets: walls of one type on different reference lines must tie
+ * exactly. Cores within POINT_TOLERANCE tie, and the lower id goes through.
+ */
+export function goesThrough(a: WallShape, b: WallShape): boolean {
+  const coreA = coreThickness(a);
+  const coreB = coreThickness(b);
+  return Math.abs(coreA - coreB) <= POINT_TOLERANCE ? a.id < b.id : coreA > coreB;
 }
 
 const coreThickness = (w: WallShape): number =>
