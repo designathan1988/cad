@@ -9,8 +9,6 @@ const wall = (id: string, x: number) => ({
   end: { x: x + 1, y: 0 },
   referenceLine: 'centerline',
   levelId: 'lvl_ground',
-  baseOffset: 0,
-  top: { kind: 'level', offset: 0 },
 });
 
 describe('project files', () => {
@@ -101,3 +99,27 @@ describe('version 3', () => {
     expect(r.ok && r.fixes).toEqual([{ kind: 'droppedWalls', count: 1 }]);
   });
 });
+
+describe('walls from before version 3', () => {
+  it('keep only the heights that differ from their type: the rest follow the type from now on', () => {
+    const old = (id: string, x: number) => ({ ...wall(id, x), baseOffset: 0, top: { kind: 'level', offset: 0 } });
+    const own = { ...old('own', 0), baseOffset: 0.1 };
+    const doc = { ...newDocument(), version: 2, walls: [old('a', 0), own] };
+    const r = readProject(JSON.stringify(doc));
+    if (!r.ok) throw new Error('not read');
+    expect(r.doc.walls[0]).not.toHaveProperty('top');
+    expect(r.doc.walls[0]).not.toHaveProperty('baseOffset');
+    expect(r.doc.walls[1]).toMatchObject({ baseOffset: 0.1 });
+    expect(r.doc.walls[1]).not.toHaveProperty('top');
+    expect(r.fixes).toEqual([]);
+  });
+
+  it('in a version 3 file too, a value equal to the type is not kept: the wall follows the type', () => {
+    const doc = { ...newDocument(), walls: [{ ...wall('a', 0), baseOffset: 0, top: { kind: 'level', offset: 0 } }, { ...wall('b', 2), top: { kind: 'fixed', height: 2.5 } }] };
+    const r = readProject(writeProject(doc as never));
+    if (!r.ok) throw new Error('not read');
+    expect(r.doc.walls[0]).not.toHaveProperty('top');
+    expect(r.doc.walls[1]).toMatchObject({ top: { kind: 'fixed', height: 2.5 } });
+  });
+});
+

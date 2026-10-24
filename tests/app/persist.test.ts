@@ -13,8 +13,6 @@ const wall = {
   end: { x: 4, y: 0 },
   referenceLine: 'centerline',
   levelId: 'lvl_ground',
-  baseOffset: 0,
-  top: { kind: 'level', offset: 0 },
 };
 
 describe('validateDocument', () => {
