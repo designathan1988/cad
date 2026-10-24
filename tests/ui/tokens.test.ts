@@ -16,6 +16,18 @@ describe('design tokens', () => {
     expect(declarations.filter((d) => /\d+(\.\d+)?px\b/.test(d.text))).toEqual([]);
   });
 
+  // ref/chat.txt:244: targets of at least 32 px, and 44 px on touch. The controls take their heights
+  // from these tokens only (the rule above), so checking the tokens checks every control.
+  it('every target size is at least 32 px, and 44 px on touch', () => {
+    const targets = ['--control-h', '--control-h-sm', '--field-h', '--wide-btn-h', '--tool-w'];
+    const px = (block: string, name: string) => Number(new RegExp(`${name}:[ ]*([0-9]+)px`).exec(block)?.[1]);
+    const root = css.slice(css.indexOf(':root {'), css.indexOf('}', css.indexOf(':root {')));
+    const touchAt = css.indexOf('@media (pointer: coarse)');
+    const touch = css.slice(touchAt, css.indexOf('}', touchAt));
+    expect(targets.filter((n) => !(px(root, n) >= 32))).toEqual([]);
+    expect(['--control-h', '--control-h-sm', '--field-h', '--wide-btn-h'].filter((n) => !(px(touch, n) >= 44))).toEqual([]);
+  });
+
   it('no colour outside the tokens', () => {
     expect(declarations.filter((d) => /#[0-9a-f]{3,8}\b|\brgba?\(|\bhsla?\(/i.test(d.text))).toEqual([]);
   });
