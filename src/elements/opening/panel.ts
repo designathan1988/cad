@@ -66,7 +66,8 @@ export function openingPanel(
       .map((k) => ({ value: k, label: t(`rule.${k}` as MessageKey) }));
     const rows = [row(t('panel.rule'), select(ruleOptions, o.rule.kind, (k) => act.setRule(o.id, k, nearest(refs, one, placed))))];
     if (o.rule.kind === 'fromOpening') {
-      const label = (r: Opening) => `${kindName(r.kind)} · ${num(r.width)} × ${num(r.height)}`;
+      // Named by kind and where it starts on the wall: short enough for the field, and unique.
+      const label = (r: Opening) => `${kindName(r.kind)} · ${num(placed.get(r.id)?.start ?? 0)} m`;
       rows.push(row(t('panel.refOpening'), select(refs.map((r) => ({ value: r.id, label: label(r) })), o.rule.openingId, (id) => act.setRule(o.id, 'fromOpening', id))));
     }
     if (o.rule.kind !== 'centered') {

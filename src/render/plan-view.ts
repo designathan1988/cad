@@ -3,8 +3,8 @@
 // filled over the strokes, so lines between joined pieces disappear and only the outside stays.
 
 import type { Point2 } from '../core/vector';
-import { type DerivedGeometry, type OpeningSolid, openingOutline } from '../app/geometry';
-import { add, distance, normalize, scale, sub } from '../core/vector';
+import { type DerivedGeometry, openingOutline } from '../app/geometry';
+import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
 
 export interface PlanOverlay {
@@ -164,7 +164,7 @@ export class PlanView {
       }
       ctx.strokeStyle = colour;
       ctx.lineWidth = active ? 1.6 : 1;
-      for (const line of symbolLines(op)) (path(line), ctx.stroke());
+      for (const line of symbolLines(op, op.frame)) (path(line), ctx.stroke());
     }
   }
 
@@ -257,30 +257,3 @@ export class PlanView {
   }
 }
 
-/** The polylines of an opening's plan symbol, in world coordinates. */
-export function symbolLines(op: OpeningSolid): Point2[][] {
-  const f = op.frame;
-  if (!f) return [];
-  const at = (p: Point2, off: number) => add(p, scale(f.normal, off));
-  const [o0, o1] = f.faces;
-  if (op.opening.kind === 'window') {
-    const mid = (o0 + o1) / 2;
-    return [o0, o1, mid].map((off) => [at(f.start, off), at(f.end, off)]);
-  }
-  // Door: the hinge on the face it opens to; the leaf perpendicular to the wall, the arc back.
-  const left = op.opening.swing === 'left';
-  const face = left ? o1 : o0;
-  const out = scale(f.normal, left ? 1 : -1);
-  const hinge = at(op.opening.hinge === 'start' ? f.start : f.end, face);
-  const strike = at(op.opening.hinge === 'start' ? f.end : f.start, face);
-  // The chord between the jambs: on an arc wall it is a little shorter than the width along the arc.
-  const width = distance(hinge, strike);
-  const tip = add(hinge, scale(out, width));
-  const along = normalize(sub(strike, hinge));
-  const arc: Point2[] = [];
-  for (let i = 0; i <= 24; i++) {
-    const a = (i / 24) * (Math.PI / 2);
-    arc.push(add(hinge, add(scale(out, width * Math.cos(a)), scale(along, width * Math.sin(a)))));
-  }
-  return [[hinge, tip], arc];
-}

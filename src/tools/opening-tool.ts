@@ -14,7 +14,7 @@
 //
 // The rule under the cursor: within 10 px of the wall's middle it is centred; otherwise the nearest
 // reference wins (the wall's start, its end, or the jamb of a neighbouring opening), measured to the
-// nearest jamb in 5 cm steps.
+// nearest jamb in 5 cm steps; a reference the opening would overlap counts only when none is clear.
 
 import type { OpeningId, PositionRule } from '../elements/opening/schema';
 import type { WallId } from '../elements/wall/schema';
@@ -69,7 +69,10 @@ export function ruleAt(aim: Aim, width: number): PositionRule {
     if (o.end <= aim.station) candidates.push({ kind: 'fromOpening', openingId: o.id, distance: lo - o.end, toward: 'end' });
     else if (o.start >= aim.station) candidates.push({ kind: 'fromOpening', openingId: o.id, distance: o.start - hi, toward: 'start' });
   }
-  const best = candidates.reduce((a, b) => (Math.abs(b.distance) < Math.abs(a.distance) ? b : a));
+  // A reference the opening clears (distance ≥ 0) beats one it would overlap, however near.
+  const rank = (r: { distance: number }) => (r.distance >= 0 ? r.distance : Infinity);
+  const clear = candidates.some((r) => r.distance >= 0);
+  const best = candidates.reduce((a, b) => (clear ? rank(b) < rank(a) : Math.abs(b.distance) < Math.abs(a.distance)) ? b : a);
   return { ...best, distance: step(best.distance) };
 }
 

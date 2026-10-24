@@ -82,7 +82,7 @@ export function ruleGuide(g: DerivedGeometry, previewId: string): { axis: { star
   }
   if (!span) return null;
   // Drawn along the wall's exterior face, outside the opening's symbol.
-  const at = (s: number) => add(add(f.start, scale(f.dir, s - o.start)), scale(f.normal, f.faces[0] - 0.25));
+  const at = (s: number) => add(add(f.start, scale(f.dir, s - o.start)), scale(f.normal, f.faces[0] - 0.5));
   const start = at(span[0]);
   const end = at(span[1]);
   return { axis: { start, end }, measure: { at: scale(add(start, end), 0.5), text: `${num(Math.abs(span[1] - span[0]))} m` } };

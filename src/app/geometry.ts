@@ -4,6 +4,7 @@
 import { add, type Point2, scale } from '../core/vector';
 import { deriveOpenings, hostsOf, type OpeningWarning, type PlacedOpening } from '../elements/opening/derive';
 import type { Opening, OpeningId } from '../elements/opening/schema';
+import { symbolLines } from '../elements/opening/symbol';
 import { type Block, cutPlan, cutSolid, type OpeningCut, type OpeningFrame, openingFrame } from '../elements/opening/void';
 import { computeWallGeometry, type Piece } from '../elements/wall/geometry/footprint';
 import { shapeOf } from '../elements/wall/geometry/shape';
@@ -122,7 +123,7 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
   }
   for (const o of g.openings.values()) {
     if (ids && !ids.has(o.opening.id)) continue;
-    for (const v of openingOutline(o)) {
+    for (const v of [...openingOutline(o), ...symbolLines(o, o.frame).flat()]) {
       minX = Math.min(minX, v.x);
       minY = Math.min(minY, v.y);
       maxX = Math.max(maxX, v.x);
