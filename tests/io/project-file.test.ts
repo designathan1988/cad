@@ -37,7 +37,7 @@ describe('project files', () => {
     const { openingGroups: _g, ...v1 } = { ...newDocument(), version: 1 };
     const r = readProject(JSON.stringify(v1));
     expect(r.ok && r.doc.openingGroups).toEqual([]);
-    expect(r.ok && r.doc.version).toBe(2);
+    expect(r.ok && r.doc.version).toBe(CURRENT_VERSION);
     expect(r.ok && r.fixes).toEqual([]);
   });
 
@@ -79,5 +79,25 @@ describe('project files', () => {
     expect(readProject('{"version":1,"levels":[],"walls":[]}')).toEqual({ ok: false, error: 'noLevels' });
     expect(readProject(JSON.stringify({ ...newDocument(), wallTypes: [] }))).toEqual({ ok: false, error: 'noWallTypes' });
     expect(readProject(JSON.stringify({ ...newDocument(), version: CURRENT_VERSION + 1 }))).toEqual({ ok: false, error: 'newerVersion' });
+  });
+});
+
+describe('version 3', () => {
+  it('a wall without top or base offset, and a type with them, read back as they are', () => {
+    const doc = {
+      ...newDocument(),
+      wallTypes: [...newDocument().wallTypes, { id: 'wt_p', name: 'Parapet', layers: [{ thickness: 0.15, function: 'structure', materialId: 'brick' }], top: { kind: 'fixed', height: 1.1 } }],
+      walls: [{ id: 'p', wallTypeId: 'wt_p', start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground' }],
+    };
+    const r = readProject(writeProject(doc as never));
+    expect(r.ok && r.doc).toEqual({ ...doc, version: CURRENT_VERSION });
+    expect(CURRENT_VERSION).toBe(3);
+  });
+
+  it('a wall with a malformed top is dropped and reported, not read', () => {
+    const doc = { ...newDocument(), walls: [{ ...wall('a', 0), top: { kind: 'level' } }, wall('b', 2)] };
+    const r = readProject(JSON.stringify(doc));
+    expect(r.ok && r.doc.walls.map((w) => w.id)).toEqual(['b']);
+    expect(r.ok && r.fixes).toEqual([{ kind: 'droppedWalls', count: 1 }]);
   });
 });
