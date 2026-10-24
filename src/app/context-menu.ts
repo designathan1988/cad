@@ -31,7 +31,8 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
   clearSelection: { icon: 'close', keys: 'Esc' },
   delete: { icon: 'trash', keys: 'Del' },
   drawWall: { icon: 'wall', keys: 'W' },
-  frameAll: { icon: 'frame', keys: 'Home' },
+  // The same icon as the Home button in the top bar, which does the same.
+  frameAll: { icon: 'home', keys: 'Home' },
   commands: { icon: 'command', keys: 'Ctrl+K' },
 };
 
