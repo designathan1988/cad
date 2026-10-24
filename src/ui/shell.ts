@@ -5,15 +5,11 @@ import { el } from './controls';
 import { t, type MessageKey } from './i18n';
 import { icon, type IconName } from './icons';
 
-export type ToolId = 'select' | 'wall';
+export type ToolId = 'select' | 'wall' | 'door' | 'window';
 export type ViewId = '3d' | 'plan';
 
 const SOON: readonly { icon: IconName; key: MessageKey }[][] = [
   [{ icon: 'slab', key: 'tool.slab' }],
-  [
-    { icon: 'door', key: 'tool.door' },
-    { icon: 'window', key: 'tool.window' },
-  ],
   [{ icon: 'room', key: 'tool.room' }],
   [
     { icon: 'dimension', key: 'tool.dimension' },
@@ -69,7 +65,9 @@ export function buildShell(root: HTMLElement) {
   const tools = el('nav', { class: 'tools', 'aria-label': 'Tools' });
   const toolSelect = iconButton('pointer', 'icon-btn tool');
   const toolWall = iconButton('wall', 'icon-btn tool');
-  tools.append(toolSelect, el('div', { class: 'group-sep' }), toolWall);
+  const toolDoor = iconButton('door', 'icon-btn tool');
+  const toolWindow = iconButton('window', 'icon-btn tool');
+  tools.append(toolSelect, el('div', { class: 'group-sep' }), toolWall, el('div', { class: 'group-sep' }), toolDoor, toolWindow);
   const soonButtons: { b: HTMLButtonElement; key: MessageKey }[] = [];
   for (const group of SOON) {
     tools.append(el('div', { class: 'group-sep' }));
@@ -115,7 +113,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, undo, redo, level, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, toolSelect, toolWall, viewport, planCanvas, glCanvas, floatBar, floatDelete, floatZoom, floatFrame,
+    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, viewport, planCanvas, glCanvas, floatBar, floatDelete, floatZoom, floatFrame,
     emptyHint, toast, panel, instr, keys, measureLabel, measure, snapBtn, coords, helpBack,
   };
 
@@ -139,6 +137,8 @@ export function buildShell(root: HTMLElement) {
     toolSelect.title = `${t('tool.select')} (V)`;
     tip(toolWall, 'tool.wall');
     toolWall.title = `${t('tool.wall')} (W)`;
+    tip(toolDoor, 'tool.doorKey');
+    tip(toolWindow, 'tool.windowKey');
     for (const s of soonButtons) {
       s.b.title = `${t(s.key)}: ${t('tool.soon')}`;
       s.b.setAttribute('aria-label', s.b.title);

@@ -3,7 +3,8 @@
 // filled over the strokes, so lines between joined pieces disappear and only the outside stays.
 
 import type { Point2 } from '../core/vector';
-import type { DerivedGeometry } from '../app/geometry';
+import { type DerivedGeometry, type OpeningSolid, openingOutline } from '../app/geometry';
+import { add, distance, normalize, scale, sub } from '../core/vector';
 import type { WallId } from '../elements/wall/schema';
 
 export interface PlanOverlay {
@@ -16,6 +17,8 @@ export interface PlanOverlay {
   readonly measure: { readonly at: Point2; readonly text: string } | null;
   /** The reference line of the segment being drawn, dashed. */
   readonly axis: { readonly start: Point2; readonly end: Point2 } | null;
+  /** The opening being placed (an id present in the geometry), drawn in the accent colour. */
+  readonly openingPreview?: string | null;
 }
 
 export class PlanView {
@@ -123,9 +126,46 @@ export class PlanView {
     const drawn = solids.filter((x) => o.preview.has(x.wall.id));
     outline(drawn, color('--wall-sel'), 3);
     fill(drawn, color('--wall-sel-fill'));
+    this.drawOpenings(g, o, { line: color('--wall-line'), sel: color('--wall-sel'), selFill: color('--wall-sel-fill'), warn: color('--warn'), canvas: color('--canvas') });
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
     if (o.snap) this.drawSnap(o.snap, color('--snap'), color('--bg'));
     if (o.measure) this.label(o.measure.at, o.measure.text, color('--accent-text'), color('--canvas'), 'bold 12px Inter, system-ui');
+  }
+
+  /**
+   * Doors and windows as plans draw them, over the cut in the wall. A door: its leaf standing open at
+   * 90° from the hinge jamb, on the side it opens to, and the quarter arc its edge sweeps back to the
+   * other jamb. A window: the frame lines at both wall faces and the glass line between them. Invalid
+   * openings are drawn the same, in the warning colour.
+   */
+  private drawOpenings(g: DerivedGeometry, o: PlanOverlay, c: { line: string; sel: string; selFill: string; warn: string; canvas: string }): void {
+    const { ctx } = this;
+    const path = (pts: readonly Point2[], close = false) => {
+      ctx.beginPath();
+      pts.forEach((v, i) => {
+        const p = this.toScreen(v);
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      if (close) ctx.closePath();
+    };
+    for (const op of g.openings.values()) {
+      const f = op.frame;
+      if (!f) continue;
+      const id = op.opening.id;
+      const active = o.selected.has(id) || o.openingPreview === id;
+      const colour = !op.valid ? c.warn : active || o.hover === id ? c.sel : c.line;
+      if (active) {
+        ctx.fillStyle = c.selFill;
+        ctx.globalAlpha = 0.5;
+        path(openingOutline(op), true);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      ctx.strokeStyle = colour;
+      ctx.lineWidth = active ? 1.6 : 1;
+      for (const line of symbolLines(op)) (path(line), ctx.stroke());
+    }
   }
 
   private drawGrid(minor: string, major: string, axisX: string, axisY: string): void {
@@ -215,4 +255,32 @@ export class PlanView {
     ctx.fillStyle = colour;
     ctx.fillText(text, x, y + 1);
   }
+}
+
+/** The polylines of an opening's plan symbol, in world coordinates. */
+export function symbolLines(op: OpeningSolid): Point2[][] {
+  const f = op.frame;
+  if (!f) return [];
+  const at = (p: Point2, off: number) => add(p, scale(f.normal, off));
+  const [o0, o1] = f.faces;
+  if (op.opening.kind === 'window') {
+    const mid = (o0 + o1) / 2;
+    return [o0, o1, mid].map((off) => [at(f.start, off), at(f.end, off)]);
+  }
+  // Door: the hinge on the face it opens to; the leaf perpendicular to the wall, the arc back.
+  const left = op.opening.swing === 'left';
+  const face = left ? o1 : o0;
+  const out = scale(f.normal, left ? 1 : -1);
+  const hinge = at(op.opening.hinge === 'start' ? f.start : f.end, face);
+  const strike = at(op.opening.hinge === 'start' ? f.end : f.start, face);
+  // The chord between the jambs: on an arc wall it is a little shorter than the width along the arc.
+  const width = distance(hinge, strike);
+  const tip = add(hinge, scale(out, width));
+  const along = normalize(sub(strike, hinge));
+  const arc: Point2[] = [];
+  for (let i = 0; i <= 24; i++) {
+    const a = (i / 24) * (Math.PI / 2);
+    arc.push(add(hinge, add(scale(out, width * Math.cos(a)), scale(along, width * Math.sin(a)))));
+  }
+  return [[hinge, tip], arc];
 }

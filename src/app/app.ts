@@ -6,7 +6,12 @@ import { parseLengthAngle } from '../core/measure';
 import { createStore, type Store } from '../core/store';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
-import { addWalls, deleteWalls, updateWalls } from '../elements/wall/commands';
+import { addWalls, updateWalls } from '../elements/wall/commands';
+import { addOpening, deleteElements, ruleKeepingPosition, updateOpening } from '../elements/opening/commands';
+import type { OpeningSize } from '../elements/opening/panel';
+import { isOpeningId, newOpening, OPENING_DEFAULTS, OPENING_PREFIX, type Opening, type OpeningKind } from '../elements/opening/schema';
+import { OPENING_IDLE, openingTransition, type OpeningToolEvent, type OpeningToolState } from '../tools/opening-tool';
+import { OPENING_PREVIEW_ID, ruleGuide, ruleText } from './opening-ui';
 import type { WallId } from '../elements/wall/schema';
 import { PlanView } from '../render/plan-view';
 import { Scene3D } from '../render/scene-3d';
@@ -18,7 +23,7 @@ import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui
 import { snapLabel, type Snap } from '../tools/snap';
 import { IDLE, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Doc, type DocWall, newDocument, type WallDefaults } from './document';
-import { boundsOf, deriveGeometry, type DerivedGeometry } from './geometry';
+import { boundsOf, deriveGeometry, type DerivedGeometry, type OpeningSolid, openingOutline } from './geometry';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { newId } from '../core/id';
 
@@ -33,6 +38,8 @@ export interface UiState {
   snaps: boolean;
   defaults: WallDefaults;
   wall: WallToolState;
+  opening: OpeningToolState;
+  openingDefaults: Record<OpeningKind, OpeningSize>;
   snap: Snap | null;
   cursor: Point2 | null;
   error: string | null;
@@ -70,6 +77,8 @@ export class App {
       snaps: true,
       defaults: { wallTypeId: doc.wallTypes[0]!.id, referenceLine: 'centerline', baseOffset: 0, top: { kind: 'level', offset: 0 } },
       wall: IDLE,
+      opening: OPENING_IDLE,
+      openingDefaults: { door: { ...OPENING_DEFAULTS.door }, window: { ...OPENING_DEFAULTS.window } },
       snap: null,
       cursor: null,
       error: null,
@@ -89,7 +98,7 @@ export class App {
     this.geometry = deriveGeometry(doc);
     this.store.subscribe((d) => {
       saveDocument(d);
-      for (const id of [...this.ui.selection]) if (!d.walls.some((w) => w.id === id)) this.ui.selection.delete(id);
+      for (const id of [...this.ui.selection]) if (!d.walls.some((w) => w.id === id) && !d.openings.some((o) => o.id === id)) this.ui.selection.delete(id);
       this.refresh();
     });
     // The first framing waits until the viewport has a size: framing a 0 × 0 canvas sets a useless scale.
@@ -110,8 +119,35 @@ export class App {
 
   /** Recomputes the derived geometry (with the wall being drawn) and redraws. */
   refresh(): void {
-    this.geometry = deriveGeometry(this.store.get(), this.previewWall());
+    this.geometry = deriveGeometry(this.store.get(), this.previewWall(), this.previewOpening());
     this.render();
+  }
+
+  /** The door or window tool's kind, or null for the other tools. */
+  openingKind(): OpeningKind | null {
+    return this.ui.tool === 'door' || this.ui.tool === 'window' ? this.ui.tool : null;
+  }
+
+  previewOpening(): Opening[] {
+    const kind = this.openingKind();
+    const o = this.ui.opening;
+    if (!kind || o.kind !== 'aiming') return [];
+    return [newOpening(OPENING_PREVIEW_ID, o.aim.wallId, kind, o.rule, { ...this.ui.openingDefaults[kind], swing: o.aim.side })];
+  }
+
+  openingEvent(event: OpeningToolEvent): void {
+    const kind = this.openingKind();
+    if (!kind) return;
+    const r = openingTransition(this.ui.opening, event, this.ui.openingDefaults[kind].width);
+    this.ui.opening = r.state;
+    if (r.place) {
+      const size = this.ui.openingDefaults[kind];
+      this.store.dispatch(addOpening(newOpening(newId(OPENING_PREFIX), r.place.wallId, kind, r.place.rule, { ...size, swing: r.place.swing })));
+    } else this.refresh();
+  }
+
+  selectedOpenings(): OpeningSolid[] {
+    return [...this.ui.selection].filter(isOpeningId).flatMap((id) => this.geometry.openings.get(id) ?? []);
   }
 
   previewWall(): DocWall[] {
@@ -130,9 +166,10 @@ export class App {
   setTool(tool: ToolId): void {
     this.ui.tool = tool;
     this.ui.wall = IDLE;
+    this.ui.opening = OPENING_IDLE;
     this.ui.snap = null;
     this.ui.error = null;
-    if (tool === 'wall') this.ui.selection.clear();
+    if (tool !== 'select') this.ui.selection.clear();
     this.refresh();
   }
 
@@ -165,6 +202,18 @@ export class App {
       this.wallEvent({ kind: 'typed', length: r.value.length, angle: r.value.angle });
       return true;
     }
+    if (this.openingKind() && this.ui.opening.kind === 'aiming') {
+      this.openingEvent({ kind: 'typed', distance: r.value.length });
+      return true;
+    }
+    // One opening selected: the typed value is its rule's new distance.
+    const openings = this.selectedOpenings();
+    if (openings.length === 1 && this.ui.selection.size === 1) {
+      const o = openings[0]!.opening;
+      const rule = o.rule.kind === 'centered' ? ruleKeepingPosition(this.store.get(), o.id, 'fromStart') : o.rule;
+      if (rule && rule.kind !== 'centered') this.store.dispatch(updateOpening(o.id, { rule: { ...rule, distance: r.value.length } }));
+      return true;
+    }
     const sel = this.selectedWalls();
     if (sel.length === 1) {
       const w = sel[0]!;
@@ -178,7 +227,7 @@ export class App {
 
   deleteSelection(): void {
     if (this.ui.selection.size === 0) return;
-    this.store.dispatch(deleteWalls([...this.ui.selection]));
+    this.store.dispatch(deleteElements([...this.ui.selection]));
   }
 
   undo(): void {
@@ -258,7 +307,8 @@ export class App {
     shell.planCanvas.classList.toggle('hidden', !plan);
     shell.glCanvas.classList.toggle('hidden', plan);
     this.cube.root.hidden = plan;
-    const preview = new Set(this.previewWall().map((w) => w.id));
+    const preview = new Set([...this.previewWall(), ...this.previewOpening()].map((w) => w.id));
+    const guide = this.openingKind() ? ruleGuide(this.geometry, OPENING_PREVIEW_ID) : null;
     if (plan) {
       const w = ui.wall;
       const drawing = ui.tool === 'wall' && w.kind === 'drawing';
@@ -270,8 +320,9 @@ export class App {
         hover: ui.hover,
         preview,
         snap: ui.tool === 'wall' && ui.snap ? { point: ui.snap.point, label: labelKey ? t(labelKey) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}) } : null,
-        measure: drawing && len >= MIN_WALL_LENGTH ? { at: { x: (w.last.x + w.cursor.x) / 2, y: (w.last.y + w.cursor.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°` } : null,
-        axis: drawing && len >= MIN_WALL_LENGTH ? { start: w.last, end: w.cursor } : null,
+        measure: drawing && len >= MIN_WALL_LENGTH ? { at: { x: (w.last.x + w.cursor.x) / 2, y: (w.last.y + w.cursor.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°` } : (guide?.measure ?? null),
+        axis: drawing && len >= MIN_WALL_LENGTH ? { start: w.last, end: w.cursor } : (guide?.axis ?? null),
+        openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
       });
     } else {
       this.scene.sync(this.geometry, ui.selection, preview);
@@ -281,7 +332,9 @@ export class App {
     // The panel is rebuilt only when what it shows changed: rebuilding on every mouse move would
     // close an open list and drop the focus of a field being typed in.
     const doc = this.store.get();
-    const panelKey = [ui.tool, [...ui.selection].sort().join(','), getLang(), JSON.stringify(ui.defaults), JSON.stringify(this.geometry.warnings)].join('|');
+    const openingKey = JSON.stringify([ui.openingDefaults, this.geometry.openingWarnings, this.selectedOpenings().map((o) => [o.start, o.end])]);
+    const panelKey = [ui.tool, [...ui.selection].sort().join(','), getLang(), JSON.stringify(ui.defaults), JSON.stringify(this.geometry.warnings), openingKey].join('|');
+    const placing = this.openingKind();
     if (doc === this.panelDoc && panelKey === this.panelKey) return;
     this.panelDoc = doc;
     this.panelKey = panelKey;
@@ -293,6 +346,10 @@ export class App {
         drawing: ui.tool === 'wall',
         defaults: ui.defaults,
         warnings: this.geometry.warnings,
+        openings: this.selectedWalls().length === 0 ? this.selectedOpenings() : [],
+        placed: this.geometry.openings,
+        openingWarnings: this.geometry.openingWarnings,
+        openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing] } : null,
       },
       {
         updateWalls: (patch) => this.store.dispatch(updateWalls([...ui.selection], patch)),
@@ -301,6 +358,22 @@ export class App {
           this.refresh();
         },
         close: () => this.togglePanel(false),
+        opening: {
+          update: (ids, patch) => {
+            // One command for the whole selection: one undo step.
+            const doc = this.store.get();
+            const next = ids.reduce((d, id) => updateOpening(id, patch).apply(d), doc);
+            if (next !== doc) this.store.dispatch({ label: 'cmd.updateOpening', apply: () => next });
+          },
+          setRule: (id, kind, referenceId) => {
+            const rule = ruleKeepingPosition(this.store.get(), id, kind, referenceId);
+            if (rule) this.store.dispatch(updateOpening(id, { rule }));
+          },
+        },
+        updateOpeningDefaults: (kind, patch) => {
+          ui.openingDefaults = { ...ui.openingDefaults, [kind]: { ...ui.openingDefaults[kind], ...patch } };
+          this.refresh();
+        },
       },
     );
   }
@@ -327,6 +400,8 @@ export class App {
     shell.viewWalk.setAttribute('aria-pressed', 'false');
     shell.toolSelect.setAttribute('aria-pressed', String(ui.tool === 'select'));
     shell.toolWall.setAttribute('aria-pressed', String(ui.tool === 'wall'));
+    shell.toolDoor.setAttribute('aria-pressed', String(ui.tool === 'door'));
+    shell.toolWindow.setAttribute('aria-pressed', String(ui.tool === 'window'));
     shell.lang.textContent = getLang().toUpperCase();
     // Rewritten only when it changes: replacing the icon under the pointer between press and release
     // would cancel the click.
@@ -354,9 +429,18 @@ export class App {
       : ui.selection.size > 0
         ? 'hint.selected'
         : 'hint.select';
-    shell.instr.textContent = ui.error ?? t(hintKey, { n: ui.selection.size });
+    const placing = this.openingKind();
+    const aiming = placing !== null && ui.opening.kind === 'aiming';
+    const openingHint = placing
+      ? ui.opening.kind === 'aiming'
+        ? t('hint.openingAim', { rule: ruleText(ui.opening.rule) })
+        : t('hint.openingPlace', { kind: t(placing === 'door' ? 'panel.door' : 'panel.window').toLowerCase() })
+      : null;
+    shell.instr.textContent = ui.error ?? openingHint ?? t(hintKey, { n: ui.selection.size });
     shell.instr.classList.toggle('error', ui.error !== null);
-    const keys = drawing
+    const keys = placing
+      ? [keyHint('Esc', t('key.exit'))]
+      : drawing
       ? ui.wall.kind === 'drawing'
         ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.finish'))]
         : [keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.exit'))]
@@ -365,8 +449,9 @@ export class App {
         : [keyHint('?', t('key.shortcuts'))];
     shell.keys.replaceChildren(...keys);
     const lengthMode = drawing && ui.wall.kind === 'drawing';
-    shell.measureLabel.textContent = t(lengthMode ? 'foot.length' : 'foot.measure');
-    shell.measure.placeholder = t(lengthMode ? 'foot.lengthHint' : 'foot.measureHint');
+    const distanceMode = aiming || (ui.selection.size === 1 && this.selectedOpenings().length === 1);
+    shell.measureLabel.textContent = t(lengthMode ? 'foot.length' : distanceMode ? 'foot.distance' : 'foot.measure');
+    shell.measure.placeholder = t(lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
     shell.coords.textContent = ui.cursor ? `x ${num(ui.cursor.x)} m  y ${num(ui.cursor.y)} m` : '';
     this.placeFloatBar();
   }
@@ -391,16 +476,19 @@ export class App {
       // The selection's screen box: every vertex of its pieces, at the bottom and at the top.
       const xs: number[] = [];
       const ys: number[] = [];
+      const project = (v: Point2, z: number) => {
+        const p = new THREE.Vector3(v.x, z, -v.y).project(this.scene.camera);
+        xs.push(((p.x + 1) / 2) * vp.width);
+        ys.push(((1 - p.y) / 2) * vp.height);
+      };
       for (const id of this.ui.selection) {
+        const opening = this.geometry.openings.get(id);
+        if (opening) for (const v of openingOutline(opening)) [opening.bottom, opening.top].forEach((z) => project(v, z));
         const solid = this.geometry.solids.get(id);
         if (!solid) continue;
         for (const piece of solid.pieces) {
           for (const v of piece.polygon) {
-            for (const z of [solid.bottom, solid.top]) {
-              const p = new THREE.Vector3(v.x, z, -v.y).project(this.scene.camera);
-              xs.push(((p.x + 1) / 2) * vp.width);
-              ys.push(((1 - p.y) / 2) * vp.height);
-            }
+            for (const z of [solid.bottom, solid.top]) project(v, z);
           }
         }
       }

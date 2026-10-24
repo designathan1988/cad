@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Point2 } from '../core/vector';
-import type { DerivedGeometry, WallSolid } from '../app/geometry';
+import type { DerivedGeometry, OpeningSolid, WallSolid } from '../app/geometry';
+import { add, scale } from '../core/vector';
 import type { WallId } from '../elements/wall/schema';
 
 const toThree = (p: Point2, z: number) => new THREE.Vector3(p.x, z, -p.y);
@@ -22,6 +23,9 @@ export class Scene3D {
     sideSel: new THREE.MeshStandardMaterial({ color: 0x9db6e8, roughness: 0.8, side: THREE.DoubleSide }),
     topSel: new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.8, side: THREE.DoubleSide }),
     preview: new THREE.MeshStandardMaterial({ color: 0x7ea0e6, roughness: 0.8, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
+    glass: new THREE.MeshStandardMaterial({ color: 0x9cc7e6, roughness: 0.1, transparent: true, opacity: 0.45, side: THREE.DoubleSide }),
+    leaf: new THREE.MeshStandardMaterial({ color: 0xa0764f, roughness: 0.7, side: THREE.DoubleSide }),
+    invalid: new THREE.MeshStandardMaterial({ color: 0xea7a0c, roughness: 0.6, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
   };
   private readonly grid: THREE.GridHelper;
   private needsRender = true;
@@ -92,10 +96,24 @@ export class Scene3D {
   /** Brings the meshes in line with the geometry: only walls whose shape or state changed are rebuilt. */
   sync(g: DerivedGeometry, selected: ReadonlySet<WallId>, preview: ReadonlySet<WallId>): void {
     const seen = new Set<WallId>();
+    for (const o of g.openings.values()) {
+      if (!o.frame) continue;
+      const id = o.opening.id;
+      seen.add(id);
+      const state = preview.has(id) ? 'p' : selected.has(id) ? 's' : o.valid ? 'n' : 'i';
+      const key = state + JSON.stringify([o.frame, o.opening, o.bottom, o.top]);
+      const old = this.walls.get(id);
+      if (old?.key === key) continue;
+      if (old) this.drop(old.group);
+      const group = this.buildOpening(o, state);
+      group.userData.wallId = id;
+      this.scene.add(group);
+      this.walls.set(id, { group, key });
+    }
     for (const s of g.solids.values()) {
       seen.add(s.wall.id);
       const state = preview.has(s.wall.id) ? 'p' : selected.has(s.wall.id) ? 's' : 'n';
-      const key = state + JSON.stringify([s.pieces.map((p) => p.polygon), s.bottom, s.top]);
+      const key = state + JSON.stringify(s.blocks);
       const old = this.walls.get(s.wall.id);
       if (old?.key === key) continue;
       if (old) this.drop(old.group);
@@ -117,7 +135,22 @@ export class Scene3D {
     const group = new THREE.Group();
     const side = state === 'p' ? this.materials.preview : state === 's' ? this.materials.sideSel : this.materials.side;
     const top = state === 'p' ? this.materials.preview : state === 's' ? this.materials.topSel : this.materials.top;
-    for (const piece of s.pieces) group.add(new THREE.Mesh(prism(piece.polygon, s.bottom, s.top), [side, top]));
+    for (const b of s.blocks) group.add(new THREE.Mesh(prism(b.polygon, b.bottom, b.top), [side, top]));
+    return group;
+  }
+
+  /** A window's glass in the middle of the wall, or a door's closed leaf. */
+  private buildOpening(o: OpeningSolid, state: 'p' | 's' | 'n' | 'i'): THREE.Group {
+    const group = new THREE.Group();
+    const f = o.frame!;
+    const door = o.opening.kind === 'door';
+    const mid = (f.faces[0] + f.faces[1]) / 2;
+    const half = door ? 0.02 : 0.01;
+    const at = (p: Point2, off: number) => add(p, scale(f.normal, off));
+    const poly = [at(f.start, mid - half), at(f.end, mid - half), at(f.end, mid + half), at(f.start, mid + half)];
+    const m =
+      state === 'p' ? this.materials.preview : state === 's' ? this.materials.topSel : state === 'i' ? this.materials.invalid : door ? this.materials.leaf : this.materials.glass;
+    group.add(new THREE.Mesh(prism(poly, o.bottom, o.top), [m, m]));
     return group;
   }
 
