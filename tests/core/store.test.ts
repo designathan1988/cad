@@ -1,0 +1,64 @@
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
+import { newDocument } from '../../src/app/document';
+import { createStore } from '../../src/core/store';
+import { addWalls, deleteWalls, updateWalls } from '../../src/elements/wall/commands';
+
+const wall = (id: string, x: number) => ({
+  id,
+  wallTypeId: 'wt_masonry15',
+  start: { x, y: 0 },
+  end: { x: x + 1, y: 0 },
+  referenceLine: 'centerline' as const,
+  levelId: 'lvl_ground',
+  baseOffset: 0,
+  top: { kind: 'level' as const, offset: 0 },
+});
+
+describe('store', () => {
+  it('each command is one undo step; redo comes back', () => {
+    const s = createStore(newDocument());
+    s.dispatch(addWalls([wall('a', 0), wall('b', 2)]));
+    s.dispatch(updateWalls(['a'], { referenceLine: 'exteriorFace' }));
+    expect(s.get().walls[0]!.referenceLine).toBe('exteriorFace');
+    s.undo();
+    expect(s.get().walls[0]!.referenceLine).toBe('centerline');
+    s.undo();
+    expect(s.get().walls).toHaveLength(0);
+    s.redo();
+    expect(s.get().walls).toHaveLength(2);
+  });
+
+  it('a command that changes nothing adds no undo step', () => {
+    const s = createStore(newDocument());
+    s.dispatch(deleteWalls(['missing']));
+    s.dispatch(updateWalls([], { baseOffset: 1 }));
+    expect(s.canUndo()).toBe(false);
+  });
+
+  it('a new command clears redo', () => {
+    const s = createStore(newDocument());
+    s.dispatch(addWalls([wall('a', 0)]));
+    s.undo();
+    s.dispatch(addWalls([wall('b', 0)]));
+    expect(s.canRedo()).toBe(false);
+  });
+
+  it('any sequence of commands, undone, gives back the original document', () => {
+    const cmd = fc.oneof(
+      fc.nat(9).map((i) => addWalls([wall(`w${i}`, i)])),
+      fc.nat(9).map((i) => deleteWalls([`w${i}`])),
+      fc.tuple(fc.nat(9), fc.double({ min: -1, max: 1, noNaN: true })).map(([i, o]) => updateWalls([`w${i}`], { baseOffset: o })),
+    );
+    fc.assert(
+      fc.property(fc.array(cmd, { maxLength: 30 }), (cmds) => {
+        const start = newDocument();
+        const s = createStore(start);
+        cmds.forEach((c) => s.dispatch(c));
+        while (s.undo());
+        expect(s.get()).toBe(start);
+      }),
+      { numRuns: 200, seed: 20261024 },
+    );
+  });
+});
