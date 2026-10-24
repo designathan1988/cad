@@ -17,6 +17,7 @@ import { showPalette } from '../ui/palette';
 import { offerTour, startTour } from '../ui/tour';
 import { appActions, type Openers } from './actions';
 import { contextEntries } from './context-menu';
+import { arrowStep } from '../tools/nudge';
 import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
 
@@ -380,6 +381,12 @@ export function wireInput(app: App): void {
       e.preventDefault();
       return palette();
     }
+    // Arrows, with or without Alt, before Alt shortcuts are left to the browser.
+    const step = !ctrl && ui.selection.size > 0 && ui.view === 'plan' ? arrowStep(e.key, e.altKey) : null;
+    if (step) {
+      e.preventDefault();
+      return app.nudgeSelection(step);
+    }
     if (ctrl || e.altKey) return;
     // Typing a number goes straight to the measure field, as in Revit and SketchUp, while a measure is
     // being asked for: drawing a wall or aiming an opening. A selection is edited by clicking its
@@ -429,14 +436,8 @@ export function wireInput(app: App): void {
     if (key === 'v') return app.setTool('select');
     if (key === 'f') return app.frameSelection();
     // Choosing and moving elements without a mouse: N / Shift+N go through the level's elements;
-    // the arrows move the selected walls by 5 cm, the snap grid's step.
+    // the arrows move the selection by 5 cm (the snap grid), 1 cm with Alt (tools/nudge.ts).
     if (key === 'n') return app.stepSelection(e.shiftKey ? -1 : 1);
-    const arrows: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
-    const arrow = arrows[e.key];
-    if (arrow && ui.selection.size > 0 && ui.view === 'plan') {
-      e.preventDefault();
-      return app.nudgeSelection(arrow[0] * 0.05, arrow[1] * 0.05);
-    }
     if (key === 's') return app.toggleSnaps();
     if (key === '1') return app.setView('3d');
     if (key === '2') return app.setView('plan');

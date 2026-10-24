@@ -7,7 +7,7 @@ import { createStore, type Store } from '../core/store';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { arcOf } from '../elements/wall/geometry/arc';
-import { addWalls, resetWallsToType, setWalls, updateWalls } from '../elements/wall/commands';
+import { addWalls, resetWallsToType, updateWalls } from '../elements/wall/commands';
 import {
   addOpening,
   alignHeads,
@@ -35,9 +35,9 @@ import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui
 import { snapLabel, type Snap } from '../tools/snap';
 import { bulgeThrough, IDLE, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, dragTransform, hull } from './select-drag';
-import { moveRooms, roomsGoingWith } from './carry';
+import { moveRooms } from './carry';
 import { stepSelection } from './keyboard-select';
-import { moveWalls } from '../tools/edit';
+import { nudge } from '../tools/nudge';
 import { type Doc, type DocWall, elementIds, newDocument, type WallDefaults, wallNumber, wallOverrides } from './document';
 
 /** The snap labels that name their wall. */
@@ -541,15 +541,11 @@ export class App {
     this.refresh();
   }
 
-  /** Moves the selected walls by a step (one undo step), the rooms they surround going along. */
-  nudgeSelection(dx: number, dy: number): void {
+  /** Moves the selection by a step from the keyboard (tools/nudge.ts): one undo step. */
+  nudgeSelection(step: Point2): void {
     const doc = this.store.get();
-    const ids = [...this.ui.selection].filter((id) => doc.walls.some((w) => w.id === id));
-    if (ids.length === 0) return;
-    const going = roomsGoingWith(doc, this.geometry, new Set(ids));
-    const walls = moveWalls(doc, ids, { x: dx, y: dy });
-    const rooms = moveRooms(doc.rooms, going, (p) => ({ x: p.x + dx, y: p.y + dy }));
-    this.store.dispatch({ label: 'cmd.updateWalls', apply: (d) => ({ ...setWalls(walls).apply(d), rooms }) });
+    const next = nudge(doc, this.geometry, [...this.ui.selection], step);
+    if (next !== doc) this.store.dispatch({ label: 'cmd.nudge', apply: () => next });
   }
 
   clearSelection(): void {
