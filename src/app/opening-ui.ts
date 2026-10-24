@@ -57,6 +57,21 @@ export function aimAt(doc: Doc, g: DerivedGeometry, levelId: string, p: Point2, 
   return best?.aim ?? null;
 }
 
+/**
+ * The aim at a station of a given wall, as if the cursor were there on its centre line: the keyboard's
+ * way to the door and window tools (a wall chosen with N, then D or Shift+W). Null when the wall is
+ * not there to aim at.
+ */
+export function aimAlong(doc: Doc, g: DerivedGeometry, wallId: string, station: number, mpp: number, previewId: string): Aim | null {
+  const wall = doc.walls.find((w) => w.id === wallId);
+  if (!wall) return null;
+  const length = referenceLength(wall);
+  const others = [...g.openings.values()]
+    .filter((o) => o.opening.wallId === wall.id && o.opening.id !== previewId)
+    .map((o) => ({ id: o.opening.id, start: o.start, end: o.end }));
+  return { wallId, length, station: Math.min(Math.max(station, 0), length), side: 'left', others, mpp };
+}
+
 /** The rule in words, for the footer: "0.55 m from the wall start". */
 export const ruleText = (rule: PositionRule): string =>
   t(`ruleShort.${rule.kind}` as MessageKey, hasDistance(rule) ? { d: num(rule.distance) } : {});

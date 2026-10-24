@@ -8,7 +8,8 @@
 // | aiming | hover off the walls| idle   | no preview                                        |
 // | aiming | click              | aiming | opening placed with that rule; the tool stays     |
 // | aiming | typed distance d   | aiming | placed at d from the same reference (from the     |
-// |        |                    |        | nearer end when the preview is centred)           |
+// |        |                    |        | nearer end when the preview is centred; the start |
+// |        |                    |        | at the very middle)                               |
 // | idle   | click, typed       | idle   | rejected: no wall under the cursor                |
 // | any    | escape             | idle   | (the app leaves the tool when already idle)       |
 //
@@ -91,7 +92,8 @@ export function openingTransition(state: OpeningToolState, event: OpeningToolEve
       const d = event.distance;
       const rule: PositionRule = hasDistance(r)
         ? { ...r, distance: d }
-        : state.aim.station < state.aim.length / 2
+        : // The nearer end; at the very middle (an aim from the keyboard) the start, as reading goes.
+          state.aim.station <= state.aim.length / 2
           ? { kind: 'fromStart', distance: d }
           : { kind: 'fromEnd', distance: d };
       return { state, place: { wallId: state.aim.wallId, rule, swing: state.aim.side } };

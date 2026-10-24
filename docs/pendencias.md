@@ -170,5 +170,9 @@ Entrega final do adendo 2 (l.152)
 Inventário linha a linha feito antes: 44 de 47 itens existem no código. Abertos:
 - Modo caminhar na interface (l.203): parcial, existe o botão "Caminhar", desligado; depende do modo caminhar acima.
 - Alvos de 44 px no toque (l.244): conferidos só pelos tokens; não testado com toque de verdade.
-- Reteste no navegador de l.197 e l.242, e conferência visual de l.228 (o contraste é medido pelo teste dos tokens).
+- **Tudo operável pelo teclado (l.242): parcial.** O fluxo só com teclado da sessão de teste achou
+  4 faltas (K1 a K4): Novo projeto, porta e janela sem ponteiro, piso de cômodo sem clique, zoom e
+  vista sem mouse. Corrigidas no código; volta a "existe" quando o reteste só com teclado passar.
+- Reteste no navegador de l.197, e conferência visual de l.228 (o contraste é medido pelo teste dos tokens).
+- Troca 3D ⇄ Planta cerca de 500 ms mais lenta que os outros gestos (D1): medida com ?perf a pedir.
 - Capturas de cada modo (3D, planta, caminhar, editor de objetos, prancha) nos dois temas, e lista item a item com "atendido" ou o que falta (l.257): falta; caminhar, editor de objetos e prancha dependem dos adendos acima.

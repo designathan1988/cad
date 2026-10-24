@@ -7,6 +7,7 @@ import { t } from '../ui/i18n';
 import { el } from '../ui/controls';
 import { openingAt, wallAt } from './geometry';
 import { aimAt, OPENING_PREVIEW_ID } from './opening-ui';
+import { viewKey } from './view-keys';
 import type { App } from './app';
 import { levelOf } from './document';
 import { selectGestures } from './select-drag';
@@ -251,6 +252,7 @@ export function wireInput(app: App): void {
   shell.theme.addEventListener('click', () => app.toggleTheme());
   shell.save.addEventListener('click', () => app.saveFile());
   shell.open.addEventListener('click', () => shell.fileInput.click());
+  shell.newFile.addEventListener('click', () => app.newProject());
   shell.fileInput.addEventListener('change', () => {
     const file = shell.fileInput.files?.[0];
     shell.fileInput.value = '';
@@ -384,8 +386,15 @@ export function wireInput(app: App): void {
       e.preventDefault();
       return palette();
     }
+    // The view by keyboard (view-keys.ts): + and − zoom, Shift+arrows move or turn it (the tester's K4).
+    const typingNow = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || app.openingKind() !== null;
+    const view = viewKey(e.key, { shift: e.shiftKey, ctrl, alt: e.altKey, typing: typingNow });
+    if (view) {
+      e.preventDefault();
+      return app.keyView(view);
+    }
     // Arrows, with or without Alt, before Alt shortcuts are left to the browser.
-    const step = !ctrl && ui.selection.size > 0 && ui.view === 'plan' ? arrowStep(e.key, e.altKey) : null;
+    const step = !ctrl && !e.shiftKey && ui.selection.size > 0 && ui.view === 'plan' ? arrowStep(e.key, e.altKey) : null;
     if (step) {
       e.preventDefault();
       return app.nudgeSelection(step);
@@ -394,7 +403,9 @@ export function wireInput(app: App): void {
     // Typing a number goes straight to the measure field, as in Revit and SketchUp, while a measure is
     // being asked for: drawing a wall or aiming an opening. A selection is edited by clicking its
     // temporary dimensions or in the panel, so 1 and 2 keep switching the view.
-    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' ? true : app.openingKind() ? ui.opening.kind === 'aiming' : false;
+    // In the door and window tools a digit is always a measure, aimed or not: it never switches the view
+    // (the tester's K2: "1" turned to 3D).
+    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || app.openingKind() !== null;
     if (/^[\d.,-]$/.test(e.key) && typing) {
       e.preventDefault();
       shell.measure.focus();
@@ -424,6 +435,8 @@ export function wireInput(app: App): void {
     }
     if (e.key === 'Enter' && ui.tool === 'wall') return app.wallEvent({ kind: 'enter' });
     if (e.key === 'Enter' && ui.tool === 'floor') return app.floorFinish();
+    // Enter places the opening where it is aimed, as a click there does.
+    if (e.key === 'Enter' && app.openingKind() && ui.opening.kind === 'aiming') return app.openingEvent({ kind: 'click' });
     if (e.key === 'Delete' || e.key === 'Backspace') return app.deleteSelection();
     if (e.key === 'Home') return app.frameAll();
     if (e.key === '?') return showHelp(app);
@@ -465,6 +478,8 @@ function showHelp(app: App): void {
     ['Del', t('pal.delete')],
     ['F', t('pal.frameSelection')],
     ['Home', t('pal.frameAll')],
+    ['+ / −', t('help.zoomKeys')],
+    ['Shift+↑↓←→', t('help.panKeys')],
     ['S', t('pal.snaps')],
     ['Shift', t('help.shift')],
     ['Ctrl+A', t('pal.selectAll')],

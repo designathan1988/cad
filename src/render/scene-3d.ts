@@ -20,6 +20,8 @@ export class Scene3D {
   private readonly scene = new THREE.Scene();
   private readonly walls = new Map<WallId, { group: THREE.Group; key: string }>();
   // Colours come from the design tokens (styles.css, --3d-*), set in setTheme.
+  /** Each solid's shape key (wallMeshKey without the state), kept while the solid lives. */
+  private readonly shapeKeys = new WeakMap<object, string>();
   /** One material per layer colour token, recoloured with the theme like the others. */
   private readonly layerMaterials = new Map<string, THREE.MeshStandardMaterial>(
     [...new Set(Object.values(LAYER_TOKEN))].map((name) => [name, new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide })]),
@@ -148,7 +150,9 @@ export class Scene3D {
       const id = o.opening.id;
       seen.add(id);
       const state = preview.has(id) ? 'p' : selected.has(id) ? 's' : o.valid ? 'n' : 'i';
-      const key = state + JSON.stringify([o.frame, o.opening, o.bottom, o.top]);
+      let shape = this.shapeKeys.get(o);
+      if (shape === undefined) this.shapeKeys.set(o, (shape = JSON.stringify([o.frame, o.opening, o.bottom, o.top])));
+      const key = state + shape;
       const old = this.walls.get(id);
       if (old?.key === key) continue;
       if (old) this.drop(old.group);
@@ -162,7 +166,9 @@ export class Scene3D {
       const id = f.floor.id;
       seen.add(id);
       const state = selected.has(id) ? 's' : 'n';
-      const key = state + JSON.stringify([f.outline, f.bottom, f.top]);
+      let fkey = this.shapeKeys.get(f);
+      if (fkey === undefined) this.shapeKeys.set(f, (fkey = JSON.stringify([f.outline, f.bottom, f.top])));
+      const key = state + fkey;
       const old = this.walls.get(id);
       if (old?.key === key) continue;
       if (old) this.drop(old.group);
@@ -181,7 +187,11 @@ export class Scene3D {
     for (const s of g.solids.values()) {
       seen.add(s.wall.id);
       const state = preview.has(s.wall.id) ? 'p' : selected.has(s.wall.id) ? 's' : 'n';
-      const key = wallMeshKey(state, s.blocks, s.layers);
+      // The shape's part of the key, once per solid: solids are only replaced when the geometry is
+      // computed again, and a switch of view (148 walls) stringified every block each time.
+      let shape = this.shapeKeys.get(s);
+      if (shape === undefined) this.shapeKeys.set(s, (shape = wallMeshKey('', s.blocks, s.layers)));
+      const key = state + shape;
       const old = this.walls.get(s.wall.id);
       if (old?.key === key) continue;
       if (old) this.drop(old.group);
@@ -284,6 +294,29 @@ export class Scene3D {
     this.controls.target.copy(center);
     this.camera.position.copy(center).add(dir.clone().normalize().multiplyScalar(fit * 1.05));
     this.camera.up.set(0, 1, 0);
+    this.controls.update();
+    this.invalidate();
+  }
+
+  /**
+   * The camera by keyboard: turned about its target (radians across and up), and moved toward it or
+   * away (`zoom` > 1 nearer), within the limits the mouse has.
+   */
+  orbit(across: number, up: number): void {
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    const s = new THREE.Spherical().setFromVector3(offset);
+    s.theta -= across;
+    s.phi = Math.min(Math.max(s.phi - up, 0.05), this.controls.maxPolarAngle);
+    this.camera.position.copy(this.controls.target).add(offset.setFromSpherical(s));
+    this.camera.lookAt(this.controls.target);
+    this.controls.update();
+    this.invalidate();
+  }
+
+  zoomBy(zoom: number): void {
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    const d = Math.min(Math.max(offset.length() / zoom, this.controls.minDistance), this.controls.maxDistance);
+    this.camera.position.copy(this.controls.target).add(offset.setLength(d));
     this.controls.update();
     this.invalidate();
   }

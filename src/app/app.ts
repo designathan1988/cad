@@ -23,7 +23,7 @@ import {
 import type { OpeningSize } from '../elements/opening/panel';
 import { GROUP_PREFIX, hasDistance, isOpeningId, newOpening, OPENING_DEFAULTS, OPENING_PREFIX, type Opening, type OpeningKind } from '../elements/opening/schema';
 import { OPENING_IDLE, openingTransition, type OpeningToolEvent, type OpeningToolState } from '../tools/opening-tool';
-import { OPENING_PREVIEW_ID, ruleGuide, ruleText } from './opening-ui';
+import { aimAlong, OPENING_PREVIEW_ID, ruleGuide, ruleText } from './opening-ui';
 import type { WallId } from '../elements/wall/schema';
 import { type Insets, PlanView } from '../render/plan-view';
 import { Scene3D } from '../render/scene-3d';
@@ -48,6 +48,7 @@ import { renderBrowser } from '../ui/browser';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { readProject, writeProject } from '../io/project-file';
 import { fitFactor, keepInView } from './keep-in-view';
+import type { ViewKey } from './view-keys';
 import { type TempDim, tempDims } from './temp-dims';
 import { contextEntries } from './context-menu';
 import { referenceLength } from '../elements/opening/derive';
@@ -430,6 +431,12 @@ export class App {
   // ---- actions -------------------------------------------------------------------------------
 
   setTool(tool: ToolId): void {
+    // The floor tool with one room selected floors that room at once: the keyboard's way to it, as a
+    // click inside the room is the mouse's (the tester's K3).
+    const room = tool === 'floor' && this.ui.selection.size === 1 ? this.store.get().rooms.find((r) => this.ui.selection.has(r.id)) : undefined;
+    // The door and window tools with one wall selected aim at its middle: a typed distance or Enter
+    // places the opening there without the pointer (the tester's K2).
+    const host = (tool === 'door' || tool === 'window') && this.ui.selection.size === 1 ? this.store.get().walls.find((w) => this.ui.selection.has(w.id)) : undefined;
     this.ui.tool = tool;
     this.ui.wall = IDLE;
     this.ui.opening = OPENING_IDLE;
@@ -440,6 +447,16 @@ export class App {
     this.ui.info = null;
     this.shell.measure.value = '';
     if (tool !== 'select') this.ui.selection.clear();
+    if (room) {
+      const has = this.store.get().floors.find((f) => f.source.kind === 'room' && f.source.roomId === room.id);
+      if (!has) return this.addFloorToRoom(room.id);
+      this.ui.selection = new Set([has.id]);
+      this.ui.info = t('hint.floorExists');
+    }
+    if (host) {
+      const aim = aimAlong(this.store.get(), this.geometry, host.id, referenceLength(host) / 2, 1 / this.plan.scale, OPENING_PREVIEW_ID);
+      if (aim) return this.openingEvent({ kind: 'hover', aim });
+    }
     this.refresh();
   }
 
@@ -504,6 +521,12 @@ export class App {
     if (this.openingKind() && this.ui.opening.kind === 'aiming') {
       this.openingEvent({ kind: 'typed', distance: r.value.length });
       return true;
+    }
+    if (this.openingKind()) {
+      // A measure with nothing to measure along: say how to choose a wall without the pointer.
+      this.ui.error = t('hint.openingNoWall');
+      this.renderChrome();
+      return false;
     }
     // One opening selected: the typed value is its rule's new distance.
     const openings = this.selectedOpenings();
@@ -732,6 +755,42 @@ export class App {
     this.toast(t('toast.saved'));
   }
 
+  /**
+   * The view by keyboard (view-keys.ts): in plan, zoom about the middle of the free part and move by
+   * pixels; in 3D, zoom toward the target and turn about it (80 px a press is about 10°).
+   */
+  keyView(action: ViewKey): void {
+    if (this.ui.view === 'plan') {
+      const vp = this.shell.viewport.getBoundingClientRect();
+      const c = this.covered();
+      const middle = { x: ((c.left ?? 0) + vp.width - c.right) / 2, y: (vp.height - c.bottom) / 2 };
+      if ('zoom' in action) this.plan.zoomAt(middle, action.zoom);
+      else this.plan.panBy(action.pan.x, action.pan.y);
+      return this.render();
+    }
+    if ('zoom' in action) this.scene.zoomBy(action.zoom);
+    else this.scene.orbit((action.pan.x / 80) * (Math.PI / 18), (action.pan.y / 80) * (Math.PI / 18));
+    this.render();
+  }
+
+  /**
+   * A new, empty project in place of the current one, as one undo step: like opening a file, nothing is
+   * lost (Ctrl+Z gives the previous project back), so it asks nothing.
+   */
+  newProject(): void {
+    this.ui.error = null;
+    this.ui.selection.clear();
+    this.ui.drag = null;
+    const doc = newDocument();
+    this.ui.levelId = startLevel(doc);
+    savePrefs({ levelId: this.ui.levelId });
+    this.store.dispatch({ label: 'cmd.newProject', apply: () => doc });
+    this.framed.plan = false;
+    this.framed['3d'] = false;
+    this.frameAll();
+    this.toast(t('toast.newUndo'));
+  }
+
   /** Opens a project file in place of the current project, as one undo step. */
   async openFile(file: File): Promise<void> {
     const r = readProject(await file.text());
@@ -767,7 +826,26 @@ export class App {
 
   // ---- rendering -----------------------------------------------------------------------------
 
+  /**
+   * With ?perf in the address, each render logs how long its phases took (the tester's D1: switching
+   * between 3D and plan cost about 500 ms more than other gestures). Nothing is done otherwise.
+   */
+  private readonly perf = new URLSearchParams(location.search).has('perf');
+  private marks: [string, number][] = [];
+  private mark(name: string): void {
+    if (this.perf) this.marks.push([name, performance.now()]);
+  }
+
   render(): void {
+    if (!this.perf) return this.renderFrame();
+    this.marks = [['start', performance.now()]];
+    this.renderFrame();
+    this.mark('end');
+    const steps = this.marks.slice(1).map(([name, at], i) => `${name} ${(at - this.marks[i]![1]).toFixed(1)}`);
+    console.info(`[cad2 perf] ${this.ui.view} ${(this.marks.at(-1)![1] - this.marks[0]![1]).toFixed(1)} ms: ${steps.join(', ')}`);
+  }
+
+  private renderFrame(): void {
     const { ui, shell } = this;
     const plan = ui.view === 'plan';
     // On narrow screens the panel is a drawer over the drawing: it opens only when it has something
@@ -828,6 +906,7 @@ export class App {
           outline: r.outline,
         })),
         draft: ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(ui.cursor ? [ui.cursor] : [])] : null,
+        draftCorners: ui.tool === 'floor' ? ui.floorDraft : [],
         openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
         dims: this.currentDims().map((d) => ({ ...d, text: num(d.value) })),
       });
@@ -835,9 +914,13 @@ export class App {
       this.scene.sync(this.visibleGeometry(), ui.selection, preview);
       this.cube.update(this.scene.camera);
     }
+    this.mark(plan ? 'plan' : '3d');
     this.placeDims(plan ? this.currentDims() : []);
+    this.mark('dims');
     this.renderBrowserDrawer();
+    this.mark('browser');
     this.renderChrome();
+    this.mark('chrome');
     // The panel is rebuilt only when what it shows changed: rebuilding on every mouse move would
     // close an open list and drop the focus of a field being typed in.
     const doc = this.store.get();

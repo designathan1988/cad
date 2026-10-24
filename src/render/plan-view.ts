@@ -81,6 +81,8 @@ export interface PlanOverlay {
   }[];
   /** A floor outline being drawn, ending at the cursor. */
   readonly draft: readonly Point2[] | null;
+  /** Its corners so far, each marked: a typed first corner shows before the pointer moves. */
+  readonly draftCorners?: readonly Point2[];
   /** The opening being placed (an id present in the geometry), drawn in the accent colour. */
   readonly openingPreview?: string | null;
   /** Temporary dimensions of the selected element. */
@@ -311,6 +313,16 @@ export class PlanView {
         else ctx.lineTo(s.x, s.y);
       });
       ctx.stroke();
+      ctx.restore();
+    }
+    for (const v of o.draftCorners ?? []) {
+      const s = this.toScreen(v);
+      ctx.save();
+      ctx.fillStyle = color('--bg');
+      ctx.strokeStyle = color('--wall-sel');
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(Math.round(s.x) - 3.5, Math.round(s.y) - 3.5, 7, 7);
+      ctx.strokeRect(Math.round(s.x) - 3.5, Math.round(s.y) - 3.5, 7, 7);
       ctx.restore();
     }
     // A wall's tag keeps off the dimensions' values (the tester's R03: "3,00" covered "Parede 49"):
