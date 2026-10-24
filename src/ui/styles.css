@@ -1102,8 +1102,13 @@ select {
   border-color: var(--border);
 }
 .search-select .icon {
+  /* In the flow, after the name (not over it, as .select .icon places a native select's). */
+  position: static;
   flex: none;
   color: var(--text-2);
+}
+.search-select .swatch {
+  width: 28px;
 }
 .search-select-label {
   flex: 1;

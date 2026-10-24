@@ -17,7 +17,7 @@ export interface MenuItem {
 let open: (() => void) | null = null;
 
 /** Opens the menu with its top-left corner at the screen point, kept inside the window. */
-export function showMenu(items: readonly MenuItem[], at: { x: number; y: number }, label: string): void {
+export function showMenu(items: readonly MenuItem[], at: { x: number; y: number }, label: string, start = 0): void {
   open?.();
   if (items.length === 0) return;
   const back = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -75,5 +75,5 @@ export function showMenu(items: readonly MenuItem[], at: { x: number; y: number 
   window.addEventListener('pointerdown', outside, true);
   window.addEventListener('resize', close);
   open = close;
-  focus(0);
+  focus(Math.min(start, items.length - 1));
 }

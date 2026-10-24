@@ -38,6 +38,7 @@ export function wireInput(app: App): void {
   let rightAt: { x: number; y: number } | null = null;
   /** The menu for what is under the pointer: it becomes the selection, unless it is already in it. */
   const contextMenu = (e: PointerEvent) => {
+    if (ui.error !== null) shell.measure.value = '';
     ui.error = null;
     if (ui.tool !== 'select') app.setTool('select');
     const hit = pickAt(e, worldAt(e));
@@ -273,6 +274,8 @@ export function wireInput(app: App): void {
         group.members.map((m) => ({ label: m.getAttribute('aria-label') ?? '', run: toolOf.get(m)! })),
         { x: r.right + 4, y: r.top },
         t(group.name),
+        // Starting on the tool the group shows.
+        Math.max(0, group.members.findIndex((m) => m.classList.contains('shown'))),
       );
     };
     for (const b of group.members) {

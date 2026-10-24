@@ -319,6 +319,17 @@ export class App {
     return [this.makeWall(w.last, end, PREVIEW_ID)];
   }
 
+  /** The numbers of the walls selected (a few) or under the pointer, or snapped to while drawing. */
+  private wallTags(): { at: Point2; text: string }[] {
+    const doc = this.store.get();
+    const ids = new Set([...this.ui.selection].slice(0, 12));
+    if (this.ui.hover) ids.add(this.ui.hover);
+    if (this.ui.snap?.wallId) ids.add(this.ui.snap.wallId);
+    return doc.walls
+      .filter((w) => ids.has(w.id) && w.levelId === this.ui.levelId)
+      .map((w) => ({ at: { x: (w.start.x + w.end.x) / 2, y: (w.start.y + w.end.y) / 2 }, text: t('wall.tag', { n: wallNumber(doc, w.id) ?? '' }) }));
+  }
+
   /** While turning the selection: the angle, at the point it turns about. */
   private turnMeasure(): { at: Point2; text: string } | null {
     const d = this.ui.drag;
@@ -499,7 +510,8 @@ export class App {
   selectAllWalls(): void {
     this.setTool('select');
     // Hidden walls are not selected: nothing unseen can be deleted.
-    if (!this.ui.hidden.has('walls')) for (const w of this.store.get().walls) if (w.levelId === this.ui.levelId) this.ui.selection.add(w.id);
+    if (this.ui.hidden.has('walls')) this.ui.info = t('hint.wallsHidden');
+    else for (const w of this.store.get().walls) if (w.levelId === this.ui.levelId) this.ui.selection.add(w.id);
     this.refresh();
   }
 
@@ -719,6 +731,7 @@ export class App {
         axis: end && len >= MIN_WALL_LENGTH && w.kind === 'drawing' ? { start: w.last, end } : (guide?.axis ?? null),
         handles: this.handles(),
         anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : null,
+        wallTags: this.wallTags(),
         roomLabels: [...this.visibleGeometry().rooms.values()].map((r) => ({
           at: r.room.seed,
           name: `${r.room.number} · ${name(r.room.name)}`,

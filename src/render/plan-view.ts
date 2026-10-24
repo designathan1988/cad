@@ -35,6 +35,8 @@ export interface PlanOverlay {
   readonly handles: Handles;
   /** The point a wall chain goes on from: marked even before the pointer moves. */
   readonly anchor?: Point2 | null;
+  /** Wall numbers at the middle of the walls selected or under the pointer, as snap labels name them. */
+  readonly wallTags?: readonly { readonly at: Point2; readonly text: string }[];
   /** Room name and area tags, at each room's point. */
   /** `short` is shown when the name does not fit the room on screen; `outline` is the room's, if closed. */
   readonly roomLabels: readonly {
@@ -234,6 +236,7 @@ export class PlanView {
       ctx.stroke();
       ctx.restore();
     }
+    for (const tag of o.wallTags ?? []) this.label(tag.at, tag.text, color('--wall-sel'), color('--canvas'), this.font('600', '--fs-xs'), { x: 0, y: 4 });
     this.drawHandles(o.handles, color('--bg'), color('--wall-sel'));
     if (o.anchor) {
       const p = this.toScreen(o.anchor);
