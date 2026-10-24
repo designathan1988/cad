@@ -28,3 +28,13 @@ describe('room tags', () => {
     expect(tags.map((t) => t.lines[0])).toEqual(['2 · Cômodo 2']);
   });
 });
+
+describe('room tags and the temporary dimensions', () => {
+  it('a tag that would cover a dimension value moves just below it; with no room there, above it', () => {
+    const value = { x: 380, y: 290, w: 40, h: 20 };
+    const [t] = layoutRoomTags([tag(400, 300, 200)], measure, view, [value]);
+    expect(t!.box.y).toBeGreaterThanOrEqual(value.y + value.h);
+    const nearBottom = layoutRoomTags([tag(400, 590, 200)], measure, view, [{ x: 380, y: 580, w: 40, h: 20 }]);
+    expect(nearBottom[0]!.box.y + nearBottom[0]!.box.h).toBeLessThanOrEqual(580);
+  });
+});
