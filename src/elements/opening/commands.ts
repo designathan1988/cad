@@ -238,24 +238,41 @@ export const distributeOpenings = (groupId: OpeningGroupId, ids: readonly Openin
     const placed = deriveOpenings(doc.openings, hosts, doc.openingGroups).placed;
     const members = [...list].sort((a, b) => placed.get(a.id)!.start - placed.get(b.id)!.start).map((o) => o.id);
     const openings = doc.openings.map((o) => (want.has(o.id) ? { ...o, rule: { kind: 'inGroup' as const, groupId } } : o));
-    const lo = Math.min(...members.map((id) => placed.get(id)!.start));
-    const hi = Math.max(...members.map((id) => placed.get(id)!.end));
-    const joints = [...(hosts.get(list[0]!.wallId)?.joints ?? new Map<string, { lo: number; hi: number }>())];
-    // The nearest joint wholly before the openings, and the nearest wholly after them.
-    const before = joints.filter(([, j]) => j.hi <= lo).sort((a, b) => b[1].hi - a[1].hi)[0]?.[0] ?? null;
-    const after = joints.filter(([, j]) => j.lo >= hi).sort((a, b) => a[1].lo - b[1].lo)[0]?.[0] ?? null;
-    const between = before !== null || after !== null ? { between: [before, after] as const } : {};
-    const group = { id: groupId, wallId: list[0]!.wallId, members, spacing, ...between };
+    const group = { id: groupId, wallId: list[0]!.wallId, members, spacing, ...stretchAround(hosts.get(list[0]!.wallId), members.map((id) => placed.get(id)!)) };
     return settleGroups(doc, { ...doc, openings, openingGroups: [...doc.openingGroups.filter((g) => g.id !== groupId), group] });
   },
 });
 
+/**
+ * The stretch a group keeps to, from where its openings are now: between the nearest joint wholly
+ * before them and the nearest wholly after them (a T or an X), or nothing when there is neither.
+ */
+function stretchAround(host: HostInfo | undefined, openings: readonly PlacedOpening[]): { between?: readonly [string | null, string | null] } {
+  const lo = Math.min(...openings.map((p) => p.start));
+  const hi = Math.max(...openings.map((p) => p.end));
+  const joints = [...(host?.joints ?? new Map<string, { lo: number; hi: number }>())];
+  const before = joints.filter(([, j]) => j.hi <= lo).sort((a, b) => b[1].hi - a[1].hi)[0]?.[0] ?? null;
+  const after = joints.filter(([, j]) => j.lo >= hi).sort((a, b) => a[1].lo - b[1].lo)[0]?.[0] ?? null;
+  return before !== null || after !== null ? { between: [before, after] } : {};
+}
+
+/**
+ * A group from before stretches existed (file version 3) gets one now, from where its openings are:
+ * changing its spacing is a new decision, and it should not land on a joint they were clear of.
+ */
 export const setGroupSpacing = (groupId: OpeningGroupId, spacing: GroupSpacing): Command<Doc> => ({
   label: 'cmd.setGroupSpacing',
   apply: (doc) => {
     const g = doc.openingGroups.find((x) => x.id === groupId);
     if (!g || JSON.stringify(g.spacing) === JSON.stringify(spacing)) return doc;
-    return { ...doc, openingGroups: doc.openingGroups.map((x) => (x.id === groupId ? { ...x, spacing } : x)) };
+    let stretch = {};
+    if (g.between === undefined) {
+      const hosts = hostsIn(doc);
+      const placed = deriveOpenings(doc.openings, hosts, doc.openingGroups).placed;
+      const members = g.members.map((id) => placed.get(id)).filter((p): p is PlacedOpening => p !== undefined);
+      if (members.length > 0) stretch = stretchAround(hosts.get(g.wallId), members);
+    }
+    return { ...doc, openingGroups: doc.openingGroups.map((x) => (x.id === groupId ? { ...x, spacing, ...stretch } : x)) };
   },
 });
 

@@ -1,5 +1,6 @@
 // Temporary dimensions of the one selected element, as in Revit: a wall's length, an opening's
-// distances to the ends of its wall. Each can be typed: the value becomes one command.
+// distances to the ends of its wall, or, on the side of the opening it is measured from, the gap to
+// that one. Each can be typed: the value becomes one command.
 
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { add, distance, normalize, perp, type Point2, scale, sub } from '../core/vector';
@@ -74,6 +75,21 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
       apply: (v) => (v >= 0 ? updateOpening(id, { rule: { kind: 'fromEnd', distance: v } }) : null),
     },
   ];
+  // Measured from another opening: on that side, the gap to it, and a typed value keeps the rule.
+  const rule = o.opening.rule;
+  const ref = rule.kind === 'fromOpening' ? g.openings.get(rule.openingId) : undefined;
+  if (rule.kind === 'fromOpening' && ref && ref.opening.wallId === host.id) {
+    const after = rule.toward === 'end';
+    dims[after ? 0 : 1] = {
+      id: `${id}:fromOpening`,
+      a: after ? at(ref.end) : at(o.end),
+      b: after ? at(o.start) : at(ref.start),
+      side,
+      clear: half,
+      value: after ? o.start - ref.end : ref.start - o.end,
+      apply: (v) => (v >= 0 ? updateOpening(id, { rule: { ...rule, distance: v } }) : null),
+    };
+  }
   return dims.filter((x) => x.value >= 0);
 }
 

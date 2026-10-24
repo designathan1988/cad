@@ -13,6 +13,8 @@ export interface Prefs {
   lang?: Lang;
   theme?: 'light' | 'dark';
   view?: '3d' | 'plan';
+  /** The level last shown: interface state, kept by the browser and never in the project or its undo. */
+  levelId?: string;
   panelOpen?: boolean;
   /** The project browser drawer is open. */
   browserOpen?: boolean;

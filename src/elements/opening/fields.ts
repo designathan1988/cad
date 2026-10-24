@@ -2,10 +2,10 @@
 // general (kind and size), position (rule and its reference), the door's leaf, the group the
 // selection is in, and arranging several. Also the size of the next opening the tool places.
 
-import type { Doc } from '../../app/document';
+import { type Doc, wallNumber } from '../../app/document';
 import type { OpeningSolid } from '../../app/geometry';
 import type { Field } from '../../ui/fields';
-import { num, t, type MessageKey } from '../../ui/i18n';
+import { name, num, t, type MessageKey } from '../../ui/i18n';
 import { alignCandidates, alignFits, referenceCandidates } from './commands';
 import {
   type AlignEdge,
@@ -72,6 +72,14 @@ export function positionFields(doc: Doc, one: OpeningSolid, placed: ReadonlyMap<
   const aligns = alignCandidates(doc, o.id);
   // Named by kind and where it starts on its wall: short enough for the field, and unique.
   const label = (r: Opening) => `${kindName(r.kind)} · ${num(placed.get(r.id)?.start ?? 0)} m`;
+  // One to align with is on another wall, maybe on another level: say which, so it can be found.
+  const levelOf = (wallId: string) => doc.walls.find((w) => w.id === wallId)?.levelId;
+  const alignLabel = (r: Opening) => {
+    const where = [t('wall.tag', { n: wallNumber(doc, r.wallId) ?? '' })];
+    const level = doc.levels.find((l) => l.id === levelOf(r.wallId));
+    if (level && levelOf(r.wallId) !== levelOf(o.wallId)) where.push(name(level.name));
+    return `${label(r)} · ${where.join(' · ')}`;
+  };
   const ruleOptions = (['fromStart', 'fromEnd', 'centered', 'fromOpening', 'aligned', 'inGroup'] as const)
     .filter((k) => k === rule.kind || (k === 'fromOpening' ? refs.length > 0 : k === 'aligned' ? aligns.length > 0 : k !== 'inGroup'))
     .map((k) => ({ value: k, label: t(`rule.${k}` as MessageKey) }));
@@ -98,7 +106,7 @@ export function positionFields(doc: Doc, one: OpeningSolid, placed: ReadonlyMap<
       label: 'panel.alignWith',
       kind: 'select',
       when: () => rule.kind === 'aligned',
-      options: aligns.map((r) => ({ value: r.id, label: label(r) })),
+      options: aligns.map((r) => ({ value: r.id, label: alignLabel(r) })),
       get: (x) => (x.opening.rule.kind === 'aligned' ? x.opening.rule.openingId : ''),
       set: (id) => rule.kind === 'aligned' && act.update([o.id], { rule: { ...rule, openingId: id } }),
     },

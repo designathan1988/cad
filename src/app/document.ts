@@ -101,6 +101,17 @@ export function newDocument(): Doc {
 export const levelOf = (doc: Doc, id: LevelId): Level | undefined => doc.levels.find((l) => l.id === id);
 
 /** A wall's number on its level (1, 2, 3… in the order drawn): how the interface names one wall. */
+/**
+ * The level to show at the start: the one shown last when it still exists; otherwise the lowest that
+ * has something on it, so a project never opens on an empty level when another has content.
+ */
+export function startLevel(doc: Doc, shownLast?: string): string {
+  if (shownLast !== undefined && doc.levels.some((l) => l.id === shownLast)) return shownLast;
+  const used = new Set([...doc.walls, ...doc.rooms, ...doc.floors].map((x) => x.levelId));
+  const byHeight = [...doc.levels].sort((a, b) => a.elevation - b.elevation);
+  return (byHeight.find((l) => used.has(l.id)) ?? byHeight[0]!).id;
+}
+
 export function wallNumber(doc: Doc, id: string): number | null {
   const wall = doc.walls.find((w) => w.id === id);
   if (!wall) return null;

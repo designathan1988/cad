@@ -38,7 +38,7 @@ import { type Drag, dragTransform, hull } from './select-drag';
 import { moveRooms } from './carry';
 import { stepSelection } from './keyboard-select';
 import { nudge } from '../tools/nudge';
-import { type Doc, type DocWall, elementIds, newDocument, type WallDefaults, wallNumber, wallOverrides } from './document';
+import { type Doc, type DocWall, elementIds, newDocument, startLevel, type WallDefaults, wallNumber, wallOverrides } from './document';
 
 /** The snap labels that name their wall. */
 const SNAP_OF = { endpoint: 'snap.endpointOf', midpoint: 'snap.midpointOf', onWall: 'snap.onWallOf', aligned: 'snap.alignedOf' } as const;
@@ -115,7 +115,7 @@ export class App {
       tool: 'select',
       selection: new Set(),
       hover: null,
-      levelId: doc.levels[0]!.id,
+      levelId: startLevel(doc, prefs.levelId),
       theme: prefs.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
       panelOpen: prefs.panelOpen ?? true,
       browserOpen: prefs.browserOpen ?? false,
@@ -274,6 +274,8 @@ export class App {
     }
     // Clicking the first corner again (within 10 px) closes the outline.
     if (draft.length >= 3 && distance(p, draft[0]!) <= 10 * mpp) return this.floorFinish();
+    // A corner: the outline is what the footer is about now, not a room's floor said before.
+    this.ui.info = null;
     this.ui.floorDraft = [...draft, p];
     this.render();
   }
@@ -571,6 +573,7 @@ export class App {
   setLevel(id: string): void {
     if (!this.store.get().levels.some((l) => l.id === id)) return;
     this.ui.levelId = id;
+    savePrefs({ levelId: id });
     this.ui.selection.clear();
     this.refresh();
   }
@@ -707,7 +710,8 @@ export class App {
     this.ui.error = null;
     this.ui.selection.clear();
     this.ui.drag = null;
-    this.ui.levelId = r.doc.levels[0]!.id;
+    this.ui.levelId = startLevel(r.doc);
+    savePrefs({ levelId: this.ui.levelId });
     // One undo step, like any other change: opening by mistake never loses the project that was open.
     this.store.dispatch({ label: 'cmd.openProject', apply: () => r.doc });
     this.framed.plan = false;
@@ -784,7 +788,7 @@ export class App {
         anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : null,
         wallTags: this.wallTags(),
         roomLabels: [...this.visibleGeometry().rooms.values()].map((r) => ({
-          at: r.room.seed,
+          at: r.label,
           name: `${r.room.number} · ${name(r.room.name)}`,
           short: r.room.number,
           area: r.enclosed ? `${num(r.area)} m²` : t('warn.roomNotEnclosed'),
