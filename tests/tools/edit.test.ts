@@ -1,0 +1,81 @@
+// Moving and stretching walls keeps their joins: corners follow, abutting ends slide to stay on the
+// moved host. Every expected point is worked out by hand.
+
+import { describe, expect, it } from 'vitest';
+import { newDocument, type DocWall } from '../../src/app/document';
+import { vec } from '../../src/core/vector';
+import { moveWalls, stretchEnd } from '../../src/tools/edit';
+
+const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+  id,
+  wallTypeId: 'wt_masonry15',
+  start: vec(a[0], a[1]),
+  end: vec(b[0], b[1]),
+  referenceLine: 'centerline',
+  levelId: 'lvl_ground',
+  baseOffset: 0,
+  top: { kind: 'level', offset: 0 },
+});
+
+// 8 × 6 room, counter-clockwise, with a divider from the bottom wall's middle to the top wall's.
+const room = () => ({
+  ...newDocument(),
+  walls: [
+    wall('w0', [0, 0], [8, 0]),
+    wall('w1', [8, 0], [8, 6]),
+    wall('w2', [8, 6], [0, 6]),
+    wall('w3', [0, 6], [0, 0]),
+    wall('d', [4, 0], [4, 6]),
+  ],
+});
+const byId = (ws: readonly DocWall[], id: string) => ws.find((w) => w.id === id)!;
+
+describe('moving walls', () => {
+  it('moves the selected walls by the offset', () => {
+    const ws = moveWalls(room(), ['d'], vec(1, 0));
+    expect(byId(ws, 'd').start).toEqual(vec(5, 0));
+    expect(byId(ws, 'd').end).toEqual(vec(5, 6));
+  });
+
+  it('moving the right wall drags the corners: w0 and w2 stretch, the room stays closed', () => {
+    const ws = moveWalls(room(), ['w1'], vec(2, 0));
+    expect(byId(ws, 'w1').start).toEqual(vec(10, 0));
+    expect(byId(ws, 'w0').end).toEqual(vec(10, 0));
+    expect(byId(ws, 'w2').start).toEqual(vec(10, 6));
+    expect(byId(ws, 'w0').start).toEqual(vec(0, 0));
+  });
+
+  it('moving the top wall up: the divider abutting it slides along itself to stay on it', () => {
+    const ws = moveWalls(room(), ['w2'], vec(0.5, 1));
+    // w2 is now y = 7; the divider runs along x = 4, so its top end goes to (4, 7), not (4.5, 7).
+    expect(byId(ws, 'd').end).toEqual(vec(4, 7));
+    expect(byId(ws, 'd').start).toEqual(vec(4, 0));
+    expect(byId(ws, 'w1').end).toEqual(vec(8.5, 7));
+  });
+
+  it('moving the whole room moves everything once, nothing stretched twice', () => {
+    const ws = moveWalls(room(), ['w0', 'w1', 'w2', 'w3', 'd'], vec(1, 1));
+    expect(byId(ws, 'w0').start).toEqual(vec(1, 1));
+    expect(byId(ws, 'd').end).toEqual(vec(5, 7));
+  });
+
+  it('a wall not touching the moved ones is left alone', () => {
+    const doc = { ...room(), walls: [...room().walls, wall('far', [20, 0], [25, 0])] };
+    expect(byId(moveWalls(doc, ['w1'], vec(1, 0)), 'far')).toEqual(byId(doc.walls, 'far'));
+  });
+});
+
+describe('stretching an end', () => {
+  it('moves that end and the ends meeting it', () => {
+    const ws = stretchEnd(room(), 'w1', 'end', vec(9, 7));
+    expect(byId(ws, 'w1').end).toEqual(vec(9, 7));
+    expect(byId(ws, 'w2').start).toEqual(vec(9, 7));
+    expect(byId(ws, 'w1').start).toEqual(vec(8, 0));
+  });
+
+  it('a stretched host keeps its abutting walls on it where they still meet it', () => {
+    // Lengthening the bottom wall to x = 10 does not move the divider at x = 4.
+    const ws = stretchEnd(room(), 'w0', 'end', vec(10, 0));
+    expect(byId(ws, 'd').start).toEqual(vec(4, 0));
+  });
+});

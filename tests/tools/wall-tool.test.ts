@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { vec } from '../../src/core/vector';
 import { snap } from '../../src/tools/snap';
-import { IDLE, wallTransition, type WallToolEvent, type WallToolState } from '../../src/tools/wall-tool';
+import { bulgeForRadius, bulgeThrough, IDLE, wallTransition, type WallToolEvent, type WallToolState } from '../../src/tools/wall-tool';
 
 function run(events: WallToolEvent[]) {
   let state: WallToolState = IDLE;
@@ -95,5 +95,41 @@ describe('snaps', () => {
     const r = snap({ ...base, segments: [], cursor: vec(0.3, 2.01), from: vec(0, 0), orthogonal: true });
     expect(r.point.x).toBe(0);
     expect(r.point.y).toBeCloseTo(2, 12);
+  });
+});
+
+describe('arc mode', () => {
+  it('A, click, click fixes the chord, a third click bends it: semicircle through (3, −3) has bulge 1', () => {
+    let s: WallToolState = IDLE;
+    s = wallTransition(s, { kind: 'arc' }).state;
+    s = wallTransition(s, { kind: 'click', point: vec(0, 0) }).state;
+    s = wallTransition(s, { kind: 'click', point: vec(6, 0) }).state;
+    expect(s.kind).toBe('bend');
+    const r = wallTransition(s, { kind: 'click', point: vec(3, -3) });
+    expect(r.segment!.start).toEqual(vec(0, 0));
+    expect(r.segment!.end).toEqual(vec(6, 0));
+    expect(r.segment!.bulge).toBeCloseTo(1, 12);
+    expect(r.state.kind).toBe('drawing');
+  });
+
+  it('bulge through a point: a quarter of the way up a radius-5 arc on a chord of 8 (sagitta 2)', () => {
+    // Chord (0,0)–(8,0), arc above through (4, 2): r = (16 + 4)/(2·2) = 5, sweep = 2·asin(4/5),
+    // bulge = −tan(sweep/4) (above, clockwise).
+    expect(bulgeThrough(vec(0, 0), vec(8, 0), vec(4, 2))).toBeCloseTo(-Math.tan(Math.asin(0.8) / 2), 12);
+    expect(bulgeThrough(vec(0, 0), vec(8, 0), vec(9, 0))).toBeNull();
+  });
+
+  it('typed radius: the shorter arc of that radius, on the cursor side; too small is rejected', () => {
+    expect(bulgeForRadius(vec(0, 0), vec(8, 0), 5, vec(4, 1))).toBeCloseTo(-Math.tan(Math.asin(0.8) / 2), 12);
+    expect(bulgeForRadius(vec(0, 0), vec(8, 0), 3, vec(4, 1))).toBeNull();
+  });
+
+  it('Esc while bending drops the chord and keeps drawing from the last point', () => {
+    let s: WallToolState = { kind: 'idle', arc: true };
+    s = wallTransition(s, { kind: 'click', point: vec(0, 0) }).state;
+    s = wallTransition(s, { kind: 'click', point: vec(6, 0) }).state;
+    const r = wallTransition(s, { kind: 'escape' });
+    expect(r.state).toMatchObject({ kind: 'drawing', last: vec(0, 0) });
+    expect(r.segment).toBeUndefined();
   });
 });
