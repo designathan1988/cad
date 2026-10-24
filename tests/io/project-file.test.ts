@@ -72,9 +72,12 @@ describe('project files', () => {
     expect(r.ok && r.fixes).toEqual([{ kind: 'movedToFirstLevel', count: 1 }]);
   });
 
-  it('refuses what is not a project: not JSON, no levels, a newer version', () => {
+  it('refuses what is not a project, saying why: not JSON, no version, no levels, no wall types, a newer version', () => {
     expect(readProject('not json')).toEqual({ ok: false, error: 'notJson' });
-    expect(readProject('{"version":1,"levels":[],"walls":[]}')).toEqual({ ok: false, error: 'notProject' });
+    expect(readProject('[1, 2]')).toEqual({ ok: false, error: 'notProject' });
+    expect(readProject('{"levels":[]}')).toEqual({ ok: false, error: 'notProject' });
+    expect(readProject('{"version":1,"levels":[],"walls":[]}')).toEqual({ ok: false, error: 'noLevels' });
+    expect(readProject(JSON.stringify({ ...newDocument(), wallTypes: [] }))).toEqual({ ok: false, error: 'noWallTypes' });
     expect(readProject(JSON.stringify({ ...newDocument(), version: CURRENT_VERSION + 1 }))).toEqual({ ok: false, error: 'newerVersion' });
   });
 });

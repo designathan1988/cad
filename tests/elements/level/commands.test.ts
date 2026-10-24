@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument, wallHeights } from '../../../src/app/document';
 import { createStore } from '../../../src/core/store';
 import { vec } from '../../../src/core/vector';
-import { addLevel, deleteLevel, updateLevel } from '../../../src/elements/level/commands';
+import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../../../src/elements/level/commands';
 
 const wall = (id: string, levelId: string): DocWall => ({
   id,
@@ -52,5 +52,23 @@ describe('levels', () => {
     expect(s.get().levels.map((l) => l.id)).toEqual(['lvl_ground']);
     s.undo();
     expect(s.get().levels).toHaveLength(2);
+  });
+});
+
+describe('level checks', () => {
+  it('a level reaching above the bottom of the next one is reported, with that level', () => {
+    let doc = addLevel('lvl_up', 'Upper').apply(newDocument());
+    expect(levelOverlaps(doc)).toEqual([]);
+    doc = updateLevel('lvl_ground', { height: 3 }).apply(doc);
+    // Ground 0 + 3.00 reaches 0.20 above Upper at 2.80.
+    expect(levelOverlaps(doc)).toEqual([{ levelId: 'lvl_ground', aboveId: 'lvl_up', by: expect.closeTo(0.2, 12) }]);
+  });
+
+  it('why a level cannot be deleted: the last one, or walls on it', () => {
+    const one = newDocument();
+    expect(deleteBlocker(one, 'lvl_ground')).toBe('last');
+    const two = { ...addLevel('lvl_up', 'Upper').apply(one), walls: [wall('w', 'lvl_up')] };
+    expect(deleteBlocker(two, 'lvl_up')).toBe('walls');
+    expect(deleteBlocker(two, 'lvl_ground')).toBeNull();
   });
 });

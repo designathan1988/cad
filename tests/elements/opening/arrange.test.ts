@@ -6,6 +6,7 @@ import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
 import { createStore } from '../../../src/core/store';
 import {
   alignHeads,
+  placementProblem,
   alignOpenings,
   deleteElements,
   distributeOpenings,
@@ -206,5 +207,14 @@ describe('align heads', () => {
     const raised = { ...v, baseOffset: 0.3 };
     const d = docOf([w, raised], [ref, win('s', 'v', { kind: 'centered' })]);
     near(alignHeads('a', ['s']).apply(d).openings.find((o) => o.id === 's')!.sill, 0.7);
+  });
+});
+
+describe('placing and invalid openings', () => {
+  it('an opening over another, or that does not fit, is refused with the reason', () => {
+    const d = docOf([w], [win('a', 'w', { kind: 'fromStart', distance: 1 })]);
+    expect(placementProblem(d, win('n', 'w', { kind: 'fromStart', distance: 1.5 }))).toBe('openingOverlap');
+    expect(placementProblem(d, { ...win('n', 'w', { kind: 'fromEnd', distance: 0 }), width: 7 })).toBe('openingOutside');
+    expect(placementProblem(d, win('n', 'w', { kind: 'fromEnd', distance: 0.5 }))).toBeNull();
   });
 });

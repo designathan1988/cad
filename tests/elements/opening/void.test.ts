@@ -135,9 +135,9 @@ describe('layers, joins, offsets, invalid', () => {
     expect(m.g.openingWarnings).toEqual([{ kind: 'openingTooTall', openings: ['o'] }]);
   });
 
-  it('past the end: warned, the wall is cut only where it is', () => {
+  it('past the end: warned, and the wall is not cut at all (a cut there would open its joint)', () => {
     const m = measure(docWith([W], [newOpening('o', 'w', 'door', { kind: 'fromStart', distance: 3.5 })]));
-    expect(m.plan).toBeCloseTo(0.8 - 0.5 * 0.2, 12);
+    expect(m.plan).toBeCloseTo(0.8, 12);
     expect(m.g.openingWarnings).toEqual([{ kind: 'openingOutside', openings: ['o'] }]);
   });
 
