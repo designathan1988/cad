@@ -38,6 +38,20 @@ describe('handles', () => {
     expect(h.arrows).toEqual([]);
   });
 
+  it("an arc wall: a curvature handle at the middle of the arc, and the turn handle under the arc's middle", () => {
+    // Bulge 0.4 on a 2 m chord: sagitta 0.4, right of the chord, so the middle is (1, -0.4): (100, 540).
+    const h = handlesFor([wall('a', [0, 0], [2, 0], 0.4)], toScreen);
+    expect(h.bulge!.id).toBe('a');
+    expect(h.bulge!.at.x).toBeCloseTo(100, 9);
+    expect(h.bulge!.at.y).toBeCloseTo(540, 9);
+    expect(h.rotate!.at.y).toBeCloseTo(540 + 28, 9);
+    expect(handleAt(h, { x: 103, y: 538 }, 8)).toEqual({ kind: 'bulge', id: 'a' });
+  });
+
+  it('a straight wall has no curvature handle', () => {
+    expect(handlesFor([wall('w', [1, 1], [4, 1])], toScreen).bulge).toBeNull();
+  });
+
   it('several walls: no end handles, only the turn handle, about the centre of them all', () => {
     const h = handlesFor([wall('a', [0, 0], [2, 0]), wall('b', [2, 0], [2, 2])], toScreen);
     expect(h.squares).toEqual([]);
@@ -46,7 +60,7 @@ describe('handles', () => {
   });
 
   it('nothing selected: no handles', () => {
-    expect(handlesFor([], toScreen)).toEqual({ squares: [], arrows: [], rotate: null });
+    expect(handlesFor([], toScreen)).toEqual({ squares: [], arrows: [], rotate: null, bulge: null });
   });
 
   it('which handle is under the pointer: within the reach, the turn handle first, then arrows, then squares', () => {

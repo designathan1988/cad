@@ -83,4 +83,33 @@ describe('temporary dimensions', () => {
     expect(dims.map((x) => Math.round(x.value * 1e9) / 1e9)).toEqual([2.6, 0.5]);
     expect(dims[1]!.b).toEqual(vec(4, 0));
   });
+
+  // An arc: a half circle from (0, 0) to (2, 0) through (1, -1): chord 2, radius 1, centre (1, 0).
+  const arcDoc = (): Doc => ({ ...newDocument(), walls: [{ ...wall('a', [0, 0], [2, 0]), bulge: 1 }] });
+
+  it('a selected arc shows its chord and its radius', () => {
+    const d = arcDoc();
+    const dims = tempDims(d, deriveGeometry(d), new Set(['a']));
+    expect(dims.map((x) => x.id)).toEqual(['a:chord', 'a:radius']);
+    expect(dims[0]!.value).toBeCloseTo(2, 12);
+    expect(dims[1]!.value).toBeCloseTo(1, 12);
+    // The radius runs from the centre to the middle of the arc.
+    expect(dims[1]!.a.x).toBeCloseTo(1, 12);
+    expect(dims[1]!.a.y).toBeCloseTo(0, 12);
+    expect(dims[1]!.b.y).toBeCloseTo(-1, 12);
+  });
+
+  it('typing a chord moves the end along it and keeps the sweep; typing a radius keeps the ends', () => {
+    const d = arcDoc();
+    const [chord, radius] = tempDims(d, deriveGeometry(d), new Set(['a']));
+    const longer = chord!.apply(3)!.apply(d).walls[0]!;
+    expect(longer.end).toEqual(vec(3, 0));
+    expect(longer.bulge).toBe(1);
+    const flatter = radius!.apply(2)!.apply(d).walls[0]!;
+    expect(flatter.start).toEqual(vec(0, 0));
+    expect(flatter.end).toEqual(vec(2, 0));
+    expect(flatter.bulge).toBeCloseTo(Math.tan(Math.PI / 12), 12);
+    // Shorter than half the chord: no arc has it.
+    expect(radius!.apply(0.9)).toBeNull();
+  });
 });
