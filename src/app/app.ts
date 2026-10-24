@@ -612,7 +612,9 @@ export class App {
     const covered = this.covered();
     const vp0 = this.shell.viewport.getBoundingClientRect();
     // Again when the selection changes, or the panel or a drawer (or the window) changes what is free.
-    const key = JSON.stringify([[...this.ui.selection], covered, Math.round(vp0.width), Math.round(vp0.height)]);
+    // The selection's own extent counts too: an arc given a larger radius can reach under the panel.
+    const extent = boundsOf(this.geometry, this.ui.selection);
+    const key = JSON.stringify([[...this.ui.selection], covered, Math.round(vp0.width), Math.round(vp0.height), extent && [extent.min, extent.max].map((p) => [Math.round(p.x * 100), Math.round(p.y * 100)])]);
     if (key === this.seenSelection) return false;
     this.seenSelection = key;
     // A new selection moves the plan only from under what covers it: clicking a long wall that runs

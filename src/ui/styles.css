@@ -657,6 +657,19 @@ select {
   display: flex;
   align-items: center;
 }
+/* Under the field, over what follows, while the value is refused. */
+.field-error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1;
+  padding: var(--sp-half) var(--sp-1);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--error);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
 .num-field input {
   width: 100%;
   height: var(--field-h);

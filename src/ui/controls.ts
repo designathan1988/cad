@@ -20,9 +20,16 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   return e;
 }
 
+/**
+ * Sections the user opened or closed, by title: panels are rebuilt on every change and selection, and
+ * a section stays as it was left (the tester had to reopen "More" after each edit of a radius).
+ */
+const sectionOpen = new Map<string, boolean>();
+
 export function section(title: string, open: boolean, ...rows: HTMLElement[]): HTMLDetailsElement {
   const d = el('details', { class: 'section' });
-  d.open = open;
+  d.open = sectionOpen.get(title) ?? open;
+  d.addEventListener('toggle', () => sectionOpen.set(title, d.open));
   const s = el('summary');
   s.innerHTML = icon('chevronRight', 14);
   s.append(title);
@@ -56,41 +63,59 @@ export function numberField(value: number | null, onCommit: (v: number) => void,
   const shown = () => (current === null ? '' : num(current));
   input.value = shown();
   input.placeholder = value === null ? t('panel.varies') : '';
-  const commit = () => {
-    if (input.value.trim() === '' || input.value === shown()) {
-      input.value = shown();
-      return;
-    }
-    const r = parseLength(input.value);
-    if (!r.ok || r.value < min) {
-      input.classList.add('invalid');
-      input.setAttribute('aria-invalid', 'true');
-      return;
-    }
+  // What is wrong with a refused value, said under the field and announced: the least value it takes,
+  // or how a measure is written.
+  const error = el('span', { class: 'field-error', role: 'alert' });
+  error.id = `err-${Math.random().toString(36).slice(2, 8)}`;
+  error.hidden = true;
+  const refuse = (message: string) => {
+    input.classList.add('invalid');
+    input.setAttribute('aria-invalid', 'true');
+    input.setAttribute('aria-describedby', error.id);
+    error.textContent = message;
+    error.hidden = false;
+  };
+  const clear = () => {
     input.classList.remove('invalid');
     input.removeAttribute('aria-invalid');
+    error.hidden = true;
+  };
+  /** False when the value is refused: the field keeps the focus, so Esc can put it back. */
+  const commit = (): boolean => {
+    if (input.value.trim() === '' || input.value === shown()) {
+      input.value = shown();
+      clear();
+      return true;
+    }
+    const r = parseLength(input.value);
+    if (!r.ok) {
+      refuse(t('field.notMeasure'));
+      return false;
+    }
+    if (r.value < min) {
+      refuse(t('field.atLeast', { v: num(min) }));
+      return false;
+    }
+    clear();
     current = r.value;
     input.value = shown();
     input.placeholder = '';
     onCommit(r.value);
+    return true;
   };
   input.addEventListener('keydown', (e) => {
     e.stopPropagation();
     if (e.key === 'Enter') {
-      commit();
-      input.blur();
+      if (commit()) input.blur();
     } else if (e.key === 'Escape') {
       input.value = shown();
-      input.classList.remove('invalid');
+      clear();
       input.blur();
     }
   });
-  input.addEventListener('blur', commit);
-  input.addEventListener('input', () => {
-    input.classList.remove('invalid');
-    input.removeAttribute('aria-invalid');
-  });
-  box.append(input, el('span', { class: 'unit' }, 'm'));
+  input.addEventListener('blur', () => commit());
+  input.addEventListener('input', clear);
+  box.append(input, el('span', { class: 'unit' }, 'm'), error);
   return box;
 }
 

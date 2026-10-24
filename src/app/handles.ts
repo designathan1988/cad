@@ -7,6 +7,7 @@ import { add, normalize, type Point2, scale, sub } from '../core/vector';
 import type { WallEnd, WallId } from '../elements/wall/schema';
 import type { DocWall } from './document';
 import { arcMiddle } from '../tools/arc-edit';
+import { arcOf } from '../elements/wall/geometry/arc';
 
 /** How far beyond its end an arrow sits, and how far under the selection the turn handle (px). */
 export const ARROW_OFFSET = 20;
@@ -39,15 +40,29 @@ export function handlesFor(walls: readonly DocWall[], toScreen: (p: Point2) => P
           return { id: one.id, end, at: add(at, scale(dir, ARROW_OFFSET)), dir };
         })
       : [];
-  const xs = walls.flatMap((w) => [w.start.x, w.end.x]);
-  const ys = walls.flatMap((w) => [w.start.y, w.end.y]);
+  // An arc counts by its whole extent, not its ends: the turn handle goes under it and turns it about
+  // its middle, never onto the wall.
+  const extent = walls.flatMap(extentOf);
+  const xs = extent.map((p) => p.x);
+  const ys = extent.map((p) => p.y);
   const pivot = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
-  // An arc's middle counts too: a bulge downward would otherwise put the turn handle on the wall.
-  const corners = walls.flatMap((w) => [toScreen(w.start), toScreen(w.end), ...(w.bulge ? [toScreen(arcMiddle(w.start, w.end, w.bulge))] : [])]);
+  const corners = extent.map(toScreen);
   const below = Math.max(...corners.map((c) => c.y));
   const centre = toScreen(pivot);
   const bulge = one?.bulge ? { id: one.id, at: toScreen(arcMiddle(one.start, one.end, one.bulge)) } : null;
   return { squares, arrows, rotate: { at: { x: centre.x, y: below + ROTATE_OFFSET }, pivot }, bulge };
+}
+
+/** The points that bound a wall: its ends, and for an arc the points where it turns along an axis. */
+function extentOf(w: DocWall): Point2[] {
+  const arc = arcOf({ start: w.start, end: w.end, bulge: w.bulge ?? 0 });
+  if (!arc) return [w.start, w.end];
+  const within = (a: number) => {
+    const t = ((a - arc.startAngle) * Math.sign(arc.sweep)) % (2 * Math.PI);
+    return (t < 0 ? t + 2 * Math.PI : t) <= Math.abs(arc.sweep);
+  };
+  const axes = [0, 1, 2, 3].map((k) => (k * Math.PI) / 2).filter(within);
+  return [w.start, w.end, ...axes.map((a) => ({ x: arc.center.x + arc.radius * Math.cos(a), y: arc.center.y + arc.radius * Math.sin(a) }))];
 }
 
 export function handleAt(h: Handles, screen: Point2, reach: number): HandleHit | null {

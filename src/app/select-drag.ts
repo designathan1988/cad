@@ -7,7 +7,7 @@ import { add, distance, normalize, type Point2, scale, sub, vec } from '../core/
 import { setWalls } from '../elements/wall/commands';
 import type { WallEnd, WallId } from '../elements/wall/schema';
 import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../tools/edit';
-import { bulgeFromMiddle } from '../tools/arc-edit';
+import { bulgeFromMiddle, straightNear } from '../tools/arc-edit';
 import { handleAt } from './handles';
 import { moveRooms, roomsGoingWith } from './carry';
 import { GRID_STEP, type Snap } from '../tools/snap';
@@ -45,6 +45,8 @@ type Pending =
 const ROTATE_STEP = Math.PI / 12;
 
 const THRESHOLD_PX = 4;
+/** An arc's middle let go this near its chord (px) makes the wall straight, with snaps on. */
+const STRAIGHT_PX = 8;
 /** Reach of an end grip from its centre: larger than the 9 px square drawn; 22 px (a 44 px target) on touch. */
 const gripPx = (): number => (matchMedia('(pointer: coarse)').matches ? 22 : 8);
 
@@ -124,11 +126,11 @@ export function selectGestures(app: App): SelectGestures {
         const dir = normalize(sub(moved[d.end], other));
         ui.drag = { ...d, walls: stretchEnd(doc, d.id, d.end, add(other, scale(dir, snapped))) };
       } else if (d.kind === 'bulge' && world) {
-        // Off the chord by the pointer's distance; with snaps on, a sagitta under half a grid step
-        // makes the wall straight again.
+        // Off the chord by the pointer's distance; with snaps on, within 8 px of the chord on screen
+        // (at any zoom) the wall turns straight again.
         const w = doc.walls.find((x) => x.id === d.id)!;
         let bulge = bulgeFromMiddle(w.start, w.end, world);
-        if (ui.snaps && Math.abs((bulge * distance(w.start, w.end)) / 2) < GRID_STEP / 2) bulge = 0;
+        if (ui.snaps) bulge = straightNear(bulge, distance(w.start, w.end), STRAIGHT_PX / app.plan.scale);
         ui.drag = { ...d, walls: doc.walls.map((x) => (x.id === d.id ? { ...x, bulge } : x)) };
       } else if (d.kind === 'rotate' && world) {
         let angle = Math.atan2(world.y - d.pivot.y, world.x - d.pivot.x) - d.from;

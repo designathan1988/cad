@@ -38,3 +38,8 @@ export function bulgeKeepingSide(chord: number, bulge: number, radius: number): 
   const sweep = Math.abs(bulge) > 1 ? 2 * Math.PI - minor : minor;
   return Math.sign(bulge || 1) * Math.tan(sweep / 4);
 }
+
+/** Straight (0) when the arc's middle is within `reach` of its chord: how near is for the caller (8 px on screen). */
+export function straightNear(bulge: number, chord: number, reach: number): number {
+  return Math.abs((bulge * chord) / 2) < reach ? 0 : bulge;
+}

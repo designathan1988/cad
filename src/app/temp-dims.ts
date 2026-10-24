@@ -7,7 +7,7 @@ import { add, distance, normalize, perp, type Point2, scale, sub } from '../core
 import type { Command } from '../core/store';
 import { updateOpening } from '../elements/opening/commands';
 import { setWalls } from '../elements/wall/commands';
-import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
+import { bulgeKeepingSide } from '../tools/arc-edit';
 import { stretchEnd } from '../tools/edit';
 import { arcOf } from '../elements/wall/geometry/arc';
 import type { Doc } from './document';
@@ -96,8 +96,7 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
 }
 
 /**
- * An arc's chord, on the side away from its bulge, and its radius, from the centre to the middle of
- * the arc. A typed chord moves the end along it and keeps the sweep; a typed radius keeps the ends.
+ * An arc's chord, on the side away from its bulge, and its radius, from the centre to the arc. A typed chord moves the end along it and keeps the sweep; a typed radius keeps the ends.
  */
 function arcDims(doc: Doc, wall: Doc['walls'][number]): TempDim[] {
   const arc = arcOf({ start: wall.start, end: wall.end, bulge: wall.bulge ?? 0 });
@@ -105,8 +104,11 @@ function arcDims(doc: Doc, wall: Doc['walls'][number]): TempDim[] {
   const bulge = wall.bulge ?? 0;
   const chord = distance(wall.start, wall.end);
   const dir = normalize(sub(wall.end, wall.start));
-  const middle = arcMiddle(wall.start, wall.end, bulge);
-  const across = normalize(sub(middle, arc.center));
+  // The radius is shown along the radius at 30 % of the sweep, not the middle one: on the middle one
+  // its value sat against the chord's (the tester's K03).
+  const along = arc.startAngle + arc.sweep * 0.3;
+  const onArc = add(arc.center, scale({ x: Math.cos(along), y: Math.sin(along) }, arc.radius));
+  const across = normalize(sub(onArc, arc.center));
   return [
     {
       id: `${wall.id}:chord`,
@@ -121,7 +123,7 @@ function arcDims(doc: Doc, wall: Doc['walls'][number]): TempDim[] {
     {
       id: `${wall.id}:radius`,
       a: arc.center,
-      b: middle,
+      b: onArc,
       side: perp(across),
       clear: 0,
       value: arc.radius,
