@@ -1024,11 +1024,13 @@ A suíte não tem mais faixa de empate nem `cornerOverreach`: o aviso é exigido
 `overlap` ou quando a reta toca outro trecho do arco (`touchesArcElsewhere`, com casos à mão em
 `oracle-arc.test.ts`), e todo o resto precisa juntar e cobrir exato.
 
-**Fica aberto:** no miter, ou quando a reta encosta e o arco passa, um canto que alcance os trechos
-seguintes continua recusado com `arcJoinUnsupported` (a última verificação). Não apareceu nenhum
-caso assim em 12 000 rodadas da suíte (duas seeds, paredes finas e grossas), nem numa busca dirigida
-de 141 742 Ls (ângulos de 0,5 em 0,5°, miter e reta mais fina encostando num arco grosso). Uma
-primeira versão da busca achou 4 candidatos, mas a ponta longe da reta caía a menos de 1 mm de um
+**Fica aberto:** um L na ponta de um arco cujo corpo da reta alcança os trechos seguintes continua
+recusado com `arcJoinUnsupported` (a última verificação). **Correção (2026-10-24):** escrevi aqui que
+nenhum caso assim aparecia em 12 000 rodadas nem numa busca de 141 742 Ls. Estava errado: a suíte e a
+busca pulavam (ou exigiam aviso de) toda reta que tocasse o arco fora do trecho da ponta
+(`touchesArcElsewhere`), e esse é justamente o caso. Separado da segunda junta, ele é comum: na seed
+fixa da suíte, 32 de 98 Ls (os outros 2 são segunda junta) são recusados por esse transbordo. É o
+próximo item do motor. Uma primeira versão da busca achou 4 candidatos, mas a ponta longe da reta caía a menos de 1 mm de um
 trecho do arco: uma segunda junta (§6), não um L. `arc-corner.test.ts` prova os dois lados: a ponta a
 ≤ 1 mm (`distanceToSegments`) e, com ela recuada 5 mm, o L sozinho junta e cobre exato. A tabela da
 §6 agora diz a folga que o motor já usava na banda: `POINT_TOLERANCE`.

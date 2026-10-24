@@ -25,8 +25,9 @@ o resolve existe e, se for de interface, quando a sessão de teste o viu no nave
 ## Motor de paredes
 
 - X com arco.
-- No L na ponta de um arco, canto em miter (ou reta que encosta) que alcança os trechos seguintes:
-  ainda avisa (wall-joins-spec.md, parte 6). Nenhum caso real achado até agora.
+- **L na ponta de um arco cuja reta alcança os trechos seguintes (transbordo): ainda avisa**
+  (wall-joins-spec.md, parte 6). Comum, não raro: 32 de 98 Ls na seed fixa da suíte. Eu tinha escrito
+  "nenhum caso real": a busca pulava exatamente esses casos. Próximo item do motor.
 - Casos com duas juntas que o gerador da suíte de arcos pula (ponta longe sobre o arco, ou passando
   perto da outra ponta).
 - Alturas diferentes entre paredes ligadas.
