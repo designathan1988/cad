@@ -1,0 +1,12 @@
+// Single source of every geometric tolerance. Changing a value here requires a new ADR.
+
+/** Wall ends closer than this meet (m). */
+export const POINT_TOLERANCE = 1e-3;
+/** Directions closer than this to 0° or 180° are treated as in line (degrees). */
+export const COLLINEAR_ANGLE = 0.6;
+/** A miter reaching further than this multiple of the thicker wall is cut square. */
+export const MITER_LIMIT = 10;
+/** Walls shorter than this are invalid (m). */
+export const MIN_WALL_LENGTH = 1e-3;
+/** Pieces smaller than this are dropped (m²). */
+export const AREA_EPSILON = 1e-9;
