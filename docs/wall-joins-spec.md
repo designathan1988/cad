@@ -979,5 +979,6 @@ região do L da spec (§7.1, `expectedL`) a corta. O oráculo exigia cobrir essa
 configuração com duas paredes retas, o mesmo oráculo acusa a mesma "fresta", e o motor bate com
 `expectedL`. Agora o oráculo (`arcCorner`) usa, perto do nó, o L da spec entre o trecho da ponta (a
 corda, com camadas × cos(Δ/2)) e a parede. `arc-corner.test.ts` confere as 18 combinações de
-referência e lado desse caso. A suíte de propriedade dos arcos ainda está fora do repositório: ela
-acusou um caso de sobreposição perto da outra ponta de um semicírculo, ainda sob investigação.
+referência e lado desse caso. A suíte de propriedade dos arcos (`arcs.property.test.ts`) entrou no
+repositório. O caso de sobreposição que ela acusou perto da outra ponta de um semicírculo também era
+do oráculo: a zona do canto não excluía os outros trechos do arco.

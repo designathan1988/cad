@@ -99,8 +99,8 @@ export interface Coverage {
  * of straight segments (spec §5.2), so near the node it is the straight L (oracle.ts, expectedL)
  * between the end segment (the chord of the reference circle, layer offsets × cos(Δ/2)) and the
  * wall. `applies`: where that alone decides: along the end segment, short of its far joint (radial,
- * not square as the straight L's far end), by the thickness times tan(Δ/2). 'overlap' when the spec
- * says that L warns.
+ * not square as the straight L's far end) by the thickness times tan(Δ/2), and outside the arc's
+ * other segments. 'overlap' when the spec says that L warns.
  */
 export function arcCorner(arc: Wall, arcEnd: WallEnd, straight: Wall, straightEnd: WallEnd): { region: Region; applies: (p: P) => boolean } | 'overlap' {
   const c = circleOf(arc);
@@ -118,7 +118,10 @@ export function arcCorner(arc: Wall, arcEnd: WallEnd, straight: Wall, straightEn
   const len = Math.hypot(p.x - node.x, p.y - node.y);
   const dir = pt((p.x - node.x) / len, (p.y - node.y) / len);
   const short = len - arc.thickness * Math.abs(Math.tan(d / 2)) - 1e-6;
-  return { region, applies: (q) => (q.x - node.x) * dir.x + (q.y - node.y) * dir.y <= short };
+  // The rest of the arc is not this L's: its other segments' bodies are checked as bodies.
+  const body = arcBody(arc);
+  const others = arcEnd === 'start' ? body.slice(1) : body.slice(0, -1);
+  return { region, applies: (q) => (q.x - node.x) * dir.x + (q.y - node.y) * dir.y <= short && !others.some((b) => inside(b, q)) };
 }
 
 /**
