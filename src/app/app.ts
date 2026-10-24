@@ -781,7 +781,7 @@ export class App {
         })),
         draft: ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(ui.cursor ? [ui.cursor] : [])] : null,
         openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
-        dims: this.currentDims(),
+        dims: this.currentDims().map((d) => ({ ...d, text: num(d.value) })),
       });
     } else {
       this.scene.sync(this.visibleGeometry(), ui.selection, preview);
@@ -1143,7 +1143,9 @@ export class App {
                 ? 'foot.distance'
                 : 'foot.measure',
     );
-    shell.measure.setAttribute('aria-label', `${t('foot.measure')}: ${shell.measureLabel.textContent}`);
+    // "Measure: Distance", but never "Measure: Measure".
+    const what = shell.measureLabel.textContent ?? '';
+    shell.measure.setAttribute('aria-label', what === t('foot.measure') ? what : `${t('foot.measure')}: ${what}`);
     shell.measure.placeholder = t(pointMode && !lengthMode ? 'foot.pointHint' : lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
     shell.toolWall.classList.toggle('arc-mode', drawing && arc);
     shell.coords.textContent = ui.cursor ? `x ${num(ui.cursor.x)} m  y ${num(ui.cursor.y)} m` : '';

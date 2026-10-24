@@ -15,6 +15,8 @@ export interface DimMark {
   readonly b: Point2;
   readonly side: Point2;
   readonly clear: number;
+  /** The value as shown, to keep other text off it. */
+  readonly text?: string;
 }
 
 export interface PlanOverlay {
@@ -221,7 +223,7 @@ export class PlanView {
     fill(drawn, color('--wall-sel-fill'));
     this.drawOpenings(g, o, { line: color('--wall-line'), sel: color('--wall-sel'), selFill: color('--wall-sel-fill'), warn: color('--warn'), canvas: color('--canvas') });
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
-    this.drawRoomTags(o.roomLabels, color);
+    this.drawRoomTags(o.roomLabels, color, this.dimValueBoxes(o.dims ?? []));
     if (o.draft && o.draft.length > 0) {
       ctx.save();
       ctx.strokeStyle = color('--wall-sel');
@@ -296,7 +298,17 @@ export class PlanView {
   }
 
   /** Room tags where room-tags.ts places them: with their room, shortened or left out when crowded. */
-  private drawRoomTags(labels: PlanOverlay['roomLabels'], color: (name: string) => string): void {
+  /** Where the temporary dimensions' values sit (DOM boxes at the middle of each dimension line). */
+  private dimValueBoxes(dims: readonly DimMark[]): { x: number; y: number; w: number; h: number }[] {
+    const font = this.font('600', '--fs-sm');
+    return dims.map((d) => {
+      const l = this.dimLine(d);
+      const w = this.textWidth(d.text ?? '0,00', font) + 16;
+      return { x: (l.a.x + l.b.x) / 2 - w / 2, y: (l.a.y + l.b.y) / 2 - 11, w, h: 22 };
+    });
+  }
+
+  private drawRoomTags(labels: PlanOverlay['roomLabels'], color: (name: string) => string, avoid: readonly { x: number; y: number; w: number; h: number }[] = []): void {
     const { ctx } = this;
     const nameFont = this.font('600', '--fs-sm');
     const areaFont = this.font('400', '--fs-sm');
@@ -308,7 +320,7 @@ export class PlanView {
       return { x: p.x, y: p.y, width, name: l.name, short: l.short, area: l.area, warn: l.warn };
     });
     const measure = (text: string) => this.textWidth(text, nameFont);
-    const tags = layoutRoomTags(inputs, measure, this.size);
+    const tags = layoutRoomTags(inputs, measure, this.size, avoid);
     this.labelBoxes = tags.map((tag) => tag.box);
     for (const tag of tags) {
       const warn = inputs.find((i) => i.x === tag.x && i.y === tag.y)?.warn ?? false;
