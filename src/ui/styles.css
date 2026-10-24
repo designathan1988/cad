@@ -684,3 +684,22 @@ select {
     transition: none !important;
   }
 }
+
+/* Selection box: solid for a window (wholly inside), dashed for a crossing (touching). */
+.marquee {
+  position: absolute;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  pointer-events: none;
+  z-index: 3;
+}
+.marquee.crossing {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+.marquee[hidden] {
+  display: none;
+}
+.tools .tool.arc-mode {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}

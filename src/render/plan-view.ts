@@ -16,6 +16,8 @@ export interface PlanOverlay {
   readonly measure: { readonly at: Point2; readonly text: string } | null;
   /** The reference line of the segment being drawn, dashed. */
   readonly axis: { readonly start: Point2; readonly end: Point2 } | null;
+  /** End grips of the selected wall: small squares to drag. */
+  readonly grips: readonly Point2[];
 }
 
 export class PlanView {
@@ -124,6 +126,14 @@ export class PlanView {
     outline(drawn, color('--wall-sel'), 3);
     fill(drawn, color('--wall-sel-fill'));
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
+    for (const g of o.grips) {
+      const p = this.toScreen(g);
+      ctx.fillStyle = color('--bg');
+      ctx.strokeStyle = color('--wall-sel');
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(Math.round(p.x) - 4.5, Math.round(p.y) - 4.5, 9, 9);
+      ctx.strokeRect(Math.round(p.x) - 4.5, Math.round(p.y) - 4.5, 9, 9);
+    }
     if (o.snap) this.drawSnap(o.snap, color('--snap'), color('--bg'));
     if (o.measure) this.label(o.measure.at, o.measure.text, color('--accent-text'), color('--canvas'), 'bold 12px Inter, system-ui');
   }

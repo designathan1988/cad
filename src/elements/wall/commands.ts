@@ -34,3 +34,19 @@ export const updateWalls = (ids: readonly WallId[], patch: Partial<Omit<DocWall,
     return changed ? { ...doc, walls } : doc;
   },
 });
+
+/** Replaces the walls with the given ones (by id), as one step: a move or stretch with its followers. */
+export const setWalls = (walls: readonly DocWall[], label = 'cmd.updateWalls'): Command<Doc> => ({
+  label,
+  apply: (doc) => {
+    const next = new Map(walls.map((w) => [w.id, w]));
+    let changed = false;
+    const out = doc.walls.map((w) => {
+      const n = next.get(w.id);
+      if (!n || JSON.stringify(n) === JSON.stringify(w)) return w;
+      changed = true;
+      return n;
+    });
+    return changed ? { ...doc, walls: out } : doc;
+  },
+});

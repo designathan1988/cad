@@ -2,7 +2,7 @@
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
 import * as THREE from 'three';
-import { parseLengthAngle } from '../core/measure';
+import { parseLength, parseLengthAngle } from '../core/measure';
 import { createStore, type Store } from '../core/store';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
@@ -16,7 +16,8 @@ import { icon } from '../ui/icons';
 import { renderPanel } from '../ui/panel';
 import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui/shell';
 import { snapLabel, type Snap } from '../tools/snap';
-import { IDLE, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
+import { bulgeThrough, IDLE, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
+import { type Drag, hull } from './select-drag';
 import { type Doc, type DocWall, newDocument, type WallDefaults } from './document';
 import { boundsOf, deriveGeometry, type DerivedGeometry } from './geometry';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
@@ -36,6 +37,8 @@ export interface UiState {
   snap: Snap | null;
   cursor: Point2 | null;
   error: string | null;
+  /** A move, stretch or window selection in progress: a preview until release. */
+  drag: Drag | null;
 }
 
 const PREVIEW_ID = '__preview__';
@@ -73,6 +76,7 @@ export class App {
       snap: null,
       cursor: null,
       error: null,
+      drag: null,
     };
     this.shell = buildShell(root);
     this.plan = new PlanView(this.shell.planCanvas);
@@ -110,19 +114,61 @@ export class App {
 
   /** Recomputes the derived geometry (with the wall being drawn) and redraws. */
   refresh(): void {
-    this.geometry = deriveGeometry(this.store.get(), this.previewWall());
+    const doc = this.store.get();
+    const d = this.ui.drag;
+    const shown = d && d.kind !== 'marquee' ? { ...doc, walls: d.walls } : doc;
+    this.geometry = deriveGeometry(shown, this.previewWall());
     this.render();
   }
 
   previewWall(): DocWall[] {
     const w = this.ui.wall;
-    if (this.ui.tool !== 'wall' || w.kind !== 'drawing' || distance(w.last, w.cursor) < MIN_WALL_LENGTH) return [];
+    if (this.ui.tool !== 'wall') return [];
+    if (w.kind === 'bend') {
+      const b = bulgeThrough(w.last, w.end, w.cursor);
+      return [this.makeWall(w.last, w.end, PREVIEW_ID, b ?? 0)];
+    }
+    if (w.kind !== 'drawing' || distance(w.last, w.cursor) < MIN_WALL_LENGTH) return [];
     return [this.makeWall(w.last, w.cursor, PREVIEW_ID)];
   }
 
-  makeWall(start: Point2, end: Point2, id = newId('wall')): DocWall {
+  makeWall(start: Point2, end: Point2, id = newId('wall'), bulge = 0): DocWall {
     const d = this.ui.defaults;
-    return { id, wallTypeId: d.wallTypeId, referenceLine: d.referenceLine, start, end, levelId: this.ui.levelId, baseOffset: d.baseOffset, top: d.top };
+    return {
+      id,
+      wallTypeId: d.wallTypeId,
+      referenceLine: d.referenceLine,
+      start,
+      end,
+      ...(bulge !== 0 ? { bulge } : {}),
+      levelId: this.ui.levelId,
+      baseOffset: d.baseOffset,
+      top: d.top,
+    };
+  }
+
+  /** A world point on the current level, on the screen (viewport pixels); null when behind the camera. */
+  toScreen(p: Point2): Point2 | null {
+    if (this.ui.view === 'plan') return this.plan.toScreen(p);
+    const z = this.store.get().levels.find((l) => l.id === this.ui.levelId)?.elevation ?? 0;
+    const v = new THREE.Vector3(p.x, z, -p.y).project(this.scene.camera);
+    if (v.z > 1) return null;
+    const r = this.shell.viewport.getBoundingClientRect();
+    return { x: ((v.x + 1) / 2) * r.width, y: ((1 - v.y) / 2) * r.height };
+  }
+
+  /** A piece's outline on the screen: the polygon in plan, the hull of its prism in 3D. */
+  outlineOnScreen(poly: readonly Point2[], bottom: number, top: number): Point2[] {
+    if (this.ui.view === 'plan') return poly.map((p) => this.plan.toScreen(p));
+    const r = this.shell.viewport.getBoundingClientRect();
+    const pts: Point2[] = [];
+    for (const p of poly) {
+      for (const z of [bottom, top]) {
+        const v = new THREE.Vector3(p.x, z, -p.y).project(this.scene.camera);
+        if (v.z <= 1) pts.push({ x: ((v.x + 1) / 2) * r.width, y: ((1 - v.y) / 2) * r.height });
+      }
+    }
+    return hull(pts);
   }
 
   // ---- actions -------------------------------------------------------------------------------
@@ -147,13 +193,24 @@ export class App {
   wallEvent(event: WallToolEvent): void {
     const r = wallTransition(this.ui.wall, event);
     this.ui.wall = r.state;
-    if (r.segment) this.store.dispatch(addWalls([this.makeWall(r.segment.start, r.segment.end)]));
+    if (r.segment) this.store.dispatch(addWalls([this.makeWall(r.segment.start, r.segment.end, newId('wall'), r.segment.bulge ?? 0)]));
     else this.refresh();
   }
 
   /** The footer field: a length (and angle) while drawing; a new length for one selected wall. */
   submitMeasure(text: string): boolean {
     if (text.trim() === '') return false;
+    if (this.ui.tool === 'wall' && this.ui.wall.kind === 'bend') {
+      const radius = parseLength(text);
+      if (!radius.ok || radius.value <= 0) {
+        this.ui.error = t('hint.badMeasure', { text });
+        this.renderChrome();
+        return false;
+      }
+      this.ui.error = null;
+      this.wallEvent({ kind: 'typedRadius', radius: radius.value });
+      return true;
+    }
     const r = parseLengthAngle(text);
     if (!r.ok || r.value.length < MIN_WALL_LENGTH) {
       this.ui.error = t('hint.badMeasure', { text });
@@ -272,6 +329,7 @@ export class App {
         snap: ui.tool === 'wall' && ui.snap ? { point: ui.snap.point, label: labelKey ? t(labelKey) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}) } : null,
         measure: drawing && len >= MIN_WALL_LENGTH ? { at: { x: (w.last.x + w.cursor.x) / 2, y: (w.last.y + w.cursor.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°` } : null,
         axis: drawing && len >= MIN_WALL_LENGTH ? { start: w.last, end: w.cursor } : null,
+        grips: this.gripPoints(),
       });
     } else {
       this.scene.sync(this.geometry, ui.selection, preview);
@@ -303,6 +361,15 @@ export class App {
         close: () => this.togglePanel(false),
       },
     );
+  }
+
+  /** End grips of the one selected wall, while selecting or stretching it. */
+  private gripPoints(): Point2[] {
+    if (this.ui.tool !== 'select' || this.ui.selection.size !== 1 || this.ui.drag?.kind === 'move') return [];
+    const id = [...this.ui.selection][0]!;
+    const walls = this.ui.drag?.kind === 'grip' ? this.ui.drag.walls : this.store.get().walls;
+    const w = walls.find((x) => x.id === id);
+    return w ? [w.start, w.end] : [];
   }
 
   togglePanel(open = !this.ui.panelOpen): void {
@@ -345,28 +412,44 @@ export class App {
 
     // Footer: what to do now, the keys that work now, and the measure field.
     const drawing = ui.tool === 'wall';
+    const w = ui.wall;
+    const arc = w.arc === true;
+    const d = ui.drag;
     const hintKey: MessageKey = drawing
-      ? ui.wall.kind === 'idle'
-        ? 'hint.wallStart'
-        : ui.wall.count >= 2
-          ? 'hint.wallNextClose'
-          : 'hint.wallNext'
-      : ui.selection.size > 0
-        ? 'hint.selected'
-        : 'hint.select';
+      ? w.kind === 'bend'
+        ? 'hint.arcBend'
+        : w.kind === 'idle'
+          ? arc
+            ? 'hint.arcStart'
+            : 'hint.wallStart'
+          : arc
+            ? 'hint.arcEnd'
+            : w.count >= 2
+              ? 'hint.wallNextClose'
+              : 'hint.wallNext'
+      : d?.kind === 'move' || d?.kind === 'grip'
+        ? 'hint.moving'
+        : d?.kind === 'marquee'
+          ? d.b.x < d.a.x
+            ? 'hint.marqueeCrossing'
+            : 'hint.marqueeWindow'
+          : ui.selection.size > 0
+            ? 'hint.selected'
+            : 'hint.select';
     shell.instr.textContent = ui.error ?? t(hintKey, { n: ui.selection.size });
     shell.instr.classList.toggle('error', ui.error !== null);
     const keys = drawing
-      ? ui.wall.kind === 'drawing'
-        ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.finish'))]
-        : [keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.exit'))]
+      ? w.kind !== 'idle'
+        ? [keyHint('Enter', t('key.finish')), keyHint('A', t('key.arc')), keyHint('Shift', t('key.straight')), keyHint('Esc', t('key.finish'))]
+        : [keyHint('A', t('key.arc')), keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.exit'))]
       : ui.selection.size > 0
         ? [keyHint('Shift', t('key.addRemove')), keyHint('Del', t('key.delete')), keyHint('F', t('key.frame')), keyHint('Esc', t('key.clear'))]
-        : [keyHint('?', t('key.shortcuts'))];
+        : [keyHint('Ctrl A', t('key.selectAll')), keyHint('?', t('key.shortcuts'))];
     shell.keys.replaceChildren(...keys);
-    const lengthMode = drawing && ui.wall.kind === 'drawing';
-    shell.measureLabel.textContent = t(lengthMode ? 'foot.length' : 'foot.measure');
+    const lengthMode = drawing && w.kind === 'drawing';
+    shell.measureLabel.textContent = t(drawing && w.kind === 'bend' ? 'foot.radius' : lengthMode ? 'foot.length' : 'foot.measure');
     shell.measure.placeholder = t(lengthMode ? 'foot.lengthHint' : 'foot.measureHint');
+    shell.toolWall.classList.toggle('arc-mode', drawing && arc);
     shell.coords.textContent = ui.cursor ? `x ${num(ui.cursor.x)} m  y ${num(ui.cursor.y)} m` : '';
     this.placeFloatBar();
   }
@@ -374,7 +457,7 @@ export class App {
   /** The selection's quick actions, above the selection and never over it. */
   private placeFloatBar(): void {
     const bar = this.shell.floatBar;
-    const box = this.ui.tool === 'select' ? boundsOf(this.geometry, this.ui.selection) : null;
+    const box = this.ui.tool === 'select' && !this.ui.drag ? boundsOf(this.geometry, this.ui.selection) : null;
     bar.hidden = box === null;
     if (box === null) return;
     const vp = this.shell.viewport.getBoundingClientRect();

@@ -8,12 +8,43 @@ import { el } from '../ui/controls';
 import { wallAt } from './geometry';
 import type { App } from './app';
 import { levelOf } from './document';
+import { hitWall, selectGestures } from './select-drag';
+import type { WallId } from '../elements/wall/schema';
 
 export function wireInput(app: App): void {
   const { shell, ui } = app;
   let panning: { x: number; y: number } | null = null;
   let downAt: { x: number; y: number } | null = null;
   let shift = false;
+  const gestures = selectGestures(app);
+  const marquee = el('div', { class: 'marquee' });
+  marquee.hidden = true;
+  shell.viewport.append(marquee);
+  const showMarquee = () => {
+    const d = ui.drag;
+    marquee.hidden = d?.kind !== 'marquee';
+    if (d?.kind !== 'marquee') return;
+    marquee.classList.toggle('crossing', d.b.x < d.a.x);
+    marquee.style.left = `${Math.min(d.a.x, d.b.x)}px`;
+    marquee.style.top = `${Math.min(d.a.y, d.b.y)}px`;
+    marquee.style.width = `${Math.abs(d.b.x - d.a.x)}px`;
+    marquee.style.height = `${Math.abs(d.b.y - d.a.y)}px`;
+  };
+  const local = (e: PointerEvent): Point2 => {
+    const r = shell.viewport.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+  /** Snap for grips: like drawing, without the wall being stretched. */
+  const snapAt = (p: Point2, exclude: ReadonlySet<WallId>) =>
+    snap({
+      cursor: p,
+      mpp: ui.view === 'plan' ? 1 / app.plan.scale : app.scene.metresPerPixel(p, 0),
+      segments: app.store.get().walls.filter((x) => x.levelId === ui.levelId && !exclude.has(x.id)),
+      from: null,
+      chainStart: null,
+      enabled: ui.snaps,
+      orthogonal: false,
+    });
 
   const worldAt = (e: PointerEvent | MouseEvent): { p: Point2; mpp: number } | null => {
     if (ui.view === 'plan') {
@@ -34,7 +65,7 @@ export function wireInput(app: App): void {
       mpp: at.mpp,
       segments: app.store.get().walls.filter((x) => x.levelId === ui.levelId),
       from: w.kind === 'drawing' ? w.last : null,
-      chainStart: w.kind === 'drawing' && w.count >= 2 ? w.start : null,
+      chainStart: (w.kind === 'drawing' && w.count >= 2) || w.kind === 'bend' ? w.start : null,
       enabled: ui.snaps,
       orthogonal: shift,
     });
@@ -53,8 +84,13 @@ export function wireInput(app: App): void {
     if (ui.tool === 'wall') {
       const s = snapped(e);
       ui.snap = s;
-      if (s && ui.wall.kind === 'drawing') return app.wallEvent({ kind: 'move', point: s.point });
+      if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
+    }
+    if (downAt) {
+      gestures.move(local(e), at?.p ?? null, snapAt, e.shiftKey);
+      showMarquee();
+      return;
     }
     const hover = ui.view === 'plan' ? (at ? wallAt(app.geometry, at.p) : null) : app.scene.pick(e.clientX, e.clientY);
     if (hover !== ui.hover) ui.hover = hover;
@@ -70,7 +106,13 @@ export function wireInput(app: App): void {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       return;
     }
-    if (e.button === 0) downAt = { x: e.clientX, y: e.clientY };
+    if (e.button !== 0) return;
+    downAt = { x: e.clientX, y: e.clientY };
+    if (ui.tool === 'select') {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      const at = worldAt(e);
+      gestures.down(local(e), at?.p ?? null, hitWall(app, at?.p ?? null, e.clientX, e.clientY), e.shiftKey);
+    }
   };
 
   const onUp = (e: PointerEvent) => {
@@ -81,22 +123,14 @@ export function wireInput(app: App): void {
     if (e.button !== 0 || !downAt) return;
     const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 4;
     downAt = null;
-    if (moved) return;
-    if (ui.tool === 'wall') {
-      const s = snapped(e);
-      if (s) app.wallEvent({ kind: 'click', point: s.point });
+    if (ui.tool === 'select') {
+      gestures.up(e.shiftKey);
+      showMarquee();
       return;
     }
-    const at = worldAt(e);
-    const hit = ui.view === 'plan' ? (at ? wallAt(app.geometry, at.p) : null) : app.scene.pick(e.clientX, e.clientY);
-    if (e.shiftKey) {
-      if (hit) ui.selection.has(hit) ? ui.selection.delete(hit) : ui.selection.add(hit);
-    } else {
-      ui.selection.clear();
-      if (hit) ui.selection.add(hit);
-    }
-    ui.error = null;
-    app.refresh();
+    if (moved) return;
+    const s = snapped(e);
+    if (s) app.wallEvent({ kind: 'click', point: s.point });
   };
 
   for (const c of [shell.planCanvas, shell.glCanvas]) {
@@ -173,16 +207,26 @@ export function wireInput(app: App): void {
       e.preventDefault();
       return app.redo();
     }
+    if (ctrl && key === 'a') {
+      e.preventDefault();
+      app.setTool('select');
+      for (const w of app.store.get().walls) if (w.levelId === ui.levelId) ui.selection.add(w.id);
+      return app.refresh();
+    }
     if (ctrl || e.altKey) return;
     // Typing a number goes straight to the measure field, as in Revit and SketchUp.
-    if (/^[\d.,]$/.test(e.key) && (ui.tool === 'wall' ? ui.wall.kind === 'drawing' : ui.selection.size === 1)) {
+    if (/^[\d.,]$/.test(e.key) && (ui.tool === 'wall' ? ui.wall.kind !== 'idle' : ui.selection.size === 1)) {
       e.preventDefault();
       shell.measure.focus();
       shell.measure.value = e.key;
       return;
     }
     if (e.key === 'Escape') {
-      if (ui.tool === 'wall') return ui.wall.kind === 'drawing' ? app.wallEvent({ kind: 'escape' }) : app.setTool('select');
+      if (gestures.cancel()) {
+        downAt = null;
+        return showMarquee();
+      }
+      if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? app.wallEvent({ kind: 'escape' }) : app.setTool('select');
       ui.selection.clear();
       return app.refresh();
     }
@@ -193,6 +237,7 @@ export function wireInput(app: App): void {
     if (e.shiftKey && key === 'l') return app.setLanguage(getLang() === 'en' ? 'pt' : 'en');
     if (e.shiftKey) return;
     if (key === 'w') return app.setTool('wall');
+    if (key === 'a' && ui.tool === 'wall') return app.wallEvent({ kind: 'arc' });
     if (key === 'v') return app.setTool('select');
     if (key === 'f') return app.frameSelection();
     if (key === 's') {
