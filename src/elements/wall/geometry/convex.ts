@@ -82,3 +82,14 @@ function push(out: Point2[], p: Point2): void {
 }
 
 const same = (a: Point2, b: Point2): boolean => a.x === b.x && a.y === b.y;
+
+/** Area shared by two convex counter-clockwise polygons: one clipped by the other's edges. */
+export function overlapArea(a: ConvexPolygon, b: ConvexPolygon): number {
+  let rest: ConvexPolygon = a;
+  for (let i = 0; i < b.length && rest.length > 0; i++) {
+    const p = b[i]!;
+    const q = b[(i + 1) % b.length]!;
+    rest = clipHalfPlane(rest, halfPlaneThrough(p, { x: -(q.y - p.y), y: q.x - p.x }));
+  }
+  return rest.length > 0 ? area(rest) : 0;
+}

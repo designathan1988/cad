@@ -45,7 +45,7 @@ export function wireInput(app: App): void {
     showMenu(
       entries.map((x, i) => ({ label: x.label, ...(x.keys ? { keys: x.keys } : {}), separated: x.id === 'delete' && i > 0, run: x.run })),
       { x: e.clientX, y: e.clientY },
-      t('ctx.label'),
+      t(ui.selection.size > 0 ? 'ctx.label' : 'ctx.labelEmpty'),
     );
   };
   let shift = false;
@@ -152,6 +152,8 @@ export function wireInput(app: App): void {
 
   const onDown = (e: PointerEvent) => {
     shift = e.shiftKey;
+    // What the footer said about the last action is old news once the user acts on the drawing again.
+    ui.info = null;
     (e.target as HTMLElement).focus?.();
     if (e.button === 1 && ui.view === 'plan') {
       e.preventDefault();

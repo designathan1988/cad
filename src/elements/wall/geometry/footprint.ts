@@ -11,7 +11,7 @@ import { resolveNode } from '../join/node';
 import type { EndCut, JoinWarning, Notch } from '../join/types';
 import type { EndRef, Wall, WallId, WallType, WallTypeId } from '../schema';
 import { type ArcChain, arcOf, expandArc, inSector, parentOf, sectorOf } from './arc';
-import { area, clipHalfPlane, clipOut, type ConvexPolygon, type HalfPlane, halfPlaneThrough } from './convex';
+import { area, clipHalfPlane, clipOut, type ConvexPolygon, type HalfPlane, overlapArea } from './convex';
 import { faceOffsets, offsetOf, stationOf as stationAlong, strip, wallDirection, wallNormal } from './offset';
 import { shapeOf, type WallShape } from './shape';
 
@@ -243,17 +243,6 @@ function overlapsWithArcs(
     }
   }
   return out;
-}
-
-/** Area shared by two convex counter-clockwise polygons: one clipped by the other's edges. */
-function overlapArea(a: ConvexPolygon, b: ConvexPolygon): number {
-  let rest: ConvexPolygon = a;
-  for (let i = 0; i < b.length && rest.length > 0; i++) {
-    const p = b[i]!;
-    const q = b[(i + 1) % b.length]!;
-    rest = clipHalfPlane(rest, halfPlaneThrough(p, { x: -(q.y - p.y), y: q.x - p.x }));
-  }
-  return rest.length > 0 ? area(rest) : 0;
 }
 
 function dedupe(ws: readonly JoinWarning[]): JoinWarning[] {

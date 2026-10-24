@@ -7,6 +7,11 @@ import type { Opening, OpeningId } from '../elements/opening/schema';
 import { symbolLines } from '../elements/opening/symbol';
 import { type Block, cutPlan, cutSolid, type OpeningCut, type OpeningFrame, openingFrame } from '../elements/opening/void';
 import { computeWallGeometry, type Piece } from '../elements/wall/geometry/footprint';
+import { overlapArea, toCounterClockwise } from '../elements/wall/geometry/convex';
+import { AREA_EPSILON } from '../core/tolerance';
+
+/** How far past the host's faces another wall still counts as meeting it inside an opening (m). */
+const JOINT_REACH = 0.01;
 import { shapeOf } from '../elements/wall/geometry/shape';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { WallId } from '../elements/wall/schema';
@@ -76,6 +81,24 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     // joint there. It is drawn with its warning until it is fixed.
     if (frame && wall && !p.warnings.includes('openingOutside')) cuts.set(wall.id, [...(cuts.get(wall.id) ?? []), { region: frame.region, bottom, top }]);
   }
+  // An opening over another wall's joint (a wall meeting its host inside the opening's span): the
+  // other wall's pieces touch the opening across the host's thickness, a hair beyond its faces.
+  const jointWarnings: OpeningWarning[] = [];
+  for (const [id, o] of openings) {
+    const host = o.frame && byId.get(o.opening.wallId);
+    if (!o.frame || !host || o.warnings.includes('openingOutside')) continue;
+    const f = o.frame;
+    const at = (p: Point2, offset: number) => add(p, scale(f.normal, offset));
+    const lo = Math.min(...f.faces) - JOINT_REACH;
+    const hi = Math.max(...f.faces) + JOINT_REACH;
+    const span = toCounterClockwise([at(f.start, lo), at(f.end, lo), at(f.end, hi), at(f.start, hi)]);
+    const touched = walls.some(
+      (w) => w.id !== host.id && w.levelId === host.levelId && (pieces.get(w.id) ?? []).some((p) => overlapArea(p.polygon, span) > AREA_EPSILON),
+    );
+    if (!touched) continue;
+    openings.set(id, { ...o, valid: false, warnings: [...o.warnings, 'openingAtJoint'] });
+    jointWarnings.push({ kind: 'openingAtJoint', openings: [id] });
+  }
   const solids = new Map<WallId, WallSolid>();
   for (const wall of walls) {
     const { bottom, top } = wallHeights(doc, wall);
@@ -92,7 +115,7 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
   }
   const roomResult = deriveRooms(doc.rooms, piecesByLevel);
   const floors = deriveFloors(doc.floors, roomResult.solids, (id) => doc.levels.find((l) => l.id === id)?.elevation ?? 0);
-  return { solids, warnings, openings, openingWarnings: placed.warnings, rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors };
+  return { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors };
 }
 
 /** The opening's outline in plan: the jambs across the wall's thickness. */
@@ -155,6 +178,17 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
       maxX = Math.max(maxX, v.x);
       maxY = Math.max(maxY, v.y);
     }
+  }
+  // Rooms and floors: their outlines.
+  const outlines = [
+    ...[...g.rooms.values()].filter((r) => !ids || ids.has(r.room.id)).map((r) => r.outline),
+    ...[...g.floors.values()].filter((f) => !ids || ids.has(f.floor.id)).map((f) => f.outline),
+  ];
+  for (const v of outlines.flat()) {
+    minX = Math.min(minX, v.x);
+    minY = Math.min(minY, v.y);
+    maxX = Math.max(maxX, v.x);
+    maxY = Math.max(maxY, v.y);
   }
   return minX === Infinity ? null : { min: { x: minX, y: minY }, max: { x: maxX, y: maxY } };
 }

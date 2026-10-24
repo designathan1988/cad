@@ -15,7 +15,7 @@ export interface HostInfo {
   readonly line?: { readonly start: Point2; readonly end: Point2 };
 }
 
-export type OpeningWarningKind = 'openingNoHost' | 'openingBadReference' | 'openingOutside' | 'openingOverlap' | 'openingTooTall';
+export type OpeningWarningKind = 'openingNoHost' | 'openingBadReference' | 'openingOutside' | 'openingOverlap' | 'openingTooTall' | 'openingAtJoint';
 
 export interface OpeningWarning {
   readonly kind: OpeningWarningKind;
