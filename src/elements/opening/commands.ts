@@ -4,7 +4,7 @@
 
 import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
-import type { WallId } from '../wall/schema';
+import { deriveGeometry } from '../../app/geometry';
 import { deriveOpenings, hostsOf } from './derive';
 import type { Opening, OpeningId, PositionRule, RuleKind } from './schema';
 
@@ -33,13 +33,24 @@ export const updateOpening = (id: OpeningId, patch: Partial<Omit<Opening, 'id'>>
  * Deletes walls and openings by id in one step. The openings a deleted wall hosts go with it; an
  * opening measured from a deleted one is measured from its wall's start instead, at the same place.
  */
-export const deleteElements = (ids: readonly (WallId | OpeningId)[]): Command<Doc> => ({
+export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
   label: 'cmd.deleteElements',
   apply: (doc) => {
     const drop = new Set(ids);
     const walls = doc.walls.filter((w) => !drop.has(w.id));
     const gone = new Set(doc.openings.filter((o) => drop.has(o.id) || drop.has(o.wallId)).map((o) => o.id));
-    if (walls.length === doc.walls.length && gone.size === 0) return doc;
+    const rooms = doc.rooms.filter((r) => !drop.has(r.id));
+    const floorsLeft = doc.floors.filter((f) => !drop.has(f.id));
+    if (walls.length === doc.walls.length && gone.size === 0 && rooms.length === doc.rooms.length && floorsLeft.length === doc.floors.length) {
+      return doc;
+    }
+    // A floor following a deleted room keeps the outline it had, so it does not move.
+    const derived = deriveGeometry(doc).rooms;
+    const floors = floorsLeft.map((f) =>
+      f.source.kind === 'room' && drop.has(f.source.roomId)
+        ? { ...f, source: { kind: 'outline' as const, points: [...(derived.get(f.source.roomId)?.outline ?? [])] } }
+        : f,
+    );
     const { placed } = deriveOpenings(doc.openings, hostsOf(doc));
     const openings = doc.openings
       .filter((o) => !gone.has(o.id))
@@ -48,7 +59,7 @@ export const deleteElements = (ids: readonly (WallId | OpeningId)[]): Command<Do
           ? { ...o, rule: { kind: 'fromStart' as const, distance: placed.get(o.id)!.start } }
           : o,
       );
-    return { ...doc, walls, openings };
+    return { ...doc, walls, openings, rooms, floors };
   },
 });
 

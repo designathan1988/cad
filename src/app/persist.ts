@@ -4,6 +4,7 @@
 
 import type { Lang } from '../ui/i18n';
 import type { Opening } from '../elements/opening/schema';
+import type { Floor, Room } from '../elements/room/schema';
 import type { Doc } from './document';
 
 const DOC_KEY = 'cad2.document.v1';
@@ -77,6 +78,17 @@ export function validateDocument(raw: unknown): Doc | null {
     (o.swing === 'left' || o.swing === 'right') &&
     rule(o.rule);
   const openings = d.openings ?? [];
+  // Documents saved before rooms and floors existed get none.
+  const rooms = d.rooms ?? [];
+  const floors = d.floors ?? [];
+  const room = (r: Room) =>
+    typeof r === 'object' && r !== null && typeof r.id === 'string' && typeof r.levelId === 'string' && point(r.seed) &&
+    typeof r.name === 'string' && typeof r.number === 'string';
+  const floor = (f: Floor) =>
+    typeof f === 'object' && f !== null && typeof f.id === 'string' && typeof f.levelId === 'string' &&
+    finite(f.thickness) && f.thickness > 0 && finite(f.offset) &&
+    ((f.source?.kind === 'room' && typeof f.source.roomId === 'string') ||
+      (f.source?.kind === 'outline' && Array.isArray(f.source.points) && f.source.points.length >= 3 && f.source.points.every(point)));
   const ok =
     d.version === 1 &&
     Array.isArray(d.levels) &&
@@ -86,8 +98,12 @@ export function validateDocument(raw: unknown): Doc | null {
     Array.isArray(d.walls) &&
     d.walls.every((w) => typeof w.id === 'string' && point(w.start) && point(w.end) && typeof w.wallTypeId === 'string') &&
     Array.isArray(openings) &&
-    openings.every(opening);
-  return ok ? ({ ...d, openings } as Doc) : null;
+    openings.every(opening) &&
+    Array.isArray(rooms) &&
+    rooms.every(room) &&
+    Array.isArray(floors) &&
+    floors.every(floor);
+  return ok ? ({ ...d, openings, rooms, floors } as Doc) : null;
 }
 
 export function loadPrefs(): Prefs {

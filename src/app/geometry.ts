@@ -10,6 +10,9 @@ import { computeWallGeometry, type Piece } from '../elements/wall/geometry/footp
 import { shapeOf } from '../elements/wall/geometry/shape';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { WallId } from '../elements/wall/schema';
+import { deriveFloors, deriveRooms, type FloorSolid, type RoomSolid, type RoomWarning } from '../elements/room/derive';
+import type { FloorId, RoomId } from '../elements/room/schema';
+import type { Point2 as P } from '../core/vector';
 import { type Doc, type DocWall, wallHeights } from './document';
 
 export interface WallSolid {
@@ -35,6 +38,9 @@ export interface DerivedGeometry {
   readonly warnings: readonly JoinWarning[];
   readonly openings: ReadonlyMap<OpeningId, OpeningSolid>;
   readonly openingWarnings: readonly OpeningWarning[];
+  readonly rooms: ReadonlyMap<RoomId, RoomSolid>;
+  readonly roomWarnings: readonly RoomWarning[];
+  readonly floors: ReadonlyMap<FloorId, FloorSolid>;
 }
 
 /**
@@ -66,7 +72,16 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     const mine = cuts.get(wall.id) ?? [];
     solids.set(wall.id, { wall, pieces: cutPlan(own, mine), blocks: cutSolid(own, bottom, top, mine), bottom, top });
   }
-  return { solids, warnings, openings, openingWarnings: placed.warnings };
+  // Rooms see the walls before doors and windows are cut: a door does not open a room.
+  const piecesByLevel = new Map<string, P[][]>();
+  for (const wall of doc.walls) {
+    const list = piecesByLevel.get(wall.levelId) ?? [];
+    for (const piece of pieces.get(wall.id) ?? []) list.push([...piece.polygon]);
+    piecesByLevel.set(wall.levelId, list);
+  }
+  const roomResult = deriveRooms(doc.rooms, piecesByLevel);
+  const floors = deriveFloors(doc.floors, roomResult.solids, (id) => doc.levels.find((l) => l.id === id)?.elevation ?? 0);
+  return { solids, warnings, openings, openingWarnings: placed.warnings, rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors };
 }
 
 /** The opening's outline in plan: the jambs across the wall's thickness. */
