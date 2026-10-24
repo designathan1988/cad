@@ -10,6 +10,8 @@ import { aimAt, OPENING_PREVIEW_ID } from './opening-ui';
 import type { App } from './app';
 import { levelOf } from './document';
 import { selectGestures } from './select-drag';
+import { EDIT_LEVELS } from './app';
+import { showLevels } from '../ui/levels-dialog';
 import type { WallId } from '../elements/wall/schema';
 
 export function wireInput(app: App): void {
@@ -74,7 +76,7 @@ export function wireInput(app: App): void {
 
   /** The element under the pointer: an opening before the wall that hosts it. */
   const pickAt = (e: PointerEvent, at: { p: Point2 } | null) =>
-    ui.view === 'plan' ? (at ? (openingAt(app.geometry, at.p) ?? wallAt(app.geometry, at.p)) : null) : app.scene.pick(e.clientX, e.clientY);
+    ui.view === 'plan' ? (at ? (openingAt(app.visibleGeometry(), at.p) ?? wallAt(app.visibleGeometry(), at.p)) : null) : app.scene.pick(e.clientX, e.clientY);
 
   const onMove = (e: PointerEvent) => {
     shift = e.shiftKey;
@@ -173,7 +175,12 @@ export function wireInput(app: App): void {
   shell.view3d.addEventListener('click', () => app.setView('3d'));
   shell.viewPlan.addEventListener('click', () => app.setView('plan'));
   shell.level.addEventListener('change', () => {
+    if (shell.level.value === EDIT_LEVELS) {
+      shell.level.value = ui.levelId;
+      return showLevels(app);
+    }
     ui.levelId = shell.level.value;
+    ui.selection.clear();
     app.refresh();
   });
   shell.lang.addEventListener('click', () => app.setLanguage(getLang() === 'en' ? 'pt' : 'en'));

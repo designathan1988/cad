@@ -49,6 +49,8 @@ export interface UiState {
 }
 
 const PREVIEW_ID = '__preview__';
+/** The level list's last entry: opens the levels dialog. */
+export const EDIT_LEVELS = '__edit_levels__';
 
 export class App {
   readonly store: Store<Doc>;
@@ -299,7 +301,7 @@ export class App {
     const r = this.shell.viewport.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) return;
     this.framed[this.ui.view] = true;
-    const box = boundsOf(this.geometry);
+    const box = boundsOf(this.visibleGeometry());
     if (this.ui.view === 'plan') this.plan.frame(box);
     else this.scene.frame(box, this.height());
     this.render();
@@ -372,7 +374,7 @@ export class App {
       const len = drawing ? distance(w.last, w.cursor) : 0;
       const ang = drawing ? ((Math.atan2(w.cursor.y - w.last.y, w.cursor.x - w.last.x) * 180) / Math.PI + 360) % 360 : 0;
       const labelKey = ui.snap ? snapLabel[ui.snap.kind] : null;
-      this.plan.draw(this.geometry, {
+      this.plan.draw(this.visibleGeometry(), {
         selected: ui.selection,
         hover: ui.hover,
         preview,
@@ -445,6 +447,14 @@ export class App {
     return w ? [w.start, w.end] : [];
   }
 
+  /** In plan, only the current level's walls and openings; in 3D, every level. */
+  visibleGeometry(): DerivedGeometry {
+    if (this.ui.view !== 'plan') return this.geometry;
+    const solids = new Map([...this.geometry.solids].filter(([, s]) => s.wall.levelId === this.ui.levelId));
+    const openings = new Map([...this.geometry.openings].filter(([, o]) => solids.has(o.opening.wallId)));
+    return { ...this.geometry, solids, openings };
+  }
+
   togglePanel(open = !this.ui.panelOpen): void {
     this.ui.panelOpen = open;
     savePrefs({ panelOpen: open });
@@ -478,10 +488,13 @@ export class App {
       shell.theme.dataset.icon = themeIcon;
     }
     shell.snapBtn.setAttribute('aria-pressed', String(ui.snaps));
-    if (shell.level.options.length !== doc.levels.length || shell.level.dataset.lang !== getLang()) {
-      shell.level.replaceChildren(...doc.levels.map((l) => new Option(name(l.name), l.id)));
-      shell.level.dataset.lang = getLang();
+    const levelKey = JSON.stringify([getLang(), doc.levels.map((l) => [l.id, l.name, l.elevation])]);
+    if (shell.level.dataset.key !== levelKey) {
+      const sorted = [...doc.levels].sort((a, b) => b.elevation - a.elevation);
+      shell.level.replaceChildren(...sorted.map((l) => new Option(name(l.name), l.id)), new Option(t('levels.edit'), EDIT_LEVELS));
+      shell.level.dataset.key = levelKey;
     }
+    if (!doc.levels.some((l) => l.id === ui.levelId)) ui.levelId = doc.levels[0]!.id;
     shell.level.value = ui.levelId;
     shell.emptyHint.hidden = doc.walls.length > 0 || (ui.tool === 'wall' && ui.wall.kind === 'drawing');
 

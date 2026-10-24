@@ -157,6 +157,18 @@ const en = {
   'tool.windowKey': 'Window (Shift+W)',
   'help.title': 'Keyboard shortcuts',
   'help.close': 'Close',
+  'levels.title': 'Levels',
+  'levels.edit': 'Edit levels…',
+  'levels.name': 'Name',
+  'levels.elevation': 'Elevation',
+  'levels.height': 'Floor height',
+  'levels.add': 'Add level',
+  'levels.delete': 'Delete level',
+  'levels.cantDelete': 'Move or delete its walls first; the last level cannot be deleted',
+  'levels.new': 'Level {n}',
+  'cmd.addLevel': 'Add level',
+  'cmd.updateLevel': 'Edit level',
+  'cmd.deleteLevel': 'Delete level',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -316,6 +328,18 @@ const pt: Record<MessageKey, string> = {
   'tool.windowKey': 'Janela (Shift+W)',
   'help.title': 'Atalhos do teclado',
   'help.close': 'Fechar',
+  'levels.title': 'Pavimentos',
+  'levels.edit': 'Editar pavimentos…',
+  'levels.name': 'Nome',
+  'levels.elevation': 'Cota',
+  'levels.height': 'Pé-direito',
+  'levels.add': 'Adicionar pavimento',
+  'levels.delete': 'Apagar pavimento',
+  'levels.cantDelete': 'Mova ou apague as paredes dele antes; o último pavimento não pode ser apagado',
+  'levels.new': 'Pavimento {n}',
+  'cmd.addLevel': 'Adicionar pavimento',
+  'cmd.updateLevel': 'Editar pavimento',
+  'cmd.deleteLevel': 'Apagar pavimento',
 };
 
 /** Names of the built-in levels and types, which live in the document in English. */

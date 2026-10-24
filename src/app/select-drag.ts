@@ -117,8 +117,7 @@ function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): voi
   const [y0, y1] = [Math.min(a.y, b.y), Math.max(a.y, b.y)];
   const inRect = (p: Point2) => p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1;
   if (!additive) app.ui.selection.clear();
-  for (const solid of app.geometry.solids.values()) {
-    if (app.ui.view === 'plan' && solid.wall.levelId !== app.ui.levelId) continue;
+  for (const solid of app.visibleGeometry().solids.values()) {
     const outlines = solid.pieces.map((p) => app.outlineOnScreen(p.polygon, solid.bottom, solid.top));
     const vertices = outlines.flat();
     if (vertices.length === 0) continue;

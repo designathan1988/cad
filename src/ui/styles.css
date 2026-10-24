@@ -703,3 +703,35 @@ select {
 .tools .tool.arc-mode {
   box-shadow: inset 0 -2px 0 var(--accent);
 }
+
+/* Levels dialog */
+.dialog-wide {
+  width: min(560px, calc(100vw - 32px));
+}
+.levels {
+  display: grid;
+  grid-template-columns: 1fr 120px 120px 32px;
+  gap: 6px var(--sp-2);
+  align-items: center;
+  padding: var(--sp-3) var(--sp-4);
+}
+.levels-head {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.text-field {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: var(--field);
+  min-width: 0;
+}
+.text-field:focus {
+  border-color: var(--accent);
+  background: var(--bg);
+  outline: none;
+}
+.dialog .actions .spacer {
+  flex: 1;
+}
