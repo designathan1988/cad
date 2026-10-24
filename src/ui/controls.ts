@@ -31,9 +31,11 @@ export function section(title: string, open: boolean, ...rows: HTMLElement[]): H
 }
 
 /** A label + control pair, unwrapped into the section's two-column grid. */
-export function row(label: string, control: HTMLElement, opts: { sub?: boolean; id?: string } = {}): HTMLElement {
+/** `mark`: the value is the element's own, over its type's: a dot after the label, for the eye only. */
+export function row(label: string, control: HTMLElement, opts: { sub?: boolean; id?: string; mark?: boolean } = {}): HTMLElement {
   const id = opts.id ?? `f_${Math.random().toString(36).slice(2, 8)}`;
   const l = el('label', { for: id, class: opts.sub ? 'sub' : '' }, label);
+  if (opts.mark) l.append(el('span', { class: 'own-mark', 'aria-hidden': 'true' }, ' •'));
   const focusable = control.querySelector('input, select, button') ?? control;
   focusable.id = id;
   const wrap = el('div');

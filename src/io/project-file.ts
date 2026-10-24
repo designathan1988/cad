@@ -3,7 +3,7 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
-import type { Doc, Level } from '../app/document';
+import { type Doc, type Level, ownValuesOnly } from '../app/document';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { Floor, Room } from '../elements/room/schema';
 import type { WallType } from '../elements/wall/schema';
@@ -144,12 +144,15 @@ export function repairProject(raw: unknown): ReadResult {
     return { ...w, levelId: levels[0]!.id };
   });
   if (moved > 0) fixes.push({ kind: 'movedToFirstLevel', count: moved });
+  // A wall keeps a top or base offset only when it differs from its type's (before version 3 every
+  // wall carried both, chosen or not): the rest follow the type.
+  const migrated = walls.map((w) => ownValuesOnly(w, wallTypes));
   const doc: Doc = {
     version: CURRENT_VERSION,
     name: typeof raw.name === 'string' ? raw.name : '',
     levels,
     wallTypes,
-    walls,
+    walls: migrated,
     openings: keep(raw.openings, isOpening, 'droppedOpenings'),
     openingGroups: keep(raw.openingGroups, isOpeningGroup, 'droppedGroups'),
     rooms: keep(raw.rooms, isRoom, 'droppedRooms'),

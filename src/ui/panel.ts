@@ -93,9 +93,13 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     const baseOffset = common(selected, (w) => wallBase(doc, w));
     const over = { top: selected.some((w) => wallOverrides(doc, w).top), baseOffset: selected.some((w) => wallOverrides(doc, w).baseOffset) };
     /** A field with the override mark and the way back to the type, when it overrides it. */
+    const noteId = `own-note-${Math.random().toString(36).slice(2, 8)}`;
     const typed = (field: HTMLElement, which: 'top' | 'baseOffset'): HTMLElement => {
       if (!over[which]) return field;
-      const back = el('button', { type: 'button', class: 'icon-btn reset-type', title: t('panel.resetToType'), 'aria-label': t('panel.resetToType') });
+      // The note is the field's description; the button says which field it puts back.
+      field.querySelector('input, select')?.setAttribute('aria-describedby', noteId);
+      const what = t(which === 'top' ? 'panel.top' : 'panel.baseOffset');
+      const back = el('button', { type: 'button', class: 'icon-btn reset-type', title: t('panel.resetToTypeOf', { field: what }), 'aria-label': t('panel.resetToTypeOf', { field: what }) });
       back.innerHTML = icon('undo', 14);
       back.addEventListener('click', () => act.resetToType([which]));
       return el('div', { class: 'overridden' }, field, back);
@@ -110,10 +114,11 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
       t('panel.constraints'),
       true,
       row(t('panel.base'), select(doc.levels.map((l) => ({ value: l.id, label: name(l.name) })), common(selected, (w) => w.levelId), (v) => act.updateWalls({ levelId: v }))),
-      row(over.baseOffset ? `${t('panel.baseOffset')} •` : t('panel.baseOffset'), typed(numberField(baseOffset, (v) => act.updateWalls({ baseOffset: v })), 'baseOffset')),
+      row(t('panel.baseOffset'), typed(numberField(baseOffset, (v) => act.updateWalls({ baseOffset: v })), 'baseOffset'), { mark: over.baseOffset }),
       row(
-        over.top ? `${t('panel.top')} •` : t('panel.top'),
+        t('panel.top'),
         typed(select(topOptions, top, (v) => act.updateWalls({ top: v === 'level' ? { kind: 'level', offset: 0 } : { kind: 'fixed', height: 2.8 } })), 'top'),
+        { mark: over.top },
       ),
       ...(top === null
         ? []
@@ -124,7 +129,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
               { sub: true },
             ),
           ]),
-      ...(over.top || over.baseOffset ? [el('div', {}, el('div', { class: 'panel-note' }, t('panel.overrideNote')))] : []),
+      ...(over.top || over.baseOffset ? [el('div', {}, el('div', { class: 'panel-note', id: noteId }, t('panel.overrideNote')))] : []),
     );
     const thickness = type ? type.layers.reduce((s, l) => s + l.thickness, 0) : null;
     const one = selected.length === 1 ? selected[0]! : null;
@@ -197,6 +202,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
 }
 
 function wireScrub(sec: HTMLElement, label: string, get: () => number | null, commit: (v: number) => void): void {
-  const l = [...sec.querySelectorAll('label')].find((x) => x.textContent === label);
+  // By the label's own text: a mark for an own value (row's `mark`) follows it in a separate span.
+  const l = [...sec.querySelectorAll('label')].find((x) => x.firstChild?.textContent === label);
   if (l) scrub(l, get, commit);
 }

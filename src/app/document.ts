@@ -115,6 +115,18 @@ export const wallTop = (doc: Doc, wall: DocWall): HeightRule => wall.top ?? type
 /** The wall's base offset: its own, else its type's, else none. */
 export const wallBase = (doc: Doc, wall: DocWall): number => wall.baseOffset ?? typeOf(doc, wall)?.baseOffset ?? 0;
 
+/**
+ * The wall without a top or base offset that only repeats its type's (or the defaults): a wall has
+ * its own value only when it differs, so it follows its type for the rest.
+ */
+export function ownValuesOnly(w: DocWall, types: readonly WallType[]): DocWall {
+  const type = types.find((t) => t.id === w.wallTypeId);
+  const { top, baseOffset, ...rest } = w;
+  const sameTop = top === undefined || JSON.stringify(top) === JSON.stringify(type?.top ?? LEVEL_TOP);
+  const sameBase = baseOffset === undefined || baseOffset === (type?.baseOffset ?? 0);
+  return { ...rest, ...(sameTop ? {} : { top: top! }), ...(sameBase ? {} : { baseOffset: baseOffset! }) };
+}
+
 /** Which of its values a wall sets differently from its type (ref/chat.txt:214). */
 export function wallOverrides(doc: Doc, wall: DocWall): { top: boolean; baseOffset: boolean } {
   const type = typeOf(doc, wall);

@@ -1,6 +1,6 @@
 // Commands on walls. Each returns a new document; the store makes each one undo step.
 
-import type { Doc, DocWall } from '../../app/document';
+import { type Doc, type DocWall, ownValuesOnly } from '../../app/document';
 import type { Command } from '../../core/store';
 import type { WallId } from './schema';
 
@@ -26,7 +26,8 @@ export const updateWalls = (ids: readonly WallId[], patch: Partial<Omit<DocWall,
     let changed = false;
     const walls = doc.walls.map((w) => {
       if (!set.has(w.id)) return w;
-      const next = { ...w, ...patch };
+      // A value set equal to the type's is not kept: the wall follows its type for it.
+      const next = ownValuesOnly({ ...w, ...patch }, doc.wallTypes);
       if (JSON.stringify(next) === JSON.stringify(w)) return w;
       changed = true;
       return next;
