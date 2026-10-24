@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { layer, testWall, type TestWall as Wall } from './fixtures';
-import { distanceToSegments, segmentsOf, segmentWall, sharedArea, tBeyond, tFill, touchesArcElsewhere } from './oracle-arc';
+import { cornerReach, distanceToSegments, segmentsOf, segmentWall, sharedArea, tBeyond, tFill, touchesArcElsewhere } from './oracle-arc';
 
 const sq = (x0: number, y0: number, x1: number, y1: number) => [
   { x: x0, y: y0 },
@@ -109,5 +109,18 @@ describe('tBeyond: what of the abutting wall lies past the arc, which a T does n
   it('(2.95, 3.0) at radius 3.0004 is in the arc: the arc\'s; (2.5, 2.55) at radius 2.598 is on its own side: kept', () => {
     expect(beyond({ x: 2.95, y: 3.0 })).toBe(false);
     expect(beyond({ x: 2.5, y: 2.55 })).toBe(false);
+  });
+});
+
+describe("cornerReach: how far along the wall an L's corner with the arc's end segment reaches", () => {
+  it('the right-angle L of arcs.test.ts: 0.1 + 0.1·tan(Δ/2)', () => {
+    // Arc (0, 0) to (6, 0), bulge −1, 20 cm: near the node its faces are x = ±0.1 + y·t, t = tan(Δ/2),
+    // Δ = π/88. The wall from (−3, 0) has faces y = ±0.1. The four crossings, along (−1, 0) from the
+    // node: ±(0.1 ± 0.1·t); the farthest, 0.1 + 0.1·t.
+    const ring = { ...testWall('arc', { x: 0, y: 0 }, { x: 6, y: 0 }, [layer(0.2)]), bulge: -1 } as Wall;
+    expect(segmentsOf(ring)).toBe(88);
+    const t = Math.tan(Math.PI / 88 / 2);
+    const wall = testWall('s', { x: -3, y: 0 }, { x: 0, y: 0 }, [layer(0.2)]);
+    expect(cornerReach(ring, 'start', wall)).toBeCloseTo(0.1 + 0.1 * t, 12);
   });
 });

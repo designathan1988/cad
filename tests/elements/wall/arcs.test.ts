@@ -285,9 +285,44 @@ describe('Ts and Xs against an arc', () => {
     }
   });
 
-  it('a straight wall crossing an arc warns arcJoinUnsupported', () => {
+  // An X with an arc (spec 6, Crossing): the thicker core passes, the other is cut into two spans, each
+  // a T against it. Strictly around the crossing: inside either body, exactly one piece; outside, none.
+  const strictX = (walls: TestWall[], at: { x: number; y: number }, reach: number) => {
+    const { pieces, warnings } = geometry(walls);
+    const polys = walls.flatMap((w) => (pieces.get(w.id) ?? []).map((p) => p.polygon));
+    const bodies = walls.flatMap((w) => (w.bulge ? arcBody(w) : [rectOf(w)]));
+    let bad = 0;
+    for (let i = 0; i < 4000; i++) {
+      const t = (i * 2.399963) % (2 * Math.PI);
+      const r = reach * Math.sqrt((i + 0.5) / 4000);
+      const p = { x: at.x + r * Math.cos(t), y: at.y + r * Math.sin(t) };
+      if (bodies.some((b) => nearSide(b, p))) continue;
+      if (polys.filter((q) => inside(q, p)).length !== (bodies.some((b) => inside(b, p)) ? 1 : 0)) bad++;
+    }
+    return { warnings, bad };
+  };
+
+  it('a thin straight wall crossing a thicker arc: the arc passes, the wall is cut on both sides, exactly', () => {
+    // 10 cm across the 20 cm arc at the top, x = 3 from y = 2 to 4.
     const walls = [arc('arc', [0, 0], [6, 0], -1, 0.2), testWall('x', vec(3, 2), vec(3, 4), 0.1)];
-    const g = geometry(walls);
-    expect(g.warnings).toEqual([{ kind: 'arcJoinUnsupported', walls: ['x', 'arc'] }]);
+    expect(strictX(walls, vec(3, 3), 0.6)).toEqual({ warnings: [], bad: 0 });
+    // The arc is whole across the crossing: nothing of the wall inside its band. The outer face is chords,
+    // which lie inside the 3.1 circle by up to their sag: 3.1·cos(Δ/2) − 3 off the reference circle.
+    const off = Math.min(3.1 * Math.cos(Math.PI / segmentsFor(Math.PI, 3.1) / 2) - 3, 0.1);
+    expect(geometry(walls).pieces.get('x')!.every((p) => p.polygon.every((v) => Math.abs(Math.hypot(v.x - 3, v.y) - 3) >= off - 1e-9))).toBe(true);
+  });
+
+  it('a thick straight wall crossing a thin arc: the wall passes, the arc is cut on both sides, exactly', () => {
+    const walls = [arc('arc', [0, 0], [6, 0], -1, 0.1), testWall('x', vec(3, 2), vec(3, 4), 0.3)];
+    expect(strictX(walls, vec(3, 3), 0.6)).toEqual({ warnings: [], bad: 0 });
+    // Nothing of the arc inside the wall's band x ∈ [2.85, 3.15].
+    expect(geometry(walls).pieces.get('arc')!.every((p) => p.polygon.every((v) => v.x <= 2.85 + 1e-9 || v.x >= 3.15 - 1e-9))).toBe(true);
+  });
+
+  it('at a slant, layered both: the arc passes, exactly', () => {
+    const c = vec(3 + 3 * Math.cos(1.1), 3 * Math.sin(1.1));
+    const u = vec(Math.cos(0.5), Math.sin(0.5));
+    const walls = [arc('arc', [0, 0], [6, 0], -1, plastered), testWall('x', vec(c.x - u.x, c.y - u.y), vec(c.x + u.x, c.y + u.y), [layer(0.01, 'finish1'), layer(0.08), layer(0.01, 'finish2')])];
+    expect(strictX(walls, c, 0.6)).toEqual({ warnings: [], bad: 0 });
   });
 });

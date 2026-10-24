@@ -6,7 +6,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { LayerFunction, WallEnd } from '../../../src/elements/wall/schema';
 import { geometry, layer, testWall, type TestWall as Wall } from './fixtures';
-import { arcBody, arcCorner, circleOf, coverage, distanceToSegments, faceRadii, intoOf, segmentsOf, tBeyond, tFill, touchesArcElsewhere } from './oracle-arc';
+import { arcBody, arcCorner, circleOf, cornerReach, coverage, distanceToSegments, faceRadii, intoOf, segmentsOf, tBeyond, tFill, touchesArcElsewhere } from './oracle-arc';
 import { inside, rectOf, shoelace } from './oracle';
 
 const seed = Number(process.env.FUZZ_SEED ?? 20261024);
@@ -55,7 +55,7 @@ describe('lone arcs', () => {
   });
 });
 
-const joined = { clean: 0, warned: 0, skipped: 0 };
+const joined = { clean: 0, warned: 0, skipped: 0, spill: 0, nearOther: 0, touches: 0 };
 describe('arc with a straight wall at one end', () => {
   it('joins exactly, or warns', () => {
     fc.assert(
@@ -68,11 +68,34 @@ describe('arc with a straight wall at one end', () => {
         layersArb,
         refArb,
         fc.nat(),
-        (arc, end, deg, left, len, ls, ref, s) => {
+        (arc, end, deg, left, len0, ls, ref, s) => {
           const node = end === 'start' ? arc.start : arc.end;
           const u = intoOf(arc, end);
           const a = ((left ? deg : -deg) * Math.PI) / 180;
           const v = { x: u.x * Math.cos(a) - u.y * Math.sin(a), y: u.x * Math.sin(a) + u.y * Math.cos(a) };
+          // Where the wall first touches the arc's other segments (touching only grows with length, so a
+          // binary search finds it). Within the reach of the L's corner (cornerReach: from the faces and
+          // the angle) that is the L itself reaching past the end segment: the spec still refuses it
+          // (part 6, "Fica aberto"), so it must warn. Beyond, it would be a second junction, which this
+          // oracle does not model: the wall is shortened to 95 % of that length.
+          const wallOf = (l: number) => testWall('s', { x: node.x + v.x * l, y: node.y + v.y * l }, node, ls, ref);
+          let len = len0;
+          if (touchesArcElsewhere(arc, end, wallOf(len))) {
+            let [lo, hi] = [0, len];
+            for (let k = 0; k < 14; k++) {
+              const mid = (lo + hi) / 2;
+              if (touchesArcElsewhere(arc, end, wallOf(mid))) hi = mid;
+              else lo = mid;
+            }
+            if (hi <= cornerReach(arc, end, wallOf(len)) + SPEC_POINT_TOL) {
+              const kinds = geometry([arc, wallOf(len)]).warnings.map((w) => w.kind);
+              expect(kinds.length, `spec warns (L past the end segment): ${JSON.stringify([arc, wallOf(len)])}`).toBeGreaterThan(0);
+              joined.warned++;
+              joined.spill++;
+              return;
+            }
+            len = lo * 0.95;
+          }
           const far = { x: node.x + v.x * len, y: node.y + v.y * len };
           // One junction only: a far end that lands on the arc (within POINT_TOLERANCE of a segment's
           // band, spec §6), or a wall passing near the arc's other end, makes a second one, which this
@@ -83,19 +106,26 @@ describe('arc with a straight wall at one end', () => {
           const nearOther = Math.hypot(node.x + v.x * len * t - other.x, node.y + v.y * len * t - other.y) < clear;
           if (nearOther || arcBody(arc).some((b) => inside(b, far)) || distanceToSegments(arc, far) <= SPEC_POINT_TOL) {
             joined.skipped++;
+            joined.nearOther++;
             return;
           }
           const straight = testWall('s', far, node, ls, ref);
+          // Touching the arc again away from the node is a second junction too (an X or a T, which the
+          // engine now makes: spec part 6), not modelled by this L oracle: skipped, counted.
+          if (touchesArcElsewhere(arc, end, straight)) {
+            joined.skipped++;
+            joined.touches++;
+            return;
+          }
           const walls = [arc, straight];
           const kinds = geometry(walls).warnings.map((w) => w.kind);
           // The spec decides: the L between the arc's end segment and the wall (§5.2: an arc joins as
           // its chain of straight segments) warns exactly when the straight L would (§7.1, §10:
           // 'overlap'). Any other warning is the engine failing a join the spec says to make.
           const corner = arcCorner(arc, end, straight, 'end');
-          // Also when the wall touches the arc again away from the node (part 6: overlaps left with an
-          // arc are reported). Where the L made with the end segment reaches over the next segments,
-          // the engine carries it on, and the coverage below checks those segments' bodies.
-          if (corner === 'overlap' || touchesArcElsewhere(arc, end, straight)) {
+          // Where the L made with the end segment reaches over the next segments, the engine carries it
+          // on, and the coverage below checks those segments' bodies.
+          if (corner === 'overlap') {
             expect(kinds.length, `spec warns: ${JSON.stringify(walls)}`).toBeGreaterThan(0);
             joined.warned++;
             return;
@@ -112,9 +142,10 @@ describe('arc with a straight wall at one end', () => {
   });
 
   // Not vacuous: most runs make the L and are checked point by point; few are skipped as a second
-  // junction. The fixed seed gives 56 clean, 41 warned, 3 skipped of 100.
+  // junction. The fixed seed gives 57 clean, 41 warned (32 of them the L reaching past the end
+  // segment, which the spec still refuses), 2 skipped of 100.
   it('checks enough joins', () => {
-    console.log(`arc L: ${joined.clean} clean, ${joined.warned} warned, ${joined.skipped} skipped`);
+    console.log(`arc L: ${joined.clean} clean, ${joined.warned} warned (${joined.spill} past the end segment), ${joined.skipped} skipped (${joined.nearOther} near the other end, ${joined.touches} touching)`);
     expect(joined.clean).toBeGreaterThan(40);
     expect(joined.skipped).toBeLessThanOrEqual(5);
   });
@@ -189,3 +220,101 @@ function nearSide(b: readonly { x: number; y: number }[], p: { x: number; y: num
     return Math.hypot(p.x - a.x - ab.x * t, p.y - a.y - ab.y * t) < 1e-7;
   });
 }
+
+// A straight wall crossing an arc anywhere in its band, at a slant (spec 6, Crossing): the thicker core
+// passes, the other is cut on both sides. Around the crossing, strictly: inside either body, exactly one
+// piece; outside, none. A crossing near the arc's free end is a T or a corner there: skipped, counted.
+const crosses = { clean: 0, skipped: 0, noRoom: 0, nearEnds: 0, shortArc: 0, endsOnArc: 0 };
+describe('a straight wall crossing an arc', () => {
+  it('crosses exactly', () => {
+    fc.assert(
+      fc.property(arcArb, num(0, 1), num(-0.8, 0.8), num(-60, 60), num(0.5, 2), layersArb, refArb, (arc, u, depth, deg, half0, ls, ref) => {
+        const c = circleOf(arc);
+        const [ra, rb] = faceRadii(arc, c);
+        // Where along the arc: within the stretch far enough from both its ends to be a crossing, not a
+        // T or a corner there; an arc with no such stretch is skipped, counted.
+        const wallT = ls.reduce((t, l) => t + l.thickness, 0);
+        // Closer to an end than both thicknesses, the wall's band reaches the arc's end cap.
+        const clearArc = (arc.thickness + wallT) / (c.r * Math.abs(c.sweep));
+        if (clearArc >= 0.5) {
+          crosses.skipped++;
+          crosses.shortArc++;
+          return;
+        }
+        // An arc of a large sweep has its two ends close together: a crossing near one end along the
+        // arc can be near the other across the gap. Moved toward the middle (farthest from both) until
+        // it is clear of both by the two thicknesses.
+        const pointAt = (g: number) => ({ x: c.cx + c.r * Math.cos(c.a0 + c.sweep * g), y: c.cy + c.r * Math.sin(c.a0 + c.sweep * g) });
+        const clearOfEnds = (g: number) => [arc.start, arc.end].every((e) => Math.hypot(e.x - pointAt(g).x, e.y - pointAt(g).y) >= arc.thickness + wallT);
+        let f = clearArc + (1 - 2 * clearArc) * u;
+        for (let k = 0; k < 20 && !clearOfEnds(f); k++) f = 0.5 + (f - 0.5) * 0.8;
+        const ang = c.a0 + c.sweep * f;
+        const radial = { x: Math.cos(ang), y: Math.sin(ang) };
+        const r = (ra + rb) / 2 + (Math.abs(rb - ra) / 2) * depth;
+        const at = { x: c.cx + radial.x * r, y: c.cy + radial.y * r };
+        const a = (deg * Math.PI) / 180;
+        const dir = { x: radial.x * Math.cos(a) - radial.y * Math.sin(a), y: radial.x * Math.sin(a) + radial.y * Math.cos(a) };
+        // Each half of the wall stops halfway between leaving the arc's band and meeting it again, so its
+        // ends stay off the arc (a second junction there); out of the band (which counts the wall's own
+        // thickness), or skipped.
+        const [rIn, rOut] = [Math.min(ra, rb), Math.max(ra, rb)];
+        const pad = Math.max(...ls.map((l) => l.thickness)) * ls.length;
+        const inBand = (s: number, sign: number) => {
+          const rr = Math.hypot(at.x + dir.x * s * sign - c.cx, at.y + dir.y * s * sign - c.cy);
+          return rr >= rIn - pad && rr <= rOut + pad;
+        };
+        const span = (sign: number) => {
+          let s = 0;
+          while (s < 3 && inBand(s, sign)) s += 0.005;
+          const out = s;
+          while (s < 3 && !inBand(s, sign)) s += 0.005;
+          return { out, limit: s >= 3 ? Infinity : (out + s) / 2 };
+        };
+        const [fwd, bwd] = [span(1), span(-1)];
+        const half = Math.min(half0, fwd.limit, bwd.limit);
+        if (half <= Math.max(fwd.out, bwd.out)) {
+          crosses.skipped++;
+          crosses.noRoom++;
+          return;
+        }
+        const wall = testWall('x', { x: at.x - dir.x * half, y: at.y - dir.y * half }, { x: at.x + dir.x * half, y: at.y + dir.y * half }, ls, ref);
+        const rect = rectOf(wall);
+        // Near the arc's ends, or its own ends on the arc: not a crossing there.
+        const ends = [arc.start, arc.end];
+        if (ends.some((e) => Math.hypot(e.x - at.x, e.y - at.y) < arc.thickness + wall.thickness)) {
+          crosses.skipped++;
+          crosses.nearEnds++;
+          return;
+        }
+        if (distanceToSegments(arc, wall.start) <= SPEC_POINT_TOL || distanceToSegments(arc, wall.end) <= SPEC_POINT_TOL) {
+          crosses.skipped++;
+          crosses.endsOnArc++;
+          return;
+        }
+        const walls = [arc, wall];
+        const g = geometry(walls);
+        // The spec makes every X (6, Crossing): a warning here is the engine failing it.
+        expect(g.warnings, JSON.stringify(walls)).toEqual([]);
+        crosses.clean++;
+        const polys = walls.flatMap((w) => (g.pieces.get(w.id) ?? []).map((p) => p.polygon));
+        const bodies = [...arcBody(arc), rect];
+        const reach = Math.max(arc.thickness, wall.thickness) * 3 + 0.1;
+        for (let i = 0; i < 800; i++) {
+          const t = (i * 2.399963) % (2 * Math.PI);
+          const rr = reach * Math.sqrt((i + 0.5) / 800);
+          const p = { x: at.x + rr * Math.cos(t), y: at.y + rr * Math.sin(t) };
+          if (bodies.some((b) => nearSide(b, p))) continue;
+          const count = polys.filter((q) => inside(q, p)).length;
+          expect(count, `${JSON.stringify(walls)} at ${JSON.stringify(p)}`).toBe(bodies.some((b) => inside(b, p)) ? 1 : 0);
+        }
+      }),
+      { numRuns: 100, seed },
+    );
+  });
+
+  it('checks enough Xs', () => {
+    console.log(`arc X: ${crosses.clean} clean, ${crosses.skipped} skipped (${crosses.shortArc} arc too short, ${crosses.noRoom} no room past the band, ${crosses.nearEnds} near an end, ${crosses.endsOnArc} its ends on the arc)`);
+    expect(crosses.clean).toBeGreaterThan(80);
+    expect(crosses.skipped).toBeLessThanOrEqual(5);
+  });
+});

@@ -336,3 +336,27 @@ export function tFill(arc: Wall, wall: Wall, end: WallEnd = 'end'): (p: P) => bo
     return !outside || nearest(p, back) >= rIn;
   };
 }
+
+/**
+ * How far along a straight wall (from the node, into its body) the L made with an arc's end segment
+ * reaches: the farthest of the four points where the wall's faces meet the end segment's faces. A
+ * contact with the arc's other segments that starts within it is the corner itself reaching past the
+ * end segment; one that starts beyond it is a second junction.
+ */
+export function cornerReach(arc: Wall, arcEnd: WallEnd, wall: Wall): number {
+  const seg = segmentWall(arc, arcEnd === 'start' ? 0 : segmentsOf(arc) - 1);
+  const node = arcEnd === 'start' ? arc.start : arc.end;
+  const fs = frameOf(seg);
+  const fw = frameOf(wall);
+  const into = pt(wall.start.x - wall.end.x, wall.start.y - wall.end.y);
+  const len = Math.hypot(into.x, into.y);
+  const u = pt(into.x / len, into.y / len);
+  const meetAt = (a: P, da: P, b: P, db: P) => {
+    const det = da.x * db.y - da.y * db.x;
+    const t = ((b.x - a.x) * db.y - (b.y - a.y) * db.x) / det;
+    return pt(a.x + da.x * t, a.y + da.y * t);
+  };
+  const on = (w: Wall, f: { n: P }, o: number) => pt(w.start.x + f.n.x * o, w.start.y + f.n.y * o);
+  const points = [fs.o0, fs.o1].flatMap((os) => [fw.o0, fw.o1].map((ow) => meetAt(on(seg, fs, os), fs.d, on(wall, fw, ow), fw.d)));
+  return Math.max(...points.map((p) => (p.x - node.x) * u.x + (p.y - node.y) * u.y));
+}
