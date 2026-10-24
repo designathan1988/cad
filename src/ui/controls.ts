@@ -130,6 +130,8 @@ export function segmented<T extends string>(
   for (const o of options) {
     const b = el('button', { type: 'button', title: o.label, 'aria-label': o.label, 'aria-pressed': String(o.value === value) });
     b.innerHTML = o.icon ? icon(o.icon, 16) : '';
+    // Narrow screens keep only the icon of a button that has one; one without keeps its words.
+    if (o.icon) b.classList.add('has-icon');
     if (!o.icon || labelled) b.append(el('span', { class: 'label' }, o.label));
     b.addEventListener('click', () => onChange(o.value));
     box.append(b);

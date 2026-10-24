@@ -241,7 +241,7 @@ const en = {
   'types.cantDeleteLast': 'It is the only type',
   'types.name': 'Name',
   'types.general': 'Type',
-  'types.layers': 'Layers, from the exterior face',
+  'types.layers': 'Layers, from the exterior face to the interior',
   'types.exterior': 'Exterior',
   'types.interior': 'Interior',
   'types.function': 'Function',
@@ -257,6 +257,12 @@ const en = {
   'types.cantRemoveLast': 'A type keeps at least one layer',
   'types.layerN': 'Layer {n}',
   'types.usedBy': '{n} walls',
+  'types.usedByOne': '1 wall',
+  'mat.plaster': 'Plaster',
+  'mat.brick': 'Brick',
+  'mat.concrete': 'Concrete',
+  'mat.gypsum': 'Gypsum board',
+  'mat.insulation': 'Insulation',
   'fn.structure': 'Structure',
   'fn.substrate': 'Substrate',
   'fn.thermal': 'Insulation',
@@ -658,7 +664,7 @@ const pt: Record<MessageKey, string> = {
   'types.cantDeleteLast': 'É o único tipo',
   'types.name': 'Nome',
   'types.general': 'Tipo',
-  'types.layers': 'Camadas, da face externa',
+  'types.layers': 'Camadas, da face externa para a interna',
   'types.exterior': 'Externa',
   'types.interior': 'Interna',
   'types.function': 'Função',
@@ -674,6 +680,12 @@ const pt: Record<MessageKey, string> = {
   'types.cantRemoveLast': 'Um tipo tem ao menos uma camada',
   'types.layerN': 'Camada {n}',
   'types.usedBy': '{n} paredes',
+  'types.usedByOne': '1 parede',
+  'mat.plaster': 'Reboco',
+  'mat.brick': 'Tijolo',
+  'mat.concrete': 'Concreto',
+  'mat.gypsum': 'Gesso acartonado',
+  'mat.insulation': 'Isolante',
   'fn.structure': 'Estrutura',
   'fn.substrate': 'Substrato',
   'fn.thermal': 'Isolante',
@@ -885,6 +897,11 @@ export const name = (stored: string): string => {
   const copy = /^(.*) \((\d+)\)$/.exec(stored);
   return copy ? `${name(copy[1]!)} (${copy[2]})` : stored;
 };
+
+const BUILT_IN_MATERIALS = new Set(['plaster', 'brick', 'concrete', 'gypsum', 'insulation']);
+
+/** A layer's material: a built-in one in the language of the moment, the user's own as typed. */
+export const materialName = (id: string): string => (BUILT_IN_MATERIALS.has(id) ? t(`mat.${id}` as MessageKey) : id);
 
 /** Numbers as the language writes them: 4,50 in Portuguese, 4.50 in English. */
 export const num = (value: number, digits = 2): string =>

@@ -8,7 +8,7 @@ import { coreLayersOf } from '../elements/wall/geometry/shape';
 import { LAYER_PRIORITY, type LayerFunction } from '../elements/wall/schema';
 import { el, numberField, select } from './controls';
 import { textField } from './fields';
-import { num, t, type MessageKey } from './i18n';
+import { materialName, num, t, type MessageKey } from './i18n';
 import { icon, type IconName } from './icons';
 import { layerBands } from './swatch';
 
@@ -33,23 +33,36 @@ export function layerEditor<L extends EditableLayer>(layers: readonly L[], onCha
   preview.insertAdjacentHTML('beforeend', `<svg width="240" height="24" viewBox="0 0 240 24" aria-hidden="true">${bands}</svg>`);
   preview.append(el('div', { class: 'layer-ends' }, el('span', {}, t('types.exterior')), el('span', {}, t('types.interior'))));
 
+  // One row per layer, named, so a screen reader hears which layer each control is in. On a phone the
+  // row takes two lines and each field shows its caption (the column heads are hidden there).
   const grid = el('div', { class: 'layer-grid', role: 'group', 'aria-label': t('types.layers') });
   grid.append(
-    el('span', { class: 'layer-head' }, '#'),
-    el('span', { class: 'layer-head' }, t('types.function')),
-    el('span', { class: 'layer-head' }, t('types.thickness')),
-    el('span', { class: 'layer-head' }, t('types.material')),
-    el('span', { class: 'layer-head' }, t('types.core')),
-    el('span', { class: 'layer-head' }),
+    el(
+      'div',
+      { class: 'layer-row layer-heads', 'aria-hidden': 'true' },
+      el('span', {}, '#'),
+      el('span', {}, t('types.function')),
+      el('span', {}, t('types.thickness')),
+      el('span', {}, t('types.material')),
+      el('span', {}, t('types.core')),
+      el('span'),
+    ),
   );
-  const button = (glyph: IconName, label: string, focus: string, enabled: boolean, run: () => void, why?: string) => {
+  const cell = (area: string, caption: string | null, control: HTMLElement) =>
+    el('div', { class: `layer-cell layer-${area}` }, ...(caption ? [el('span', { class: 'layer-cap', 'aria-hidden': 'true' }, caption)] : []), control);
+  // `then`: where the focus goes after it, with the layer it moved (the dialog keeps focus by key).
+  const button = (glyph: IconName, label: string, focus: string, enabled: boolean, run: () => void, then?: string, why?: string) => {
     const b = el('button', { type: 'button', class: 'icon-btn', 'aria-label': label, title: why ? `${label}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : label });
     b.innerHTML = icon(glyph, 16);
     b.dataset.focus = focus;
     b.disabled = !enabled;
-    b.addEventListener('click', run);
+    b.addEventListener('click', () => {
+      if (then) b.dataset.focus = then;
+      run();
+    });
     return b;
   };
+  const last = layers.length - 1;
   layers.forEach((l, i) => {
     const n = String(i + 1);
     const which = t('types.layerN', { n });
@@ -61,7 +74,9 @@ export function layerEditor<L extends EditableLayer>(layers: readonly L[], onCha
     fn.querySelector('select')!.setAttribute('aria-label', `${t('types.function')}: ${which}`);
     const thick = numberField(l.thickness, (v) => onChange(setLayer(layers, i, { thickness: v } as Partial<L>)), 0.001);
     thick.querySelector('input')!.setAttribute('aria-label', `${t('types.thickness')}: ${which}`);
-    const material = textField(l.materialId, (v) => v.trim() !== '' && onChange(setLayer(layers, i, { materialId: v.trim() } as Partial<L>)));
+    // Shown by its name; what is typed becomes the material (the shown name typed again changes nothing).
+    const shown = materialName(l.materialId);
+    const material = textField(shown, (v) => v.trim() !== '' && v.trim() !== shown && onChange(setLayer(layers, i, { materialId: v.trim() } as Partial<L>)));
     material.querySelector('input')!.setAttribute('aria-label', `${t('types.material')}: ${which}`);
     const inCore = i >= core0 && i <= core1;
     // Not by colour alone: a mark, and its words for screen readers.
@@ -70,11 +85,30 @@ export function layerEditor<L extends EditableLayer>(layers: readonly L[], onCha
     const actions = el(
       'div',
       { class: 'layer-actions' },
-      button('arrowUp', t('types.moveUp', { n }), `up:${i}`, i > 0, () => onChange(moveLayer(layers, i, i - 1))),
-      button('arrowDown', t('types.moveDown', { n }), `down:${i}`, i < layers.length - 1, () => onChange(moveLayer(layers, i, i + 1))),
-      button('trash', t('types.remove', { n }), `remove:${i}`, layers.length > 1, () => onChange(removeLayer(layers, i)), layers.length > 1 ? undefined : t('types.cantRemoveLast')),
+      button('arrowUp', t('types.moveUp', { n }), `up:${i}`, i > 0, () => onChange(moveLayer(layers, i, i - 1)), i - 1 === 0 ? 'down:0' : `up:${i - 1}`),
+      button('arrowDown', t('types.moveDown', { n }), `down:${i}`, i < last, () => onChange(moveLayer(layers, i, i + 1)), i + 1 === last ? `up:${last}` : `down:${i + 1}`),
+      button(
+        'trash',
+        t('types.remove', { n }),
+        `remove:${i}`,
+        layers.length > 1,
+        () => onChange(removeLayer(layers, i)),
+        `remove:${Math.min(i, last - 1)}`,
+        layers.length > 1 ? undefined : t('types.cantRemoveLast'),
+      ),
     );
-    grid.append(el('span', { class: 'layer-n' }, n), fn, thick, material, core, actions);
+    grid.append(
+      el(
+        'div',
+        { class: 'layer-row', role: 'group', 'aria-label': which },
+        cell('n', null, el('span', { class: 'layer-n' }, n)),
+        cell('fn', t('types.function'), fn),
+        cell('th', t('types.thickness'), thick),
+        cell('mat', t('types.material'), material),
+        cell('core', t('types.core'), core),
+        cell('act', null, actions),
+      ),
+    );
   });
 
   const add = el('button', { type: 'button', class: 'icon-btn text-btn' });

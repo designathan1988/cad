@@ -849,7 +849,7 @@ select {
   .level-select {
     width: calc(var(--level-w) * 0.72);
   }
-  .segmented .label {
+  .segmented .has-icon .label {
     display: none;
   }
   .coords {
@@ -1385,23 +1385,49 @@ select {
   font-size: var(--fs-sm);
 }
 .layer-grid {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) var(--levels-col) var(--levels-col) auto auto;
+  display: flex;
+  flex-direction: column;
   gap: var(--sp-2);
-  align-items: center;
   margin-top: var(--sp-3);
 }
-.layer-head {
+.layer-row {
+  display: grid;
+  grid-template-columns: var(--sp-5) minmax(0, 1fr) var(--levels-col) var(--levels-col) var(--control-h) calc(3 * var(--control-h) + 2 * var(--sp-1));
+  grid-template-areas: 'n fn th mat core act';
+  gap: var(--sp-2);
+  align-items: center;
+}
+.layer-heads {
   color: var(--text-2);
   font-size: var(--fs-sm);
 }
+.layer-cell {
+  min-width: 0;
+}
 .layer-n {
+  grid-area: n;
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
+.layer-fn {
+  grid-area: fn;
+}
+.layer-th {
+  grid-area: th;
+}
+.layer-mat {
+  grid-area: mat;
+}
 .layer-core {
+  grid-area: core;
   color: var(--text);
   text-align: center;
+}
+.layer-act {
+  grid-area: act;
+}
+.layer-cap {
+  display: none;
 }
 .layer-actions {
   display: flex;
@@ -1422,8 +1448,26 @@ select {
   .types-body {
     grid-template-columns: minmax(0, 1fr);
   }
-  .layer-grid {
-    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  /* A layer in two lines: number, function and its buttons; then thickness, material and core, each
+     with its caption, since the column heads are gone. */
+  .layer-heads {
+    display: none;
+  }
+  .layer-row {
+    grid-template-columns: var(--sp-5) minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-areas:
+      'n fn fn act'
+      'core th mat mat';
+    padding-bottom: var(--sp-2);
+    border-bottom: var(--line) solid var(--border);
+  }
+  .layer-cap {
+    display: block;
+    color: var(--text-2);
+    font-size: var(--fs-xs);
+  }
+  .layer-fn .layer-cap {
+    display: none;
   }
 }
 .levels {

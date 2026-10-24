@@ -4,12 +4,12 @@ import type { App } from '../app/app';
 import { newId } from '../core/id';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../elements/level/commands';
 import { el, numberField } from './controls';
+import { openProjectDialog } from './dialog';
 import { defaultName, name, num, t } from './i18n';
 import { icon } from './icons';
 
 export function showLevels(app: App): void {
-  const back = app.shell.helpBack;
-  const render = () => {
+  const render = (close: () => void): HTMLElement => {
     const doc = app.store.get();
     const rows = el('div', { class: 'levels' });
     rows.append(
@@ -83,41 +83,19 @@ export function showLevels(app: App): void {
       app.ui.levelId = id;
       app.refresh();
     });
-    const close = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
-    close.dataset.focus = 'close';
-    close.addEventListener('click', hide);
-    const dialog = el(
+    const closeBtn = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
+    closeBtn.dataset.focus = 'close';
+    closeBtn.addEventListener('click', close);
+    return el(
       'div',
       { class: 'dialog dialog-wide', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('levels.title') },
       el('h2', {}, t('levels.title')),
       rows,
-      el('div', { class: 'actions' }, add, el('span', { class: 'spacer' }), close),
+      el('div', { class: 'actions' }, add, el('span', { class: 'spacer' }), closeBtn),
     );
-    back.replaceChildren(dialog);
   };
-  const unsubscribe = app.store.subscribe(() => {
-    // Rebuild unless a field of the dialog is being typed in. A button keeps the focus across the
-    // rebuild (the same button, or Close when its row went away).
-    const active = document.activeElement;
-    if (active instanceof HTMLInputElement && back.contains(active)) return;
-    const key = active instanceof HTMLElement && back.contains(active) ? active.dataset.focus : undefined;
-    render();
-    if (key) (back.querySelector<HTMLElement>(`[data-focus="${key}"]`) ?? back.querySelector<HTMLElement>('[data-focus="close"]'))?.focus();
-  });
-  const hide = () => {
-    unsubscribe();
-    back.hidden = true;
-    back.onkeydown = null;
-    app.shell.planCanvas.focus();
-  };
-  back.onclick = (e) => {
-    if (e.target === back) hide();
-  };
-  back.onkeydown = (e) => {
-    if (e.key === 'Escape') hide();
-  };
-  render();
-  back.hidden = false;
+  // Redrawn on every change (dialog.ts); a button whose row went away gives the focus to Close.
+  openProjectDialog(app, render);
   // Focus on Close, not in a field: Esc closes at once, and nothing is half-edited by accident.
-  back.querySelector<HTMLElement>('[data-focus="close"]')?.focus();
+  app.shell.helpBack.querySelector<HTMLElement>('[data-focus="close"]')?.focus();
 }
