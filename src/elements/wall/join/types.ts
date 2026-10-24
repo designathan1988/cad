@@ -45,8 +45,15 @@ export interface Crossing {
   readonly point: Point2;
 }
 
+/** Three or four ends at one point (§7.4). Five or more warn complexJoin instead. */
+export interface JoinNode {
+  readonly ends: readonly EndRef[];
+  readonly point: Point2;
+}
+
 export interface JoinGraph {
   readonly corners: readonly Corner[];
+  readonly nodes: readonly JoinNode[];
   readonly crossings: readonly Crossing[];
   readonly abutments: readonly { readonly abutting: EndRef; readonly hostId: WallId }[];
   readonly warnings: readonly JoinWarning[];

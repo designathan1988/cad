@@ -5,6 +5,7 @@
 import { resolveCorner } from '../join/cut-l';
 import { resolveAbutment } from '../join/cut-t';
 import { deriveJoins } from '../join/discover';
+import { resolveNode } from '../join/node';
 import type { EndCut, JoinWarning, Notch } from '../join/types';
 import type { EndRef, Wall, WallId, WallType, WallTypeId } from '../schema';
 import { clipHalfPlane, clipOut, type ConvexPolygon } from './convex';
@@ -44,6 +45,12 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     if (result.b) endCuts.set(keyOf(rb), result.b);
     if (result.warning) warnings.push(result.warning);
     notches.push(...result.notches);
+  }
+  for (const { ends, point } of graph.nodes) {
+    const result = resolveNode(byId, ends, point);
+    for (const [ref, cut] of result.endCuts) endCuts.set(keyOf(ref), cut);
+    notches.push(...result.notches);
+    warnings.push(...result.warnings);
   }
   for (const { abutting, hostId } of graph.abutments) {
     const { cut, notches: own } = resolveAbutment(byId.get(abutting.wallId)!, abutting.end, byId.get(hostId)!);

@@ -1,4 +1,4 @@
-// Finds which wall ends meet (corners) and which ends stop against another wall (abutments).
+// Finds which wall ends meet (corners, nodes) and which ends stop against another wall (abutments).
 // Pure and deterministic: walls are always visited in ascending id order.
 
 import { COLLINEAR_ANGLE, MIN_WALL_LENGTH, MITER_LIMIT, POINT_TOLERANCE } from '../../../core/tolerance';
@@ -6,7 +6,7 @@ import { add, cross, distance, dot, intersectLines, scale } from '../../../core/
 import { endPoint, faceOffsets, offsetOf, stationOf, wallDirection, wallLength } from '../geometry/offset';
 import type { EndRef, WallEnd } from '../schema';
 import type { WallShape } from '../geometry/shape';
-import type { Corner, Crossing, JoinGraph, JoinWarning } from './types';
+import type { Corner, Crossing, JoinGraph, JoinWarning, JoinNode } from './types';
 
 const ENDS: readonly WallEnd[] = ['start', 'end'];
 
@@ -25,12 +25,16 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
   const clusters = clusterEnds(ends, at);
 
   const corners: Corner[] = [];
+  const nodes: JoinNode[] = [];
   const free: EndRef[] = [];
   for (const cluster of clusters) {
     if (cluster.length === 1) free.push(cluster[0]!);
     else if (cluster.length === 2) {
       const ends = [cluster[0]!, cluster[1]!] as const;
       corners.push({ ends, node: scale(add(at(ends[0]), at(ends[1])), 0.5) });
+    } else if (cluster.length <= 4) {
+      const sum = cluster.reduce((s, r) => add(s, at(r)), { x: 0, y: 0 });
+      nodes.push({ ends: cluster, point: scale(sum, 1 / cluster.length) });
     } else warnings.push({ kind: 'complexJoin', walls: cluster.map((r) => r.wallId) });
   }
 
@@ -81,7 +85,7 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
     });
   });
   abutments = abutments.filter((_, i) => !mutual.has(i));
-  return { corners, abutments, crossings: findCrossings(valid), warnings };
+  return { corners, nodes, abutments, crossings: findCrossings(valid), warnings };
 }
 
 /**

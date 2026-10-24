@@ -395,10 +395,27 @@ ATSTART/ATEND, T é ATPATH + ATSTART); exporta-se como dois T.
 
 1. Procura o par de pontas mais próximo de colinear (ângulo entre direções mais
    próximo de 180°, dentro de 10°). Esse par vira uma **passagem** única: as
-   duas paredes são unidas por miter normal entre si.
-2. As demais pontas viram **abutments** contra essa passagem.
+   duas paredes se unem entre si como um L (§7.1: corte único quando em linha,
+   miter ou butt).
+2. As demais pontas viram **abutments** contra essa passagem (§7.2, com
+   prioridade), mas só quando isso é exato *(entrega 5)*:
+   - **contra uma parede só**: tudo o que a ponta põe dentro dela (os pontos na
+     face próxima e os pontos mais fundos das camadas) fica do lado dela no
+     corte da passagem e aquém da ponta livre dela, e nada da ponta além da face
+     toca a outra parede da passagem. Não vale se essa parede é a que encosta
+     num butt da passagem;
+   - **contra as duas**, quando a passagem está em linha e as duas mostram as
+     mesmas camadas e as mesmas linhas daquele lado: corta numa, entalha as
+     duas. "As mesmas linhas" quer dizer que a diferença só produziria lascas
+     menores que `AREA_EPSILON`, que o motor já descarta, na zona do encontro.
+     Diferença bit a bit de arredondamento numa passagem desenhada em qualquer
+     direção não pode virar aviso.
+
+   Fora disso a ponta fica com corte quadrado e aviso `ComplexJoin` (a parede
+   que encosta e as duas da passagem). Desenhar algo que se sobrepõe seria pior.
 3. Se não houver par quase-colinear, a passagem é formada pelas duas paredes de
-   **núcleo mais grosso** (empate pelo menor ID).
+   **núcleo mais grosso** (a regra do X: empate a menos de `POINT_TOLERANCE`,
+   menor ID).
 4. Nó com **mais de 4 pontas**: corte quadrado em todas, aviso `ComplexJoin`.
    (O Revit também limita a configuração de junta a 4 paredes ou menos.)
 
@@ -773,6 +790,30 @@ Achados:
 4. **Mutante equivalente esclarecido:** "núcleo por diferença de offsets", sozinho,
    não muda nada, porque a tolerância já absorve 1 ulp. O mutante que importa é
    tirar a tolerância, e ele é morto por dois núcleos a 0,5 mm um do outro.
+
+### Entrega 5 — nós com 3, 4 e 5+ pontas
+
+| Medida | Resultado |
+|---|---|
+| Testes | 121/121 no `npm run check` (inclui os testes que a sessão da interface acrescentou) |
+| Casos à mão novos ou mudados | 11 em `nodes.test.ts` e 1 em `joins.test.ts`, todos vermelhos antes |
+| Cena aleatória de nó | 300 cenas; I10 em 220 troncos (piso: 100); vermelha no motor anterior |
+
+Achados:
+
+1. **Regra que faltava:** um tronco que cruza o nó passa por cima das duas
+   paredes da passagem. Encostar só numa deixava a outra sem entalhe, com
+   sobreposição. → as duas regras de exatidão acima, e aviso fora delas.
+2. **Critério que não podia ser exato:** comparar as linhas da passagem com
+   `===` fazia toda passagem desenhada em direção qualquer cair no aviso, pelo
+   arredondamento. → igualdade medida pelo que o motor já descarta
+   (`AREA_EPSILON`).
+3. **Limite conhecido:** um Y sem par em linha, com o terceiro ramo cruzando o
+   canto da passagem, cai no aviso `ComplexJoin`. O Revit também não documenta
+   regra para esse caso (§17).
+
+Por pedido do usuário não houve seeds extras, rodadas grandes nem laço de
+mutantes nesta entrega; o portão foi o `npm run check`.
 
 ### Entrega 4, parte 2 — butt no L entre sequências diferentes
 
