@@ -24,11 +24,19 @@ export interface WallLayer {
   readonly materialId: MaterialId;
 }
 
-/** Layers are listed from the exterior face (right of the drawing direction) to the interior. */
+/** Where a wall's top is: its level's height plus an offset, or a fixed height above its base. */
+export type HeightRule = { readonly kind: 'level'; readonly offset: number } | { readonly kind: 'fixed'; readonly height: number };
+
+/**
+ * Layers are listed from the exterior face (right of the drawing direction) to the interior. A type
+ * may also give its walls a top and a base offset; a wall without its own takes the type's.
+ */
 export interface WallType {
   readonly id: WallTypeId;
   readonly name: string;
   readonly layers: readonly WallLayer[];
+  readonly top?: HeightRule;
+  readonly baseOffset?: number;
 }
 
 /** What the user decided. Thickness, layers and core come from the type, always derived. */

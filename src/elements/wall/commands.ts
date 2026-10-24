@@ -50,3 +50,20 @@ export const setWalls = (walls: readonly DocWall[], label = 'cmd.updateWalls'): 
     return changed ? { ...doc, walls: out } : doc;
   },
 });
+
+/** Takes the listed values off the walls, so they come from their type again. No change, no step. */
+export const resetWallsToType = (ids: readonly WallId[], fields: readonly ('top' | 'baseOffset')[]): Command<Doc> => ({
+  label: 'cmd.resetToType',
+  apply: (doc) => {
+    const set = new Set(ids);
+    let changed = false;
+    const walls = doc.walls.map((w) => {
+      if (!set.has(w.id) || !fields.some((f) => w[f] !== undefined)) return w;
+      changed = true;
+      const next: Record<string, unknown> = { ...w };
+      for (const f of fields) delete next[f];
+      return next as unknown as DocWall;
+    });
+    return changed ? { ...doc, walls } : doc;
+  },
+});

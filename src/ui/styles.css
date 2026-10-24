@@ -1193,6 +1193,22 @@ select {
   white-space: nowrap;
 }
 
+/* A value set on the element, overriding its type: the field and the way back. */
+.overridden {
+  display: flex;
+  gap: var(--sp-1);
+  align-items: center;
+  min-width: 0;
+}
+.overridden > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.overridden .num-field input,
+.overridden .select select {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
 /* Levels dialog */
 .dialog-wide {
   width: min(560px, calc(100vw - 32px));

@@ -7,7 +7,7 @@ import { createStore, type Store } from '../core/store';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { arcOf } from '../elements/wall/geometry/arc';
-import { addWalls, updateWalls } from '../elements/wall/commands';
+import { addWalls, resetWallsToType, updateWalls } from '../elements/wall/commands';
 import {
   addOpening,
   alignHeads,
@@ -35,7 +35,7 @@ import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui
 import { snapLabel, type Snap } from '../tools/snap';
 import { bulgeThrough, IDLE, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, hull } from './select-drag';
-import { type Doc, type DocWall, elementIds, newDocument, type WallDefaults } from './document';
+import { type Doc, type DocWall, elementIds, newDocument, type WallDefaults, wallOverrides } from './document';
 import { boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, openingOutline } from './geometry';
 import { renderBrowser } from '../ui/browser';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
@@ -335,7 +335,7 @@ export class App {
 
   makeWall(start: Point2, end: Point2, id = newId('wall'), bulge = 0): DocWall {
     const d = this.ui.defaults;
-    return {
+    const wall: DocWall = {
       id,
       wallTypeId: d.wallTypeId,
       referenceLine: d.referenceLine,
@@ -346,6 +346,10 @@ export class App {
       baseOffset: d.baseOffset,
       top: d.top,
     };
+    // Values equal to the type's are not kept on the wall: it follows its type for them.
+    const own = wallOverrides(this.store.get(), wall);
+    const { top, baseOffset, ...rest } = wall;
+    return { ...rest, ...(own.top ? { top: top! } : {}), ...(own.baseOffset ? { baseOffset: baseOffset! } : {}) };
   }
 
   /** A world point on the current level, on the screen (viewport pixels); null when behind the camera. */
@@ -727,6 +731,7 @@ export class App {
       },
       {
         updateWalls: (patch) => this.store.dispatch(updateWalls([...ui.selection], patch)),
+        resetToType: (fields) => this.store.dispatch(resetWallsToType([...ui.selection], fields)),
         updateDefaults: (patch) => {
           ui.defaults = { ...ui.defaults, ...patch };
           this.refresh();

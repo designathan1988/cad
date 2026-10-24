@@ -1,6 +1,6 @@
 // Properties panel, built from what is selected. It only reads state and sends changes.
 
-import type { Doc, DocWall, WallDefaults } from '../app/document';
+import { type Doc, type DocWall, type WallDefaults, wallBase, wallOverrides, wallTop } from '../app/document';
 import type { OpeningSolid } from '../app/geometry';
 import { type OpeningWarning, referenceLength } from '../elements/opening/derive';
 import { arcOf } from '../elements/wall/geometry/arc';
@@ -34,6 +34,8 @@ export interface PanelInput {
 
 export interface PanelActions {
   readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
+  /** Takes these values off the selected walls, so they come from their type again. */
+  readonly resetToType: (fields: readonly ('top' | 'baseOffset')[]) => void;
   readonly updateDefaults: (patch: Partial<WallDefaults>) => void;
   readonly close: () => void;
   readonly opening: OpeningPanelActions;
@@ -80,9 +82,23 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     const type = doc.wallTypes.find((w) => w.id === typeId);
     const title = selected.length === 1 ? t('panel.wall', { type: type ? name(type.name) : '?' }) : t('panel.walls', { n: selected.length });
     nodes.push(head('wall', title));
-    const top = common(selected, (w) => w.top.kind);
-    const topValue = common(selected, (w) => (w.top.kind === 'level' ? w.top.offset : w.top.height));
-    const baseOffset = common(selected, (w) => w.baseOffset);
+    // What each wall has, its own or its type's; and whether any selected wall overrides its type.
+    const topOf = (w: DocWall) => wallTop(doc, w);
+    const top = common(selected, (w) => topOf(w).kind);
+    const topValue = common(selected, (w) => {
+      const r = topOf(w);
+      return r.kind === 'level' ? r.offset : r.height;
+    });
+    const baseOffset = common(selected, (w) => wallBase(doc, w));
+    const over = { top: selected.some((w) => wallOverrides(doc, w).top), baseOffset: selected.some((w) => wallOverrides(doc, w).baseOffset) };
+    /** A field with the override mark and the way back to the type, when it overrides it. */
+    const typed = (field: HTMLElement, which: 'top' | 'baseOffset'): HTMLElement => {
+      if (!over[which]) return field;
+      const back = el('button', { type: 'button', class: 'icon-btn reset-type', title: t('panel.resetToType'), 'aria-label': t('panel.resetToType') });
+      back.innerHTML = icon('undo', 14);
+      back.addEventListener('click', () => act.resetToType([which]));
+      return el('div', { class: 'overridden' }, field, back);
+    };
     const general = section(
       t('panel.general'),
       true,
@@ -93,8 +109,11 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
       t('panel.constraints'),
       true,
       row(t('panel.base'), select(doc.levels.map((l) => ({ value: l.id, label: name(l.name) })), common(selected, (w) => w.levelId), (v) => act.updateWalls({ levelId: v }))),
-      row(t('panel.baseOffset'), numberField(baseOffset, (v) => act.updateWalls({ baseOffset: v }))),
-      row(t('panel.top'), select(topOptions, top, (v) => act.updateWalls({ top: v === 'level' ? { kind: 'level', offset: 0 } : { kind: 'fixed', height: 2.8 } }))),
+      row(over.baseOffset ? `${t('panel.baseOffset')} •` : t('panel.baseOffset'), typed(numberField(baseOffset, (v) => act.updateWalls({ baseOffset: v })), 'baseOffset')),
+      row(
+        over.top ? `${t('panel.top')} •` : t('panel.top'),
+        typed(select(topOptions, top, (v) => act.updateWalls({ top: v === 'level' ? { kind: 'level', offset: 0 } : { kind: 'fixed', height: 2.8 } })), 'top'),
+      ),
       ...(top === null
         ? []
         : [
@@ -104,6 +123,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
               { sub: true },
             ),
           ]),
+      ...(over.top || over.baseOffset ? [el('div', {}, el('div', { class: 'panel-note' }, t('panel.overrideNote')))] : []),
     );
     const thickness = type ? type.layers.reduce((s, l) => s + l.thickness, 0) : null;
     const one = selected.length === 1 ? selected[0]! : null;
