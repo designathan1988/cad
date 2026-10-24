@@ -106,12 +106,18 @@ function tFaces(abutting: Wall, end: WallEnd, host: Wall) {
  * I6 by layer: in a T, the abutting core layers stop at the host's core face and the other layers at
  * its near face. Returns the deepest penetration past those limits (≤ 0 means none).
  */
-export function abutmentPenetration(abutting: Wall, end: WallEnd, host: Wall, walls: readonly Wall[]): number {
+export function abutmentPenetration(
+  abutting: Wall,
+  end: WallEnd,
+  host: Wall,
+  walls: readonly Wall[],
+  keep: (polygon: readonly P[]) => boolean = () => true,
+): number {
   const { pieces } = geometry(walls);
   const { fh, positive, near, coreFace } = tFaces(abutting, end, host);
   const [a0, a1] = coreLayersOf(abutting);
   let worst = -Infinity;
-  for (const piece of pieces.get(abutting.id) ?? []) {
+  for (const piece of (pieces.get(abutting.id) ?? []).filter((x) => keep(x.polygon))) {
     const limit = piece.layerIndex >= a0 && piece.layerIndex <= a1 ? coreFace : near;
     for (const v of piece.polygon) {
       const o = dotp(fh.n, minus(v, host.start));

@@ -257,8 +257,13 @@ de `WallId`, sempre.
 7. Aplica os overrides: `allowJoin: false` remove a junta daquela ponta; a
    ponta passa a corte quadrado.
 
-**Determinismo do Crossing:** passa a parede de **núcleo mais grosso**; empate
-resolvido pelo **menor `WallId`**. Nunca por ordem de inserção.
+**Crossing** *(entrega 3)*: as linhas de referência se cruzam no interior das
+duas paredes **e** nenhuma ponta de uma está dentro da faixa da outra (aí é T
+ou canto, já tratados). Passa a de **núcleo mais grosso**; núcleos a menos de
+`POINT_TOLERANCE` um do outro empatam, e passa o **menor `WallId`**. Nunca por
+ordem de inserção. A espessura do núcleo é a **soma das camadas** do núcleo,
+não a diferença dos offsets: um mesmo tipo em referências diferentes dá
+diferenças de offset que variam em 1 ulp, e o empate se perdia.
 
 ---
 
@@ -342,9 +347,15 @@ exatamente zero por construção, não por tolerância.
 
 ### 7.3 Crossing — X
 
-A parede cortada é dividida pelas **duas** linhas-limite da que passa
-(`clipOutBand` no corpo inteiro), virando duas peças. Cada peça é então tratada
-como um T contra a que passa. A que passa recebe entalhe nos dois lados.
+A parede cortada vira **trechos**, um de cada lado de cada cruzamento,
+ordenados ao longo dela (uma parede cruzada *k* vezes tem *k* + 1 trechos). Cada
+lado de um cruzamento é um T contra a parede que passa: o trecho tem a mesma
+normal e os mesmos offsets da parede inteira, então `resolveAbutment` serve sem
+mudança. A parede que passa recebe o entalhe de cada lado. A região coberta é
+a união das duas faixas: o X só redistribui o material.
+
+Para IFC, o X não tem par padrão em `IfcRelConnectsPathElements` (L é
+ATSTART/ATEND, T é ATPATH + ATSTART); exporta-se como dois T.
 
 ### 7.4 Nó com 3 ou 4 pontas
 
@@ -700,6 +711,32 @@ Achado desta entrega: a regra da spec ("mesmo tipo **e** mesma referência")
 era mais estreita que o necessário e errada no critério. O que decide é a
 sequência de camadas vista da face externa do canto (§7.1).
 
+### Entrega 3 — X
+
+| Medida | Resultado |
+|---|---|
+| Testes | 69/69, suíte inteira em 8 s |
+| Mutantes | 41/41 detectados |
+| Propriedade | seed fixa e mais 2 seeds novas, 2 000 cenas cada, sem falha |
+
+Achados:
+
+1. **Defeito do motor:** empate de núcleo comparado por igualdade de float, com
+   a espessura tirada da diferença de offsets. Mesmo tipo em referências
+   diferentes não empatava. → soma das camadas e tolerância de 1 mm. Dois
+   casos fixos na mesa cobrem cada metade da defesa.
+2. **Erro no oráculo:** peças atribuídas ao lado do cruzamento pela posição ao
+   longo da parede cortada; em ângulo raso, uma camada do lado de lá tem o
+   centro antes do cruzamento. → classificar pelo lado da linha média do
+   núcleo da parede que passa.
+3. **Gerador quase inútil:** o fast-check favorece as pontas dos intervalos, e
+   o cruzamento caía na ponta da parede (que é T, não X). 1 227 638 de 1 227 644
+   cenas eram rejeitadas e a suíte passou de 8 s para mais de 8 minutos. →
+   cruzamento sorteado só no interior (15–85%).
+4. **Mutante equivalente esclarecido:** "núcleo por diferença de offsets", sozinho,
+   não muda nada, porque a tolerância já absorve 1 ulp. O mutante que importa é
+   tirar a tolerância, e ele é morto por dois núcleos a 0,5 mm um do outro.
+
 ### Entrega 2 — T com núcleo e entalhe
 
 O núcleo da parede que encosta vai até a face do núcleo da hospedeira, os
@@ -731,7 +768,33 @@ Achados:
 
 ---
 
-## 17. Fontes
+## 17. Pesquisa de referências e decisões (entrega 3)
+
+| Pendência | Revit / ArchiCAD / hito | Decisão |
+|---|---|---|
+| Camadas entre tipos diferentes; camadas fora do núcleo | Revit: cada camada tem prioridade (pela função, Estrutura 1 … Acabamento 2 = 5); as de prioridade maior se ligam primeiro e **atravessam** as de prioridade menor para achar a de mesma prioridade da outra parede; não atravessam prioridade igual ou maior; camadas do núcleo vão até o núcleo da outra parede passando por tudo fora dele; mesmo material limpa, material diferente deixa linha. ArchiCAD: "Intersection Priority" do material, empate pela "Junction Order" da parede (0–16). | **Adotar o modelo de prioridade** (entrega 4). O atual bate com ele no T (núcleo até o núcleo) e no L de mesmo tipo (camada *k* com *k*), e diverge em duas coisas: uma camada de prioridade alta fora do núcleo deve atravessar o acabamento da outra parede, e o L entre tipos diferentes deve casar camadas por prioridade, não por uma diagonal só. |
+| Alturas diferentes | Revit tem limitação conhecida com miter entre alturas diferentes; o contorno documentado pelos usuários é fatiar a parede alta na altura da baixa. hito fatia. | Confirma §7.5. |
+| Nó com 3+ paredes | Revit não documenta regra; a Autodesk desaconselha a ferramenta de junta com mais de 4 paredes. No ArchiCAD, usuários recorrem a remendos 2D. | Manter a regra do hito (§7.4). |
+| Arco com reta | Revit faz miter; algoritmo não documentado. | Manter: cantos na circunferência exata (§5.2). |
+| Desfazer junta | Revit: "Disallow Join" por ponta, persiste mesmo se a parede for movida; exibição Clean / Don't Clean. | Confirma §2.3 (override por ponta). |
+
+Fontes desta seção: [Autodesk — Function and Priority of a Layer](https://help.autodesk.com/cloudhelp/2026/ENU/Revit-Model/files/GUID-1CCD1005-CBDA-4338-8D60-489095D4BB25.htm),
+[What Revit Wants — Wall layers and their ability to barge](https://wrw.is/wall-layers-and-their-ability-to-barge/),
+[MGFX — Revit 2026 changes to layer function and priority](https://mgfx.co.za/blog/building-architectural-design/revit-2026-changes-to-wall-structure-layer-function-and-priority/),
+[Graphisoft — Specific Element Intersections and Junctions](https://help.graphisoft.com/AC/24/INT/_AC24_Help/040_ElementsVB/040_ElementsVB-268.htm),
+[Graphisoft Community — Plaster priority in wall junction](https://community.graphisoft.com/t5/Design-forum/Plaster-priority-in-wall-junction/td-p/259039),
+[Autodesk — Specify Wall Join Cleanup Options](https://knowledge.autodesk.com/support/revit-products/learn-explore/caas/CloudHelp/cloudhelp/2018/ENU/Revit-Model/files/GUID-130A65BC-8C57-4C31-8C07-F96041771539-htm.html),
+[Autodesk Ideas — Wall join behavior when using miter](https://forums.autodesk.com/t5/revit-ideas/wall-join-behavior-when-using-mitter/idc-p/11186644/highlight/true),
+[buildingSMART — IfcConnectionTypeEnum](https://standards.buildingsmart.org/IFC/DEV/IFC4_3/HTML/lexical/IfcConnectionTypeEnum.html).
+
+**Mudança de processo:** a rodada de 120 000 cenas por entrega não achou
+nenhuma falha em três entregas; todos os achados vieram da suíte de 2 000
+cenas, da contagem de regras e dos mutantes. Ela continua disponível
+(`FUZZ_SCALE=10`) para rodar à noite, e saiu do ciclo de cada entrega.
+
+---
+
+## 18. Fontes
 
 - [Clipper2 — Robustness](https://angusj.com/clipper2/Docs/Robustness.htm) — por que booleana em float produz sliver e fresta
 - [hito PR #205 — domínio de juntas de parede](https://github.com/hito-project/hito/pull/205) — a arquitetura de referência

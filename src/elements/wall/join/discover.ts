@@ -6,7 +6,7 @@ import { add, cross, distance, dot, intersectLines, scale } from '../../../core/
 import { endPoint, faceOffsets, offsetOf, stationOf, wallDirection, wallLength } from '../geometry/offset';
 import type { EndRef, WallEnd } from '../schema';
 import type { WallShape } from '../geometry/shape';
-import type { Corner, JoinGraph, JoinWarning } from './types';
+import type { Corner, Crossing, JoinGraph, JoinWarning } from './types';
 
 const ENDS: readonly WallEnd[] = ['start', 'end'];
 
@@ -81,7 +81,46 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
     });
   });
   abutments = abutments.filter((_, i) => !mutual.has(i));
-  return { corners, abutments, warnings };
+  return { corners, abutments, crossings: findCrossings(valid), warnings };
+}
+
+/**
+ * Pairs whose reference lines cross inside both walls, with no end of either inside the other's
+ * band (that would be a T or a corner). The thicker core goes through; a tie goes to the lower id.
+ */
+function findCrossings(walls: readonly WallShape[]): Crossing[] {
+  const crossings: Crossing[] = [];
+  walls.forEach((a, i) => {
+    walls.slice(i + 1).forEach((b) => {
+      if (parallel(a, b)) return;
+      const point = intersectLines(a.start, wallDirection(a), b.start, wallDirection(b));
+      if (point === null || !interior(a, point) || !interior(b, point)) return;
+      if ([a.start, a.end].some((p) => withinBand(b, p)) || [b.start, b.end].some((p) => withinBand(a, p))) return;
+      // Summed from the layers, not subtracted from offsets: walls of one type on different reference
+      // lines must tie exactly. Cores within POINT_TOLERANCE tie, and the lower id goes through.
+      const coreA = coreThickness(a);
+      const coreB = coreThickness(b);
+      const aThrough = Math.abs(coreA - coreB) <= POINT_TOLERANCE ? a.id < b.id : coreA > coreB;
+      crossings.push({ throughId: aThrough ? a.id : b.id, cutId: aThrough ? b.id : a.id, point });
+    });
+  });
+  return crossings;
+}
+
+const coreThickness = (w: WallShape): number =>
+  w.layers.slice(w.coreLayers[0], w.coreLayers[1] + 1).reduce((sum, l) => sum + l.thickness, 0);
+
+const interior = (w: WallShape, p: ReturnType<typeof endPoint>): boolean => {
+  const s = stationOf(w, p);
+  return s > POINT_TOLERANCE && s < wallLength(w) - POINT_TOLERANCE;
+};
+
+/** Inside the wall's rectangle, ends included, with tolerance. */
+function withinBand(w: WallShape, p: ReturnType<typeof endPoint>): boolean {
+  const [o0, o1] = faceOffsets(w);
+  const f = offsetOf(w, p);
+  const s = stationOf(w, p);
+  return f >= o0 - POINT_TOLERANCE && f <= o1 + POINT_TOLERANCE && s >= -POINT_TOLERANCE && s <= wallLength(w) + POINT_TOLERANCE;
 }
 
 /** Groups ends that lie within POINT_TOLERANCE of each other, transitively. */

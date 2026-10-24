@@ -162,3 +162,95 @@ describe('layered T', () => {
     expect(r.pieces.get('host')!.filter((p) => p.layerIndex === 2)).toHaveLength(1);
   });
 });
+
+describe('X crossing', () => {
+  // a: the plastered 20 cm wall along y = 0 (core 15 cm, y ∈ [−0.08, 0.07]).
+  // b: the 12 cm wall (core 10 cm) along x = 3, from y = −2 to 2. The thicker core, a, goes through.
+  const a = testWall('a', vec(0, 0), vec(6, 0), plastered);
+  const thin = [layer(0.01, 'finish1'), layer(0.1, 'structure'), layer(0.01, 'finish2')];
+  const b = testWall('b', vec(3, -2), vec(3, 2), thin);
+  const g = geometry([a, b]);
+  const layerOf = (id: string, k: number) => g.pieces.get(id)!.filter((p) => p.layerIndex === k).map((p) => p.polygon);
+  const below = (ps: ReturnType<typeof layerOf>) => ps.find((p) => p.every((v) => v.y <= 0))!;
+  const above = (ps: ReturnType<typeof layerOf>) => ps.find((p) => p.every((v) => v.y >= 0))!;
+
+  it('b is split; on each side its core runs to the core face of a', () => {
+    const core = layerOf('b', 1);
+    expect(core).toHaveLength(2);
+    expectPolygon(below(core), [[2.95, -2], [3.05, -2], [3.05, -0.08], [2.95, -0.08]]);
+    expectPolygon(above(core), [[2.95, 0.07], [3.05, 0.07], [3.05, 2], [2.95, 2]]);
+  });
+
+  it('the finishes of b stop on the faces of a', () => {
+    const ext = layerOf('b', 0);
+    expectPolygon(below(ext), [[3.05, -2], [3.06, -2], [3.06, -0.1], [3.05, -0.1]]);
+    expectPolygon(above(ext), [[3.05, 0.1], [3.06, 0.1], [3.06, 2], [3.05, 2]]);
+  });
+
+  it('a is notched on both sides where the core of b passes, and its core is untouched', () => {
+    expect(layerOf('a', 0)).toHaveLength(2);
+    expect(layerOf('a', 2)).toHaveLength(2);
+    expectPolygon(layerOf('a', 1)[0]!, [[0, -0.08], [6, -0.08], [6, 0.07], [0, 0.07]]);
+    expect(layerOf('a', 0).some((p) => p.some((v) => v.x === 2.95))).toBe(true);
+  });
+
+  it('the area is both walls minus their overlap: 1.2 + 0.48 − 0.12 · 0.2', () => {
+    const total = [...g.pieces.values()].flat().reduce((s, p) => s + shoelace(p.polygon), 0);
+    expect(total).toBeCloseTo(1.656, 12);
+    expect(g.warnings).toEqual([]);
+  });
+
+  it('the thicker core goes through whatever the ids', () => {
+    const swapped = geometry([testWall('z', vec(0, 0), vec(6, 0), plastered), testWall('b', vec(3, -2), vec(3, 2), thin)]);
+    expect(swapped.pieces.get('z')!.filter((p) => p.layerIndex === 1)).toHaveLength(1);
+    expect(swapped.pieces.get('b')!.filter((p) => p.layerIndex === 1)).toHaveLength(2);
+  });
+
+  it('equal cores: the lower id goes through', () => {
+    const r = geometry([testWall('b', vec(0, 0), vec(6, 0), 0.2), testWall('a', vec(3, -2), vec(3, 2), 0.2)]);
+    expect(r.pieces.get('a')).toHaveLength(1);
+    expect(r.pieces.get('b')).toHaveLength(2);
+  });
+
+  it('a wall crossed twice is split into three spans, in order along it', () => {
+    // Discovery meets a (x = 7) before b (x = 3): the spans must still follow the wall.
+    const long = testWall('c', vec(0, 0), vec(10, 0), 0.1);
+    const r = geometry([long, testWall('a', vec(7, -2), vec(7, 2), 0.2), testWall('b', vec(3, -2), vec(3, 2), 0.2)]);
+    expect(r.pieces.get('c')).toHaveLength(3);
+    const total = [...r.pieces.values()].flat().reduce((s, p) => s + shoelace(p.polygon), 0);
+    expect(total).toBeCloseTo(1 + 0.8 + 0.8 - 2 * 0.2 * 0.1, 12);
+  });
+
+  it('an end inside the other band is a T, not a crossing', () => {
+    const r = geometry([a, testWall('t', vec(3, -2), vec(3, 0.05), thin)]);
+    expect(r.pieces.get('t')!.filter((p) => p.layerIndex === 1)).toHaveLength(1);
+  });
+
+  it('the same, with the abutting wall first in id order and its end past the host core', () => {
+    // The end (y = 0.09) sits in the host's interior finish. Read as a crossing as well, the far side
+    // would notch that finish where no core arrives and leave a gap.
+    const host = testWall('z', vec(0, 0), vec(6, 0), plastered);
+    const r = geometry([host, testWall('a', vec(3, -2), vec(3, 0.09), thin)]);
+    expect(r.pieces.get('a')!.filter((p) => p.layerIndex === 1)).toHaveLength(1);
+    expect(r.pieces.get('z')!.filter((p) => p.layerIndex === 2)).toHaveLength(1);
+    expect(r.pieces.get('z')!.filter((p) => p.layerIndex === 0)).toHaveLength(2);
+  });
+
+  it('one type on two reference lines ties exactly: the lower id goes through', () => {
+    // Regression: 2 + 12 + 1 cm gives a core of 0.11999999999999998 by offset difference on the
+    // exterior face and 0.12 on the interior face; the type is the same, so it must tie.
+    const ls = [layer(0.02, 'finish1'), layer(0.12, 'structure'), layer(0.01, 'finish2')];
+    const r = geometry([
+      testWall('a', vec(0, 0), vec(6, 0), ls, 'exteriorFace'),
+      testWall('b', vec(3, -2), vec(3, 2), ls, 'interiorFace'),
+    ]);
+    expect(r.pieces.get('a')!.filter((p) => p.layerIndex === 1)).toHaveLength(1);
+    expect(r.pieces.get('b')!.filter((p) => p.layerIndex === 1)).toHaveLength(2);
+  });
+
+  it('cores less than 1 mm apart tie: the lower id goes through, not the 0.5 mm thicker one', () => {
+    const r = geometry([testWall('a', vec(0, 0), vec(6, 0), 0.12), testWall('b', vec(3, -2), vec(3, 2), 0.1205)]);
+    expect(r.pieces.get('a')).toHaveLength(1);
+    expect(r.pieces.get('b')).toHaveLength(2);
+  });
+});

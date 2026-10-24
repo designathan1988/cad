@@ -12,7 +12,8 @@ import {
   type Region,
 } from './oracle';
 import { abutmentPenetration, layerContainmentViolations, layerContinuity, notchFill } from './oracle-layers';
-import { crossedScene, lScene, type Mode, roomScene, tScene } from './scenes';
+import { crossingOf, expectedX, sidesOf, throughOf } from './oracle-x';
+import { crossedScene, lScene, type Mode, roomScene, tScene, xScene } from './scenes';
 
 const seed = Number(process.env.FUZZ_SEED ?? 20261024);
 const scale = Number(process.env.FUZZ_SCALE ?? 1);
@@ -33,8 +34,15 @@ function expectExact(walls: readonly Wall[], region: Region, sampleSeed: number)
 
 /** I6 by layer and I10, for one T. Counts checked points so I10 cannot pass vacuously. */
 const notch = { joints: 0, points: 0 };
-function expectAbutment(abutting: Wall, end: 'start' | 'end', host: Wall, walls: readonly Wall[], s: number): void {
-  expect(abutmentPenetration(abutting, end, host, walls), JSON.stringify(walls)).toBeLessThanOrEqual(1e-12);
+function expectAbutment(
+  abutting: Wall,
+  end: 'start' | 'end',
+  host: Wall,
+  walls: readonly Wall[],
+  s: number,
+  keep?: Parameters<typeof abutmentPenetration>[4],
+): void {
+  expect(abutmentPenetration(abutting, end, host, walls, keep), JSON.stringify(walls)).toBeLessThanOrEqual(1e-12);
   const fill = notchFill(abutting, end, host, walls, s);
   expect(fill.bad, JSON.stringify(walls)).toBe(0);
   if (fill.checked > 0) notch.joints++;
@@ -82,6 +90,25 @@ describe.each<Mode>(['normal', 'degenerate'])('T, %s', (mode) => {
         expectExact(walls, expectedT(abutting, end, host), sampleSeed);
 
         expectAbutment(abutting, end, host, walls, sampleSeed);
+      }),
+      runs(300),
+    );
+  }, TIMEOUT);
+});
+
+const crossing = { scenes: 0 };
+describe.each<Mode>(['normal', 'degenerate'])('X, %s', (mode) => {
+  it('covers both bands exactly; each side of the cut wall behaves as a T', () => {
+    fc.assert(
+      fc.property(xScene(mode), fc.nat(), ({ a, b }, sampleSeed) => {
+        const walls = [a, b];
+        expect(geometry(walls).warnings).toEqual([]);
+        expectExact(walls, expectedX(a, b), sampleSeed);
+        const { through, cut } = throughOf(a, b);
+        sidesOf(cut, through, crossingOf(a, b)).forEach((side, k) =>
+          expectAbutment(side.abutting, side.end, through, walls, sampleSeed + k, side.keep),
+        );
+        crossing.scenes++;
       }),
       runs(300),
     );
@@ -141,5 +168,6 @@ describe('layer checks were really exercised', () => {
     console.log(`I10 checked on ${notch.joints} T joints, ${notch.points} points`);
     expect(notch.joints).toBeGreaterThan(300 * scale);
     expect(notch.points).toBeGreaterThan(20_000 * scale);
+    expect(crossing.scenes).toBe(600 * scale);
   });
 });

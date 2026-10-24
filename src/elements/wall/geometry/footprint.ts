@@ -8,7 +8,7 @@ import { deriveJoins } from '../join/discover';
 import type { EndCut, JoinWarning, Notch } from '../join/types';
 import type { EndRef, Wall, WallId, WallType, WallTypeId } from '../schema';
 import { clipHalfPlane, clipOut, type ConvexPolygon } from './convex';
-import { strip } from './offset';
+import { stationOf as stationAlong, strip } from './offset';
 import { shapeOf, type WallShape } from './shape';
 
 export interface Piece {
@@ -50,30 +50,63 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     if (notch) notches.push(notch);
   }
 
+  // A crossing splits the cut wall into spans. Each side of the crossing is a T against the through
+  // wall: the same normal and offsets as the whole wall, so resolveAbutment applies unchanged.
+  const spans = new Map<WallId, Span[]>(
+    shapes.map((shape) => [
+      shape.id,
+      [
+        {
+          shape,
+          atStart: endCuts.get(keyOf({ wallId: shape.id, end: 'start' })),
+          atEnd: endCuts.get(keyOf({ wallId: shape.id, end: 'end' })),
+        },
+      ],
+    ]),
+  );
+  for (const { throughId, cutId, point } of [...graph.crossings].sort((x, y) =>
+    stationAlong(byId.get(x.cutId)!, x.point) - stationAlong(byId.get(y.cutId)!, y.point),
+  )) {
+    const through = byId.get(throughId)!;
+    const list = spans.get(cutId)!;
+    const last = list.pop()!;
+    const before = resolveAbutment({ ...last.shape, end: point }, 'end', through);
+    const after = resolveAbutment({ ...byId.get(cutId)!, start: point }, 'start', through);
+    list.push(
+      { shape: { ...last.shape, end: point }, atStart: last.atStart, atEnd: before.cut },
+      { shape: { ...last.shape, start: point }, atStart: after.cut, atEnd: last.atEnd },
+    );
+    for (const n of [before.notch, after.notch]) if (n) notches.push(n);
+  }
+
   const pieces = new Map<WallId, readonly Piece[]>();
   for (const wall of walls) if (!byId.has(wall.id)) pieces.set(wall.id, []);
   for (const shape of shapes) {
-    const atStart = endCuts.get(keyOf({ wallId: shape.id, end: 'start' }));
-    const atEnd = endCuts.get(keyOf({ wallId: shape.id, end: 'end' }));
     const own = notches.filter((n) => n.wallId === shape.id);
-    const layers: Piece[] = [];
-    shape.layers.forEach((_, layerIndex) => {
-      const isCore = layerIndex >= shape.coreLayers[0] && layerIndex <= shape.coreLayers[1];
-      const cuts = [atStart, atEnd].flatMap((c) =>
-        c ? [...c.cuts, ...((isCore ? c.coreCuts : c.finishCuts) ?? [])] : [],
-      );
-      const band = [shape.layerOffsets[layerIndex]!, shape.layerOffsets[layerIndex + 1]!] as const;
-      let polygon = strip(shape, atStart?.extension ?? 0, atEnd?.extension ?? 0, band);
-      for (const cut of cuts) polygon = clipHalfPlane(polygon, cut);
-      let parts = polygon.length > 0 ? [polygon] : [];
-      for (const n of own) {
-        if (layerIndex >= n.layers[0] && layerIndex <= n.layers[1]) {
-          parts = parts.flatMap((p) => clipOut(p, n.region));
-        }
-      }
-      for (const part of parts) layers.push({ layerIndex, polygon: part });
-    });
-    pieces.set(shape.id, layers);
+    pieces.set(shape.id, spans.get(shape.id)!.flatMap((span) => spanPieces(span, own)));
   }
   return { pieces, warnings };
+}
+
+interface Span {
+  readonly shape: WallShape;
+  readonly atStart: EndCut | undefined;
+  readonly atEnd: EndCut | undefined;
+}
+
+function spanPieces({ shape, atStart, atEnd }: Span, notches: readonly Notch[]): Piece[] {
+  const out: Piece[] = [];
+  shape.layers.forEach((_, layerIndex) => {
+    const isCore = layerIndex >= shape.coreLayers[0] && layerIndex <= shape.coreLayers[1];
+    const cuts = [atStart, atEnd].flatMap((c) => (c ? [...c.cuts, ...((isCore ? c.coreCuts : c.finishCuts) ?? [])] : []));
+    const band = [shape.layerOffsets[layerIndex]!, shape.layerOffsets[layerIndex + 1]!] as const;
+    let polygon = strip(shape, atStart?.extension ?? 0, atEnd?.extension ?? 0, band);
+    for (const cut of cuts) polygon = clipHalfPlane(polygon, cut);
+    let parts = polygon.length > 0 ? [polygon] : [];
+    for (const n of notches) {
+      if (layerIndex >= n.layers[0] && layerIndex <= n.layers[1]) parts = parts.flatMap((p) => clipOut(p, n.region));
+    }
+    for (const part of parts) out.push({ layerIndex, polygon: part });
+  });
+  return out;
 }

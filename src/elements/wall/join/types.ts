@@ -38,8 +38,17 @@ export interface Corner {
   readonly node: Point2;
 }
 
+/** Two walls crossing away from their ends (X): `through` keeps going, `cut` is split in two. */
+export interface Crossing {
+  readonly throughId: WallId;
+  readonly cutId: WallId;
+  /** Where the reference lines cross. */
+  readonly point: Point2;
+}
+
 export interface JoinGraph {
   readonly corners: readonly Corner[];
+  readonly crossings: readonly Crossing[];
   readonly abutments: readonly { readonly abutting: EndRef; readonly hostId: WallId }[];
   readonly warnings: readonly JoinWarning[];
 }

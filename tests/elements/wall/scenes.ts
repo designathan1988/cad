@@ -314,3 +314,68 @@ export function crossedScene(): fc.Arbitrary<CrossedScene> {
       return sa > 0.0015 && sa < lb - 0.0015 && sb > 0.0015 && sb < la - 0.0015;
     });
 }
+
+export interface XScene {
+  readonly a: Wall;
+  readonly b: Wall;
+}
+
+/** Two walls crossing well inside both, each passing fully through the other's band. */
+export function xScene(mode: Mode): fc.Arbitrary<XScene> {
+  const phi = mode === 'normal' ? num(20, 160) : fc.oneof(num(8, 20), num(160, 172));
+  return fc
+    .record({
+      start: fc.tuple(num(-5, 5), num(-5, 5)),
+      heading: num(0, 360),
+      lens: fc.tuple(num(2, 10), num(2, 10)),
+      // Interior only: fast-check favours interval ends, and a crossing at an end is a T, tested apart.
+      at: fc.tuple(num(0.15, 0.85), num(0.15, 0.85)),
+      phi,
+      ts: fc.tuple(num(0.05, 0.4), num(0.05, 0.4)),
+      recipes: fc.tuple(recipe, recipe),
+      sameType: fc.boolean(),
+      refs: fc.tuple(ref, ref),
+      reversed: fc.tuple(fc.boolean(), fc.boolean()),
+      swapIds: fc.boolean(),
+    })
+    .map((r) => {
+      const la = layersOf(r.ts[0], r.recipes[0]);
+      const lb = r.sameType ? la : layersOf(r.ts[1], r.recipes[1]);
+      const a0 = pt(r.start[0], r.start[1]);
+      const da = dir(r.heading);
+      const x = plus(a0, times(da, r.lens[0] * r.at[0]));
+      const db = rot(da, r.phi);
+      const b0 = plus(x, times(db, -r.lens[1] * r.at[1]));
+      const b1 = plus(b0, times(db, r.lens[1]));
+      const a1 = plus(a0, times(da, r.lens[0]));
+      const [ida, idb] = r.swapIds ? ['b', 'a'] : ['a', 'b'];
+      return {
+        a: r.reversed[0] ? make(ida!, a1, a0, la, r.refs[0]) : make(ida!, a0, a1, la, r.refs[0]),
+        b: r.reversed[1] ? make(idb!, b1, b0, lb, r.refs[1]) : make(idb!, b0, b1, lb, r.refs[1]),
+      };
+    })
+    .filter(({ a, b }) => {
+      // Every end clear of the other band, and the band overlap well inside both walls.
+      const clear = (w: Wall, other: Wall) => {
+        const f = frameOf(other);
+        return [w.start, w.end].every((p) => {
+          const o = dotp(f.n, pt(p.x - other.start.x, p.y - other.start.y));
+          const st = dotp(f.d, pt(p.x - other.start.x, p.y - other.start.y));
+          return o < f.o0 - 0.05 || o > f.o1 + 0.05 || st < -0.05 || st > f.len + 0.05;
+        });
+      };
+      if (!clear(a, b) || !clear(b, a)) return false;
+      const fa = frameOf(a);
+      const fb = frameOf(b);
+      for (const ao of [fa.o0, fa.o1]) {
+        for (const bo of [fb.o0, fb.o1]) {
+          const ap = plus(a.start, times(fa.n, ao));
+          const bp = plus(b.start, times(fb.n, bo));
+          const sa = meetParam(ap, fa.d, bp, fb.d);
+          const sb = meetParam(bp, fb.d, ap, fa.d);
+          if (sa < 0.05 || sa > fa.len - 0.05 || sb < 0.05 || sb > fb.len - 0.05) return false;
+        }
+      }
+      return true;
+    });
+}
