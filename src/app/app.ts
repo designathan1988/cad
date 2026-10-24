@@ -528,7 +528,8 @@ export class App {
 
   private applyTheme(): void {
     document.documentElement.dataset.theme = this.ui.theme;
-    this.scene.setTheme(this.ui.theme === 'dark');
+    const css = getComputedStyle(document.documentElement);
+    this.scene.setTheme(this.ui.theme === 'dark', (name) => css.getPropertyValue(name).trim());
   }
 
   saveFile(): void {
@@ -620,8 +621,10 @@ export class App {
         roomLabels: [...this.visibleGeometry().rooms.values()].map((r) => ({
           at: r.room.seed,
           name: `${r.room.number} · ${name(r.room.name)}`,
+          short: r.room.number,
           area: r.enclosed ? `${num(r.area)} m²` : t('warn.roomNotEnclosed'),
           warn: !r.enclosed,
+          outline: r.outline,
         })),
         draft: ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(ui.cursor ? [ui.cursor] : [])] : null,
         openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,

@@ -4,6 +4,7 @@
 
 import type { Point2 } from '../core/vector';
 import { type DerivedGeometry, openingOutline } from '../app/geometry';
+import { layoutRoomTags } from './room-tags';
 import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
 
@@ -32,7 +33,15 @@ export interface PlanOverlay {
   /** End grips of the selected wall: small squares to drag. */
   readonly grips: readonly Point2[];
   /** Room name and area tags, at each room's point. */
-  readonly roomLabels: readonly { readonly at: Point2; readonly name: string; readonly area: string; readonly warn: boolean }[];
+  /** `short` is shown when the name does not fit the room on screen; `outline` is the room's, if closed. */
+  readonly roomLabels: readonly {
+    readonly at: Point2;
+    readonly name: string;
+    readonly short: string;
+    readonly area: string;
+    readonly warn: boolean;
+    readonly outline: readonly Point2[];
+  }[];
   /** A floor outline being drawn, ending at the cursor. */
   readonly draft: readonly Point2[] | null;
   /** The opening being placed (an id present in the geometry), drawn in the accent colour. */
@@ -203,13 +212,7 @@ export class PlanView {
     fill(drawn, color('--wall-sel-fill'));
     this.drawOpenings(g, o, { line: color('--wall-line'), sel: color('--wall-sel'), selFill: color('--wall-sel-fill'), warn: color('--warn'), canvas: color('--canvas') });
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
-    this.labelBoxes = [];
-    for (const l of o.roomLabels) {
-      this.labelBoxes.push(
-        this.label(l.at, l.name, l.warn ? color('--warn') : color('--text'), color('--canvas'), '600 12px Inter, system-ui', { x: 0, y: -4 }),
-        this.label(l.at, l.area, color('--text-2'), color('--canvas'), '12px Inter, system-ui', { x: 0, y: 12 }),
-      );
-    }
+    this.drawRoomTags(o.roomLabels, color);
     if (o.draft && o.draft.length > 0) {
       ctx.save();
       ctx.strokeStyle = color('--wall-sel');
@@ -237,9 +240,46 @@ export class PlanView {
     if (o.measure) this.drawMeasure(o.measure, snapBox, color('--accent-text'), color('--canvas'));
   }
 
+  /** Room tags where room-tags.ts places them: with their room, shortened or left out when crowded. */
+  private drawRoomTags(labels: PlanOverlay['roomLabels'], color: (name: string) => string): void {
+    const { ctx } = this;
+    const nameFont = this.font('600', '--fs-sm');
+    const areaFont = this.font('400', '--fs-sm');
+    const inputs = labels.map((l) => {
+      const p = this.toScreen(l.at);
+      const xs = l.outline.map((v) => this.toScreen(v).x);
+      // An open room has no outline: its warning is shown whole.
+      const width = xs.length > 0 ? Math.max(...xs) - Math.min(...xs) : Infinity;
+      return { x: p.x, y: p.y, width, name: l.name, short: l.short, area: l.area, warn: l.warn };
+    });
+    const measure = (text: string) => this.textWidth(text, nameFont);
+    const tags = layoutRoomTags(inputs, measure, this.size);
+    this.labelBoxes = tags.map((tag) => tag.box);
+    for (const tag of tags) {
+      const warn = inputs.find((i) => i.x === tag.x && i.y === tag.y)?.warn ?? false;
+      ctx.fillStyle = color('--canvas');
+      ctx.globalAlpha = 0.92;
+      ctx.fillRect(tag.box.x, tag.box.y, tag.box.w, tag.box.h);
+      ctx.globalAlpha = 1;
+      ctx.textAlign = 'center';
+      tag.lines.forEach((line, i) => {
+        ctx.font = i === 0 ? nameFont : areaFont;
+        ctx.fillStyle = i === 0 ? (warn ? color('--warn') : color('--text')) : color('--text-2');
+        ctx.fillText(line, tag.x, tag.box.y + 12 + i * 16);
+      });
+      ctx.textAlign = 'start';
+    }
+  }
+
+  /** A canvas font from the design tokens: weight, a size token, the family token. */
+  private font(weight: string, size: string): string {
+    const css = getComputedStyle(document.documentElement);
+    return `${weight} ${css.getPropertyValue(size).trim()} ${css.getPropertyValue('--font').trim()}`;
+  }
+
   /** The live measure, off the segment along its normal, and moved further out while it would cover the snap label. */
   private drawMeasure(m: NonNullable<PlanOverlay['measure']>, avoid: Box | null, colour: string, bg: string): void {
-    const font = 'bold 12px Inter, system-ui';
+    const font = this.font('700', '--fs-sm');
     if (!m.normal) {
       this.label(m.at, m.text, colour, bg, font);
       return;
@@ -383,7 +423,7 @@ export class PlanView {
     ctx.stroke();
     if (!s.label) return null;
     // Beyond the end of the segment, never back over it: to the left when it arrives going left.
-    const font = '600 11px Inter, system-ui';
+    const font = this.font('600', '--fs-xs');
     const left = s.away !== undefined && s.away.x < 0;
     const offset = left ? { x: -14 - this.textWidth(s.label, font), y: -12 } : { x: 14, y: -12 };
     return this.label({ x: s.point.x, y: s.point.y }, s.label, colour, bg, font, offset);

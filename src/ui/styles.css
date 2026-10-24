@@ -33,6 +33,16 @@
   --accent-contrast: #ffffff;
   --scrim: rgb(0 0 0 / 0.3);
   --border-strong: #c7cad1;
+  /* 3D: wall faces, floors, glass and door leaves, selection and preview, and the light. */
+  --3d-side: #d6d0c6;
+  --3d-top: #b4aea6;
+  --3d-floor: #c9c5bd;
+  --3d-side-sel: #9db6e8;
+  --3d-preview: #7ea0e6;
+  --3d-glass: #9cc7e6;
+  --3d-leaf: #a0764f;
+  --3d-light: #ffffff;
+  --3d-ground-light: #9a9fa8;
   --warn: #c2410c;
   --warn-soft: #fff1e6;
   --snap: #ea7a0c;
@@ -67,6 +77,15 @@
   --accent-contrast: #0f1115;
   --scrim: rgb(0 0 0 / 0.62);
   --border-strong: #4a4d57;
+  --3d-side: #d6d0c6;
+  --3d-top: #b4aea6;
+  --3d-floor: #c9c5bd;
+  --3d-side-sel: #9db6e8;
+  --3d-preview: #7ea0e6;
+  --3d-glass: #9cc7e6;
+  --3d-leaf: #a0764f;
+  --3d-light: #ffffff;
+  --3d-ground-light: #9a9fa8;
   --warn: #fb923c;
   --warn-soft: #3a2618;
   --snap: #f59e0b;

@@ -17,17 +17,21 @@ export class Scene3D {
   readonly controls: OrbitControls;
   private readonly scene = new THREE.Scene();
   private readonly walls = new Map<WallId, { group: THREE.Group; key: string }>();
+  // Colours come from the design tokens (styles.css, --3d-*), set in setTheme.
   private readonly materials = {
-    side: new THREE.MeshStandardMaterial({ color: 0xd6d0c6, roughness: 0.9, side: THREE.DoubleSide }),
-    top: new THREE.MeshStandardMaterial({ color: 0xb4aea6, roughness: 0.9, side: THREE.DoubleSide }),
-    floor: new THREE.MeshStandardMaterial({ color: 0xc9c5bd, roughness: 0.95, side: THREE.DoubleSide }),
-    sideSel: new THREE.MeshStandardMaterial({ color: 0x9db6e8, roughness: 0.8, side: THREE.DoubleSide }),
-    topSel: new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.8, side: THREE.DoubleSide }),
-    preview: new THREE.MeshStandardMaterial({ color: 0x7ea0e6, roughness: 0.8, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
-    glass: new THREE.MeshStandardMaterial({ color: 0x9cc7e6, roughness: 0.1, transparent: true, opacity: 0.45, side: THREE.DoubleSide }),
-    leaf: new THREE.MeshStandardMaterial({ color: 0xa0764f, roughness: 0.7, side: THREE.DoubleSide }),
-    invalid: new THREE.MeshStandardMaterial({ color: 0xea7a0c, roughness: 0.6, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
+    side: new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide }),
+    top: new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide }),
+    floor: new THREE.MeshStandardMaterial({ roughness: 0.95, side: THREE.DoubleSide }),
+    sideSel: new THREE.MeshStandardMaterial({ roughness: 0.8, side: THREE.DoubleSide }),
+    topSel: new THREE.MeshStandardMaterial({ roughness: 0.8, side: THREE.DoubleSide }),
+    preview: new THREE.MeshStandardMaterial({ roughness: 0.8, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
+    glass: new THREE.MeshStandardMaterial({ roughness: 0.1, transparent: true, opacity: 0.45, side: THREE.DoubleSide }),
+    leaf: new THREE.MeshStandardMaterial({ roughness: 0.7, side: THREE.DoubleSide }),
+    invalid: new THREE.MeshStandardMaterial({ roughness: 0.6, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
   };
+  private readonly sky = new THREE.HemisphereLight(undefined, undefined, 2.7);
+  private readonly sun = new THREE.DirectionalLight(undefined, 1.5);
+  private readonly fill = new THREE.DirectionalLight(undefined, 0.6);
   private covered = { right: 0, bottom: 0 };
   private offsetDirty = false;
   private readonly grid: THREE.GridHelper;
@@ -50,24 +54,48 @@ export class Scene3D {
       this.invalidate();
       this.onChange();
     });
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x9a9fa8, 2.7));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-    sun.position.set(-8, 14, 10);
-    this.scene.add(sun);
-    const fill = new THREE.DirectionalLight(0xffffff, 0.6);
-    fill.position.set(10, 6, -8);
-    this.scene.add(fill);
-    this.grid = new THREE.GridHelper(200, 200, 0xd3d6dc, 0xe3e5e9);
+    this.scene.add(this.sky);
+    this.sun.position.set(-8, 14, 10);
+    this.scene.add(this.sun);
+    this.fill.position.set(10, 6, -8);
+    this.scene.add(this.fill);
+    this.grid = new THREE.GridHelper(200, 200);
     this.grid.position.y = -0.001;
     this.scene.add(this.grid);
   }
 
-  setTheme(dark: boolean): void {
-    this.scene.background = new THREE.Color(dark ? 0x1b1c20 : 0xf3f4f6);
+  /** Colours of the theme, read from the design tokens: `token('--3d-side')` and so on. */
+  setTheme(dark: boolean, token: (name: string) => string): void {
+    const c = (name: string) => new THREE.Color(token(name));
+    this.scene.background = c('--canvas');
+    const m = this.materials;
+    m.side.color = c('--3d-side');
+    m.top.color = c('--3d-top');
+    m.floor.color = c('--3d-floor');
+    m.sideSel.color = c('--3d-side-sel');
+    m.topSel.color = c('--accent');
+    m.preview.color = c('--3d-preview');
+    m.glass.color = c('--3d-glass');
+    m.leaf.color = c('--3d-leaf');
+    m.invalid.color = c('--warn');
+    this.sky.color = c('--3d-light');
+    this.sky.groundColor = c('--3d-ground-light');
+    this.sun.color = c('--3d-light');
+    this.fill.color = c('--3d-light');
     // As in the reference captures: a faint ground grid in light, none in dark.
     this.grid.visible = !dark;
-    const m = this.grid.material as THREE.Material | THREE.Material[];
-    (Array.isArray(m) ? m : [m]).forEach((x) => {
+    const lines = this.grid.geometry.getAttribute('color');
+    // GridHelper colours its lines per vertex: centre lines one colour, the rest another.
+    const major = c('--grid-major');
+    const minor = c('--grid-minor');
+    for (let i = 0; i < lines.count; i++) {
+      const centre = i < 4;
+      const k = centre ? major : minor;
+      lines.setXYZ(i, k.r, k.g, k.b);
+    }
+    lines.needsUpdate = true;
+    const gm = this.grid.material as THREE.Material | THREE.Material[];
+    (Array.isArray(gm) ? gm : [gm]).forEach((x) => {
       x.transparent = true;
       x.opacity = 0.35;
       x.needsUpdate = true;
