@@ -22,6 +22,40 @@
   --control-h: 32px;
   --control-h-sm: 26px;
   --field-h: 28px;
+  /* Lines and marks */
+  --line: 1px;
+  --line-2: 2px;
+  --own-bar: 3px;
+  --mark: 4px;
+  --pill: 999px;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.08);
+  /* Component sizes */
+  --tool-w: 36px;
+  --label-w: 96px;
+  --level-w: 168px;
+  --name-w: 220px;
+  --head-h: 44px;
+  --summary-h: 34px;
+  --wide-btn-h: 30px;
+  --sep-w: 24px;
+  --sep-h: 20px;
+  --cube: 60px;
+  --cube-wrap: 92px;
+  --cube-depth: 300px;
+  --dim-field-w: 72px;
+  --measure-w: 160px;
+  --coords-w: 120px;
+  --swatch-w: 28px;
+  --levels-col: 120px;
+  --menu-min-w: 180px;
+  --list-max-h: 220px;
+  --palette-max-h: 360px;
+  --dialog-w: 420px;
+  --dialog-w-lg: 560px;
+  --tour-w: 320px;
+  --browser-w: 260px;
+  --tooltip-w: 280px;
+  --touch: 44px;
   --panel-w: 288px;
   --ease: 120ms ease-out;
 
@@ -142,8 +176,8 @@ select {
   color: inherit;
 }
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline: var(--line-2) solid var(--accent);
+  outline-offset: var(--line);
 }
 .icon {
   display: block;
@@ -166,7 +200,7 @@ select {
   align-items: center;
   gap: var(--sp-2);
   padding: 0 var(--sp-2);
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--line) solid var(--border);
   background: var(--bg);
   min-width: 0;
 }
@@ -193,11 +227,11 @@ select {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  max-width: var(--name-w);
 }
 .sep {
-  width: 1px;
-  height: 20px;
+  width: var(--line);
+  height: var(--sep-h);
   background: var(--border);
   margin: 0 var(--sp-2);
 }
@@ -246,9 +280,9 @@ select {
 .wide-btn {
   justify-content: flex-start;
   width: 100%;
-  height: 30px;
+  height: var(--wide-btn-h);
   padding: 0 var(--sp-2);
-  border: 1px solid var(--border);
+  border: var(--line) solid var(--border);
 }
 .panel-note {
   color: var(--text-2);
@@ -264,7 +298,7 @@ select {
   appearance: none;
   height: var(--field-h);
   padding: 0 var(--sp-7) 0 var(--sp-2);
-  border: 1px solid transparent;
+  border: var(--line) solid transparent;
   border-radius: var(--radius);
   background: var(--field);
   cursor: pointer;
@@ -276,12 +310,12 @@ select {
 }
 .select .icon {
   position: absolute;
-  right: 8px;
+  right: var(--sp-2);
   pointer-events: none;
   color: var(--text-2);
 }
 .level-select {
-  width: 168px;
+  width: var(--level-w);
 }
 
 .segmented {
@@ -315,7 +349,7 @@ select {
   background: var(--bg);
   color: var(--text);
   font-weight: 600;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+  box-shadow: var(--shadow-sm);
 }
 :root[data-theme='dark'] .segmented button[aria-pressed='true'] {
   background: var(--hover);
@@ -335,7 +369,7 @@ select {
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
-  border-right: 1px solid var(--border);
+  border-right: var(--line) solid var(--border);
   background: var(--bg);
 }
 /* A group of tools shows one; a small corner mark says it has more (a submenu). */
@@ -351,20 +385,20 @@ select {
 .tool-group > .tool::after {
   content: '';
   position: absolute;
-  right: 3px;
-  bottom: 3px;
-  border-left: 4px solid transparent;
-  border-bottom: 4px solid currentColor;
+  right: var(--sp-1);
+  bottom: var(--sp-1);
+  border-left: var(--mark) solid transparent;
+  border-bottom: var(--mark) solid currentColor;
   opacity: 0.6;
 }
 .tools .group-sep {
-  width: 24px;
-  height: 1px;
+  width: var(--sep-w);
+  height: var(--line);
   background: var(--border);
   margin: var(--sp-1) 0;
 }
 .tools .tool {
-  width: 36px;
+  width: var(--tool-w);
   height: var(--control-h);
   flex: none;
 }
@@ -396,7 +430,7 @@ select {
   display: flex;
   gap: var(--sp-half);
   padding: var(--sp-1);
-  border: 1px solid var(--border);
+  border: var(--line) solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--bg);
   box-shadow: var(--shadow);
@@ -412,11 +446,11 @@ select {
   position: absolute;
   transform: translate(-50%, -50%);
   pointer-events: auto;
-  font: 600 12px/1 Inter, system-ui, sans-serif;
+  font: 600 var(--fs-sm) / 1 var(--font);
   color: var(--wall-sel);
   background: var(--canvas);
-  border: 1px solid transparent;
-  border-radius: 4px;
+  border: var(--line) solid transparent;
+  border-radius: var(--radius-sm);
   padding: var(--sp-1) var(--sp-1);
 }
 .temp-dims button {
@@ -428,7 +462,7 @@ select {
   outline: none;
 }
 .temp-dims input {
-  width: 72px;
+  width: var(--dim-field-w);
   text-align: center;
   border-color: var(--wall-sel);
   color: var(--text);
@@ -441,12 +475,12 @@ select {
 .empty-hint {
   position: absolute;
   left: 50%;
-  top: 24px;
+  top: var(--sp-6);
   transform: translateX(-50%);
   padding: var(--sp-2) var(--sp-3);
-  border-radius: 999px;
+  border-radius: var(--pill);
   background: var(--bg);
-  border: 1px solid var(--border);
+  border: var(--line) solid var(--border);
   box-shadow: var(--shadow);
   color: var(--text-2);
   font-size: var(--fs-sm);
@@ -459,7 +493,7 @@ select {
 .toast {
   position: absolute;
   left: 50%;
-  bottom: 16px;
+  bottom: var(--sp-4);
   transform: translateX(-50%);
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius);
@@ -477,9 +511,9 @@ select {
 /* View cube */
 .cube-wrap {
   position: absolute;
-  right: 20px;
-  top: 16px;
-  width: 92px;
+  right: var(--sp-5);
+  top: var(--sp-4);
+  width: var(--cube-wrap);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -490,15 +524,15 @@ select {
   display: none;
 }
 .cube {
-  width: 60px;
-  height: 60px;
+  width: var(--cube);
+  height: var(--cube);
   margin: var(--sp-4);
-  perspective: 300px;
+  perspective: var(--cube-depth);
 }
 .cube-inner {
   position: relative;
-  width: 60px;
-  height: 60px;
+  width: var(--cube);
+  height: var(--cube);
   transform-style: preserve-3d;
 }
 .cube-face {
@@ -506,7 +540,7 @@ select {
   inset: 0;
   display: grid;
   place-items: center;
-  border: 1px solid var(--border);
+  border: var(--line) solid var(--border);
   background: var(--bg);
   color: var(--text-2);
   font: 600 var(--fs-xs) / 1 var(--font);
@@ -516,8 +550,8 @@ select {
   user-select: none;
 }
 .cube-face:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline: var(--line-2) solid var(--accent);
+  outline-offset: calc(-1 * var(--line-2));
 }
 .cube-face:hover {
   background: var(--accent-soft);
@@ -527,7 +561,7 @@ select {
 /* Panel */
 .panel {
   width: var(--panel-w);
-  border-left: 1px solid var(--border);
+  border-left: var(--line) solid var(--border);
   background: var(--bg);
   overflow-y: auto;
   min-height: 0;
@@ -539,9 +573,9 @@ select {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  height: 44px;
+  height: var(--head-h);
   padding: 0 var(--sp-2) 0 var(--sp-3);
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--line) solid var(--border);
   font-weight: 600;
 }
 .panel-head .title {
@@ -557,13 +591,13 @@ select {
   font-size: var(--fs-sm);
 }
 .section {
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--line) solid var(--border);
 }
 .section > summary {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  height: 34px;
+  height: var(--summary-h);
   padding: 0 var(--sp-3);
   font-weight: 600;
   font-size: var(--fs-sm);
@@ -582,7 +616,7 @@ select {
 }
 .rows {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-columns: var(--label-w) minmax(0, 1fr);
   gap: var(--sp-2) var(--sp-2);
   align-items: center;
   padding: var(--sp-half) var(--sp-3) var(--sp-3);
@@ -623,7 +657,7 @@ select {
   width: 100%;
   height: var(--field-h);
   padding: 0 var(--sp-7) 0 var(--sp-2);
-  border: 1px solid transparent;
+  border: var(--line) solid transparent;
   border-radius: var(--radius);
   background: var(--field);
 }
@@ -640,7 +674,7 @@ select {
 }
 .num-field .unit {
   position: absolute;
-  right: 9px;
+  right: var(--sp-2);
   color: var(--text-3);
   font-size: var(--fs-sm);
   pointer-events: none;
@@ -682,7 +716,7 @@ select {
   align-items: center;
   gap: var(--sp-3);
   padding: 0 var(--sp-2) 0 var(--sp-3);
-  border-top: 1px solid var(--border);
+  border-top: var(--line) solid var(--border);
   background: var(--bg);
   font-size: var(--fs-sm);
   min-width: 0;
@@ -707,13 +741,13 @@ select {
   display: inline-block;
   padding: 0 var(--sp-1);
   margin-right: var(--sp-1);
-  border: 1px solid var(--kbd-border);
-  border-bottom-width: 2px;
+  border: var(--line) solid var(--kbd-border);
+  border-bottom-width: var(--line-2);
   border-radius: var(--radius-sm);
   background: var(--kbd-bg);
   color: var(--text);
   font-size: var(--fs-xs);
-  line-height: 16px;
+  line-height: var(--sp-4);
 }
 .measure {
   display: flex;
@@ -723,10 +757,10 @@ select {
   font-weight: 500;
 }
 .measure input {
-  width: 160px;
-  height: 26px;
+  width: var(--measure-w);
+  height: var(--control-h-sm);
   padding: 0 var(--sp-2);
-  border: 1px solid transparent;
+  border: var(--line) solid transparent;
   border-radius: var(--radius);
   background: var(--field);
 }
@@ -738,7 +772,7 @@ select {
 .coords {
   color: var(--text-3);
   white-space: nowrap;
-  min-width: 120px;
+  min-width: var(--coords-w);
   text-align: right;
 }
 
@@ -755,20 +789,20 @@ select {
   display: none;
 }
 .dialog {
-  width: min(420px, calc(100vw - 32px));
+  width: min(var(--dialog-w), calc(100vw - 2 * var(--sp-4)));
   /* A long list (the shortcuts) scrolls inside on short screens instead of leaving the window. */
-  max-height: calc(100vh - 32px);
+  max-height: calc(100vh - 2 * var(--sp-4));
   overflow-y: auto;
   border-radius: var(--radius-lg);
   background: var(--bg);
   box-shadow: var(--shadow);
-  border: 1px solid var(--border-strong);
+  border: var(--line) solid var(--border-strong);
 }
 .dialog h2 {
   margin: 0;
   padding: var(--sp-3) var(--sp-4);
   font-size: var(--fs-lg);
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--line) solid var(--border);
 }
 .dialog dl {
   display: grid;
@@ -806,10 +840,10 @@ select {
     box-shadow: var(--shadow);
   }
   .project-name {
-    max-width: 120px;
+    max-width: calc(var(--name-w) * 0.55);
   }
   .level-select {
-    width: 120px;
+    width: calc(var(--level-w) * 0.72);
   }
   .segmented .label {
     display: none;
@@ -835,10 +869,10 @@ select {
     justify-content: center;
   }
   .project-name {
-    max-width: 96px;
+    max-width: calc(var(--name-w) * 0.44);
   }
   .level-select {
-    width: 132px;
+    width: calc(var(--level-w) * 0.79);
   }
   /* Keyboard-only help leaves; language and theme are in the command palette, which stays. */
   .top .needs-keyboard,
@@ -851,7 +885,7 @@ select {
     width: auto;
     max-height: 45%;
     border-left: 0;
-    border-top: 1px solid var(--border);
+    border-top: var(--line) solid var(--border);
   }
   .foot .measure label {
     display: none;
@@ -868,11 +902,11 @@ select {
     --foot-h: 52px;
   }
   .tools .tool {
-    width: 44px;
+    width: var(--touch);
   }
   .menu-item,
   .palette-option {
-    min-height: 44px;
+    min-height: var(--touch);
   }
 }
 @media (pointer: coarse) and (max-width: 600px) {
@@ -893,7 +927,7 @@ select {
 /* Selection box: solid for a window (wholly inside), dashed for a crossing (touching). */
 .marquee {
   position: absolute;
-  border: 1px solid var(--accent);
+  border: var(--line) solid var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   pointer-events: none;
   z-index: 3;
@@ -906,7 +940,7 @@ select {
   display: none;
 }
 .tools .tool.arc-mode {
-  box-shadow: inset 0 -2px 0 var(--accent);
+  box-shadow: inset 0 calc(-1 * var(--line-2)) 0 var(--accent);
 }
 
 /* Command palette (Ctrl+K) */
@@ -921,8 +955,8 @@ select {
   background: var(--scrim);
 }
 .palette {
-  width: min(560px, calc(100vw - 32px));
-  border: 1px solid var(--border-strong);
+  width: min(var(--dialog-w-lg), calc(100vw - 2 * var(--sp-4)));
+  border: var(--line) solid var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--bg);
   box-shadow: var(--shadow);
@@ -930,10 +964,10 @@ select {
 }
 .palette-input {
   width: 100%;
-  height: 44px;
+  height: var(--head-h);
   padding: 0 var(--sp-4);
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--line) solid var(--border);
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -944,7 +978,7 @@ select {
   margin: 0;
   padding: var(--sp-1);
   list-style: none;
-  max-height: min(360px, 50vh);
+  max-height: min(var(--palette-max-h), 50vh);
   overflow-y: auto;
 }
 .palette-option {
@@ -952,7 +986,7 @@ select {
   grid-template-columns: 1fr auto auto;
   gap: var(--sp-2);
   align-items: center;
-  min-height: 32px;
+  min-height: var(--control-h);
   padding: 0 var(--sp-2);
   border-radius: var(--radius);
   cursor: pointer;
@@ -978,9 +1012,9 @@ select {
 .menu {
   position: fixed;
   z-index: 30;
-  min-width: 180px;
+  min-width: var(--menu-min-w);
   padding: var(--sp-1);
-  border: 1px solid var(--border-strong);
+  border: var(--line) solid var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--bg);
   box-shadow: var(--shadow);
@@ -990,7 +1024,7 @@ select {
   width: 100%;
   gap: var(--sp-4);
   align-items: center;
-  min-height: 32px;
+  min-height: var(--control-h);
   padding: 0 var(--sp-2);
   border: 0;
   border-radius: var(--radius);
@@ -1002,7 +1036,7 @@ select {
 }
 .menu-item.separated {
   margin-top: var(--sp-1);
-  box-shadow: 0 -1px 0 var(--border);
+  box-shadow: 0 calc(-1 * var(--line)) 0 var(--border);
 }
 .menu-item:focus,
 .menu-item:focus-visible {
@@ -1025,7 +1059,7 @@ select {
 .tour-ring {
   position: fixed;
   z-index: 29;
-  border: 2px solid var(--accent);
+  border: var(--line-2) solid var(--accent);
   border-radius: var(--radius-lg);
   pointer-events: none;
 }
@@ -1039,9 +1073,9 @@ select {
 }
 .tour-card,
 .tour-offer {
-  width: min(320px, calc(100vw - 32px));
+  width: min(var(--tour-w), calc(100vw - 2 * var(--sp-4)));
   padding: var(--sp-3) var(--sp-4);
-  border: 1px solid var(--border-strong);
+  border: var(--line) solid var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--bg);
   box-shadow: var(--shadow);
@@ -1090,7 +1124,7 @@ select {
   min-width: 0;
   height: var(--field-h);
   padding: 0 var(--sp-2);
-  border: 1px solid transparent;
+  border: var(--line) solid transparent;
   border-radius: var(--radius);
   background: var(--field);
   color: var(--text);
@@ -1108,7 +1142,7 @@ select {
   color: var(--text-2);
 }
 .search-select .swatch {
-  width: 28px;
+  width: var(--swatch-w);
 }
 .search-select-label {
   flex: 1;
@@ -1120,12 +1154,12 @@ select {
 .swatch {
   flex: none;
   border-radius: var(--radius-sm);
-  outline: 1px solid var(--border);
+  outline: var(--line) solid var(--border);
 }
 .search-pop {
   position: fixed;
   z-index: 30;
-  border: 1px solid var(--border-strong);
+  border: var(--line) solid var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--bg);
   box-shadow: var(--shadow);
@@ -1136,7 +1170,7 @@ select {
   height: var(--control-h);
   padding: 0 var(--sp-3);
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--line) solid var(--border);
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -1146,7 +1180,7 @@ select {
   margin: 0;
   padding: var(--sp-1);
   list-style: none;
-  max-height: 220px;
+  max-height: var(--list-max-h);
   overflow-y: auto;
 }
 .search-pop-option {
@@ -1172,9 +1206,9 @@ select {
   top: 0;
   bottom: 0;
   z-index: 7;
-  width: min(260px, 80vw);
+  width: min(var(--browser-w), 80vw);
   overflow-y: auto;
-  border-right: 1px solid var(--border);
+  border-right: var(--line) solid var(--border);
   background: var(--bg);
   box-shadow: var(--shadow);
 }
@@ -1228,8 +1262,8 @@ select {
 /* Read by screen readers, not shown (and out of any grid flow). */
 .sr-only {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  width: var(--line);
+  height: var(--line);
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
@@ -1248,7 +1282,7 @@ select {
 }
 .overridden .num-field input,
 .overridden .select select {
-  box-shadow: inset 3px 0 0 var(--accent);
+  box-shadow: inset var(--own-bar) 0 0 var(--accent);
 }
 
 /* Tooltip (tooltip.ts) */
@@ -1257,7 +1291,7 @@ select {
   z-index: 40;
   /* As wide as its text up to the limit, wherever it is: never squeezed by a window edge. */
   width: max-content;
-  max-width: min(280px, calc(100vw - 8px));
+  max-width: min(var(--tooltip-w), calc(100vw - var(--sp-2)));
   padding: var(--sp-1) var(--sp-2);
   border-radius: var(--radius-sm);
   background: var(--text);
@@ -1273,11 +1307,11 @@ select {
 
 /* Levels dialog */
 .dialog-wide {
-  width: min(560px, calc(100vw - 32px));
+  width: min(var(--dialog-w-lg), calc(100vw - 2 * var(--sp-4)));
 }
 .levels {
   display: grid;
-  grid-template-columns: 1fr 120px 120px 32px;
+  grid-template-columns: 1fr var(--levels-col) var(--levels-col) var(--control-h);
   gap: var(--sp-2) var(--sp-2);
   align-items: center;
   padding: var(--sp-3) var(--sp-4);
@@ -1289,7 +1323,7 @@ select {
 .text-field {
   height: var(--field-h);
   padding: 0 var(--sp-2);
-  border: 1px solid transparent;
+  border: var(--line) solid transparent;
   border-radius: var(--radius);
   background: var(--field);
   min-width: 0;
