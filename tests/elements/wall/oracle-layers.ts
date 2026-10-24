@@ -120,7 +120,7 @@ const SPEC_PRIORITY = { structure: 1, substrate: 2, thermal: 3, finish1: 4, fini
  * face through layers of strictly lower priority, and stops on the first of equal or higher priority
  * (the host core at the latest).
  */
-function tFaces(abutting: Wall, end: WallEnd, host: Wall) {
+export function tFaces(abutting: Wall, end: WallEnd, host: Wall) {
   const fh = frameOf(host);
   const into = times(frameOf(abutting).d, end === 'start' ? 1 : -1);
   const positive = dotp(fh.n, into) > 0;

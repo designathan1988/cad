@@ -109,6 +109,32 @@ describe('layered L corner', () => {
     expect(g.warnings).toEqual([{ kind: 'wallsOverlap', walls: ['a', 'b'] }]);
   });
 
+  it('butt whose abutting layer would reach past the through wall free end warns wallsOverlap', () => {
+    // a: plastered on its axis, 2 cm long, from (0.02, 0) back to the node; its left normal is (0, −1),
+    // so finish 1 is y ∈ [0.08, 0.1] and its core face on that side is y = 0.08. b: finish 2 1 cm,
+    // structure 10 cm, thermal 1 cm, leaving the node at 120°, so its face toward a's body is offset
+    // +0.06 (normal (√3/2, 1/2)). a goes through (core 15 cm against 10).
+    // Miter corners: inner (y = 0.1 on b's +0.06 face) at x = 0.01155, outer behind the node: inside a.
+    // Butt corner (y = 0.1 on b's −0.06 face): x = −0.127, behind the node.
+    // But b's thermal layer (3) passes a's finish 1 (4) to y = 0.08, where its +0.06 edge is at
+    // x = 0.0231: past a's free end at 0.02. a's end would swallow it.
+    const ls = [layer(0.01, 'finish2'), layer(0.1, 'structure'), layer(0.01, 'thermal')];
+    const u = vec(Math.cos((2 * Math.PI) / 3), Math.sin((2 * Math.PI) / 3));
+    const b = testWall('b', vec(2 * u.x, 2 * u.y), vec(0, 0), ls);
+    const g = geometry([testWall('a', vec(0.02, 0), vec(0, 0), plastered), b]);
+    expect(g.warnings).toEqual([{ kind: 'wallsOverlap', walls: ['a', 'b'] }]);
+  });
+
+  it('the same with a 3 cm wall: every point stays inside, so it butts', () => {
+    const ls = [layer(0.01, 'finish2'), layer(0.1, 'structure'), layer(0.01, 'thermal')];
+    const u = vec(Math.cos((2 * Math.PI) / 3), Math.sin((2 * Math.PI) / 3));
+    const g = geometry([testWall('a', vec(0.03, 0), vec(0, 0), plastered), testWall('b', vec(2 * u.x, 2 * u.y), vec(0, 0), ls)]);
+    expect(g.warnings).toEqual([]);
+    // The thermal layer stops on a's core face y = 0.08.
+    const thermal = g.pieces.get('b')!.find((p) => p.layerIndex === 2)!.polygon;
+    expect(Math.min(...thermal.map((v) => v.y))).toBeCloseTo(0.08, 14);
+  });
+
   it('butt nearly in line: its own corner more than 10 T from the node, so one shared cut', () => {
     // a: 10 cm structure along +x, through (core 10 cm against 8). b: finish 1, structure, finish 2,
     // 10 cm, a different sequence, leaving the node at 178°. The miter corners are 0.87 mm from the

@@ -3,7 +3,7 @@
 import type { WallEnd } from '../../../src/elements/wall/schema';
 import type { TestWall as Wall } from './fixtures';
 import { type CornerKind, cornerSpec, expectedL, frameOf, inside, into, rectOf, shoelace, type P, type Region } from './oracle';
-import { coreLayersOf, layerOffsetsOf, sameSequence } from './oracle-layers';
+import { coreLayersOf, layerOffsetsOf, sameSequence, tFaces } from './oracle-layers';
 
 const pt = (x: number, y: number): P => ({ x, y });
 
@@ -95,7 +95,8 @@ const SPEC_MITER_LIMIT = 10;
 /**
  * How the spec resolves an L (§7.1): the miter classification, and for different sequences a butt.
  * The butt has one corner of its own, the through wall's inner face on the other's outer face, where
- * its square end reaches across its whole width. Past either free end it swallows a wall (overlap);
+ * its square end reaches across its whole width; and the abutting layers reach into the through wall
+ * as in a T. Any of those points past either free end swallows a wall (overlap);
  * at an obtuse angle farther than MITER_LIMIT·T from the node it is a long taper (shared cut), as
  * for the miter's corners.
  */
@@ -110,14 +111,22 @@ export function cornerJoin(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?
     return pt(w.start.x + f.n.x * o, w.start.y + f.n.y * o);
   };
   const q = meet(on(through, tInner), frameOf(through).d, on(cut, cOuter), frameOf(cut).d);
-  const past = (w: Wall, end: WallEnd) => {
+  // The other wall abuts as a T: each of its layers reaches into the through wall, along the edges of
+  // its band, as far as the face it stops on. Those deepest points must not pass the through wall's end.
+  const cutEnd = cut === a ? aEnd : bEnd;
+  const { stops } = tFaces(cut, cutEnd, through);
+  const cutOffs = layerOffsetsOf(cut);
+  const deepest = stops.flatMap((stop, k) =>
+    [cutOffs[k]!, cutOffs[k + 1]!].map((o) => meet(on(cut, o), frameOf(cut).d, on(through, stop), frameOf(through).d)),
+  );
+  const past = (w: Wall, end: WallEnd, p: P) => {
     const f = frameOf(w);
     const u = end === 'start' ? f.d : pt(-f.d.x, -f.d.y);
     const farEnd = end === 'start' ? w.end : w.start;
-    const along = (p: P) => (p.x - c.node.x) * u.x + (p.y - c.node.y) * u.y;
-    return along(q) > along(farEnd);
+    const along = (x: P) => (x.x - c.node.x) * u.x + (x.y - c.node.y) * u.y;
+    return along(p) > along(farEnd);
   };
-  if (past(a, aEnd) || past(b, bEnd)) return { kind: 'overlap', butt: false };
+  if ([q, ...deepest].some((p) => past(a, aEnd, p) || past(b, bEnd, p))) return { kind: 'overlap', butt: false };
   const ua = into(a, aEnd);
   const ub = into(b, bEnd);
   const angle = (Math.acos(Math.max(-1, Math.min(1, ua.x * ub.x + ua.y * ub.y))) * 180) / Math.PI;
