@@ -49,6 +49,11 @@ const pairs: [string, string, number, string][] = [
   ['--wall-sel', '--canvas', 3, 'selection on the drawing'],
   ['--accent', '--bg', 3, 'focus ring and pressed tools'],
   ['--border-strong', '--bg', 3, 'dialog edges'],
+  // Walls in plan by layer: the outline and the lines between layers on every layer's colour.
+  ['--wall-line', '--layer-structure', 3, 'line on a core layer'],
+  ['--wall-line', '--layer-substrate', 3, 'line on a substrate layer'],
+  ['--wall-line', '--layer-thermal', 3, 'line on an insulation layer'],
+  ['--wall-line', '--layer-finish', 3, 'line on a finish layer'],
 ];
 
 describe('contrast of the design tokens', () => {
