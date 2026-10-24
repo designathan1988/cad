@@ -41,6 +41,7 @@ import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { readProject, writeProject } from '../io/project-file';
 import { type TempDim, tempDims } from './temp-dims';
 import { contextEntries } from './context-menu';
+import { type Handles, handlesFor } from './handles';
 import { placeBarY } from '../ui/bar-place';
 import { newId } from '../core/id';
 import { addFloor, addRoom, updateFloor, updateRoom } from '../elements/room/commands';
@@ -294,6 +295,14 @@ export class App {
     const end = this.drawingEnd();
     if (distance(w.last, end) < MIN_WALL_LENGTH) return [];
     return [this.makeWall(w.last, end, PREVIEW_ID)];
+  }
+
+  /** While turning the selection: the angle, at the point it turns about. */
+  private turnMeasure(): { at: Point2; text: string } | null {
+    const d = this.ui.drag;
+    if (d?.kind !== 'rotate') return null;
+    const deg = (d.angle * 180) / Math.PI;
+    return { at: d.pivot, text: `${num(deg, 1)}°` };
   }
 
   /** While bending an arc: its radius, at the middle of the arc, set off outward. Null for a straight bend. */
@@ -663,9 +672,9 @@ export class App {
         measure:
           end && along && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
             ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°`, normal: side!, clear: reach }
-            : (this.bendMeasure() ?? guide?.measure ?? null),
+            : (this.bendMeasure() ?? this.turnMeasure() ?? guide?.measure ?? null),
         axis: end && len >= MIN_WALL_LENGTH && w.kind === 'drawing' ? { start: w.last, end } : (guide?.axis ?? null),
-        grips: this.gripPoints(),
+        handles: this.handles(),
         roomLabels: [...this.visibleGeometry().rooms.values()].map((r) => ({
           at: r.room.seed,
           name: `${r.room.number} · ${name(r.room.name)}`,
@@ -833,13 +842,18 @@ export class App {
     return input;
   }
 
-  /** End grips of the one selected wall, while selecting or stretching it. */
-  private gripPoints(): Point2[] {
-    if (this.ui.tool !== 'select' || this.ui.selection.size !== 1 || this.ui.drag?.kind === 'move') return [];
-    const id = [...this.ui.selection][0]!;
-    const walls = this.ui.drag?.kind === 'grip' ? this.ui.drag.walls : this.store.get().walls;
-    const w = walls.find((x) => x.id === id);
-    return w ? [w.start, w.end] : [];
+  /**
+   * The handles of the selected walls in plan (handles.ts): while selecting, and while one of them is
+   * dragged (then on the walls as they are being dragged). None in 3D, during a move or a window.
+   */
+  handles(): Handles {
+    const d = this.ui.drag;
+    if (this.ui.tool !== 'select' || this.ui.view !== 'plan' || d?.kind === 'move' || d?.kind === 'marquee') return handlesFor([], (p) => p);
+    const walls = d ? d.walls : this.store.get().walls;
+    return handlesFor(
+      walls.filter((w) => this.ui.selection.has(w.id)),
+      (p) => this.plan.toScreen(p),
+    );
   }
 
   /** In plan, only the current level's walls and openings; in 3D, every level. */
@@ -910,7 +924,7 @@ export class App {
             : w.count >= 2
               ? 'hint.wallNextClose'
               : 'hint.wallNext'
-      : d?.kind === 'move' || d?.kind === 'grip'
+      : d?.kind === 'move' || d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'rotate'
         ? 'hint.moving'
         : d?.kind === 'marquee'
           ? d.b.x < d.a.x

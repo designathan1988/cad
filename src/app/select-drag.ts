@@ -3,10 +3,11 @@
 // with snaps. Drag on empty space: window selection (left to right: wholly inside) or crossing
 // selection (right to left: anything touched), as in Revit and AutoCAD. Esc cancels any drag.
 
-import { distance, type Point2, sub, vec } from '../core/vector';
+import { add, distance, normalize, type Point2, scale, sub, vec } from '../core/vector';
 import { setWalls } from '../elements/wall/commands';
 import type { WallEnd, WallId } from '../elements/wall/schema';
-import { moveWalls, stretchEnd } from '../tools/edit';
+import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../tools/edit';
+import { handleAt } from './handles';
 import { GRID_STEP, type Snap } from '../tools/snap';
 import type { App } from './app';
 import type { DocWall } from './document';
@@ -15,9 +16,18 @@ import { insidePolygon, openingOutline } from './geometry';
 export type Drag =
   | { readonly kind: 'move'; readonly origin: Point2; readonly walls: readonly DocWall[] }
   | { readonly kind: 'grip'; readonly id: WallId; readonly end: WallEnd; readonly walls: readonly DocWall[] }
+  | { readonly kind: 'stretch'; readonly id: WallId; readonly end: WallEnd; readonly walls: readonly DocWall[] }
+  | { readonly kind: 'rotate'; readonly pivot: Point2; readonly from: number; readonly angle: number; readonly walls: readonly DocWall[] }
   | { readonly kind: 'marquee'; readonly a: Point2; readonly b: Point2 };
 
-type Pending = { kind: 'wall'; at: Point2; screen: Point2 } | { kind: 'grip'; id: WallId; end: WallEnd; screen: Point2 } | { kind: 'empty'; screen: Point2 };
+type Pending =
+  | { kind: 'wall'; at: Point2; screen: Point2 }
+  | { kind: 'grip' | 'stretch'; id: WallId; end: WallEnd; screen: Point2 }
+  | { kind: 'rotate'; pivot: Point2; at: Point2; screen: Point2 }
+  | { kind: 'empty'; screen: Point2 };
+
+/** Turning snaps to 15° steps (with snaps on, or with Shift). */
+const ROTATE_STEP = Math.PI / 12;
 
 const THRESHOLD_PX = 4;
 /** Reach of an end grip from its centre: larger than the 9 px square drawn; 22 px (a 44 px target) on touch. */
@@ -34,23 +44,12 @@ export function selectGestures(app: App): SelectGestures {
   const { ui } = app;
   let pending: Pending | null = null;
 
-  /** The selected wall's end grip under the screen point, if any (one wall selected). */
-  const gripAt = (screen: Point2): { id: WallId; end: WallEnd } | null => {
-    if (ui.selection.size !== 1) return null;
-    const id = [...ui.selection][0]!;
-    const w = app.store.get().walls.find((x) => x.id === id);
-    if (!w) return null;
-    for (const end of ['start', 'end'] as const) {
-      const s = app.toScreen(end === 'start' ? w.start : w.end);
-      if (s && distance(s, screen) <= gripPx()) return { id, end };
-    }
-    return null;
-  };
-
   return {
     down(screen, world, hit, shift) {
-      const grip = gripAt(screen);
-      if (grip) pending = { kind: 'grip', ...grip, screen };
+      const handle = handleAt(app.handles(), screen, gripPx());
+      if (handle?.kind === 'square') pending = { kind: 'grip', id: handle.id, end: handle.end, screen };
+      else if (handle?.kind === 'arrow') pending = { kind: 'stretch', id: handle.id, end: handle.end, screen };
+      else if (handle?.kind === 'rotate' && world) pending = { kind: 'rotate', pivot: handle.pivot, at: world, screen };
       else if (hit && world) {
         if (shift) ui.selection.has(hit) ? ui.selection.delete(hit) : ui.selection.add(hit);
         else if (!ui.selection.has(hit)) {
@@ -72,6 +71,11 @@ export function selectGestures(app: App): SelectGestures {
         if (distance(screen, pending.screen) < THRESHOLD_PX) return;
         if (pending.kind === 'wall' && ui.selection.size > 0) ui.drag = { kind: 'move', origin: pending.at, walls: app.store.get().walls };
         else if (pending.kind === 'grip') ui.drag = { kind: 'grip', id: pending.id, end: pending.end, walls: app.store.get().walls };
+        else if (pending.kind === 'stretch') ui.drag = { kind: 'stretch', id: pending.id, end: pending.end, walls: app.store.get().walls };
+        else if (pending.kind === 'rotate') {
+          const from = Math.atan2(pending.at.y - pending.pivot.y, pending.at.x - pending.pivot.x);
+          ui.drag = { kind: 'rotate', pivot: pending.pivot, from, angle: 0, walls: app.store.get().walls };
+        }
         else if (pending.kind === 'empty') ui.drag = { kind: 'marquee', a: pending.screen, b: screen };
       }
       const d = ui.drag;
@@ -87,6 +91,21 @@ export function selectGestures(app: App): SelectGestures {
         const s = snapAt(world, new Set([d.id]));
         ui.snap = s;
         ui.drag = { ...d, walls: stretchEnd(doc, d.id, d.end, s?.point ?? world) };
+      } else if (d.kind === 'stretch' && world) {
+        // Along the wall's own line; on the 5 cm grid with snaps on.
+        const w = doc.walls.find((x) => x.id === d.id)!;
+        const other = d.end === 'start' ? w.end : w.start;
+        const walls = stretchAlong(doc, d.id, d.end, world);
+        const moved = walls.find((x) => x.id === d.id)!;
+        const len = distance(other, moved[d.end]);
+        const snapped = ui.snaps ? Math.max(GRID_STEP, Math.round(len / GRID_STEP) * GRID_STEP) : len;
+        const dir = normalize(sub(moved[d.end], other));
+        ui.drag = { ...d, walls: stretchEnd(doc, d.id, d.end, add(other, scale(dir, snapped))) };
+      } else if (d.kind === 'rotate' && world) {
+        let angle = Math.atan2(world.y - d.pivot.y, world.x - d.pivot.x) - d.from;
+        if (ui.snaps || shift) angle = Math.round(angle / ROTATE_STEP) * ROTATE_STEP;
+        const ids = [...ui.selection].filter((id) => doc.walls.some((w) => w.id === id));
+        ui.drag = { ...d, angle, walls: rotateWalls(doc, ids, d.pivot, angle) };
       }
       app.refresh();
     },
@@ -96,7 +115,7 @@ export function selectGestures(app: App): SelectGestures {
       pending = null;
       ui.drag = null;
       ui.snap = null;
-      if (d?.kind === 'move' || d?.kind === 'grip') app.store.dispatch(setWalls(d.walls));
+      if (d?.kind === 'move' || d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'rotate') app.store.dispatch(setWalls(d.walls));
       else if (d?.kind === 'marquee') selectByMarquee(app, d.a, d.b, shift);
       app.refresh();
     },

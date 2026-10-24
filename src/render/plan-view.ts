@@ -5,6 +5,7 @@
 import type { Point2 } from '../core/vector';
 import { type DerivedGeometry, openingOutline } from '../app/geometry';
 import { layoutRoomTags } from './room-tags';
+import type { Handles } from '../app/handles';
 import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
 
@@ -30,8 +31,8 @@ export interface PlanOverlay {
   readonly measure: { readonly at: Point2; readonly text: string; readonly normal?: Point2; readonly clear?: number } | null;
   /** The reference line of the segment being drawn, dashed. */
   readonly axis: { readonly start: Point2; readonly end: Point2 } | null;
-  /** End grips of the selected wall: small squares to drag. */
-  readonly grips: readonly Point2[];
+  /** Handles of the selection, in screen pixels (app/handles.ts). */
+  readonly handles: Handles;
   /** Room name and area tags, at each room's point. */
   /** `short` is shown when the name does not fit the room on screen; `outline` is the room's, if closed. */
   readonly roomLabels: readonly {
@@ -227,17 +228,52 @@ export class PlanView {
       ctx.stroke();
       ctx.restore();
     }
-    for (const g of o.grips) {
-      const p = this.toScreen(g);
-      ctx.fillStyle = color('--bg');
-      ctx.strokeStyle = color('--wall-sel');
-      ctx.lineWidth = 1.5;
-      ctx.fillRect(Math.round(p.x) - 4.5, Math.round(p.y) - 4.5, 9, 9);
-      ctx.strokeRect(Math.round(p.x) - 4.5, Math.round(p.y) - 4.5, 9, 9);
-    }
+    this.drawHandles(o.handles, color('--bg'), color('--wall-sel'));
     for (const d of o.dims ?? []) this.drawDim(d, color('--wall-sel'));
     const snapBox = o.snap ? this.drawSnap(o.snap, color('--snap'), color('--bg')) : null;
     if (o.measure) this.drawMeasure(o.measure, snapBox, color('--accent-text'), color('--canvas'));
+  }
+
+  /** Squares move an end, arrows stretch along the wall, the arc turns the selection. */
+  private drawHandles(h: Handles, bg: string, line: string): void {
+    const { ctx } = this;
+    ctx.save();
+    ctx.fillStyle = bg;
+    ctx.strokeStyle = line;
+    ctx.lineWidth = 1.5;
+    for (const s of h.squares) {
+      ctx.fillRect(Math.round(s.at.x) - 4.5, Math.round(s.at.y) - 4.5, 9, 9);
+      ctx.strokeRect(Math.round(s.at.x) - 4.5, Math.round(s.at.y) - 4.5, 9, 9);
+    }
+    for (const a of h.arrows) {
+      // A triangle pointing outward along the wall.
+      const n = { x: -a.dir.y, y: a.dir.x };
+      ctx.beginPath();
+      ctx.moveTo(a.at.x + a.dir.x * 6, a.at.y + a.dir.y * 6);
+      ctx.lineTo(a.at.x - a.dir.x * 4 + n.x * 5, a.at.y - a.dir.y * 4 + n.y * 5);
+      ctx.lineTo(a.at.x - a.dir.x * 4 - n.x * 5, a.at.y - a.dir.y * 4 - n.y * 5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    if (h.rotate) {
+      // A disc with a three-quarter arc and its arrowhead.
+      const { x, y } = h.rotate.at;
+      ctx.beginPath();
+      ctx.arc(x, y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y, 4.5, -Math.PI * 0.9, Math.PI * 0.6);
+      ctx.stroke();
+      const tip = { x: x + 4.5 * Math.cos(Math.PI * 0.6), y: y + 4.5 * Math.sin(Math.PI * 0.6) };
+      ctx.beginPath();
+      ctx.moveTo(tip.x - 3, tip.y - 1);
+      ctx.lineTo(tip.x, tip.y);
+      ctx.lineTo(tip.x + 1, tip.y - 3);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   /** Room tags where room-tags.ts places them: with their room, shortened or left out when crowded. */

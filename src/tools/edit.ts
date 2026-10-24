@@ -4,7 +4,7 @@
 
 import type { Doc, DocWall } from '../app/document';
 import { POINT_TOLERANCE } from '../core/tolerance';
-import { add, cross, distance, dot, intersectLines, normalize, type Point2, sub } from '../core/vector';
+import { add, cross, distance, dot, intersectLines, normalize, type Point2, scale, sub } from '../core/vector';
 import type { WallEnd, WallId } from '../elements/wall/schema';
 
 type Ends = { start: Point2; end: Point2 };
@@ -66,4 +66,27 @@ export function stretchEnd(doc: Doc, id: WallId, end: WallEnd, to: Point2): DocW
     const e = distance(x.end, old) <= POINT_TOLERANCE ? to : x.end;
     return s === x.start && e === x.end ? x : { ...x, start: s, end: e };
   });
+}
+
+/** Turns the walls about a point by an angle (radians, counter-clockwise); joins kept as for a move. */
+export function rotateWalls(doc: Doc, ids: readonly WallId[], pivot: Point2, angle: number): DocWall[] {
+  const set = new Set(ids);
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  const turn = (p: Point2): Point2 => {
+    const d = sub(p, pivot);
+    return add(pivot, { x: d.x * c - d.y * s, y: d.x * s + d.y * c });
+  };
+  const moved = new Map<WallId, Ends>();
+  for (const w of doc.walls) if (set.has(w.id)) moved.set(w.id, { start: turn(w.start), end: turn(w.end) });
+  return follow(doc.walls, moved);
+}
+
+/** Stretches an end along the wall's own line, to the foot of `cursor` on it: the direction stays. */
+export function stretchAlong(doc: Doc, id: WallId, end: WallEnd, cursor: Point2): DocWall[] {
+  const w = doc.walls.find((x) => x.id === id);
+  if (!w) return [...doc.walls];
+  const u = normalize(sub(w.end, w.start));
+  const foot = add(w.start, scale(u, dot(sub(cursor, w.start), u)));
+  return stretchEnd(doc, id, end, foot);
 }
