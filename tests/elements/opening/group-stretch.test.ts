@@ -8,6 +8,7 @@ import { deriveGeometry, hostsIn } from '../../../src/app/geometry';
 import { deleteElements, distributeOpenings, setGroupSpacing } from '../../../src/elements/opening/commands';
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { newOpening, type Opening, type PositionRule } from '../../../src/elements/opening/schema';
+import { readProject } from '../../../src/io/project-file';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -70,6 +71,34 @@ describe('a group distributed beside a joint', () => {
     const fixed = setGroupSpacing('g', { kind: 'fixed', gap: 0.1, anchor: 'end', distance: 0 }).apply(d);
     near(startOf(fixed, 'z') + 0.6, 2.9);
     expect(fixed.openingGroups[0]!.between).toEqual([null, 'c']);
+  });
+
+  it('a group from before stretches (version 3) gets one when its spacing is changed: it stays clear of the X', () => {
+    // The tester's F12: made before the fix, switched from fixed back to equal, it landed on the X.
+    const d = distributeOpenings('g', ['x', 'y', 'z'], { kind: 'fixed', gap: 0.1, anchor: 'start', distance: 0.2 }).apply(docOf([w, c], left));
+    const old: Doc = { ...d, openingGroups: d.openingGroups.map(({ between: _b, ...g }) => g) };
+    const equal = setGroupSpacing('g', { kind: 'equal' }).apply(old);
+    expect(equal.openingGroups[0]!.between).toEqual([null, 'c']);
+    near(startOf(equal, 'x'), 0.275);
+    expect(clean(equal)).toBe(true);
+  });
+
+  it('a real version 3 file, read as the app reads it: equal again after fixed stays clear of the X', () => {
+    // As saved before the fix: version 3, the group with fixed spacing and no stretch.
+    const v3 = JSON.stringify({
+      ...newDocument(),
+      version: 3,
+      walls: [w, c],
+      openings: left.map((o) => ({ ...o, rule: { kind: 'inGroup', groupId: 'g' } })),
+      openingGroups: [{ id: 'g', wallId: 'w', members: ['x', 'y', 'z'], spacing: { kind: 'fixed', gap: 0.1, anchor: 'start', distance: 0.2 } }],
+    });
+    const read = readProject(v3);
+    if (!read.ok) throw new Error(read.error);
+    expect(read.doc.version).toBe(4);
+    expect(read.doc.openingGroups[0]!.between).toBeUndefined();
+    const equal = setGroupSpacing('g', { kind: 'equal' }).apply(read.doc);
+    expect(equal.openingGroups[0]!.between).toEqual([null, 'c']);
+    expect(clean(equal)).toBe(true);
   });
 
   it('with the bounding wall gone, the group takes the whole wall again', () => {

@@ -31,6 +31,17 @@ describe('rooms', () => {
     expect(r.perimeter).toBeCloseTo(27.2, 9);
   });
 
+  it('its name sits in the middle of the room as it is now, not at the point it was made from', () => {
+    // Made from (1, 1): the inside is 0.1 to 7.9 by 0.1 to 5.9, centre (4, 3).
+    const r = deriveGeometry(doc({ rooms: [room('r', 1, 1)] })).rooms.get('r')!;
+    expect(r.label.x).toBeCloseTo(4, 2);
+    expect(r.label.y).toBeCloseTo(3, 2);
+    // The right wall moved 2 m out: the inside runs to 9.9, centre x = 5.
+    const wider = ring.map((w) => (w.id === 'w1' ? { ...w, start: vec(10, 0), end: vec(10, 6) } : w.id === 'w0' ? { ...w, end: vec(10, 0) } : w.id === 'w2' ? { ...w, start: vec(10, 6) } : w));
+    const moved = deriveGeometry(doc({ walls: wider, rooms: [room('r', 1, 1)] })).rooms.get('r')!;
+    expect(moved.label.x).toBeCloseTo(5, 2);
+  });
+
   it('a divider splits it: the left room is 3.825 × 5.8 = 22.185 m²', () => {
     // Divider 15 cm masonry at x = 4: faces 3.925 and 4.075.
     const walls = [...ring, wall('d', [4, 0], [4, 6], 'wt_masonry15')];

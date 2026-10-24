@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { elementIds, newDocument } from '../../src/app/document';
+import { elementIds, newDocument, startLevel } from '../../src/app/document';
 import { newOpening } from '../../src/elements/opening/schema';
 
 describe('selectable elements', () => {
@@ -20,5 +20,27 @@ describe('wall numbers', () => {
     const w = (id: string, levelId: string) => ({ id, wallTypeId: 'wt_concrete20', start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, referenceLine: 'centerline' as const, levelId });
     const doc = { ...newDocument(), walls: [w('a', 'lvl_ground'), w('u', 'lvl_up'), w('b', 'lvl_ground')] };
     expect([wallNumber(doc, 'a'), wallNumber(doc, 'b'), wallNumber(doc, 'u'), wallNumber(doc, 'x')]).toEqual([1, 2, 1, null]);
+  });
+});
+
+describe('the level shown at the start', () => {
+  const two = {
+    ...newDocument(),
+    levels: [
+      { id: 'up', name: 'Upper', elevation: 2.8, height: 2.8 },
+      { id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 },
+    ],
+  };
+  const onUp = { ...two, rooms: [{ id: 'r', levelId: 'up', seed: { x: 0, y: 0 }, name: 'Room 1', number: '1' }] };
+
+  it('the one shown last, when it still exists', () => {
+    expect(startLevel(onUp, 'lvl_ground')).toBe('lvl_ground');
+  });
+  it('otherwise the lowest level with something on it: never an empty one when another has content', () => {
+    expect(startLevel(onUp)).toBe('up');
+    expect(startLevel(onUp, 'gone')).toBe('up');
+  });
+  it('an empty project: its lowest level', () => {
+    expect(startLevel(two)).toBe('lvl_ground');
   });
 });
