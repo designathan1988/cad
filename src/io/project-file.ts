@@ -4,17 +4,20 @@
 // half-read.
 
 import type { Doc, Level } from '../app/document';
-import type { Opening } from '../elements/opening/schema';
+import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { Floor, Room } from '../elements/room/schema';
 import type { WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
 
-/** Version 1: walls, openings, rooms and floors, each list optional when empty in older saves. */
-export const CURRENT_VERSION = 1;
+/**
+ * Version 1: walls, openings, rooms and floors, each list optional when empty in older saves.
+ * Version 2: opening groups, and the aligned and in-group rules. A version 1 file has no groups.
+ */
+export const CURRENT_VERSION = 2;
 
 export type ReadError = 'notJson' | 'notProject' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors'; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups'; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -46,8 +49,23 @@ const isRule = (r: unknown): boolean => {
   if (!isObject(r)) return false;
   if (r.kind === 'centered') return true;
   if (r.kind === 'fromStart' || r.kind === 'fromEnd') return finite(r.distance);
-  return r.kind === 'fromOpening' && typeof r.openingId === 'string' && finite(r.distance) && (r.toward === 'start' || r.toward === 'end');
+  if (r.kind === 'fromOpening') return typeof r.openingId === 'string' && finite(r.distance) && (r.toward === 'start' || r.toward === 'end');
+  if (r.kind === 'aligned') return typeof r.openingId === 'string' && (r.edge === 'start' || r.edge === 'center' || r.edge === 'end');
+  return r.kind === 'inGroup' && typeof r.groupId === 'string';
 };
+
+const isSpacing = (s: unknown): boolean =>
+  isObject(s) &&
+  (s.kind === 'equal' ||
+    (s.kind === 'fixed' && finite(s.gap) && s.gap >= 0 && finite(s.distance) && (s.anchor === 'start' || s.anchor === 'centered' || s.anchor === 'end')));
+
+export const isOpeningGroup = (g: unknown): g is OpeningGroup =>
+  isObject(g) &&
+  typeof g.id === 'string' &&
+  typeof g.wallId === 'string' &&
+  Array.isArray(g.members) &&
+  g.members.every((m: unknown) => typeof m === 'string') &&
+  isSpacing(g.spacing);
 
 export const isOpening = (o: unknown): o is Opening =>
   isObject(o) &&
@@ -122,6 +140,7 @@ export function repairProject(raw: unknown): ReadResult {
     wallTypes,
     walls,
     openings: keep(raw.openings, isOpening, 'droppedOpenings'),
+    openingGroups: keep(raw.openingGroups, isOpeningGroup, 'droppedGroups'),
     rooms: keep(raw.rooms, isRoom, 'droppedRooms'),
     floors: keep(raw.floors, isFloor, 'droppedFloors'),
   };

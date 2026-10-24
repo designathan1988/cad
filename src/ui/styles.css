@@ -189,6 +189,21 @@ select {
   font-weight: 600;
   font-size: var(--fs-sm);
 }
+.rows > .wide-btn,
+.rows > .panel-note {
+  grid-column: 1 / -1;
+}
+.wide-btn {
+  justify-content: flex-start;
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border);
+}
+.panel-note {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
 
 .select {
   position: relative;

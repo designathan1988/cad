@@ -1,17 +1,47 @@
 // Commands on openings. Each returns a new document; the store makes each one undo step. No command
 // moves an opening as a side effect: when a reference goes away, the rules that used it are rewritten
-// to keep their openings where they were.
+// to keep their openings where they were. The one exception is a distributed group: losing a member
+// spreads the others out again, which is what the group is for.
 
-import type { Doc } from '../../app/document';
+import { type Doc, wallHeights } from '../../app/document';
 import type { Command } from '../../core/store';
 import { deriveGeometry } from '../../app/geometry';
-import { deriveOpenings, hostsOf } from './derive';
-import type { Opening, OpeningId, PositionRule, RuleKind } from './schema';
+import { deriveOpenings, hostsOf, type PlacedOpening } from './derive';
+import type { AlignEdge, GroupSpacing, Opening, OpeningGroupId, OpeningId, PositionRule, RuleKind } from './schema';
 
 export const addOpening = (opening: Opening): Command<Doc> => ({
   label: 'cmd.addOpening',
   apply: (doc) => ({ ...doc, openings: [...doc.openings, opening] }),
 });
+
+const placedIn = (doc: Doc): Map<OpeningId, PlacedOpening> => deriveOpenings(doc.openings, hostsOf(doc), doc.openingGroups).placed;
+
+/**
+ * Groups as the openings now say: a member that left (another rule, another wall, deleted) is taken
+ * out, and a group left with fewer than two is dissolved, its member staying where it was in `before`.
+ */
+function settleGroups(before: Doc, doc: Doc): Doc {
+  const byId = new Map(doc.openings.map((o) => [o.id, o]));
+  const walls = new Set(doc.walls.map((w) => w.id));
+  let changed = false;
+  const kept = doc.openingGroups.flatMap((g) => {
+    const members = g.members.filter((id) => {
+      const o = byId.get(id);
+      return o !== undefined && o.wallId === g.wallId && o.rule.kind === 'inGroup' && o.rule.groupId === g.id;
+    });
+    if (members.length === g.members.length && walls.has(g.wallId)) return [g];
+    changed = true;
+    return walls.has(g.wallId) ? [{ ...g, members }] : [];
+  });
+  const lone = new Set(kept.filter((g) => g.members.length < 2).flatMap((g) => g.members));
+  if (!changed && lone.size === 0) return doc;
+  const was = lone.size > 0 ? placedIn(before) : null;
+  return {
+    ...doc,
+    openingGroups: kept.filter((g) => g.members.length >= 2),
+    openings: doc.openings.map((o) => (lone.has(o.id) ? { ...o, rule: { kind: 'fromStart' as const, distance: was!.get(o.id)?.start ?? 0 } } : o)),
+  };
+}
 
 /** Sets fields on one opening. Unknown id or no change: the same document, no undo step. */
 export const updateOpening = (id: OpeningId, patch: Partial<Omit<Opening, 'id'>>): Command<Doc> => ({
@@ -25,13 +55,14 @@ export const updateOpening = (id: OpeningId, patch: Partial<Omit<Opening, 'id'>>
       changed = true;
       return next;
     });
-    return changed ? { ...doc, openings } : doc;
+    return changed ? settleGroups(doc, { ...doc, openings }) : doc;
   },
 });
 
 /**
  * Deletes walls and openings by id in one step. The openings a deleted wall hosts go with it; an
- * opening measured from a deleted one is measured from its wall's start instead, at the same place.
+ * opening measured from or aligned with a deleted one is measured from its wall's start instead, at
+ * the same place.
  */
 export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
   label: 'cmd.deleteElements',
@@ -51,24 +82,26 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
         ? { ...f, source: { kind: 'outline' as const, points: [...(derived.get(f.source.roomId)?.outline ?? [])] } }
         : f,
     );
-    const { placed } = deriveOpenings(doc.openings, hostsOf(doc));
+    const placed = placedIn(doc);
     const openings = doc.openings
       .filter((o) => !gone.has(o.id))
       .map((o) =>
-        o.rule.kind === 'fromOpening' && gone.has(o.rule.openingId)
+        (o.rule.kind === 'fromOpening' || o.rule.kind === 'aligned') && gone.has(o.rule.openingId)
           ? { ...o, rule: { kind: 'fromStart' as const, distance: placed.get(o.id)!.start } }
           : o,
       );
-    return { ...doc, walls, openings, rooms, floors };
+    return settleGroups(doc, { ...doc, walls, openings, rooms, floors });
   },
 });
 
 /**
  * The rule of another kind that leaves the opening where it is now, or null when there is none: a
  * reference opening must be another one on the same wall that does not already depend on this one.
+ * Aligned is the exception: it moves the opening across from its reference, by the centres. Groups
+ * are made with distributeOpenings, not here.
  */
 export function ruleKeepingPosition(doc: Doc, id: OpeningId, kind: RuleKind, referenceId?: OpeningId): PositionRule | null {
-  const { placed } = deriveOpenings(doc.openings, hostsOf(doc));
+  const placed = placedIn(doc);
   const me = placed.get(id);
   const host = me && hostsOf(doc).get(me.opening.wallId);
   if (!me || !host) return null;
@@ -86,6 +119,12 @@ export function ruleKeepingPosition(doc: Doc, id: OpeningId, kind: RuleKind, ref
         ? { kind, openingId: ref.opening.id, distance: me.start - ref.end, toward: 'end' }
         : { kind, openingId: ref.opening.id, distance: ref.start - me.end, toward: 'start' };
     }
+    case 'aligned':
+      return referenceId !== undefined && alignCandidates(doc, id).some((o) => o.id === referenceId)
+        ? { kind, openingId: referenceId, edge: 'center' }
+        : null;
+    case 'inGroup':
+      return null;
   }
 }
 
@@ -94,7 +133,7 @@ function dependsOn(openings: readonly Opening[], id: OpeningId, target: OpeningI
   const byId = new Map(openings.map((o) => [o.id, o]));
   const seen = new Set<OpeningId>();
   let at = byId.get(id);
-  while (at && at.rule.kind === 'fromOpening' && !seen.has(at.id)) {
+  while (at && (at.rule.kind === 'fromOpening' || at.rule.kind === 'aligned') && !seen.has(at.id)) {
     if (at.rule.openingId === target) return true;
     seen.add(at.id);
     at = byId.get(at.rule.openingId);
@@ -108,3 +147,100 @@ export function referenceCandidates(doc: Doc, id: OpeningId): Opening[] {
   if (!me) return [];
   return doc.openings.filter((o) => o.id !== id && o.wallId === me.wallId && !dependsOn(doc.openings, o.id, id));
 }
+
+/** Openings `id` may be aligned with: on another straight wall, both walls straight, no loop. */
+export function alignCandidates(doc: Doc, id: OpeningId): Opening[] {
+  const me = doc.openings.find((o) => o.id === id);
+  const hosts = hostsOf(doc);
+  if (!me || !hosts.get(me.wallId)?.line) return [];
+  return doc.openings.filter((o) => o.id !== id && o.wallId !== me.wallId && hosts.get(o.wallId)?.line !== undefined && !dependsOn(doc.openings, o.id, id));
+}
+
+/** Aligns each of `ids` with `refId` (by `edge`); the ones that cannot be aligned with it are left as they are. */
+export const alignOpenings = (refId: OpeningId, ids: readonly OpeningId[], edge: AlignEdge): Command<Doc> => ({
+  label: 'cmd.alignOpenings',
+  apply: (doc) => {
+    const can = new Set(ids.filter((id) => id !== refId && alignCandidates(doc, id).some((o) => o.id === refId)));
+    if (can.size === 0) return doc;
+    const openings = doc.openings.map((o) => (can.has(o.id) ? { ...o, rule: { kind: 'aligned' as const, openingId: refId, edge } } : o));
+    return settleGroups(doc, { ...doc, openings });
+  },
+});
+
+/**
+ * Gives each of `ids` the head height of `refId`, measured from the ground: a window moves its sill,
+ * a door (whose sill stays at its wall's base) changes its height. One that would end below its wall
+ * base is left as it is.
+ */
+export const alignHeads = (refId: OpeningId, ids: readonly OpeningId[]): Command<Doc> => ({
+  label: 'cmd.alignHeads',
+  apply: (doc) => {
+    const walls = new Map(doc.walls.map((w) => [w.id, w]));
+    const base = (o: Opening) => {
+      const w = walls.get(o.wallId);
+      return w ? wallHeights(doc, w).bottom : null;
+    };
+    const ref = doc.openings.find((o) => o.id === refId);
+    const refBase = ref && base(ref);
+    if (!ref || refBase == null) return doc;
+    const head = refBase + ref.sill + ref.height;
+    const want = new Set(ids.filter((id) => id !== refId));
+    let changed = false;
+    const openings = doc.openings.map((o) => {
+      const b = want.has(o.id) ? base(o) : null;
+      if (b == null) return o;
+      const next = o.kind === 'door' ? { ...o, height: head - b - o.sill } : { ...o, sill: head - b - o.height };
+      if (next.height <= 0 || next.sill < 0 || (next.height === o.height && next.sill === o.sill)) return o;
+      changed = true;
+      return next;
+    });
+    return changed ? { ...doc, openings } : doc;
+  },
+});
+
+/**
+ * Makes `ids` one group with `spacing`, in the order they now sit along the wall. They must be two or
+ * more on one wall; otherwise nothing changes. Members of other groups leave them.
+ */
+export const distributeOpenings = (groupId: OpeningGroupId, ids: readonly OpeningId[], spacing: GroupSpacing): Command<Doc> => ({
+  label: 'cmd.distributeOpenings',
+  apply: (doc) => {
+    const want = new Set(ids);
+    const list = doc.openings.filter((o) => want.has(o.id));
+    if (list.length < 2 || list.some((o) => o.wallId !== list[0]!.wallId) || !doc.walls.some((w) => w.id === list[0]!.wallId)) return doc;
+    const placed = placedIn(doc);
+    const members = [...list].sort((a, b) => placed.get(a.id)!.start - placed.get(b.id)!.start).map((o) => o.id);
+    const openings = doc.openings.map((o) => (want.has(o.id) ? { ...o, rule: { kind: 'inGroup' as const, groupId } } : o));
+    const group = { id: groupId, wallId: list[0]!.wallId, members, spacing };
+    return settleGroups(doc, { ...doc, openings, openingGroups: [...doc.openingGroups.filter((g) => g.id !== groupId), group] });
+  },
+});
+
+export const setGroupSpacing = (groupId: OpeningGroupId, spacing: GroupSpacing): Command<Doc> => ({
+  label: 'cmd.setGroupSpacing',
+  apply: (doc) => {
+    const g = doc.openingGroups.find((x) => x.id === groupId);
+    if (!g || JSON.stringify(g.spacing) === JSON.stringify(spacing)) return doc;
+    return { ...doc, openingGroups: doc.openingGroups.map((x) => (x.id === groupId ? { ...x, spacing } : x)) };
+  },
+});
+
+/** Dissolves a group; every member keeps its place, measured from its wall's start. */
+export const ungroupOpenings = (groupId: OpeningGroupId): Command<Doc> => ({
+  label: 'cmd.ungroupOpenings',
+  apply: (doc) => {
+    const g = doc.openingGroups.find((x) => x.id === groupId);
+    if (!g) return doc;
+    const placed = placedIn(doc);
+    const members = new Set(g.members);
+    return {
+      ...doc,
+      openingGroups: doc.openingGroups.filter((x) => x.id !== groupId),
+      openings: doc.openings.map((o) =>
+        members.has(o.id) && o.rule.kind === 'inGroup' && o.rule.groupId === groupId
+          ? { ...o, rule: { kind: 'fromStart' as const, distance: placed.get(o.id)!.start } }
+          : o,
+      ),
+    };
+  },
+});

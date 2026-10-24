@@ -9,13 +9,38 @@ export type OpeningKind = 'door' | 'window';
 /**
  * Where the opening sits along its wall. Distances run along the wall's reference line, from the
  * reference to the nearest jamb: from the wall's start or end, or the clear gap from another opening
- * on the same wall (`toward` says on which side of it this one lies).
+ * on the same wall (`toward` says on which side of it this one lies). Aligned: across from another
+ * opening on another straight wall, by its centre or by the jamb toward this wall's start or end.
+ * In a group: where its distributed group puts it.
  */
 export type PositionRule =
   | { readonly kind: 'fromStart'; readonly distance: number }
   | { readonly kind: 'fromEnd'; readonly distance: number }
   | { readonly kind: 'centered' }
-  | { readonly kind: 'fromOpening'; readonly openingId: OpeningId; readonly distance: number; readonly toward: 'start' | 'end' };
+  | { readonly kind: 'fromOpening'; readonly openingId: OpeningId; readonly distance: number; readonly toward: 'start' | 'end' }
+  | { readonly kind: 'aligned'; readonly openingId: OpeningId; readonly edge: AlignEdge }
+  | { readonly kind: 'inGroup'; readonly groupId: OpeningGroupId };
+
+export type AlignEdge = 'start' | 'center' | 'end';
+/** The rules measured by a distance the user can type. */
+export type DistanceRule = Extract<PositionRule, { readonly distance: number }>;
+export const hasDistance = (r: PositionRule): r is DistanceRule => 'distance' in r;
+export type OpeningGroupId = string;
+
+/**
+ * Openings of one wall placed together, in wall order. Equal: the same space between the wall ends
+ * and each opening. Fixed: a set gap between neighbours, the row centred or measured from one end.
+ */
+export type GroupSpacing =
+  | { readonly kind: 'equal' }
+  | { readonly kind: 'fixed'; readonly gap: number; readonly anchor: 'start' | 'centered' | 'end'; readonly distance: number };
+
+export interface OpeningGroup {
+  readonly id: OpeningGroupId;
+  readonly wallId: WallId;
+  readonly members: readonly OpeningId[];
+  readonly spacing: GroupSpacing;
+}
 
 export type RuleKind = PositionRule['kind'];
 
@@ -52,3 +77,4 @@ export function newOpening(
 /** The ids every opening id starts with, so a selection can tell openings from walls. */
 export const OPENING_PREFIX = 'opening';
 export const isOpeningId = (id: string): boolean => id.startsWith(`${OPENING_PREFIX}_`);
+export const GROUP_PREFIX = 'group';

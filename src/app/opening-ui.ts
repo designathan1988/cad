@@ -2,7 +2,7 @@
 // dimension guide of the opening being placed. Read-only over the document and its geometry.
 
 import { add, dot, type Point2, scale, sub } from '../core/vector';
-import type { PositionRule } from '../elements/opening/schema';
+import { hasDistance, type PositionRule } from '../elements/opening/schema';
 import { referenceLength } from '../elements/opening/derive';
 import { arcOf } from '../elements/wall/geometry/arc';
 import { faceOffsets, wallDirection, wallNormal } from '../elements/wall/geometry/offset';
@@ -59,7 +59,7 @@ export function aimAt(doc: Doc, g: DerivedGeometry, levelId: string, p: Point2, 
 
 /** The rule in words, for the footer: "0.55 m from the wall start". */
 export const ruleText = (rule: PositionRule): string =>
-  t(`ruleShort.${rule.kind}` as MessageKey, rule.kind === 'centered' ? {} : { d: num(rule.distance) });
+  t(`ruleShort.${rule.kind}` as MessageKey, hasDistance(rule) ? { d: num(rule.distance) } : {});
 
 /**
  * The dimension of the opening being placed: a dashed line along the wall from the rule's reference

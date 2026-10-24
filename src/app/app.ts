@@ -7,9 +7,19 @@ import { createStore, type Store } from '../core/store';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { addWalls, updateWalls } from '../elements/wall/commands';
-import { addOpening, deleteElements, ruleKeepingPosition, updateOpening } from '../elements/opening/commands';
+import {
+  addOpening,
+  alignHeads,
+  alignOpenings,
+  deleteElements,
+  distributeOpenings,
+  ruleKeepingPosition,
+  setGroupSpacing,
+  ungroupOpenings,
+  updateOpening,
+} from '../elements/opening/commands';
 import type { OpeningSize } from '../elements/opening/panel';
-import { isOpeningId, newOpening, OPENING_DEFAULTS, OPENING_PREFIX, type Opening, type OpeningKind } from '../elements/opening/schema';
+import { GROUP_PREFIX, hasDistance, isOpeningId, newOpening, OPENING_DEFAULTS, OPENING_PREFIX, type Opening, type OpeningKind } from '../elements/opening/schema';
 import { OPENING_IDLE, openingTransition, type OpeningToolEvent, type OpeningToolState } from '../tools/opening-tool';
 import { OPENING_PREVIEW_ID, ruleGuide, ruleText } from './opening-ui';
 import type { WallId } from '../elements/wall/schema';
@@ -338,8 +348,8 @@ export class App {
     const openings = this.selectedOpenings();
     if (openings.length === 1 && this.ui.selection.size === 1) {
       const o = openings[0]!.opening;
-      const rule = o.rule.kind === 'centered' ? ruleKeepingPosition(this.store.get(), o.id, 'fromStart') : o.rule;
-      if (rule && rule.kind !== 'centered') this.store.dispatch(updateOpening(o.id, { rule: { ...rule, distance: r.value.length } }));
+      const rule = hasDistance(o.rule) ? o.rule : ruleKeepingPosition(this.store.get(), o.id, 'fromStart');
+      if (rule && hasDistance(rule)) this.store.dispatch(updateOpening(o.id, { rule: { ...rule, distance: r.value.length } }));
       return true;
     }
     const sel = this.selectedWalls();
@@ -536,6 +546,11 @@ export class App {
             const rule = ruleKeepingPosition(this.store.get(), id, kind, referenceId);
             if (rule) this.store.dispatch(updateOpening(id, { rule }));
           },
+          align: (refId, ids, edge) => this.store.dispatch(alignOpenings(refId, ids, edge)),
+          alignHeads: (refId, ids) => this.store.dispatch(alignHeads(refId, ids)),
+          distribute: (ids, spacing) => this.store.dispatch(distributeOpenings(newId(GROUP_PREFIX), ids, spacing)),
+          setSpacing: (groupId, spacing) => this.store.dispatch(setGroupSpacing(groupId, spacing)),
+          ungroup: (groupId) => this.store.dispatch(ungroupOpenings(groupId)),
         },
         updateOpeningDefaults: (kind, patch) => {
           ui.openingDefaults = { ...ui.openingDefaults, [kind]: { ...ui.openingDefaults[kind], ...patch } };

@@ -51,7 +51,7 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
   const walls = [...doc.walls, ...extra];
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
   const { pieces, warnings } = computeWallGeometry(walls, types);
-  const placed = deriveOpenings([...doc.openings, ...extraOpenings], hostsOf(doc, walls));
+  const placed = deriveOpenings([...doc.openings, ...extraOpenings], hostsOf(doc, walls), doc.openingGroups);
   const byId = new Map(walls.map((w) => [w.id, w]));
   const openings = new Map<OpeningId, OpeningSolid>();
   const cuts = new Map<WallId, OpeningCut[]>();

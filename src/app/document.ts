@@ -2,7 +2,7 @@
 // always derived from it.
 
 import type { Point2 } from '../core/vector';
-import type { Opening } from '../elements/opening/schema';
+import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { Floor, Room } from '../elements/room/schema';
 import type { ReferenceLine, Wall, WallType, WallTypeId } from '../elements/wall/schema';
 
@@ -26,13 +26,15 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 1;
+  readonly version: 2;
   readonly name: string;
   readonly levels: readonly Level[];
   readonly wallTypes: readonly WallType[];
   readonly walls: readonly DocWall[];
   /** Doors and windows, each hosted by a wall and placed by a rule. */
   readonly openings: readonly Opening[];
+  /** Openings distributed together along one wall. */
+  readonly openingGroups: readonly OpeningGroup[];
   /** Rooms: a point inside walls, a name and a number. */
   readonly rooms: readonly Room[];
   readonly floors: readonly Floor[];
@@ -48,7 +50,7 @@ export interface WallDefaults {
 
 export function newDocument(): Doc {
   return {
-    version: 1,
+    version: 2,
     name: '',
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
     wallTypes: [
@@ -83,6 +85,7 @@ export function newDocument(): Doc {
     ],
     walls: [],
     openings: [],
+    openingGroups: [],
     rooms: [],
     floors: [],
   };

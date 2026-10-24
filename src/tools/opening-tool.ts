@@ -16,7 +16,7 @@
 // reference wins (the wall's start, its end, or the jamb of a neighbouring opening), measured to the
 // nearest jamb in 5 cm steps; a reference the opening would overlap counts only when none is clear.
 
-import type { OpeningId, PositionRule } from '../elements/opening/schema';
+import { type DistanceRule, hasDistance, type OpeningId, type PositionRule } from '../elements/opening/schema';
 import type { WallId } from '../elements/wall/schema';
 
 export const OPENING_STEP = 0.05;
@@ -61,7 +61,7 @@ export function ruleAt(aim: Aim, width: number): PositionRule {
   if (Math.abs(aim.station - aim.length / 2) <= CENTRE_PX * aim.mpp) return { kind: 'centered' };
   const lo = aim.station - width / 2;
   const hi = aim.station + width / 2;
-  const candidates: Exclude<PositionRule, { kind: 'centered' }>[] = [
+  const candidates: DistanceRule[] = [
     { kind: 'fromStart', distance: lo },
     { kind: 'fromEnd', distance: aim.length - hi },
   ];
@@ -89,12 +89,11 @@ export function openingTransition(state: OpeningToolState, event: OpeningToolEve
       if (state.kind === 'idle' || !(event.distance >= 0)) return { state, rejected: true };
       const r = state.rule;
       const d = event.distance;
-      const rule: PositionRule =
-        r.kind === 'centered'
-          ? state.aim.station < state.aim.length / 2
-            ? { kind: 'fromStart', distance: d }
-            : { kind: 'fromEnd', distance: d }
-          : { ...r, distance: d };
+      const rule: PositionRule = hasDistance(r)
+        ? { ...r, distance: d }
+        : state.aim.station < state.aim.length / 2
+          ? { kind: 'fromStart', distance: d }
+          : { kind: 'fromEnd', distance: d };
       return { state, place: { wallId: state.aim.wallId, rule, swing: state.aim.side } };
     }
   }

@@ -3,15 +3,16 @@
 
 import { type Doc, type DocWall, wallHeights } from '../../app/document';
 import { POINT_TOLERANCE } from '../../core/tolerance';
-import { distance } from '../../core/vector';
+import { add, distance, dot, normalize, type Point2, scale, sub } from '../../core/vector';
 import { arcOf } from '../wall/geometry/arc';
 import type { WallId } from '../wall/schema';
-import type { Opening, OpeningId } from './schema';
+import type { Opening, OpeningGroup, OpeningGroupId, OpeningId } from './schema';
 
-/** What an opening needs of its wall: the reference line's length and the wall's height. */
+/** What an opening needs of its wall: the reference line's length, the wall's height, and the line itself when straight. */
 export interface HostInfo {
   readonly length: number;
   readonly height: number;
+  readonly line?: { readonly start: Point2; readonly end: Point2 };
 }
 
 export type OpeningWarningKind = 'openingNoHost' | 'openingBadReference' | 'openingOutside' | 'openingOverlap' | 'openingTooTall';
@@ -40,7 +41,8 @@ export function hostsOf(doc: Doc, walls: readonly DocWall[] = doc.walls): Map<Wa
   return new Map(
     walls.map((w) => {
       const { bottom, top } = wallHeights(doc, w);
-      return [w.id, { length: referenceLength(w), height: top - bottom }];
+      const straight = arcOf({ start: w.start, end: w.end, bulge: w.bulge ?? 0 }) === null;
+      return [w.id, { length: referenceLength(w), height: top - bottom, ...(straight ? { line: { start: w.start, end: w.end } } : {}) }];
     }),
   );
 }
@@ -48,22 +50,78 @@ export function hostsOf(doc: Doc, walls: readonly DocWall[] = doc.walls): Map<Wa
 export function deriveOpenings(
   openings: readonly Opening[],
   hosts: ReadonlyMap<WallId, HostInfo>,
+  groups: readonly OpeningGroup[] = [],
 ): { placed: Map<OpeningId, PlacedOpening>; warnings: OpeningWarning[] } {
   const byId = new Map(openings.map((o) => [o.id, o]));
+  const groupById = new Map(groups.map((g) => [g.id, g]));
+  const inGroup = (o: Opening | undefined, g: OpeningGroup): o is Opening =>
+    o !== undefined && o.rule.kind === 'inGroup' && o.rule.groupId === g.id && o.wallId === g.wallId;
 
-  // A reference is bad when it is missing, on another wall, or when following references loops.
+  // The opening this one is measured from, or undefined when its rule has no reference.
+  const referenceOf = (o: Opening): Opening | undefined =>
+    o.rule.kind === 'fromOpening' || o.rule.kind === 'aligned' ? byId.get(o.rule.openingId) : undefined;
+  // Its own reference is wrong: missing, on the wrong wall, not straight, or a group not listing it.
+  const wrongReference = (o: Opening): boolean => {
+    const r = o.rule;
+    if (r.kind === 'inGroup') {
+      const g = groupById.get(r.groupId);
+      return !g || !g.members.includes(o.id) || !inGroup(o, g) || !hosts.has(g.wallId);
+    }
+    if (r.kind !== 'fromOpening' && r.kind !== 'aligned') return false;
+    const ref = byId.get(r.openingId);
+    if (!ref) return true;
+    if (r.kind === 'fromOpening') return ref.wallId !== o.wallId;
+    return ref.wallId === o.wallId || !hosts.get(o.wallId)?.line || !hosts.get(ref.wallId)?.line;
+  };
+  // A reference is bad when it is wrong, or when following references loops.
   const badReference = (o: Opening): boolean => {
+    if (wrongReference(o)) return true;
     const seen = new Set<OpeningId>();
     let at: Opening | undefined = o;
-    while (at && at.rule.kind === 'fromOpening') {
+    while (at && referenceOf(at)) {
       if (seen.has(at.id)) return true;
       seen.add(at.id);
-      const ref = byId.get(at.rule.openingId);
-      if (at === o && (!ref || ref.wallId !== o.wallId)) return true;
-      if (!ref || ref.wallId !== at.wallId) return false;
+      const ref: Opening = referenceOf(at)!;
+      if (wrongReference(ref)) return false;
       at = ref;
     }
     return false;
+  };
+
+  // Stations of a group's members, in its order; members not really in it are left out.
+  const groupStarts = new Map<OpeningGroupId, Map<OpeningId, number>>();
+  const startsInGroup = (g: OpeningGroup): Map<OpeningId, number> => {
+    const known = groupStarts.get(g.id);
+    if (known) return known;
+    const members = g.members.map((id) => byId.get(id)).filter((o) => inGroup(o, g));
+    const length = hosts.get(g.wallId)?.length ?? 0;
+    const widths = members.reduce((s, o) => s + o.width, 0);
+    const sp = g.spacing;
+    let gap: number;
+    let at: number;
+    if (sp.kind === 'equal') {
+      gap = (length - widths) / (members.length + 1);
+      at = gap;
+    } else {
+      gap = sp.gap;
+      const row = widths + gap * (members.length - 1);
+      at = sp.anchor === 'start' ? sp.distance : sp.anchor === 'end' ? length - sp.distance - row : (length - row) / 2;
+    }
+    const starts = new Map<OpeningId, number>();
+    for (const o of members) {
+      starts.set(o.id, at);
+      at += o.width + gap;
+    }
+    groupStarts.set(g.id, starts);
+    return starts;
+  };
+
+  // Station along `onto`'s line of a point at station s along `from`'s line.
+  const across = (from: HostInfo, s: number, onto: HostInfo): number => {
+    const f = from.line!;
+    const t = onto.line!;
+    const p = add(f.start, scale(normalize(sub(f.end, f.start)), s));
+    return dot(sub(p, t.start), normalize(sub(t.end, t.start)));
   };
 
   const starts = new Map<OpeningId, number>();
@@ -77,7 +135,18 @@ export function deriveOpenings(
     if (r.kind === 'fromStart') s = r.distance;
     else if (r.kind === 'fromEnd') s = length - r.distance - o.width;
     else if (r.kind === 'centered' || badReference(o)) s = centred;
-    else {
+    else if (r.kind === 'inGroup') s = startsInGroup(groupById.get(r.groupId)!).get(o.id)!;
+    else if (r.kind === 'aligned') {
+      const ref = byId.get(r.openingId)!;
+      const refStart = startOf(ref);
+      const from = hosts.get(ref.wallId)!;
+      const onto = hosts.get(o.wallId)!;
+      const a = across(from, refStart, onto);
+      const b = across(from, refStart + ref.width, onto);
+      const lo = Math.min(a, b);
+      const hi = Math.max(a, b);
+      s = r.edge === 'start' ? lo : r.edge === 'end' ? hi - o.width : (lo + hi - o.width) / 2;
+    } else {
       const ref = byId.get(r.openingId)!;
       const refStart = startOf(ref);
       s = r.toward === 'end' ? refStart + ref.width + r.distance : refStart - r.distance - o.width;
