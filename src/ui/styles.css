@@ -1255,7 +1255,9 @@ select {
 .tooltip {
   position: fixed;
   z-index: 40;
-  max-width: 280px;
+  /* As wide as its text up to the limit, wherever it is: never squeezed by a window edge. */
+  width: max-content;
+  max-width: min(280px, calc(100vw - 8px));
   padding: var(--sp-1) var(--sp-2);
   border-radius: var(--radius-sm);
   background: var(--text);

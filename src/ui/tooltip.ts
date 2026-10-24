@@ -27,6 +27,9 @@ export function installTooltips(root: HTMLElement = document.body): void {
     current = el;
     tip.textContent = text;
     tip.hidden = false;
+    // Measured at the window's corner: where it last was (near an edge) it would wrap to fit there.
+    tip.style.left = '0px';
+    tip.style.top = '0px';
     const r = el.getBoundingClientRect();
     const w = tip.offsetWidth;
     const h = tip.offsetHeight;

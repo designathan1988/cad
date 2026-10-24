@@ -43,7 +43,8 @@ export function showLevels(app: App): void {
       // Named by what it does; when it cannot, the reason is its description (and its tooltip).
       del.setAttribute('aria-label', t('levels.deleteNamed', { name: label }));
       const why = blocker === 'last' ? t('levels.cantDeleteLast') : blocker === 'walls' ? t('levels.cantDeleteWalls') : null;
-      del.title = why ?? t('levels.deleteNamed', { name: label });
+      // What it does, then why it cannot.
+      del.title = why ? `${t('levels.deleteNamed', { name: label })}: ${why}` : t('levels.deleteNamed', { name: label });
       if (why) {
         const id = `why-${l.id}`;
         rows.append(el('span', { id, class: 'sr-only' }, why));
