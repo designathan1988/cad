@@ -28,6 +28,12 @@ describe('design tokens', () => {
     expect(['--control-h', '--control-h-sm', '--field-h', '--wide-btn-h'].filter((n) => !(px(touch, n) >= 44))).toEqual([]);
   });
 
+  it('every token used is defined', () => {
+    const defined = new Set([...css.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
+    const used = new Set([...css.matchAll(/var\((--[\w-]+)/g)].map((m) => m[1]));
+    expect([...used].filter((name) => !defined.has(name))).toEqual([]);
+  });
+
   it('no colour outside the tokens', () => {
     expect(declarations.filter((d) => /#[0-9a-f]{3,8}\b|\brgba?\(|\bhsla?\(/i.test(d.text))).toEqual([]);
   });
