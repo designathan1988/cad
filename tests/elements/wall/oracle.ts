@@ -149,9 +149,17 @@ export function cornerSpec(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, at0?:
   return { ...base, kind: norm(minus(outer, node)) > limit ? 'bevel' : 'miter', inner, outer };
 }
 
-/** Exact region an isolated L must cover, or 'overlap' when the spec says it warns instead. */
-export function expectedL(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?: P): Region | 'overlap' {
-  const c = cornerSpec(a, aEnd, b, bEnd, node);
+/** Exact region an isolated L must cover, or 'overlap' when the spec says it warns instead. `kind` overrides the classification. */
+export function expectedL(
+  a: Wall,
+  aEnd: WallEnd,
+  b: Wall,
+  bEnd: WallEnd,
+  node?: P,
+  kind?: CornerKind,
+): Region | 'overlap' {
+  const spec = cornerSpec(a, aEnd, b, bEnd, node);
+  const c = kind ? { ...spec, kind } : spec;
   if (c.kind === 'overlap') return 'overlap';
   if (c.kind === 'shared') {
     const across = unit(minus(into(a, aEnd), into(b, bEnd)));

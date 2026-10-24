@@ -7,13 +7,12 @@ import { geometry, type TestWall as Wall } from './fixtures';
 import type { P } from './oracle';
 import {
   checkAgainst,
-  cornerSpec,
   expectedRoom,
   expectedT,
   type Region,
 } from './oracle';
-import { abutmentPenetration, layerContainmentViolations, layerContinuity, notchFill, sameSequence } from './oracle-layers';
-import { crossingOf, expectedCorner, expectedX, sidesOf, throughOf } from './oracle-x';
+import { abutmentPenetration, layerContainmentViolations, layerContinuity, notchFill } from './oracle-layers';
+import { cornerJoin, crossingOf, expectedCorner, expectedX, sidesOf, throughOf } from './oracle-x';
 import { crossedScene, lScene, type Mode, roomScene, tScene, xScene } from './scenes';
 
 const seed = Number(process.env.FUZZ_SEED ?? 20261024);
@@ -72,16 +71,16 @@ function expectContinuous(result: ReturnType<typeof layerContinuity>, walls: rea
  */
 const butt = { corners: 0 };
 function expectCorner(a: Wall, aEnd: 'start' | 'end', b: Wall, bEnd: 'start' | 'end', walls: readonly Wall[], s: number, node?: P): void {
-  const c = cornerSpec(a, aEnd, b, bEnd, node);
-  if (c.kind !== 'miter' && c.kind !== 'bevel') return;
-  if (sameSequence(a, aEnd, b, bEnd, node)) {
+  const { kind, butt: isButt } = cornerJoin(a, aEnd, b, bEnd, node);
+  if (kind !== 'miter' && kind !== 'bevel') return;
+  if (!isButt) {
     expectContinuous(layerContinuity(a, aEnd, b, bEnd, node), walls);
     return;
   }
   butt.corners++;
   const { through, cut } = throughOf(a, b);
   const cutEnd = cut === a ? aEnd : bEnd;
-  if (c.kind === 'bevel') {
+  if (kind === 'bevel') {
     expect(abutmentPenetration(cut, cutEnd, through, walls), JSON.stringify(walls)).toBeLessThanOrEqual(1e-12);
   } else {
     expectAbutment(cut, cutEnd, through, walls, s);

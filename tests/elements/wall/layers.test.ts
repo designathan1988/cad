@@ -109,6 +109,21 @@ describe('layered L corner', () => {
     expect(g.warnings).toEqual([{ kind: 'wallsOverlap', walls: ['a', 'b'] }]);
   });
 
+  it('butt nearly in line: its own corner more than 10 T from the node, so one shared cut', () => {
+    // a: 10 cm structure along +x, through (core 10 cm against 8). b: finish 1, structure, finish 2,
+    // 10 cm, a different sequence, leaving the node at 178°. The miter corners are 0.87 mm from the
+    // node, but the butt's corner, a's inner face y = 0.05 on b's outer face, is at (−2.8645, 0.05),
+    // 2.86 m away: past 10 · 0.1 m, so one shared cut through the node, as for walls in line. It runs
+    // across the mean direction ua − ub = (1 + cos 2°, −sin 2°).
+    const r = (2 * Math.PI) / 180;
+    const ls = [layer(0.01, 'finish1'), layer(0.08, 'structure'), layer(0.01, 'finish2')];
+    const g = geometry([testWall('a', vec(0, 0), vec(4, 0), 0.1), testWall('b', vec(0, 0), vec(-4 * Math.cos(r), 4 * Math.sin(r)), ls)]);
+    expect(g.warnings).toEqual([]);
+    const across = vec(Math.cos(r / 2), -Math.sin(r / 2));
+    const reach = g.pieces.get('a')!.flatMap((p) => p.polygon).map((v) => v.x * across.x + v.y * across.y);
+    expect(Math.min(...reach)).toBeGreaterThanOrEqual(-1e-15);
+  });
+
   it('same functions, thicknesses within 1 mm: still the same sequence, so a miter', () => {
     const near = [layer(0.0205, 'finish1'), layer(0.15, 'structure'), layer(0.03, 'finish2')];
     const g = geometry([a, testWall('b', vec(0, 3), vec(0, 0), near)]).pieces;

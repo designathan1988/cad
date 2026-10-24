@@ -2,7 +2,7 @@
 
 import type { WallEnd } from '../../../src/elements/wall/schema';
 import type { TestWall as Wall } from './fixtures';
-import { cornerSpec, expectedL, frameOf, inside, rectOf, shoelace, type P, type Region } from './oracle';
+import { type CornerKind, cornerSpec, expectedL, frameOf, inside, into, rectOf, shoelace, type P, type Region } from './oracle';
 import { coreLayersOf, layerOffsetsOf, sameSequence } from './oracle-layers';
 
 const pt = (x: number, y: number): P => ({ x, y });
@@ -90,17 +90,18 @@ export function sidesOf(
   ];
 }
 
+const SPEC_MITER_LIMIT = 10;
+
 /**
- * The L region (§7.1), with the butt's own swallow rule: between different sequences the through wall
- * reaches the other's outer face across its whole width, so its corner on that face (its inner face
- * there) must not land past either free end, or the corner swallows a wall and the spec warns.
+ * How the spec resolves an L (§7.1): the miter classification, and for different sequences a butt.
+ * The butt has one corner of its own, the through wall's inner face on the other's outer face, where
+ * its square end reaches across its whole width. Past either free end it swallows a wall (overlap);
+ * at an obtuse angle farther than MITER_LIMIT·T from the node it is a long taper (shared cut), as
+ * for the miter's corners.
  */
-export function expectedCorner(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?: P): Region | 'overlap' {
-  const region = expectedL(a, aEnd, b, bEnd, node);
+export function cornerJoin(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?: P): { kind: CornerKind; butt: boolean } {
   const c = cornerSpec(a, aEnd, b, bEnd, node);
-  if (region === 'overlap' || (c.kind !== 'miter' && c.kind !== 'bevel') || sameSequence(a, aEnd, b, bEnd, node)) {
-    return region;
-  }
+  if ((c.kind !== 'miter' && c.kind !== 'bevel') || sameSequence(a, aEnd, b, bEnd, node)) return { kind: c.kind, butt: false };
   const { through } = throughOf(a, b);
   const [tInner, cOuter] = through === a ? [c.aInner, c.bOuter] : [c.bInner, c.aOuter];
   const cut = through === a ? b : a;
@@ -109,12 +110,24 @@ export function expectedCorner(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, n
     return pt(w.start.x + f.n.x * o, w.start.y + f.n.y * o);
   };
   const q = meet(on(through, tInner), frameOf(through).d, on(cut, cOuter), frameOf(cut).d);
-  const reachOf = (w: Wall, end: WallEnd) => {
+  const past = (w: Wall, end: WallEnd) => {
     const f = frameOf(w);
     const u = end === 'start' ? f.d : pt(-f.d.x, -f.d.y);
     const farEnd = end === 'start' ? w.end : w.start;
     const along = (p: P) => (p.x - c.node.x) * u.x + (p.y - c.node.y) * u.y;
     return along(q) > along(farEnd);
   };
-  return reachOf(a, aEnd) || reachOf(b, bEnd) ? 'overlap' : region;
+  if (past(a, aEnd) || past(b, bEnd)) return { kind: 'overlap', butt: false };
+  const ua = into(a, aEnd);
+  const ub = into(b, bEnd);
+  const angle = (Math.acos(Math.max(-1, Math.min(1, ua.x * ub.x + ua.y * ub.y))) * 180) / Math.PI;
+  const far = Math.hypot(q.x - c.node.x, q.y - c.node.y) > SPEC_MITER_LIMIT * Math.max(a.thickness, b.thickness);
+  if (angle >= 90 && far) return { kind: 'shared', butt: false };
+  return { kind: c.kind, butt: true };
+}
+
+/** The L region for the spec's resolution, or 'overlap' when it warns. */
+export function expectedCorner(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?: P): Region | 'overlap' {
+  const { kind } = cornerJoin(a, aEnd, b, bEnd, node);
+  return kind === 'overlap' ? 'overlap' : expectedL(a, aEnd, b, bEnd, node, kind);
 }
