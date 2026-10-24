@@ -116,7 +116,8 @@ export class Scene3D {
     const h = this.canvas.clientHeight;
     if (w === 0 || h === 0) return;
     const size = this.renderer.getSize(new THREE.Vector2());
-    if (size.x !== w || size.y !== h || this.offsetDirty) {
+    const resized = size.x !== w || size.y !== h || this.offsetDirty;
+    if (resized) {
       this.renderer.setSize(w, h, false);
       this.camera.aspect = w / h;
       // A panel over the right or bottom edge: shift the view so its centre is the visible part's.
@@ -127,6 +128,9 @@ export class Scene3D {
       this.offsetDirty = false;
     }
     this.renderer.render(this.scene, this.camera);
+    // The projection changed (first frame, new size, panel): what is placed over the view by
+    // projecting through the camera (the floating bar, the cube) must be placed again.
+    if (resized) this.onChange();
   }
 
   /** Brings the meshes in line with the geometry: only walls whose shape or state changed are rebuilt. */

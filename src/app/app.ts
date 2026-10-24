@@ -41,6 +41,7 @@ import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { readProject, writeProject } from '../io/project-file';
 import { type TempDim, tempDims } from './temp-dims';
 import { contextEntries } from './context-menu';
+import { placeBarY } from '../ui/bar-place';
 import { newId } from '../core/id';
 import { addFloor, addRoom, updateFloor, updateRoom } from '../elements/room/commands';
 import { insideRing, type FloorSolid, type RoomSolid } from '../elements/room/derive';
@@ -1046,22 +1047,18 @@ export class App {
     }
     const w = bar.offsetWidth || 104;
     const h = bar.offsetHeight || 36;
-    // Never over a temporary dimension's value or a room's tag: the bar goes above them all, or below
-    // when there is no room.
-    const dims = [
-      ...[...this.shell.dims.children].map((c) => c.getBoundingClientRect()).map((r) => ({ top: r.top - vp.top, bottom: r.bottom - vp.top, left: r.left - vp.left, right: r.right - vp.left })),
-      ...(this.ui.view === 'plan' ? this.plan.labelBoxes.map((b) => ({ top: b.y, bottom: b.y + b.h, left: b.x, right: b.x + b.w })) : []),
-    ];
-    const left = Math.min(Math.max(8, x - w / 2), vp.width - w - 8);
-    const hits = (top: number) => dims.some((d) => d.left < left + w && left < d.right && d.top < top + h && top < d.bottom);
-    let y = yTop - h - 10;
-    if (hits(y)) y = Math.min(...dims.map((d) => d.top)) - h - 8;
-    if (y < 8 || hits(y)) y = Math.max(yBottom, ...dims.map((d) => d.bottom)) + 10;
     // Never under the panel where it lies over the drawing (the sheet on a phone, the drawer on a tablet).
     const panel = this.shell.panel.hidden ? null : this.shell.panel.getBoundingClientRect();
     const covered = panel && panel.top > vp.top + 8 && panel.top < vp.bottom ? panel.top - vp.top : vp.height;
     const right = panel && panel.left > vp.left && panel.left < vp.right && panel.top <= vp.top + 8 ? panel.left - vp.left : vp.width;
-    bar.style.left = `${Math.min(Math.max(8, x - w / 2), right - w - 8)}px`;
+    const left = Math.min(Math.max(8, x - w / 2), right - w - 8);
+    // Never over a temporary dimension's value or a room's tag that it would cover (bar-place.ts).
+    const boxes = [
+      ...[...this.shell.dims.children].map((c) => c.getBoundingClientRect()).map((r) => ({ top: r.top - vp.top, bottom: r.bottom - vp.top, left: r.left - vp.left, right: r.right - vp.left })),
+      ...(this.ui.view === 'plan' ? this.plan.labelBoxes.map((b) => ({ top: b.y, bottom: b.y + b.h, left: b.x, right: b.x + b.w })) : []),
+    ];
+    const y = placeBarY({ left, w, h }, { top: yTop, bottom: yBottom }, boxes, { h: covered });
+    bar.style.left = `${left}px`;
     bar.style.top = `${Math.min(Math.max(8, y), covered - h - 8)}px`;
   }
 }
