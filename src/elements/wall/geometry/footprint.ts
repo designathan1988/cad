@@ -56,12 +56,22 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   // is dropped and reported, and the walls stay as drawn.
   const report = (w: JoinWarning) => warnings.push({ ...w, walls: w.walls.map(parentOf) });
   graph.warnings.forEach(report);
+  // An L at an arc's end is made with its end segment. In a butt where the arc abuts, the other wall's
+  // body can still reach the segments before that one: the cut is carried on as for an arc stem in a T.
+  const arcStems: { end: EndRef; host: WallShape }[] = [];
   for (const { ends: [ra, rb], node } of graph.corners) {
     const result = resolveCorner(byId.get(ra.wallId)!, ra.end, byId.get(rb.wallId)!, rb.end, node);
     if (result.a) endCuts.set(keyOf(ra), result.a);
     if (result.b) endCuts.set(keyOf(rb), result.b);
     if (result.warning) report(result.warning);
     notches.push(...result.notches);
+    for (const [arc, other, arcCut] of [
+      [ra, rb, result.a],
+      [rb, ra, result.b],
+    ] as const) {
+      // The abutting side of a butt has layer cuts (cut-l.ts: resolveAbutment); a miter has none.
+      if (chains.has(parentOf(arc.wallId)) && arcCut?.layerCuts) arcStems.push({ end: arc, host: byId.get(other.wallId)! });
+    }
   }
   for (const { ends, point } of graph.nodes) {
     const result = resolveNode(byId, ends, point);
@@ -71,7 +81,6 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   }
   // An arc ending against a wall: its end segment takes the T cut, and the segments before it that
   // still reach past the host's face take their own (carryArcStem).
-  const arcStems: { end: EndRef; host: WallShape }[] = [];
   for (const { abutting, hostId } of graph.abutments) {
     const stemChain = chains.get(parentOf(abutting.wallId));
     // The end segment's notches stop at the joint with the segment before it, a radial plane.

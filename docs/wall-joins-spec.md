@@ -241,7 +241,7 @@ de `WallId`, sempre.
 | Condição | Resultado |
 |---|---|
 | ponta de *a* a `≤ POINT_TOLERANCE` de ponta de *b* | **EndJoin** |
-| ponta de *a* dentro da banda de *b*, com projeção a `> POINT_TOLERANCE` das duas pontas de *b* | **Abutment** (*a* encosta em *b*) |
+| ponta de *a* dentro da banda de *b* (as faces com folga de `POINT_TOLERANCE`), com projeção a `> POINT_TOLERANCE` das duas pontas de *b* | **Abutment** (*a* encosta em *b*) |
 | interiores se cruzam, longe das pontas das duas | **Crossing** |
 | ângulo `< COLLINEAR_ANGLE` e sobreposição no comprimento | **nenhuma junta**, aviso `WallsOverlap` |
 
@@ -982,3 +982,32 @@ corda, com camadas × cos(Δ/2)) e a parede. `arc-corner.test.ts` confere as 18 
 referência e lado desse caso. A suíte de propriedade dos arcos (`arcs.property.test.ts`) entrou no
 repositório. O caso de sobreposição que ela acusou perto da outra ponta de um semicírculo também era
 do oráculo: a zona do canto não excluía os outros trechos do arco.
+
+**L na ponta de um arco que alcança os trechos seguintes (2026-10-24):** no butt em que o arco
+encosta e a reta passa, o corpo da reta ainda pode entrar nos trechos antes do da ponta (paredes
+grossas, trechos curtos). O motor agora leva o corte adiante como numa haste de arco num T
+(`carryArcStem`), em vez de recusar com `arcJoinUnsupported`. Controle: o caso achado pela suíte
+com paredes grossas falha no motor anterior e passa no novo (`arc-corner.test.ts`).
+
+Dois erros do oráculo achados nesse caminho, cada um com controle:
+
+1. `arcCorner` usava `expectedL`, que só tem as regras do miter. Faltava a regra do butt da §7.1
+   (canto do butt ou ponto mais fundo de camada além de uma ponta livre → `WallsOverlap`). Controle:
+   o mesmo L com o trecho da ponta desenhado como parede reta comum também dá `WallsOverlap` no motor,
+   e o oráculo das retas (`cornerJoin`) também diz que não há junta. Agora `arcCorner` usa
+   `expectedCorner`, o mesmo das retas.
+2. O gerador não pulava uma reta cujo corpo passa pela outra ponta do arco (segunda junta, que o
+   oráculo não modela). Agora pula, e conta: 3 de 100 na seed fixa.
+
+A suíte não tem mais faixa de empate nem `cornerOverreach`: o aviso é exigido quando o L da spec é
+`overlap` ou quando a reta toca outro trecho do arco (`touchesArcElsewhere`, com casos à mão em
+`oracle-arc.test.ts`), e todo o resto precisa juntar e cobrir exato.
+
+**Fica aberto:** no miter, ou quando a reta encosta e o arco passa, um canto que alcance os trechos
+seguintes continua recusado com `arcJoinUnsupported` (a última verificação). Não apareceu nenhum
+caso assim em 12 000 rodadas da suíte (duas seeds, paredes finas e grossas), nem numa busca dirigida
+de 141 742 Ls (ângulos de 0,5 em 0,5°, miter e reta mais fina encostando num arco grosso). Uma
+primeira versão da busca achou 4 candidatos, mas a ponta longe da reta caía a menos de 1 mm de um
+trecho do arco: uma segunda junta (§6), não um L. `arc-corner.test.ts` prova os dois lados: a ponta a
+≤ 1 mm (`distanceToSegments`) e, com ela recuada 5 mm, o L sozinho junta e cobre exato. A tabela da
+§6 agora diz a folga que o motor já usava na banda: `POINT_TOLERANCE`.
