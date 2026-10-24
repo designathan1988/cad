@@ -1124,6 +1124,65 @@ select {
   font-weight: 600;
 }
 
+/* Project browser: a drawer at the left edge of the viewport */
+.browser {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 7;
+  width: min(260px, 80vw);
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+.browser[hidden] {
+  display: none;
+}
+.browser-item {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: var(--control-h);
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.browser-item:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+.browser-item:disabled {
+  color: var(--text-3);
+  cursor: default;
+}
+.browser-item[aria-current='true'],
+.browser-item[aria-pressed='true'] {
+  font-weight: 600;
+}
+.browser-item[aria-pressed='false'] .browser-label {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+.browser-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.browser-trail {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
 /* Levels dialog */
 .dialog-wide {
   width: min(560px, calc(100vw - 32px));

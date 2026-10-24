@@ -30,6 +30,8 @@ export function wireInput(app: App): void {
   };
   const palette = () => showPalette(appActions(app, openers));
   app.openCommands = palette;
+  app.openLevels = () => showLevels(app);
+  shell.sidebar.addEventListener('click', () => app.toggleBrowser());
   offerTour(app);
   let panning: { x: number; y: number } | null = null;
   let downAt: { x: number; y: number } | null = null;

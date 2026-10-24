@@ -71,6 +71,10 @@ export function appActions(app: App, open: Openers): Action[] {
     make('settings.theme', 'pal.theme', settings, () => app.toggleTheme()),
     make('settings.language', 'pal.language', settings, () => app.setLanguage(app.otherLanguage()), { keys: 'Shift+L' }),
     make('settings.panel', 'pal.panel', settings, () => app.togglePanel()),
+    make('settings.browser', 'pal.browser', settings, () => app.toggleBrowser()),
+    ...(['walls', 'openings', 'rooms', 'floors'] as const).map((c) =>
+      make(`layer.${c}`, ui.hidden.has(c) ? (`pal.show.${c}` as const) : (`pal.hide.${c}` as const), settings, () => app.toggleCategory(c)),
+    ),
     ...[...doc.levels]
       .sort((a, b) => b.elevation - a.elevation)
       .map((l) => ({

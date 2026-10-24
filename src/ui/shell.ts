@@ -90,8 +90,9 @@ export function buildShell(root: HTMLElement) {
     }
   }
   const sidebar = iconButton('sidebar', 'icon-btn tool');
-  sidebar.disabled = true;
   tools.append(el('div', { class: 'spacer' }), sidebar);
+  const browser = el('aside', { class: 'browser', 'aria-label': 'Project browser' });
+  browser.hidden = true;
 
   const viewport = el('main', { class: 'viewport' });
   const planCanvas = el('canvas', { 'aria-label': 'Plan' });
@@ -101,7 +102,7 @@ export function buildShell(root: HTMLElement) {
   const dims = el('div', { class: 'temp-dims' });
   const emptyHint = el('div', { class: 'empty-hint' });
   const toast = el('div', { class: 'toast', role: 'status', 'aria-live': 'polite' });
-  viewport.append(planCanvas, glCanvas, dims, floatBar, emptyHint, toast);
+  viewport.append(planCanvas, glCanvas, dims, floatBar, emptyHint, toast, browser);
 
   const panel = el('aside', { class: 'panel', 'aria-label': 'Properties' });
 
@@ -121,7 +122,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, undo, redo, level, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, viewport, planCanvas, glCanvas, floatBar, dims,
+    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, viewport, planCanvas, glCanvas, floatBar, dims, browser, sidebar,
     emptyHint, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack,
   };
 
@@ -152,6 +153,7 @@ export function buildShell(root: HTMLElement) {
       s.b.setAttribute('aria-label', s.b.title);
     }
     tip(sidebar, 'tool.sidebar');
+    browser.setAttribute('aria-label', t('browser.title'));
     view3d.querySelector('.label')!.textContent = t('view.3d');
     viewPlan.querySelector('.label')!.textContent = t('view.plan');
     viewWalk.querySelector('.label')!.textContent = t('view.walk');

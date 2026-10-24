@@ -36,7 +36,8 @@ import { snapLabel, type Snap } from '../tools/snap';
 import { bulgeThrough, IDLE, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, hull } from './select-drag';
 import { type Doc, type DocWall, elementIds, newDocument, type WallDefaults } from './document';
-import { boundsOf, deriveGeometry, type DerivedGeometry, type OpeningSolid, openingOutline } from './geometry';
+import { boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, openingOutline } from './geometry';
+import { renderBrowser } from '../ui/browser';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { readProject, writeProject } from '../io/project-file';
 import { type TempDim, tempDims } from './temp-dims';
@@ -56,6 +57,9 @@ export interface UiState {
   levelId: string;
   theme: 'light' | 'dark';
   panelOpen: boolean;
+  browserOpen: boolean;
+  /** Categories hidden from view by the project browser (the document keeps them). */
+  hidden: Set<Category>;
   snaps: boolean;
   defaults: WallDefaults;
   wall: WallToolState;
@@ -106,6 +110,8 @@ export class App {
       levelId: doc.levels[0]!.id,
       theme: prefs.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
       panelOpen: prefs.panelOpen ?? true,
+      browserOpen: prefs.browserOpen ?? false,
+      hidden: new Set(),
       snaps: true,
       defaults: { wallTypeId: doc.wallTypes[0]!.id, referenceLine: 'centerline', baseOffset: 0, top: { kind: 'level', offset: 0 } },
       wall: IDLE,
@@ -688,10 +694,11 @@ export class App {
         dims: this.currentDims(),
       });
     } else {
-      this.scene.sync(this.geometry, ui.selection, preview);
+      this.scene.sync(this.visibleGeometry(), ui.selection, preview);
       this.cube.update(this.scene.camera);
     }
     this.placeDims(plan ? this.currentDims() : []);
+    this.renderBrowserDrawer();
     this.renderChrome();
     // The panel is rebuilt only when what it shows changed: rebuilding on every mouse move would
     // close an open list and drop the focus of a field being typed in.
@@ -858,12 +865,59 @@ export class App {
 
   /** In plan, only the current level's walls and openings; in 3D, every level. */
   visibleGeometry(): DerivedGeometry {
-    if (this.ui.view !== 'plan') return this.geometry;
-    const solids = new Map([...this.geometry.solids].filter(([, s]) => s.wall.levelId === this.ui.levelId));
-    const openings = new Map([...this.geometry.openings].filter(([, o]) => solids.has(o.opening.wallId)));
-    const rooms = new Map([...this.geometry.rooms].filter(([, r]) => r.room.levelId === this.ui.levelId));
-    const floors = new Map([...this.geometry.floors].filter(([, f]) => f.floor.levelId === this.ui.levelId));
-    return { ...this.geometry, solids, openings, rooms, floors };
+    const g = hideCategories(this.geometry, this.ui.hidden);
+    if (this.ui.view !== 'plan') return g;
+    const solids = new Map([...g.solids].filter(([, s]) => s.wall.levelId === this.ui.levelId));
+    const levelWalls = new Set(this.store.get().walls.filter((w) => w.levelId === this.ui.levelId).map((w) => w.id));
+    const openings = new Map([...g.openings].filter(([, o]) => levelWalls.has(o.opening.wallId)));
+    const rooms = new Map([...g.rooms].filter(([, r]) => r.room.levelId === this.ui.levelId));
+    const floors = new Map([...g.floors].filter(([, f]) => f.floor.levelId === this.ui.levelId));
+    return { ...g, solids, openings, rooms, floors };
+  }
+
+  toggleBrowser(open = !this.ui.browserOpen): void {
+    this.ui.browserOpen = open;
+    savePrefs({ browserOpen: open });
+    this.render();
+    if (open) this.shell.browser.querySelector<HTMLElement>('button')?.focus();
+    else this.shell.sidebar.focus();
+  }
+
+  /** Shows or hides a category of elements; what is hidden leaves the selection. */
+  toggleCategory(c: Category): void {
+    if (this.ui.hidden.has(c)) this.ui.hidden.delete(c);
+    else this.ui.hidden.add(c);
+    const shown = this.visibleGeometry();
+    for (const id of [...this.ui.selection]) {
+      if (!shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
+    }
+    this.refresh();
+  }
+
+  /** Every wall of a type on the current level, with the select tool. */
+  selectWallsOfType(typeId: string): void {
+    this.setTool('select');
+    for (const w of this.store.get().walls) if (w.wallTypeId === typeId && w.levelId === this.ui.levelId) this.ui.selection.add(w.id);
+    this.refresh();
+  }
+
+  private browserKey = '';
+  /** Opens the levels dialog; set by the input layer, which owns the dialogs. */
+  openLevels: () => void = () => {};
+
+  private renderBrowserDrawer(): void {
+    const { ui, shell } = this;
+    shell.browser.hidden = !ui.browserOpen;
+    shell.sidebar.setAttribute('aria-pressed', String(ui.browserOpen));
+    if (!ui.browserOpen) return;
+    const doc = this.store.get();
+    const key = JSON.stringify([getLang(), ui.view, ui.levelId, [...ui.hidden], doc.levels, doc.wallTypes.map((x) => [x.id, x.name]), doc.walls.map((w) => w.wallTypeId)]);
+    if (key === this.browserKey) return;
+    this.browserKey = key;
+    // Keep the focus on the same button across the rebuild.
+    const focused = document.activeElement instanceof HTMLElement && shell.browser.contains(document.activeElement) ? [...shell.browser.querySelectorAll('button')].indexOf(document.activeElement as HTMLButtonElement) : -1;
+    renderBrowser(this, shell.browser, () => this.openLevels());
+    if (focused >= 0) shell.browser.querySelectorAll('button')[focused]?.focus();
   }
 
   togglePanel(open = !this.ui.panelOpen): void {

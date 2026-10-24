@@ -192,3 +192,18 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
   }
   return minX === Infinity ? null : { min: { x: minX, y: minY }, max: { x: maxX, y: maxY } };
 }
+
+/** Categories of elements the project browser can hide from view (not from the document). */
+export type Category = 'walls' | 'openings' | 'rooms' | 'floors';
+
+/** The geometry without the hidden categories; the same object when nothing is hidden. */
+export function hideCategories(g: DerivedGeometry, hidden: ReadonlySet<Category>): DerivedGeometry {
+  if (hidden.size === 0) return g;
+  return {
+    ...g,
+    solids: hidden.has('walls') ? new Map() : g.solids,
+    openings: hidden.has('openings') ? new Map() : g.openings,
+    rooms: hidden.has('rooms') ? new Map() : g.rooms,
+    floors: hidden.has('floors') ? new Map() : g.floors,
+  };
+}
