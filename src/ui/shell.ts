@@ -37,7 +37,8 @@ export function buildShell(root: HTMLElement) {
   levelBox.insertAdjacentHTML('beforeend', icon('chevronDown', 14));
   const views = el('div', { class: 'segmented', role: 'group' });
   const viewBtn = (id: '3d' | 'plan' | 'walk', ic: IconName) => {
-    const b = el('button', { type: 'button', 'data-view': id });
+    // With an icon, so narrow screens keep only the icon (controls.ts: segmented), as before 5751448.
+    const b = el('button', { type: 'button', 'data-view': id, class: 'has-icon' });
     b.innerHTML = icon(ic, 16);
     b.append(el('span', { class: 'label' }));
     views.append(b);

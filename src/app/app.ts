@@ -47,7 +47,8 @@ import { boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCate
 import { renderBrowser } from '../ui/browser';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { readProject, writeProject } from '../io/project-file';
-import { keepInView } from './keep-in-view';
+import { separateLabels } from './dim-labels';
+import { fitFactor, keepInView } from './keep-in-view';
 import { type TempDim, tempDims } from './temp-dims';
 import { contextEntries } from './context-menu';
 import { referenceLength } from '../elements/opening/derive';
@@ -638,18 +639,30 @@ export class App {
     // On screen: the selection, its turn handle (handles.ts) and its temporary dimensions with their
     // values, which stand off the element by its clearance. The window's own edges count as well as
     // what covers it: a smaller window leaves a selection near its edge out otherwise.
-    const a = this.plan.toScreen({ x: box.min.x, y: box.max.y });
-    const b = this.plan.toScreen({ x: box.max.x, y: box.min.y });
-    const xs = [a.x, b.x];
-    const ys = [a.y, b.y + ROTATE_OFFSET + 12];
-    const TEXT = 12;
-    for (const d of this.currentDims()) {
-      const line = this.plan.dimLine(d);
-      for (const p of [line.a, line.b]) xs.push(p.x - TEXT, p.x + TEXT), ys.push(p.y - TEXT, p.y + TEXT);
+    const onScreen = () => {
+      const a = this.plan.toScreen({ x: box.min.x, y: box.max.y });
+      const b = this.plan.toScreen({ x: box.max.x, y: box.min.y });
+      const xs = [a.x, b.x];
+      const ys = [a.y, b.y + ROTATE_OFFSET + 12];
+      const TEXT = 12;
+      for (const d of this.currentDims()) {
+        const line = this.plan.dimLine(d);
+        for (const p of [line.a, line.b]) xs.push(p.x - TEXT, p.x + TEXT), ys.push(p.y - TEXT, p.y + TEXT);
+      }
+      return { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
+    };
+    const view = { w: vp0.width, h: vp0.height };
+    const room = { margin: 16, above: 48 };
+    // Larger than the free part (a phone's): zoomed out about its middle first, then measured again,
+    // since the dimensions stand off by pixels (the tester's P07: the view only panned and cut it).
+    let screen = onScreen();
+    const k = fitFactor(screen, view, covered, room);
+    if (k < 1) {
+      this.plan.zoomAt({ x: (screen.left + screen.right) / 2, y: (screen.top + screen.bottom) / 2 }, k);
+      screen = onScreen();
     }
-    const screen = { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
-    const { dx, dy } = keepInView(screen, { w: vp0.width, h: vp0.height }, covered, { margin: 16, above: 48 });
-    if (dx === 0 && dy === 0) return false;
+    const { dx, dy } = keepInView(screen, view, covered, room);
+    if (dx === 0 && dy === 0 && k === 1) return false;
     this.plan.panBy(dx, dy);
     return true;
   }
@@ -921,6 +934,7 @@ export class App {
     if (this.ui.dimEdit && !dims.some((d) => d.id === this.ui.dimEdit)) this.ui.dimEdit = null;
     const keep = new Set(dims.map((d) => `${d.id}|${d.id === this.ui.dimEdit ? 'edit' : 'show'}`));
     for (const child of [...box.children] as HTMLElement[]) if (!keep.has(child.dataset.key ?? '')) child.remove();
+    const nodes: HTMLElement[] = [];
     for (const d of dims) {
       const editing = d.id === this.ui.dimEdit;
       const key = `${d.id}|${editing ? 'edit' : 'show'}`;
@@ -939,10 +953,19 @@ export class App {
         node.title = t('dim.edit');
         node.setAttribute('aria-label', `${num(d.value)} m. ${t('dim.edit')}`);
       }
-      const l = this.plan.dimLine(d);
-      node.style.left = `${(l.a.x + l.b.x) / 2}px`;
-      node.style.top = `${(l.a.y + l.b.y) / 2}px`;
+      nodes.push(node);
     }
+    // At the middle of their lines, unless one would sit on another (dim-labels.ts).
+    const at = separateLabels(
+      dims.map((d, i) => {
+        const l = this.plan.dimLine(d);
+        return { a: l.a, b: l.b, w: nodes[i]!.offsetWidth, h: nodes[i]!.offsetHeight };
+      }),
+    );
+    nodes.forEach((node, i) => {
+      node.style.left = `${at[i]!.x}px`;
+      node.style.top = `${at[i]!.y}px`;
+    });
   }
 
   private dimButton(d: TempDim): HTMLButtonElement {
