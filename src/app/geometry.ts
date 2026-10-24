@@ -7,14 +7,15 @@ import type { Opening, OpeningId } from '../elements/opening/schema';
 import { symbolLines } from '../elements/opening/symbol';
 import { type Block, cutPlan, cutSolid, type OpeningCut, type OpeningFrame, openingFrame } from '../elements/opening/void';
 import { computeWallGeometry, type Piece } from '../elements/wall/geometry/footprint';
-import { overlapArea, toCounterClockwise } from '../elements/wall/geometry/convex';
-import { AREA_EPSILON } from '../core/tolerance';
+import { area, clipHalfPlane, type ConvexPolygon, halfPlaneThrough, overlapArea, toCounterClockwise } from '../elements/wall/geometry/convex';
+import { faceOffsets, stationOf, wallLength, wallNormal } from '../elements/wall/geometry/offset';
+import { AREA_EPSILON, POINT_TOLERANCE } from '../core/tolerance';
 
 /** How far past the host's faces another wall still counts as meeting it inside an opening (m). */
 const JOINT_REACH = 0.01;
 import { shapeOf } from '../elements/wall/geometry/shape';
 import type { JoinWarning } from '../elements/wall/join/types';
-import type { WallId } from '../elements/wall/schema';
+import type { WallId, WallType } from '../elements/wall/schema';
 import { deriveFloors, deriveRooms, type FloorSolid, type RoomSolid, type RoomWarning } from '../elements/room/derive';
 import type { FloorId, RoomId } from '../elements/room/schema';
 import type { Point2 as P } from '../core/vector';
@@ -55,17 +56,8 @@ export interface DerivedGeometry {
 export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOpenings: readonly Opening[] = []): DerivedGeometry {
   const walls = [...doc.walls, ...extra];
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
-  // Walls join only within their level: one level's walls never cut, notch or warn about another's.
-  const byLevel = new Map<string, DocWall[]>();
-  for (const w of walls) byLevel.set(w.levelId, [...(byLevel.get(w.levelId) ?? []), w]);
-  const pieces = new Map<WallId, readonly Piece[]>();
-  const warnings: JoinWarning[] = [];
-  for (const list of byLevel.values()) {
-    const g = computeWallGeometry(list, types);
-    for (const [id, p] of g.pieces) pieces.set(id, p);
-    warnings.push(...g.warnings);
-  }
-  const placed = deriveOpenings([...doc.openings, ...extraOpenings], hostsOf(doc, walls), doc.openingGroups);
+  const { pieces, warnings } = wallPieces(walls, types);
+  const placed = deriveOpenings([...doc.openings, ...extraOpenings], hostsOf(doc, walls, jointsIn(walls, types, pieces)), doc.openingGroups);
   const byId = new Map(walls.map((w) => [w.id, w]));
   const openings = new Map<OpeningId, OpeningSolid>();
   const cuts = new Map<WallId, OpeningCut[]>();
@@ -116,6 +108,65 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
   const roomResult = deriveRooms(doc.rooms, piecesByLevel);
   const floors = deriveFloors(doc.floors, roomResult.solids, (id) => doc.levels.find((l) => l.id === id)?.elevation ?? 0);
   return { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors };
+}
+
+/** The joined plan pieces of every wall. Walls join only within their level: one level's walls never cut, notch or warn about another's. */
+function wallPieces(walls: readonly DocWall[], types: ReadonlyMap<string, WallType>): { pieces: Map<WallId, readonly Piece[]>; warnings: JoinWarning[] } {
+  const byLevel = new Map<string, DocWall[]>();
+  for (const w of walls) byLevel.set(w.levelId, [...(byLevel.get(w.levelId) ?? []), w]);
+  const pieces = new Map<WallId, readonly Piece[]>();
+  const warnings: JoinWarning[] = [];
+  for (const list of byLevel.values()) {
+    const g = computeWallGeometry(list, types);
+    for (const [id, p] of g.pieces) pieces.set(id, p);
+    warnings.push(...g.warnings);
+  }
+  return { pieces, warnings };
+}
+
+/**
+ * Where other walls meet each straight wall inside its length (a T or an X): the stations along its
+ * reference line that their pieces cover within its faces (a hair beyond, as for an opening over a
+ * joint). Corners at the wall's ends are not inside it.
+ */
+function jointsIn(
+  walls: readonly DocWall[],
+  types: ReadonlyMap<string, WallType>,
+  pieces: ReadonlyMap<WallId, readonly Piece[]>,
+): Map<WallId, Map<WallId, { lo: number; hi: number }>> {
+  const out = new Map<WallId, Map<WallId, { lo: number; hi: number }>>();
+  for (const host of walls) {
+    if (host.bulge) continue;
+    const shape = shapeOf(host, types.get(host.wallTypeId));
+    if (typeof shape === 'string') continue;
+    const n = wallNormal(shape);
+    const [f0, f1] = faceOffsets(shape);
+    const band = [
+      halfPlaneThrough(add(shape.start, scale(n, f0 - JOINT_REACH)), n),
+      halfPlaneThrough(add(shape.start, scale(n, f1 + JOINT_REACH)), scale(n, -1)),
+    ];
+    const length = wallLength(shape);
+    const mine = new Map<WallId, { lo: number; hi: number }>();
+    for (const other of walls) {
+      if (other.id === host.id || other.levelId !== host.levelId) continue;
+      const stations = (pieces.get(other.id) ?? [])
+        .map((p) => band.reduce<ConvexPolygon>((poly, h) => (poly.length > 0 ? clipHalfPlane(poly, h) : poly), p.polygon))
+        .filter((poly) => poly.length > 0 && area(poly) > AREA_EPSILON)
+        .flatMap((poly) => poly.map((v) => stationOf(shape, v)));
+      if (stations.length === 0) continue;
+      const lo = Math.min(...stations);
+      const hi = Math.max(...stations);
+      if (lo > POINT_TOLERANCE && hi < length - POINT_TOLERANCE) mine.set(other.id, { lo, hi });
+    }
+    if (mine.size > 0) out.set(host.id, mine);
+  }
+  return out;
+}
+
+/** Hosts for placing openings, with the joints inside each (which bound a distributed group's stretch). */
+export function hostsIn(doc: Doc, walls: readonly DocWall[] = doc.walls) {
+  const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
+  return hostsOf(doc, walls, jointsIn(walls, types, wallPieces(walls, types).pieces));
 }
 
 /** The opening's outline in plan: the jambs across the wall's thickness. */

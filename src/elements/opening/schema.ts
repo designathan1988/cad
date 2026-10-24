@@ -28,8 +28,8 @@ export const hasDistance = (r: PositionRule): r is DistanceRule => 'distance' in
 export type OpeningGroupId = string;
 
 /**
- * Openings of one wall placed together, in wall order. Equal: the same space between the wall ends
- * and each opening. Fixed: a set gap between neighbours, the row centred or measured from one end.
+ * Openings of one wall placed together, in wall order. Equal: the same space between the stretch's
+ * ends and each opening. Fixed: a set gap between neighbours, the row centred or measured from one end.
  */
 export type GroupSpacing =
   | { readonly kind: 'equal' }
@@ -40,6 +40,12 @@ export interface OpeningGroup {
   readonly wallId: WallId;
   readonly members: readonly OpeningId[];
   readonly spacing: GroupSpacing;
+  /**
+   * The stretch of the wall the group keeps to: from the joint with the first wall to the joint with
+   * the second, along the host; null is the host's own end. Absent: the whole wall. Set when the group
+   * is made, from the joints just outside its openings, so they never land on a joint they were clear of.
+   */
+  readonly between?: readonly [WallId | null, WallId | null];
 }
 
 export type RuleKind = PositionRule['kind'];

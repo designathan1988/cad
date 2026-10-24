@@ -50,7 +50,10 @@ export function row(label: string, control: HTMLElement, opts: { sub?: boolean; 
 export function numberField(value: number | null, onCommit: (v: number) => void, min = -Infinity): HTMLElement {
   const box = el('div', { class: 'num-field' });
   const input = el('input', { type: 'text', inputmode: 'decimal', autocomplete: 'off', spellcheck: 'false' });
-  const shown = () => (value === null ? '' : num(value));
+  // The value the field stands for: after a commit, the new one, written as every field writes it
+  // (a dialog that is not rebuilt still shows "2,50", and leaving the field does not commit again).
+  let current = value;
+  const shown = () => (current === null ? '' : num(current));
   input.value = shown();
   input.placeholder = value === null ? t('panel.varies') : '';
   const commit = () => {
@@ -65,6 +68,10 @@ export function numberField(value: number | null, onCommit: (v: number) => void,
       return;
     }
     input.classList.remove('invalid');
+    input.removeAttribute('aria-invalid');
+    current = r.value;
+    input.value = shown();
+    input.placeholder = '';
     onCommit(r.value);
   };
   input.addEventListener('keydown', (e) => {
@@ -79,7 +86,10 @@ export function numberField(value: number | null, onCommit: (v: number) => void,
     }
   });
   input.addEventListener('blur', commit);
-  input.addEventListener('input', () => input.classList.remove('invalid'));
+  input.addEventListener('input', () => {
+    input.classList.remove('invalid');
+    input.removeAttribute('aria-invalid');
+  });
   box.append(input, el('span', { class: 'unit' }, 'm'));
   return box;
 }
@@ -90,6 +100,8 @@ export function scrub(label: HTMLElement, get: () => number | null, onCommit: (v
   label.addEventListener('pointerdown', (e) => {
     const start = get();
     if (start === null || e.button !== 0) return;
+    // A drag, not a text selection of the label.
+    e.preventDefault();
     const x0 = e.clientX;
     const input = document.getElementById(label.getAttribute('for') ?? '') as HTMLInputElement | null;
     let v = start;

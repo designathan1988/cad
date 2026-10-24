@@ -4,9 +4,9 @@
 
 import { carriedRooms } from '../app/carry';
 import type { Doc } from '../app/document';
-import type { DerivedGeometry } from '../app/geometry';
+import { type DerivedGeometry, hostsIn } from '../app/geometry';
 import { dot, normalize, type Point2, sub } from '../core/vector';
-import { deriveOpenings, hostsOf } from '../elements/opening/derive';
+import { deriveOpenings } from '../elements/opening/derive';
 import { hasDistance, type PositionRule } from '../elements/opening/schema';
 import { moveWalls } from './edit';
 
@@ -26,7 +26,7 @@ export function nudge(doc: Doc, g: DerivedGeometry, ids: readonly string[], step
     next = { ...next, walls: moveWalls(doc, wallIds, step), rooms: carriedRooms(doc, g, new Set(wallIds), moved) };
   }
   // Openings on a moved wall go with it; the others slide along their own wall.
-  const placed = deriveOpenings(doc.openings, hostsOf(doc), doc.openingGroups).placed;
+  const placed = deriveOpenings(doc.openings, hostsIn(doc), doc.openingGroups).placed;
   const openings = next.openings.map((o) => {
     // A member of a distributed group is placed by its group: the arrows leave it (move the wall).
     if (!set.has(o.id) || set.has(o.wallId) || o.rule.kind === 'inGroup') return o;

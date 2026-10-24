@@ -20,8 +20,8 @@
   --foot-h: 36px;
   --tools-w: 52px;
   --control-h: 32px;
-  --control-h-sm: 26px;
-  --field-h: 28px;
+  --control-h-sm: 32px;
+  --field-h: 32px;
   /* Lines and marks */
   --line: 1px;
   --line-2: 2px;
@@ -36,7 +36,7 @@
   --name-w: 220px;
   --head-h: 44px;
   --summary-h: 34px;
-  --wide-btn-h: 30px;
+  --wide-btn-h: 32px;
   --sep-w: 24px;
   --sep-h: 20px;
   --cube: 60px;
@@ -647,6 +647,7 @@ select {
 }
 .rows label.scrub {
   cursor: ew-resize;
+  user-select: none;
 }
 .num-field {
   position: relative;
@@ -897,6 +898,7 @@ select {
     --control-h: 44px;
     --control-h-sm: 44px;
     --field-h: 44px;
+    --wide-btn-h: 44px;
     --tools-w: 56px;
     --top-h: 56px;
     --foot-h: 52px;

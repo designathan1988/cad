@@ -14,8 +14,10 @@ import type { DocWall } from '../app/document';
  * Version 2: opening groups, and the aligned and in-group rules. A version 1 file has no groups.
  * Version 3: a wall's top and base offset may be left out (it takes its type's); a wall type may
  * give them. Older files always have them, so they read unchanged; older apps refuse version 3.
+ * Version 4: a distributed group may keep to a stretch of its wall (`between`: the walls whose joints
+ * bound it). Older groups have none and take the whole wall, as they did.
  */
-export const CURRENT_VERSION = 3;
+export const CURRENT_VERSION = 4;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
@@ -75,7 +77,8 @@ export const isOpeningGroup = (g: unknown): g is OpeningGroup =>
   typeof g.wallId === 'string' &&
   Array.isArray(g.members) &&
   g.members.every((m: unknown) => typeof m === 'string') &&
-  isSpacing(g.spacing);
+  isSpacing(g.spacing) &&
+  (g.between === undefined || (Array.isArray(g.between) && g.between.length === 2 && g.between.every((x: unknown) => x === null || typeof x === 'string')));
 
 export const isOpening = (o: unknown): o is Opening =>
   isObject(o) &&

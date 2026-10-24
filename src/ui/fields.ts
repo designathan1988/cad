@@ -4,7 +4,7 @@
 // "varies"; it can show only for some selections; it can be marked as the element's own value over
 // its type's, with the way back.
 
-import { el, numberField, row, searchSelect, section, segmented, select } from './controls';
+import { el, numberField, row, scrub, searchSelect, section, segmented, select } from './controls';
 import { t, type MessageKey } from './i18n';
 import { icon, type IconName } from './icons';
 
@@ -74,7 +74,13 @@ export function fieldsSection<T>(title: string, open: boolean, fields: readonly 
     }
     const control = controlFor(field, value);
     const own = field.own?.(items) === true;
-    if (!own) return row(t(field.label), control, { sub: field.sub === true });
+    // Every number scrubs from its label, as Revit's and Figma's do: one rule for all panels.
+    const scrubbing = (r: HTMLElement) => {
+      const label = r.querySelector('label');
+      if (field.kind === 'number' && label) scrub(label, () => value as number | null, field.set, field.min ?? -Infinity);
+      return r;
+    };
+    if (!own) return scrubbing(row(t(field.label), control, { sub: field.sub === true }));
     anyOwn = true;
     // The note is the field's description; the way back says which field it puts back.
     control.querySelector('input, select, button')?.setAttribute('aria-describedby', noteId);
@@ -87,7 +93,7 @@ export function fieldsSection<T>(title: string, open: boolean, fields: readonly 
     });
     back.innerHTML = icon('undo', 14);
     back.addEventListener('click', () => field.reset?.());
-    return row(what, el('div', { class: 'overridden' }, control, back), { sub: field.sub === true, mark: true });
+    return scrubbing(row(what, el('div', { class: 'overridden' }, control, back), { sub: field.sub === true, mark: true }));
   });
   if (anyOwn) rows.push(el('div', {}, el('div', { class: 'panel-note', id: noteId }, t('panel.overrideNote'))));
   return section(title, open, ...rows);

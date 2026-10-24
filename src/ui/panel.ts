@@ -1,7 +1,7 @@
 // Properties panel, built from what is selected: each element's sections come from its fields
 // (elements/*/fields.ts, rendered by fields.ts). It only reads state and sends changes.
 
-import { type Doc, type DocWall, type WallDefaults, wallBase, wallNumber } from '../app/document';
+import { type Doc, type DocWall, type WallDefaults, wallNumber } from '../app/document';
 import type { OpeningSolid } from '../app/geometry';
 import type { OpeningWarning } from '../elements/opening/derive';
 import { nextOpeningPanel, openingPanel, openingTitle, type OpeningPanelActions, type OpeningSize } from '../elements/opening/panel';
@@ -10,7 +10,7 @@ import type { FloorSolid, RoomSolid } from '../elements/room/derive';
 import { floorPanel, roomPanel, type RoomPanelActions } from '../elements/room/panel';
 import { nextWallFields, wallFields } from '../elements/wall/fields';
 import type { JoinWarning } from '../elements/wall/join/types';
-import { el, scrub } from './controls';
+import { el } from './controls';
 import { fieldsSection } from './fields';
 import { name, t, type MessageKey } from './i18n';
 import { icon } from './icons';
@@ -75,8 +75,6 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     const constraints = fieldsSection(t('panel.constraints'), true, fields.constraints, selected);
     const more = fieldsSection(t('panel.more'), false, fields.more, selected);
     nodes.push(general, constraints, more);
-    const baseOffset = common(selected, (w) => wallBase(doc, w));
-    wireScrub(constraints, t('panel.baseOffset'), () => baseOffset, (v) => act.updateWalls({ baseOffset: v }));
     const ids = new Set(selected.map((w) => w.id));
     const mine = input.warnings.filter((w) => w.walls.some((id) => ids.has(id)));
     if (mine.length > 0) {
@@ -92,7 +90,11 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     nodes.push(...roomPanel(input.rooms, act.room));
   } else if (input.floors.length > 0) {
     nodes.push(head('slab', input.floors.length === 1 ? t('floor.title') : t('floor.titleMany', { n: input.floors.length })));
-    const roomName = (id: string) => doc.rooms.find((r) => r.id === id)?.name ?? '—';
+    // Shown as the room's own tag and footer show it: a default name in the interface's language.
+    const roomName = (id: string) => {
+      const r = doc.rooms.find((x) => x.id === id);
+      return r ? name(r.name) : '—';
+    };
     nodes.push(...floorPanel(input.floors, roomName, act.room));
   } else if (input.openings.length > 0) {
     const kinds = new Set(input.openings.map((o) => o.opening.kind));
@@ -115,10 +117,4 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     nodes.push(empty);
   }
   root.replaceChildren(...nodes);
-}
-
-function wireScrub(sec: HTMLElement, label: string, get: () => number | null, commit: (v: number) => void): void {
-  // By the label's own text: a mark for an own value (row's `mark`) follows it in a separate span.
-  const l = [...sec.querySelectorAll('label')].find((x) => x.firstChild?.textContent === label);
-  if (l) scrub(l, get, commit);
 }

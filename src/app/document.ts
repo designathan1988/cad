@@ -29,7 +29,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 3;
+  readonly version: 4;
   readonly name: string;
   readonly levels: readonly Level[];
   readonly wallTypes: readonly WallType[];
@@ -57,7 +57,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 3,
+    version: 4,
     name: '',
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
     wallTypes: [

@@ -5,13 +5,13 @@
 
 import { type Doc, wallHeights } from '../../app/document';
 import type { Command } from '../../core/store';
-import { deriveGeometry } from '../../app/geometry';
-import { deriveOpenings, hostsOf, type OpeningWarningKind, type PlacedOpening } from './derive';
+import { deriveGeometry, hostsIn } from '../../app/geometry';
+import { deriveOpenings, type HostInfo, type OpeningWarningKind, type PlacedOpening } from './derive';
 import type { AlignEdge, GroupSpacing, Opening, OpeningGroupId, OpeningId, PositionRule, RuleKind } from './schema';
 
 /** Why a new opening cannot go where it is aimed (it overlaps another, or does not fit), or null. */
 export function placementProblem(doc: Doc, opening: Opening): OpeningWarningKind | null {
-  const placed = deriveOpenings([...doc.openings, opening], hostsOf(doc), doc.openingGroups).placed.get(opening.id);
+  const placed = deriveOpenings([...doc.openings, opening], hostsIn(doc), doc.openingGroups).placed.get(opening.id);
   const blocking: OpeningWarningKind[] = ['openingOverlap', 'openingOutside'];
   return placed?.warnings.find((k) => blocking.includes(k)) ?? null;
 }
@@ -21,7 +21,7 @@ export const addOpening = (opening: Opening): Command<Doc> => ({
   apply: (doc) => ({ ...doc, openings: [...doc.openings, opening] }),
 });
 
-const placedIn = (doc: Doc): Map<OpeningId, PlacedOpening> => deriveOpenings(doc.openings, hostsOf(doc), doc.openingGroups).placed;
+const placedIn = (doc: Doc): Map<OpeningId, PlacedOpening> => deriveOpenings(doc.openings, hostsIn(doc), doc.openingGroups).placed;
 
 /**
  * Groups as the openings now say: a member that left (another rule, another wall, deleted) is taken
@@ -110,7 +110,7 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
 export function ruleKeepingPosition(doc: Doc, id: OpeningId, kind: RuleKind, referenceId?: OpeningId): PositionRule | null {
   const placed = placedIn(doc);
   const me = placed.get(id);
-  const host = me && hostsOf(doc).get(me.opening.wallId);
+  const host = me && hostsIn(doc).get(me.opening.wallId);
   if (!me || !host) return null;
   switch (kind) {
     case 'fromStart':
@@ -156,9 +156,9 @@ export function referenceCandidates(doc: Doc, id: OpeningId): Opening[] {
 }
 
 /** Whether `id`, aligned with `refId` by `edge`, stays inside its own wall. */
-export function alignFits(doc: Doc, id: OpeningId, refId: OpeningId, edge: AlignEdge): boolean {
+export function alignFits(doc: Doc, id: OpeningId, refId: OpeningId, edge: AlignEdge, hosts: ReadonlyMap<string, HostInfo> = hostsIn(doc)): boolean {
   const openings = doc.openings.map((o) => (o.id === id ? { ...o, rule: { kind: 'aligned' as const, openingId: refId, edge } } : o));
-  const placed = deriveOpenings(openings, hostsOf(doc), doc.openingGroups).placed.get(id);
+  const placed = deriveOpenings(openings, hosts, doc.openingGroups).placed.get(id);
   return placed !== undefined && !placed.warnings.includes('openingOutside') && !placed.warnings.includes('openingBadReference');
 }
 
@@ -169,7 +169,7 @@ export function alignFits(doc: Doc, id: OpeningId, refId: OpeningId, edge: Align
  */
 export function alignCandidates(doc: Doc, id: OpeningId): Opening[] {
   const me = doc.openings.find((o) => o.id === id);
-  const hosts = hostsOf(doc);
+  const hosts = hostsIn(doc);
   if (!me || !hosts.get(me.wallId)?.line) return [];
   return doc.openings.filter(
     (o) =>
@@ -177,7 +177,7 @@ export function alignCandidates(doc: Doc, id: OpeningId): Opening[] {
       o.wallId !== me.wallId &&
       hosts.get(o.wallId)?.line !== undefined &&
       !dependsOn(doc.openings, o.id, id) &&
-      alignFits(doc, id, o.id, 'center'),
+      alignFits(doc, id, o.id, 'center', hosts),
   );
 }
 
@@ -225,7 +225,8 @@ export const alignHeads = (refId: OpeningId, ids: readonly OpeningId[]): Command
 
 /**
  * Makes `ids` one group with `spacing`, in the order they now sit along the wall. They must be two or
- * more on one wall; otherwise nothing changes. Members of other groups leave them.
+ * more on one wall; otherwise nothing changes. Members of other groups leave them. The group keeps to
+ * the stretch they are in now: between the joints just outside them (a T or an X), or the wall ends.
  */
 export const distributeOpenings = (groupId: OpeningGroupId, ids: readonly OpeningId[], spacing: GroupSpacing): Command<Doc> => ({
   label: 'cmd.distributeOpenings',
@@ -233,10 +234,18 @@ export const distributeOpenings = (groupId: OpeningGroupId, ids: readonly Openin
     const want = new Set(ids);
     const list = doc.openings.filter((o) => want.has(o.id));
     if (list.length < 2 || list.some((o) => o.wallId !== list[0]!.wallId) || !doc.walls.some((w) => w.id === list[0]!.wallId)) return doc;
-    const placed = placedIn(doc);
+    const hosts = hostsIn(doc);
+    const placed = deriveOpenings(doc.openings, hosts, doc.openingGroups).placed;
     const members = [...list].sort((a, b) => placed.get(a.id)!.start - placed.get(b.id)!.start).map((o) => o.id);
     const openings = doc.openings.map((o) => (want.has(o.id) ? { ...o, rule: { kind: 'inGroup' as const, groupId } } : o));
-    const group = { id: groupId, wallId: list[0]!.wallId, members, spacing };
+    const lo = Math.min(...members.map((id) => placed.get(id)!.start));
+    const hi = Math.max(...members.map((id) => placed.get(id)!.end));
+    const joints = [...(hosts.get(list[0]!.wallId)?.joints ?? new Map<string, { lo: number; hi: number }>())];
+    // The nearest joint wholly before the openings, and the nearest wholly after them.
+    const before = joints.filter(([, j]) => j.hi <= lo).sort((a, b) => b[1].hi - a[1].hi)[0]?.[0] ?? null;
+    const after = joints.filter(([, j]) => j.lo >= hi).sort((a, b) => a[1].lo - b[1].lo)[0]?.[0] ?? null;
+    const between = before !== null || after !== null ? { between: [before, after] as const } : {};
+    const group = { id: groupId, wallId: list[0]!.wallId, members, spacing, ...between };
     return settleGroups(doc, { ...doc, openings, openingGroups: [...doc.openingGroups.filter((g) => g.id !== groupId), group] });
   },
 });

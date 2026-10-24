@@ -46,6 +46,7 @@ import { boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCate
 import { renderBrowser } from '../ui/browser';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { readProject, writeProject } from '../io/project-file';
+import { keepInView } from './keep-in-view';
 import { type TempDim, tempDims } from './temp-dims';
 import { contextEntries } from './context-menu';
 import { referenceLength } from '../elements/opening/derive';
@@ -251,10 +252,13 @@ export class App {
     this.store.dispatch(addRoom(room));
   }
 
-  /** The floor tool: a click in a room floors it; elsewhere it adds a corner to an outline. */
-  floorClick(p: Point2, mpp: number): void {
+  /**
+   * The floor tool: a click in a room floors it; elsewhere it adds a corner to an outline. A typed
+   * point is always a corner, as the footer says: typing inside a room draws an outline there.
+   */
+  floorClick(p: Point2, mpp: number, typed = false): void {
     const draft = this.ui.floorDraft;
-    if (draft.length === 0) {
+    if (draft.length === 0 && !typed) {
       const room = [...this.visibleGeometry().rooms.values()].find((r) => r.enclosed && insideRing(r.outline, p));
       if (room) {
         const has = this.store.get().floors.find((f) => f.source.kind === 'room' && f.source.roomId === room.room.id);
@@ -471,7 +475,7 @@ export class App {
       }
       this.ui.error = null;
       if (wall) this.wallEvent({ kind: 'click', point: point.value });
-      else if (this.ui.tool === 'floor') this.floorClick(point.value, 0);
+      else if (this.ui.tool === 'floor') this.floorClick(point.value, 0, true);
       else this.roomClick(point.value);
       return true;
     }
@@ -585,6 +589,8 @@ export class App {
   }
 
   private seenSelection = '';
+  /** The viewport's size at the last check: a change is a resize, which keeps the selection in view. */
+  private seenSize = '';
 
   /**
    * When the selection changes and the panel lying over the drawing would hide it (the sheet on a
@@ -597,25 +603,31 @@ export class App {
     const key = JSON.stringify([[...this.ui.selection], covered, Math.round(vp0.width), Math.round(vp0.height)]);
     if (key === this.seenSelection) return false;
     this.seenSelection = key;
+    // A new selection moves the plan only from under what covers it: clicking a long wall that runs
+    // past the edge does not pan. A window that changed size moves it back from its own edges too.
+    const size = `${Math.round(vp0.width)}x${Math.round(vp0.height)}`;
+    const resized = this.seenSize !== '' && size !== this.seenSize;
+    this.seenSize = size;
     if (this.ui.selection.size === 0) return false;
-    if (covered.right === 0 && covered.bottom === 0 && !covered.left) return false;
+    if (!resized && covered.right === 0 && covered.bottom === 0 && !covered.left) return false;
     const box = boundsOf(this.geometry, this.ui.selection);
     if (!box) return false;
-    const vp = this.shell.viewport.getBoundingClientRect();
+    // On screen: the selection, its turn handle (handles.ts) and its temporary dimensions with their
+    // values, which stand off the element by its clearance. The window's own edges count as well as
+    // what covers it: a smaller window leaves a selection near its edge out otherwise.
     const a = this.plan.toScreen({ x: box.min.x, y: box.max.y });
     const b = this.plan.toScreen({ x: box.max.x, y: box.min.y });
-    const margin = 16;
-    // Room under the selection for its turn handle too (handles.ts), not only for the walls.
-    const below = ROTATE_OFFSET + 12;
-    const dy = Math.max(0, b.y + below - (vp.height - covered.bottom - margin));
-    const dx = Math.max(0, b.x - (vp.width - covered.right - margin));
-    // Never past the top or left edge: a selection taller than the free part keeps its top in view.
-    const up = Math.min(dy, Math.max(0, a.y - margin));
-    // Behind the project browser on the left: slide right instead.
-    const right = Math.max(0, (covered.left ?? 0) + margin - a.x);
-    const left = right > 0 ? -right : Math.min(dx, Math.max(0, a.x - (covered.left ?? 0) - margin));
-    if (up <= 0 && left === 0) return false;
-    this.plan.panBy(-left, -up);
+    const xs = [a.x, b.x];
+    const ys = [a.y, b.y + ROTATE_OFFSET + 12];
+    const TEXT = 12;
+    for (const d of this.currentDims()) {
+      const line = this.plan.dimLine(d);
+      for (const p of [line.a, line.b]) xs.push(p.x - TEXT, p.x + TEXT), ys.push(p.y - TEXT, p.y + TEXT);
+    }
+    const screen = { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
+    const { dx, dy } = keepInView(screen, { w: vp0.width, h: vp0.height }, covered, { margin: 16, above: 48 });
+    if (dx === 0 && dy === 0) return false;
+    this.plan.panBy(dx, dy);
     return true;
   }
 

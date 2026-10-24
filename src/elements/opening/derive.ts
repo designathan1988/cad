@@ -13,6 +13,8 @@ export interface HostInfo {
   readonly length: number;
   readonly height: number;
   readonly line?: { readonly start: Point2; readonly end: Point2 };
+  /** Where each other wall meets this one inside its length (a T or an X): stations it covers. */
+  readonly joints?: ReadonlyMap<WallId, { readonly lo: number; readonly hi: number }>;
 }
 
 export type OpeningWarningKind = 'openingNoHost' | 'openingBadReference' | 'openingOutside' | 'openingOverlap' | 'openingTooTall' | 'openingAtJoint';
@@ -37,14 +39,33 @@ export function referenceLength(wall: Pick<DocWall, 'start' | 'end' | 'bulge'>):
   return arc === null ? distance(wall.start, wall.end) : arc.radius * Math.abs(arc.sweep);
 }
 
-export function hostsOf(doc: Doc, walls: readonly DocWall[] = doc.walls): Map<WallId, HostInfo> {
+/** `joints`: each host's joints inside it (app/geometry.ts: hostsIn), which bound a group's stretch. */
+export function hostsOf(
+  doc: Doc,
+  walls: readonly DocWall[] = doc.walls,
+  joints?: ReadonlyMap<WallId, ReadonlyMap<WallId, { lo: number; hi: number }>>,
+): Map<WallId, HostInfo> {
   return new Map(
     walls.map((w) => {
       const { bottom, top } = wallHeights(doc, w);
       const straight = arcOf({ start: w.start, end: w.end, bulge: w.bulge ?? 0 }) === null;
-      return [w.id, { length: referenceLength(w), height: top - bottom, ...(straight ? { line: { start: w.start, end: w.end } } : {}) }];
+      const mine = joints?.get(w.id);
+      return [
+        w.id,
+        { length: referenceLength(w), height: top - bottom, ...(straight ? { line: { start: w.start, end: w.end } } : {}), ...(mine ? { joints: mine } : {}) },
+      ];
     }),
   );
+}
+
+/** The part of its host a group keeps to: between its bounding joints, or the host's ends. */
+export function groupStretch(g: OpeningGroup, host: HostInfo | undefined): { from: number; to: number } {
+  const length = host?.length ?? 0;
+  const [a, b] = g.between ?? [null, null];
+  // A bounding wall that no longer meets the host gives the host's end back.
+  const from = a === null ? 0 : (host?.joints?.get(a)?.hi ?? 0);
+  const to = b === null ? length : (host?.joints?.get(b)?.lo ?? length);
+  return from < to ? { from, to } : { from: 0, to: length };
 }
 
 export function deriveOpenings(
@@ -94,18 +115,19 @@ export function deriveOpenings(
     const known = groupStarts.get(g.id);
     if (known) return known;
     const members = g.members.map((id) => byId.get(id)).filter((o) => inGroup(o, g));
-    const length = hosts.get(g.wallId)?.length ?? 0;
+    const { from, to } = groupStretch(g, hosts.get(g.wallId));
+    const length = to - from;
     const widths = members.reduce((s, o) => s + o.width, 0);
     const sp = g.spacing;
     let gap: number;
     let at: number;
     if (sp.kind === 'equal') {
       gap = (length - widths) / (members.length + 1);
-      at = gap;
+      at = from + gap;
     } else {
       gap = sp.gap;
       const row = widths + gap * (members.length - 1);
-      at = sp.anchor === 'start' ? sp.distance : sp.anchor === 'end' ? length - sp.distance - row : (length - row) / 2;
+      at = from + (sp.anchor === 'start' ? sp.distance : sp.anchor === 'end' ? length - sp.distance - row : (length - row) / 2);
     }
     const starts = new Map<OpeningId, number>();
     for (const o of members) {
