@@ -10,7 +10,6 @@ import { moveWalls, stretchEnd } from '../tools/edit';
 import { GRID_STEP, type Snap } from '../tools/snap';
 import type { App } from './app';
 import type { DocWall } from './document';
-import { wallAt } from './geometry';
 
 export type Drag =
   | { readonly kind: 'move'; readonly origin: Point2; readonly walls: readonly DocWall[] }
@@ -157,11 +156,5 @@ export function hull(points: readonly Point2[]): Point2[] {
     upper.push(p);
   }
   return [...lower.slice(0, -1), ...upper.slice(0, -1)];
-}
-
-/** Hit test that prefers a wall already selected, so a drag on it moves the whole selection. */
-export function hitWall(app: App, world: Point2 | null, clientX: number, clientY: number): WallId | null {
-  if (app.ui.view === 'plan') return world ? wallAt(app.geometry, world) : null;
-  return app.scene.pick(clientX, clientY);
 }
 

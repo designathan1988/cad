@@ -5,10 +5,11 @@ import type { Point2 } from '../core/vector';
 import { snap } from '../tools/snap';
 import { getLang, t } from '../ui/i18n';
 import { el } from '../ui/controls';
-import { wallAt } from './geometry';
+import { openingAt, wallAt } from './geometry';
+import { aimAt, OPENING_PREVIEW_ID } from './opening-ui';
 import type { App } from './app';
 import { levelOf } from './document';
-import { hitWall, selectGestures } from './select-drag';
+import { selectGestures } from './select-drag';
 import type { WallId } from '../elements/wall/schema';
 
 export function wireInput(app: App): void {
@@ -71,6 +72,10 @@ export function wireInput(app: App): void {
     });
   };
 
+  /** The element under the pointer: an opening before the wall that hosts it. */
+  const pickAt = (e: PointerEvent, at: { p: Point2 } | null) =>
+    ui.view === 'plan' ? (at ? (openingAt(app.geometry, at.p) ?? wallAt(app.geometry, at.p)) : null) : app.scene.pick(e.clientX, e.clientY);
+
   const onMove = (e: PointerEvent) => {
     shift = e.shiftKey;
     if (panning && ui.view === 'plan') {
@@ -87,12 +92,15 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (downAt) {
+    if (app.openingKind()) {
+      return app.openingEvent({ kind: 'hover', aim: at ? aimAt(app.store.get(), app.geometry, ui.levelId, at.p, at.mpp, OPENING_PREVIEW_ID) : null });
+    }
+    if (downAt && ui.tool === 'select') {
       gestures.move(local(e), at?.p ?? null, snapAt, e.shiftKey);
       showMarquee();
       return;
     }
-    const hover = ui.view === 'plan' ? (at ? wallAt(app.geometry, at.p) : null) : app.scene.pick(e.clientX, e.clientY);
+    const hover = pickAt(e, at);
     if (hover !== ui.hover) ui.hover = hover;
     app.render();
   };
@@ -111,7 +119,7 @@ export function wireInput(app: App): void {
     if (ui.tool === 'select') {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       const at = worldAt(e);
-      gestures.down(local(e), at?.p ?? null, hitWall(app, at?.p ?? null, e.clientX, e.clientY), e.shiftKey);
+      gestures.down(local(e), at?.p ?? null, pickAt(e, at), e.shiftKey);
     }
   };
 
@@ -129,6 +137,7 @@ export function wireInput(app: App): void {
       return;
     }
     if (moved) return;
+    if (app.openingKind()) return app.openingEvent({ kind: 'click' });
     const s = snapped(e);
     if (s) app.wallEvent({ kind: 'click', point: s.point });
   };
@@ -141,6 +150,7 @@ export function wireInput(app: App): void {
     c.addEventListener('pointerleave', () => {
       ui.hover = null;
       ui.cursor = null;
+      if (app.openingKind()) return app.openingEvent({ kind: 'hover', aim: null });
       app.render();
     });
     c.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -172,6 +182,8 @@ export function wireInput(app: App): void {
   shell.panelToggle.addEventListener('click', () => app.togglePanel());
   shell.toolSelect.addEventListener('click', () => app.setTool('select'));
   shell.toolWall.addEventListener('click', () => app.setTool('wall'));
+  shell.toolDoor.addEventListener('click', () => app.setTool('door'));
+  shell.toolWindow.addEventListener('click', () => app.setTool('window'));
   shell.floatDelete.addEventListener('click', () => app.deleteSelection());
   shell.floatZoom.addEventListener('click', () => app.frameSelection());
   shell.floatFrame.addEventListener('click', () => app.frameAll());
@@ -215,7 +227,8 @@ export function wireInput(app: App): void {
     }
     if (ctrl || e.altKey) return;
     // Typing a number goes straight to the measure field, as in Revit and SketchUp.
-    if (/^[\d.,]$/.test(e.key) && (ui.tool === 'wall' ? ui.wall.kind !== 'idle' : ui.selection.size === 1)) {
+    const typing = ui.tool === 'wall' ? ui.wall.kind !== 'idle' : app.openingKind() ? ui.opening.kind === 'aiming' : ui.selection.size === 1;
+    if (/^[\d.,]$/.test(e.key) && typing) {
       e.preventDefault();
       shell.measure.focus();
       shell.measure.value = e.key;
@@ -226,6 +239,7 @@ export function wireInput(app: App): void {
         downAt = null;
         return showMarquee();
       }
+      if (app.openingKind()) return app.setTool('select');
       if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? app.wallEvent({ kind: 'escape' }) : app.setTool('select');
       ui.selection.clear();
       return app.refresh();
@@ -235,9 +249,11 @@ export function wireInput(app: App): void {
     if (e.key === 'Home') return app.frameAll();
     if (e.key === '?') return showHelp(app);
     if (e.shiftKey && key === 'l') return app.setLanguage(getLang() === 'en' ? 'pt' : 'en');
+    if (e.shiftKey && key === 'w') return app.setTool('window');
     if (e.shiftKey) return;
     if (key === 'w') return app.setTool('wall');
     if (key === 'a' && ui.tool === 'wall') return app.wallEvent({ kind: 'arc' });
+    if (key === 'd') return app.setTool('door');
     if (key === 'v') return app.setTool('select');
     if (key === 'f') return app.frameSelection();
     if (key === 's') {
@@ -252,8 +268,8 @@ export function wireInput(app: App): void {
 function showHelp(app: App): void {
   const back = app.shell.helpBack;
   const rows: [string, string][] = getLang() === 'pt'
-    ? [['V', 'Selecionar'], ['W', 'Parede'], ['1 / 2', '3D / Planta'], ['Enter', 'Terminar a sequência'], ['Esc', 'Cancelar / limpar seleção'], ['Del', 'Apagar seleção'], ['F / Home', 'Enquadrar seleção / tudo'], ['S', 'Encaixes'], ['Shift', 'Ângulo reto ao desenhar; somar à seleção'], ['Ctrl+Z / Ctrl+Shift+Z', 'Desfazer / refazer'], ['Shift+L', 'Idioma'], ['Rodinha', 'Aproximar no cursor'], ['Botão do meio', 'Mover a vista'], ['Shift + meio', 'Girar (3D)']]
-    : [['V', 'Select'], ['W', 'Wall'], ['1 / 2', '3D / Plan'], ['Enter', 'Finish the chain'], ['Esc', 'Cancel / clear selection'], ['Del', 'Delete selection'], ['F / Home', 'Frame selection / all'], ['S', 'Snaps'], ['Shift', 'Right angle while drawing; add to selection'], ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo'], ['Shift+L', 'Language'], ['Wheel', 'Zoom at the cursor'], ['Middle button', 'Pan'], ['Shift + middle', 'Orbit (3D)']];
+    ? [['V', 'Selecionar'], ['W', 'Parede'], ['D', 'Porta'], ['Shift+W', 'Janela'], ['1 / 2', '3D / Planta'], ['Enter', 'Terminar a sequência'], ['Esc', 'Cancelar / limpar seleção'], ['Del', 'Apagar seleção'], ['F / Home', 'Enquadrar seleção / tudo'], ['S', 'Encaixes'], ['Shift', 'Ângulo reto ao desenhar; somar à seleção'], ['Ctrl+Z / Ctrl+Shift+Z', 'Desfazer / refazer'], ['Shift+L', 'Idioma'], ['Rodinha', 'Aproximar no cursor'], ['Botão do meio', 'Mover a vista'], ['Shift + meio', 'Girar (3D)']]
+    : [['V', 'Select'], ['W', 'Wall'], ['D', 'Door'], ['Shift+W', 'Window'], ['1 / 2', '3D / Plan'], ['Enter', 'Finish the chain'], ['Esc', 'Cancel / clear selection'], ['Del', 'Delete selection'], ['F / Home', 'Frame selection / all'], ['S', 'Snaps'], ['Shift', 'Right angle while drawing; add to selection'], ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo'], ['Shift+L', 'Language'], ['Wheel', 'Zoom at the cursor'], ['Middle button', 'Pan'], ['Shift + middle', 'Orbit (3D)']];
   const close = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
   const dl = el('dl');
   for (const [k, v] of rows) dl.append(el('dt', {}, el('span', { class: 'kbd' }, k)), el('dd', {}, v));

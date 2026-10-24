@@ -2,6 +2,7 @@
 // always derived from it.
 
 import type { Point2 } from '../core/vector';
+import type { Opening } from '../elements/opening/schema';
 import type { ReferenceLine, Wall, WallType, WallTypeId } from '../elements/wall/schema';
 
 export type LevelId = string;
@@ -29,6 +30,8 @@ export interface Doc {
   readonly levels: readonly Level[];
   readonly wallTypes: readonly WallType[];
   readonly walls: readonly DocWall[];
+  /** Doors and windows, each hosted by a wall and placed by a rule. */
+  readonly openings: readonly Opening[];
 }
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */
@@ -75,6 +78,7 @@ export function newDocument(): Doc {
       },
     ],
     walls: [],
+    openings: [],
   };
 }
 

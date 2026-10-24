@@ -1,6 +1,10 @@
 // Properties panel, built from what is selected. It only reads state and sends changes.
 
 import type { Doc, DocWall, WallDefaults } from '../app/document';
+import type { OpeningSolid } from '../app/geometry';
+import type { OpeningWarning } from '../elements/opening/derive';
+import { nextOpeningPanel, openingPanel, openingTitle, type OpeningPanelActions, type OpeningSize } from '../elements/opening/panel';
+import type { OpeningId, OpeningKind } from '../elements/opening/schema';
 import { distance } from '../core/vector';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { ReferenceLine } from '../elements/wall/schema';
@@ -14,12 +18,20 @@ export interface PanelInput {
   readonly drawing: boolean;
   readonly defaults: WallDefaults;
   readonly warnings: readonly JoinWarning[];
+  /** Selected doors and windows; shown when no wall is selected. */
+  readonly openings: readonly OpeningSolid[];
+  readonly placed: ReadonlyMap<OpeningId, OpeningSolid>;
+  readonly openingWarnings: readonly OpeningWarning[];
+  /** The door or window tool is active: its next opening's size. */
+  readonly openingTool: { readonly kind: OpeningKind; readonly size: OpeningSize } | null;
 }
 
 export interface PanelActions {
   readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
   readonly updateDefaults: (patch: Partial<WallDefaults>) => void;
   readonly close: () => void;
+  readonly opening: OpeningPanelActions;
+  readonly updateOpeningDefaults: (kind: OpeningKind, patch: Partial<OpeningSize>) => void;
 }
 
 const REFS: readonly { value: ReferenceLine; key: MessageKey; icon: 'refCenter' | 'refExterior' | 'refInterior' }[] = [
@@ -38,7 +50,7 @@ function common<T>(walls: readonly DocWall[], get: (w: DocWall) => T): T | null 
 
 export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActions): void {
   const { doc, selected } = input;
-  const head = (iconName: 'wall' | 'pointer', title: string) => {
+  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window', title: string) => {
     const h = el('div', { class: 'panel-head' });
     h.innerHTML = icon(iconName, 16);
     const close = el('button', { class: 'icon-btn', type: 'button', title: t('panel.close'), 'aria-label': t('panel.close') });
@@ -103,6 +115,14 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
       box.append(el('div', {}, ...mine.map((w) => el('div', {}, t(`warn.${w.kind}` as MessageKey)))));
       nodes.push(box);
     }
+  } else if (input.openings.length > 0) {
+    const kinds = new Set(input.openings.map((o) => o.opening.kind));
+    nodes.push(head(kinds.size === 1 && kinds.has('window') ? 'window' : 'door', openingTitle(input.openings)));
+    nodes.push(...openingPanel(doc, input.placed, input.openings, input.openingWarnings, act.opening));
+  } else if (input.openingTool) {
+    const { kind, size } = input.openingTool;
+    nodes.push(head(kind, t(kind === 'door' ? 'panel.nextDoor' : 'panel.nextWindow')));
+    nodes.push(...nextOpeningPanel(kind, size, (patch) => act.updateOpeningDefaults(kind, patch)));
   } else if (input.drawing) {
     const d = input.defaults;
     nodes.push(head('wall', t('panel.nextWall')), el('div', { class: 'panel-hint' }, t('panel.nextWallHint')));

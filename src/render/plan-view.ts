@@ -3,7 +3,8 @@
 // filled over the strokes, so lines between joined pieces disappear and only the outside stays.
 
 import type { Point2 } from '../core/vector';
-import type { DerivedGeometry } from '../app/geometry';
+import { type DerivedGeometry, openingOutline } from '../app/geometry';
+import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
 
 export interface PlanOverlay {
@@ -18,6 +19,8 @@ export interface PlanOverlay {
   readonly axis: { readonly start: Point2; readonly end: Point2 } | null;
   /** End grips of the selected wall: small squares to drag. */
   readonly grips: readonly Point2[];
+  /** The opening being placed (an id present in the geometry), drawn in the accent colour. */
+  readonly openingPreview?: string | null;
 }
 
 export class PlanView {
@@ -125,6 +128,7 @@ export class PlanView {
     const drawn = solids.filter((x) => o.preview.has(x.wall.id));
     outline(drawn, color('--wall-sel'), 3);
     fill(drawn, color('--wall-sel-fill'));
+    this.drawOpenings(g, o, { line: color('--wall-line'), sel: color('--wall-sel'), selFill: color('--wall-sel-fill'), warn: color('--warn'), canvas: color('--canvas') });
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
     for (const g of o.grips) {
       const p = this.toScreen(g);
@@ -136,6 +140,42 @@ export class PlanView {
     }
     if (o.snap) this.drawSnap(o.snap, color('--snap'), color('--bg'));
     if (o.measure) this.label(o.measure.at, o.measure.text, color('--accent-text'), color('--canvas'), 'bold 12px Inter, system-ui');
+  }
+
+  /**
+   * Doors and windows as plans draw them, over the cut in the wall. A door: its leaf standing open at
+   * 90° from the hinge jamb, on the side it opens to, and the quarter arc its edge sweeps back to the
+   * other jamb. A window: the frame lines at both wall faces and the glass line between them. Invalid
+   * openings are drawn the same, in the warning colour.
+   */
+  private drawOpenings(g: DerivedGeometry, o: PlanOverlay, c: { line: string; sel: string; selFill: string; warn: string; canvas: string }): void {
+    const { ctx } = this;
+    const path = (pts: readonly Point2[], close = false) => {
+      ctx.beginPath();
+      pts.forEach((v, i) => {
+        const p = this.toScreen(v);
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      if (close) ctx.closePath();
+    };
+    for (const op of g.openings.values()) {
+      const f = op.frame;
+      if (!f) continue;
+      const id = op.opening.id;
+      const active = o.selected.has(id) || o.openingPreview === id;
+      const colour = !op.valid ? c.warn : active || o.hover === id ? c.sel : c.line;
+      if (active) {
+        ctx.fillStyle = c.selFill;
+        ctx.globalAlpha = 0.5;
+        path(openingOutline(op), true);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      ctx.strokeStyle = colour;
+      ctx.lineWidth = active ? 1.6 : 1;
+      for (const line of symbolLines(op, op.frame)) (path(line), ctx.stroke());
+    }
   }
 
   private drawGrid(minor: string, major: string, axisX: string, axisY: string): void {
@@ -226,3 +266,4 @@ export class PlanView {
     ctx.fillText(text, x, y + 1);
   }
 }
+
