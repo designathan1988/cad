@@ -173,7 +173,7 @@ interface HalfPlane { nx: number; ny: number; d: number }  // mantém nx·x + ny
 type ConvexPolygon = readonly Point2[];                    // CCW, sem vértice repetido
 
 function clipHalfPlane(poly: ConvexPolygon, h: HalfPlane): ConvexPolygon;
-function clipOutBand(poly: ConvexPolygon, a: HalfPlane, b: HalfPlane): ConvexPolygon[]; // 0..2 peças
+function clipOut(poly: ConvexPolygon, region: readonly HalfPlane[]): ConvexPolygon[];
 function area(poly: ConvexPolygon): number;
 ```
 
@@ -182,9 +182,11 @@ mantém vértices de dentro, insere o ponto de interseção quando a aresta cruz
 Para entrada convexa a saída é convexa e **exata** — nenhum caso especial,
 nenhuma auto-interseção possível.
 
-`clipOutBand` remove a faixa entre duas retas paralelas: devolve
-`clipHalfPlane(poly, a)` e `clipHalfPlane(poly, flip(b))`. É assim que o
-entalhe (notch) do T é feito, e cada resultado continua convexo.
+`clipOut` remove uma região convexa dada como interseção de semiplanos: para
+cada semiplano, guarda a parte de fora dele e segue com a parte de dentro. Os
+pedaços que sobram são convexos e somam exatamente a área original menos a
+região. É assim que o entalhe do T é feito. *(Entrega 2: substitui o
+`clipOutBand`, que só removia uma faixa infinita — ver §7.2.)*
 
 Peças com `area < AREA_EPSILON` são descartadas na saída de qualquer corte.
 
@@ -320,8 +322,15 @@ Parede *a* encosta no flanco da parede *b*.
   *b*, do lado de onde *a* chega.
 - Camadas de **acabamento** de *a*: cortadas no semiplano da **face externa** de
   *b*, do mesmo lado.
-- Camadas de acabamento de *b* daquele lado: recebem um **entalhe**
-  (`clipOutBand`) com a largura do núcleo de *a*.
+- Camadas de *b* entre a face externa e a face do núcleo, daquele lado:
+  recebem um **entalhe** (`clipOut`) que é **exatamente a região do núcleo de
+  *a***: a faixa do núcleo, do lado de dentro da ponta livre de *a*. *(Achado da
+  entrega 2: com uma faixa infinita, uma parede curta, grossa e rasa cuja ponta
+  livre cai dentro do acabamento da hospedeira deixava uma fresta — o entalhe
+  continuava onde o núcleo já tinha terminado.)*
+- Sem camada `structure`, o núcleo é a parede inteira: tudo vai até a face do
+  núcleo da hospedeira. Se a hospedeira não tem acabamento daquele lado, não há
+  entalhe e o corte é o da face.
 
 Resultado: reboco encontra reboco, tijolo encontra tijolo. É o mesmo princípio
 da *Building Material priority* do ArchiCAD (a pele de prioridade maior corta a
@@ -441,6 +450,7 @@ regra que o elimina.
 | comprimento `< 1 mm` | parede inválida; não participa de junta |
 | paredes paralelas sobrepostas | sem junta; `WallsOverlap` |
 | ponta a `< 1 mm` de uma ponta da hospedeira | é EndJoin, não T |
+| as duas pontas dentro da mesma hospedeira | a parede está dentro dela; sem junta; `WallsOverlap` |
 | peça com área `< 1e-9 m²` | descartada |
 | nó com > 4 pontas | todas quadradas; `ComplexJoin` |
 | faixas de altura sem sobreposição | sem junta |
@@ -462,6 +472,7 @@ São o contrato do motor. Cada um é verificável **sem reimplementar o motor**.
 | **I6** | Penetração zero no T: a ponta que encosta não ultrapassa a face da hospedeira — **por construção**, não por tolerância | assertiva de sinal do semiplano |
 | **I7** | Topologia: a planta de uma cena fechada tem o número esperado de contornos e furos | contagem de componentes |
 | **I8** | Cada peça de camada fica dentro da faixa da própria camada | offsets das camadas calculados pelo oráculo, conferidos em cada vértice |
+| **I10** | No T, entre a face externa e a face do núcleo da hospedeira, dentro da faixa da parede que encosta e antes da ponta livre: onde o núcleo passa, só o núcleo cobre; no resto, só a hospedeira | 400 pontos sorteados por T, com trava contra teste vazio |
 | **I9** | Continuidade: no miter entre paredes com a mesma sequência de camadas vista do canto, a camada *k* encontra a camada *k* | 200 pontos ao longo da diagonal, dos dois lados; o teste exige um mínimo de cantos e pontos conferidos, para não passar vazio |
 
 > **I1 e I3 usam amostragem em grade, e não as primitivas de `convex.ts`.** Foi
@@ -688,6 +699,35 @@ mesma parede se sobrepondo reprovam.
 Achado desta entrega: a regra da spec ("mesmo tipo **e** mesma referência")
 era mais estreita que o necessário e errada no critério. O que decide é a
 sequência de camadas vista da face externa do canto (§7.1).
+
+### Entrega 2 — T com núcleo e entalhe
+
+O núcleo da parede que encosta vai até a face do núcleo da hospedeira, os
+acabamentos param na face externa, e as camadas da hospedeira entre as duas
+recebem o entalhe exato do núcleo (§7.2). A região total coberta não muda — o
+entalhe é preenchido pelo núcleo — então o oráculo de região de antes continua
+valendo, e entram I6 por camada e I10.
+
+| Medida | Resultado |
+|---|---|
+| Testes | 56/56 |
+| I10 na seed fixa | 741 T, 75 008 pontos |
+| Mutantes | 34/34 detectados |
+| Propriedade, 6 seeds novas × 10 | 120 000 cenas, sem falha; I10 em 43 222 T e 4 340 175 pontos |
+
+Achados:
+
+1. **Defeito do motor:** o entalhe como faixa infinita deixava fresta quando a
+   ponta livre de uma parede curta, grossa e rasa caía dentro do acabamento da
+   hospedeira. → `clipOut` com a região exata do núcleo.
+2. **Regra que faltava:** parede com as duas pontas dentro da mesma hospedeira
+   sumia e deixava entalhes vazios. → aviso, sem junta.
+3. **Erro no oráculo:** o I10 também esquecia a ponta livre. Corrigido no
+   oráculo.
+4. **Cobertura:** com funções de camada sorteadas, só ~21% das hospedeiras
+   tinham acabamento do lado do T, e a trava contra teste vazio reprovou. O
+   limite não foi baixado; metade dos tipos gerados passou a ser
+   acabamento/núcleo/acabamento.
 
 ---
 

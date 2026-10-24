@@ -112,3 +112,53 @@ describe('derived shape', () => {
     expect(g.pieces.get('ok')).toHaveLength(1);
   });
 });
+
+describe('layered T', () => {
+  // Host: 2 cm exterior finish, 15 cm structure, 3 cm interior finish, on its axis: y from −0.1 to 0.1,
+  // core y ∈ [−0.08, 0.07]. Abutting from (3, 0) upward: 1 cm finish, 10 cm structure, 1 cm finish,
+  // so x ∈ [3.05, 3.06] (exterior, on its right), core x ∈ [2.95, 3.05], interior x ∈ [2.94, 2.95].
+  const host = testWall('host', vec(0, 0), vec(6, 0), plastered);
+  const thin = [layer(0.01, 'finish1'), layer(0.1, 'structure'), layer(0.01, 'finish2')];
+  const t = testWall('t', vec(3, 0), vec(3, 2), thin);
+  const g = geometry([host, t]).pieces;
+  const piecesOf = (id: string, k: number) => g.get(id)!.filter((p) => p.layerIndex === k).map((p) => p.polygon);
+
+  it('the core runs to the host core face (y = 0.07)', () => {
+    expectPolygon(piecesOf('t', 1)[0]!, [[2.95, 0.07], [3.05, 0.07], [3.05, 2], [2.95, 2]]);
+  });
+
+  it('the finishes stop on the host face (y = 0.1)', () => {
+    expectPolygon(piecesOf('t', 0)[0]!, [[3.05, 0.1], [3.06, 0.1], [3.06, 2], [3.05, 2]]);
+    expectPolygon(piecesOf('t', 2)[0]!, [[2.94, 0.1], [2.95, 0.1], [2.95, 2], [2.94, 2]]);
+  });
+
+  it('the host interior finish is notched exactly where the core passes', () => {
+    const notched = piecesOf('host', 2);
+    expect(notched).toHaveLength(2);
+    expectPolygon(notched.find((p) => p.some((v) => v.x === 0))!, [[0, 0.07], [2.95, 0.07], [2.95, 0.1], [0, 0.1]]);
+    expectPolygon(notched.find((p) => p.some((v) => v.x === 6))!, [[3.05, 0.07], [6, 0.07], [6, 0.1], [3.05, 0.1]]);
+  });
+
+  it('the host core and exterior finish are untouched', () => {
+    expectPolygon(piecesOf('host', 0)[0]!, [[0, -0.1], [6, -0.1], [6, -0.08], [0, -0.08]]);
+    expectPolygon(piecesOf('host', 1)[0]!, [[0, -0.08], [6, -0.08], [6, 0.07], [0, 0.07]]);
+  });
+
+  it('the total area is the host plus the abutting wall beyond the face: 1.2 + 0.12 · 1.9', () => {
+    const total = [...g.values()].flat().reduce((s, p) => s + shoelace(p.polygon), 0);
+    expect(total).toBeCloseTo(1.428, 12);
+  });
+
+  it('a wall without structure is all core: the whole of it runs to the host core face', () => {
+    const soft = testWall('t', vec(3, 0), vec(3, 2), [layer(0.05, 'finish1'), layer(0.05, 'thermal')]);
+    const ys = geometry([host, soft]).pieces.get('t')!.flatMap((p) => p.polygon.map((v) => v.y));
+    expect(Math.min(...ys)).toBeCloseTo(0.07, 15);
+  });
+
+  it('a wall with both ends inside the host warns wallsOverlap and cuts nothing', () => {
+    const stub = testWall('t', vec(3, -0.05), vec(3, 0.05), 0.1);
+    const r = geometry([host, stub]);
+    expect(r.warnings).toEqual([{ kind: 'wallsOverlap', walls: ['t', 'host'] }]);
+    expect(r.pieces.get('host')!.filter((p) => p.layerIndex === 2)).toHaveLength(1);
+  });
+});

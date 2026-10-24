@@ -9,11 +9,9 @@ import {
   expectedL,
   expectedRoom,
   expectedT,
-  frameOf,
-  nearFace,
   type Region,
 } from './oracle';
-import { layerContainmentViolations, layerContinuity } from './oracle-layers';
+import { abutmentPenetration, layerContainmentViolations, layerContinuity, notchFill } from './oracle-layers';
 import { crossedScene, lScene, type Mode, roomScene, tScene } from './scenes';
 
 const seed = Number(process.env.FUZZ_SEED ?? 20261024);
@@ -31,6 +29,16 @@ function expectExact(walls: readonly Wall[], region: Region, sampleSeed: number)
   });
   expect(r.areaError, JSON.stringify(walls)).toBeLessThan(1e-9);
   expect(layerContainmentViolations(walls), JSON.stringify(walls)).toBe(0);
+}
+
+/** I6 by layer and I10, for one T. Counts checked points so I10 cannot pass vacuously. */
+const notch = { joints: 0, points: 0 };
+function expectAbutment(abutting: Wall, end: 'start' | 'end', host: Wall, walls: readonly Wall[], s: number): void {
+  expect(abutmentPenetration(abutting, end, host, walls), JSON.stringify(walls)).toBeLessThanOrEqual(1e-12);
+  const fill = notchFill(abutting, end, host, walls, s);
+  expect(fill.bad, JSON.stringify(walls)).toBe(0);
+  if (fill.checked > 0) notch.joints++;
+  notch.points += fill.checked;
 }
 
 /** Counts how many corners actually had their layer continuity checked, so I9 cannot pass vacuously. */
@@ -73,14 +81,7 @@ describe.each<Mode>(['normal', 'degenerate'])('T, %s', (mode) => {
         expect(g.warnings).toEqual([]);
         expectExact(walls, expectedT(abutting, end, host), sampleSeed);
 
-        // I6: no vertex of the abutting wall lies past the near face, beyond float rounding.
-        const face = nearFace(abutting, end, host);
-        const fh = frameOf(host);
-        const facePoint = { x: host.start.x + fh.n.x * face.offset, y: host.start.y + fh.n.y * face.offset };
-        const limit = face.inward.x * facePoint.x + face.inward.y * facePoint.y;
-        for (const v of g.pieces.get(abutting.id)!.flatMap((p) => p.polygon)) {
-          expect(face.inward.x * v.x + face.inward.y * v.y - limit).toBeGreaterThanOrEqual(-1e-12);
-        }
+        expectAbutment(abutting, end, host, walls, sampleSeed);
       }),
       runs(300),
     );
@@ -115,6 +116,8 @@ describe('room with a divider', () => {
         const g = geometry(walls);
         expect(g.warnings).toEqual([]);
         expectExact(walls, expectedRoom(s.ring, s.ringEnds, s.divider, s.startHost, s.endHost), sampleSeed);
+        expectAbutment(s.divider, 'start', s.startHost, walls, sampleSeed);
+        expectAbutment(s.divider, 'end', s.endHost, walls, sampleSeed + 1);
         for (let k = 0; k < 4; k++) {
           const j = (k + 3) % 4;
           expectContinuous(layerContinuity(s.ring[j]!, s.ringEnds[j]![1], s.ring[k]!, s.ringEnds[k]![0]), walls);
@@ -129,11 +132,14 @@ describe('room with a divider', () => {
   }, TIMEOUT);
 });
 
-describe('layer continuity was really exercised', () => {
+describe('layer checks were really exercised', () => {
   it('checked enough corners and points', () => {
     // Runs after the suites above in file order.
     console.log(`I9 checked on ${continuity.corners} corners, ${continuity.points} points`);
     expect(continuity.corners).toBeGreaterThan(300 * scale);
     expect(continuity.points).toBeGreaterThan(30_000 * scale);
+    console.log(`I10 checked on ${notch.joints} T joints, ${notch.points} points`);
+    expect(notch.joints).toBeGreaterThan(300 * scale);
+    expect(notch.points).toBeGreaterThan(20_000 * scale);
   });
 });

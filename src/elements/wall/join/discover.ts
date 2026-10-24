@@ -49,6 +49,18 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
     }
   }
 
+  // Both ends inside the same host: the wall lies within it. Two Ts would cut it away entirely and
+  // notch the host for nothing.
+  const inside = new Set(
+    abutments
+      .filter((x, i) => abutments.some((y, j) => j > i && y.abutting.wallId === x.abutting.wallId && y.hostId === x.hostId))
+      .map((x) => x.abutting.wallId),
+  );
+  for (const id of inside) {
+    warnings.push({ kind: 'wallsOverlap', walls: [id, abutments.find((x) => x.abutting.wallId === id)!.hostId] });
+  }
+  abutments = abutments.filter((x) => !inside.has(x.abutting.wallId));
+
   // Each end inside the other wall: not two Ts but one corner that overran. Cutting both against
   // each other's face would leave the corner empty. When the reference lines cross far from the
   // ends, the walls run side by side (nearly in line, overlapping): that is an overlap, not a corner.

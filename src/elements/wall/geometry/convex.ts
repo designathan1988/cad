@@ -54,9 +54,26 @@ export function clipHalfPlane(poly: ConvexPolygon, plane: HalfPlane): ConvexPoly
   return out.length >= 3 && area(out) >= AREA_EPSILON ? out : [];
 }
 
-/** Removes the band between two parallel lines; `keepA` and `keepB` keep each outer side. */
-export function clipOutBand(poly: ConvexPolygon, keepA: HalfPlane, keepB: HalfPlane): ConvexPolygon[] {
-  return [clipHalfPlane(poly, keepA), clipHalfPlane(poly, keepB)].filter((p) => p.length > 0);
+/** The same line, keeping the other side. */
+export const opposite = (plane: HalfPlane): HalfPlane => ({
+  normal: vec(-plane.normal.x, -plane.normal.y),
+  offset: -plane.offset,
+});
+
+/**
+ * Removes the convex region where every half-plane of `region` holds. The rest comes back as
+ * convex pieces: for each plane in turn, the part outside it is kept and the part inside goes on.
+ */
+export function clipOut(poly: ConvexPolygon, region: readonly HalfPlane[]): ConvexPolygon[] {
+  const out: ConvexPolygon[] = [];
+  let rest = poly;
+  for (const plane of region) {
+    const outside = clipHalfPlane(rest, opposite(plane));
+    if (outside.length > 0) out.push(outside);
+    rest = clipHalfPlane(rest, plane);
+    if (rest.length === 0) break;
+  }
+  return out;
 }
 
 function push(out: Point2[], p: Point2): void {

@@ -85,3 +85,90 @@ export function layerContinuity(
   }
   return { checked, mismatched };
 }
+
+/** First and last core layer: first to last structure layer, or every layer without one. */
+export function coreLayersOf(w: Wall): [number, number] {
+  const idx = w.layers.flatMap((l, i) => (l.function === 'structure' ? [i] : []));
+  return idx.length > 0 ? [idx[0]!, idx[idx.length - 1]!] : [0, w.layers.length - 1];
+}
+
+/** Host faces a T meets: its near face, and its core face on the same side. */
+function tFaces(abutting: Wall, end: WallEnd, host: Wall) {
+  const fh = frameOf(host);
+  const into = times(frameOf(abutting).d, end === 'start' ? 1 : -1);
+  const positive = dotp(fh.n, into) > 0;
+  const offs = layerOffsetsOf(host);
+  const [c0, c1] = coreLayersOf(host);
+  return { fh, positive, near: positive ? fh.o1 : fh.o0, coreFace: positive ? offs[c1 + 1]! : offs[c0]! };
+}
+
+/**
+ * I6 by layer: in a T, the abutting core layers stop at the host's core face and the other layers at
+ * its near face. Returns the deepest penetration past those limits (≤ 0 means none).
+ */
+export function abutmentPenetration(abutting: Wall, end: WallEnd, host: Wall, walls: readonly Wall[]): number {
+  const { pieces } = geometry(walls);
+  const { fh, positive, near, coreFace } = tFaces(abutting, end, host);
+  const [a0, a1] = coreLayersOf(abutting);
+  let worst = -Infinity;
+  for (const piece of pieces.get(abutting.id) ?? []) {
+    const limit = piece.layerIndex >= a0 && piece.layerIndex <= a1 ? coreFace : near;
+    for (const v of piece.polygon) {
+      const o = dotp(fh.n, minus(v, host.start));
+      worst = Math.max(worst, positive ? limit - o : o - limit);
+    }
+  }
+  return worst;
+}
+
+/**
+ * I10: between the host's near face and core face, inside the abutting wall's strip, a point is
+ * covered by an abutting core layer where the core passes and by the host everywhere else.
+ */
+export function notchFill(
+  abutting: Wall,
+  end: WallEnd,
+  host: Wall,
+  walls: readonly Wall[],
+  seed: number,
+): { checked: number; bad: number } {
+  const { fh, near, coreFace } = tFaces(abutting, end, host);
+  if (Math.abs(near - coreFace) < 1e-9) return { checked: 0, bad: 0 };
+  const { pieces } = geometry(walls);
+  const fa = frameOf(abutting);
+  const aOffs = layerOffsetsOf(abutting);
+  const [a0, a1] = coreLayersOf(abutting);
+  const coreLo = aOffs[a0]!;
+  const coreHi = aOffs[a1 + 1]!;
+  const joint = end === 'start' ? abutting.start : abutting.end;
+  const s0 = dotp(fh.d, minus(joint, host.start));
+  const sin = Math.abs(fa.d.x * fh.d.y - fa.d.y * fh.d.x);
+  const reach = (abutting.thickness + host.thickness) / sin + 0.01;
+  const lo = Math.min(near, coreFace);
+  const hi = Math.max(near, coreFace);
+  const eps = 1e-6;
+  let r = seed >>> 0 || 1;
+  const rnd = () => ((r = (Math.imul(r, 1664525) + 1013904223) >>> 0) / 4294967296);
+  let checked = 0;
+  let bad = 0;
+  for (let i = 0; i < 400; i++) {
+    const o = lo + (hi - lo) * rnd();
+    const p = plus(plus(host.start, times(fh.d, s0 + reach * (2 * rnd() - 1))), times(fh.n, o));
+    const ao = dotp(fa.n, minus(p, abutting.start));
+    if (o - lo < eps || hi - o < eps || ao < fa.o0 + eps || ao > fa.o1 - eps) continue;
+    // Past the free end the abutting wall is gone, even inside its strip: that stays host.
+    const freeEnd = end === 'start' ? abutting.end : abutting.start;
+    const pastFree = dotp(minus(p, freeEnd), times(fa.d, end === 'start' ? 1 : -1));
+    const nearEdge = Math.abs(ao - coreLo) < eps || Math.abs(ao - coreHi) < eps || Math.abs(pastFree) < eps;
+    if (nearEdge) continue;
+    checked++;
+    const inCore = ao > coreLo && ao < coreHi && pastFree < 0;
+    const owner = walls.find((w) => (pieces.get(w.id) ?? []).some((piece) => inside(piece.polygon, p)));
+    const ownerPiece = owner && (pieces.get(owner.id) ?? []).find((piece) => inside(piece.polygon, p));
+    const ok = inCore
+      ? owner?.id === abutting.id && ownerPiece!.layerIndex >= a0 && ownerPiece!.layerIndex <= a1
+      : owner?.id === host.id;
+    if (!ok) bad++;
+  }
+  return { checked, bad };
+}

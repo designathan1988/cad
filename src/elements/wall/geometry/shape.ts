@@ -14,6 +14,8 @@ export interface WallShape {
   readonly layerOffsets: readonly number[];
   /** Offsets of the core faces: first to last structure layer, or the whole wall without one. */
   readonly core: readonly [number, number];
+  /** Indices of the first and last core layers, inclusive. */
+  readonly coreLayers: readonly [number, number];
 }
 
 export type ShapeProblem = 'missingWallType' | 'invalidWallType';
@@ -43,10 +45,9 @@ export function shapeOf(wall: Wall, type: WallType | undefined): WallShape | Sha
   const structural = layers.flatMap((l, i) => (l.function === 'structure' ? [i] : []));
   const first = structural[0];
   const last = structural[structural.length - 1];
-  const core: readonly [number, number] =
-    first === undefined || last === undefined
-      ? [layerOffsets[0]!, layerOffsets[layers.length]!]
-      : [layerOffsets[first]!, layerOffsets[last + 1]!];
+  const coreLayers: readonly [number, number] =
+    first === undefined || last === undefined ? [0, layers.length - 1] : [first, last];
+  const core: readonly [number, number] = [layerOffsets[coreLayers[0]]!, layerOffsets[coreLayers[1] + 1]!];
 
   return {
     id: wall.id,
@@ -57,5 +58,6 @@ export function shapeOf(wall: Wall, type: WallType | undefined): WallShape | Sha
     layers,
     layerOffsets,
     core,
+    coreLayers,
   };
 }

@@ -2,10 +2,24 @@ import type { Point2 } from '../../../core/vector';
 import type { HalfPlane } from '../geometry/convex';
 import type { EndRef, WallId } from '../schema';
 
-/** How one wall end is trimmed: lengthen the band by `extension`, then apply every cut. */
+/**
+ * How one wall end is trimmed: lengthen the band by `extension`, then apply `cuts` to every layer,
+ * plus `coreCuts` to the core layers and `finishCuts` to the others.
+ */
 export interface EndCut {
   readonly extension: number;
   readonly cuts: readonly HalfPlane[];
+  readonly coreCuts?: readonly HalfPlane[];
+  readonly finishCuts?: readonly HalfPlane[];
+}
+
+/** A convex region removed from some layers of a wall: where another wall's core passes through. */
+export interface Notch {
+  readonly wallId: WallId;
+  /** The removed region is where all of these hold. */
+  readonly region: readonly HalfPlane[];
+  /** First and last layer index notched, inclusive. */
+  readonly layers: readonly [number, number];
 }
 
 export type JoinWarningKind = 'wallsOverlap' | 'complexJoin' | 'wallTooShort' | 'missingWallType' | 'invalidWallType';

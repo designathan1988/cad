@@ -3,7 +3,7 @@ import { vec } from '../../../src/core/vector';
 import {
   area,
   clipHalfPlane,
-  clipOutBand,
+  clipOut,
   halfPlaneThrough,
   toCounterClockwise,
 } from '../../../src/elements/wall/geometry/convex';
@@ -56,15 +56,33 @@ describe('clipHalfPlane', () => {
   });
 });
 
-describe('clipOutBand', () => {
-  it('splits a square into two pieces with the band removed', () => {
-    const pieces = clipOutBand(
-      square,
-      halfPlaneThrough(vec(0.5, 0), vec(-1, 0)),
-      halfPlaneThrough(vec(1.5, 0), vec(1, 0)),
-    );
+describe('clipOut', () => {
+  it('removes a band across a square, leaving two pieces', () => {
+    const pieces = clipOut(square, [
+      halfPlaneThrough(vec(0.5, 0), vec(1, 0)),
+      halfPlaneThrough(vec(1.5, 0), vec(-1, 0)),
+    ]);
     expect(pieces).toHaveLength(2);
     expect(pieces.reduce((s, p) => s + area(p), 0)).toBe(2);
+  });
+
+  it('removes an inner triangle, leaving convex pieces that add up exactly', () => {
+    // Triangle (0.5,0.5) (1.5,0.5) (0.5,1.5): area 0.5.
+    const pieces = clipOut(square, [
+      halfPlaneThrough(vec(0.5, 0.5), vec(0, 1)),
+      halfPlaneThrough(vec(0.5, 0.5), vec(1, 0)),
+      halfPlaneThrough(vec(1.5, 0.5), vec(-1, -1)),
+    ]);
+    expect(pieces).toHaveLength(3);
+    expect(pieces.reduce((s, p) => s + area(p), 0)).toBeCloseTo(3.5, 14);
+  });
+
+  it('removes nothing when the region misses the polygon', () => {
+    expect(clipOut(square, [halfPlaneThrough(vec(5, 0), vec(1, 0))])).toEqual([square]);
+  });
+
+  it('removes everything when the region covers the polygon', () => {
+    expect(clipOut(square, [halfPlaneThrough(vec(-1, 0), vec(1, 0))])).toEqual([]);
   });
 });
 

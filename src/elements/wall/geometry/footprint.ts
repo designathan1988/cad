@@ -5,9 +5,9 @@
 import { resolveCorner } from '../join/cut-l';
 import { resolveAbutment } from '../join/cut-t';
 import { deriveJoins } from '../join/discover';
-import type { EndCut, JoinWarning } from '../join/types';
+import type { EndCut, JoinWarning, Notch } from '../join/types';
 import type { EndRef, Wall, WallId, WallType, WallTypeId } from '../schema';
-import { clipHalfPlane, type ConvexPolygon } from './convex';
+import { clipHalfPlane, clipOut, type ConvexPolygon } from './convex';
 import { strip } from './offset';
 import { shapeOf, type WallShape } from './shape';
 
@@ -43,8 +43,11 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     if (result.b) endCuts.set(keyOf(rb), result.b);
     if (result.warning) warnings.push(result.warning);
   }
+  const notches: Notch[] = [];
   for (const { abutting, hostId } of graph.abutments) {
-    endCuts.set(keyOf(abutting), resolveAbutment(byId.get(abutting.wallId)!, abutting.end, byId.get(hostId)!));
+    const { cut, notch } = resolveAbutment(byId.get(abutting.wallId)!, abutting.end, byId.get(hostId)!);
+    endCuts.set(keyOf(abutting), cut);
+    if (notch) notches.push(notch);
   }
 
   const pieces = new Map<WallId, readonly Piece[]>();
@@ -52,13 +55,23 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   for (const shape of shapes) {
     const atStart = endCuts.get(keyOf({ wallId: shape.id, end: 'start' }));
     const atEnd = endCuts.get(keyOf({ wallId: shape.id, end: 'end' }));
-    const cuts = [...(atStart?.cuts ?? []), ...(atEnd?.cuts ?? [])];
+    const own = notches.filter((n) => n.wallId === shape.id);
     const layers: Piece[] = [];
     shape.layers.forEach((_, layerIndex) => {
+      const isCore = layerIndex >= shape.coreLayers[0] && layerIndex <= shape.coreLayers[1];
+      const cuts = [atStart, atEnd].flatMap((c) =>
+        c ? [...c.cuts, ...((isCore ? c.coreCuts : c.finishCuts) ?? [])] : [],
+      );
       const band = [shape.layerOffsets[layerIndex]!, shape.layerOffsets[layerIndex + 1]!] as const;
       let polygon = strip(shape, atStart?.extension ?? 0, atEnd?.extension ?? 0, band);
       for (const cut of cuts) polygon = clipHalfPlane(polygon, cut);
-      if (polygon.length > 0) layers.push({ layerIndex, polygon });
+      let parts = polygon.length > 0 ? [polygon] : [];
+      for (const n of own) {
+        if (layerIndex >= n.layers[0] && layerIndex <= n.layers[1]) {
+          parts = parts.flatMap((p) => clipOut(p, n.region));
+        }
+      }
+      for (const part of parts) layers.push({ layerIndex, polygon: part });
     });
     pieces.set(shape.id, layers);
   }

@@ -26,13 +26,18 @@ interface Recipe {
   readonly split: number[];
   readonly fns: LayerFunction[];
 }
-const recipe: fc.Arbitrary<Recipe> = fc.record({
+const anyRecipe: fc.Arbitrary<Recipe> = fc.record({
   split: fc.array(num(0.1, 1), { minLength: 1, maxLength: 4 }),
   fns: fc.array(fc.constantFrom<LayerFunction>('structure', 'substrate', 'thermal', 'finish1', 'finish2'), {
     minLength: 4,
     maxLength: 4,
   }),
 });
+/** The common build-up: a finish, a structural core, a finish. */
+const plasteredRecipe: fc.Arbitrary<Recipe> = fc
+  .tuple(num(0.05, 0.3), num(0.4, 1), num(0.05, 0.3))
+  .map(([a, b, c]) => ({ split: [a, b, c], fns: ['finish1', 'structure', 'finish2', 'finish2'] }));
+const recipe = fc.oneof(anyRecipe, plasteredRecipe);
 function layersOf(thickness: number, r: Recipe): WallLayer[] {
   const sum = r.split.reduce((a, b) => a + b, 0);
   return r.split.map((part, i) => layer((thickness * part) / sum, r.fns[i]!));
