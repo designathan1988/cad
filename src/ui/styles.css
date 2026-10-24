@@ -33,13 +33,13 @@
   --border: #e4e6ea;
   --text: #17181c;
   --text-2: #5c606b;
-  --text-3: #8b8f99;
+  --text-3: #6b6f78;
   --accent: #2563eb;
   --accent-soft: #e3ecfd;
   --accent-text: #1d4ed8;
   --accent-contrast: #ffffff;
   --scrim: rgb(0 0 0 / 0.3);
-  --border-strong: #c7cad1;
+  --border-strong: #8b8f99;
   /* 3D: wall faces, floors, glass and door leaves, selection and preview, and the light. */
   --3d-side: #d6d0c6;
   --3d-top: #b4aea6;
@@ -57,7 +57,7 @@
   --warn: #c2410c;
   --error: #dc2626;
   --warn-soft: #fff1e6;
-  --snap: #ea7a0c;
+  --snap: #b45309;
   --shadow: 0 2px 8px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.06);
   --grid-minor: #e3e5e9;
   --grid-major: #d3d6dc;
@@ -82,13 +82,13 @@
   --border: #303139;
   --text: #ececf0;
   --text-2: #a8abb4;
-  --text-3: #7c7f88;
+  --text-3: #868993;
   --accent: #5b8def;
   --accent-soft: #24324f;
   --accent-text: #9ab8f6;
   --accent-contrast: #0f1115;
   --scrim: rgb(0 0 0 / 0.62);
-  --border-strong: #4a4d57;
+  --border-strong: #666a75;
   --3d-side: #d6d0c6;
   --3d-top: #b4aea6;
   --3d-floor: #c9c5bd;
