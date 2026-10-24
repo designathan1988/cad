@@ -92,19 +92,39 @@ export function coreLayersOf(w: Wall): [number, number] {
   return idx.length > 0 ? [idx[0]!, idx[idx.length - 1]!] : [0, w.layers.length - 1];
 }
 
-/** Host faces a T meets: its near face, and its core face on the same side. */
+/** Revit's priority by function, written here again on purpose: 1 is the highest. */
+const SPEC_PRIORITY = { structure: 1, substrate: 2, thermal: 3, finish1: 4, finish2: 5 } as const;
+
+/**
+ * Host faces a T meets: its near face, its core face on the same side, and where each abutting layer
+ * stops. A core layer stops on the host core face. Any other layer walks into the host from the near
+ * face through layers of strictly lower priority, and stops on the first of equal or higher priority
+ * (the host core at the latest).
+ */
 function tFaces(abutting: Wall, end: WallEnd, host: Wall) {
   const fh = frameOf(host);
   const into = times(frameOf(abutting).d, end === 'start' ? 1 : -1);
   const positive = dotp(fh.n, into) > 0;
   const offs = layerOffsetsOf(host);
   const [c0, c1] = coreLayersOf(host);
-  return { fh, positive, near: positive ? fh.o1 : fh.o0, coreFace: positive ? offs[c1 + 1]! : offs[c0]! };
+  const coreFace = positive ? offs[c1 + 1]! : offs[c0]!;
+  // Host layers outside its core on the near side, from the near face inward, with the face each one
+  // shows toward the abutting wall.
+  const walk: { priority: number; face: number }[] = [];
+  if (positive) for (let i = host.layers.length - 1; i > c1; i--) walk.push({ priority: SPEC_PRIORITY[host.layers[i]!.function], face: offs[i + 1]! });
+  else for (let i = 0; i < c0; i++) walk.push({ priority: SPEC_PRIORITY[host.layers[i]!.function], face: offs[i]! });
+  const [a0, a1] = coreLayersOf(abutting);
+  const stops = abutting.layers.map((l, k) => {
+    if (k >= a0 && k <= a1) return coreFace;
+    const p = SPEC_PRIORITY[l.function];
+    return walk.find((h) => h.priority <= p)?.face ?? coreFace;
+  });
+  return { fh, positive, near: positive ? fh.o1 : fh.o0, coreFace, stops };
 }
 
 /**
- * I6 by layer: in a T, the abutting core layers stop at the host's core face and the other layers at
- * its near face. Returns the deepest penetration past those limits (≤ 0 means none).
+ * I6 by layer: in a T, each abutting layer stops where the priority rule says (tFaces). Returns the
+ * deepest penetration past those limits (≤ 0 means none).
  */
 export function abutmentPenetration(
   abutting: Wall,
@@ -114,11 +134,10 @@ export function abutmentPenetration(
   keep: (polygon: readonly P[]) => boolean = () => true,
 ): number {
   const { pieces } = geometry(walls);
-  const { fh, positive, near, coreFace } = tFaces(abutting, end, host);
-  const [a0, a1] = coreLayersOf(abutting);
+  const { fh, positive, stops } = tFaces(abutting, end, host);
   let worst = -Infinity;
   for (const piece of (pieces.get(abutting.id) ?? []).filter((x) => keep(x.polygon))) {
-    const limit = piece.layerIndex >= a0 && piece.layerIndex <= a1 ? coreFace : near;
+    const limit = stops[piece.layerIndex]!;
     for (const v of piece.polygon) {
       const o = dotp(fh.n, minus(v, host.start));
       worst = Math.max(worst, positive ? limit - o : o - limit);
@@ -128,8 +147,9 @@ export function abutmentPenetration(
 }
 
 /**
- * I10: between the host's near face and core face, inside the abutting wall's strip, a point is
- * covered by an abutting core layer where the core passes and by the host everywhere else.
+ * I10: between the host's near face and core face, inside the abutting wall's strip and short of its
+ * free end, a point in abutting layer k is covered by layer k where k has passed (between the near
+ * face and k's stop) and by the host everywhere else.
  */
 export function notchFill(
   abutting: Wall,
@@ -138,14 +158,12 @@ export function notchFill(
   walls: readonly Wall[],
   seed: number,
 ): { checked: number; bad: number } {
-  const { fh, near, coreFace } = tFaces(abutting, end, host);
+  const { fh, near, coreFace, stops } = tFaces(abutting, end, host);
   if (Math.abs(near - coreFace) < 1e-9) return { checked: 0, bad: 0 };
   const { pieces } = geometry(walls);
   const fa = frameOf(abutting);
   const aOffs = layerOffsetsOf(abutting);
-  const [a0, a1] = coreLayersOf(abutting);
-  const coreLo = aOffs[a0]!;
-  const coreHi = aOffs[a1 + 1]!;
+  const hOffs = layerOffsetsOf(host);
   const joint = end === 'start' ? abutting.start : abutting.end;
   const s0 = dotp(fh.d, minus(joint, host.start));
   const sin = Math.abs(fa.d.x * fh.d.y - fa.d.y * fh.d.x);
@@ -165,15 +183,16 @@ export function notchFill(
     // Past the free end the abutting wall is gone, even inside its strip: that stays host.
     const freeEnd = end === 'start' ? abutting.end : abutting.start;
     const pastFree = dotp(minus(p, freeEnd), times(fa.d, end === 'start' ? 1 : -1));
-    const nearEdge = Math.abs(ao - coreLo) < eps || Math.abs(ao - coreHi) < eps || Math.abs(pastFree) < eps;
+    const nearEdge =
+      aOffs.some((b) => Math.abs(ao - b) < eps) || hOffs.some((b) => Math.abs(o - b) < eps) || Math.abs(pastFree) < eps;
     if (nearEdge) continue;
     checked++;
-    const inCore = ao > coreLo && ao < coreHi && pastFree < 0;
+    const k = aOffs.findIndex((b, i) => i + 1 < aOffs.length && ao > b && ao < aOffs[i + 1]!);
+    const stop = stops[k]!;
+    const passed = pastFree < 0 && Math.min(near, stop) < o && o < Math.max(near, stop);
     const owner = walls.find((w) => (pieces.get(w.id) ?? []).some((piece) => inside(piece.polygon, p)));
     const ownerPiece = owner && (pieces.get(owner.id) ?? []).find((piece) => inside(piece.polygon, p));
-    const ok = inCore
-      ? owner?.id === abutting.id && ownerPiece!.layerIndex >= a0 && ownerPiece!.layerIndex <= a1
-      : owner?.id === host.id;
+    const ok = passed ? owner?.id === abutting.id && ownerPiece!.layerIndex === k : owner?.id === host.id;
     if (!ok) bad++;
   }
   return { checked, bad };

@@ -127,16 +127,19 @@ describe('layered T', () => {
     expectPolygon(piecesOf('t', 1)[0]!, [[2.95, 0.07], [3.05, 0.07], [3.05, 2], [2.95, 2]]);
   });
 
-  it('the finishes stop on the host face (y = 0.1)', () => {
-    expectPolygon(piecesOf('t', 0)[0]!, [[3.05, 0.1], [3.06, 0.1], [3.06, 2], [3.05, 2]]);
+  it('finish 1 (priority 4) passes the host finish 2 (priority 5) and stops on the host core (y = 0.07)', () => {
+    expectPolygon(piecesOf('t', 0)[0]!, [[3.05, 0.07], [3.06, 0.07], [3.06, 2], [3.05, 2]]);
+  });
+
+  it('finish 2 meets the host finish 2, same priority: it stops on the host face (y = 0.1)', () => {
     expectPolygon(piecesOf('t', 2)[0]!, [[2.94, 0.1], [2.95, 0.1], [2.95, 2], [2.94, 2]]);
   });
 
-  it('the host interior finish is notched exactly where the core passes', () => {
+  it('the host interior finish is notched exactly where the core and finish 1 pass', () => {
     const notched = piecesOf('host', 2);
     expect(notched).toHaveLength(2);
     expectPolygon(notched.find((p) => p.some((v) => v.x === 0))!, [[0, 0.07], [2.95, 0.07], [2.95, 0.1], [0, 0.1]]);
-    expectPolygon(notched.find((p) => p.some((v) => v.x === 6))!, [[3.05, 0.07], [6, 0.07], [6, 0.1], [3.05, 0.1]]);
+    expectPolygon(notched.find((p) => p.some((v) => v.x === 6))!, [[3.06, 0.07], [6, 0.07], [6, 0.1], [3.06, 0.1]]);
   });
 
   it('the host core and exterior finish are untouched', () => {
@@ -153,6 +156,51 @@ describe('layered T', () => {
     const soft = testWall('t', vec(3, 0), vec(3, 2), [layer(0.05, 'finish1'), layer(0.05, 'thermal')]);
     const ys = geometry([host, soft]).pieces.get('t')!.flatMap((p) => p.polygon.map((v) => v.y));
     expect(Math.min(...ys)).toBeCloseTo(0.07, 15);
+  });
+
+  it('a layer passes lower priorities and stops at the first host layer of equal or higher priority', () => {
+    // Host from its exterior: finish 1 2 cm, structure 15 cm, substrate 2 cm, finish 2 1 cm, so
+    // y ∈ [−0.1, −0.08], [−0.08, 0.07], [0.07, 0.09], [0.09, 0.1]. Abutting: thermal 2 cm (x ∈ [3.05, 3.07]),
+    // structure 10 cm (x ∈ [2.95, 3.05]), finish 2 2 cm (x ∈ [2.93, 2.95]).
+    const h = testWall('host', vec(0, 0), vec(6, 0), [
+      layer(0.02, 'finish1'),
+      layer(0.15, 'structure'),
+      layer(0.02, 'substrate'),
+      layer(0.01, 'finish2'),
+    ]);
+    const a = testWall('t', vec(3, 0), vec(3, 2), [layer(0.02, 'thermal'), layer(0.1, 'structure'), layer(0.02, 'finish2')]);
+    const r = geometry([h, a]).pieces;
+    const of = (id: string, k: number) => r.get(id)!.filter((p) => p.layerIndex === k).map((p) => p.polygon);
+    // Thermal (3) passes finish 2 (5) and stops on the substrate (2).
+    expectPolygon(of('t', 0)[0]!, [[3.05, 0.09], [3.07, 0.09], [3.07, 2], [3.05, 2]]);
+    expectPolygon(of('t', 1)[0]!, [[2.95, 0.07], [3.05, 0.07], [3.05, 2], [2.95, 2]]);
+    expectPolygon(of('t', 2)[0]!, [[2.93, 0.1], [2.95, 0.1], [2.95, 2], [2.93, 2]]);
+    // Finish 2 of the host gives way to the core and the thermal layer; the substrate only to the core.
+    const f2 = of('host', 3);
+    expect(f2).toHaveLength(2);
+    expectPolygon(f2.find((p) => p.some((v) => v.x === 6))!, [[3.07, 0.09], [6, 0.09], [6, 0.1], [3.07, 0.1]]);
+    const sub = of('host', 2);
+    expect(sub).toHaveLength(2);
+    expectPolygon(sub.find((p) => p.some((v) => v.x === 6))!, [[3.05, 0.07], [6, 0.07], [6, 0.09], [3.05, 0.09]]);
+    const total = [...r.values()].flat().reduce((s, p) => s + shoelace(p.polygon), 0);
+    expect(total).toBeCloseTo(1.2 + 0.14 * 1.9, 12);
+  });
+
+  it('layers that pass need not be adjacent: the host keeps a piece between them', () => {
+    // Abutting: thermal x ∈ [3.05, 3.07], finish 2 x ∈ [3.03, 3.05], structure x ∈ [2.93, 3.03].
+    const a = testWall('t', vec(3, 0), vec(3, 2), [layer(0.02, 'thermal'), layer(0.02, 'finish2'), layer(0.1, 'structure')]);
+    const r = geometry([host, a]).pieces;
+    const f2 = r.get('host')!.filter((p) => p.layerIndex === 2).map((p) => p.polygon);
+    expect(f2).toHaveLength(3);
+    expectPolygon(f2.find((p) => p.some((v) => v.x === 3.03) && p.some((v) => v.x === 3.05))!, [
+      [3.03, 0.07],
+      [3.05, 0.07],
+      [3.05, 0.1],
+      [3.03, 0.1],
+    ]);
+    const tl = (k: number) => r.get('t')!.find((p) => p.layerIndex === k)!.polygon;
+    expectPolygon(tl(0), [[3.05, 0.07], [3.07, 0.07], [3.07, 2], [3.05, 2]]);
+    expectPolygon(tl(1), [[3.03, 0.1], [3.05, 0.1], [3.05, 2], [3.03, 2]]);
   });
 
   it('a wall with both ends inside the host warns wallsOverlap and cuts nothing', () => {
@@ -181,10 +229,16 @@ describe('X crossing', () => {
     expectPolygon(above(core), [[2.95, 0.07], [3.05, 0.07], [3.05, 2], [2.95, 2]]);
   });
 
-  it('the finishes of b stop on the faces of a', () => {
+  it('finish 1 of b stops on finish 1 of a below, and passes finish 2 of a above', () => {
     const ext = layerOf('b', 0);
     expectPolygon(below(ext), [[3.05, -2], [3.06, -2], [3.06, -0.1], [3.05, -0.1]]);
-    expectPolygon(above(ext), [[3.05, 0.1], [3.06, 0.1], [3.06, 2], [3.05, 2]]);
+    expectPolygon(above(ext), [[3.05, 0.07], [3.06, 0.07], [3.06, 2], [3.05, 2]]);
+  });
+
+  it('finish 2 of b stops on the faces of a on both sides', () => {
+    const int = layerOf('b', 2);
+    expectPolygon(below(int), [[2.94, -2], [2.95, -2], [2.95, -0.1], [2.94, -0.1]]);
+    expectPolygon(above(int), [[2.94, 0.1], [2.95, 0.1], [2.95, 2], [2.94, 2]]);
   });
 
   it('a is notched on both sides where the core of b passes, and its core is untouched', () => {
