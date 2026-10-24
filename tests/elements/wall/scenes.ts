@@ -1,7 +1,8 @@
 // Random scenes for the property tests. Built with the oracle's own math, never the engine's.
 
 import fc from 'fast-check';
-import type { ReferenceLine, Wall, WallEnd } from '../../../src/elements/wall/schema';
+import type { LayerFunction, ReferenceLine, WallEnd, WallLayer } from '../../../src/elements/wall/schema';
+import { layer, testWall, type TestWall as Wall } from './fixtures';
 import { frameOf, inside, rectOf, roomCorners, shoelace, type P } from './oracle';
 
 export type Mode = 'normal' | 'degenerate';
@@ -20,13 +21,25 @@ const dotp = (a: P, b: P) => a.x * b.x + a.y * b.y;
 const num = (min: number, max: number) => fc.double({ min, max, noNaN: true, noDefaultInfinity: true });
 const ref = fc.constantFrom<ReferenceLine>('centerline', 'interiorFace', 'exteriorFace');
 
-const make = (id: string, from: P, to: P, thickness: number, referenceLine: ReferenceLine): Wall => ({
-  id,
-  start: from,
-  end: to,
-  thickness,
-  referenceLine,
+/** How a wall type splits its thickness: 1 to 4 layers, functions at random. */
+interface Recipe {
+  readonly split: number[];
+  readonly fns: LayerFunction[];
+}
+const recipe: fc.Arbitrary<Recipe> = fc.record({
+  split: fc.array(num(0.1, 1), { minLength: 1, maxLength: 4 }),
+  fns: fc.array(fc.constantFrom<LayerFunction>('structure', 'substrate', 'thermal', 'finish1', 'finish2'), {
+    minLength: 4,
+    maxLength: 4,
+  }),
 });
+function layersOf(thickness: number, r: Recipe): WallLayer[] {
+  const sum = r.split.reduce((a, b) => a + b, 0);
+  return r.split.map((part, i) => layer((thickness * part) / sum, r.fns[i]!));
+}
+
+const make = (id: string, from: P, to: P, layers: readonly WallLayer[], referenceLine: ReferenceLine): Wall =>
+  testWall(id, from, to, layers, referenceLine);
 
 /** Where the line p + s·u meets q + r·w, as the parameter s. */
 function meetParam(p: P, u: P, q: P, w: P): number {
@@ -60,12 +73,16 @@ export function lScene(mode: Mode): fc.Arbitrary<LScene> {
       left: fc.boolean(),
       lens: fc.tuple(num(0.5, 6), num(0.5, 6)),
       ts: fc.tuple(num(0.05, 0.4), num(0.05, 0.4)),
+      recipes: fc.tuple(recipe, recipe),
+      sameType: fc.boolean(),
       refs: fc.tuple(ref, ref),
       away: fc.tuple(fc.boolean(), fc.boolean()),
       jitter: mode === 'normal' ? fc.constant(0) : num(0, 0.0009),
       jitterHeading: num(0, 360),
     })
     .map((r) => {
+      const la = layersOf(r.ts[0], r.recipes[0]);
+      const lb = r.sameType ? la : layersOf(r.ts[1], r.recipes[1]);
       const pa = pt(r.node[0], r.node[1]);
       const pb = plus(pa, times(dir(r.jitterHeading), r.jitter));
       const ua = dir(r.heading);
@@ -73,9 +90,9 @@ export function lScene(mode: Mode): fc.Arbitrary<LScene> {
       const fa = plus(pa, times(ua, r.lens[0]));
       const fb = plus(pb, times(ub, r.lens[1]));
       return {
-        a: r.away[0] ? make('a', pa, fa, r.ts[0], r.refs[0]) : make('a', fa, pa, r.ts[0], r.refs[0]),
+        a: r.away[0] ? make('a', pa, fa, la, r.refs[0]) : make('a', fa, pa, la, r.refs[0]),
         aEnd: (r.away[0] ? 'start' : 'end') as WallEnd,
-        b: r.away[1] ? make('b', pb, fb, r.ts[1], r.refs[1]) : make('b', fb, pb, r.ts[1], r.refs[1]),
+        b: r.away[1] ? make('b', pb, fb, lb, r.refs[1]) : make('b', fb, pb, lb, r.refs[1]),
         bEnd: (r.away[1] ? 'start' : 'end') as WallEnd,
       };
     })
@@ -103,6 +120,7 @@ export function tScene(mode: Mode): fc.Arbitrary<TScene> {
       heading: num(0, 360),
       hostLen: num(2, 10),
       hostT: num(0.05, 0.4),
+      hostRecipe: recipe,
       hostRef: ref,
       phi,
       positive: fc.boolean(),
@@ -110,12 +128,14 @@ export function tScene(mode: Mode): fc.Arbitrary<TScene> {
       across: num(0, 1),
       len: num(0.5, 5),
       t: num(0.05, 0.4),
+      tRecipe: recipe,
       tRef: ref,
       away: fc.boolean(),
     })
     .map((r) => {
       const hs = pt(r.start[0], r.start[1]);
-      const host = make('host', hs, plus(hs, times(dir(r.heading), r.hostLen)), r.hostT, r.hostRef);
+      const hostEnd = plus(hs, times(dir(r.heading), r.hostLen));
+      const host = make('host', hs, hostEnd, layersOf(r.hostT, r.hostRecipe), r.hostRef);
       const f = frameOf(host);
       const sinPhi = Math.sin((r.phi * Math.PI) / 180);
       const margin = r.t / sinPhi + r.hostT + 0.1;
@@ -125,7 +145,8 @@ export function tScene(mode: Mode): fc.Arbitrary<TScene> {
       const side = r.positive ? f.n : times(f.n, -1);
       const u = plus(times(f.d, Math.cos((r.phi * Math.PI) / 180)), times(side, sinPhi));
       const q = plus(p, times(u, r.len));
-      const abutting = r.away ? make('t', p, q, r.t, r.tRef) : make('t', q, p, r.t, r.tRef);
+      const tl = layersOf(r.t, r.tRecipe);
+      const abutting = r.away ? make('t', p, q, tl, r.tRef) : make('t', q, p, tl, r.tRef);
       return { host, abutting, end: (r.away ? 'start' : 'end') as WallEnd, ok: 2 * margin < r.hostLen };
     })
     .filter((s) => {
@@ -166,10 +187,13 @@ export function roomScene(): fc.Arbitrary<RoomScene> {
       turn: num(0, 360),
       jitter: fc.array(num(-0.8, 0.8), { minLength: 8, maxLength: 8 }),
       ts: fc.array(num(0.05, 0.3), { minLength: 4, maxLength: 4 }),
+      recipes: fc.array(recipe, { minLength: 4, maxLength: 4 }),
+      sameType: fc.boolean(),
       refs: fc.array(ref, { minLength: 4, maxLength: 4 }),
       reversed: fc.array(fc.boolean(), { minLength: 4, maxLength: 4 }),
       at: fc.tuple(num(0.3, 0.7), num(0.3, 0.7)),
       dT: num(0.05, 0.3),
+      dRecipe: recipe,
       dRef: ref,
       dReversed: fc.boolean(),
     })
@@ -178,16 +202,19 @@ export function roomScene(): fc.Arbitrary<RoomScene> {
       const base = [pt(-w / 2, -h / 2), pt(w / 2, -h / 2), pt(w / 2, h / 2), pt(-w / 2, h / 2)];
       const c = pt(r.center[0], r.center[1]);
       const v = base.map((p, i) => plus(c, rot(pt(p.x + r.jitter[2 * i]!, p.y + r.jitter[2 * i + 1]!), r.turn)));
+      const shared = layersOf(r.ts[0]!, r.recipes[0]!);
       const ring = v.map((from, i) => {
         const to = v[(i + 1) % 4]!;
         const id = `w${i}`;
-        return r.reversed[i] ? make(id, to, from, r.ts[i]!, r.refs[i]!) : make(id, from, to, r.ts[i]!, r.refs[i]!);
+        const ls = r.sameType ? shared : layersOf(r.ts[i]!, r.recipes[i]!);
+        return r.reversed[i] ? make(id, to, from, ls, r.refs[i]!) : make(id, from, to, ls, r.refs[i]!);
       });
       const ringEnds = r.reversed.map((rev) => (rev ? (['end', 'start'] as const) : (['start', 'end'] as const)));
       const lerp = (a: P, b: P, t: number) => plus(a, times(pt(b.x - a.x, b.y - a.y), t));
       const q0 = lerp(v[0]!, v[1]!, r.at[0]);
       const q2 = lerp(v[2]!, v[3]!, r.at[1]);
-      const divider = r.dReversed ? make('d', q2, q0, r.dT, r.dRef) : make('d', q0, q2, r.dT, r.dRef);
+      const dl = layersOf(r.dT, r.dRecipe);
+      const divider = r.dReversed ? make('d', q2, q0, dl, r.dRef) : make('d', q0, q2, dl, r.dRef);
       const startHost = r.dReversed ? ring[2]! : ring[0]!;
       const endHost = r.dReversed ? ring[0]! : ring[2]!;
       return { ring, ringEnds, divider, startHost, endHost, v };
@@ -220,8 +247,7 @@ function validRoom(
   const fd = frameOf(divider);
   const sideOf = (p: P) => dotp(fd.n, pt(p.x - divider.start.x, p.y - divider.start.y));
   const clear = divider.thickness + 0.1;
-  const inner = corners.inner;
-  const s = inner.map(sideOf);
+  const s = corners.inner.map(sideOf);
   if (s.some((x) => Math.abs(x) < clear)) return false;
   // inner[k] is the corner before ring[k]; ring[0] spans inner[0]→inner[1], ring[2] spans inner[2]→inner[3].
   return Math.sign(s[0]!) !== Math.sign(s[1]!) && Math.sign(s[2]!) !== Math.sign(s[3]!);
@@ -241,24 +267,29 @@ export function crossedScene(): fc.Arbitrary<CrossedScene> {
       left: fc.boolean(),
       lens: fc.tuple(num(1, 6), num(1, 6)),
       ts: fc.tuple(num(0.05, 0.4), num(0.05, 0.4)),
+      recipes: fc.tuple(recipe, recipe),
+      sameType: fc.boolean(),
       refs: fc.tuple(ref, ref),
       away: fc.tuple(fc.boolean(), fc.boolean()),
       over: fc.tuple(num(-1, 1), num(-1, 1)),
     })
     .map((r) => {
+      const la = layersOf(r.ts[0], r.recipes[0]);
+      const lb = r.sameType ? la : layersOf(r.ts[1], r.recipes[1]);
+      const tb = lb.reduce((s, l) => s + l.thickness, 0);
       const x = pt(r.node[0], r.node[1]);
       const ua = dir(r.heading);
       const ub = rot(ua, r.left ? r.theta : -r.theta);
       const sin = Math.sin((r.theta * Math.PI) / 180);
-      const pa = plus(x, times(ua, -r.over[0] * (r.ts[1] / sin + 0.05)));
+      const pa = plus(x, times(ua, -r.over[0] * (tb / sin + 0.05)));
       const pb = plus(x, times(ub, -r.over[1] * (r.ts[0] / sin + 0.05)));
       const fa = plus(x, times(ua, r.lens[0]));
       const fb = plus(x, times(ub, r.lens[1]));
       return {
         node: x,
-        a: r.away[0] ? make('a', pa, fa, r.ts[0], r.refs[0]) : make('a', fa, pa, r.ts[0], r.refs[0]),
+        a: r.away[0] ? make('a', pa, fa, la, r.refs[0]) : make('a', fa, pa, la, r.refs[0]),
         aEnd: (r.away[0] ? 'start' : 'end') as WallEnd,
-        b: r.away[1] ? make('b', pb, fb, r.ts[1], r.refs[1]) : make('b', fb, pb, r.ts[1], r.refs[1]),
+        b: r.away[1] ? make('b', pb, fb, lb, r.refs[1]) : make('b', fb, pb, lb, r.refs[1]),
         bEnd: (r.away[1] ? 'start' : 'end') as WallEnd,
       };
     })

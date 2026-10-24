@@ -3,9 +3,17 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { computeWallGeometry } from '../../../src/elements/wall/geometry/footprint';
-import type { Wall } from '../../../src/elements/wall/schema';
-import { checkAgainst, expectedL, expectedRoom, expectedT, frameOf, nearFace, type Region } from './oracle';
+import { geometry, type TestWall as Wall } from './fixtures';
+import {
+  checkAgainst,
+  expectedL,
+  expectedRoom,
+  expectedT,
+  frameOf,
+  nearFace,
+  type Region,
+} from './oracle';
+import { layerContainmentViolations, layerContinuity } from './oracle-layers';
 import { crossedScene, lScene, type Mode, roomScene, tScene } from './scenes';
 
 const seed = Number(process.env.FUZZ_SEED ?? 20261024);
@@ -22,9 +30,19 @@ function expectExact(walls: readonly Wall[], region: Region, sampleSeed: number)
     extras: 0,
   });
   expect(r.areaError, JSON.stringify(walls)).toBeLessThan(1e-9);
+  expect(layerContainmentViolations(walls), JSON.stringify(walls)).toBe(0);
 }
 
-const dump = (walls: readonly Wall[]) => JSON.stringify([...computeWallGeometry(walls).pieces].sort());
+/** Counts how many corners actually had their layer continuity checked, so I9 cannot pass vacuously. */
+const continuity = { corners: 0, points: 0 };
+function expectContinuous(result: ReturnType<typeof layerContinuity>, walls: readonly Wall[]): void {
+  if (result === null) return;
+  expect(result.mismatched, JSON.stringify(walls)).toBe(0);
+  if (result.checked > 0) continuity.corners++;
+  continuity.points += result.checked;
+}
+
+const dump = (walls: readonly Wall[]) => JSON.stringify([...geometry(walls).pieces].sort());
 
 describe.each<Mode>(['normal', 'degenerate'])('L, %s', (mode) => {
   it('covers exactly the spec region, or warns wallsOverlap', () => {
@@ -32,13 +50,14 @@ describe.each<Mode>(['normal', 'degenerate'])('L, %s', (mode) => {
       fc.property(lScene(mode), fc.nat(), ({ a, aEnd, b, bEnd }, sampleSeed) => {
         const walls = [a, b];
         const region = expectedL(a, aEnd, b, bEnd);
-        const kinds = computeWallGeometry(walls).warnings.map((w) => w.kind);
+        const kinds = geometry(walls).warnings.map((w) => w.kind);
         if (region === 'overlap') {
           expect(kinds).toEqual(['wallsOverlap']);
           return;
         }
         expect(kinds).toEqual([]);
         expectExact(walls, region, sampleSeed);
+        expectContinuous(layerContinuity(a, aEnd, b, bEnd), walls);
       }),
       runs(400),
     );
@@ -50,7 +69,7 @@ describe.each<Mode>(['normal', 'degenerate'])('T, %s', (mode) => {
     fc.assert(
       fc.property(tScene(mode), fc.nat(), ({ host, abutting, end }, sampleSeed) => {
         const walls = [host, abutting];
-        const g = computeWallGeometry(walls);
+        const g = geometry(walls);
         expect(g.warnings).toEqual([]);
         expectExact(walls, expectedT(abutting, end, host), sampleSeed);
 
@@ -59,7 +78,7 @@ describe.each<Mode>(['normal', 'degenerate'])('T, %s', (mode) => {
         const fh = frameOf(host);
         const facePoint = { x: host.start.x + fh.n.x * face.offset, y: host.start.y + fh.n.y * face.offset };
         const limit = face.inward.x * facePoint.x + face.inward.y * facePoint.y;
-        for (const v of g.pieces.get(abutting.id)!.flat()) {
+        for (const v of g.pieces.get(abutting.id)!.flatMap((p) => p.polygon)) {
           expect(face.inward.x * v.x + face.inward.y * v.y - limit).toBeGreaterThanOrEqual(-1e-12);
         }
       }),
@@ -74,13 +93,14 @@ describe('corner whose ends overran each other', () => {
       fc.property(crossedScene(), fc.nat(), ({ a, aEnd, b, bEnd, node }, sampleSeed) => {
         const walls = [a, b];
         const region = expectedL(a, aEnd, b, bEnd, node);
-        const kinds = computeWallGeometry(walls).warnings.map((w) => w.kind);
+        const kinds = geometry(walls).warnings.map((w) => w.kind);
         if (region === 'overlap') {
           expect(kinds).toEqual(['wallsOverlap']);
           return;
         }
         expect(kinds).toEqual([]);
         expectExact(walls, region, sampleSeed);
+        expectContinuous(layerContinuity(a, aEnd, b, bEnd, node), walls);
       }),
       runs(300),
     );
@@ -92,9 +112,13 @@ describe('room with a divider', () => {
     fc.assert(
       fc.property(roomScene(), fc.nat(), fc.nat(), (s, sampleSeed, shuffle) => {
         const walls = [...s.ring, s.divider];
-        const g = computeWallGeometry(walls);
+        const g = geometry(walls);
         expect(g.warnings).toEqual([]);
         expectExact(walls, expectedRoom(s.ring, s.ringEnds, s.divider, s.startHost, s.endHost), sampleSeed);
+        for (let k = 0; k < 4; k++) {
+          const j = (k + 3) % 4;
+          expectContinuous(layerContinuity(s.ring[j]!, s.ringEnds[j]![1], s.ring[k]!, s.ringEnds[k]![0]), walls);
+        }
 
         // I4: a different input order gives bit-identical output.
         const shuffled = [...walls].sort((x, y) => ((x.id.charCodeAt(1) * 31 + shuffle) % 7) - ((y.id.charCodeAt(1) * 31 + shuffle) % 7));
@@ -103,4 +127,13 @@ describe('room with a divider', () => {
       runs(300),
     );
   }, TIMEOUT);
+});
+
+describe('layer continuity was really exercised', () => {
+  it('checked enough corners and points', () => {
+    // Runs after the suites above in file order.
+    console.log(`I9 checked on ${continuity.corners} corners, ${continuity.points} points`);
+    expect(continuity.corners).toBeGreaterThan(300 * scale);
+    expect(continuity.points).toBeGreaterThan(30_000 * scale);
+  });
 });

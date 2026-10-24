@@ -4,12 +4,13 @@
 import { COLLINEAR_ANGLE, MIN_WALL_LENGTH, MITER_LIMIT, POINT_TOLERANCE } from '../../../core/tolerance';
 import { add, cross, distance, dot, intersectLines, scale } from '../../../core/vector';
 import { endPoint, faceOffsets, offsetOf, stationOf, wallDirection, wallLength } from '../geometry/offset';
-import type { EndRef, Wall, WallEnd } from '../schema';
+import type { EndRef, WallEnd } from '../schema';
+import type { WallShape } from '../geometry/shape';
 import type { Corner, JoinGraph, JoinWarning } from './types';
 
 const ENDS: readonly WallEnd[] = ['start', 'end'];
 
-export function deriveJoins(walls: readonly Wall[]): JoinGraph {
+export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
   const sorted = [...walls].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const warnings: JoinWarning[] = [];
   const valid = sorted.filter((w) => {
@@ -86,7 +87,7 @@ function clusterEnds(ends: readonly EndRef[], at: (r: EndRef) => ReturnType<type
   return [...groups.values()];
 }
 
-function insideBand(host: Wall, p: ReturnType<typeof endPoint>): boolean {
+function insideBand(host: WallShape, p: ReturnType<typeof endPoint>): boolean {
   const [o0, o1] = faceOffsets(host);
   const f = offsetOf(host, p);
   const s = stationOf(host, p);
@@ -98,7 +99,7 @@ function insideBand(host: Wall, p: ReturnType<typeof endPoint>): boolean {
   );
 }
 
-function parallel(a: Wall, b: Wall): boolean {
+function parallel(a: WallShape, b: WallShape): boolean {
   const da = wallDirection(a);
   const db = wallDirection(b);
   const angle = (Math.atan2(Math.abs(cross(da, db)), Math.abs(dot(da, db))) * 180) / Math.PI;

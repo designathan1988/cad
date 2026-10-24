@@ -2,8 +2,8 @@
 // face construction, ray-crossing containment. The spec constants are written here on purpose,
 // so loosening src/core/tolerance.ts without updating the spec breaks these tests.
 
-import { computeWallGeometry } from '../../../src/elements/wall/geometry/footprint';
-import type { Wall, WallEnd } from '../../../src/elements/wall/schema';
+import type { WallEnd } from '../../../src/elements/wall/schema';
+import { geometry, type TestWall as Wall } from './fixtures';
 
 const SPEC_COLLINEAR_DEG = 0.6;
 const SPEC_MITER_LIMIT = 10;
@@ -297,11 +297,11 @@ export interface Report {
   readonly firstBad: P | null;
 }
 
-/** Samples points around every wall and checks: covered by at most one wall, and covered ⟺ in region. */
+/** Samples points around every wall and checks: covered by at most one piece, and covered ⟺ in region. */
 export function checkAgainst(walls: readonly Wall[], region: Region, seed: number): Report {
-  const { pieces } = computeWallGeometry(walls);
-  const polys = walls.map((w) => pieces.get(w.id) ?? []);
-  const pieceArea = polys.flat().reduce((s, p) => s + shoelace(p), 0);
+  const { pieces } = geometry(walls);
+  const polys = walls.flatMap((w) => (pieces.get(w.id) ?? []).map((piece) => piece.polygon));
+  const pieceArea = polys.reduce((s, p) => s + shoelace(p), 0);
   const rnd = mulberry32(seed);
   const maxT = Math.max(...walls.map((w) => w.thickness));
   let overlaps = 0;
@@ -313,7 +313,8 @@ export function checkAgainst(walls: readonly Wall[], region: Region, seed: numbe
   const test = (p: P) => {
     if (region.edges.some(([a, b]) => segDistance(p, a, b) < 1e-7)) return;
     samples++;
-    const count = polys.filter((ps) => ps.some((poly) => inside(poly, p))).length;
+    // Counts pieces, not walls: two layers of one wall overlapping is an overlap too.
+    const count = polys.filter((poly) => inside(poly, p)).length;
     const want = region.contains(p);
     if (count > 1) overlaps++;
     else if (want && count === 0) gaps++;
@@ -339,3 +340,4 @@ export function checkAgainst(walls: readonly Wall[], region: Region, seed: numbe
   }
   return { overlaps, gaps, extras, areaError: Math.abs(pieceArea - region.area), samples, firstBad };
 }
+

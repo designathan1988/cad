@@ -295,10 +295,22 @@ o ângulo entre elas. *(Regras revisadas pelo spike — ver §16.)*
 > referência na face fora de 90°, caindo num degrau. O spike achou isso porque
 > mediu a distribuição de regras nas cenas, não só o verde.
 
-**Camadas:** se as duas paredes têm o mesmo `wallTypeId` **e** o mesmo
-`referenceLine`, a linha de miter é a bissetriz e **a camada *k* de *a* encontra
-a camada *k* de *b*** — cada camada é cortada pela sua própria bissetriz. Caso
-contrário, uma única linha de miter corta todas as camadas das duas.
+**Camadas** *(revisado na entrega 1)*: cada camada é a sua faixa, cortada pelos
+**mesmos semiplanos** da parede. Cortar camada por camada é o mesmo que dividir
+a parede cortada nas linhas das camadas, então as camadas ladrilham a parede
+sem fresta nem sobreposição.
+
+Não é preciso um miter por camada. O canto da linha a uma distância *s* da face
+externa, nas duas paredes, anda linearmente com *s*: todos os cantos de camada
+ficam **sobre a mesma diagonal** do canto externo ao interno. Então, se a
+sequência de espessuras **lida a partir da face externa do canto** é a mesma
+nas duas paredes, a camada *k* de *a* encontra a camada *k* de *b* ao longo da
+diagonal — reboco com reboco, tijolo com tijolo. Isso vale para qualquer linha
+de referência; o que importa é a ordem das camadas vista do canto. Uma parede
+desenhada no sentido inverso (exterior virado para dentro do canto) lê as
+camadas ao contrário, e elas se encontram invertidas, que é o que de fato está
+desenhado. Sequências diferentes: a mesma diagonal corta todas as camadas e
+elas se encontram onde caírem.
 
 ### 7.2 Abutment — T
 
@@ -449,6 +461,8 @@ São o contrato do motor. Cada um é verificável **sem reimplementar o motor**.
 | **I5** | Reversibilidade: mover uma parede por δ e voltar reproduz a geometria original exatamente | comparação de golden file |
 | **I6** | Penetração zero no T: a ponta que encosta não ultrapassa a face da hospedeira — **por construção**, não por tolerância | assertiva de sinal do semiplano |
 | **I7** | Topologia: a planta de uma cena fechada tem o número esperado de contornos e furos | contagem de componentes |
+| **I8** | Cada peça de camada fica dentro da faixa da própria camada | offsets das camadas calculados pelo oráculo, conferidos em cada vértice |
+| **I9** | Continuidade: no miter entre paredes com a mesma sequência de camadas vista do canto, a camada *k* encontra a camada *k* | 200 pontos ao longo da diagonal, dos dois lados; o teste exige um mínimo de cantos e pontos conferidos, para não passar vazio |
 
 > **I1 e I3 usam amostragem em grade, e não as primitivas de `convex.ts`.** Foi
 > exatamente o contrário disso — um "verificador independente" escrito com os
@@ -651,6 +665,29 @@ vértice. A deduplicação já existia; nenhum teste a exercitava. Agora tem.
 
 **O que o spike não cobre ainda:** camadas e entalhe do T, X, nós de 3 e 4
 pontas, arcos, alturas, 3D e planta. Segue a ordem do §15.
+
+### Entrega 1 — camadas e núcleo
+
+A parede guarda só `wallTypeId`; espessura, faixas de camada e núcleo saem de
+`shapeOf()` a cada cálculo (`geometry/shape.ts`). Tipo ausente ou inválido gera
+aviso (`missingWallType`, `invalidWallType`), a parede não é desenhada e as
+outras seguem normalmente.
+
+| Medida | Resultado |
+|---|---|
+| Testes (mesa à mão + recorte + camadas + propriedade) | 46/46 |
+| I9 na seed fixa | 726 cantos, 144 326 pontos, nenhum descasamento |
+| Mutantes | 27/27 detectados (os 20 anteriores + 7 de camada) |
+| Propriedade, 6 seeds novas × 10 | 120 000 cenas, sem falha; I9 em 40 512 cantos e 8 052 084 pontos |
+
+Todas as cenas aleatórias agora têm tipos de 1 a 4 camadas com funções
+sorteadas, e metade dos L, dos cantos cruzados e das salas usa o mesmo tipo nas
+duas paredes. O oráculo passou a contar **peças**, não paredes: duas camadas da
+mesma parede se sobrepondo reprovam.
+
+Achado desta entrega: a regra da spec ("mesmo tipo **e** mesma referência")
+era mais estreita que o necessário e errada no critério. O que decide é a
+sequência de camadas vista da face externa do canto (§7.1).
 
 ---
 

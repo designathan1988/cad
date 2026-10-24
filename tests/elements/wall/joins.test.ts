@@ -2,27 +2,23 @@
 
 import { describe, expect, it } from 'vitest';
 import { vec } from '../../../src/core/vector';
-import { computeWallGeometry } from '../../../src/elements/wall/geometry/footprint';
-import type { ReferenceLine, Wall } from '../../../src/elements/wall/schema';
+import type { ReferenceLine } from '../../../src/elements/wall/schema';
+import { geometry, testWall, type TestWall as Wall } from './fixtures';
 import { shoelace } from './oracle';
 
 type XY = readonly [number, number];
 
-const wall = (id: string, a: XY, b: XY, thickness: number, referenceLine: ReferenceLine = 'centerline'): Wall => ({
-  id,
-  start: vec(a[0], a[1]),
-  end: vec(b[0], b[1]),
-  thickness,
-  referenceLine,
-});
+const wall = (id: string, a: XY, b: XY, thickness: number, referenceLine: ReferenceLine = 'centerline'): Wall =>
+  testWall(id, vec(a[0], a[1]), vec(b[0], b[1]), thickness, referenceLine);
 
-const piecesOf = (walls: Wall[]) => computeWallGeometry(walls).pieces;
+const piecesOf = (walls: Wall[]) => geometry(walls).pieces;
 const only = (walls: Wall[], id: string) => {
   const ps = piecesOf(walls).get(id)!;
   expect(ps).toHaveLength(1);
-  return ps[0]!;
+  return ps[0]!.polygon;
 };
-const totalArea = (walls: Wall[]) => [...piecesOf(walls).values()].flat().reduce((s, p) => s + shoelace(p), 0);
+const totalArea = (walls: Wall[]) =>
+  [...piecesOf(walls).values()].flat().reduce((s, p) => s + shoelace(p.polygon), 0);
 
 /** Same vertex set, any starting vertex, to 1e-12 m. */
 function expectPolygon(actual: readonly { x: number; y: number }[], expected: readonly XY[]): void {
@@ -74,20 +70,20 @@ describe('L corners', () => {
     const r = (2 * Math.PI) / 180;
     const walls = [wall('a', [0, 0], [6, 0], 0.2), wall('b', [0, 0], [6 * Math.cos(2 * r), 6 * Math.sin(2 * r)], 0.2)];
     const back = vec(-Math.cos(r), -Math.sin(r));
-    const reach = [...piecesOf(walls).values()].flat(2).map((p) => p.x * back.x + p.y * back.y);
+    const reach = [...piecesOf(walls).values()].flat().flatMap((p) => p.polygon).map((p) => p.x * back.x + p.y * back.y);
     expect(Math.max(...reach)).toBeCloseTo(2, 12);
-    expect(computeWallGeometry(walls).warnings).toEqual([]);
+    expect(geometry(walls).warnings).toEqual([]);
   });
 
   it('folded back (0.3°) does not join and warns wallsOverlap', () => {
     const r = (0.3 * Math.PI) / 180;
     const walls = [wall('a', [0, 0], [4, 0], 0.2), wall('b', [0, 0], [4 * Math.cos(r), 4 * Math.sin(r)], 0.2)];
-    expect(computeWallGeometry(walls).warnings).toEqual([{ kind: 'wallsOverlap', walls: ['a', 'b'] }]);
+    expect(geometry(walls).warnings).toEqual([{ kind: 'wallsOverlap', walls: ['a', 'b'] }]);
   });
 
   it('stub shorter than the other wall\'s half thickness warns wallsOverlap', () => {
     const walls = [wall('a', [0, 0], [4, 0], 0.4), wall('b', [0, 0], [0, 0.1], 0.1)];
-    expect(computeWallGeometry(walls).warnings.map((w) => w.kind)).toEqual(['wallsOverlap']);
+    expect(geometry(walls).warnings.map((w) => w.kind)).toEqual(['wallsOverlap']);
   });
 
   it('in line (179.8°) with 30 and 10 cm: one shared cut, areas add up with no overlap', () => {
@@ -103,7 +99,7 @@ describe('corners whose ends overran each other', () => {
     const walls = [wall('a', [-0.05, 0], [4, 0], 0.2), wall('b', [0, -0.05], [0, 3], 0.2)];
     expectPolygon(only(walls, 'a'), [[-0.1, -0.1], [4, -0.1], [4, 0.1], [0.1, 0.1]]);
     expectPolygon(only(walls, 'b'), [[-0.1, -0.1], [0.1, 0.1], [0.1, 3], [-0.1, 3]]);
-    expect(computeWallGeometry(walls).warnings).toEqual([]);
+    expect(geometry(walls).warnings).toEqual([]);
   });
 
   it('nearly in line (179°) and overlapping 0.5 m: the lines cross 5 m away, so wallsOverlap', () => {
@@ -113,13 +109,13 @@ describe('corners whose ends overran each other', () => {
       wall('a', [5, 0], [12, 0], 0.2),
       wall('b', [7 * ub[0], 7 * ub[1]], [-5.5 * ub[0], -5.5 * ub[1]], 0.2),
     ];
-    expect(computeWallGeometry(walls).warnings).toEqual([{ kind: 'wallsOverlap', walls: ['a', 'b'] }]);
+    expect(geometry(walls).warnings).toEqual([{ kind: 'wallsOverlap', walls: ['a', 'b'] }]);
   });
 
   it('a free end inside a parallel wall warns wallsOverlap instead of forming a T', () => {
     // Only b's start lies in the other band (a's end at y = 0 is outside b's band [0.055, 0.105]).
     const walls = [wall('a', [0, 0], [4, 0], 0.2), wall('b', [3, 0.08], [7, 0.08], 0.05)];
-    expect(computeWallGeometry(walls).warnings).toEqual([{ kind: 'wallsOverlap', walls: ['b', 'a'] }]);
+    expect(geometry(walls).warnings).toEqual([{ kind: 'wallsOverlap', walls: ['b', 'a'] }]);
     expectPolygon(only(walls, 'b'), [[3, 0.055], [7, 0.055], [7, 0.105], [3, 0.105]]);
   });
 });
@@ -162,7 +158,7 @@ describe('room 8 × 6 with a divider', () => {
     const walls = [...ring(0.2, 'centerline'), wall('d', [4, 0], [4, 6], 0.15)];
     expect(totalArea(walls)).toBeCloseTo(8.2 * 6.2 - 7.8 * 5.8 + 0.15 * 5.8, 12);
     expectPolygon(only(walls, 'd'), [[3.925, 0.1], [4.075, 0.1], [4.075, 5.9], [3.925, 5.9]]);
-    expect(computeWallGeometry(walls).warnings).toEqual([]);
+    expect(geometry(walls).warnings).toEqual([]);
   });
 
   it('on the exterior face: outer 8 × 6, inner 7.6 × 5.6, divider 0.15 × 5.6', () => {
@@ -180,12 +176,12 @@ describe('room 8 × 6 with a divider', () => {
 describe('warnings and determinism', () => {
   it('three ends at one point warn complexJoin', () => {
     const walls = [wall('a', [0, 0], [4, 0], 0.2), wall('b', [0, 0], [0, 3], 0.2), wall('c', [0, 0], [-3, 0], 0.2)];
-    expect(computeWallGeometry(walls).warnings).toEqual([{ kind: 'complexJoin', walls: ['a', 'b', 'c'] }]);
+    expect(geometry(walls).warnings).toEqual([{ kind: 'complexJoin', walls: ['a', 'b', 'c'] }]);
   });
 
   it('a wall shorter than 1 mm warns wallTooShort and is still drawn', () => {
     const walls = [wall('a', [0, 0], [0.0005, 0], 0.2)];
-    const g = computeWallGeometry(walls);
+    const g = geometry(walls);
     expect(g.warnings).toEqual([{ kind: 'wallTooShort', walls: ['a'] }]);
     expect(g.pieces.get('a')).toHaveLength(1);
   });
@@ -198,7 +194,7 @@ describe('warnings and determinism', () => {
       wall('w3', [0, 6], [0, 0], 0.2),
       wall('d', [4, 0], [4, 6], 0.15),
     ];
-    const dump = (ws: Wall[]) => JSON.stringify([...computeWallGeometry(ws).pieces].sort());
+    const dump = (ws: Wall[]) => JSON.stringify([...geometry(ws).pieces].sort());
     expect(dump([...walls].reverse())).toBe(dump(walls));
     expect(dump([walls[3]!, walls[0]!, walls[4]!, walls[2]!, walls[1]!])).toBe(dump(walls));
   });

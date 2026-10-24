@@ -23,7 +23,8 @@ import {
   wallDirection,
   wallNormal,
 } from '../geometry/offset';
-import type { Wall, WallEnd } from '../schema';
+import type { WallEnd } from '../schema';
+import type { WallShape } from '../geometry/shape';
 import type { EndCut, JoinWarning } from './types';
 
 export interface CornerResult {
@@ -32,11 +33,11 @@ export interface CornerResult {
   readonly warning: JoinWarning | null;
 }
 
-export const joinExtension = (a: Wall, b: Wall): number =>
+export const joinExtension = (a: WallShape, b: WallShape): number =>
   2 * (MITER_LIMIT + 1) * Math.max(a.thickness, b.thickness);
 
 /** Every measure is taken from `node`, so ends that overran each other resolve like ends that touch. */
-export function resolveCorner(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node: Point2): CornerResult {
+export function resolveCorner(a: WallShape, aEnd: WallEnd, b: WallShape, bEnd: WallEnd, node: Point2): CornerResult {
   const ua = intoBody(a, aEnd);
   const ub = intoBody(b, bEnd);
   const angle = (Math.atan2(Math.abs(cross(ua, ub)), dot(ua, ub)) * 180) / Math.PI;
@@ -78,13 +79,13 @@ export function resolveCorner(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, no
   return { a: { extension, cuts: cutA }, b: { extension, cuts: cutB }, warning: null };
 }
 
-const far = (w: Wall, end: WallEnd): Point2 => endPoint(w, end === 'start' ? 'end' : 'start');
+const far = (w: WallShape, end: WallEnd): Point2 => endPoint(w, end === 'start' ? 'end' : 'start');
 
 /** Intersections of the two inner faces and of the two outer faces. */
 export function faceCorners(
-  a: Wall,
+  a: WallShape,
   aEnd: WallEnd,
-  b: Wall,
+  b: WallShape,
   bEnd: WallEnd,
 ): { inner: Point2; outer: Point2 } | null {
   const [a0, a1] = faceOffsets(a);
@@ -112,6 +113,6 @@ function sharedCut(node: Point2, ua: Point2, ub: Point2, extension: number): Cor
   };
 }
 
-function overlapping(a: Wall, b: Wall): CornerResult {
+function overlapping(a: WallShape, b: WallShape): CornerResult {
   return { a: null, b: null, warning: { kind: 'wallsOverlap', walls: [a.id, b.id] } };
 }

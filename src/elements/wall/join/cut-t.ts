@@ -3,11 +3,12 @@
 import { add, dot, scale } from '../../../core/vector';
 import { halfPlaneThrough } from '../geometry/convex';
 import { faceOffsets, intoBody, wallNormal } from '../geometry/offset';
-import type { Wall, WallEnd } from '../schema';
+import type { WallEnd } from '../schema';
+import type { WallShape } from '../geometry/shape';
 import { joinExtension } from './cut-l';
 import type { EndCut } from './types';
 
-export function resolveAbutment(abutting: Wall, end: WallEnd, host: Wall): EndCut {
+export function resolveAbutment(abutting: WallShape, end: WallEnd, host: WallShape): EndCut {
   const n = wallNormal(host);
   const [o0, o1] = faceOffsets(host);
   const towardPositive = dot(n, intoBody(abutting, end)) > 0;

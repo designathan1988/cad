@@ -8,7 +8,7 @@ export interface EndCut {
   readonly cuts: readonly HalfPlane[];
 }
 
-export type JoinWarningKind = 'wallsOverlap' | 'complexJoin' | 'wallTooShort';
+export type JoinWarningKind = 'wallsOverlap' | 'complexJoin' | 'wallTooShort' | 'missingWallType' | 'invalidWallType';
 
 export interface JoinWarning {
   readonly kind: JoinWarningKind;
