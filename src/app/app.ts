@@ -47,7 +47,6 @@ import { boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCate
 import { renderBrowser } from '../ui/browser';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { readProject, writeProject } from '../io/project-file';
-import { separateLabels } from './dim-labels';
 import { fitFactor, keepInView } from './keep-in-view';
 import { type TempDim, tempDims } from './temp-dims';
 import { contextEntries } from './context-menu';
@@ -955,16 +954,11 @@ export class App {
       }
       nodes.push(node);
     }
-    // At the middle of their lines, unless one would sit on another (dim-labels.ts).
-    const at = separateLabels(
-      dims.map((d, i) => {
-        const l = this.plan.dimLine(d);
-        return { a: l.a, b: l.b, w: nodes[i]!.offsetWidth, h: nodes[i]!.offsetHeight };
-      }),
-    );
+    // Where the plan places them (plan-view.ts: dimValueBoxes), which its tags keep off too.
+    const boxes = this.plan.dimValueBoxes(dims.map((d) => ({ ...d, text: num(d.value) })));
     nodes.forEach((node, i) => {
-      node.style.left = `${at[i]!.x}px`;
-      node.style.top = `${at[i]!.y}px`;
+      node.style.left = `${boxes[i]!.x + boxes[i]!.w / 2}px`;
+      node.style.top = `${boxes[i]!.y + boxes[i]!.h / 2}px`;
     });
   }
 
@@ -1304,8 +1298,12 @@ export class App {
     const covered = panel && panel.top > vp.top + 8 && panel.top < vp.bottom ? panel.top - vp.top : vp.height;
     const right = panel && panel.left > vp.left && panel.left < vp.right && panel.top <= vp.top + 8 ? panel.left - vp.left : vp.width;
     const left = Math.min(Math.max(8, x - w / 2), right - w - 8);
-    // Never over a temporary dimension's value or a room's tag that it would cover (bar-place.ts).
+    // Never over a temporary dimension's value, a room's tag or a handle of the selection (bar-place.ts):
+    // on a phone after F it sat on the handle at an arc's end (the tester's R04).
+    const h0 = this.handles();
+    const grip = (p: Point2) => ({ top: p.y - 12, bottom: p.y + 12, left: p.x - 12, right: p.x + 12 });
     const boxes = [
+      ...[...h0.squares, ...h0.arrows, ...(h0.bulge ? [h0.bulge] : []), ...(h0.rotate ? [h0.rotate] : [])].map((x) => grip(x.at)),
       ...[...this.shell.dims.children].map((c) => c.getBoundingClientRect()).map((r) => ({ top: r.top - vp.top, bottom: r.bottom - vp.top, left: r.left - vp.left, right: r.right - vp.left })),
       ...(this.ui.view === 'plan' ? this.plan.labelBoxes.map((b) => ({ top: b.y, bottom: b.y + b.h, left: b.x, right: b.x + b.w })) : []),
     ];

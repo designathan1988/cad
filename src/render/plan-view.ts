@@ -9,6 +9,7 @@ import type { Handles } from '../app/handles';
 import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
 import { LAYER_TOKEN } from '../ui/swatch';
+import { separateLabels } from '../app/dim-labels';
 
 /**
  * A 1 px line along a screen axis, moved onto pixel centres: drawn between two pixels it would be two
@@ -312,7 +313,23 @@ export class PlanView {
       ctx.stroke();
       ctx.restore();
     }
-    for (const tag of o.wallTags ?? []) this.label(tag.at, tag.text, color('--wall-sel'), color('--canvas'), this.font('600', '--fs-xs'), { x: 0, y: 4 });
+    // A wall's tag keeps off the dimensions' values (the tester's R03: "3,00" covered "Parede 49"):
+    // moved down past the one it would meet, or up if that runs off the canvas.
+    const values = this.dimValueBoxes(o.dims ?? []);
+    for (const tag of o.wallTags ?? []) {
+      const font = this.font('600', '--fs-xs');
+      const tw = this.textWidth(tag.text, font) + 8;
+      const p = this.toScreen(tag.at);
+      let dy = 4;
+      const box = (y: number) => ({ x: p.x - tw / 2, y: p.y + y - 11, w: tw, h: 16 });
+      for (let k = 0; k < values.length + 1; k++) {
+        const hit = values.find((v) => overlaps(box(dy), v));
+        if (!hit) break;
+        dy = hit.y + hit.h + 11 + 2 - p.y;
+      }
+      if (p.y + dy + 5 > this.size.h) dy = 4 - 24;
+      this.label(tag.at, tag.text, color('--wall-sel'), color('--canvas'), font, { x: 0, y: dy });
+    }
     this.drawHandles(o.handles, color('--bg'), color('--wall-sel'));
     if (o.anchor) {
       const p = this.toScreen(o.anchor);
@@ -385,13 +402,16 @@ export class PlanView {
 
   /** Room tags where room-tags.ts places them: with their room, shortened or left out when crowded. */
   /** Where the temporary dimensions' values sit (DOM boxes at the middle of each dimension line). */
-  private dimValueBoxes(dims: readonly DimMark[]): { x: number; y: number; w: number; h: number }[] {
+  /**
+   * Where the temporary dimensions' values go, as boxes on screen: at the middle of their lines unless
+   * one would sit on another (app/dim-labels.ts). The app puts its value buttons at their centres, and
+   * room and wall tags keep off them: one placement for all three.
+   */
+  dimValueBoxes(dims: readonly DimMark[]): { x: number; y: number; w: number; h: number }[] {
     const font = this.font('600', '--fs-sm');
-    return dims.map((d) => {
-      const l = this.dimLine(d);
-      const w = this.textWidth(d.text ?? '0,00', font) + 16;
-      return { x: (l.a.x + l.b.x) / 2 - w / 2, y: (l.a.y + l.b.y) / 2 - 11, w, h: 22 };
-    });
+    const sized = dims.map((d) => ({ ...this.dimLine(d), w: this.textWidth(d.text ?? '0,00', font) + 16, h: 22 }));
+    const at = separateLabels(sized);
+    return sized.map((s, i) => ({ x: at[i]!.x - s.w / 2, y: at[i]!.y - s.h / 2, w: s.w, h: s.h }));
   }
 
   private drawRoomTags(labels: PlanOverlay['roomLabels'], color: (name: string) => string, avoid: readonly { x: number; y: number; w: number; h: number }[] = []): void {
