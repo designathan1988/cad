@@ -1,6 +1,6 @@
 // Properties panel, built from what is selected. It only reads state and sends changes.
 
-import { type Doc, type DocWall, type WallDefaults, wallBase, wallOverrides, wallTop } from '../app/document';
+import { type Doc, type DocWall, type WallDefaults, wallBase, wallNumber, wallOverrides, wallTop } from '../app/document';
 import type { OpeningSolid } from '../app/geometry';
 import { type OpeningWarning, referenceLength } from '../elements/opening/derive';
 import { arcOf } from '../elements/wall/geometry/arc';
@@ -80,7 +80,8 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
   if (selected.length > 0) {
     const typeId = common(selected, (w) => w.wallTypeId);
     const type = doc.wallTypes.find((w) => w.id === typeId);
-    const title = selected.length === 1 ? t('panel.wall', { type: type ? name(type.name) : '?' }) : t('panel.walls', { n: selected.length });
+    const title =
+      selected.length === 1 ? t('panel.wall', { n: wallNumber(doc, selected[0]!.id) ?? '', type: type ? name(type.name) : '?' }) : t('panel.walls', { n: selected.length });
     nodes.push(head('wall', title));
     // What each wall has, its own or its type's; and whether any selected wall overrides its type.
     const topOf = (w: DocWall) => wallTop(doc, w);

@@ -100,6 +100,13 @@ export function newDocument(): Doc {
 
 export const levelOf = (doc: Doc, id: LevelId): Level | undefined => doc.levels.find((l) => l.id === id);
 
+/** A wall's number on its level (1, 2, 3… in the order drawn): how the interface names one wall. */
+export function wallNumber(doc: Doc, id: string): number | null {
+  const wall = doc.walls.find((w) => w.id === id);
+  if (!wall) return null;
+  return doc.walls.filter((w) => w.levelId === wall.levelId).indexOf(wall) + 1;
+}
+
 const LEVEL_TOP: HeightRule = { kind: 'level', offset: 0 };
 const typeOf = (doc: Doc, wall: DocWall): WallType | undefined => doc.wallTypes.find((t) => t.id === wall.wallTypeId);
 

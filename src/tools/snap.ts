@@ -11,13 +11,15 @@ export interface Snap {
   readonly kind: SnapKind;
   /** Dashed guide from another point to the snapped one (alignment). */
   readonly guideFrom?: Point2;
+  /** The wall the snap comes from (its end, middle, body, or the end it aligns with), when it has an id. */
+  readonly wallId?: string;
 }
 
 export interface SnapInput {
   readonly cursor: Point2;
   /** Metres per screen pixel at the cursor. */
   readonly mpp: number;
-  readonly segments: readonly { readonly start: Point2; readonly end: Point2 }[];
+  readonly segments: readonly { readonly id?: string; readonly start: Point2; readonly end: Point2 }[];
   /** The point being drawn from, if any. */
   readonly from: Point2 | null;
   /** The first point of the chain: clicking it closes the outline. */
@@ -51,15 +53,20 @@ export function snap(input: SnapInput): Snap {
 
   if (input.chainStart && from && distance(cursor, input.chainStart) <= r) return { point: input.chainStart, kind: 'start' };
   const ends = input.segments.flatMap((s) => [s.start, s.end]);
+  // Which wall an end (index in `ends`) or a middle (index in `mids`) belongs to.
+  const of = (i: number): { wallId?: string } => {
+    const id = input.segments[i]?.id;
+    return id === undefined ? {} : { wallId: id };
+  };
   const nearEnd = closest(ends, cursor, r);
-  if (nearEnd) return { point: nearEnd, kind: 'endpoint' };
+  if (nearEnd) return { point: nearEnd, kind: 'endpoint', ...of(Math.floor(ends.indexOf(nearEnd) / 2)) };
   const mids = input.segments.map((s) => scale(add(s.start, s.end), 0.5));
   const nearMid = closest(mids, cursor, r);
-  if (nearMid) return { point: nearMid, kind: 'midpoint' };
+  if (nearMid) return { point: nearMid, kind: 'midpoint', ...of(mids.indexOf(nearMid)) };
   // On the body of a wall: before alignment, which every wall's own ends would otherwise always win.
-  for (const s of input.segments) {
+  for (const [i, s] of input.segments.entries()) {
     const p = projectOnSegment(cursor, s.start, s.end);
-    if (p && distance(p, cursor) <= r) return { point: p, kind: 'onWall' };
+    if (p && distance(p, cursor) <= r) return { point: p, kind: 'onWall', ...of(i) };
   }
 
   // Angle from the last point in 15° steps, with the length on the 5 cm grid.
@@ -78,16 +85,17 @@ export function snap(input: SnapInput): Snap {
   // Aligned with another wall end, horizontally or vertically, within the radius. On a snapped
   // direction the point slides along that direction to the line, so it never leaves the angle.
   const dir = best && from ? normalize(sub(best.point, from)) : null;
-  for (const e of [...ends, ...(input.chainStart ? [input.chainStart] : [])]) {
+  for (const [k, e] of [...ends, ...(input.chainStart ? [input.chainStart] : [])].entries()) {
     const base = best?.point ?? cursor;
     if (distance(e, cursor) <= r) continue;
+    const wall = k < ends.length ? of(Math.floor(k / 2)) : {};
     if (Math.abs(base.x - e.x) <= r) {
       const p = dir && from ? (Math.abs(dir.x) > 1e-9 ? add(from, scale(dir, (e.x - from.x) / dir.x)) : null) : vec(e.x, base.y);
-      if (p) return { point: p, kind: 'aligned', guideFrom: e };
+      if (p) return { point: p, kind: 'aligned', guideFrom: e, ...wall };
     }
     if (Math.abs(base.y - e.y) <= r) {
       const p = dir && from ? (Math.abs(dir.y) > 1e-9 ? add(from, scale(dir, (e.y - from.y) / dir.y)) : null) : vec(base.x, e.y);
-      if (p) return { point: p, kind: 'aligned', guideFrom: e };
+      if (p) return { point: p, kind: 'aligned', guideFrom: e, ...wall };
     }
   }
   if (best) return best;

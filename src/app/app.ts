@@ -36,7 +36,10 @@ import { snapLabel, type Snap } from '../tools/snap';
 import { bulgeThrough, IDLE, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, dragTransform, hull } from './select-drag';
 import { moveRooms } from './carry';
-import { type Doc, type DocWall, elementIds, newDocument, type WallDefaults, wallOverrides } from './document';
+import { type Doc, type DocWall, elementIds, newDocument, type WallDefaults, wallNumber, wallOverrides } from './document';
+
+/** The snap labels that name their wall. */
+const SNAP_OF = { endpoint: 'snap.endpointOf', midpoint: 'snap.midpointOf', onWall: 'snap.onWallOf', aligned: 'snap.alignedOf' } as const;
 import { boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, openingOutline } from './geometry';
 import { renderBrowser } from '../ui/browser';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
@@ -44,7 +47,7 @@ import { readProject, writeProject } from '../io/project-file';
 import { type TempDim, tempDims } from './temp-dims';
 import { contextEntries } from './context-menu';
 import { referenceLength } from '../elements/opening/derive';
-import { type Handles, handlesFor } from './handles';
+import { type Handles, handlesFor, ROTATE_OFFSET } from './handles';
 import { placeBarY } from '../ui/bar-place';
 import { newId } from '../core/id';
 import { addFloor, addRoom, updateFloor, updateRoom } from '../elements/room/commands';
@@ -553,7 +556,9 @@ export class App {
     const a = this.plan.toScreen({ x: box.min.x, y: box.max.y });
     const b = this.plan.toScreen({ x: box.max.x, y: box.min.y });
     const margin = 16;
-    const dy = Math.max(0, b.y - (vp.height - covered.bottom - margin));
+    // Room under the selection for its turn handle too (handles.ts), not only for the walls.
+    const below = ROTATE_OFFSET + 12;
+    const dy = Math.max(0, b.y + below - (vp.height - covered.bottom - margin));
     const dx = Math.max(0, b.x - (vp.width - covered.right - margin));
     // Never past the top or left edge: a selection taller than the free part keeps its top in view.
     const up = Math.min(dy, Math.max(0, a.y - margin));
@@ -695,14 +700,17 @@ export class App {
         side && w.kind === 'drawing'
           ? Math.max(0, ...(this.geometry.solids.get(PREVIEW_ID)?.pieces ?? []).flatMap((p) => p.polygon.map((v) => (v.x - w.last.x) * side.x + (v.y - w.last.y) * side.y)))
           : 0;
-      const labelKey = ui.snap ? snapLabel[ui.snap.kind] : null;
+      // A snap on a wall says which one, by its number (shown in the panel's title): "end of wall 3".
+      const snapWall = ui.snap?.wallId ? wallNumber(this.store.get(), ui.snap.wallId) : null;
+      const ofKey = ui.snap && snapWall !== null && ui.snap.kind in SNAP_OF ? SNAP_OF[ui.snap.kind as keyof typeof SNAP_OF] : null;
+      const labelKey = ofKey ?? (ui.snap ? snapLabel[ui.snap.kind] : null);
       this.plan.draw(this.visibleGeometry(), {
         selected: ui.selection,
         hover: ui.hover,
         preview,
         snap:
           ui.tool === 'wall' && ui.snap
-            ? { point: ui.snap.point, label: labelKey ? t(labelKey) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...(along ? { away: along } : {}) }
+            ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...(along ? { away: along } : {}) }
             : null,
         measure:
           end && along && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
