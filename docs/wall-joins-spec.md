@@ -795,7 +795,7 @@ Achados:
 
 | Medida | Resultado |
 |---|---|
-| Testes | 121/121 no `npm run check` (inclui os testes que a sessão da interface acrescentou) |
+| Testes | 133/133 no `npm run check` final (o total inclui os testes que a sessão da interface vem acrescentando) |
 | Casos à mão novos ou mudados | 11 em `nodes.test.ts` e 1 em `joins.test.ts`, todos vermelhos antes |
 | Cena aleatória de nó | 300 cenas; I10 em 220 troncos (piso: 100); vermelha no motor anterior |
 
