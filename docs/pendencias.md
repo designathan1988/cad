@@ -3,21 +3,25 @@
 Lista viva do que ainda não está feito, com a origem de cada item. Um item sai daqui quando o commit que
 o resolve existe e, se for de interface, quando a sessão de teste o viu no navegador.
 
-## Em andamento
+## Esperando reteste no navegador
 
-- **Tipos de parede com camadas, para ver e editar** (ref/chat.txt:12; revisão do testador, D5 / 17).
-  Plano aprovado: comandos de tipo → planta por camada → 3D por camada → diálogo de tipos. O editor
-  de camadas deve servir também aos tipos de piso e laje, sem duplicar código.
+- Diálogo "Tipos de parede" e editor de camadas (17, parte 4; 08f1a21). Planta e 3D por camada já
+  foram vistos (e3e18c6).
+- Linhas entre camadas nítidas nos eixos e uma só decisão de camadas por vista (08f1a21).
+- Diagonal clara no núcleo, no canto de um L do mesmo tipo (observação 3 do reteste de e3e18c6):
+  as peças de uma mesma cor agora são pintadas num caminho só, então não há costura de
+  antisserrilhado entre elas. Corrigido no código, ainda não visto.
 
 ## Detalhes da revisão do testador (checklist em 3287502)
 
-- Arco selecionado sem cota temporária e sem alça de curvatura; raio, corda e comprimento só leitura;
-  com zoom grande a curva mostra os trechos retos.
-- Regra "De outra abertura": as cotas temporárias medem das pontas da parede, não até a outra abertura.
-- Lista "Alinhada a outra → Com" não diz o pavimento da abertura.
-- Nome do cômodo não volta ao centro quando o cômodo muda.
-- Depois de recarregar ou abrir um arquivo, a vista volta ao Térreo vazio.
+- Arco selecionado sem cota temporária e sem alça de curvatura; raio, corda e comprimento só leitura
+  (em andamento).
+- Com zoom grande, a curva do arco mostra os trechos retos: a flecha de 0,5 mm do ADR 0001 aparece
+  acima de ~2 000 px/m. Ideia: desenhar a planta do arco com mais trechos que o motor usa.
 - Distribuir com aberturas dos dois lados de um encontro usa a parede inteira (ADR 0003, "Not done").
+- Grupo v3 que já começa com uma janela sobre o X continua assim até ser editado (reteste de 16453d5).
+- Resolvidos e vistos no reteste de 16453d5: cota de "De outra abertura", pavimento na lista "Com",
+  nome do cômodo no centro, pavimento ao recarregar e ao abrir.
 
 ## Motor de paredes
 

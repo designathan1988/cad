@@ -237,19 +237,33 @@ export class PlanView {
     const thick = (s: (typeof solids)[number]) => s.layers.reduce((t, l) => t + l.thickness, 0);
     const detail = byLayers(normal.filter((s) => s.layers.length > 0).map(thick), this.scale);
     const layered = (s: (typeof solids)[number]) => detail && s.layers.length > 0;
+    // Pieces of one colour are filled as one path: the canvas covers a path as a whole, so where two
+    // of them meet (a core through an L's mitre) no antialiased seam lets the outline under them show.
     const fill = (list: typeof solids, colour: string | null) => {
-      ctx.lineWidth = 1;
+      const byColour = new Map<string, Point2[][]>();
       for (const s of list) {
         const byLayer = colour === null && layered(s);
         for (const p of s.pieces) {
           const fn = s.layers[p.layerIndex]?.function;
           const c = colour ?? (byLayer && fn ? color(LAYER_TOKEN[fn]) : color('--wall-fill'));
-          ctx.fillStyle = c;
-          ctx.strokeStyle = c;
-          trace(p.polygon);
-          ctx.fill();
-          ctx.stroke();
+          byColour.set(c, [...(byColour.get(c) ?? []), [...p.polygon]]);
         }
+      }
+      ctx.lineWidth = 1;
+      for (const [c, polys] of byColour) {
+        ctx.beginPath();
+        for (const poly of polys) {
+          poly.forEach((v, i) => {
+            const s = this.toScreen(v);
+            if (i === 0) ctx.moveTo(s.x, s.y);
+            else ctx.lineTo(s.x, s.y);
+          });
+          ctx.closePath();
+        }
+        ctx.fillStyle = c;
+        ctx.strokeStyle = c;
+        ctx.fill('nonzero');
+        ctx.stroke();
       }
     };
     const seams = (list: typeof solids) => {
