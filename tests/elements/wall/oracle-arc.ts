@@ -4,7 +4,8 @@
 
 import type { WallEnd } from '../../../src/elements/wall/schema';
 import { geometry, layer, type TestWall as Wall } from './fixtures';
-import { expectedL, frameOf, inside, rectOf, type P, type Region } from './oracle';
+import { frameOf, inside, rectOf, type P, type Region } from './oracle';
+import { expectedCorner } from './oracle-x';
 
 const SPEC_ARC_SAG = 5e-4;
 const pt = (x: number, y: number): P => ({ x, y });
@@ -95,6 +96,21 @@ export interface Coverage {
 }
 
 /**
+ * Segment `i` of an arc as the spec joins it (§5.2): a straight wall along the chord between its two
+ * points on the reference line, with every layer × cos(Δ/2). The arc's own ends are kept exact.
+ */
+export function segmentWall(arc: Wall, i: number): Wall {
+  const c = circleOf(arc);
+  const n = segmentsOf(arc);
+  const d = c.sweep / n;
+  const on = (j: number) => (j === 0 ? arc.start : j === n ? arc.end : pt(c.cx + c.r * Math.cos(c.a0 + d * j), c.cy + c.r * Math.sin(c.a0 + d * j)));
+  const k = Math.cos(d / 2);
+  const seg: Wall = { ...arc, id: `${arc.id}#${i}`, start: on(i), end: on(i + 1), layers: arc.layers.map((l) => layer(l.thickness * k, l.function)), thickness: arc.thickness * k };
+  delete (seg as { bulge?: number }).bulge;
+  return seg;
+}
+
+/**
  * The region the spec gives an L between an arc's end and a straight wall: the arc joins as its chain
  * of straight segments (spec §5.2), so near the node it is the straight L (oracle.ts, expectedL)
  * between the end segment (the chord of the reference circle, layer offsets × cos(Δ/2)) and the
@@ -108,12 +124,10 @@ export function arcCorner(arc: Wall, arcEnd: WallEnd, straight: Wall, straightEn
   const d = c.sweep / n;
   const ang = arcEnd === 'start' ? c.a0 + d : c.a0 + c.sweep - d;
   const p = pt(c.cx + c.r * Math.cos(ang), c.cy + c.r * Math.sin(ang));
-  const k = Math.cos(d / 2);
-  const ls = arc.layers.map((l) => layer(l.thickness * k, l.function));
   const node = arcEnd === 'start' ? arc.start : arc.end;
-  const seg: Wall = { ...arc, id: `${arc.id}#end`, start: arcEnd === 'start' ? node : p, end: arcEnd === 'start' ? p : node, layers: ls, thickness: arc.thickness * k };
-  delete (seg as { bulge?: number }).bulge;
-  const region = expectedL(seg, arcEnd, straight, straightEnd);
+  const seg = segmentWall(arc, arcEnd === 'start' ? 0 : n - 1);
+  // The spec's corner (oracle-x.ts): the miter rules, and with different sequences the butt's own.
+  const region = expectedCorner(seg, arcEnd, straight, straightEnd);
   if (region === 'overlap') return 'overlap';
   const len = Math.hypot(p.x - node.x, p.y - node.y);
   const dir = pt((p.x - node.x) / len, (p.y - node.y) / len);
@@ -186,4 +200,60 @@ export function coverage(walls: readonly Wall[], node: P | null, tip: number, se
     }
   }
   return { samples, overlaps, gaps, extras, firstBad };
+}
+
+/** Area two convex polygons share (the oracle's own clipping: Sutherland–Hodgman, either winding). */
+export function sharedArea(a: readonly P[], b: readonly P[]): number {
+  const signed = (poly: readonly P[]) => poly.reduce((s, p, i) => s + p.x * poly[(i + 1) % poly.length]!.y - poly[(i + 1) % poly.length]!.x * p.y, 0) / 2;
+  const ccw = (poly: readonly P[]) => (signed(poly) < 0 ? [...poly].reverse() : [...poly]);
+  let out: P[] = ccw(a);
+  const clip = ccw(b);
+  for (let i = 0; i < clip.length && out.length > 0; i++) {
+    const p = clip[i]!;
+    const q = clip[(i + 1) % clip.length]!;
+    const side = (v: P) => (q.x - p.x) * (v.y - p.y) - (q.y - p.y) * (v.x - p.x);
+    const next: P[] = [];
+    out.forEach((v, k) => {
+      const w = out[(k + 1) % out.length]!;
+      const sv = side(v);
+      const sw = side(w);
+      if (sv >= 0) next.push(v);
+      if ((sv >= 0) !== (sw >= 0)) {
+        const t = sv / (sv - sw);
+        next.push(pt(v.x + (w.x - v.x) * t, v.y + (w.y - v.y) * t));
+      }
+    });
+    out = next;
+  }
+  return out.length >= 3 ? Math.abs(signed(out)) : 0;
+}
+
+/**
+ * A straight wall joined at one end of an arc also touching the arc elsewhere: its body shares area
+ * with a segment of the arc other than the end one. The spec warns then (part 6: any overlap left
+ * between an arc and another wall is reported), however small.
+ */
+export function touchesArcElsewhere(arc: Wall, arcEnd: WallEnd, straight: Wall): boolean {
+  const body = arcBody(arc);
+  const others = arcEnd === 'start' ? body.slice(1) : body.slice(0, -1);
+  const rect = rectOf(straight);
+  return others.some((b) => sharedArea(rect, b) > 0);
+}
+
+/**
+ * How far `p` is from the arc as the spec joins it: from the nearest of its segments' rectangles
+ * (segmentWall), 0 inside one. An end within POINT_TOLERANCE of a band meets that wall (spec §6).
+ */
+export function distanceToSegments(arc: Wall, p: P): number {
+  const toEdge = (a: P, b: P) => {
+    const ab = pt(b.x - a.x, b.y - a.y);
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * ab.x + (p.y - a.y) * ab.y) / (ab.x * ab.x + ab.y * ab.y)));
+    return Math.hypot(p.x - a.x - ab.x * t, p.y - a.y - ab.y * t);
+  };
+  let best = Infinity;
+  for (let i = 0; i < segmentsOf(arc); i++) {
+    const r = rectOf(segmentWall(arc, i));
+    best = Math.min(best, inside(r, p) ? 0 : Math.min(...r.map((v, k) => toEdge(v, r[(k + 1) % r.length]!))));
+  }
+  return best;
 }

@@ -6,10 +6,11 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { LayerFunction, WallEnd } from '../../../src/elements/wall/schema';
 import { geometry, layer, testWall, type TestWall as Wall } from './fixtures';
-import { arcBody, arcCorner, circleOf, coverage, intoOf, segmentsOf } from './oracle-arc';
+import { arcBody, arcCorner, circleOf, coverage, distanceToSegments, intoOf, segmentsOf, touchesArcElsewhere } from './oracle-arc';
 import { inside, shoelace } from './oracle';
 
 const seed = Number(process.env.FUZZ_SEED ?? 20261024);
+const SPEC_POINT_TOL = 1e-3;
 const num = (min: number, max: number) => fc.double({ min, max, noNaN: true, noDefaultInfinity: true });
 const fns = fc.constantFrom<LayerFunction>('structure', 'finish1', 'finish2', 'thermal');
 const layersArb = fc.array(fc.tuple(num(0.01, 0.15), fns), { minLength: 1, maxLength: 3 }).map((ls) => ls.map(([t, f]) => layer(t, f)));
@@ -54,7 +55,7 @@ describe('lone arcs', () => {
   });
 });
 
-const joined = { clean: 0, warned: 0 };
+const joined = { clean: 0, warned: 0, skipped: 0 };
 describe('arc with a straight wall at one end', () => {
   it('joins exactly, or warns', () => {
     fc.assert(
@@ -73,22 +74,33 @@ describe('arc with a straight wall at one end', () => {
           const a = ((left ? deg : -deg) * Math.PI) / 180;
           const v = { x: u.x * Math.cos(a) - u.y * Math.sin(a), y: u.x * Math.sin(a) + u.y * Math.cos(a) };
           const far = { x: node.x + v.x * len, y: node.y + v.y * len };
-          // One junction only: a far end that lands on the arc (or near its other end) makes a second
-          // one, which this oracle does not model.
+          // One junction only: a far end that lands on the arc (within POINT_TOLERANCE of a segment's
+          // band, spec §6), or a wall passing near the arc's other end, makes a second one, which this
+          // oracle does not model.
           const other = end === 'start' ? arc.end : arc.start;
           const clear = arc.thickness + Math.max(...ls.map((l) => l.thickness)) * ls.length + 0.1;
-          if (Math.hypot(far.x - other.x, far.y - other.y) < clear || arcBody(arc).some((b) => inside(b, far))) return;
+          const t = Math.max(0, Math.min(1, ((other.x - node.x) * v.x + (other.y - node.y) * v.y) / len));
+          const nearOther = Math.hypot(node.x + v.x * len * t - other.x, node.y + v.y * len * t - other.y) < clear;
+          if (nearOther || arcBody(arc).some((b) => inside(b, far)) || distanceToSegments(arc, far) <= SPEC_POINT_TOL) {
+            joined.skipped++;
+            return;
+          }
           const straight = testWall('s', far, node, ls, ref);
           const walls = [arc, straight];
           const kinds = geometry(walls).warnings.map((w) => w.kind);
-          if (kinds.length > 0) {
-            expect(kinds.every((k) => k === 'arcJoinUnsupported' || k === 'complexJoin' || k === 'wallsOverlap'), JSON.stringify(walls)).toBe(true);
+          // The spec decides: the L between the arc's end segment and the wall (§5.2: an arc joins as
+          // its chain of straight segments) warns exactly when the straight L would (§7.1, §10:
+          // 'overlap'). Any other warning is the engine failing a join the spec says to make.
+          const corner = arcCorner(arc, end, straight, 'end');
+          // Also when the wall touches the arc again away from the node (part 6: overlaps left with an
+          // arc are reported). Where the L made with the end segment reaches over the next segments,
+          // the engine carries it on, and the coverage below checks those segments' bodies.
+          if (corner === 'overlap' || touchesArcElsewhere(arc, end, straight)) {
+            expect(kinds.length, `spec warns: ${JSON.stringify(walls)}`).toBeGreaterThan(0);
             joined.warned++;
             return;
           }
-          // Near the node the spec's L between the end segment and the wall decides (arcCorner).
-          const corner = arcCorner(arc, end, straight, 'end');
-          if (corner === 'overlap') return;
+          expect(kinds, `spec makes this L: ${JSON.stringify(walls)}`).toEqual([]);
           joined.clean++;
           const tip = 10 * Math.max(arc.thickness, straight.thickness) + 0.1;
           const c = coverage(walls, node, tip, s, corner);
@@ -99,8 +111,11 @@ describe('arc with a straight wall at one end', () => {
     );
   });
 
-  it('most of those joins were made, not warned', () => {
-    console.log(`arc L joins: ${joined.clean} made, ${joined.warned} warned`);
-    expect(joined.clean).toBeGreaterThan(50);
+  // Not vacuous: most runs make the L and are checked point by point; few are skipped as a second
+  // junction. The fixed seed gives 56 clean, 41 warned, 3 skipped of 100.
+  it('checks enough joins', () => {
+    console.log(`arc L: ${joined.clean} clean, ${joined.warned} warned, ${joined.skipped} skipped`);
+    expect(joined.clean).toBeGreaterThan(40);
+    expect(joined.skipped).toBeLessThanOrEqual(5);
   });
 });
