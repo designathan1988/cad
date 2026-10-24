@@ -57,7 +57,10 @@ export function layerContinuity(
   const bFromOuter = c.bOuter === frameOf(b).o0;
   const seqA = aFromOuter ? a.layers : [...a.layers].reverse();
   const seqB = bFromOuter ? b.layers : [...b.layers].reverse();
-  if (seqA.length !== seqB.length || seqA.some((l, i) => Math.abs(l.thickness - seqB[i]!.thickness) > 1e-12)) {
+  if (
+    seqA.length !== seqB.length ||
+    seqA.some((l, i) => Math.abs(l.thickness - seqB[i]!.thickness) > 1e-12 || l.function !== seqB[i]!.function)
+  ) {
     return null;
   }
   const rank = (w: Wall, fromOuter: boolean, k: number) => (fromOuter ? k : w.layers.length - 1 - k);
@@ -84,6 +87,22 @@ export function layerContinuity(
     if (rank(a, aFromOuter, pa.layerIndex) !== rank(b, bFromOuter, pb.layerIndex)) mismatched++;
   }
   return { checked, mismatched };
+}
+
+const SPEC_POINT_TOL = 1e-3;
+
+/**
+ * The spec's corner choice (§7.1): the same layer sequence read from the corner's outer face (same
+ * functions, thicknesses within 1 mm) is mitered; anything else is a butt.
+ */
+export function sameSequence(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?: P): boolean {
+  const c = cornerSpec(a, aEnd, b, bEnd, node);
+  const seqA = c.aOuter === frameOf(a).o0 ? a.layers : [...a.layers].reverse();
+  const seqB = c.bOuter === frameOf(b).o0 ? b.layers : [...b.layers].reverse();
+  return (
+    seqA.length === seqB.length &&
+    seqA.every((l, i) => l.function === seqB[i]!.function && Math.abs(l.thickness - seqB[i]!.thickness) <= SPEC_POINT_TOL)
+  );
 }
 
 /** First and last core layer: first to last structure layer, or every layer without one. */

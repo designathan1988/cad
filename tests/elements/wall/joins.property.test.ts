@@ -4,14 +4,16 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { geometry, type TestWall as Wall } from './fixtures';
+import type { P } from './oracle';
 import {
   checkAgainst,
+  cornerSpec,
   expectedL,
   expectedRoom,
   expectedT,
   type Region,
 } from './oracle';
-import { abutmentPenetration, layerContainmentViolations, layerContinuity, notchFill } from './oracle-layers';
+import { abutmentPenetration, layerContainmentViolations, layerContinuity, notchFill, sameSequence } from './oracle-layers';
 import { crossingOf, expectedX, sidesOf, throughOf } from './oracle-x';
 import { crossedScene, lScene, type Mode, roomScene, tScene, xScene } from './scenes';
 
@@ -34,6 +36,7 @@ function expectExact(walls: readonly Wall[], region: Region, sampleSeed: number)
 
 // Each seed tried passes a layer outside the core in ~550 T joints and ~11 000 points.
 const PRIORITY_JOINTS = 300;
+const BUTT_CORNERS = 0;
 const PRIORITY_POINTS = 5_000;
 const notch = { joints: 0, points: 0, priorityJoints: 0, priorityPoints: 0 };
 /** I6 by layer and I10, for one T. Counts checked points so I10 cannot pass vacuously. */
@@ -63,6 +66,29 @@ function expectContinuous(result: ReturnType<typeof layerContinuity>, walls: rea
   continuity.points += result.checked;
 }
 
+/**
+ * A corner between different sequences is a butt (§7.1): the thicker core goes through and the other
+ * wall abuts it as a T, so I6 by layer and I10 apply. I10 is skipped when the tip is bevelled: the
+ * bevel can remove host points the T rule alone would keep.
+ */
+const butt = { corners: 0 };
+function expectCorner(a: Wall, aEnd: 'start' | 'end', b: Wall, bEnd: 'start' | 'end', walls: readonly Wall[], s: number, node?: P): void {
+  const c = cornerSpec(a, aEnd, b, bEnd, node);
+  if (c.kind !== 'miter' && c.kind !== 'bevel') return;
+  if (sameSequence(a, aEnd, b, bEnd, node)) {
+    expectContinuous(layerContinuity(a, aEnd, b, bEnd, node), walls);
+    return;
+  }
+  butt.corners++;
+  const { through, cut } = throughOf(a, b);
+  const cutEnd = cut === a ? aEnd : bEnd;
+  if (c.kind === 'bevel') {
+    expect(abutmentPenetration(cut, cutEnd, through, walls), JSON.stringify(walls)).toBeLessThanOrEqual(1e-12);
+  } else {
+    expectAbutment(cut, cutEnd, through, walls, s);
+  }
+}
+
 const dump = (walls: readonly Wall[]) => JSON.stringify([...geometry(walls).pieces].sort());
 
 describe.each<Mode>(['normal', 'degenerate'])('L, %s', (mode) => {
@@ -78,7 +104,7 @@ describe.each<Mode>(['normal', 'degenerate'])('L, %s', (mode) => {
         }
         expect(kinds).toEqual([]);
         expectExact(walls, region, sampleSeed);
-        expectContinuous(layerContinuity(a, aEnd, b, bEnd), walls);
+        expectCorner(a, aEnd, b, bEnd, walls, sampleSeed);
       }),
       runs(400),
     );
@@ -133,7 +159,7 @@ describe('corner whose ends overran each other', () => {
         }
         expect(kinds).toEqual([]);
         expectExact(walls, region, sampleSeed);
-        expectContinuous(layerContinuity(a, aEnd, b, bEnd, node), walls);
+        expectCorner(a, aEnd, b, bEnd, walls, sampleSeed, node);
       }),
       runs(300),
     );
@@ -152,7 +178,7 @@ describe('room with a divider', () => {
         expectAbutment(s.divider, 'end', s.endHost, walls, sampleSeed + 1);
         for (let k = 0; k < 4; k++) {
           const j = (k + 3) % 4;
-          expectContinuous(layerContinuity(s.ring[j]!, s.ringEnds[j]![1], s.ring[k]!, s.ringEnds[k]![0]), walls);
+          expectCorner(s.ring[j]!, s.ringEnds[j]![1], s.ring[k]!, s.ringEnds[k]![0], walls, sampleSeed + 2 + k);
         }
 
         // I4: a different input order gives bit-identical output.
@@ -177,5 +203,7 @@ describe('layer checks were really exercised', () => {
     expect(notch.priorityJoints).toBeGreaterThan(PRIORITY_JOINTS * scale);
     expect(notch.priorityPoints).toBeGreaterThan(PRIORITY_POINTS * scale);
     expect(crossing.scenes).toBe(600 * scale);
+    console.log(`butt corners checked as T: ${butt.corners}`);
+    expect(butt.corners).toBeGreaterThan(BUTT_CORNERS * scale);
   });
 });
