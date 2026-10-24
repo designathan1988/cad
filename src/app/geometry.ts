@@ -1,15 +1,30 @@
 // Document → derived wall geometry, through the join engine. Recomputed when the document changes,
 // never stored.
 
-import type { Point2 } from '../core/vector';
+import { add, type Point2, scale } from '../core/vector';
+import { deriveOpenings, hostsOf, type OpeningWarning, type PlacedOpening } from '../elements/opening/derive';
+import type { Opening, OpeningId } from '../elements/opening/schema';
+import { type Block, cutPlan, cutSolid, type OpeningCut, type OpeningFrame, openingFrame } from '../elements/opening/void';
 import { computeWallGeometry, type Piece } from '../elements/wall/geometry/footprint';
+import { shapeOf } from '../elements/wall/geometry/shape';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { WallId } from '../elements/wall/schema';
 import { type Doc, type DocWall, wallHeights } from './document';
 
 export interface WallSolid {
   readonly wall: DocWall;
+  /** Plan pieces, with the openings cut through. */
   readonly pieces: readonly Piece[];
+  /** 3D blocks: the pieces sliced in height around the openings' holes. */
+  readonly blocks: readonly Block[];
+  readonly bottom: number;
+  readonly top: number;
+}
+
+export interface OpeningSolid extends PlacedOpening {
+  /** Null when the host is missing or has no valid shape: nothing to draw. */
+  readonly frame: OpeningFrame | null;
+  /** Absolute heights of the bottom and the head. */
   readonly bottom: number;
   readonly top: number;
 }
@@ -17,19 +32,54 @@ export interface WallSolid {
 export interface DerivedGeometry {
   readonly solids: ReadonlyMap<WallId, WallSolid>;
   readonly warnings: readonly JoinWarning[];
+  readonly openings: ReadonlyMap<OpeningId, OpeningSolid>;
+  readonly openingWarnings: readonly OpeningWarning[];
 }
 
-/** `extra` are walls being drawn: joined with the rest so the preview shows the real corner. */
-export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = []): DerivedGeometry {
+/**
+ * `extra` are walls being drawn: joined with the rest so the preview shows the real corner.
+ * `extraOpenings` are openings being placed, cut and checked like the others.
+ */
+export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOpenings: readonly Opening[] = []): DerivedGeometry {
   const walls = [...doc.walls, ...extra];
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
   const { pieces, warnings } = computeWallGeometry(walls, types);
+  const placed = deriveOpenings([...doc.openings, ...extraOpenings], hostsOf(doc, walls));
+  const byId = new Map(walls.map((w) => [w.id, w]));
+  const openings = new Map<OpeningId, OpeningSolid>();
+  const cuts = new Map<WallId, OpeningCut[]>();
+  for (const p of placed.placed.values()) {
+    const wall = byId.get(p.opening.wallId);
+    const shape = wall && shapeOf(wall, types.get(wall.wallTypeId));
+    const base = wall ? wallHeights(doc, wall).bottom : 0;
+    const bottom = base + p.opening.sill;
+    const top = bottom + p.opening.height;
+    const frame = wall && shape && typeof shape !== 'string' ? openingFrame(shape, p.start, p.end) : null;
+    openings.set(p.opening.id, { ...p, frame, bottom, top });
+    if (frame && wall) cuts.set(wall.id, [...(cuts.get(wall.id) ?? []), { region: frame.region, bottom, top }]);
+  }
   const solids = new Map<WallId, WallSolid>();
   for (const wall of walls) {
     const { bottom, top } = wallHeights(doc, wall);
-    solids.set(wall.id, { wall, pieces: pieces.get(wall.id) ?? [], bottom, top });
+    const own = pieces.get(wall.id) ?? [];
+    const mine = cuts.get(wall.id) ?? [];
+    solids.set(wall.id, { wall, pieces: cutPlan(own, mine), blocks: cutSolid(own, bottom, top, mine), bottom, top });
   }
-  return { solids, warnings };
+  return { solids, warnings, openings, openingWarnings: placed.warnings };
+}
+
+/** The opening's outline in plan: the jambs across the wall's thickness. */
+export function openingOutline(o: OpeningSolid): Point2[] {
+  const f = o.frame;
+  if (!f) return [];
+  const at = (p: Point2, k: number) => add(p, scale(f.normal, f.faces[k]!));
+  return [at(f.start, 0), at(f.end, 0), at(f.end, 1), at(f.start, 1)];
+}
+
+/** The opening whose outline contains p, last placed first. */
+export function openingAt(g: DerivedGeometry, p: Point2): OpeningId | null {
+  for (const o of [...g.openings.values()].reverse()) if (insidePolygon(openingOutline(o), p)) return o.opening.id;
+  return null;
 }
 
 /** Even-odd ray crossing: is p inside the polygon? */
@@ -53,7 +103,7 @@ export function wallAt(g: DerivedGeometry, p: Point2, ids?: ReadonlySet<WallId>)
   return null;
 }
 
-/** Bounding box of the drawn pieces, or null when there is nothing. */
+/** Bounding box of the drawn pieces and openings, or null when there is nothing. */
 export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: Point2; max: Point2 } | null {
   let minX = Infinity;
   let minY = Infinity;
@@ -68,6 +118,15 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
         maxX = Math.max(maxX, v.x);
         maxY = Math.max(maxY, v.y);
       }
+    }
+  }
+  for (const o of g.openings.values()) {
+    if (ids && !ids.has(o.opening.id)) continue;
+    for (const v of openingOutline(o)) {
+      minX = Math.min(minX, v.x);
+      minY = Math.min(minY, v.y);
+      maxX = Math.max(maxX, v.x);
+      maxY = Math.max(maxY, v.y);
     }
   }
   return minX === Infinity ? null : { min: { x: minX, y: minY }, max: { x: maxX, y: maxY } };
