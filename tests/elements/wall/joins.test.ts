@@ -174,9 +174,11 @@ describe('room 8 × 6 with a divider', () => {
 });
 
 describe('warnings and determinism', () => {
-  it('three ends at one point warn complexJoin', () => {
+  it('three ends at one point join: the two in line pass, the third abuts (more in nodes.test.ts)', () => {
+    // a and c in line along x, 7 m together; b abuts the passage face y = 0.1.
     const walls = [wall('a', [0, 0], [4, 0], 0.2), wall('b', [0, 0], [0, 3], 0.2), wall('c', [0, 0], [-3, 0], 0.2)];
-    expect(geometry(walls).warnings).toEqual([{ kind: 'complexJoin', walls: ['a', 'b', 'c'] }]);
+    expect(geometry(walls).warnings).toEqual([]);
+    expect(totalArea(walls)).toBeCloseTo(7 * 0.2 + 0.2 * 2.9, 12);
   });
 
   it('a wall shorter than 1 mm warns wallTooShort and is still drawn', () => {
