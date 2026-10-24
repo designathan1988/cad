@@ -53,7 +53,8 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
   const at = (s: number) => add(host.start, scale(dir, s));
   const half = thicknessOf(doc, host.wallTypeId) / 2;
   const side = perp(dir);
-  return [
+  // A distance below zero means the opening runs past that end: there is nothing to measure there.
+  const dims: TempDim[] = [
     {
       id: `${id}:fromStart`,
       a: host.start,
@@ -73,6 +74,7 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
       apply: (v) => (v >= 0 ? updateOpening(id, { rule: { kind: 'fromEnd', distance: v } }) : null),
     },
   ];
+  return dims.filter((x) => x.value >= 0);
 }
 
 const thicknessOf = (doc: Doc, typeId: string): number =>

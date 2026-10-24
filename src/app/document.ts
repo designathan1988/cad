@@ -48,6 +48,10 @@ export interface WallDefaults {
   readonly top: DocWall['top'];
 }
 
+/** The ids of every element that can be selected: walls, openings, rooms and floors. */
+export const elementIds = (doc: Doc): Set<string> =>
+  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors].map((e) => e.id));
+
 export function newDocument(): Doc {
   return {
     version: 2,

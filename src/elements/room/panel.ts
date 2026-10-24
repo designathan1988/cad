@@ -1,7 +1,7 @@
 // Properties of the selected rooms and floors. It only reads state and sends changes.
 
 import { el, numberField, row, section } from '../../ui/controls';
-import { num, t } from '../../ui/i18n';
+import { name, num, t } from '../../ui/i18n';
 import { icon } from '../../ui/icons';
 import type { FloorSolid, RoomSolid } from './derive';
 import type { Floor, FloorId, Room, RoomId } from './schema';
@@ -42,7 +42,7 @@ export function roomPanel(rooms: readonly RoomSolid[], act: RoomPanelActions): H
     section(
       t('panel.general'),
       true,
-      row(t('room.name'), textField(r.room.name, (v) => act.updateRoom(r.room.id, { name: v }))),
+      row(t('room.name'), textField(name(r.room.name), (v) => act.updateRoom(r.room.id, { name: v }))),
       row(t('room.number'), textField(r.room.number, (v) => act.updateRoom(r.room.id, { number: v }))),
       row(t('room.area'), readout(r.enclosed ? `${num(r.area)} m²` : '—')),
       row(t('room.perimeter'), readout(r.enclosed ? `${num(r.perimeter)} m` : '—')),

@@ -50,7 +50,16 @@ export interface DerivedGeometry {
 export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOpenings: readonly Opening[] = []): DerivedGeometry {
   const walls = [...doc.walls, ...extra];
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
-  const { pieces, warnings } = computeWallGeometry(walls, types);
+  // Walls join only within their level: one level's walls never cut, notch or warn about another's.
+  const byLevel = new Map<string, DocWall[]>();
+  for (const w of walls) byLevel.set(w.levelId, [...(byLevel.get(w.levelId) ?? []), w]);
+  const pieces = new Map<WallId, readonly Piece[]>();
+  const warnings: JoinWarning[] = [];
+  for (const list of byLevel.values()) {
+    const g = computeWallGeometry(list, types);
+    for (const [id, p] of g.pieces) pieces.set(id, p);
+    warnings.push(...g.warnings);
+  }
   const placed = deriveOpenings([...doc.openings, ...extraOpenings], hostsOf(doc, walls), doc.openingGroups);
   const byId = new Map(walls.map((w) => [w.id, w]));
   const openings = new Map<OpeningId, OpeningSolid>();
@@ -63,7 +72,9 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     const top = bottom + p.opening.height;
     const frame = wall && shape && typeof shape !== 'string' ? openingFrame(shape, p.start, p.end) : null;
     openings.set(p.opening.id, { ...p, frame, bottom, top });
-    if (frame && wall) cuts.set(wall.id, [...(cuts.get(wall.id) ?? []), { region: frame.region, bottom, top }]);
+    // One that does not fit in its wall cuts nothing: it would open the wall past its end and undo the
+    // joint there. It is drawn with its warning until it is fixed.
+    if (frame && wall && !p.warnings.includes('openingOutside')) cuts.set(wall.id, [...(cuts.get(wall.id) ?? []), { region: frame.region, bottom, top }]);
   }
   const solids = new Map<WallId, WallSolid>();
   for (const wall of walls) {

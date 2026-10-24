@@ -100,6 +100,8 @@ export function wireInput(app: App): void {
     }
     const at = worldAt(e);
     ui.cursor = at?.p ?? null;
+    // Only selecting highlights what is under the pointer; another tool must not leave it lit.
+    if (ui.tool !== 'select') ui.hover = null;
     if (ui.tool === 'wall') {
       const s = snapped(e);
       ui.snap = s;
@@ -286,8 +288,10 @@ export function wireInput(app: App): void {
       return app.refresh();
     }
     if (ctrl || e.altKey) return;
-    // Typing a number goes straight to the measure field, as in Revit and SketchUp.
-    const typing = ui.tool === 'wall' ? ui.wall.kind !== 'idle' : app.openingKind() ? ui.opening.kind === 'aiming' : ui.selection.size === 1;
+    // Typing a number goes straight to the measure field, as in Revit and SketchUp, while a measure is
+    // being asked for: drawing a wall or aiming an opening. A selection is edited by clicking its
+    // temporary dimensions or in the panel, so 1 and 2 keep switching the view.
+    const typing = ui.tool === 'wall' ? ui.wall.kind !== 'idle' : app.openingKind() ? ui.opening.kind === 'aiming' : false;
     if (/^[\d.,]$/.test(e.key) && typing) {
       e.preventDefault();
       shell.measure.focus();
@@ -336,8 +340,8 @@ export function wireInput(app: App): void {
 function showHelp(app: App): void {
   const back = app.shell.helpBack;
   const rows: [string, string][] = getLang() === 'pt'
-    ? [['V', 'Selecionar'], ['W', 'Parede'], ['D', 'Porta'], ['Shift+W', 'Janela'], ['1 / 2', '3D / Planta'], ['Enter', 'Terminar a sequência'], ['Esc', 'Cancelar / limpar seleção'], ['Del', 'Apagar seleção'], ['F / Home', 'Enquadrar seleção / tudo'], ['S', 'Encaixes'], ['Shift', 'Ângulo reto ao desenhar; somar à seleção'], ['Ctrl+Z / Ctrl+Shift+Z', 'Desfazer / refazer'], ['Shift+L', 'Idioma'], ['Rodinha', 'Aproximar no cursor'], ['Botão do meio', 'Mover a vista'], ['Shift + meio', 'Girar (3D)']]
-    : [['V', 'Select'], ['W', 'Wall'], ['D', 'Door'], ['Shift+W', 'Window'], ['1 / 2', '3D / Plan'], ['Enter', 'Finish the chain'], ['Esc', 'Cancel / clear selection'], ['Del', 'Delete selection'], ['F / Home', 'Frame selection / all'], ['S', 'Snaps'], ['Shift', 'Right angle while drawing; add to selection'], ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo'], ['Shift+L', 'Language'], ['Wheel', 'Zoom at the cursor'], ['Middle button', 'Pan'], ['Shift + middle', 'Orbit (3D)']];
+    ? [['V', 'Selecionar'], ['W', 'Parede'], ['A', 'Arco (desenhando parede)'], ['D', 'Porta'], ['Shift+W', 'Janela'], ['R', 'Cômodo'], ['L', 'Piso'], ['1 / 2', '3D / Planta'], ['Enter', 'Terminar a sequência'], ['Tab', 'Do comprimento para o ângulo (no campo Medida)'], ['Esc', 'Cancelar / limpar seleção'], ['Del', 'Apagar seleção'], ['F / Home', 'Enquadrar seleção / tudo'], ['S', 'Encaixes'], ['Shift', 'Ângulo reto ao desenhar; somar à seleção'], ['Ctrl+A', 'Selecionar todas as paredes do pavimento'], ['Ctrl+Z / Ctrl+Shift+Z', 'Desfazer / refazer'], ['Ctrl+Y', 'Refazer'], ['Ctrl+O / Ctrl+S', 'Abrir / salvar projeto'], ['Shift+L', 'Idioma'], ['?', 'Esta ajuda'], ['Rodinha', 'Aproximar no cursor'], ['Botão do meio', 'Mover a vista'], ['Shift + meio', 'Girar (3D)']]
+    : [['V', 'Select'], ['W', 'Wall'], ['A', 'Arc (while drawing walls)'], ['D', 'Door'], ['Shift+W', 'Window'], ['R', 'Room'], ['L', 'Floor'], ['1 / 2', '3D / Plan'], ['Enter', 'Finish the chain'], ['Tab', 'From length to angle (in the Measure field)'], ['Esc', 'Cancel / clear selection'], ['Del', 'Delete selection'], ['F / Home', 'Frame selection / all'], ['S', 'Snaps'], ['Shift', 'Right angle while drawing; add to selection'], ['Ctrl+A', 'Select every wall of the level'], ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo'], ['Ctrl+Y', 'Redo'], ['Ctrl+O / Ctrl+S', 'Open / save project'], ['Shift+L', 'Language'], ['?', 'This help'], ['Wheel', 'Zoom at the cursor'], ['Middle button', 'Pan'], ['Shift + middle', 'Orbit (3D)']];
   const close = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
   const dl = el('dl');
   for (const [k, v] of rows) dl.append(el('dt', {}, el('span', { class: 'kbd' }, k)), el('dd', {}, v));

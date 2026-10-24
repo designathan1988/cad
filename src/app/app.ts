@@ -11,6 +11,7 @@ import { addWalls, updateWalls } from '../elements/wall/commands';
 import {
   addOpening,
   alignHeads,
+  placementProblem,
   alignOpenings,
   deleteElements,
   distributeOpenings,
@@ -27,14 +28,14 @@ import type { WallId } from '../elements/wall/schema';
 import { PlanView } from '../render/plan-view';
 import { Scene3D } from '../render/scene-3d';
 import { ViewCube } from '../render/view-cube';
-import { getLang, name, num, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
+import { defaultName, getLang, htmlLang, name, num, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
 import { icon } from '../ui/icons';
 import { renderPanel } from '../ui/panel';
 import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui/shell';
 import { snapLabel, type Snap } from '../tools/snap';
 import { bulgeThrough, IDLE, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, hull } from './select-drag';
-import { type Doc, type DocWall, newDocument, type WallDefaults } from './document';
+import { type Doc, type DocWall, elementIds, newDocument, type WallDefaults } from './document';
 import { boundsOf, deriveGeometry, type DerivedGeometry, type OpeningSolid, openingOutline } from './geometry';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { readProject, writeProject } from '../io/project-file';
@@ -60,6 +61,8 @@ export interface UiState {
   snap: Snap | null;
   cursor: Point2 | null;
   error: string | null;
+  /** A message that is not an error (what just happened, or why nothing did): shown in the footer's normal colour. */
+  info: string | null;
   /** A move, stretch or window selection in progress: a preview until release. */
   drag: Drag | null;
   /** Corners of a floor outline being drawn. */
@@ -89,6 +92,7 @@ export class App {
   constructor(root: HTMLElement) {
     const prefs = loadPrefs();
     setLang(prefs.lang ?? (navigator.language.toLowerCase().startsWith('pt') ? 'pt' : 'en'));
+    document.documentElement.lang = htmlLang(getLang());
     this.store = createStore(loadDocument() ?? newDocument());
     const doc = this.store.get();
     this.ui = {
@@ -107,6 +111,7 @@ export class App {
       snap: null,
       cursor: null,
       error: null,
+      info: null,
       drag: null,
       floorDraft: [],
       dimEdit: null,
@@ -126,7 +131,10 @@ export class App {
     this.geometry = deriveGeometry(doc);
     this.store.subscribe((d) => {
       saveDocument(d);
-      for (const id of [...this.ui.selection]) if (!d.walls.some((w) => w.id === id) && !d.openings.some((o) => o.id === id)) this.ui.selection.delete(id);
+      this.ui.info = null;
+      // Only what no longer exists leaves the selection: editing a room or a floor keeps it selected.
+      const live = elementIds(d);
+      for (const id of [...this.ui.selection]) if (!live.has(id)) this.ui.selection.delete(id);
       this.refresh();
     });
     // The first framing waits until the viewport has a size: framing a 0 × 0 canvas sets a useless scale.
@@ -173,8 +181,22 @@ export class App {
     this.ui.opening = r.state;
     if (r.place) {
       const size = this.ui.openingDefaults[kind];
-      this.store.dispatch(addOpening(newOpening(newId(OPENING_PREFIX), r.place.wallId, kind, r.place.rule, { ...size, swing: r.place.swing })));
+      const opening = newOpening(newId(OPENING_PREFIX), r.place.wallId, kind, r.place.rule, { ...size, swing: r.place.swing });
+      const problem = placementProblem(this.store.get(), opening);
+      if (problem) {
+        this.ui.error = t('hint.openingRefused', { reason: t(`warn.${problem}`) });
+        return this.refresh();
+      }
+      this.ui.error = null;
+      this.store.dispatch(addOpening(opening));
     } else this.refresh();
+  }
+
+  /** While aiming: why the opening cannot go there, said before the click. */
+  private previewProblem(): string | null {
+    const p = this.geometry.openings.get(OPENING_PREVIEW_ID);
+    const k = p?.warnings.find((w) => w === 'openingOverlap' || w === 'openingOutside');
+    return k ? t('hint.openingRefused', { reason: t(`warn.${k}`) }) : null;
   }
 
   selectedRooms(): RoomSolid[] {
@@ -191,11 +213,12 @@ export class App {
     const existing = [...this.visibleGeometry().rooms.values()].find((r) => r.enclosed && insideRing(r.outline, p));
     if (existing) {
       this.ui.selection = new Set([existing.room.id]);
-      this.ui.error = t('hint.roomExists');
+      this.ui.error = null;
+      this.ui.info = t('hint.roomExists');
       return this.refresh();
     }
     const n = doc.rooms.filter((r) => r.levelId === this.ui.levelId).length + 1;
-    const room = { id: newId('room'), levelId: this.ui.levelId, seed: p, name: t('room.new', { n }), number: String(n) };
+    const room = { id: newId('room'), levelId: this.ui.levelId, seed: p, name: defaultName.room(n), number: String(n) };
     const probe = deriveGeometry({ ...doc, rooms: [room] }).rooms.get(room.id);
     if (!probe?.enclosed) {
       this.ui.error = t('hint.roomNotEnclosed');
@@ -214,11 +237,17 @@ export class App {
         const has = this.store.get().floors.find((f) => f.source.kind === 'room' && f.source.roomId === room.room.id);
         if (has) {
           this.ui.selection = new Set([has.id]);
-          this.ui.error = t('hint.floorExists');
+          this.ui.error = null;
+          this.ui.info = t('hint.floorExists');
           return this.refresh();
         }
         this.ui.error = null;
-        return this.store.dispatch(addFloor({ id: newId('floor'), levelId: this.ui.levelId, source: { kind: 'room', roomId: room.room.id }, ...FLOOR_DEFAULTS }));
+        // Said and selected at once, so the new floor is seen without clicking again.
+        const id = newId('floor');
+        this.store.dispatch(addFloor({ id, levelId: this.ui.levelId, source: { kind: 'room', roomId: room.room.id }, ...FLOOR_DEFAULTS }));
+        this.ui.selection = new Set([id]);
+        this.ui.info = t('hint.floorAdded', { room: name(room.room.name) });
+        return this.refresh();
       }
     }
     // Clicking the first corner again (within 10 px) closes the outline.
@@ -320,7 +349,9 @@ export class App {
     this.ui.opening = OPENING_IDLE;
     this.ui.floorDraft = [];
     this.ui.snap = null;
+    this.ui.hover = null;
     this.ui.error = null;
+    this.ui.info = null;
     this.shell.measure.value = '';
     if (tool !== 'select') this.ui.selection.clear();
     this.refresh();
@@ -424,6 +455,7 @@ export class App {
 
   setLanguage(lang: Lang): void {
     setLang(lang);
+    document.documentElement.lang = htmlLang(lang);
     savePrefs({ lang });
     this.shell.relabel();
     this.cube.relabel();
@@ -453,7 +485,7 @@ export class App {
     this.toast(t('toast.saved'));
   }
 
-  /** Opens a project file, replacing the current project (undo history starts over). */
+  /** Opens a project file in place of the current project, as one undo step. */
   async openFile(file: File): Promise<void> {
     const r = readProject(await file.text());
     if (!r.ok) {
@@ -464,12 +496,13 @@ export class App {
     this.ui.selection.clear();
     this.ui.drag = null;
     this.ui.levelId = r.doc.levels[0]!.id;
-    this.store.reset(r.doc);
+    // One undo step, like any other change: opening by mistake never loses the project that was open.
+    this.store.dispatch({ label: 'cmd.openProject', apply: () => r.doc });
     this.framed.plan = false;
     this.framed['3d'] = false;
     this.frameAll();
     const fixed = r.fixes.reduce((s, f) => s + f.count, 0);
-    this.toast(fixed > 0 ? t('toast.openedFixed', { n: fixed }) : t('toast.opened'));
+    this.toast(fixed > 1 ? t('toast.openedFixed', { n: fixed }) : fixed === 1 ? t('toast.openedFixedOne') : t('toast.openedUndo'));
   }
 
   toast(text: string): void {
@@ -519,7 +552,7 @@ export class App {
         grips: this.gripPoints(),
         roomLabels: [...this.visibleGeometry().rooms.values()].map((r) => ({
           at: r.room.seed,
-          name: `${r.room.number} · ${r.room.name}`,
+          name: `${r.room.number} · ${name(r.room.name)}`,
           area: r.enclosed ? `${num(r.area)} m²` : t('warn.roomNotEnclosed'),
           warn: !r.enclosed,
         })),
@@ -769,18 +802,20 @@ export class App {
           ? d.b.x < d.a.x
             ? 'hint.marqueeCrossing'
             : 'hint.marqueeWindow'
-          : ui.selection.size > 0
-            ? 'hint.selected'
-            : 'hint.select';
+          : ui.selection.size > 1
+            ? 'hint.selectedMany'
+            : ui.selection.size === 1
+              ? 'hint.selected'
+              : 'hint.select';
     const placing = this.openingKind();
     const aiming = placing !== null && ui.opening.kind === 'aiming';
     const openingHint = placing
       ? ui.opening.kind === 'aiming'
-        ? t('hint.openingAim', { rule: ruleText(ui.opening.rule) })
+        ? this.previewProblem() ?? t('hint.openingAim', { rule: ruleText(ui.opening.rule) })
         : t('hint.openingPlace', { kind: t(placing === 'door' ? 'panel.door' : 'panel.window').toLowerCase() })
       : null;
     const toolHint = ui.tool === 'room' ? t('hint.roomPlace') : ui.tool === 'floor' ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace') : null;
-    shell.instr.textContent = ui.error ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size });
+    shell.instr.textContent = ui.error ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size });
     shell.instr.classList.toggle('error', ui.error !== null);
     const keys = placing || ui.tool === 'room'
       ? [keyHint('Esc', t('key.exit'))]
@@ -848,8 +883,13 @@ export class App {
     }
     const w = bar.offsetWidth || 104;
     const h = bar.offsetHeight || 36;
+    // Never over a temporary dimension's value: the bar goes above them all, or below when no room.
+    const dims = [...this.shell.dims.children].map((c) => c.getBoundingClientRect()).map((r) => ({ top: r.top - vp.top, bottom: r.bottom - vp.top, left: r.left - vp.left, right: r.right - vp.left }));
+    const left = Math.min(Math.max(8, x - w / 2), vp.width - w - 8);
+    const hits = (top: number) => dims.some((d) => d.left < left + w && left < d.right && d.top < top + h && top < d.bottom);
     let y = yTop - h - 10;
-    if (y < 8) y = yBottom + 10;
+    if (hits(y)) y = Math.min(...dims.map((d) => d.top)) - h - 8;
+    if (y < 8 || hits(y)) y = Math.max(yBottom, ...dims.map((d) => d.bottom)) + 10;
     bar.style.left = `${Math.min(Math.max(8, x - w / 2), vp.width - w - 8)}px`;
     bar.style.top = `${Math.min(Math.max(8, y), vp.height - h - 8)}px`;
   }

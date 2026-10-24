@@ -32,9 +32,24 @@ export const updateLevel = (id: LevelId, patch: Partial<Omit<Level, 'id'>>): Com
   },
 });
 
-/** Whether a level can be deleted: not the last one, and no wall stands on it. */
-export const canDeleteLevel = (doc: Doc, id: LevelId): boolean =>
-  doc.levels.length > 1 && doc.levels.some((l) => l.id === id) && !doc.walls.some((w) => w.levelId === id);
+/** Why a level cannot be deleted: it is the last one, or walls stand on it. Null when it can be. */
+export function deleteBlocker(doc: Doc, id: LevelId): 'last' | 'walls' | 'missing' | null {
+  if (!doc.levels.some((l) => l.id === id)) return 'missing';
+  if (doc.levels.length <= 1) return 'last';
+  return doc.walls.some((w) => w.levelId === id) ? 'walls' : null;
+}
+
+export const canDeleteLevel = (doc: Doc, id: LevelId): boolean => deleteBlocker(doc, id) === null;
+
+/** Levels whose floor-to-floor height reaches above the floor of the next level up, and by how much. */
+export function levelOverlaps(doc: Doc): { levelId: LevelId; aboveId: LevelId; by: number }[] {
+  const sorted = [...doc.levels].sort((a, b) => a.elevation - b.elevation);
+  return sorted.flatMap((l, i) => {
+    const above = sorted[i + 1];
+    const by = above ? l.elevation + l.height - above.elevation : 0;
+    return above && by > 1e-9 ? [{ levelId: l.id, aboveId: above.id, by }] : [];
+  });
+}
 
 export const deleteLevel = (id: LevelId): Command<Doc> => ({
   label: 'cmd.deleteLevel',

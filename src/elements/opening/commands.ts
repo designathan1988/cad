@@ -6,8 +6,15 @@
 import { type Doc, wallHeights } from '../../app/document';
 import type { Command } from '../../core/store';
 import { deriveGeometry } from '../../app/geometry';
-import { deriveOpenings, hostsOf, type PlacedOpening } from './derive';
+import { deriveOpenings, hostsOf, type OpeningWarningKind, type PlacedOpening } from './derive';
 import type { AlignEdge, GroupSpacing, Opening, OpeningGroupId, OpeningId, PositionRule, RuleKind } from './schema';
+
+/** Why a new opening cannot go where it is aimed (it overlaps another, or does not fit), or null. */
+export function placementProblem(doc: Doc, opening: Opening): OpeningWarningKind | null {
+  const placed = deriveOpenings([...doc.openings, opening], hostsOf(doc), doc.openingGroups).placed.get(opening.id);
+  const blocking: OpeningWarningKind[] = ['openingOverlap', 'openingOutside'];
+  return placed?.warnings.find((k) => blocking.includes(k)) ?? null;
+}
 
 export const addOpening = (opening: Opening): Command<Doc> => ({
   label: 'cmd.addOpening',

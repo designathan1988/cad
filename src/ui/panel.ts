@@ -124,12 +124,13 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     if (mine.length > 0) {
       const box = el('div', { class: 'warn-list', role: 'status' });
       box.innerHTML = icon('warning', 16);
-      box.append(el('div', {}, ...mine.map((w) => el('div', {}, t(`warn.${w.kind}` as MessageKey)))));
+      // One line per kind: the same problem at two joints reads once.
+      box.append(el('div', {}, ...[...new Set(mine.map((w) => w.kind))].map((k) => el('div', {}, t(`warn.${k}` as MessageKey)))));
       nodes.push(box);
     }
   } else if (input.rooms.length > 0) {
     const one = input.rooms.length === 1 ? input.rooms[0]! : null;
-    nodes.push(head('room', one ? t('room.title', { name: one.room.name }) : t('room.titleMany', { n: input.rooms.length })));
+    nodes.push(head('room', one ? t('room.title', { name: name(one.room.name) }) : t('room.titleMany', { n: input.rooms.length })));
     nodes.push(...roomPanel(input.rooms, act.room));
   } else if (input.floors.length > 0) {
     nodes.push(head('slab', input.floors.length === 1 ? t('floor.title') : t('floor.titleMany', { n: input.floors.length })));

@@ -73,7 +73,9 @@ const en = {
   'hint.moving': 'Release to place it. Shift keeps it straight, Esc cancels',
   'hint.marqueeWindow': 'Selects what is wholly inside',
   'hint.marqueeCrossing': 'Selects everything the box touches',
-  'hint.selected': '{n} selected. Edit in the panel or type a new value',
+  'hint.selected': '1 selected. Edit in the panel, or click a dimension to type a value',
+  'hint.selectedMany': '{n} selected. Edit them together in the panel',
+  'hint.floorAdded': 'Floor added to {room}: it is selected',
   'hint.wallStart': 'Click the start point of the wall',
   'hint.wallNext': 'Click the end point or type the length (Tab: angle)',
   'hint.wallNextClose': 'Click the next point, or the start point to close',
@@ -180,6 +182,7 @@ const en = {
   'warn.openingNoHost': 'Its wall no longer exists',
   'warn.openingBadReference': 'Its reference opening is missing or circular: centred',
   'warn.openingOutside': 'Does not fit inside the wall',
+  'hint.openingRefused': 'Cannot place it here: {reason}',
   'warn.openingOverlap': 'Overlaps another opening',
   'warn.openingTooTall': 'Taller than the wall',
   'cmd.addOpening': 'Place opening',
@@ -199,10 +202,15 @@ const en = {
   'help.close': 'Close',
   'top.open': 'Open project (Ctrl+O)',
   'toast.opened': 'Project opened',
-  'toast.openedFixed': 'Project opened; {n} bad element(s) were left out',
+  'toast.openedFixed': 'Project opened; {n} bad elements were left out. Ctrl+Z goes back',
   'open.notJson': 'That file is not a project: it is not JSON. Choose a .json saved by this app',
   'open.notProject': 'That file is not a project of this app. Choose a .json saved by it',
   'open.newerVersion': 'That project was saved by a newer version of the app. Update the app to open it',
+  'open.noLevels': 'That project has no valid level, so nothing in it can be placed',
+  'open.noWallTypes': 'That project has no valid wall type, so its walls cannot be built',
+  'toast.openedFixedOne': 'Project opened; 1 bad element was left out. Ctrl+Z goes back',
+  'toast.openedUndo': 'Project opened. Ctrl+Z goes back to the previous one',
+  'cmd.openProject': 'Open project',
   'tool.roomKey': 'Room (R)',
   'tool.floorKey': 'Floor (L)',
   'room.new': 'Room {n}',
@@ -236,7 +244,9 @@ const en = {
   'levels.height': 'Floor height',
   'levels.add': 'Add level',
   'levels.delete': 'Delete level',
-  'levels.cantDelete': 'Move or delete its walls first; the last level cannot be deleted',
+  'levels.cantDeleteWalls': 'Move or delete its walls first',
+  'levels.cantDeleteLast': 'The last level cannot be deleted',
+  'levels.overlap': 'Reaches {d} m above the floor of {above}',
   'levels.new': 'Level {n}',
   'cmd.addLevel': 'Add level',
   'cmd.updateLevel': 'Edit level',
@@ -316,7 +326,9 @@ const pt: Record<MessageKey, string> = {
   'hint.moving': 'Solte para posicionar. Shift mantém reto, Esc cancela',
   'hint.marqueeWindow': 'Seleciona o que estiver inteiro dentro',
   'hint.marqueeCrossing': 'Seleciona tudo o que a caixa tocar',
-  'hint.selected': '{n} selecionado(s). Edite no painel ou digite um valor',
+  'hint.selected': '1 selecionado. Edite no painel ou clique numa cota para digitar um valor',
+  'hint.selectedMany': '{n} selecionados. Edite todos juntos no painel',
+  'hint.floorAdded': 'Piso criado em {room}: ele está selecionado',
   'hint.wallStart': 'Clique no ponto inicial da parede',
   'hint.wallNext': 'Clique no ponto final ou digite o comprimento (Tab: ângulo)',
   'hint.wallNextClose': 'Clique no próximo ponto, ou no inicial para fechar',
@@ -423,6 +435,7 @@ const pt: Record<MessageKey, string> = {
   'warn.openingNoHost': 'A parede dela não existe mais',
   'warn.openingBadReference': 'A abertura de referência sumiu ou é circular: centralizada',
   'warn.openingOutside': 'Não cabe dentro da parede',
+  'hint.openingRefused': 'Não dá para colocar aqui: {reason}',
   'warn.openingOverlap': 'Sobrepõe outra abertura',
   'warn.openingTooTall': 'Mais alta que a parede',
   'cmd.addOpening': 'Colocar abertura',
@@ -442,10 +455,15 @@ const pt: Record<MessageKey, string> = {
   'help.close': 'Fechar',
   'top.open': 'Abrir projeto (Ctrl+O)',
   'toast.opened': 'Projeto aberto',
-  'toast.openedFixed': 'Projeto aberto; {n} elemento(s) com defeito ficaram de fora',
+  'toast.openedFixed': 'Projeto aberto; {n} elementos com defeito ficaram de fora. Ctrl+Z volta',
   'open.notJson': 'Esse arquivo não é um projeto: não é JSON. Escolha um .json salvo por este app',
   'open.notProject': 'Esse arquivo não é um projeto deste app. Escolha um .json salvo por ele',
   'open.newerVersion': 'Esse projeto foi salvo por uma versão mais nova do app. Atualize o app para abri-lo',
+  'open.noLevels': 'Esse projeto não tem nenhum pavimento válido, então nada nele pode ser posicionado',
+  'open.noWallTypes': 'Esse projeto não tem nenhum tipo de parede válido, então as paredes não podem ser montadas',
+  'toast.openedFixedOne': 'Projeto aberto; 1 elemento com defeito ficou de fora. Ctrl+Z volta',
+  'toast.openedUndo': 'Projeto aberto. Ctrl+Z volta ao anterior',
+  'cmd.openProject': 'Abrir projeto',
   'tool.roomKey': 'Cômodo (R)',
   'tool.floorKey': 'Piso (L)',
   'room.new': 'Cômodo {n}',
@@ -479,7 +497,9 @@ const pt: Record<MessageKey, string> = {
   'levels.height': 'Pé-direito',
   'levels.add': 'Adicionar pavimento',
   'levels.delete': 'Apagar pavimento',
-  'levels.cantDelete': 'Mova ou apague as paredes dele antes; o último pavimento não pode ser apagado',
+  'levels.cantDeleteWalls': 'Mova ou apague as paredes dele antes',
+  'levels.cantDeleteLast': 'O último pavimento não pode ser apagado',
+  'levels.overlap': 'Passa {d} m acima do piso de {above}',
   'levels.new': 'Pavimento {n}',
   'cmd.addLevel': 'Adicionar pavimento',
   'cmd.updateLevel': 'Editar pavimento',
@@ -500,16 +520,33 @@ let lang: Lang = 'en';
 export const getLang = (): Lang => lang;
 export const setLang = (l: Lang): void => {
   lang = l;
-  document.documentElement.lang = l === 'pt' ? 'pt-BR' : 'en';
 };
+/** The page's lang attribute for the language (set by the app, which owns the page). */
+export const htmlLang = (l: Lang): string => (l === 'pt' ? 'pt-BR' : 'en');
 
 export function t(key: MessageKey, vars: Readonly<Record<string, string | number>> = {}): string {
   const text = lang === 'pt' ? pt[key] : en[key];
   return text.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? ''));
 }
 
+/** Default names the app gives, stored in one form so they read in the language of the moment. */
+export const defaultName = {
+  level: (n: number): string => `Level ${n}`,
+  room: (n: number): string => `Room ${n}`,
+};
+const ptPatterns: readonly [RegExp, string][] = [
+  [/^Level (\d+)$/, 'Pavimento $1'],
+  [/^Room (\d+)$/, 'Cômodo $1'],
+];
+
 /** A user-facing name stored in the document: built-in names are translated, the user's are not. */
-export const name = (stored: string): string => (lang === 'pt' ? (ptNames[stored] ?? stored) : stored);
+export const name = (stored: string): string => {
+  if (lang !== 'pt') return stored;
+  const known = ptNames[stored];
+  if (known) return known;
+  const p = ptPatterns.find(([re]) => re.test(stored));
+  return p ? stored.replace(p[0], p[1]) : stored;
+};
 
 /** Numbers as the language writes them: 4,50 in Portuguese, 4.50 in English. */
 export const num = (value: number, digits = 2): string =>

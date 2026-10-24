@@ -15,7 +15,7 @@ import type { DocWall } from '../app/document';
  */
 export const CURRENT_VERSION = 2;
 
-export type ReadError = 'notJson' | 'notProject' | 'newerVersion';
+export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
   | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups'; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
@@ -115,7 +115,8 @@ export function repairProject(raw: unknown): ReadResult {
   if (raw.version > CURRENT_VERSION) return { ok: false, error: 'newerVersion' };
   const levels = Array.isArray(raw.levels) ? raw.levels.filter(isLevel) : [];
   const wallTypes = Array.isArray(raw.wallTypes) ? raw.wallTypes.filter(isWallType) : [];
-  if (levels.length === 0 || wallTypes.length === 0) return { ok: false, error: 'notProject' };
+  if (levels.length === 0) return { ok: false, error: 'noLevels' };
+  if (wallTypes.length === 0) return { ok: false, error: 'noWallTypes' };
   const fixes: Fix[] = [];
   const keep = <T>(list: unknown, ok: (x: unknown) => x is T, kind: Extract<Fix, { count: number }>['kind']): T[] => {
     // Lists missing from older versions are empty, not errors.
