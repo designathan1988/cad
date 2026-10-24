@@ -14,6 +14,8 @@ export interface Prefs {
   theme?: 'light' | 'dark';
   view?: '3d' | 'plan';
   panelOpen?: boolean;
+  /** The first-use tour was taken, skipped or declined: it is not offered again. */
+  tourSeen?: boolean;
 }
 
 function storage(): Storage | null {

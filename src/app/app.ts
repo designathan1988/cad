@@ -422,6 +422,35 @@ export class App {
     return false;
   }
 
+  /** Every wall of the current level, with the select tool. */
+  selectAllWalls(): void {
+    this.setTool('select');
+    for (const w of this.store.get().walls) if (w.levelId === this.ui.levelId) this.ui.selection.add(w.id);
+    this.refresh();
+  }
+
+  clearSelection(): void {
+    this.ui.selection.clear();
+    this.refresh();
+  }
+
+  toggleSnaps(): void {
+    this.ui.snaps = !this.ui.snaps;
+    this.render();
+  }
+
+  otherLanguage(): Lang {
+    return getLang() === 'en' ? 'pt' : 'en';
+  }
+
+  /** Shows another level in plan; the selection, which belonged to the old one, is cleared. */
+  setLevel(id: string): void {
+    if (!this.store.get().levels.some((l) => l.id === id)) return;
+    this.ui.levelId = id;
+    this.ui.selection.clear();
+    this.refresh();
+  }
+
   deleteSelection(): void {
     if (this.ui.selection.size === 0) return;
     this.store.dispatch(deleteElements([...this.ui.selection]));
@@ -835,7 +864,7 @@ export class App {
         : [keyHint('A', t('key.arc')), keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.exit'))]
       : ui.selection.size > 0
         ? [keyHint('Shift', t('key.addRemove')), keyHint('Del', t('key.delete')), keyHint('F', t('key.frame')), keyHint('Esc', t('key.clear'))]
-        : [keyHint('Ctrl A', t('key.selectAll')), keyHint('?', t('key.shortcuts'))];
+        : [keyHint('Ctrl K', t('key.commands')), keyHint('Ctrl A', t('key.selectAll')), keyHint('?', t('key.shortcuts'))];
     shell.keys.replaceChildren(...keys);
     const lengthMode = drawing && w.kind === 'drawing';
     const distanceMode = aiming || (ui.selection.size === 1 && this.selectedOpenings().length === 1);

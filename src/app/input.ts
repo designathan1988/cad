@@ -13,10 +13,21 @@ import { selectGestures } from './select-drag';
 import { insideRing } from '../elements/room/derive';
 import { EDIT_LEVELS } from './app';
 import { showLevels } from '../ui/levels-dialog';
+import { showPalette } from '../ui/palette';
+import { offerTour, startTour } from '../ui/tour';
+import { appActions, type Openers } from './actions';
 import type { WallId } from '../elements/wall/schema';
 
 export function wireInput(app: App): void {
   const { shell, ui } = app;
+  const openers: Openers = {
+    help: () => showHelp(app),
+    levels: () => showLevels(app),
+    tour: () => startTour(app),
+    openFile: () => shell.fileInput.click(),
+  };
+  const palette = () => showPalette(appActions(app, openers));
+  offerTour(app);
   let panning: { x: number; y: number } | null = null;
   let downAt: { x: number; y: number } | null = null;
   let shift = false;
@@ -198,11 +209,9 @@ export function wireInput(app: App): void {
       shell.level.value = ui.levelId;
       return showLevels(app);
     }
-    ui.levelId = shell.level.value;
-    ui.selection.clear();
-    app.refresh();
+    app.setLevel(shell.level.value);
   });
-  shell.lang.addEventListener('click', () => app.setLanguage(getLang() === 'en' ? 'pt' : 'en'));
+  shell.lang.addEventListener('click', () => app.setLanguage(app.otherLanguage()));
   shell.theme.addEventListener('click', () => app.toggleTheme());
   shell.save.addEventListener('click', () => app.saveFile());
   shell.open.addEventListener('click', () => shell.fileInput.click());
@@ -221,11 +230,9 @@ export function wireInput(app: App): void {
   shell.floatDelete.addEventListener('click', () => app.deleteSelection());
   shell.floatZoom.addEventListener('click', () => app.frameSelection());
   shell.floatFrame.addEventListener('click', () => app.frameAll());
-  shell.snapBtn.addEventListener('click', () => {
-    ui.snaps = !ui.snaps;
-    app.render();
-  });
+  shell.snapBtn.addEventListener('click', () => app.toggleSnaps());
   shell.shortcuts.addEventListener('click', () => showHelp(app));
+  shell.commands.addEventListener('click', () => palette());
   // The preview follows what is typed, before Enter: the wall preview is geometry, so refresh it.
   shell.measure.addEventListener('input', () => app.refresh());
   shell.measure.addEventListener('keydown', (e) => {
@@ -283,9 +290,11 @@ export function wireInput(app: App): void {
     }
     if (ctrl && key === 'a') {
       e.preventDefault();
-      app.setTool('select');
-      for (const w of app.store.get().walls) if (w.levelId === ui.levelId) ui.selection.add(w.id);
-      return app.refresh();
+      return app.selectAllWalls();
+    }
+    if (ctrl && key === 'k') {
+      e.preventDefault();
+      return palette();
     }
     if (ctrl || e.altKey) return;
     // Typing a number goes straight to the measure field, as in Revit and SketchUp, while a measure is
@@ -319,7 +328,7 @@ export function wireInput(app: App): void {
     if (e.key === 'Delete' || e.key === 'Backspace') return app.deleteSelection();
     if (e.key === 'Home') return app.frameAll();
     if (e.key === '?') return showHelp(app);
-    if (e.shiftKey && key === 'l') return app.setLanguage(getLang() === 'en' ? 'pt' : 'en');
+    if (e.shiftKey && key === 'l') return app.setLanguage(app.otherLanguage());
     if (e.shiftKey && key === 'w') return app.setTool('window');
     if (e.shiftKey) return;
     if (key === 'w') return app.setTool('wall');
@@ -329,10 +338,7 @@ export function wireInput(app: App): void {
     if (key === 'l') return app.setTool('floor');
     if (key === 'v') return app.setTool('select');
     if (key === 'f') return app.frameSelection();
-    if (key === 's') {
-      ui.snaps = !ui.snaps;
-      return app.render();
-    }
+    if (key === 's') return app.toggleSnaps();
     if (key === '1') return app.setView('3d');
     if (key === '2') return app.setView('plan');
   });
@@ -341,8 +347,8 @@ export function wireInput(app: App): void {
 function showHelp(app: App): void {
   const back = app.shell.helpBack;
   const rows: [string, string][] = getLang() === 'pt'
-    ? [['V', 'Selecionar'], ['W', 'Parede'], ['A', 'Arco (desenhando parede)'], ['D', 'Porta'], ['Shift+W', 'Janela'], ['R', 'Cômodo'], ['L', 'Piso'], ['1 / 2', '3D / Planta'], ['Enter', 'Terminar a sequência'], ['Tab', 'Do comprimento para o ângulo (no campo Medida)'], ['Esc', 'Cancelar / limpar seleção'], ['Del', 'Apagar seleção'], ['F / Home', 'Enquadrar seleção / tudo'], ['S', 'Encaixes'], ['Shift', 'Ângulo reto ao desenhar; somar à seleção'], ['Ctrl+A', 'Selecionar todas as paredes do pavimento'], ['Ctrl+Z / Ctrl+Shift+Z', 'Desfazer / refazer'], ['Ctrl+Y', 'Refazer'], ['Ctrl+O / Ctrl+S', 'Abrir / salvar projeto'], ['Shift+L', 'Idioma'], ['?', 'Esta ajuda'], ['Rodinha', 'Aproximar no cursor'], ['Botão do meio', 'Mover a vista'], ['Shift + meio', 'Girar (3D)']]
-    : [['V', 'Select'], ['W', 'Wall'], ['A', 'Arc (while drawing walls)'], ['D', 'Door'], ['Shift+W', 'Window'], ['R', 'Room'], ['L', 'Floor'], ['1 / 2', '3D / Plan'], ['Enter', 'Finish the chain'], ['Tab', 'From length to angle (in the Measure field)'], ['Esc', 'Cancel / clear selection'], ['Del', 'Delete selection'], ['F / Home', 'Frame selection / all'], ['S', 'Snaps'], ['Shift', 'Right angle while drawing; add to selection'], ['Ctrl+A', 'Select every wall of the level'], ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo'], ['Ctrl+Y', 'Redo'], ['Ctrl+O / Ctrl+S', 'Open / save project'], ['Shift+L', 'Language'], ['?', 'This help'], ['Wheel', 'Zoom at the cursor'], ['Middle button', 'Pan'], ['Shift + middle', 'Orbit (3D)']];
+    ? [['V', 'Selecionar'], ['W', 'Parede'], ['A', 'Arco (desenhando parede)'], ['D', 'Porta'], ['Shift+W', 'Janela'], ['R', 'Cômodo'], ['L', 'Piso'], ['1 / 2', '3D / Planta'], ['Enter', 'Terminar a sequência'], ['Tab', 'Do comprimento para o ângulo (no campo Medida)'], ['Esc', 'Cancelar / limpar seleção'], ['Del', 'Apagar seleção'], ['F / Home', 'Enquadrar seleção / tudo'], ['S', 'Encaixes'], ['Shift', 'Ângulo reto ao desenhar; somar à seleção'], ['Ctrl+A', 'Selecionar todas as paredes do pavimento'], ['Ctrl+Z / Ctrl+Shift+Z', 'Desfazer / refazer'], ['Ctrl+Y', 'Refazer'], ['Ctrl+O / Ctrl+S', 'Abrir / salvar projeto'], ['Shift+L', 'Idioma'], ['Ctrl+K', 'Comandos: achar qualquer ação pelo nome'], ['?', 'Esta ajuda'], ['Rodinha', 'Aproximar no cursor'], ['Botão do meio', 'Mover a vista'], ['Shift + meio', 'Girar (3D)']]
+    : [['V', 'Select'], ['W', 'Wall'], ['A', 'Arc (while drawing walls)'], ['D', 'Door'], ['Shift+W', 'Window'], ['R', 'Room'], ['L', 'Floor'], ['1 / 2', '3D / Plan'], ['Enter', 'Finish the chain'], ['Tab', 'From length to angle (in the Measure field)'], ['Esc', 'Cancel / clear selection'], ['Del', 'Delete selection'], ['F / Home', 'Frame selection / all'], ['S', 'Snaps'], ['Shift', 'Right angle while drawing; add to selection'], ['Ctrl+A', 'Select every wall of the level'], ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo'], ['Ctrl+Y', 'Redo'], ['Ctrl+O / Ctrl+S', 'Open / save project'], ['Shift+L', 'Language'], ['Ctrl+K', 'Commands: find any action by name'], ['?', 'This help'], ['Wheel', 'Zoom at the cursor'], ['Middle button', 'Pan'], ['Shift + middle', 'Orbit (3D)']];
   const close = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
   const dl = el('dl');
   for (const [k, v] of rows) dl.append(el('dt', {}, el('span', { class: 'kbd' }, k)), el('dd', {}, v));

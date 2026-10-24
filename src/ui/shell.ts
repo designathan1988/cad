@@ -51,7 +51,6 @@ export function buildShell(root: HTMLElement) {
 
   const right = el('div', { class: 'right' });
   const commands = iconButton('command', 'icon-btn needs-keyboard');
-  commands.disabled = true;
   const shortcuts = iconButton('keyboard', 'icon-btn needs-keyboard');
   const lang = el('button', { type: 'button', class: 'icon-btn text-btn' });
   const theme = iconButton('moon');
@@ -127,7 +126,7 @@ export function buildShell(root: HTMLElement) {
   const parts = {
     homeBtn, projectName, undo, redo, level, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
     panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, viewport, planCanvas, glCanvas, floatBar, floatDelete, floatZoom, floatFrame, dims,
-    emptyHint, toast, panel, instr, keys, measureLabel, measure, snapBtn, coords, helpBack,
+    emptyHint, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack,
   };
 
   const relabel = () => {
@@ -138,8 +137,7 @@ export function buildShell(root: HTMLElement) {
     tip(homeBtn, 'float.frame');
     tip(undo, 'top.undo');
     tip(redo, 'top.redo');
-    commands.title = `${t('top.commands')}: ${t('tool.soon')}`;
-    commands.setAttribute('aria-label', commands.title);
+    tip(commands, 'top.commands');
     tip(shortcuts, 'top.shortcuts');
     tip(lang, 'top.language');
     tip(theme, 'top.theme');
