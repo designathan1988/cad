@@ -38,3 +38,38 @@ describe('names and keys agree', () => {
     expect(firstWords).toEqual(['Desenhar', 'Colocar', 'Colocar', 'Criar', 'Criar', 'Voltar', 'Avançar', 'Deixar', 'Trocar', 'Mostrar', 'Abrir']);
   });
 });
+
+describe('the top bar, footer and help say what the palette says', () => {
+  afterEach(() => setLang('en'));
+
+  for (const lang of ['en', 'pt'] as const) {
+    it(`${lang}: each button's tooltip is the palette name, with the key when it has one`, () => {
+      setLang(lang);
+      const pairs: [MessageKey, string][] = [
+        ['top.undo', `${t('pal.undo')} (Ctrl+Z)`],
+        ['top.redo', `${t('pal.redo')} (Ctrl+Shift+Z)`],
+        ['top.commands', `${t('pal.commands')} (Ctrl+K)`],
+        ['top.shortcuts', `${t('pal.shortcuts')} (?)`],
+        ['top.language', `${t('pal.language')} (Shift+L)`],
+        ['top.theme', t('pal.theme')],
+        ['top.export', `${t('pal.save')} (Ctrl+S)`],
+        ['top.open', `${t('pal.open')} (Ctrl+O)`],
+        ['top.panel', t('pal.panel')],
+        ['foot.snap', `${t('pal.snaps')} (S)`],
+        ['tool.sidebar', t('pal.browser')],
+      ];
+      for (const [key, text] of pairs) expect(t(key), key).toBe(text);
+    });
+
+    it(`${lang}: the footer's short hint for Ctrl+A is the palette name in lower case`, () => {
+      setLang(lang);
+      expect(t('key.selectAll')).toBe(t('pal.selectAll').toLowerCase());
+    });
+  }
+
+  it('pt: the top bar buttons start with a verb', () => {
+    setLang('pt');
+    const first = (['top.commands', 'top.shortcuts', 'top.language', 'top.theme', 'top.export', 'top.open', 'foot.snap'] as MessageKey[]).map((k) => t(k).split(' ')[0]);
+    expect(first).toEqual(['Abrir', 'Mostrar', 'Trocar', 'Trocar', 'Salvar', 'Abrir', 'Ligar']);
+  });
+});
