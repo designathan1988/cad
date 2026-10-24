@@ -58,8 +58,8 @@ describe('opening commands', () => {
 
   it('hosts: the wall length and its height from the level', () => {
     const h = hostsOf(setup().get());
-    expect(h.get('w')).toEqual({ length: 5, height: 2.8 });
-    expect(h.get('v')).toEqual({ length: 3, height: 2.8 });
+    expect(h.get('w')).toEqual({ length: 5, height: 2.8, line: { start: { x: 0, y: 0 }, end: { x: 5, y: 0 } } });
+    expect(h.get('v')).toEqual({ length: 3, height: 2.8, line: { start: { x: 0, y: 0 }, end: { x: 3, y: 0 } } });
   });
 
   it('deleting a wall deletes the openings it hosts, in one step', () => {

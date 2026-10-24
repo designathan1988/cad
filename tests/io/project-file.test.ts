@@ -29,7 +29,31 @@ describe('project files', () => {
     expect(r.doc.openings).toEqual([]);
     expect(r.doc.rooms).toEqual([]);
     expect(r.doc.floors).toEqual([]);
+    expect(r.doc.openingGroups).toEqual([]);
     expect(r.doc.version).toBe(CURRENT_VERSION);
+  });
+
+  it('a version 1 file is read as the current version, with no opening groups', () => {
+    const { openingGroups: _g, ...v1 } = { ...newDocument(), version: 1 };
+    const r = readProject(JSON.stringify(v1));
+    expect(r.ok && r.doc.openingGroups).toEqual([]);
+    expect(r.ok && r.doc.version).toBe(2);
+    expect(r.ok && r.fixes).toEqual([]);
+  });
+
+  it('opening groups and the new rules read back; a bad group is dropped and reported', () => {
+    const opening = (id: string, rule: unknown) => ({ id, wallId: 'a', kind: 'window', width: 1, height: 1, sill: 1, hinge: 'start', swing: 'left', rule });
+    const group = { id: 'g', wallId: 'a', members: ['o1', 'o2'], spacing: { kind: 'fixed', gap: 0.5, anchor: 'centered', distance: 0 } };
+    const doc = {
+      ...newDocument(),
+      walls: [wall('a', 0)],
+      openings: [opening('o1', { kind: 'inGroup', groupId: 'g' }), opening('o2', { kind: 'inGroup', groupId: 'g' }), opening('o3', { kind: 'aligned', openingId: 'o1', edge: 'center' })],
+      openingGroups: [group, { id: 'bad', wallId: 'a', members: 'o1', spacing: { kind: 'equal' } }],
+    };
+    const r = readProject(JSON.stringify(doc));
+    expect(r.ok && r.doc.openings.map((o) => o.id)).toEqual(['o1', 'o2', 'o3']);
+    expect(r.ok && r.doc.openingGroups).toEqual([group]);
+    expect(r.ok && r.fixes).toEqual([{ kind: 'droppedGroups', count: 1 }]);
   });
 
   it('bad elements are dropped and reported, the rest of the project is kept', () => {
