@@ -38,6 +38,8 @@ export interface Wall {
   readonly start: Point2;
   readonly end: Point2;
   readonly referenceLine: ReferenceLine;
+  /** 0 or absent: straight. Otherwise tan(sweep / 4), positive counter-clockwise (DXF's bulge). */
+  readonly bulge?: number;
 }
 
 export interface EndRef {

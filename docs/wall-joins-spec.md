@@ -947,3 +947,25 @@ cenas, da contagem de regras e dos mutantes. Ela continua disponível
 - [SpecBench (arXiv 2605.21384)](https://arxiv.org/html/2605.21384v1) — suíte visível satura; held-out mede o buraco
 - [Mutation testing com Stryker](https://qaskills.sh/blog/mutation-testing-stryker-guide)
 - [Computing Mitered Offset Curves Based on Straight Skeletons](https://www.tandfonline.com/doi/full/10.1080/16864360.2014.997637) — base teórica do offset com miter
+
+### Entrega 6, parte 1 — arcos
+
+Parede em arco (`bulge`, convenção DXF) expandida numa cadeia de trechos retos (`geometry/arc.ts`): as
+cordas de círculos concêntricos entre os mesmos ângulos são paralelas, então cada trecho é uma parede
+reta com os offsets das camadas multiplicados por cos(Δ/2), e o miter entre trechos vizinhos cai na
+radial. Contagem de trechos pela fórmula da §5.2 com `ARC_SAG` (ADR 0001). Pontas livres radiais.
+Arco com face de raio ≤ 0: aviso `arcTooTight`, nada desenhado.
+
+Juntas: L nas pontas do arco e nós sobre a cadeia usam o motor de sempre. Um T contra o arco só é
+feito se tudo o que a parede põe dentro dele cabe num trecho (setor radial); senão, e para todo X com
+arco, aviso `complexJoin` e as paredes ficam como desenhadas. Uma última verificação acusa qualquer
+sobreposição que sobrar entre um arco e outra parede.
+
+| Medida | Resultado |
+|---|---|
+| Testes | 13 casos à mão de arcos; suíte inteira 146/146 |
+
+**Defeito aberto** (achado pela verificação por amostragem `oracle-arc.ts`, ainda fora do
+repositório): arco de 1 cm (`interiorFace`, bulge 0,0437, de (0, 0) a (1, 0)) com parede reta de 1 cm
+a 30° na ponta inicial deixa uma fresta perto do nó, em (0,0077, 0,0006). Corrigir antes de pôr a
+suíte de propriedade dos arcos no repositório.

@@ -8,6 +8,8 @@ export interface WallShape {
   readonly start: Point2;
   readonly end: Point2;
   readonly referenceLine: ReferenceLine;
+  /** 0: straight; otherwise tan(sweep / 4). Arcs are expanded into straight segments (geometry/arc.ts). */
+  readonly bulge: number;
   readonly thickness: number;
   readonly layers: readonly WallLayer[];
   /** Layer boundaries along the normal, exterior face first: layer k spans [k] to [k + 1]. */
@@ -54,6 +56,7 @@ export function shapeOf(wall: Wall, type: WallType | undefined): WallShape | Sha
     start: wall.start,
     end: wall.end,
     referenceLine: wall.referenceLine,
+    bulge: wall.bulge ?? 0,
     thickness,
     layers,
     layerOffsets,

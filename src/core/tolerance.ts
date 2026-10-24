@@ -10,3 +10,5 @@ export const MITER_LIMIT = 10;
 export const MIN_WALL_LENGTH = 1e-3;
 /** Pieces smaller than this are dropped (m²). */
 export const AREA_EPSILON = 1e-9;
+/** Largest gap between an arc face and its chords (m). See docs/adr/0001-arc-sag.md. */
+export const ARC_SAG = 5e-4;

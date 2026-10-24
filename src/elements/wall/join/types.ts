@@ -21,7 +21,13 @@ export interface Notch {
   readonly layers: readonly [number, number];
 }
 
-export type JoinWarningKind = 'wallsOverlap' | 'complexJoin' | 'wallTooShort' | 'missingWallType' | 'invalidWallType';
+export type JoinWarningKind =
+  | 'wallsOverlap'
+  | 'complexJoin'
+  | 'wallTooShort'
+  | 'missingWallType'
+  | 'invalidWallType'
+  | 'arcTooTight';
 
 export interface JoinWarning {
   readonly kind: JoinWarningKind;
