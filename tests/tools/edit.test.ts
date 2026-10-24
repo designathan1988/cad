@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { newDocument, type DocWall } from '../../src/app/document';
 import { vec } from '../../src/core/vector';
-import { moveWalls, stretchEnd } from '../../src/tools/edit';
+import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../../src/tools/edit';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -77,5 +77,39 @@ describe('stretching an end', () => {
     // Lengthening the bottom wall to x = 10 does not move the divider at x = 4.
     const ws = stretchEnd(room(), 'w0', 'end', vec(10, 0));
     expect(byId(ws, 'd').start).toEqual(vec(4, 0));
+  });
+});
+
+describe('rotate and stretch along', () => {
+  const at = (walls: readonly DocWall[], id: string) => walls.find((w) => w.id === id)!;
+  const close = (p: { x: number; y: number }, x: number, y: number) => {
+    expect(p.x).toBeCloseTo(x, 9);
+    expect(p.y).toBeCloseTo(y, 9);
+  };
+
+  it('rotating the divider 90° about its middle (4, 3): it lies from (7, 3) to (1, 3)', () => {
+    const walls = rotateWalls(room(), ['d'], vec(4, 3), Math.PI / 2);
+    close(at(walls, 'd').start, 7, 3);
+    close(at(walls, 'd').end, 1, 3);
+  });
+
+  it('rotating the whole room 90° about the origin turns every wall, corners kept', () => {
+    const walls = rotateWalls(room(), ['w0', 'w1', 'w2', 'w3', 'd'], vec(0, 0), Math.PI / 2);
+    close(at(walls, 'w0').end, 0, 8);
+    close(at(walls, 'w1').start, 0, 8);
+    close(at(walls, 'w2').end, -6, 0);
+  });
+
+  it('rotating one wall drags the corners it shares: w1 turned about (8, 0) by 90° takes w2 with it', () => {
+    const walls = rotateWalls(room(), ['w1'], vec(8, 0), Math.PI / 2);
+    close(at(walls, 'w1').end, 2, 0);
+    close(at(walls, 'w2').start, 2, 0);
+  });
+
+  it('stretching along: the end moves on the wall line only, to the foot of the cursor', () => {
+    const walls = stretchAlong(room(), 'w0', 'end', vec(10, 3));
+    expect(at(walls, 'w0').end).toEqual(vec(10, 0));
+    // The corner follows.
+    expect(at(walls, 'w1').start).toEqual(vec(10, 0));
   });
 });
