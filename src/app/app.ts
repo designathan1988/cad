@@ -329,7 +329,8 @@ export class App {
     if (this.ui.snap?.wallId) ids.add(this.ui.snap.wallId);
     return doc.walls
       .filter((w) => ids.has(w.id) && w.levelId === this.ui.levelId)
-      .map((w) => ({ at: { x: (w.start.x + w.end.x) / 2, y: (w.start.y + w.end.y) / 2 }, text: t('wall.tag', { n: wallNumber(doc, w.id) ?? '' }) }));
+      // A third of the way along: the middle is where the temporary dimension shows its value.
+      .map((w) => ({ at: { x: w.start.x + (w.end.x - w.start.x) / 3, y: w.start.y + (w.end.y - w.start.y) / 3 }, text: t('wall.tag', { n: wallNumber(doc, w.id) ?? '' }) }));
   }
 
   /** While turning the selection: the angle, at the point it turns about. */
@@ -590,11 +591,14 @@ export class App {
    * phone, the drawer on a tablet), the plan slides just enough to show it beside the panel.
    */
   private keepSelectionInView(): boolean {
-    const key = [...this.ui.selection].join(',');
+    const covered = this.covered();
+    const vp0 = this.shell.viewport.getBoundingClientRect();
+    // Again when the selection changes, or the panel or a drawer (or the window) changes what is free.
+    const key = JSON.stringify([[...this.ui.selection], covered, Math.round(vp0.width), Math.round(vp0.height)]);
     if (key === this.seenSelection) return false;
     this.seenSelection = key;
-    const covered = this.covered();
-    if (key === '' || (covered.right === 0 && covered.bottom === 0)) return false;
+    if (this.ui.selection.size === 0) return false;
+    if (covered.right === 0 && covered.bottom === 0 && !covered.left) return false;
     const box = boundsOf(this.geometry, this.ui.selection);
     if (!box) return false;
     const vp = this.shell.viewport.getBoundingClientRect();
@@ -607,8 +611,10 @@ export class App {
     const dx = Math.max(0, b.x - (vp.width - covered.right - margin));
     // Never past the top or left edge: a selection taller than the free part keeps its top in view.
     const up = Math.min(dy, Math.max(0, a.y - margin));
-    const left = Math.min(dx, Math.max(0, a.x - margin));
-    if (up <= 0 && left <= 0) return false;
+    // Behind the project browser on the left: slide right instead.
+    const right = Math.max(0, (covered.left ?? 0) + margin - a.x);
+    const left = right > 0 ? -right : Math.min(dx, Math.max(0, a.x - (covered.left ?? 0) - margin));
+    if (up <= 0 && left === 0) return false;
     this.plan.panBy(-left, -up);
     return true;
   }
@@ -1137,6 +1143,7 @@ export class App {
                 ? 'foot.distance'
                 : 'foot.measure',
     );
+    shell.measure.setAttribute('aria-label', `${t('foot.measure')}: ${shell.measureLabel.textContent}`);
     shell.measure.placeholder = t(pointMode && !lengthMode ? 'foot.pointHint' : lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
     shell.toolWall.classList.toggle('arc-mode', drawing && arc);
     shell.coords.textContent = ui.cursor ? `x ${num(ui.cursor.x)} m  y ${num(ui.cursor.y)} m` : '';

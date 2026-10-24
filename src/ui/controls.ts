@@ -168,7 +168,7 @@ export function searchSelect<T extends string>(
     // Found again after a choice rebuilds the panel, to take the focus back (as Esc does).
     'data-focus-key': `search-select:${label}`,
   });
-  button.innerHTML = current?.thumb ?? '';
+  // The name gets the room in the field; the thumbnails are in the list, side by side for choosing.
   button.append(el('span', { class: 'search-select-label' }, current?.label ?? t('panel.varies')));
   button.insertAdjacentHTML('beforeend', icon('chevronDown', 14));
   button.addEventListener('click', () => openList());

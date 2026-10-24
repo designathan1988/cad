@@ -46,8 +46,8 @@ export function openingFields(selected: readonly OpeningSolid[], update: Opening
       labelled: true,
       options: (['door', 'window'] as const).map((k) => ({ value: k, label: kindName(k), icon: k })),
       get: (o) => o.opening.kind,
-      // A door stands on the floor; a window gets the usual sill.
-      set: (k) => update(ids, { kind: k as OpeningKind, sill: k === 'door' ? 0 : OPENING_DEFAULTS.window.sill }),
+      // The new kind's usual height and sill: a door's 2,10 m over a window's sill would pass the wall.
+      set: (k) => update(ids, { kind: k as OpeningKind, height: OPENING_DEFAULTS[k as OpeningKind].height, sill: OPENING_DEFAULTS[k as OpeningKind].sill }),
     },
     { id: 'width', label: 'panel.width', kind: 'number', min: 0.01, get: (o) => o.opening.width, set: (v) => update(ids, { width: v }) },
     { id: 'height', label: 'panel.height', kind: 'number', min: 0.01, get: (o) => o.opening.height, set: (v) => update(ids, { height: v }) },

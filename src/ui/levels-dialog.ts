@@ -44,7 +44,8 @@ export function showLevels(app: App): void {
       del.setAttribute('aria-label', t('levels.deleteNamed', { name: label }));
       const why = blocker === 'last' ? t('levels.cantDeleteLast') : blocker === 'walls' ? t('levels.cantDeleteWalls') : null;
       // What it does, then why it cannot.
-      del.title = why ? `${t('levels.deleteNamed', { name: label })}: ${why}` : t('levels.deleteNamed', { name: label });
+      const action = t('levels.deleteNamed', { name: label });
+      del.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;
       if (why) {
         const id = `why-${l.id}`;
         rows.append(el('span', { id, class: 'sr-only' }, why));
