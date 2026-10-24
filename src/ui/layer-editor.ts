@@ -72,7 +72,7 @@ export function layerEditor<L extends EditableLayer>(layers: readonly L[], onCha
       (v) => onChange(setLayer(layers, i, { function: v } as Partial<L>)),
     );
     fn.querySelector('select')!.setAttribute('aria-label', `${t('types.function')}: ${which}`);
-    const thick = numberField(l.thickness, (v) => onChange(setLayer(layers, i, { thickness: v } as Partial<L>)), 0.001);
+    const thick = numberField(l.thickness, (v) => onChange(setLayer(layers, i, { thickness: v } as Partial<L>)), 0.001, 3);
     thick.querySelector('input')!.setAttribute('aria-label', `${t('types.thickness')}: ${which}`);
     // Shown by its name; what is typed becomes the material (the shown name typed again changes nothing).
     const shown = materialName(l.materialId);

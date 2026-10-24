@@ -54,13 +54,14 @@ export function row(label: string, control: HTMLElement, opts: { sub?: boolean; 
  * Number field in metres. Typing accepts expressions and units; Enter or leaving applies, Esc
  * restores. Dragging on the row's label scrubs the value in 1 cm steps. `value` null shows "various".
  */
-export function numberField(value: number | null, onCommit: (v: number) => void, min = -Infinity): HTMLElement {
+/** `digits`: decimals shown; a layer's thickness needs 3 (0,015 m of plaster), most values 2. */
+export function numberField(value: number | null, onCommit: (v: number) => void, min = -Infinity, digits = 2): HTMLElement {
   const box = el('div', { class: 'num-field' });
   const input = el('input', { type: 'text', inputmode: 'decimal', autocomplete: 'off', spellcheck: 'false' });
   // The value the field stands for: after a commit, the new one, written as every field writes it
   // (a dialog that is not rebuilt still shows "2,50", and leaving the field does not commit again).
   let current = value;
-  const shown = () => (current === null ? '' : num(current));
+  const shown = () => (current === null ? '' : num(current, digits));
   input.value = shown();
   input.placeholder = value === null ? t('panel.varies') : '';
   // What is wrong with a refused value, said under the field and announced: the least value it takes,
@@ -93,7 +94,7 @@ export function numberField(value: number | null, onCommit: (v: number) => void,
       return false;
     }
     if (r.value < min) {
-      refuse(t('field.atLeast', { v: num(min) }));
+      refuse(t('field.atLeast', { v: num(min, digits) }));
       return false;
     }
     clear();

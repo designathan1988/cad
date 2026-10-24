@@ -1470,7 +1470,7 @@ select {
     grid-template-columns: var(--sp-5) minmax(0, 1fr) minmax(0, 1fr) auto;
     grid-template-areas:
       'n fn fn act'
-      'core th mat mat';
+      'th th mat core';
     padding-bottom: var(--sp-2);
     border-bottom: var(--line) solid var(--border);
   }
