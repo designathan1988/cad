@@ -97,10 +97,6 @@ export function buildShell(root: HTMLElement) {
   const planCanvas = el('canvas', { 'aria-label': 'Plan' });
   const glCanvas = el('canvas', { 'aria-label': '3D' });
   const floatBar = el('div', { class: 'float-bar', role: 'toolbar' });
-  const floatDelete = iconButton('trash');
-  const floatZoom = iconButton('zoomSel');
-  const floatFrame = iconButton('frame');
-  floatBar.append(floatDelete, floatZoom, floatFrame);
   floatBar.hidden = true;
   const dims = el('div', { class: 'temp-dims' });
   const emptyHint = el('div', { class: 'empty-hint' });
@@ -125,7 +121,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, undo, redo, level, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, viewport, planCanvas, glCanvas, floatBar, floatDelete, floatZoom, floatFrame, dims,
+    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, viewport, planCanvas, glCanvas, floatBar, dims,
     emptyHint, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack,
   };
 
@@ -162,9 +158,7 @@ export function buildShell(root: HTMLElement) {
     viewWalk.title = t('view.walkSoon');
     view3d.title = `${t('view.3d')} (1)`;
     viewPlan.title = `${t('view.plan')} (2)`;
-    tip(floatDelete, 'float.delete');
-    tip(floatZoom, 'float.zoom');
-    tip(floatFrame, 'float.frame');
+    floatBar.setAttribute('aria-label', t('ctx.label'));
     tip(snapBtn, 'foot.snap');
     emptyHint.textContent = t('empty.hint');
     tools.setAttribute('aria-label', t('aria.tools'));

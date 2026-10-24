@@ -16,6 +16,8 @@ import { showLevels } from '../ui/levels-dialog';
 import { showPalette } from '../ui/palette';
 import { offerTour, startTour } from '../ui/tour';
 import { appActions, type Openers } from './actions';
+import { contextEntries } from './context-menu';
+import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
 
 export function wireInput(app: App): void {
@@ -27,9 +29,25 @@ export function wireInput(app: App): void {
     openFile: () => shell.fileInput.click(),
   };
   const palette = () => showPalette(appActions(app, openers));
+  app.openCommands = palette;
   offerTour(app);
   let panning: { x: number; y: number } | null = null;
   let downAt: { x: number; y: number } | null = null;
+  let rightAt: { x: number; y: number } | null = null;
+  /** The menu for what is under the pointer: it becomes the selection, unless it is already in it. */
+  const contextMenu = (e: PointerEvent) => {
+    if (ui.tool !== 'select') app.setTool('select');
+    const hit = pickAt(e, worldAt(e));
+    if (hit && !ui.selection.has(hit)) ui.selection = new Set([hit]);
+    if (!hit) ui.selection.clear();
+    app.refresh();
+    const entries = contextEntries(app, palette);
+    showMenu(
+      entries.map((x, i) => ({ label: x.label, ...(x.keys ? { keys: x.keys } : {}), separated: x.id === 'delete' && i > 0, run: x.run })),
+      { x: e.clientX, y: e.clientY },
+      t('ctx.label'),
+    );
+  };
   let shift = false;
   const gestures = selectGestures(app);
   const marquee = el('div', { class: 'marquee' });
@@ -141,6 +159,7 @@ export function wireInput(app: App): void {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       return;
     }
+    if (e.button === 2) rightAt = { x: e.clientX, y: e.clientY };
     if (e.button !== 0) return;
     downAt = { x: e.clientX, y: e.clientY };
     if (ui.tool === 'select') {
@@ -153,6 +172,13 @@ export function wireInput(app: App): void {
   const onUp = (e: PointerEvent) => {
     if (panning) {
       panning = null;
+      return;
+    }
+    if (e.button === 2 && rightAt) {
+      // A right drag orbits the 3D view; only a click opens the menu.
+      const moved = Math.hypot(e.clientX - rightAt.x, e.clientY - rightAt.y) > 4;
+      rightAt = null;
+      if (!moved) contextMenu(e);
       return;
     }
     if (e.button !== 0 || !downAt) return;
@@ -227,9 +253,6 @@ export function wireInput(app: App): void {
   shell.toolWindow.addEventListener('click', () => app.setTool('window'));
   shell.toolRoom.addEventListener('click', () => app.setTool('room'));
   shell.toolFloor.addEventListener('click', () => app.setTool('floor'));
-  shell.floatDelete.addEventListener('click', () => app.deleteSelection());
-  shell.floatZoom.addEventListener('click', () => app.frameSelection());
-  shell.floatFrame.addEventListener('click', () => app.frameAll());
   shell.snapBtn.addEventListener('click', () => app.toggleSnaps());
   shell.shortcuts.addEventListener('click', () => showHelp(app));
   shell.commands.addEventListener('click', () => palette());

@@ -34,6 +34,10 @@ const paths = {
   refExterior: 'M4 7h16M4 17h16M4 7.5h16',
   refInterior: 'M4 7h16M4 17h16M4 16.5h16',
   warning: 'M12 3 2 20h20zM12 9v5M12 17h.01',
+  flip: 'M7 4 3 8l4 4M3 8h14M17 12l4 4-4 4M21 16H7',
+  swing: 'M5 20V4M5 4a15 15 0 0 1 15 16H5',
+  center: 'M12 3v18M7 8l-4 4 4 4M17 8l4 4-4 4',
+  distribute: 'M4 4v16M20 4v16M8 9h3v6H8zM13 9h3v6h-3z',
 } as const;
 
 export type IconName = keyof typeof paths;

@@ -40,6 +40,7 @@ import { boundsOf, deriveGeometry, type DerivedGeometry, type OpeningSolid, open
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { readProject, writeProject } from '../io/project-file';
 import { type TempDim, tempDims } from './temp-dims';
+import { contextEntries } from './context-menu';
 import { newId } from '../core/id';
 import { addFloor, addRoom, updateFloor, updateRoom } from '../elements/room/commands';
 import { insideRing, type FloorSolid, type RoomSolid } from '../elements/room/derive';
@@ -242,18 +243,32 @@ export class App {
           return this.refresh();
         }
         this.ui.error = null;
-        // Said and selected at once, so the new floor is seen without clicking again.
-        const id = newId('floor');
-        this.store.dispatch(addFloor({ id, levelId: this.ui.levelId, source: { kind: 'room', roomId: room.room.id }, ...FLOOR_DEFAULTS }));
-        this.ui.selection = new Set([id]);
-        this.ui.info = t('hint.floorAdded', { room: name(room.room.name) });
-        return this.refresh();
+        return this.addFloorToRoom(room.room.id);
       }
     }
     // Clicking the first corner again (within 10 px) closes the outline.
     if (draft.length >= 3 && distance(p, draft[0]!) <= 10 * mpp) return this.floorFinish();
     this.ui.floorDraft = [...draft, p];
     this.render();
+  }
+
+  /** A floor following a room's outline; said and selected at once, so it is seen without another click. */
+  addFloorToRoom(roomId: string): void {
+    const room = this.store.get().rooms.find((r) => r.id === roomId);
+    if (!room || this.store.get().floors.some((f) => f.source.kind === 'room' && f.source.roomId === roomId)) return;
+    const id = newId('floor');
+    this.store.dispatch(addFloor({ id, levelId: room.levelId, source: { kind: 'room', roomId }, ...FLOOR_DEFAULTS }));
+    this.ui.selection = new Set([id]);
+    this.ui.info = t('hint.floorAdded', { room: name(room.name) });
+    this.refresh();
+  }
+
+  /** Opens the properties panel and puts the keyboard in it. */
+  showProperties(): void {
+    if (!this.ui.panelOpen) this.togglePanel(true);
+    this.render();
+    const first = this.shell.panel.querySelector<HTMLElement>('input, select, button:not([disabled])');
+    (first ?? this.shell.panel).focus();
   }
 
   floorFinish(): void {
@@ -896,8 +911,29 @@ export class App {
   }
 
   /** The selection's quick actions, above the selection and never over it. */
+  /** Opens the command palette; set by the input layer, which owns the dialogs. */
+  openCommands: () => void = () => {};
+  private floatKey = '';
+
   private placeFloatBar(): void {
     const bar = this.shell.floatBar;
+    const entries = this.ui.selection.size > 0 ? contextEntries(this, () => this.openCommands()) : [];
+    const key = `${getLang()}|${entries.map((e) => e.id).join(',')}`;
+    if (key !== this.floatKey) {
+      this.floatKey = key;
+      bar.replaceChildren(
+        ...entries.map((e) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'icon-btn';
+          b.innerHTML = icon(e.icon);
+          b.title = e.keys ? `${e.label} (${e.keys})` : e.label;
+          b.setAttribute('aria-label', b.title);
+          b.addEventListener('click', () => e.run());
+          return b;
+        }),
+      );
+    }
     const box = this.ui.tool === 'select' && !this.ui.drag ? boundsOf(this.geometry, this.ui.selection) : null;
     bar.hidden = box === null;
     if (box === null) return;
