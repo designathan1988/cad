@@ -8,13 +8,14 @@ import { setWalls } from '../elements/wall/commands';
 import type { WallEnd, WallId } from '../elements/wall/schema';
 import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../tools/edit';
 import { handleAt } from './handles';
+import { carriedRooms } from './carry';
 import { GRID_STEP, type Snap } from '../tools/snap';
 import type { App } from './app';
 import type { DocWall } from './document';
-import { insidePolygon, openingOutline } from './geometry';
+import { deriveGeometry, insidePolygon, openingOutline } from './geometry';
 
 export type Drag =
-  | { readonly kind: 'move'; readonly origin: Point2; readonly walls: readonly DocWall[] }
+  | { readonly kind: 'move'; readonly origin: Point2; readonly delta: Point2; readonly walls: readonly DocWall[] }
   | { readonly kind: 'grip'; readonly id: WallId; readonly end: WallEnd; readonly walls: readonly DocWall[] }
   | { readonly kind: 'stretch'; readonly id: WallId; readonly end: WallEnd; readonly walls: readonly DocWall[] }
   | { readonly kind: 'rotate'; readonly pivot: Point2; readonly from: number; readonly angle: number; readonly walls: readonly DocWall[] }
@@ -69,7 +70,7 @@ export function selectGestures(app: App): SelectGestures {
       const drag = ui.drag;
       if (pending && !drag) {
         if (distance(screen, pending.screen) < THRESHOLD_PX) return;
-        if (pending.kind === 'wall' && ui.selection.size > 0) ui.drag = { kind: 'move', origin: pending.at, walls: app.store.get().walls };
+        if (pending.kind === 'wall' && ui.selection.size > 0) ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), walls: app.store.get().walls };
         else if (pending.kind === 'grip') ui.drag = { kind: 'grip', id: pending.id, end: pending.end, walls: app.store.get().walls };
         else if (pending.kind === 'stretch') ui.drag = { kind: 'stretch', id: pending.id, end: pending.end, walls: app.store.get().walls };
         else if (pending.kind === 'rotate') {
@@ -86,7 +87,7 @@ export function selectGestures(app: App): SelectGestures {
         let delta = sub(world, d.origin);
         if (shift) delta = Math.abs(delta.x) >= Math.abs(delta.y) ? vec(delta.x, 0) : vec(0, delta.y);
         if (ui.snaps) delta = vec(Math.round(delta.x / GRID_STEP) * GRID_STEP, Math.round(delta.y / GRID_STEP) * GRID_STEP);
-        ui.drag = { ...d, walls: moveWalls(doc, [...ui.selection], delta) };
+        ui.drag = { ...d, delta, walls: moveWalls(doc, [...ui.selection], delta) };
       } else if (d.kind === 'grip' && world) {
         const s = snapAt(world, new Set([d.id]));
         ui.snap = s;
@@ -115,7 +116,26 @@ export function selectGestures(app: App): SelectGestures {
       pending = null;
       ui.drag = null;
       ui.snap = null;
-      if (d?.kind === 'move' || d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'rotate') app.store.dispatch(setWalls(d.walls));
+      if (d?.kind === 'move' || d?.kind === 'rotate') {
+        // The rooms whose walls all went along go too (carry.ts): one undo step for both.
+        const doc = app.store.get();
+        const moved = new Set(ui.selection);
+        const c = d.kind === 'rotate' ? Math.cos(d.angle) : 1;
+        const s = d.kind === 'rotate' ? Math.sin(d.angle) : 0;
+        const transform =
+          d.kind === 'move'
+            ? (p: Point2) => add(p, d.delta)
+            : (p: Point2) => {
+                const v = sub(p, d.pivot);
+                return add(d.pivot, vec(v.x * c - v.y * s, v.x * s + v.y * c));
+              };
+        const rooms = carriedRooms(doc, deriveGeometry(doc), moved, transform);
+        const walls = setWalls(d.walls);
+        app.store.dispatch({ label: walls.label, apply: (x) => {
+          const next = walls.apply(x);
+          return next === x ? x : { ...next, rooms };
+        } });
+      } else if (d?.kind === 'grip' || d?.kind === 'stretch') app.store.dispatch(setWalls(d.walls));
       else if (d?.kind === 'marquee') selectByMarquee(app, d.a, d.b, shift);
       app.refresh();
     },
