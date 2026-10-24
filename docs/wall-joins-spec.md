@@ -781,8 +781,8 @@ de prioridade (§7.1). Com a mesma sequência, o miter fica.
 
 | Medida | Resultado |
 |---|---|
-| Testes | 79/79, suíte inteira em ~8 s |
-| Casos à mão novos ou mudados | 8 |
+| Testes | 80/80, suíte inteira em ~8 s |
+| Casos à mão novos ou mudados | 8, e 1 regressão fixa |
 | Butt conferido como T (I6 por camada e I10) | 1 395 cantos na seed fixa (piso: 600) |
 | Seeds extras (1, 777, 4242, 9, 31337), 2 000 cenas cada | sem falha no código final |
 | Mutantes de `cut-l.ts` | 12/12 detectados (um sobreviveu de início: o caso de 1 mm era fraco e foi reforçado) |
@@ -802,6 +802,11 @@ Achados, todos pelo gerador e não pela mesa:
    não podem passar das pontas.
 4. **Erro meu num teste:** um vértice procurado com `===` num valor calculado.
    Corrigido no teste.
+5. **Erro meu no oráculo** (rodada de 20 000 cenas, seed 55555): no butt a
+   hospedeira do I10 é a parede que passa, que pode ser curta, e o I10 amostrava
+   além da ponta livre dela. → o I10 só vale ao longo da hospedeira; a cena virou
+   regressão fixa. Por pedido do usuário, rodadas grandes e laços de mutantes
+   saíram do ciclo; fica o `npm run check`.
 
 ### Entrega 4, parte 1 — prioridade de camadas no T e no X
 
