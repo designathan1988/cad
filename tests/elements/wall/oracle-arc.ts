@@ -36,7 +36,7 @@ export function circleOf(w: Wall): OracleArc {
 }
 
 /** Outer and inner face radii of the whole wall, from its own frame. */
-function faceRadii(w: Wall, a: OracleArc): [number, number] {
+export function faceRadii(w: Wall, a: OracleArc): [number, number] {
   const f = frameOf({ ...w });
   return [a.r - a.turn * f.o0, a.r - a.turn * f.o1];
 }
@@ -256,4 +256,83 @@ export function distanceToSegments(arc: Wall, p: P): number {
     best = Math.min(best, inside(r, p) ? 0 : Math.min(...r.map((v, k) => toEdge(v, r[(k + 1) % r.length]!))));
   }
   return best;
+}
+
+/**
+ * Whether a wall ending in an arc's band comes to it from outside the ring: the first point of its
+ * axis, walking back from the end, that is out of the band says. (Its far end can lie on the circle
+ * itself, past the arc's sweep, where its radius alone would leave it to rounding.)
+ */
+export function comesFromOutside(arc: Wall, wall: Wall, end: WallEnd = 'end'): boolean {
+  const c = circleOf(arc);
+  const [ra, rb] = faceRadii(arc, c);
+  const [rIn, rOut] = [Math.min(ra, rb), Math.max(ra, rb)];
+  const f = frameOf(wall);
+  const at = end === 'end' ? wall.end : wall.start;
+  const into = end === 'end' ? pt(-f.d.x, -f.d.y) : f.d;
+  const step = Math.min(rOut - rIn, f.len) / 8;
+  for (let s = 0; s <= f.len; s += step) {
+    const r = Math.hypot(at.x + into.x * s - c.cx, at.y + into.y * s - c.cy);
+    if (r > rOut) return true;
+    if (r < rIn) return false;
+  }
+  return Math.hypot(at.x + into.x * f.len - c.cx, at.y + into.y * f.len - c.cy) > (rIn + rOut) / 2;
+}
+
+/**
+ * What of the abutting wall's own rectangle a T against an arc does not keep (spec §7.2: the abutting
+ * wall stays on its side of the host): a point in the arc's sweep, outside its body, on the far side
+ * from where the wall comes. A tilted square end can poke through a thin arc there.
+ */
+export function tBeyond(arc: Wall, wall: Wall, end: WallEnd = 'end'): (p: P) => boolean {
+  const c = circleOf(arc);
+  const [ra, rb] = faceRadii(arc, c);
+  const rMid = (ra + rb) / 2;
+  const dist = (p: P) => Math.hypot(p.x - c.cx, p.y - c.cy);
+  const outside = comesFromOutside(arc, wall, end);
+  const body = arcBody(arc);
+  const inSweep = (p: P) => {
+    const t = ((Math.atan2(p.y - c.cy, p.x - c.cx) - c.a0) * Math.sign(c.sweep)) % (2 * Math.PI);
+    return (t < 0 ? t + 2 * Math.PI : t) <= Math.abs(c.sweep);
+  };
+  return (p) => inSweep(p) && !body.some((b) => inside(b, p)) && (outside ? dist(p) < rMid : dist(p) > rMid);
+}
+
+/**
+ * What a T against an arc fills past the wall's end (spec §7.2: the abutting wall runs up to the
+ * host's face): a point of the wall's band past its end, outside the arc's body, inside the arc's sweep,
+ * on the side the wall comes from (outside the ring's middle radius when it comes from outside), and
+ * not across the ring: the stretch from it back to the end does not pass inside the ring.
+ */
+export function tFill(arc: Wall, wall: Wall, end: WallEnd = 'end'): (p: P) => boolean {
+  const c = circleOf(arc);
+  const [ra, rb] = faceRadii(arc, c);
+  const [rIn, rOut] = [Math.min(ra, rb), Math.max(ra, rb)];
+  const rMid = (rIn + rOut) / 2;
+  const f = frameOf(wall);
+  const at = end === 'end' ? wall.end : wall.start;
+  const into = end === 'end' ? pt(-f.d.x, -f.d.y) : f.d;
+  const dist = (p: P) => Math.hypot(p.x - c.cx, p.y - c.cy);
+  const outside = comesFromOutside(arc, wall, end);
+  const body = arcBody(arc);
+  const inSweep = (p: P) => {
+    const t = ((Math.atan2(p.y - c.cy, p.x - c.cx) - c.a0) * Math.sign(c.sweep)) % (2 * Math.PI);
+    return (t < 0 ? t + 2 * Math.PI : t) <= Math.abs(c.sweep);
+  };
+  // Least distance from the centre to the stretch from p to q.
+  const nearest = (p: P, q: P) => {
+    const pq = pt(q.x - p.x, q.y - p.y);
+    const l2 = pq.x * pq.x + pq.y * pq.y;
+    const t = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((c.cx - p.x) * pq.x + (c.cy - p.y) * pq.y) / l2));
+    return Math.hypot(p.x + pq.x * t - c.cx, p.y + pq.y * t - c.cy);
+  };
+  return (p) => {
+    const along = (p.x - at.x) * into.x + (p.y - at.y) * into.y;
+    if (along >= 0) return false;
+    const off = (p.x - wall.start.x) * f.n.x + (p.y - wall.start.y) * f.n.y;
+    if (off < f.o0 || off > f.o1 || !inSweep(p) || body.some((b) => inside(b, p))) return false;
+    if (outside ? dist(p) <= rMid : dist(p) >= rMid) return false;
+    const back = pt(p.x - into.x * along, p.y - into.y * along);
+    return !outside || nearest(p, back) >= rIn;
+  };
 }

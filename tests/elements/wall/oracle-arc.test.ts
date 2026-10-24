@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { layer, testWall, type TestWall as Wall } from './fixtures';
-import { distanceToSegments, segmentsOf, segmentWall, sharedArea, touchesArcElsewhere } from './oracle-arc';
+import { distanceToSegments, segmentsOf, segmentWall, sharedArea, tBeyond, tFill, touchesArcElsewhere } from './oracle-arc';
 
 const sq = (x0: number, y0: number, x1: number, y1: number) => [
   { x: x0, y: y0 },
@@ -63,5 +63,51 @@ describe('segmentWall and distanceToSegments', () => {
     const d = distanceToSegments(arc, { x: 1, y: -1.0505 });
     expect(d).toBeGreaterThan(0);
     expect(d).toBeLessThan(1e-3);
+  });
+});
+
+describe('tFill: what a T against an arc fills past the wall end, up to the face', () => {
+  // The arc from (0, 0) to (6, 0) with bulge -1: above y = 0, centre (3, 0), r = 3, 20 cm: band 2.9 to 3.1.
+  const ring = { ...testWall('arc', { x: 0, y: 0 }, { x: 6, y: 0 }, [layer(0.2)]), bulge: -1 } as Wall;
+
+  it('a wall at 45° from the upper right ending at (3, 3.05): its square end leaves a gap at the face, filled', () => {
+    // Into the body is (1, 1)/√2, so past the end is x + y < 6.05. (2.94, 3.10): x + y = 6.04; across
+    // the wall (x − y + 0.05)/√2 = −0.078, inside its ±0.1; radius √(0.06² + 3.1²) = 3.1006, past the
+    // outer face 3.1, so outside the arc: the gap between the square end and the curved face.
+    const wall = testWall('t', { x: 4, y: 4.05 }, { x: 3, y: 3.05 }, [layer(0.2)]);
+    const fill = tFill(ring, wall);
+    expect(fill({ x: 2.94, y: 3.1 })).toBe(true);
+    // (2.94, 3.0): radius 3.0006, inside the arc's band, so the arc's own, not filled.
+    expect(fill({ x: 2.94, y: 3.0 })).toBe(false);
+    // Behind the end (x + y > 6.05): the wall's own body, not filled.
+    expect(fill({ x: 3.1, y: 3.1 })).toBe(false);
+    // Outside the wall's width: not its T.
+    expect(fill({ x: 2.7, y: 3.2 })).toBe(false);
+  });
+
+  it('not across the ring: past the far side, where a band through the ring meets the arc again', () => {
+    // A horizontal wall from (-1, 1.525) to the left of the band at radius 3.05 (x = 0.3586); its band
+    // goes on across the ring and out at x = 5.70. (5.75, 1.525), radius 3.1445, is past the far face:
+    // the stretch back to the end runs 1.525 from the centre, inside the ring.
+    const end = { x: 3 + 3.05 * Math.cos((5 * Math.PI) / 6), y: 3.05 * Math.sin((5 * Math.PI) / 6) };
+    const wall = testWall('t', { x: -1, y: end.y }, end, [layer(0.2)]);
+    expect(tFill(ring, wall)({ x: 5.75, y: end.y })).toBe(false);
+  });
+});
+
+describe('tBeyond: what of the abutting wall lies past the arc, which a T does not keep', () => {
+  const ring = { ...testWall('arc', { x: 0, y: 0 }, { x: 6, y: 0 }, [layer(0.2)]), bulge: -1 } as Wall;
+  // From inside the ring at 45°, ending at (3, 3.05): its square end's corner (2.9293, 3.1207) is at
+  // radius 3.1215, past the outer face 3.1.
+  const wall = testWall('t', { x: 2, y: 2.05 }, { x: 3, y: 3.05 }, [layer(0.2)]);
+  const beyond = tBeyond(ring, wall);
+
+  it("(2.935, 3.10): inside the wall's rectangle and at radius 3.1007, past the outer face: not kept", () => {
+    // Into its body (−1, −1)/√2: 0.0106 behind the end; across (−1, 1)/√2: 0.081 of its ±0.1.
+    expect(beyond({ x: 2.935, y: 3.1 })).toBe(true);
+  });
+  it('(2.95, 3.0) at radius 3.0004 is in the arc: the arc\'s; (2.5, 2.55) at radius 2.598 is on its own side: kept', () => {
+    expect(beyond({ x: 2.95, y: 3.0 })).toBe(false);
+    expect(beyond({ x: 2.5, y: 2.55 })).toBe(false);
   });
 });

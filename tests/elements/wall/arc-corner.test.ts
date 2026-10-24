@@ -5,7 +5,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { geometry, layer, testWall, type TestWall as Wall } from './fixtures';
-import { arcCorner, coverage, distanceToSegments, intoOf, touchesArcElsewhere } from './oracle-arc';
+import { arcBody, arcCorner, coverage, distanceToSegments, intoOf, tBeyond, tFill, touchesArcElsewhere } from './oracle-arc';
+import { inside, rectOf } from './oracle';
 
 const refs = ['interiorFace', 'centerline', 'exteriorFace'] as const;
 
@@ -54,10 +55,12 @@ describe('a butt L at an arc end, the arc abutting, reaching the next segments',
 });
 
 // Four candidates from a search over angles (miter at either end, and a thinner wall abutting a thick
-// arc) that the engine refused with arcJoinUnsupported. None is the single L the spec says to make:
-// the straight wall's far end lies within POINT_TOLERANCE (1 mm) of one of the arc's segments, a
-// second junction (spec §6: a T there). Control: with that end pulled back 5 mm, out of reach, each
-// L joins and covers exactly.
+// arc). Each has two junctions: the L at the node, and its far end within POINT_TOLERANCE (1 mm) of
+// one of the arc's segments, a T there (spec §6). Once refused with arcJoinUnsupported; since the T
+// against an arc spreads over the segments it reaches (footprint.ts), both are made, and both are
+// checked here: the L by the spec's corner near the node, the T strictly near the far end (arc body,
+// the wall's own less what is past the arc, and what the T fills up to the face). Control: with that
+// end pulled back 5 mm, out of reach, the L alone joins and covers exactly.
 const thick = (ts: number[]) => ts.map((t) => layer(t));
 const arcA = { ...testWall('arc', { x: 0, y: 0 }, { x: 1.8146952434908599, y: 0 }, thick([0.07645804060623049, 0.059247538475319744, 0.04780983394011855]), 'exteriorFace'), bulge: -2.3791327284977184 } as Wall;
 const arcB = { ...testWall('arc', { x: 0, y: 0 }, { x: 1.2304911367828026, y: 0 }, thick([0.11508156635798514, 0.11388237481936812]), 'exteriorFace'), bulge: -3.316613919545999 } as Wall;
@@ -71,9 +74,32 @@ const twoJunctions: [string, Wall, Wall, 'start' | 'end'][] = [
 
 describe('candidates whose far end also meets the arc', () => {
   for (const [name, arc, straight, end] of twoJunctions) {
-    it(`${name}: the far end is within 1 mm of the arc, so a second junction, and warns`, () => {
+    it(`${name}: the far end is within 1 mm of the arc, a second junction; both joins are exact`, () => {
       expect(distanceToSegments(arc, straight.start)).toBeLessThanOrEqual(1e-3);
-      expect(geometry([arc, straight]).warnings.map((w) => w.kind)).toEqual(['arcJoinUnsupported']);
+      const walls = [arc, straight];
+      const g = geometry(walls);
+      expect(g.warnings).toEqual([]);
+      const polys = walls.flatMap((w) => g.pieces.get(w.id)!.map((p) => p.polygon));
+      const disc = (at: { x: number; y: number }, reach: number, want: (p: { x: number; y: number }) => number) => {
+        let bad = 0;
+        for (let i = 0; i < 3000; i++) {
+          const t = (i * 2.399963) % (2 * Math.PI);
+          const r = reach * Math.sqrt((i + 0.5) / 3000);
+          const p = { x: at.x + r * Math.cos(t), y: at.y + r * Math.sin(t) };
+          if (polys.filter((q) => inside(q, p)).length !== want(p)) bad++;
+        }
+        return bad;
+      };
+      const bodies = [...arcBody(arc), rectOf(straight)];
+      const node = end === 'start' ? arc.start : arc.end;
+      const corner = arcCorner(arc, end, straight, 'end');
+      if (corner === 'overlap') throw new Error('the spec makes this L');
+      expect(disc(node, 0.6, (p) => (corner.applies(p) ? (corner.region.contains(p) ? 1 : 0) : bodies.some((b) => inside(b, p)) ? 1 : 0))).toBe(0);
+      const fill = tFill(arc, straight, 'start');
+      const beyond = tBeyond(arc, straight, 'start');
+      const own = arcBody(arc);
+      const rect = rectOf(straight);
+      expect(disc(straight.start, 0.5, (p) => (own.some((b) => inside(b, p)) || (inside(rect, p) && !beyond(p)) || fill(p) ? 1 : 0))).toBe(0);
     });
     it(`${name}: with the far end 5 mm back, the L alone joins exactly`, () => {
       const node = end === 'start' ? arc.start : arc.end;

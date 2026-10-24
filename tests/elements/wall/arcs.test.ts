@@ -3,12 +3,22 @@
 
 import { describe, expect, it } from 'vitest';
 import { vec } from '../../../src/core/vector';
-import type { WallLayer } from '../../../src/elements/wall/schema';
+import { LAYER_PRIORITY, type WallLayer } from '../../../src/elements/wall/schema';
 import { geometry, layer, testWall, type TestWall } from './fixtures';
-import { shoelace } from './oracle';
+import { inside, rectOf, shoelace } from './oracle';
+import { arcBody, tBeyond, tFill } from './oracle-arc';
 import { setPrecision, union } from 'polyclip-ts';
 
 setPrecision(1e-9);
+
+/** Within a hair of a body's side: a sample there could fall either way. */
+const nearSide = (b: readonly { x: number; y: number }[], p: { x: number; y: number }) =>
+  b.some((a, i) => {
+    const c = b[(i + 1) % b.length]!;
+    const ab = { x: c.x - a.x, y: c.y - a.y };
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * ab.x + (p.y - a.y) * ab.y) / (ab.x * ab.x + ab.y * ab.y)));
+    return Math.hypot(p.x - a.x - ab.x * t, p.y - a.y - ab.y * t) < 1e-7;
+  });
 
 const SPEC_ARC_SAG = 5e-4;
 const segmentsFor = (sweep: number, rMax: number) => Math.max(1, Math.ceil(Math.abs(sweep) / (2 * Math.acos(1 - SPEC_ARC_SAG / rMax))));
@@ -130,12 +140,107 @@ describe('arc and straight wall at a right angle', () => {
 });
 
 describe('Ts and Xs against an arc', () => {
-  it('a straight wall wider than one chord, abutting the arc, warns arcJoinUnsupported and stays square', () => {
-    // r = 3, chords of about 11 cm; a 30 cm wall cannot meet a single chord.
+  // A T against an arc wider than one chord (docs/wall-joins-spec.md, part 6): near its end the wall
+  // is split by the radial wedges of the segments it reaches, and each part takes that segment's T.
+  // Strictly around the end: inside a body, or in what the T fills between the square end and the
+  // arc's face (tFill), exactly one piece; anywhere else, none.
+  const strictT = (walls: TestWall[], at: { x: number; y: number }, reach: number) => {
+    const { pieces } = geometry(walls);
+    const polys = walls.flatMap((w) => (pieces.get(w.id) ?? []).map((p) => p.polygon));
+    const bodies = walls.flatMap((w) => (w.bulge ? arcBody(w) : [rectOf(w)]));
+    const fill = tFill(walls[0]!, walls[1]!);
+    const beyond = tBeyond(walls[0]!, walls[1]!);
+    const [arcBodies, rect] = [arcBody(walls[0]!), rectOf(walls[1]!)];
+    let bad = 0;
+    let first: unknown = null;
+    for (let i = 0; i < 4000; i++) {
+      const a = (i * 2.399963) % (2 * Math.PI);
+      const r = reach * Math.sqrt((i + 0.5) / 4000);
+      const p = { x: at.x + r * Math.cos(a), y: at.y + r * Math.sin(a) };
+      const count = polys.filter((q) => inside(q, p)).length;
+      // The arc's body; the wall's own, less what pokes past the arc; and the filled corner.
+      const want = arcBodies.some((b) => inside(b, p)) || (inside(rect, p) && !beyond(p)) || fill(p) ? 1 : 0;
+      if (count !== want && !bodies.some((b) => nearSide(b, p))) {
+        bad++;
+        first ??= { p, count, want };
+      }
+    }
+    return { bad, first };
+  };
+
+  it('a straight wall wider than one chord, abutting the arc from inside, joins exactly over the chords it meets', () => {
+    // r = 3, chords of about 11 cm; a 30 cm wall meets three of them on the inner face (r = 2.9).
     const walls = [arc('arc', [0, 0], [6, 0], -1, 0.2), testWall('t', vec(3, 1), vec(3, 2.95), 0.3)];
     const g = geometry(walls);
-    expect(g.warnings).toEqual([{ kind: 'arcJoinUnsupported', walls: ['t', 'arc'] }]);
-    expect(g.pieces.get('t')).toHaveLength(1);
+    expect(g.warnings).toEqual([]);
+    // Nothing of it past the inner face: every vertex within radius 2.9 of the centre (3, 0).
+    for (const p of g.pieces.get('t')!) for (const v of p.polygon) expect(Math.hypot(v.x - 3, v.y)).toBeLessThanOrEqual(2.9 + 1e-9);
+    expect(strictT(walls, vec(3, 2.95), 0.6)).toEqual({ bad: 0, first: null });
+  });
+
+  it('a wall ending on a joint of the arc itself, (3, 3) at 90°, abuts it (not a node with the two segment ends)', () => {
+    // 88 segments over 180°: a joint at 90°, on the reference line at (3, 3).
+    expect(segmentsFor(Math.PI, 3.1) % 2).toBe(0);
+    const walls = [arc('arc', [0, 0], [6, 0], -1, 0.2), testWall('t', vec(3, 5), vec(3, 3), 0.2)];
+    expect(geometry(walls).warnings).toEqual([]);
+    expect(strictT(walls, vec(3, 3), 0.6)).toEqual({ bad: 0, first: null });
+  });
+
+  it('a thin wall at a slant passing the reference line of the next segment on its way in: one T, not an X', () => {
+    // Found by the property suite: its axis crosses arc#6's reference line 6.6 cm before its end in
+    // arc#5, inside the arc's band all the way. It was refused as a crossing.
+    const walls: TestWall[] = [
+      { ...testWall('arc', vec(0, 0), vec(1.1036743651242062, 0), [layer(0.061429818938786664, 'finish1'), layer(0.03588418202928257), layer(0.01669276400024687)]), bulge: 0.5682682761210138 },
+      testWall('t', vec(0.5579041931613289, -1.5241762614668275), vec(0.2050579539309692, -0.15688440718350088), [layer(0.012353262626080235, 'finish2')]),
+    ];
+    expect(geometry(walls).warnings).toEqual([]);
+    expect(strictT(walls, vec(0.2050579539309692, -0.15688440718350088), 0.4)).toEqual({ bad: 0, first: null });
+  });
+
+  it('from outside, against the convex face, the same', () => {
+    const walls = [arc('arc', [0, 0], [6, 0], -1, 0.2), testWall('t', vec(3, 5), vec(3, 3.05), 0.3)];
+    const g = geometry(walls);
+    expect(g.warnings).toEqual([]);
+    expect(strictT(walls, vec(3, 3.05), 0.6)).toEqual({ bad: 0, first: null });
+  });
+
+  it('layered, at a slant: the core runs to the arc core face and the arc finish is notched for it, exactly', () => {
+    // Plastered arc (finish 2 cm outside, core 15, finish 3 inside) and a plastered wall coming in at
+    // 60° from outside, its end in the middle of the arc's band (r = 3): both corners of its square end,
+    // ±0.1·sin 60° = ±0.087 in radius, are inside the arc. (With the end on the outer face, the T fills
+    // the corner between its square end and the face, which this strict check counts as outside.)
+    const at = vec(3 + 3 * Math.cos(1.2), 3 * Math.sin(1.2));
+    const from = vec(at.x + 2 * Math.cos(0.9), at.y + 2 * Math.sin(0.9));
+    const walls = [arc('arc', [0, 0], [6, 0], -1, plastered), testWall('t', from, at, plastered)];
+    const g = geometry(walls);
+    expect(g.warnings).toEqual([]);
+    expect(strictT(walls, at, 0.8)).toEqual({ bad: 0, first: null });
+    // By priority (spec §7.2): the wall's core (layer 1) runs to the arc's core face; any other layer
+    // passes the arc's outer finish only when that finish has strictly lower priority, and then stops on
+    // the core face too, else on the outer face. Radii from the centre (3, 0); faces are chords, so
+    // within cos(Δ/2) of their circles.
+    const r = (v: { x: number; y: number }) => Math.hypot(v.x - 3, v.y);
+    const arcPieces = g.pieces.get('arc')!;
+    const outer = Math.max(...arcPieces.flatMap((p) => p.polygon.map(r)));
+    const coreFace = Math.max(...arcPieces.filter((p) => p.layerIndex === 1).flatMap((p) => p.polygon.map(r)));
+    // The arc's outer layer: the one reaching the outer face.
+    const outerLayer = arcPieces.find((p) => p.polygon.some((v) => Math.abs(r(v) - outer) < 1e-9))!.layerIndex;
+    const cos = Math.cos(Math.PI / segmentsFor(Math.PI, outer) / 2);
+    const deepest = (k: number) => Math.min(...g.pieces.get('t')!.filter((p) => p.layerIndex === k).flatMap((p) => p.polygon.map(r)));
+    for (const k of [0, 1, 2]) {
+      const passes = k === 1 || LAYER_PRIORITY[plastered[outerLayer]!.function] > LAYER_PRIORITY[plastered[k]!.function];
+      const face = passes ? coreFace : outer;
+      expect(deepest(k), `layer ${k}`).toBeGreaterThanOrEqual(face * cos - 1e-9);
+      expect(deepest(k), `layer ${k}`).toBeLessThanOrEqual(face + 1e-9);
+    }
+  });
+
+  it('a wall reaching past the end of the arc: within the arc it abuts, past it keeps its own square end', () => {
+    // Near (6, 0), the arc's end (its radial cap on y = 0), a 60 cm wall from y = -0.15 to 0.45: the
+    // part above y = 0 abuts the arc's last segments, the part below has nothing to stop at.
+    const walls = [arc('arc', [0, 0], [6, 0], -1, 0.2), testWall('t', vec(4.5, 0.15), vec(5.95, 0.15), 0.6)];
+    expect(geometry(walls).warnings).toEqual([]);
+    expect(strictT(walls, vec(5.95, 0.15), 0.8)).toEqual({ bad: 0, first: null });
   });
 
   it('a narrow wall meeting one chord abuts it exactly: its end is on that chord', () => {

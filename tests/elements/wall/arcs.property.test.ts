@@ -6,8 +6,8 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { LayerFunction, WallEnd } from '../../../src/elements/wall/schema';
 import { geometry, layer, testWall, type TestWall as Wall } from './fixtures';
-import { arcBody, arcCorner, circleOf, coverage, distanceToSegments, intoOf, segmentsOf, touchesArcElsewhere } from './oracle-arc';
-import { inside, shoelace } from './oracle';
+import { arcBody, arcCorner, circleOf, coverage, distanceToSegments, faceRadii, intoOf, segmentsOf, tBeyond, tFill, touchesArcElsewhere } from './oracle-arc';
+import { inside, rectOf, shoelace } from './oracle';
 
 const seed = Number(process.env.FUZZ_SEED ?? 20261024);
 const SPEC_POINT_TOL = 1e-3;
@@ -119,3 +119,73 @@ describe('arc with a straight wall at one end', () => {
     expect(joined.skipped).toBeLessThanOrEqual(5);
   });
 });
+
+// A straight wall ending inside an arc's band, from outside or from inside, at an angle: a T against
+// the arc, over as many segments as it reaches (footprint.ts: spreadOverArc). Around the end, strictly:
+// inside a body or in what the T fills up to the arc's face (tFill), one piece; elsewhere, none. Its
+// other end near the arc would be a second junction, which this does not model: skipped, counted.
+const tees = { clean: 0, warned: 0, skipped: 0 };
+describe('a straight wall abutting an arc', () => {
+  it('joins exactly, or warns', () => {
+    fc.assert(
+      fc.property(arcArb, num(0.2, 0.8), num(-0.8, 0.8), fc.boolean(), num(-50, 50), num(1, 3), layersArb, refArb, (arc, f, depth, outside, deg, len, ls, ref) => {
+        const c = circleOf(arc);
+        const [ra, rb] = faceRadii(arc, c);
+        const [rIn, rOut] = [Math.min(ra, rb), Math.max(ra, rb)];
+        const ang = c.a0 + c.sweep * f;
+        const radial = { x: Math.cos(ang), y: Math.sin(ang) };
+        const rEnd = (rIn + rOut) / 2 + ((rOut - rIn) / 2) * depth;
+        const end = { x: c.cx + radial.x * rEnd, y: c.cy + radial.y * rEnd };
+        const a = (deg * Math.PI) / 180;
+        const out = outside ? radial : { x: -radial.x, y: -radial.y };
+        const dir = { x: out.x * Math.cos(a) - out.y * Math.sin(a), y: out.x * Math.sin(a) + out.y * Math.cos(a) };
+        const start = { x: end.x + dir.x * len, y: end.y + dir.y * len };
+        const wall = testWall('t', start, end, ls, ref);
+        const rect = rectOf(wall);
+        if (distanceToSegments(arc, start) < 0.2) {
+          tees.skipped++;
+          return;
+        }
+        const walls = [arc, wall];
+        const g = geometry(walls);
+        if (g.warnings.length > 0) {
+          tees.warned++;
+          return;
+        }
+        tees.clean++;
+        const polys = walls.flatMap((w) => (g.pieces.get(w.id) ?? []).map((p) => p.polygon));
+        const bodies = [...arcBody(arc), rect];
+        const fill = tFill(arc, wall);
+        const beyond = tBeyond(arc, wall);
+        const arcBodies = arcBody(arc);
+        const reach = Math.max(arc.thickness, wall.thickness) * 3 + 0.1;
+        for (let i = 0; i < 800; i++) {
+          const t = (i * 2.399963) % (2 * Math.PI);
+          const rr = reach * Math.sqrt((i + 0.5) / 800);
+          const p = { x: end.x + rr * Math.cos(t), y: end.y + rr * Math.sin(t) };
+          if (bodies.some((b) => nearSide(b, p))) continue;
+          const count = polys.filter((q) => inside(q, p)).length;
+          const want = arcBodies.some((b) => inside(b, p)) || (inside(rect, p) && !beyond(p)) || fill(p) ? 1 : 0;
+          expect(count, `${JSON.stringify(walls)} at ${JSON.stringify(p)}`).toBe(want);
+        }
+      }),
+      { numRuns: 100, seed },
+    );
+  });
+
+  it('checks enough Ts', () => {
+    console.log(`arc T: ${tees.clean} clean, ${tees.warned} warned, ${tees.skipped} skipped`);
+    expect(tees.clean).toBeGreaterThan(80);
+    expect(tees.skipped).toBeLessThanOrEqual(5);
+  });
+});
+
+/** Within a hair of a body's side: a sample there could fall either way. */
+function nearSide(b: readonly { x: number; y: number }[], p: { x: number; y: number }): boolean {
+  return b.some((a, i) => {
+    const q = b[(i + 1) % b.length]!;
+    const ab = { x: q.x - a.x, y: q.y - a.y };
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * ab.x + (p.y - a.y) * ab.y) / (ab.x * ab.x + ab.y * ab.y)));
+    return Math.hypot(p.x - a.x - ab.x * t, p.y - a.y - ab.y * t) < 1e-7;
+  });
+}
