@@ -323,19 +323,32 @@ elas se encontram onde caírem.
 
 Parede *a* encosta no flanco da parede *b*.
 
+**Prioridade** *(entrega 4, regra do Revit)*: Estrutura 1, Substrato 2,
+Térmica 3, Acabamento 1 = 4, Acabamento 2 = 5; 1 é a maior. Fica em
+`LAYER_PRIORITY`, derivada da função.
+
 - Camadas de **núcleo** de *a*: cortadas no semiplano da **face do núcleo** de
-  *b*, do lado de onde *a* chega.
-- Camadas de **acabamento** de *a*: cortadas no semiplano da **face externa** de
-  *b*, do mesmo lado.
-- Camadas de *b* entre a face externa e a face do núcleo, daquele lado:
-  recebem um **entalhe** (`clipOut`) que é **exatamente a região do núcleo de
-  *a***: a faixa do núcleo, do lado de dentro da ponta livre de *a*. *(Achado da
-  entrega 2: com uma faixa infinita, uma parede curta, grossa e rasa cuja ponta
-  livre cai dentro do acabamento da hospedeira deixava uma fresta — o entalhe
-  continuava onde o núcleo já tinha terminado.)*
+  *b*, do lado de onde *a* chega, passando por tudo o que está fora dele.
+- **Demais** camadas de *a*: entram em *b* pela face externa e atravessam as
+  camadas de *b* fora do núcleo, daquele lado, enquanto a prioridade delas for
+  **estritamente menor**; param na primeira de prioridade **igual ou maior**, e
+  no núcleo de *b* no máximo (a face do núcleo é sempre uma camada `structure`).
+  Cada uma é cortada no semiplano da face onde parou.
+- Cada camada de *b* fora do núcleo, daquele lado, recebe um **entalhe**
+  (`clipOut`) que é **exatamente a região das camadas de *a* que a
+  atravessam**: para cada sequência contígua delas, a sua faixa, do lado de
+  dentro da ponta livre de *a*. As que atravessam não precisam ser vizinhas
+  (térmica, acabamento 2, núcleo contra um acabamento 2: a térmica e o núcleo
+  passam, o acabamento 2 de *a* para), e então a camada de *b* fica com um
+  pedaço entre elas. *(Achado da entrega 2: com uma faixa infinita, uma parede
+  curta, grossa e rasa cuja ponta livre cai dentro do acabamento da hospedeira
+  deixava uma fresta — o entalhe continuava onde o núcleo já tinha terminado.)*
 - Sem camada `structure`, o núcleo é a parede inteira: tudo vai até a face do
   núcleo da hospedeira. Se a hospedeira não tem acabamento daquele lado, não há
   entalhe e o corte é o da face.
+
+A região total coberta não muda: o que cada entalhe tira é preenchido pela
+camada que passa. Por isso o oráculo de região do T vale sem mudança.
 
 Resultado: reboco encontra reboco, tijolo encontra tijolo. É o mesmo princípio
 da *Building Material priority* do ArchiCAD (a pele de prioridade maior corta a
@@ -736,6 +749,40 @@ Achados:
 4. **Mutante equivalente esclarecido:** "núcleo por diferença de offsets", sozinho,
    não muda nada, porque a tolerância já absorve 1 ulp. O mutante que importa é
    tirar a tolerância, e ele é morto por dois núcleos a 0,5 mm um do outro.
+
+### Entrega 4, parte 1 — prioridade de camadas no T e no X
+
+A regra foi conferida de novo na página da Autodesk ("Function and Priority of
+a Layer", 2026) antes de implementar: camada de prioridade menor não atravessa
+camada de prioridade igual ou maior; camada do núcleo vai até o núcleo da outra
+parede mesmo com prioridade 5. O X usa a mesma regra, porque cada lado é um T.
+
+| Medida | Resultado |
+|---|---|
+| Testes | 73/73, suíte inteira em ~8 s |
+| Casos à mão novos ou mudados | 5, todos vermelhos no motor antigo |
+| Prioridade exercitada na seed fixa | 553 T, 11 178 pontos com uma camada fora do núcleo atravessando a hospedeira (piso: 300 e 5 000) |
+| Seeds extras (1 e 777), 2 000 cenas cada | sem falha |
+| Mutantes da lógica nova | 10/10 detectados |
+
+Os 41 mutantes das entregas anteriores **não foram rodados de novo** nesta
+parte. Eles não estão gravados no repositório: eram injeções manuais. Os 10
+desta parte estão listados na mensagem do commit.
+
+Mudou o comportamento esperado de dois casos da mesa: o acabamento 1 de uma
+parede que encosta no lado do acabamento 2 da hospedeira agora atravessa até o
+núcleo (4 é maior que 5). Antes ele parava na face. É a divergência que a §17
+apontou, não um afrouxamento.
+
+**Pendente, parte 2: o L.** A documentação do Revit dá a regra de prioridade,
+mas **não descreve a geometria do canto** entre tipos diferentes, e a regra
+"ganha a de maior prioridade" aplicada célula a célula no canto deixa o núcleo
+de uma parede aflorar na face externa da outra. Isso fica para decisão antes de
+implementar. Até lá, o L continua com uma diagonal só (§7.1).
+
+**Numeração:** a §17 pôs a prioridade como entrega 4. A tabela da §15 ainda
+lista os nós de 3 a 5+ pontas como entrega 4, e eles passam a ser a 5; as
+seguintes descem uma posição.
 
 ### Entrega 2 — T com núcleo e entalhe
 

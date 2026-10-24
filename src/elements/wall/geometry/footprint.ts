@@ -45,9 +45,9 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   }
   const notches: Notch[] = [];
   for (const { abutting, hostId } of graph.abutments) {
-    const { cut, notch } = resolveAbutment(byId.get(abutting.wallId)!, abutting.end, byId.get(hostId)!);
+    const { cut, notches: own } = resolveAbutment(byId.get(abutting.wallId)!, abutting.end, byId.get(hostId)!);
     endCuts.set(keyOf(abutting), cut);
-    if (notch) notches.push(notch);
+    notches.push(...own);
   }
 
   // A crossing splits the cut wall into spans. Each side of the crossing is a T against the through
@@ -76,7 +76,7 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
       { shape: { ...last.shape, end: point }, atStart: last.atStart, atEnd: before.cut },
       { shape: { ...last.shape, start: point }, atStart: after.cut, atEnd: last.atEnd },
     );
-    for (const n of [before.notch, after.notch]) if (n) notches.push(n);
+    notches.push(...before.notches, ...after.notches);
   }
 
   const pieces = new Map<WallId, readonly Piece[]>();
@@ -97,8 +97,7 @@ interface Span {
 function spanPieces({ shape, atStart, atEnd }: Span, notches: readonly Notch[]): Piece[] {
   const out: Piece[] = [];
   shape.layers.forEach((_, layerIndex) => {
-    const isCore = layerIndex >= shape.coreLayers[0] && layerIndex <= shape.coreLayers[1];
-    const cuts = [atStart, atEnd].flatMap((c) => (c ? [...c.cuts, ...((isCore ? c.coreCuts : c.finishCuts) ?? [])] : []));
+    const cuts = [atStart, atEnd].flatMap((c) => (c ? [...c.cuts, ...(c.layerCuts?.[layerIndex] ?? [])] : []));
     const band = [shape.layerOffsets[layerIndex]!, shape.layerOffsets[layerIndex + 1]!] as const;
     let polygon = strip(shape, atStart?.extension ?? 0, atEnd?.extension ?? 0, band);
     for (const cut of cuts) polygon = clipHalfPlane(polygon, cut);

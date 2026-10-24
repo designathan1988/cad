@@ -4,13 +4,12 @@ import type { EndRef, WallId } from '../schema';
 
 /**
  * How one wall end is trimmed: lengthen the band by `extension`, then apply `cuts` to every layer,
- * plus `coreCuts` to the core layers and `finishCuts` to the others.
+ * plus `layerCuts[k]` to layer k.
  */
 export interface EndCut {
   readonly extension: number;
   readonly cuts: readonly HalfPlane[];
-  readonly coreCuts?: readonly HalfPlane[];
-  readonly finishCuts?: readonly HalfPlane[];
+  readonly layerCuts?: readonly (readonly HalfPlane[])[];
 }
 
 /** A convex region removed from some layers of a wall: where another wall's core passes through. */
