@@ -7,6 +7,8 @@ import { createStore } from '../../../src/core/store';
 import {
   alignHeads,
   placementProblem,
+  alignCandidates,
+  ruleKeepingPosition,
   alignOpenings,
   deleteElements,
   distributeOpenings,
@@ -216,5 +218,20 @@ describe('placing and invalid openings', () => {
     expect(placementProblem(d, win('n', 'w', { kind: 'fromStart', distance: 1.5 }))).toBe('openingOverlap');
     expect(placementProblem(d, { ...win('n', 'w', { kind: 'fromEnd', distance: 0 }), width: 7 })).toBe('openingOutside');
     expect(placementProblem(d, win('n', 'w', { kind: 'fromEnd', distance: 0.5 }))).toBeNull();
+  });
+});
+
+describe('aligned: only to openings it can face', () => {
+  // w runs (0,0)→(6,0). s runs (8,3)→(14,3), parallel, entirely beyond w's end; a door on s at 1.00.
+  const s = wall('s', [8, 3], [14, 3]);
+  const far = door('f', 's', { kind: 'fromStart', distance: 1 });
+
+  it('a reference whose projection falls outside the wall is not offered, and the command refuses it', () => {
+    const d = docOf([w, s, v], [win('a', 'w', { kind: 'centered' }), far, door('b', 'v', { kind: 'fromStart', distance: 1 })]);
+    const offered = alignCandidates(d, 'a').map((o) => o.id);
+    expect(offered).toContain('b');
+    expect(offered).not.toContain('f');
+    expect(alignOpenings('f', ['a'], 'center').apply(d)).toBe(d);
+    expect(ruleKeepingPosition(d, 'a', 'aligned', 'f')).toBeNull();
   });
 });
