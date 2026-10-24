@@ -495,6 +495,32 @@ export class App {
     if (this.store.redo()) this.toast(t('toast.redo'));
   }
 
+  private seenSelection = '';
+
+  /**
+   * When the selection changes and the panel lying over the drawing would hide it (the sheet on a
+   * phone, the drawer on a tablet), the plan slides just enough to show it beside the panel.
+   */
+  private keepSelectionInView(): void {
+    const key = [...this.ui.selection].join(',');
+    if (key === this.seenSelection) return;
+    this.seenSelection = key;
+    const covered = this.covered();
+    if (key === '' || (covered.right === 0 && covered.bottom === 0)) return;
+    const box = boundsOf(this.geometry, this.ui.selection);
+    if (!box) return;
+    const vp = this.shell.viewport.getBoundingClientRect();
+    const a = this.plan.toScreen({ x: box.min.x, y: box.max.y });
+    const b = this.plan.toScreen({ x: box.max.x, y: box.min.y });
+    const margin = 16;
+    const dy = Math.max(0, b.y - (vp.height - covered.bottom - margin));
+    const dx = Math.max(0, b.x - (vp.width - covered.right - margin));
+    // Never past the top or left edge: a selection taller than the free part keeps its top in view.
+    const up = Math.min(dy, Math.max(0, a.y - margin));
+    const left = Math.min(dx, Math.max(0, a.x - margin));
+    if (up > 0 || left > 0) this.plan.panBy(-left, -up);
+  }
+
   /** How much the panel covers of the viewport, at its right (drawer) or bottom (phone sheet). */
   covered(): Insets {
     if (this.shell.panel.hidden) return NO_INSETS;
@@ -596,6 +622,11 @@ export class App {
   render(): void {
     const { ui, shell } = this;
     const plan = ui.view === 'plan';
+    // On narrow screens the panel is a drawer over the drawing: it opens only when it has something
+    // to show, so it never covers the model for nothing. Set first: what it covers shapes the view.
+    const narrow = matchMedia('(max-width: 900px)').matches;
+    shell.panel.hidden = !ui.panelOpen || (narrow && ui.selection.size === 0 && ui.tool === 'select');
+    if (plan) this.keepSelectionInView();
     shell.planCanvas.classList.toggle('hidden', !plan);
     shell.glCanvas.classList.toggle('hidden', plan);
     this.cube.root.hidden = plan;
@@ -829,10 +860,6 @@ export class App {
   private renderChrome(): void {
     const { ui, shell, store } = this;
     const doc = store.get();
-    // On narrow screens the panel is a drawer over the drawing: it opens only when it has something
-    // to show, so it never covers the model for nothing.
-    const narrow = matchMedia('(max-width: 900px)').matches;
-    shell.panel.hidden = !ui.panelOpen || (narrow && ui.selection.size === 0 && ui.tool === 'select');
     shell.panelToggle.setAttribute('aria-pressed', String(ui.panelOpen));
     shell.projectName.textContent = doc.name || t('app.untitled');
     shell.undo.disabled = !store.canUndo();
