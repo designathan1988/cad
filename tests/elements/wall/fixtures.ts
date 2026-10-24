@@ -22,6 +22,8 @@ export interface TestWall {
   readonly referenceLine: ReferenceLine;
   readonly layers: readonly WallLayer[];
   readonly thickness: number;
+  /** 0 or absent: straight. Otherwise tan(sweep / 4), positive counter-clockwise. */
+  readonly bulge?: number;
 }
 
 export const layer = (thickness: number, fn: LayerFunction = 'structure'): WallLayer => ({
@@ -47,7 +49,7 @@ export function engineInput(ws: readonly TestWall[]): { walls: Wall[]; types: Ma
   const walls = ws.map((w) => {
     const id = JSON.stringify(w.layers);
     if (!types.has(id)) types.set(id, { id, name: id, layers: w.layers });
-    return { id: w.id, wallTypeId: id, start: w.start, end: w.end, referenceLine: w.referenceLine };
+    return { id: w.id, wallTypeId: id, start: w.start, end: w.end, referenceLine: w.referenceLine, ...(w.bulge ? { bulge: w.bulge } : {}) };
   });
   return { walls, types };
 }
