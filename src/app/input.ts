@@ -269,7 +269,8 @@ export function wireInput(app: App): void {
     const open = (b: HTMLButtonElement) => {
       const r = b.getBoundingClientRect();
       showMenu(
-        group.members.map((m) => ({ label: m.title, run: toolOf.get(m)! })),
+        // The accessible name: the title moves into the tooltip once shown (tooltip.ts).
+        group.members.map((m) => ({ label: m.getAttribute('aria-label') ?? '', run: toolOf.get(m)! })),
         { x: r.right + 4, y: r.top },
         t(group.name),
       );
