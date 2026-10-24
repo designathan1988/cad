@@ -226,8 +226,8 @@ export function wireInput(app: App): void {
     app.render();
   });
   shell.shortcuts.addEventListener('click', () => showHelp(app));
-  // The preview follows what is typed, before Enter.
-  shell.measure.addEventListener('input', () => app.render());
+  // The preview follows what is typed, before Enter: the wall preview is geometry, so refresh it.
+  shell.measure.addEventListener('input', () => app.refresh());
   shell.measure.addEventListener('keydown', (e) => {
     e.stopPropagation();
     const drawing = ui.tool === 'wall' && ui.wall.kind === 'drawing';

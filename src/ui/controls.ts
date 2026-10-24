@@ -135,6 +135,8 @@ export function select<T extends string>(
     if (o.value === value) opt.selected = true;
     s.append(opt);
   }
+  // The whole label on hover, for any that the field is too narrow to show.
+  s.title = options.find((o) => o.value === value)?.label ?? '';
   s.addEventListener('change', () => onChange(s.value as T));
   s.addEventListener('keydown', (e) => e.stopPropagation());
   box.append(s);

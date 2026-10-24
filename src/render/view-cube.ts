@@ -9,9 +9,9 @@ const FACES = [
   { key: 'cube.front', dir: new THREE.Vector3(0, 0, 1), css: 'translateZ(30px)' },
   { key: 'cube.right', dir: new THREE.Vector3(1, 0, 0), css: 'rotateY(90deg) translateZ(30px)' },
   { key: 'cube.top', dir: new THREE.Vector3(0, 1, 0), css: 'rotateX(90deg) translateZ(30px)' },
-  { key: null, dir: new THREE.Vector3(0, 0, -1), css: 'rotateY(180deg) translateZ(30px)' },
-  { key: null, dir: new THREE.Vector3(-1, 0, 0), css: 'rotateY(-90deg) translateZ(30px)' },
-  { key: null, dir: new THREE.Vector3(0, -1, 0), css: 'rotateX(-90deg) translateZ(30px)' },
+  { key: 'cube.back', dir: new THREE.Vector3(0, 0, -1), css: 'rotateY(180deg) translateZ(30px)' },
+  { key: 'cube.left', dir: new THREE.Vector3(-1, 0, 0), css: 'rotateY(-90deg) translateZ(30px)' },
+  { key: 'cube.bottom', dir: new THREE.Vector3(0, -1, 0), css: 'rotateX(-90deg) translateZ(30px)' },
 ] as const;
 
 export class ViewCube {
@@ -29,7 +29,8 @@ export class ViewCube {
       const face = document.createElement('div');
       face.className = 'cube-face';
       face.style.transform = f.css;
-      face.addEventListener('click', () => onFace(f.dir.y > 0 ? new THREE.Vector3(0, 1, 0.0001) : f.dir.clone()));
+      // Straight up or down, nudged off the vertical so the camera's up direction stays defined.
+      face.addEventListener('click', () => onFace(f.dir.y !== 0 ? new THREE.Vector3(0, f.dir.y, 0.0001) : f.dir.clone()));
       this.faces.push(face);
       this.inner.append(face);
     }
@@ -44,8 +45,8 @@ export class ViewCube {
 
   relabel(): void {
     FACES.forEach((f, i) => {
-      this.faces[i]!.textContent = f.key ? t(f.key) : '';
-      this.faces[i]!.title = f.key ? t(f.key) : '';
+      this.faces[i]!.textContent = t(f.key);
+      this.faces[i]!.title = t(f.key);
     });
     this.home.title = t('cube.home');
     this.home.setAttribute('aria-label', t('cube.home'));

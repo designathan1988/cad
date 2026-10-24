@@ -10,6 +10,7 @@ import { moveWalls, stretchEnd } from '../tools/edit';
 import { GRID_STEP, type Snap } from '../tools/snap';
 import type { App } from './app';
 import type { DocWall } from './document';
+import { insidePolygon, openingOutline } from './geometry';
 
 export type Drag =
   | { readonly kind: 'move'; readonly origin: Point2; readonly walls: readonly DocWall[] }
@@ -110,34 +111,70 @@ export function selectGestures(app: App): SelectGestures {
   };
 }
 
-/** Window (dragged to the right): pieces wholly inside. Crossing (to the left): any piece touched. */
-function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): void {
+/** Something selectable, by id, as its outlines on screen. */
+export interface Pickable {
+  readonly id: string;
+  readonly outlines: readonly (readonly Point2[])[];
+}
+
+/**
+ * Window (dragged to the right): everything wholly inside. Crossing (to the left): everything
+ * touched. Screen points a and b are the drag's corners.
+ */
+export function marqueePick(items: readonly Pickable[], a: Point2, b: Point2): string[] {
   const crossing = b.x < a.x;
   const [x0, x1] = [Math.min(a.x, b.x), Math.max(a.x, b.x)];
   const [y0, y1] = [Math.min(a.y, b.y), Math.max(a.y, b.y)];
   const inRect = (p: Point2) => p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1;
-  if (!additive) app.ui.selection.clear();
-  for (const solid of app.visibleGeometry().solids.values()) {
-    const outlines = solid.pieces.map((p) => app.outlineOnScreen(p.polygon, solid.bottom, solid.top));
-    const vertices = outlines.flat();
-    if (vertices.length === 0) continue;
-    const take = crossing ? outlines.some((o) => touchesRect(o, x0, y0, x1, y1)) : vertices.every(inRect);
-    if (take) app.ui.selection.add(solid.wall.id);
-  }
+  return items
+    .filter(({ outlines }) => {
+      const vertices = outlines.flat();
+      if (vertices.length === 0) return false;
+      return crossing ? outlines.some((o) => polygonTouchesRect(o, x0, y0, x1, y1)) : vertices.every(inRect);
+    })
+    .map((x) => x.id);
 }
 
-/** Whether a convex screen polygon and the rectangle share any point. */
-function touchesRect(poly: readonly Point2[], x0: number, y0: number, x1: number, y1: number): boolean {
+/** Walls, openings, rooms and floors of what is shown, as screen outlines (hulls in 3D). */
+function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): void {
+  const g = app.visibleGeometry();
+  const level = app.store.get().levels.find((l) => l.id === app.ui.levelId);
+  const z = level?.elevation ?? 0;
+  const screen = (poly: readonly Point2[], bottom: number, top: number) => {
+    const pts = app.outlineOnScreen(poly, bottom, top);
+    // In plan the outline keeps its order; in 3D the prism's corners become their hull.
+    return app.ui.view === 'plan' ? pts : hull(pts);
+  };
+  const items: Pickable[] = [
+    ...[...g.solids.values()].map((s) => ({ id: s.wall.id, outlines: s.pieces.map((p) => screen(p.polygon, s.bottom, s.top)) })),
+    ...[...g.openings.values()].map((o) => ({ id: o.opening.id, outlines: [screen(openingOutline(o), o.bottom, o.top)] })),
+    ...[...g.rooms.values()].filter((r) => r.enclosed).map((r) => ({ id: r.room.id, outlines: [screen(r.outline, z, z)] })),
+    ...[...g.floors.values()].map((f) => ({ id: f.floor.id, outlines: [screen(f.outline, f.bottom, f.top)] })),
+  ];
+  if (!additive) app.ui.selection.clear();
+  for (const id of marqueePick(items, a, b)) app.ui.selection.add(id);
+}
+
+/** Whether a screen polygon (convex or not) and the rectangle share any point. */
+function polygonTouchesRect(poly: readonly Point2[], x0: number, y0: number, x1: number, y1: number): boolean {
   if (poly.some((p) => p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1)) return true;
-  // Separating axis test on the rectangle's and the polygon's edge normals.
-  const rect = [vec(x0, y0), vec(x1, y0), vec(x1, y1), vec(x0, y1)];
-  const axes = [...poly.map((p, i) => sub(poly[(i + 1) % poly.length]!, p)), vec(1, 0), vec(0, 1)].map((e) => vec(-e.y, e.x));
-  return axes.every((ax) => {
-    const proj = (ps: readonly Point2[]) => ps.map((p) => p.x * ax.x + p.y * ax.y);
-    const [pa, pb] = [proj(poly), proj(rect)];
-    return Math.max(...pa) >= Math.min(...pb) && Math.max(...pb) >= Math.min(...pa);
+  const corners = [vec(x0, y0), vec(x1, y0), vec(x1, y1), vec(x0, y1)];
+  if (corners.some((c) => insidePolygon(poly, c))) return true;
+  // Otherwise they touch only where an edge of one crosses an edge of the other.
+  const cross = (o: Point2, p: Point2, q: Point2) => (p.x - o.x) * (q.y - o.y) - (p.y - o.y) * (q.x - o.x);
+  const within = (a: number, b: number, c: number, d: number) => Math.max(a, b) >= Math.min(c, d) && Math.max(c, d) >= Math.min(a, b);
+  const meets = (a: Point2, b: Point2, c: Point2, d: Point2) => {
+    const [d1, d2, d3, d4] = [cross(a, b, c), cross(a, b, d), cross(c, d, a), cross(c, d, b)];
+    // On one line: they meet only if their extents overlap.
+    if (d1 === 0 && d2 === 0) return within(a.x, b.x, c.x, d.x) && within(a.y, b.y, c.y, d.y);
+    return d1 * d2 <= 0 && d3 * d4 <= 0;
+  };
+  return poly.some((p, i) => {
+    const q = poly[(i + 1) % poly.length]!;
+    return corners.some((c, k) => meets(p, q, c, corners[(k + 1) % 4]!));
   });
 }
+
 
 /** Convex hull of screen points (monotone chain), for a prism seen in 3D. */
 export function hull(points: readonly Point2[]): Point2[] {

@@ -50,9 +50,9 @@ export function buildShell(root: HTMLElement) {
   center.append(levelBox, views);
 
   const right = el('div', { class: 'right' });
-  const commands = iconButton('command');
+  const commands = iconButton('command', 'icon-btn needs-keyboard');
   commands.disabled = true;
-  const shortcuts = iconButton('keyboard');
+  const shortcuts = iconButton('keyboard', 'icon-btn needs-keyboard');
   const lang = el('button', { type: 'button', class: 'icon-btn text-btn' });
   const theme = iconButton('moon');
   const open = iconButton('folder');

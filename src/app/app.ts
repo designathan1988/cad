@@ -534,7 +534,13 @@ export class App {
       const len = end && w.kind === 'drawing' ? distance(w.last, end) : 0;
       const ang = end && w.kind === 'drawing' ? ((Math.atan2(end.y - w.last.y, end.x - w.last.x) * 180) / Math.PI + 360) % 360 : 0;
       const along = end && w.kind === 'drawing' && len > 0 ? { x: (end.x - w.last.x) / len, y: (end.y - w.last.y) / len } : null;
-      const half = (this.store.get().wallTypes.find((x) => x.id === ui.defaults.wallTypeId)?.layers ?? []).reduce((s, l) => s + l.thickness, 0) / 2;
+      // How far the drawn preview reaches on the measure's side: its pieces as derived (reference line,
+      // thickness and joins included), so the measure is set off past them.
+      const side = along ? { x: -along.y, y: along.x } : null;
+      const reach =
+        side && w.kind === 'drawing'
+          ? Math.max(0, ...(this.geometry.solids.get(PREVIEW_ID)?.pieces ?? []).flatMap((p) => p.polygon.map((v) => (v.x - w.last.x) * side.x + (v.y - w.last.y) * side.y)))
+          : 0;
       const labelKey = ui.snap ? snapLabel[ui.snap.kind] : null;
       this.plan.draw(this.visibleGeometry(), {
         selected: ui.selection,
@@ -546,7 +552,7 @@ export class App {
             : null,
         measure:
           end && along && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
-            ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°`, normal: { x: -along.y, y: along.x }, clear: half }
+            ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°`, normal: side!, clear: reach }
             : (this.bendMeasure() ?? guide?.measure ?? null),
         axis: end && len >= MIN_WALL_LENGTH && w.kind === 'drawing' ? { start: w.last, end } : (guide?.axis ?? null),
         grips: this.gripPoints(),
@@ -805,7 +811,9 @@ export class App {
           : ui.selection.size > 1
             ? 'hint.selectedMany'
             : ui.selection.size === 1
-              ? 'hint.selected'
+              ? ui.view === 'plan'
+                ? 'hint.selected'
+                : 'hint.selected3d'
               : 'hint.select';
     const placing = this.openingKind();
     const aiming = placing !== null && ui.opening.kind === 'aiming';
@@ -890,7 +898,11 @@ export class App {
     let y = yTop - h - 10;
     if (hits(y)) y = Math.min(...dims.map((d) => d.top)) - h - 8;
     if (y < 8 || hits(y)) y = Math.max(yBottom, ...dims.map((d) => d.bottom)) + 10;
-    bar.style.left = `${Math.min(Math.max(8, x - w / 2), vp.width - w - 8)}px`;
-    bar.style.top = `${Math.min(Math.max(8, y), vp.height - h - 8)}px`;
+    // Never under the panel where it lies over the drawing (the sheet on a phone, the drawer on a tablet).
+    const panel = this.shell.panel.hidden ? null : this.shell.panel.getBoundingClientRect();
+    const covered = panel && panel.top > vp.top + 8 && panel.top < vp.bottom ? panel.top - vp.top : vp.height;
+    const right = panel && panel.left > vp.left && panel.left < vp.right && panel.top <= vp.top + 8 ? panel.left - vp.left : vp.width;
+    bar.style.left = `${Math.min(Math.max(8, x - w / 2), right - w - 8)}px`;
+    bar.style.top = `${Math.min(Math.max(8, y), covered - h - 8)}px`;
   }
 }

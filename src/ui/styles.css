@@ -740,6 +740,43 @@ select {
     display: none;
   }
 }
+/* Phones: the top bar takes two rows (the level and the views go below), the buttons that need a
+   keyboard leave, and the panel is a sheet over the lower part of the drawing, not a column over it. */
+@media (max-width: 600px) {
+  :root {
+    --top-h: 84px;
+  }
+  .top {
+    flex-wrap: wrap;
+    align-content: center;
+    row-gap: 2px;
+  }
+  .top .center {
+    order: 3;
+    flex: 1 0 100%;
+    justify-content: center;
+  }
+  .project-name {
+    max-width: 96px;
+  }
+  .level-select {
+    width: 132px;
+  }
+  .top .needs-keyboard {
+    display: none;
+  }
+  .panel {
+    top: auto;
+    left: 0;
+    width: auto;
+    max-height: 45%;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  .foot .measure label {
+    display: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
