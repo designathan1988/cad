@@ -224,15 +224,35 @@ export function wireInput(app: App): void {
     app.render();
   });
   shell.shortcuts.addEventListener('click', () => showHelp(app));
+  // The preview follows what is typed, before Enter.
+  shell.measure.addEventListener('input', () => app.render());
   shell.measure.addEventListener('keydown', (e) => {
     e.stopPropagation();
+    const drawing = ui.tool === 'wall' && ui.wall.kind === 'drawing';
+    if (e.key === 'Tab' && drawing && !e.shiftKey) {
+      // Tab moves from the length to the angle: the field reads "length<angle".
+      e.preventDefault();
+      if (!shell.measure.value.includes('<')) shell.measure.value += '<';
+      return app.render();
+    }
     if (e.key === 'Enter') {
-      if (app.submitMeasure(shell.measure.value)) shell.measure.value = '';
-      else if (shell.measure.value.trim() === '' && ui.tool === 'wall') app.wallEvent({ kind: 'enter' });
+      const text = shell.measure.value;
+      if (app.submitMeasure(text)) {
+        // Done with the field: the keys (A, Esc, W…) go back to the drawing.
+        shell.measure.value = '';
+        shell.measure.blur();
+        app.render();
+      } else if (text.trim() === '') {
+        shell.measure.blur();
+        if (ui.tool === 'wall') app.wallEvent({ kind: 'enter' });
+      }
     } else if (e.key === 'Escape') {
+      const had = shell.measure.value.trim() !== '';
       shell.measure.value = '';
       ui.error = null;
       shell.measure.blur();
+      // An empty field has nothing to cancel: Esc acts on the drawing, as it does outside the field.
+      if (!had && ui.tool === 'wall' && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'escape' });
       app.render();
     }
   });

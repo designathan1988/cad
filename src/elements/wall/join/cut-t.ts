@@ -25,7 +25,11 @@ export interface AbutmentResult {
   readonly deepest: readonly Point2[];
 }
 
-export function resolveAbutment(abutting: WallShape, end: WallEnd, host: WallShape): AbutmentResult {
+/**
+ * `ends`: what bounds the notches along the abutting wall, instead of its free end. A segment of an
+ * arc's chain passes its wedge's radial planes, since its layers are mitred there, not cut square.
+ */
+export function resolveAbutment(abutting: WallShape, end: WallEnd, host: WallShape, ends?: readonly HalfPlane[]): AbutmentResult {
   const n = wallNormal(host);
   const towardPositive = dot(n, intoBody(abutting, end)) > 0;
   const inward = towardPositive ? n : scale(n, -1);
@@ -72,7 +76,7 @@ export function resolveAbutment(abutting: WallShape, end: WallEnd, host: WallSha
       const region: HalfPlane[] = [
         halfPlaneThrough(side(abutting.layerOffsets[k0]!), m),
         halfPlaneThrough(side(abutting.layerOffsets[k1 + 1]!), scale(m, -1)),
-        shortOfFreeEnd,
+        ...(ends ?? [shortOfFreeEnd]),
       ];
       notches.push({ wallId: host.id, region, layers: [h.layer, h.layer] });
     }

@@ -2,7 +2,8 @@
 
 import type { Doc, DocWall, WallDefaults } from '../app/document';
 import type { OpeningSolid } from '../app/geometry';
-import type { OpeningWarning } from '../elements/opening/derive';
+import { type OpeningWarning, referenceLength } from '../elements/opening/derive';
+import { arcOf } from '../elements/wall/geometry/arc';
 import { nextOpeningPanel, openingPanel, openingTitle, type OpeningPanelActions, type OpeningSize } from '../elements/opening/panel';
 import type { OpeningId, OpeningKind } from '../elements/opening/schema';
 import type { FloorSolid, RoomSolid } from '../elements/room/derive';
@@ -103,12 +104,18 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
           ]),
     );
     const thickness = type ? type.layers.reduce((s, l) => s + l.thickness, 0) : null;
-    const length = selected.length === 1 ? distance(selected[0]!.start, selected[0]!.end) : null;
+    const one = selected.length === 1 ? selected[0]! : null;
+    const length = one ? referenceLength(one) : null;
+    const arc = one && one.bulge ? arcOf({ start: one.start, end: one.end, bulge: one.bulge }) : null;
+    const readout = (text: string) => el('div', { class: 'readout' }, text);
     const more = section(
       t('panel.more'),
       false,
-      row(t('panel.thickness'), el('div', { class: 'readout' }, thickness === null ? t('panel.varies') : `${num(thickness, 3)} m`)),
-      row(t('panel.length'), el('div', { class: 'readout' }, length === null ? t('panel.varies') : `${num(length)} m`)),
+      row(t('panel.thickness'), readout(thickness === null ? t('panel.varies') : `${num(thickness, 3)} m`)),
+      row(t('panel.length'), readout(length === null ? t('panel.varies') : `${num(length)} m`)),
+      ...(arc && one
+        ? [row(t('panel.chord'), readout(`${num(distance(one.start, one.end))} m`)), row(t('panel.radius'), readout(`${num(arc.radius)} m`))]
+        : []),
     );
     nodes.push(general, constraints, more);
     wireScrub(constraints, t('panel.baseOffset'), () => baseOffset, (v) => act.updateWalls({ baseOffset: v }));

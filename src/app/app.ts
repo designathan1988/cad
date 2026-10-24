@@ -6,6 +6,7 @@ import { parseLength, parseLengthAngle } from '../core/measure';
 import { createStore, type Store } from '../core/store';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
+import { arcOf } from '../elements/wall/geometry/arc';
 import { addWalls, updateWalls } from '../elements/wall/commands';
 import {
   addOpening,
@@ -31,7 +32,7 @@ import { icon } from '../ui/icons';
 import { renderPanel } from '../ui/panel';
 import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui/shell';
 import { snapLabel, type Snap } from '../tools/snap';
-import { bulgeThrough, IDLE, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
+import { bulgeThrough, IDLE, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, hull } from './select-drag';
 import { type Doc, type DocWall, newDocument, type WallDefaults } from './document';
 import { boundsOf, deriveGeometry, type DerivedGeometry, type OpeningSolid, openingOutline } from './geometry';
@@ -244,8 +245,32 @@ export class App {
       const b = bulgeThrough(w.last, w.end, w.cursor);
       return [this.makeWall(w.last, w.end, PREVIEW_ID, b ?? 0)];
     }
-    if (w.kind !== 'drawing' || distance(w.last, w.cursor) < MIN_WALL_LENGTH) return [];
-    return [this.makeWall(w.last, w.cursor, PREVIEW_ID)];
+    if (w.kind !== 'drawing') return [];
+    const end = this.drawingEnd();
+    if (distance(w.last, end) < MIN_WALL_LENGTH) return [];
+    return [this.makeWall(w.last, end, PREVIEW_ID)];
+  }
+
+  /** While bending an arc: its radius, at the middle of the arc, set off outward. Null for a straight bend. */
+  private bendMeasure(): { at: Point2; text: string; normal: Point2; clear: number } | null {
+    const w = this.ui.wall;
+    if (this.ui.tool !== 'wall' || w.kind !== 'bend') return null;
+    const b = bulgeThrough(w.last, w.end, w.cursor);
+    const arc = b === null ? null : arcOf({ start: w.last, end: w.end, bulge: b });
+    if (!arc) return null;
+    const mid = arc.startAngle + arc.sweep / 2;
+    const out = { x: Math.cos(mid), y: Math.sin(mid) };
+    const at = { x: arc.center.x + out.x * arc.radius, y: arc.center.y + out.y * arc.radius };
+    const length = arc.radius * Math.abs(arc.sweep);
+    return { at, text: `R ${num(arc.radius)} m · ${num(length)} m`, normal: out, clear: 0.2 };
+  }
+
+  /** The end of the segment being drawn: the typed length (and angle) when there is one, else the cursor. */
+  drawingEnd(): Point2 {
+    const w = this.ui.wall;
+    if (w.kind !== 'drawing') return w.kind === 'bend' ? w.end : { x: 0, y: 0 };
+    const typed = parseLengthAngle(this.shell.measure.value);
+    return typed.ok && typed.value.length >= MIN_WALL_LENGTH ? typedEnd(w, typed.value.length, typed.value.angle) : w.cursor;
   }
 
   makeWall(start: Point2, end: Point2, id = newId('wall'), bulge = 0): DocWall {
@@ -296,6 +321,7 @@ export class App {
     this.ui.floorDraft = [];
     this.ui.snap = null;
     this.ui.error = null;
+    this.shell.measure.value = '';
     if (tool !== 'select') this.ui.selection.clear();
     this.refresh();
   }
@@ -310,6 +336,8 @@ export class App {
 
   wallEvent(event: WallToolEvent): void {
     const r = wallTransition(this.ui.wall, event);
+    // A value typed for one step (a length, a radius) never carries over to the next.
+    if (r.state.kind !== this.ui.wall.kind || r.segment) this.shell.measure.value = '';
     this.ui.wall = r.state;
     if (r.segment) this.store.dispatch(addWalls([this.makeWall(r.segment.start, r.segment.end, newId('wall'), r.segment.bulge ?? 0)]));
     else this.refresh();
@@ -469,16 +497,25 @@ export class App {
     if (plan) {
       const w = ui.wall;
       const drawing = ui.tool === 'wall' && w.kind === 'drawing';
-      const len = drawing ? distance(w.last, w.cursor) : 0;
-      const ang = drawing ? ((Math.atan2(w.cursor.y - w.last.y, w.cursor.x - w.last.x) * 180) / Math.PI + 360) % 360 : 0;
+      const end = drawing ? this.drawingEnd() : null;
+      const len = end && w.kind === 'drawing' ? distance(w.last, end) : 0;
+      const ang = end && w.kind === 'drawing' ? ((Math.atan2(end.y - w.last.y, end.x - w.last.x) * 180) / Math.PI + 360) % 360 : 0;
+      const along = end && w.kind === 'drawing' && len > 0 ? { x: (end.x - w.last.x) / len, y: (end.y - w.last.y) / len } : null;
+      const half = (this.store.get().wallTypes.find((x) => x.id === ui.defaults.wallTypeId)?.layers ?? []).reduce((s, l) => s + l.thickness, 0) / 2;
       const labelKey = ui.snap ? snapLabel[ui.snap.kind] : null;
       this.plan.draw(this.visibleGeometry(), {
         selected: ui.selection,
         hover: ui.hover,
         preview,
-        snap: ui.tool === 'wall' && ui.snap ? { point: ui.snap.point, label: labelKey ? t(labelKey) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}) } : null,
-        measure: drawing && len >= MIN_WALL_LENGTH ? { at: { x: (w.last.x + w.cursor.x) / 2, y: (w.last.y + w.cursor.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°` } : (guide?.measure ?? null),
-        axis: drawing && len >= MIN_WALL_LENGTH ? { start: w.last, end: w.cursor } : (guide?.axis ?? null),
+        snap:
+          ui.tool === 'wall' && ui.snap
+            ? { point: ui.snap.point, label: labelKey ? t(labelKey) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...(along ? { away: along } : {}) }
+            : null,
+        measure:
+          end && along && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
+            ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°`, normal: { x: -along.y, y: along.x }, clear: half }
+            : (this.bendMeasure() ?? guide?.measure ?? null),
+        axis: end && len >= MIN_WALL_LENGTH && w.kind === 'drawing' ? { start: w.last, end } : (guide?.axis ?? null),
         grips: this.gripPoints(),
         roomLabels: [...this.visibleGeometry().rooms.values()].map((r) => ({
           at: r.room.seed,
@@ -759,8 +796,9 @@ export class App {
     shell.keys.replaceChildren(...keys);
     const lengthMode = drawing && w.kind === 'drawing';
     const distanceMode = aiming || (ui.selection.size === 1 && this.selectedOpenings().length === 1);
+    const withAngle = lengthMode && shell.measure.value.includes('<');
     shell.measureLabel.textContent = t(
-      drawing && w.kind === 'bend' ? 'foot.radius' : lengthMode ? 'foot.length' : distanceMode ? 'foot.distance' : 'foot.measure',
+      drawing && w.kind === 'bend' ? 'foot.radius' : withAngle ? 'foot.lengthAngle' : lengthMode ? 'foot.length' : distanceMode ? 'foot.distance' : 'foot.measure',
     );
     shell.measure.placeholder = t(lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
     shell.toolWall.classList.toggle('arc-mode', drawing && arc);

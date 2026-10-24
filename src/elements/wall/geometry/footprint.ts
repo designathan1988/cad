@@ -69,14 +69,21 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     notches.push(...result.notches);
     result.warnings.forEach(report);
   }
+  // An arc ending against a wall: its end segment takes the T cut, and the segments before it that
+  // still reach past the host's face take their own (carryArcStem).
+  const arcStems: { end: EndRef; host: WallShape }[] = [];
   for (const { abutting, hostId } of graph.abutments) {
-    const result = resolveAbutment(byId.get(abutting.wallId)!, abutting.end, byId.get(hostId)!);
+    const stemChain = chains.get(parentOf(abutting.wallId));
+    // The end segment's notches stop at the joint with the segment before it, a radial plane.
+    const back = stemChain ? wedge(stemChain, abutting.wallId).filter((_, k) => k === (abutting.end === 'end' ? 0 : 1)) : undefined;
+    const result = resolveAbutment(byId.get(abutting.wallId)!, abutting.end, byId.get(hostId)!, back);
     if (!fitsArc(result, abutting.wallId, hostId, byId, chains)) {
-      report({ kind: 'complexJoin', walls: [abutting.wallId, hostId] });
+      report({ kind: 'arcJoinUnsupported', walls: [abutting.wallId, hostId] });
       continue;
     }
     endCuts.set(keyOf(abutting), result.cut);
     notches.push(...result.notches);
+    if (stemChain) arcStems.push({ end: abutting, host: byId.get(hostId)! });
   }
   // The free ends of an arc are radial.
   for (const chain of chains.values()) {
@@ -107,7 +114,7 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     stationAlong(byId.get(x.cutId)!, x.point) - stationAlong(byId.get(y.cutId)!, y.point),
   )) {
     if (isArc(throughId) || isArc(cutId)) {
-      report({ kind: 'complexJoin', walls: isArc(cutId) ? [throughId, cutId] : [cutId, throughId] });
+      report({ kind: 'arcJoinUnsupported', walls: isArc(cutId) ? [throughId, cutId] : [cutId, throughId] });
       continue;
     }
     const through = byId.get(throughId)!;
@@ -122,11 +129,18 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     notches.push(...before.notches, ...after.notches);
   }
 
+  const clips = new Map<string, EndCut[]>();
+  for (const { end, host } of arcStems) {
+    const carried = carryArcStem(chains.get(parentOf(end.wallId))!, end, host, (shape) => spans.get(shape.id)!.flatMap((span) => spanPieces(span, [])));
+    for (const [id, cut] of carried.clips) clips.set(id, [...(clips.get(id) ?? []), cut]);
+    notches.push(...carried.notches);
+  }
   const pieces = new Map<WallId, Piece[]>();
   for (const wall of walls) pieces.set(wall.id, []);
   for (const shape of shapes) {
     const own = notches.filter((n) => n.wallId === shape.id);
-    pieces.get(parentOf(shape.id))!.push(...spans.get(shape.id)!.flatMap((span) => spanPieces(span, own)));
+    const raw = spans.get(shape.id)!.flatMap((span) => spanPieces(span, own));
+    pieces.get(parentOf(shape.id))!.push(...(clips.has(shape.id) ? clipPieces(raw, clips.get(shape.id)!) : raw));
   }
   warnings.push(...overlapsWithArcs(pieces, chains, warnings));
   return { pieces, warnings: dedupe(warnings) };
@@ -135,7 +149,8 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
 /**
  * A T against an arc is exact only inside one segment: everything the abutting wall puts into the
  * host (where its faces cross the host's faces, and its deepest points) must lie in the host
- * segment's sector. An arc abutting a straight wall must keep all that inside its end segment.
+ * segment's sector. An arc abutting another wall needs no such check: trimChain carries its cut to
+ * the segments before its end.
  */
 function fitsArc(
   result: AbutmentResult,
@@ -144,14 +159,56 @@ function fitsArc(
   byId: ReadonlyMap<string, WallShape>,
   chains: ReadonlyMap<WallId, ArcChain>,
 ): boolean {
-  const points = [...result.deepest, ...faceCrossings(byId.get(abuttingId)!, byId.get(hostId)!)];
-  const fits = (segmentId: string) => {
-    const chain = chains.get(parentOf(segmentId));
-    if (!chain) return true;
-    const sector = sectorOf(chain, chain.segments.findIndex((x) => x.id === segmentId));
-    return points.every((p) => inSector(sector, p));
-  };
-  return fits(hostId) && fits(abuttingId);
+  const chain = chains.get(parentOf(hostId));
+  if (!chain) return true;
+  const sector = sectorOf(chain, chain.segments.findIndex((x) => x.id === hostId));
+  return [...result.deepest, ...faceCrossings(byId.get(abuttingId)!, byId.get(hostId)!)].every((p) => inSector(sector, p));
+}
+
+/** The two radial planes bounding one segment of an arc's chain: inside both is that segment's wedge. */
+function wedge(chain: ArcChain, segmentId: string): readonly HalfPlane[] {
+  return sectorOf(chain, chain.segments.findIndex((x) => x.id === segmentId));
+}
+
+/**
+ * The T of an arc's end, carried back along its chain: each earlier segment still reaching past the
+ * host's face gets its own T cut (no lengthening) and its own notches in the host, kept inside its
+ * wedge. The walk stops at the first segment that does not reach, so the cut planes (which are
+ * infinite) never trim a far part of the arc.
+ */
+function carryArcStem(
+  chain: ArcChain,
+  end: EndRef,
+  host: WallShape,
+  piecesOf: (shape: WallShape) => Piece[],
+): { clips: Map<string, EndCut>; notches: Notch[] } {
+  const clips = new Map<string, EndCut>();
+  const notches: Notch[] = [];
+  const at = chain.segments.findIndex((x) => x.id === end.wallId);
+  const step = end.end === 'end' ? -1 : 1;
+  for (let i = at + step; i >= 0 && i < chain.segments.length; i += step) {
+    const segment = chain.segments[i]!;
+    const r = resolveAbutment(segment, end.end, host, wedge(chain, segment.id));
+    // Reaching: some of it is past the host's near face, inside the host's band.
+    const [f0, f1] = faceOffsets(host);
+    const inside = (p: Point2) => {
+      const o = offsetOf(host, p);
+      return o > f0 + 1e-9 && o < f1 - 1e-9;
+    };
+    if (!piecesOf(segment).some((piece) => piece.polygon.some(inside))) break;
+    clips.set(segment.id, { ...r.cut, extension: 0 });
+    notches.push(...r.notches);
+  }
+  return { clips, notches };
+}
+
+/** Pieces clipped by more end cuts, layer by layer; slivers left with no area are dropped. */
+function clipPieces(pieces: readonly Piece[], cuts: readonly EndCut[]): Piece[] {
+  return pieces.flatMap((piece) => {
+    const planes = cuts.flatMap((c) => [...c.cuts, ...(c.layerCuts?.[piece.layerIndex] ?? [])]);
+    const polygon = planes.reduce<ConvexPolygon>((poly, h) => (poly.length > 0 ? clipHalfPlane(poly, h) : poly), piece.polygon);
+    return polygon.length > 0 && area(polygon) > AREA_EPSILON ? [{ layerIndex: piece.layerIndex, polygon }] : [];
+  });
 }
 
 /** Where the abutting wall's two faces cross the host's two faces. */
@@ -182,7 +239,7 @@ function overlapsWithArcs(
     for (const [otherId, theirs] of pieces) {
       if (otherId === arcId || (chains.has(otherId) && otherId < arcId) || reported(arcId, otherId)) continue;
       const hit = mine.some((p) => theirs.some((q) => overlapArea(p.polygon, q.polygon) > AREA_EPSILON));
-      if (hit) out.push({ kind: 'complexJoin', walls: chains.has(otherId) ? [arcId, otherId] : [otherId, arcId] });
+      if (hit) out.push({ kind: 'arcJoinUnsupported', walls: chains.has(otherId) ? [arcId, otherId] : [otherId, arcId] });
     }
   }
   return out;

@@ -90,14 +90,7 @@ export function wallTransition(state: WallToolState, event: WallToolEvent): Wall
     }
     case 'typed': {
       if (!(event.length >= MIN_WALL_LENGTH)) return { state, rejected: true };
-      const toward = sub(state.cursor, state.last);
-      const dir =
-        event.angle !== null
-          ? vec(Math.cos((event.angle * Math.PI) / 180), Math.sin((event.angle * Math.PI) / 180))
-          : distance(state.cursor, state.last) > 0
-            ? normalize(toward)
-            : vec(1, 0);
-      const end = add(state.last, scale(dir, event.length));
+      const end = typedEnd(state, event.length, event.angle);
       if (state.arc) return { state: { kind: 'bend', start: state.start, last: state.last, end, cursor: end, count: state.count, arc: true } };
       return {
         state: { ...state, last: end, cursor: end, count: state.count + 1 },
@@ -138,6 +131,20 @@ function bendTransition(state: Extract<WallToolState, { kind: 'bend' }>, event: 
       return { state: { kind: 'idle', arc: true } };
   }
   return { state, rejected: true };
+}
+
+/**
+ * Where a typed length (and angle, counter-clockwise from +x, in degrees) ends the segment: along the
+ * angle, or toward the cursor when no angle is typed.
+ */
+export function typedEnd(state: { readonly last: Point2; readonly cursor: Point2 }, length: number, angle: number | null): Point2 {
+  const dir =
+    angle !== null
+      ? vec(Math.cos((angle * Math.PI) / 180), Math.sin((angle * Math.PI) / 180))
+      : distance(state.cursor, state.last) > 0
+        ? normalize(sub(state.cursor, state.last))
+        : vec(1, 0);
+  return add(state.last, scale(dir, length));
 }
 
 /**

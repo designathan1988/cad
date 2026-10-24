@@ -24,6 +24,8 @@ export interface Notch {
 export type JoinWarningKind =
   | 'wallsOverlap'
   | 'complexJoin'
+  /** A join with an arc the engine cannot make exact (the arc crosses a wall, or a T spans its segments). */
+  | 'arcJoinUnsupported'
   | 'wallTooShort'
   | 'missingWallType'
   | 'invalidWallType'

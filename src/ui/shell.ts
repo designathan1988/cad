@@ -147,10 +147,8 @@ export function buildShell(root: HTMLElement) {
     tip(open, 'top.open');
     tip(panelToggle, 'top.panel');
     tip(level, 'top.level');
-    tip(toolSelect, 'tool.select');
-    toolSelect.title = `${t('tool.select')} (V)`;
-    tip(toolWall, 'tool.wall');
-    toolWall.title = `${t('tool.wall')} (W)`;
+    tip(toolSelect, 'tool.selectKey');
+    tip(toolWall, 'tool.wallKey');
     tip(toolDoor, 'tool.doorKey');
     tip(toolWindow, 'tool.windowKey');
     tip(toolRoom, 'tool.roomKey');
@@ -171,6 +169,10 @@ export function buildShell(root: HTMLElement) {
     tip(floatFrame, 'float.frame');
     tip(snapBtn, 'foot.snap');
     emptyHint.textContent = t('empty.hint');
+    tools.setAttribute('aria-label', t('aria.tools'));
+    planCanvas.setAttribute('aria-label', t('view.plan'));
+    glCanvas.setAttribute('aria-label', t('view.3d'));
+    panel.setAttribute('aria-label', t('aria.properties'));
   };
   return { ...parts, relabel };
 }

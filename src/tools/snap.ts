@@ -56,6 +56,11 @@ export function snap(input: SnapInput): Snap {
   const mids = input.segments.map((s) => scale(add(s.start, s.end), 0.5));
   const nearMid = closest(mids, cursor, r);
   if (nearMid) return { point: nearMid, kind: 'midpoint' };
+  // On the body of a wall: before alignment, which every wall's own ends would otherwise always win.
+  for (const s of input.segments) {
+    const p = projectOnSegment(cursor, s.start, s.end);
+    if (p && distance(p, cursor) <= r) return { point: p, kind: 'onWall' };
+  }
 
   // Angle from the last point in 15° steps, with the length on the 5 cm grid.
   let best: Snap | null = null;
@@ -70,18 +75,22 @@ export function snap(input: SnapInput): Snap {
     }
   }
 
-  // Aligned with another wall end, horizontally or vertically, within the radius.
+  // Aligned with another wall end, horizontally or vertically, within the radius. On a snapped
+  // direction the point slides along that direction to the line, so it never leaves the angle.
+  const dir = best && from ? normalize(sub(best.point, from)) : null;
   for (const e of [...ends, ...(input.chainStart ? [input.chainStart] : [])]) {
     const base = best?.point ?? cursor;
-    if (Math.abs(base.x - e.x) <= r && distance(e, cursor) > r) return { point: vec(e.x, base.y), kind: 'aligned', guideFrom: e };
-    if (Math.abs(base.y - e.y) <= r && distance(e, cursor) > r) return { point: vec(base.x, e.y), kind: 'aligned', guideFrom: e };
+    if (distance(e, cursor) <= r) continue;
+    if (Math.abs(base.x - e.x) <= r) {
+      const p = dir && from ? (Math.abs(dir.x) > 1e-9 ? add(from, scale(dir, (e.x - from.x) / dir.x)) : null) : vec(e.x, base.y);
+      if (p) return { point: p, kind: 'aligned', guideFrom: e };
+    }
+    if (Math.abs(base.y - e.y) <= r) {
+      const p = dir && from ? (Math.abs(dir.y) > 1e-9 ? add(from, scale(dir, (e.y - from.y) / dir.y)) : null) : vec(base.x, e.y);
+      if (p) return { point: p, kind: 'aligned', guideFrom: e };
+    }
   }
   if (best) return best;
-
-  for (const s of input.segments) {
-    const p = projectOnSegment(cursor, s.start, s.end);
-    if (p && distance(p, cursor) <= r) return { point: p, kind: 'onWall' };
-  }
   return { point: onGrid(cursor), kind: 'grid' };
 }
 

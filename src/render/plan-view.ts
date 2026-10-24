@@ -20,9 +20,13 @@ export interface PlanOverlay {
   readonly hover: WallId | null;
   /** Walls being drawn (ids present in the geometry), shown as a translucent preview. */
   readonly preview: ReadonlySet<WallId>;
-  readonly snap: { readonly point: Point2; readonly label: string | null; readonly guideFrom?: Point2 } | null;
-  /** Live measure next to the segment being drawn. */
-  readonly measure: { readonly at: Point2; readonly text: string } | null;
+  /** `away`: the direction the segment being drawn arrives from, so the label goes beyond its end. */
+  readonly snap: { readonly point: Point2; readonly label: string | null; readonly guideFrom?: Point2; readonly away?: Point2 } | null;
+  /**
+   * Live measure of the segment being drawn. With `normal` (unit, world) it is set off the segment on
+   * that side, `clear` metres plus a gap, so it never sits on the wall.
+   */
+  readonly measure: { readonly at: Point2; readonly text: string; readonly normal?: Point2; readonly clear?: number } | null;
   /** The reference line of the segment being drawn, dashed. */
   readonly axis: { readonly start: Point2; readonly end: Point2 } | null;
   /** End grips of the selected wall: small squares to drag. */
@@ -202,8 +206,50 @@ export class PlanView {
       ctx.strokeRect(Math.round(p.x) - 4.5, Math.round(p.y) - 4.5, 9, 9);
     }
     for (const d of o.dims ?? []) this.drawDim(d, color('--wall-sel'));
-    if (o.snap) this.drawSnap(o.snap, color('--snap'), color('--bg'));
-    if (o.measure) this.label(o.measure.at, o.measure.text, color('--accent-text'), color('--canvas'), 'bold 12px Inter, system-ui');
+    const snapBox = o.snap ? this.drawSnap(o.snap, color('--snap'), color('--bg')) : null;
+    if (o.measure) this.drawMeasure(o.measure, snapBox, color('--accent-text'), color('--canvas'));
+  }
+
+  /** The live measure, off the segment along its normal, and moved further out while it would cover the snap label. */
+  private drawMeasure(m: NonNullable<PlanOverlay['measure']>, avoid: Box | null, colour: string, bg: string): void {
+    const font = 'bold 12px Inter, system-ui';
+    if (!m.normal) {
+      this.label(m.at, m.text, colour, bg, font);
+      return;
+    }
+    const n = { x: m.normal.x, y: -m.normal.y };
+    const base = this.toScreen(m.at);
+    const w = this.textWidth(m.text, font) + 8;
+    // Far enough along the normal for the whole pad to clear the wall face, whatever the angle.
+    const reach = (m.clear ?? 0) * this.scale + 6 + Math.abs(n.x) * (w / 2) + Math.abs(n.y) * 8;
+    let p = { x: base.x + n.x * reach, y: base.y + n.y * reach };
+    for (let i = 0; i < 4 && avoid && overlaps(this.boxAt(p, w), avoid); i++) p = { x: p.x + n.x * 20, y: p.y + n.y * 20 };
+    this.tag(p, m.text, colour, bg, font);
+  }
+
+  private textWidth(text: string, font: string): number {
+    this.ctx.font = font;
+    return this.ctx.measureText(text).width;
+  }
+
+  /** The pad of a tag of width w centred on p. */
+  private boxAt(p: Point2, w: number): Box {
+    return { x: p.x - w / 2, y: p.y - 8, w, h: 16 };
+  }
+
+  /** A text tag centred on a screen point, kept inside the canvas. */
+  private tag(p: Point2, text: string, colour: string, bg: string, font: string): void {
+    const tw = this.textWidth(text, font);
+    const { w, h } = this.size;
+    const x = Math.min(Math.max(4, p.x - tw / 2), w - tw - 8);
+    const y = Math.min(Math.max(12, p.y + 3), h - 6);
+    const { ctx } = this;
+    ctx.fillStyle = bg;
+    ctx.globalAlpha = 0.92;
+    ctx.fillRect(x - 4, y - 11, tw + 8, 16);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = colour;
+    ctx.fillText(text, x, y + 1);
   }
 
   /**
@@ -296,7 +342,7 @@ export class PlanView {
     ctx.restore();
   }
 
-  private drawSnap(s: NonNullable<PlanOverlay['snap']>, colour: string, bg: string): void {
+  private drawSnap(s: NonNullable<PlanOverlay['snap']>, colour: string, bg: string): Box | null {
     const { ctx } = this;
     if (s.guideFrom) this.dashed(s.guideFrom, s.point, colour);
     const p = this.toScreen(s.point);
@@ -308,7 +354,12 @@ export class PlanView {
     ctx.moveTo(p.x + 5, p.y - 5);
     ctx.lineTo(p.x - 5, p.y + 5);
     ctx.stroke();
-    if (s.label) this.label({ x: s.point.x, y: s.point.y }, s.label, colour, bg, '600 11px Inter, system-ui', { x: 14, y: -12 });
+    if (!s.label) return null;
+    // Beyond the end of the segment, never back over it: to the left when it arrives going left.
+    const font = '600 11px Inter, system-ui';
+    const left = s.away !== undefined && s.away.x < 0;
+    const offset = left ? { x: -14 - this.textWidth(s.label, font), y: -12 } : { x: 14, y: -12 };
+    return this.label({ x: s.point.x, y: s.point.y }, s.label, colour, bg, font, offset);
   }
 
   /** Extension lines, the dimension line and a slash tick at each end; the value is a DOM field. */
@@ -349,7 +400,7 @@ export class PlanView {
   }
 
   /** A text tag on a background pad, at a world point plus a screen offset. */
-  private label(at: Point2, text: string, colour: string, bg: string, font: string, offset = { x: 0, y: -14 }): void {
+  private label(at: Point2, text: string, colour: string, bg: string, font: string, offset = { x: 0, y: -14 }): Box {
     const { ctx } = this;
     const p = this.toScreen(at);
     ctx.font = font;
@@ -365,6 +416,16 @@ export class PlanView {
     ctx.globalAlpha = 1;
     ctx.fillStyle = colour;
     ctx.fillText(text, x, y + 1);
+    return { x: x - 4, y: y - 11, w: tw + 8, h: 16 };
   }
 }
+
+interface Box {
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
+
+const overlaps = (a: Box, b: Box): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 

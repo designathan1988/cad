@@ -958,8 +958,15 @@ Arco com face de raio ≤ 0: aviso `arcTooTight`, nada desenhado.
 
 Juntas: L nas pontas do arco e nós sobre a cadeia usam o motor de sempre. Um T contra o arco só é
 feito se tudo o que a parede põe dentro dele cabe num trecho (setor radial); senão, e para todo X com
-arco, aviso `complexJoin` e as paredes ficam como desenhadas. Uma última verificação acusa qualquer
-sobreposição que sobrar entre um arco e outra parede.
+arco, aviso `arcJoinUnsupported` e as paredes ficam como desenhadas. Uma última verificação acusa
+qualquer sobreposição que sobrar entre um arco e outra parede, com o mesmo aviso.
+
+O arco que termina contra uma parede (o arco é a haste do T) não precisa caber num trecho: o trecho
+da ponta recebe o corte de T, e cada trecho anterior que ainda entra na faixa da hospedeira recebe o
+seu próprio corte de T (sem alongar) e os seus entalhes na hospedeira, limitados pelas radiais do
+seu setor, onde as camadas são unidas em miter. A volta para trás para no primeiro trecho que não
+entra, para que os planos (infinitos) nunca cortem outra parte do arco. Antes disso o caso era
+sempre recusado com aviso, e o aviso dizia "paredes demais num mesmo ponto".
 
 | Medida | Resultado |
 |---|---|
