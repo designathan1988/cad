@@ -44,4 +44,11 @@ describe('project browser', () => {
     expect(usage.get('wt_drywall10')).toBe(0);
     expect(usage.size).toBe(doc.wallTypes.length);
   });
+
+  it('counted on one level: what a click on the type selects there', () => {
+    const two = { ...doc, walls: [...doc.walls, { ...doc.walls[0]!, id: 'up', levelId: 'lvl_up' }] };
+    expect(typeUsage(two).get('wt_concrete20')).toBe(3);
+    expect(typeUsage(two, 'lvl_ground').get('wt_concrete20')).toBe(2);
+    expect(typeUsage(two, 'lvl_up').get('wt_concrete20')).toBe(1);
+  });
 });
