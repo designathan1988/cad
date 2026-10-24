@@ -1,6 +1,7 @@
 // The vertical place of the floating bar (pure): above the selection, moved up past each box it would
 // cover in its own columns until free; if that leaves the top of the view, below the selection, moved
-// down past the boxes there the same way. Boxes elsewhere in the view never move it.
+// down past the boxes there the same way; if that leaves the bottom too, the nearest free place inside
+// the view. Boxes elsewhere in the view never move it.
 
 export interface Span {
   readonly left: number;
@@ -26,5 +27,14 @@ export function placeBarY(
   if (y >= EDGE) return y;
   y = selection.bottom + GAP_SELECTION;
   for (let b = hit(y), n = 0; b && n < boxes.length; b = hit(y), n++) y = b.bottom + GAP_BOX;
-  return Math.min(y, view.h - bar.h - EDGE);
+  y = Math.min(y, view.h - bar.h - EDGE);
+  if (!hit(y)) return y;
+  // No room above or below (a selection filling the view, a phone after F): clamped to the edge it
+  // would sit on a handle. The nearest free place inside the view, searched outward from there.
+  for (let d = STEP; d < view.h; d += STEP) {
+    for (const c of [y - d, y + d]) if (c >= EDGE && c + bar.h <= view.h - EDGE && !hit(c)) return c;
+  }
+  return y;
 }
+
+const STEP = 4;

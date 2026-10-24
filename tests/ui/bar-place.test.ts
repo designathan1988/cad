@@ -30,4 +30,16 @@ describe('floating bar placement', () => {
     expect(placeBarY(bar, { top: 20, bottom: 520 }, [dimBelow], view)).toBe(556 + 8);
     expect(placeBarY(bar, { top: 20, bottom: 520 }, [], view)).toBe(520 + 10);
   });
+
+  // The tester's R04 and T04: on a phone after F the selection fills the view; with no room above or
+  // below, the bar was clamped to the bottom edge, onto the handle at the arc's end.
+  it('no room above or below: the nearest free place, never on a box in its columns', () => {
+    const handleTop = { left: 140, right: 164, top: 6, bottom: 30 };
+    const handleBottom = { left: 140, right: 164, top: 770, bottom: 794 };
+    const y = placeBarY(bar, { top: 10, bottom: 790 }, [handleTop, handleBottom], view);
+    const meets = (b: { top: number; bottom: number }) => b.top < y + bar.h && y < b.bottom;
+    expect(meets(handleTop) || meets(handleBottom)).toBe(false);
+    expect(y).toBeGreaterThanOrEqual(8);
+    expect(y + bar.h).toBeLessThanOrEqual(800 - 8);
+  });
 });
