@@ -2,7 +2,7 @@
 // box, with its dimensions and handles, lies in the part of the view that nothing covers.
 
 import { describe, expect, it } from 'vitest';
-import { keepInView } from '../../src/app/keep-in-view';
+import { fitFactor, keepInView } from '../../src/app/keep-in-view';
 
 const view = { w: 1000, h: 600 };
 const none = { right: 0, bottom: 0 };
@@ -32,5 +32,20 @@ describe('keepInView', () => {
   });
   it('a box larger than the free part keeps its top left corner in view', () => {
     expect(keepInView(box(-50, -80, 1500, 900), view, none, room)).toEqual({ dx: 66, dy: 144 });
+  });
+});
+
+// The tester's P07: on a phone the free part was about 323 × 325 px and the arc did not fit; the view
+// only panned. A box larger than the free part is zoomed out to fit first.
+describe('fitFactor', () => {
+  it('a box that fits: 1, no zoom', () => {
+    expect(fitFactor(box(100, 100, 300, 200), view, none, room)).toBe(1);
+  });
+  it('a box twice as tall as the free part: zoomed out to fit it, with 5 % to spare', () => {
+    // Free height 600 − 16 − 16 − 48 = 520; the box is 1040 tall: 520 / 1040 × 0.95.
+    expect(fitFactor(box(100, 0, 200, 1040), view, none, room)).toBeCloseTo(0.475, 12);
+  });
+  it('the narrower way decides: free width 1000 − 400 − 32 = 568 for a 1136 wide box', () => {
+    expect(fitFactor(box(0, 100, 1136, 200), view, { right: 400, bottom: 0 }, room)).toBeCloseTo(0.475, 12);
   });
 });
