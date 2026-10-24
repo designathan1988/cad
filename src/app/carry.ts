@@ -18,18 +18,30 @@ function toSegment(p: Point2, a: Point2, b: Point2): number {
   return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
 }
 
+/** The rooms whose every surrounding wall is in `moved`: they go with a move or a turn of those walls. */
+export function roomsGoingWith(doc: Doc, before: DerivedGeometry, moved: ReadonlySet<string>): Set<string> {
+  return new Set(
+    doc.rooms
+      .filter((room) => {
+        const solid = before.rooms.get(room.id);
+        if (!solid || !solid.enclosed) return false;
+        const touching = [...before.solids.values()].filter(
+          (s) =>
+            s.wall.levelId === room.levelId &&
+            s.pieces.some((piece) =>
+              solid.outline.some((v) => piece.polygon.some((a, i) => toSegment(v, a, piece.polygon[(i + 1) % piece.polygon.length]!) <= NEAR)),
+            ),
+        );
+        return touching.length > 0 && touching.every((s) => moved.has(s.wall.id));
+      })
+      .map((room) => room.id),
+  );
+}
+
+/** The rooms with the points of those in `going` moved by `transform`. */
+export const moveRooms = (rooms: readonly Room[], going: ReadonlySet<string>, transform: (p: Point2) => Point2): Room[] =>
+  rooms.map((room) => (going.has(room.id) ? { ...room, seed: transform(room.seed) } : room));
+
 export function carriedRooms(doc: Doc, before: DerivedGeometry, moved: ReadonlySet<string>, transform: (p: Point2) => Point2): Room[] {
-  return doc.rooms.map((room) => {
-    const solid = before.rooms.get(room.id);
-    if (!solid || !solid.enclosed) return room;
-    const touching = [...before.solids.values()].filter(
-      (s) =>
-        s.wall.levelId === room.levelId &&
-        s.pieces.some((piece) =>
-          solid.outline.some((v) => piece.polygon.some((a, i) => toSegment(v, a, piece.polygon[(i + 1) % piece.polygon.length]!) <= NEAR)),
-        ),
-    );
-    const all = touching.length > 0 && touching.every((s) => moved.has(s.wall.id));
-    return all ? { ...room, seed: transform(room.seed) } : room;
-  });
+  return moveRooms(doc.rooms, roomsGoingWith(doc, before, moved), transform);
 }

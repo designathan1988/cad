@@ -36,20 +36,22 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
   close.innerHTML = icon('close', 16);
   close.addEventListener('click', () => app.toggleBrowser(false));
   const levels = [...doc.levels].sort((a, b) => b.elevation - a.elevation);
-  const usage = typeUsage(doc);
+  // Counted on the level shown: what a click on a type selects.
+  const usage = typeUsage(doc, ui.levelId);
+  const wallsHidden = ui.hidden.has('walls');
   box.replaceChildren(
     el('div', { class: 'panel-head' }, el('span', { class: 'panel-title' }, t('browser.title')), close),
     section(
       t('browser.levels'),
       true,
-      ...levels.map((l) => item(name(l.name), () => app.setLevel(l.id), { current: l.id === ui.levelId, lead: icon('slab', 16) })),
+      ...levels.map((l) => item(name(l.name), () => app.setLevel(l.id), { current: l.id === ui.levelId, lead: icon('slab', 16), ...(l.id === ui.levelId ? { trail: t('browser.current') } : {}) })),
       item(t('levels.edit'), openLevels),
     ),
     section(
       t('browser.views'),
       true,
-      item(t('view.3d'), () => app.setView('3d'), { pressed: ui.view === '3d', lead: icon('cube', 16) }),
-      item(t('view.plan'), () => app.setView('plan'), { pressed: ui.view === 'plan', lead: icon('map', 16) }),
+      item(t('view.3d'), () => app.setView('3d'), { current: ui.view === '3d', lead: icon('cube', 16), ...(ui.view === '3d' ? { trail: t('browser.current') } : {}) }),
+      item(t('view.plan'), () => app.setView('plan'), { current: ui.view === 'plan', lead: icon('map', 16), ...(ui.view === 'plan' ? { trail: t('browser.current') } : {}) }),
       item(t('view.walk'), () => {}, { disabled: true, lead: icon('walk', 16), trail: t('tool.soon') }),
     ),
     section(
@@ -62,9 +64,9 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
       true,
       ...doc.wallTypes.map((type) =>
         item(name(type.name), () => app.selectWallsOfType(type.id), {
-          lead: layerSwatch(type.layers, name(type.name)),
+          lead: layerSwatch(type.layers),
           trail: t('browser.typeCount', { n: usage.get(type.id) ?? 0 }),
-          disabled: (usage.get(type.id) ?? 0) === 0,
+          disabled: wallsHidden || (usage.get(type.id) ?? 0) === 0,
         }),
       ),
     ),

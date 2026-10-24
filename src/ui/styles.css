@@ -563,10 +563,23 @@ select {
 }
 .rows {
   display: grid;
-  grid-template-columns: 96px 1fr;
+  grid-template-columns: 96px minmax(0, 1fr);
   gap: var(--sp-2) var(--sp-2);
   align-items: center;
   padding: var(--sp-half) var(--sp-3) var(--sp-3);
+}
+/* Every control fits its column: shrinks (and its text gives way) rather than overflowing the panel. */
+.rows > * {
+  min-width: 0;
+}
+.rows > .select,
+.rows > .segmented,
+.rows > .overridden {
+  width: 100%;
+}
+.rows > .segmented button {
+  flex: 1;
+  min-width: 0;
 }
 .rows label {
   color: var(--text-2);
@@ -1069,6 +1082,10 @@ select {
 .search-select:hover {
   border-color: var(--border);
 }
+.search-select .icon {
+  flex: none;
+  color: var(--text-2);
+}
 .search-select-label {
   flex: 1;
   min-width: 0;
@@ -1163,7 +1180,10 @@ select {
   color: var(--text-3);
   cursor: default;
 }
-.browser-item[aria-current='true'],
+.browser-item[aria-current='true'] {
+  background: var(--accent-soft);
+  font-weight: 600;
+}
 .browser-item[aria-pressed='true'] {
   font-weight: 600;
 }
@@ -1174,9 +1194,7 @@ select {
 .browser-label {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .browser-trail {
   color: var(--text-2);

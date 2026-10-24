@@ -25,7 +25,7 @@ import { GROUP_PREFIX, hasDistance, isOpeningId, newOpening, OPENING_DEFAULTS, O
 import { OPENING_IDLE, openingTransition, type OpeningToolEvent, type OpeningToolState } from '../tools/opening-tool';
 import { OPENING_PREVIEW_ID, ruleGuide, ruleText } from './opening-ui';
 import type { WallId } from '../elements/wall/schema';
-import { type Insets, NO_INSETS, PlanView } from '../render/plan-view';
+import { type Insets, PlanView } from '../render/plan-view';
 import { Scene3D } from '../render/scene-3d';
 import { ViewCube } from '../render/view-cube';
 import { defaultName, getLang, htmlLang, name, num, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
@@ -34,7 +34,8 @@ import { renderPanel } from '../ui/panel';
 import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui/shell';
 import { snapLabel, type Snap } from '../tools/snap';
 import { bulgeThrough, IDLE, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
-import { type Drag, hull } from './select-drag';
+import { type Drag, dragTransform, hull } from './select-drag';
+import { moveRooms } from './carry';
 import { type Doc, type DocWall, elementIds, newDocument, type WallDefaults, wallOverrides } from './document';
 import { boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, openingOutline } from './geometry';
 import { renderBrowser } from '../ui/browser';
@@ -42,6 +43,7 @@ import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { readProject, writeProject } from '../io/project-file';
 import { type TempDim, tempDims } from './temp-dims';
 import { contextEntries } from './context-menu';
+import { referenceLength } from '../elements/opening/derive';
 import { type Handles, handlesFor } from './handles';
 import { placeBarY } from '../ui/bar-place';
 import { newId } from '../core/id';
@@ -166,7 +168,14 @@ export class App {
   refresh(): void {
     const doc = this.store.get();
     const d = this.ui.drag;
-    const shown = d && d.kind !== 'marquee' ? { ...doc, walls: d.walls } : doc;
+    // While dragging, the walls as dragged; the rooms going with a move or a turn go in the preview too,
+    // so they never show as open mid-drag.
+    const shown =
+      d?.kind === 'move' || d?.kind === 'rotate'
+        ? { ...doc, walls: d.walls, rooms: moveRooms(doc.rooms, d.rooms, dragTransform(d)) }
+        : d && d.kind !== 'marquee'
+          ? { ...doc, walls: d.walls }
+          : doc;
     this.geometry = deriveGeometry(shown, this.previewWall(), this.previewOpening());
     this.render();
   }
@@ -283,7 +292,11 @@ export class App {
     const points = this.ui.floorDraft;
     this.ui.floorDraft = [];
     if (points.length < 3) return this.render();
-    this.store.dispatch(addFloor({ id: newId('floor'), levelId: this.ui.levelId, source: { kind: 'outline', points }, ...FLOOR_DEFAULTS }));
+    const id = newId('floor');
+    this.store.dispatch(addFloor({ id, levelId: this.ui.levelId, source: { kind: 'outline', points }, ...FLOOR_DEFAULTS }));
+    this.ui.selection = new Set([id]);
+    this.ui.info = t('hint.floorOutlineAdded', { n: points.length });
+    this.refresh();
   }
 
   selectedOpenings(): OpeningSolid[] {
@@ -306,6 +319,10 @@ export class App {
   /** While turning the selection: the angle, at the point it turns about. */
   private turnMeasure(): { at: Point2; text: string } | null {
     const d = this.ui.drag;
+    if (d?.kind === 'stretch' || d?.kind === 'grip') {
+      const w = d.walls.find((x) => x.id === d.id);
+      return w ? { at: { x: (w.start.x + w.end.x) / 2, y: (w.start.y + w.end.y) / 2 }, text: `${num(referenceLength(w))} m` } : null;
+    }
     if (d?.kind !== 'rotate') return null;
     const deg = (d.angle * 180) / Math.PI;
     return { at: d.pivot, text: `${num(deg, 1)}°` };
@@ -329,6 +346,8 @@ export class App {
   drawingEnd(): Point2 {
     const w = this.ui.wall;
     if (w.kind !== 'drawing') return w.kind === 'bend' ? w.end : { x: 0, y: 0 };
+    const point = parsePoint(this.shell.measure.value);
+    if (point.ok) return point.value;
     const typed = parseLengthAngle(this.shell.measure.value);
     return typed.ok && typed.value.length >= MIN_WALL_LENGTH ? typedEnd(w, typed.value.length, typed.value.angle) : w.cursor;
   }
@@ -476,7 +495,8 @@ export class App {
   /** Every wall of the current level, with the select tool. */
   selectAllWalls(): void {
     this.setTool('select');
-    for (const w of this.store.get().walls) if (w.levelId === this.ui.levelId) this.ui.selection.add(w.id);
+    // Hidden walls are not selected: nothing unseen can be deleted.
+    if (!this.ui.hidden.has('walls')) for (const w of this.store.get().walls) if (w.levelId === this.ui.levelId) this.ui.selection.add(w.id);
     this.refresh();
   }
 
@@ -545,13 +565,15 @@ export class App {
 
   /** How much the panel covers of the viewport, at its right (drawer) or bottom (phone sheet). */
   covered(): Insets {
-    if (this.shell.panel.hidden) return NO_INSETS;
     const vp = this.shell.viewport.getBoundingClientRect();
+    const b = this.shell.browser.hidden ? null : this.shell.browser.getBoundingClientRect();
+    const left = b && b.width > 0 ? b.right - vp.left : 0;
+    if (this.shell.panel.hidden) return { right: 0, bottom: 0, left };
     const p = this.shell.panel.getBoundingClientRect();
-    if (p.width === 0 || p.height === 0) return NO_INSETS;
-    if (p.top > vp.top + 8 && p.top < vp.bottom) return { right: 0, bottom: vp.bottom - p.top };
-    if (p.left > vp.left && p.left < vp.right) return { right: vp.right - p.left, bottom: 0 };
-    return NO_INSETS;
+    if (p.width === 0 || p.height === 0) return { right: 0, bottom: 0, left };
+    if (p.top > vp.top + 8 && p.top < vp.bottom) return { right: 0, bottom: vp.bottom - p.top, left };
+    if (p.left > vp.left && p.left < vp.right) return { right: vp.right - p.left, bottom: 0, left };
+    return { right: 0, bottom: 0, left };
   }
 
   frameAll(): void {
@@ -647,7 +669,9 @@ export class App {
     // On narrow screens the panel is a drawer over the drawing: it opens only when it has something
     // to show, so it never covers the model for nothing. Set first: what it covers shapes the view.
     const narrow = matchMedia('(max-width: 900px)').matches;
-    shell.panel.hidden = !ui.panelOpen || (narrow && ui.selection.size === 0 && ui.tool === 'select');
+    // On narrow screens the project browser and the panel are both drawers over the drawing: while the
+    // browser is open the panel waits, so the drawing keeps the most room.
+    shell.panel.hidden = !ui.panelOpen || (narrow && ((ui.selection.size === 0 && ui.tool === 'select') || ui.browserOpen));
     shell.planCanvas.classList.toggle('hidden', !plan);
     shell.glCanvas.classList.toggle('hidden', plan);
     this.cube.root.hidden = plan;
@@ -686,6 +710,7 @@ export class App {
             : (this.bendMeasure() ?? this.turnMeasure() ?? guide?.measure ?? null),
         axis: end && len >= MIN_WALL_LENGTH && w.kind === 'drawing' ? { start: w.last, end } : (guide?.axis ?? null),
         handles: this.handles(),
+        anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : null,
         roomLabels: [...this.visibleGeometry().rooms.values()].map((r) => ({
           at: r.room.seed,
           name: `${r.room.number} · ${name(r.room.name)}`,
@@ -891,8 +916,13 @@ export class App {
   }
 
   toggleBrowser(open = !this.ui.browserOpen): void {
+    const before = this.covered().left ?? 0;
     this.ui.browserOpen = open;
     savePrefs({ browserOpen: open });
+    this.shell.browser.hidden = !open;
+    const after = this.covered().left ?? 0;
+    // What was in the middle of the free part stays there: the plan slides by half the drawer.
+    if (this.ui.view === 'plan') this.plan.panBy((after - before) / 2, 0);
     this.render();
     if (open) this.shell.browser.querySelector<HTMLElement>('button')?.focus();
     else this.shell.sidebar.focus();
@@ -912,7 +942,9 @@ export class App {
   /** Every wall of a type on the current level, with the select tool. */
   selectWallsOfType(typeId: string): void {
     this.setTool('select');
-    for (const w of this.store.get().walls) if (w.wallTypeId === typeId && w.levelId === this.ui.levelId) this.ui.selection.add(w.id);
+    if (!this.ui.hidden.has('walls')) {
+      for (const w of this.store.get().walls) if (w.wallTypeId === typeId && w.levelId === this.ui.levelId) this.ui.selection.add(w.id);
+    }
     this.refresh();
   }
 
@@ -1030,7 +1062,7 @@ export class App {
     shell.keys.replaceChildren(...keys);
     const lengthMode = drawing && w.kind === 'drawing';
     // Where a point is asked for: the wall's start, a floor's corners, a room's point.
-    const pointMode = (drawing && w.kind === 'idle') || ui.tool === 'floor' || ui.tool === 'room';
+    const pointMode = (drawing && w.kind === 'idle') || ui.tool === 'floor' || ui.tool === 'room' || (lengthMode && shell.measure.value.includes(';'));
     const distanceMode = aiming || (ui.selection.size === 1 && this.selectedOpenings().length === 1);
     const withAngle = lengthMode && shell.measure.value.includes('<');
     shell.measureLabel.textContent = t(
@@ -1038,15 +1070,15 @@ export class App {
         ? 'foot.radius'
         : withAngle
           ? 'foot.lengthAngle'
-          : lengthMode
-            ? 'foot.length'
-            : pointMode
-              ? 'foot.point'
+          : pointMode
+            ? 'foot.point'
+            : lengthMode
+              ? 'foot.length'
               : distanceMode
                 ? 'foot.distance'
                 : 'foot.measure',
     );
-    shell.measure.placeholder = t(lengthMode ? 'foot.lengthHint' : pointMode ? 'foot.pointHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
+    shell.measure.placeholder = t(pointMode && !lengthMode ? 'foot.pointHint' : lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
     shell.toolWall.classList.toggle('arc-mode', drawing && arc);
     shell.coords.textContent = ui.cursor ? `x ${num(ui.cursor.x)} m  y ${num(ui.cursor.y)} m` : '';
     this.placeFloatBar();

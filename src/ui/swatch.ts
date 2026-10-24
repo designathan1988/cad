@@ -25,10 +25,10 @@ export function layerBands(layers: readonly WallLayer[], width: number): { x: nu
   });
 }
 
-/** The thumbnail as an inline SVG, 40 × 16, with the type's name for readers. */
-export function layerSwatch(layers: readonly WallLayer[], label: string): string {
+/** The thumbnail as an inline SVG, 40 × 16. Always shown beside the type's name, so readers skip it. */
+export function layerSwatch(layers: readonly WallLayer[]): string {
   const rects = layerBands(layers, 40)
     .map((b) => `<rect x="${b.x}" y="0" width="${b.w}" height="16" fill="${b.fill}"/>`)
     .join('');
-  return `<svg class="swatch" width="40" height="16" viewBox="0 0 40 16" role="img" aria-label="${label.replace(/"/g, '&quot;')}">${rects}</svg>`;
+  return `<svg class="swatch" width="40" height="16" viewBox="0 0 40 16" aria-hidden="true">${rects}</svg>`;
 }

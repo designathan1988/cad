@@ -157,7 +157,15 @@ export function searchSelect<T extends string>(
   label: string,
 ): HTMLElement {
   const current = options.find((o) => o.value === value);
-  const button = el('button', { type: 'button', class: 'search-select', 'aria-haspopup': 'listbox', 'aria-label': `${label}: ${current?.label ?? t('panel.varies')}` });
+  const button = el('button', {
+    type: 'button',
+    class: 'search-select',
+    'aria-haspopup': 'dialog',
+    'aria-expanded': 'false',
+    'aria-label': `${label}: ${current?.label ?? t('panel.varies')}`,
+    // Found again after a choice rebuilds the panel, to take the focus back (as Esc does).
+    'data-focus-key': `search-select:${label}`,
+  });
   button.innerHTML = current?.thumb ?? '';
   button.append(el('span', { class: 'search-select-label' }, current?.label ?? t('panel.varies')));
   button.insertAdjacentHTML('beforeend', icon('chevronDown', 14));
@@ -195,7 +203,10 @@ export function searchSelect<T extends string>(
     const pick = (o: (typeof options)[number] | undefined) => {
       if (!o) return;
       close();
-      if (o.value !== value) onChange(o.value);
+      if (o.value === value) return;
+      onChange(o.value);
+      // The change rebuilt the panel: the focus goes to the new button for the same field.
+      document.querySelector<HTMLElement>(`[data-focus-key="search-select:${CSS.escape(label)}"]`)?.focus();
     };
     const update = () => {
       shown = searchEntries(options, input.value);
@@ -230,10 +241,13 @@ export function searchSelect<T extends string>(
     function close(): void {
       window.removeEventListener('pointerdown', outside, true);
       pop.remove();
+      button.setAttribute('aria-expanded', 'false');
       button.focus();
     }
     document.body.append(pop);
-    const w = Math.max(r.width, 220);
+    button.setAttribute('aria-expanded', 'true');
+    // As wide as the field (not over the labels beside it), and never narrower than its content needs.
+    const w = Math.max(r.width, 180);
     pop.style.width = `${w}px`;
     pop.style.left = `${Math.min(r.left, window.innerWidth - w - 8)}px`;
     // Under the button, or above it when there is no room below.

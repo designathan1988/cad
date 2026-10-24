@@ -8,22 +8,32 @@ import { setWalls } from '../elements/wall/commands';
 import type { WallEnd, WallId } from '../elements/wall/schema';
 import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../tools/edit';
 import { handleAt } from './handles';
-import { carriedRooms } from './carry';
+import { moveRooms, roomsGoingWith } from './carry';
 import { GRID_STEP, type Snap } from '../tools/snap';
 import type { App } from './app';
 import type { DocWall } from './document';
-import { deriveGeometry, insidePolygon, openingOutline } from './geometry';
+import { insidePolygon, openingOutline } from './geometry';
 
+/** `rooms`: the rooms going with a move or a turn (carry.ts), found once when the drag starts. */
 export type Drag =
-  | { readonly kind: 'move'; readonly origin: Point2; readonly delta: Point2; readonly walls: readonly DocWall[] }
+  | { readonly kind: 'move'; readonly origin: Point2; readonly delta: Point2; readonly walls: readonly DocWall[]; readonly rooms: ReadonlySet<string> }
   | { readonly kind: 'grip'; readonly id: WallId; readonly end: WallEnd; readonly walls: readonly DocWall[] }
-  | { readonly kind: 'stretch'; readonly id: WallId; readonly end: WallEnd; readonly walls: readonly DocWall[] }
-  | { readonly kind: 'rotate'; readonly pivot: Point2; readonly from: number; readonly angle: number; readonly walls: readonly DocWall[] }
+  /** `grab`: from the end to where the arrow was taken, kept all along so the end does not jump. */
+  | { readonly kind: 'stretch'; readonly id: WallId; readonly end: WallEnd; readonly grab: Point2; readonly walls: readonly DocWall[] }
+  | {
+      readonly kind: 'rotate';
+      readonly pivot: Point2;
+      readonly from: number;
+      readonly angle: number;
+      readonly walls: readonly DocWall[];
+      readonly rooms: ReadonlySet<string>;
+    }
   | { readonly kind: 'marquee'; readonly a: Point2; readonly b: Point2 };
 
 type Pending =
   | { kind: 'wall'; at: Point2; screen: Point2 }
-  | { kind: 'grip' | 'stretch'; id: WallId; end: WallEnd; screen: Point2 }
+  | { kind: 'grip'; id: WallId; end: WallEnd; screen: Point2 }
+  | { kind: 'stretch'; id: WallId; end: WallEnd; at: Point2; screen: Point2 }
   | { kind: 'rotate'; pivot: Point2; at: Point2; screen: Point2 }
   | { kind: 'empty'; screen: Point2 };
 
@@ -49,7 +59,7 @@ export function selectGestures(app: App): SelectGestures {
     down(screen, world, hit, shift) {
       const handle = handleAt(app.handles(), screen, gripPx());
       if (handle?.kind === 'square') pending = { kind: 'grip', id: handle.id, end: handle.end, screen };
-      else if (handle?.kind === 'arrow') pending = { kind: 'stretch', id: handle.id, end: handle.end, screen };
+      else if (handle?.kind === 'arrow' && world) pending = { kind: 'stretch', id: handle.id, end: handle.end, at: world, screen };
       else if (handle?.kind === 'rotate' && world) pending = { kind: 'rotate', pivot: handle.pivot, at: world, screen };
       else if (hit && world) {
         if (shift) ui.selection.has(hit) ? ui.selection.delete(hit) : ui.selection.add(hit);
@@ -70,12 +80,17 @@ export function selectGestures(app: App): SelectGestures {
       const drag = ui.drag;
       if (pending && !drag) {
         if (distance(screen, pending.screen) < THRESHOLD_PX) return;
-        if (pending.kind === 'wall' && ui.selection.size > 0) ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), walls: app.store.get().walls };
-        else if (pending.kind === 'grip') ui.drag = { kind: 'grip', id: pending.id, end: pending.end, walls: app.store.get().walls };
-        else if (pending.kind === 'stretch') ui.drag = { kind: 'stretch', id: pending.id, end: pending.end, walls: app.store.get().walls };
-        else if (pending.kind === 'rotate') {
+        const doc = app.store.get();
+        const going = () => roomsGoingWith(doc, app.geometry, ui.selection);
+        if (pending.kind === 'wall' && ui.selection.size > 0) ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), walls: doc.walls, rooms: going() };
+        else if (pending.kind === 'grip') ui.drag = { kind: 'grip', id: pending.id, end: pending.end, walls: doc.walls };
+        else if (pending.kind === 'stretch') {
+          const p = pending;
+          const w = doc.walls.find((x) => x.id === p.id)!;
+          ui.drag = { kind: 'stretch', id: p.id, end: p.end, grab: sub(p.at, w[p.end]), walls: doc.walls };
+        } else if (pending.kind === 'rotate') {
           const from = Math.atan2(pending.at.y - pending.pivot.y, pending.at.x - pending.pivot.x);
-          ui.drag = { kind: 'rotate', pivot: pending.pivot, from, angle: 0, walls: app.store.get().walls };
+          ui.drag = { kind: 'rotate', pivot: pending.pivot, from, angle: 0, walls: doc.walls, rooms: going() };
         }
         else if (pending.kind === 'empty') ui.drag = { kind: 'marquee', a: pending.screen, b: screen };
       }
@@ -96,7 +111,7 @@ export function selectGestures(app: App): SelectGestures {
         // Along the wall's own line; on the 5 cm grid with snaps on.
         const w = doc.walls.find((x) => x.id === d.id)!;
         const other = d.end === 'start' ? w.end : w.start;
-        const walls = stretchAlong(doc, d.id, d.end, world);
+        const walls = stretchAlong(doc, d.id, d.end, sub(world, d.grab));
         const moved = walls.find((x) => x.id === d.id)!;
         const len = distance(other, moved[d.end]);
         const snapped = ui.snaps ? Math.max(GRID_STEP, Math.round(len / GRID_STEP) * GRID_STEP) : len;
@@ -118,18 +133,7 @@ export function selectGestures(app: App): SelectGestures {
       ui.snap = null;
       if (d?.kind === 'move' || d?.kind === 'rotate') {
         // The rooms whose walls all went along go too (carry.ts): one undo step for both.
-        const doc = app.store.get();
-        const moved = new Set(ui.selection);
-        const c = d.kind === 'rotate' ? Math.cos(d.angle) : 1;
-        const s = d.kind === 'rotate' ? Math.sin(d.angle) : 0;
-        const transform =
-          d.kind === 'move'
-            ? (p: Point2) => add(p, d.delta)
-            : (p: Point2) => {
-                const v = sub(p, d.pivot);
-                return add(d.pivot, vec(v.x * c - v.y * s, v.x * s + v.y * c));
-              };
-        const rooms = carriedRooms(doc, deriveGeometry(doc), moved, transform);
+        const rooms = moveRooms(app.store.get().rooms, d.rooms, dragTransform(d));
         const walls = setWalls(d.walls);
         app.store.dispatch({ label: walls.label, apply: (x) => {
           const next = walls.apply(x);
@@ -155,6 +159,17 @@ export function selectGestures(app: App): SelectGestures {
 export interface Pickable {
   readonly id: string;
   readonly outlines: readonly (readonly Point2[])[];
+}
+
+/** Where a move or a turn takes a point, as it stands now. */
+export function dragTransform(d: Extract<Drag, { kind: 'move' | 'rotate' }>): (p: Point2) => Point2 {
+  if (d.kind === 'move') return (p) => add(p, d.delta);
+  const c = Math.cos(d.angle);
+  const s = Math.sin(d.angle);
+  return (p) => {
+    const v = sub(p, d.pivot);
+    return add(d.pivot, vec(v.x * c - v.y * s, v.x * s + v.y * c));
+  };
 }
 
 /**

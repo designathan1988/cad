@@ -83,7 +83,8 @@ const en = {
   'browser.views': 'Views',
   'browser.layers': 'Layers',
   'browser.types': 'Wall types',
-  'browser.typeCount': '{n} walls',
+  'browser.typeCount': '{n} here',
+  'browser.current': 'shown',
   'layer.walls': 'Walls',
   'layer.openings': 'Doors and windows',
   'layer.rooms': 'Rooms',
@@ -171,8 +172,9 @@ const en = {
   'hint.selected3d': '1 selected. Edit it in the panel',
   'hint.floorAdded': 'Floor added to {room}: it is selected',
   'hint.wallStart': 'Click the start point of the wall, or type it as x;y',
-  'hint.wallNext': 'Click the end point or type the length (Tab: angle)',
-  'hint.wallNextClose': 'Click the next point, or the start point to close',
+  'hint.wallNext': 'Click the end point, or type the length (Tab: angle) or a point x;y',
+  'hint.floorOutlineAdded': 'Floor added with {n} corners: it is selected',
+  'hint.wallNextClose': 'Click the next point, or the start point to close; or type a length or a point x;y',
   'hint.badMeasure': 'Could not read “{text}”. Type a number like 4.5 or 450cm',
   'hint.dimRefused': 'Cannot use “{text}” here: the value is too small',
   'dim.edit': 'Click to type a new value',
@@ -446,7 +448,8 @@ const pt: Record<MessageKey, string> = {
   'browser.views': 'Vistas',
   'browser.layers': 'Camadas',
   'browser.types': 'Tipos de parede',
-  'browser.typeCount': '{n} paredes',
+  'browser.typeCount': '{n} aqui',
+  'browser.current': 'atual',
   'layer.walls': 'Paredes',
   'layer.openings': 'Portas e janelas',
   'layer.rooms': 'Cômodos',
@@ -534,8 +537,9 @@ const pt: Record<MessageKey, string> = {
   'hint.selected3d': '1 selecionado. Edite no painel',
   'hint.floorAdded': 'Piso criado em {room}: ele está selecionado',
   'hint.wallStart': 'Clique no ponto inicial da parede, ou digite-o como x;y',
-  'hint.wallNext': 'Clique no ponto final ou digite o comprimento (Tab: ângulo)',
-  'hint.wallNextClose': 'Clique no próximo ponto, ou no inicial para fechar',
+  'hint.wallNext': 'Clique no ponto final, ou digite o comprimento (Tab: ângulo) ou um ponto x;y',
+  'hint.floorOutlineAdded': 'Piso criado com {n} cantos: ele está selecionado',
+  'hint.wallNextClose': 'Clique no próximo ponto, ou no inicial para fechar; ou digite um comprimento ou um ponto x;y',
   'hint.badMeasure': 'Não consegui ler “{text}”. Digite um número como 4,5 ou 450cm',
   'hint.dimRefused': 'Não dá para usar “{text}” aqui: o valor é pequeno demais',
   'dim.edit': 'Clique para digitar outro valor',
@@ -774,7 +778,8 @@ export const name = (stored: string): string => {
 
 /** Numbers as the language writes them: 4,50 in Portuguese, 4.50 in English. */
 export const num = (value: number, digits = 2): string =>
-  value.toLocaleString(lang === 'pt' ? 'pt-BR' : 'en-US', {
+  // A value that rounds to zero is written 0, never -0.
+  (Math.abs(value) < 0.5 * 10 ** -digits ? 0 : value).toLocaleString(lang === 'pt' ? 'pt-BR' : 'en-US', {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
     useGrouping: false,

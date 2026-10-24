@@ -38,6 +38,7 @@ export function wireInput(app: App): void {
   let rightAt: { x: number; y: number } | null = null;
   /** The menu for what is under the pointer: it becomes the selection, unless it is already in it. */
   const contextMenu = (e: PointerEvent) => {
+    ui.error = null;
     if (ui.tool !== 'select') app.setTool('select');
     const hit = pickAt(e, worldAt(e));
     if (hit && !ui.selection.has(hit)) ui.selection = new Set([hit]);
@@ -338,6 +339,11 @@ export function wireInput(app: App): void {
       return app.refresh();
     }
     if (e.key === 'Escape') {
+      // An error about something typed is over, and so is what was typed.
+      if (ui.error !== null) {
+        ui.error = null;
+        shell.measure.value = '';
+      }
       if (gestures.cancel()) {
         downAt = null;
         return showMarquee();

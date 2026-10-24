@@ -32,7 +32,7 @@ export class Scene3D {
   private readonly sky = new THREE.HemisphereLight(undefined, undefined, 2.7);
   private readonly sun = new THREE.DirectionalLight(undefined, 1.5);
   private readonly fill = new THREE.DirectionalLight(undefined, 0.6);
-  private covered = { right: 0, bottom: 0 };
+  private covered = { right: 0, bottom: 0, left: 0 };
   private offsetDirty = false;
   private readonly grid: THREE.GridHelper;
   private needsRender = true;
@@ -121,8 +121,8 @@ export class Scene3D {
       this.renderer.setSize(w, h, false);
       this.camera.aspect = w / h;
       // A panel over the right or bottom edge: shift the view so its centre is the visible part's.
-      const { right, bottom } = this.covered;
-      if (right > 0 || bottom > 0) this.camera.setViewOffset(w, h, right / 2, bottom / 2, w, h);
+      const { right, bottom, left } = this.covered;
+      if (right > 0 || bottom > 0 || left > 0) this.camera.setViewOffset(w, h, (right - left) / 2, bottom / 2, w, h);
       else this.camera.clearViewOffset();
       this.camera.updateProjectionMatrix();
       this.offsetDirty = false;
@@ -253,9 +253,10 @@ export class Scene3D {
 
   /** Looks at a box from a direction (three.js space), far enough to see all of it. */
   /** How much a panel covers at the right and bottom edges of the canvas (screen pixels). */
-  setCovered(covered: { right: number; bottom: number }): void {
-    if (covered.right === this.covered.right && covered.bottom === this.covered.bottom) return;
-    this.covered = covered;
+  setCovered(covered: { right: number; bottom: number; left?: number }): void {
+    const next = { right: covered.right, bottom: covered.bottom, left: covered.left ?? 0 };
+    if (next.right === this.covered.right && next.bottom === this.covered.bottom && next.left === this.covered.left) return;
+    this.covered = next;
     this.offsetDirty = true;
     this.invalidate();
   }
@@ -267,7 +268,7 @@ export class Scene3D {
     // Fit in the visible part: its aspect, and the share of the height it keeps.
     const w = this.canvas.clientWidth || 1;
     const h = this.canvas.clientHeight || 1;
-    const visW = Math.max(w - this.covered.right, w * 0.3);
+    const visW = Math.max(w - this.covered.right - this.covered.left, w * 0.3);
     const visH = Math.max(h - this.covered.bottom, h * 0.3);
     const fit = (radius / Math.sin((this.camera.fov * Math.PI) / 360) / Math.min(1, visW / visH)) * (h / visH);
     this.controls.target.copy(center);

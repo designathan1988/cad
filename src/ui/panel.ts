@@ -69,7 +69,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     return h;
   };
   // Types are many and alike: a list with search and a thumbnail of each one's layers.
-  const typeOptions = doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name), keywords: w.name, thumb: layerSwatch(w.layers, name(w.name)) }));
+  const typeOptions = doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name), keywords: w.name, thumb: layerSwatch(w.layers) }));
   const refOptions = REFS.map((r) => ({ value: r.value, label: t(r.key), icon: r.icon }));
   const topOptions = [
     { value: 'level' as const, label: t('panel.topLevel') },

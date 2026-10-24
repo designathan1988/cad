@@ -33,6 +33,8 @@ export interface PlanOverlay {
   readonly axis: { readonly start: Point2; readonly end: Point2 } | null;
   /** Handles of the selection, in screen pixels (app/handles.ts). */
   readonly handles: Handles;
+  /** The point a wall chain goes on from: marked even before the pointer moves. */
+  readonly anchor?: Point2 | null;
   /** Room name and area tags, at each room's point. */
   /** `short` is shown when the name does not fit the room on screen; `outline` is the room's, if closed. */
   readonly roomLabels: readonly {
@@ -55,6 +57,8 @@ export interface PlanOverlay {
 export interface Insets {
   readonly right: number;
   readonly bottom: number;
+  /** The project browser's drawer, over the left edge. */
+  readonly left?: number;
 }
 export const NO_INSETS: Insets = { right: 0, bottom: 0 };
 
@@ -63,12 +67,14 @@ export const NO_INSETS: Insets = { right: 0, bottom: 0 };
  * centre at the visible part's centre (screen y grows downward, world y upward).
  */
 export function fitPlan(box: { min: Point2; max: Point2 }, size: { w: number; h: number }, covered: Insets = NO_INSETS): { scale: number; center: Point2 } {
-  const w = Math.max(size.w - covered.right, size.w * 0.3);
+  const left = covered.left ?? 0;
+  const w = Math.max(size.w - covered.right - left, size.w * 0.3);
   const h = Math.max(size.h - covered.bottom, size.h * 0.3);
   const bw = Math.max(box.max.x - box.min.x, 0.5);
   const bh = Math.max(box.max.y - box.min.y, 0.5);
   const scale = Math.min(4000, Math.max(2, Math.min((w * 0.7) / bw, (h * 0.7) / bh)));
-  const center = { x: (box.min.x + box.max.x) / 2 + (size.w - w) / 2 / scale, y: (box.min.y + box.max.y) / 2 - (size.h - h) / 2 / scale };
+  // The box's centre on screen goes to the visible part's centre, left + w / 2.
+  const center = { x: (box.min.x + box.max.x) / 2 - (left + w / 2 - size.w / 2) / scale, y: (box.min.y + box.max.y) / 2 - (size.h - h) / 2 / scale };
   return { scale, center };
 }
 
@@ -229,6 +235,16 @@ export class PlanView {
       ctx.restore();
     }
     this.drawHandles(o.handles, color('--bg'), color('--wall-sel'));
+    if (o.anchor) {
+      const p = this.toScreen(o.anchor);
+      ctx.save();
+      ctx.strokeStyle = color('--snap');
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
     for (const d of o.dims ?? []) this.drawDim(d, color('--wall-sel'));
     const snapBox = o.snap ? this.drawSnap(o.snap, color('--snap'), color('--bg')) : null;
     if (o.measure) this.drawMeasure(o.measure, snapBox, color('--accent-text'), color('--canvas'));
