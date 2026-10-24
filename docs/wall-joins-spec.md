@@ -265,6 +265,27 @@ ordem de inserção. A espessura do núcleo é a **soma das camadas** do núcleo
 não a diferença dos offsets: um mesmo tipo em referências diferentes dá
 diferenças de offset que variam em 1 ulp, e o empate se perdia.
 
+**Arcos (cadeia de trechos, §5.2)** *(2026-10-24)*: os encontros entre trechos de
+um mesmo arco não são pontas de parede. Três regras decorrem disso, cada uma com
+o seu controle em `arcs.test.ts` (com a regra desligada, o caso falha):
+
+- **Banda até o plano radial.** Numa ponta de trecho que encontra o trecho
+  seguinte, a banda vai até o plano que os dois dividem ali (radial: a normal é a
+  bissetriz das direções dos dois), não até a ponta quadrada. *Controle:* uma
+  parede de 30 cm em x = 3 contra um arco de r = 3 (88 trechos, um encontro a 90°)
+  terminava exatamente no encontro, não achava junta nenhuma e só avisava pela
+  verificação final de sobreposição. O teste antigo "avisa" passava por acaso.
+- **Encontro não forma nó com outras pontas.** Uma ponta de outra parede sobre o
+  ponto de encontro de dois trechos fica fora do aglomerado deles: os dois
+  trechos seguem como o canto da cadeia, e a ponta é livre, então encosta no arco.
+  *Controle:* uma parede terminando em (3, 3) formava um nó de 3 com
+  `ComplexJoin`.
+- **Cruzamento dentro do mesmo T.** Uma parede cuja ponta encosta num arco pode
+  cruzar a linha de referência de um trecho vizinho no caminho, inclinada. Isso é
+  o mesmo T, não um X, quando o eixo dela fica dentro da banda do arco desse ponto
+  até a ponta. *Controle:* o caso achado pela suíte de propriedade (parede de
+  1,2 cm a 50°) era recusado como cruzamento.
+
 ---
 
 ## 7. Resolução por tipo de junta
@@ -1011,3 +1032,34 @@ primeira versão da busca achou 4 candidatos, mas a ponta longe da reta caía a 
 trecho do arco: uma segunda junta (§6), não um L. `arc-corner.test.ts` prova os dois lados: a ponta a
 ≤ 1 mm (`distanceToSegments`) e, com ela recuada 5 mm, o L sozinho junta e cobre exato. A tabela da
 §6 agora diz a folga que o motor já usava na banda: `POINT_TOLERANCE`.
+
+**T contra um arco mais largo que um trecho (2026-10-24):** antes recusado com `arcJoinUnsupported`.
+Perto da ponta, a parede é dividida pelas cunhas radiais dos trechos que alcança, e cada parte recebe
+o T daquele trecho (§7.2: camadas param nas faces pela prioridade; o trecho é entalhado onde elas
+passam). Numa cunha, as faces do trecho são as do arco, então as partes encontram a cadeia exatamente.
+A zona da ponta é medida: onde a faixa da parede cruza o corpo do arco, só no cruzamento mais perto da
+ponta (a faixa pode atravessar o anel e encontrar o arco de novo do outro lado, o que não é deste T),
+com 1 cm de folga para cada lado.
+
+Fora de toda cunha (além da ponta livre do arco), a parede guarda o próprio corpo, com a ponta
+quadrada, e perde só a extensão além da ponta: ali não há face onde parar. **Diferença conhecida:**
+contra uma hospedeira reta, uma parede mais larga que o fim da hospedeira é aparada na linha da face
+prolongada além do fim. É uma simplificação daquele caso, não copiada aqui.
+
+Oráculo: em volta da ponta, cobertura estrita (dentro de um corpo, exatamente uma peça; fora, nenhuma),
+com dois casos modelados, cada um com casos à mão em `oracle-arc.test.ts`: o que o T preenche entre a
+ponta quadrada e a face curva (`tFill`) e o que da parede fica além do arco e o T não guarda
+(`tBeyond`). De que lado a parede vem é decidido andando o eixo para trás a partir da ponta
+(`comesFromOutside`): uma parede pode ser corda do círculo, com a ponta longe sobre ele.
+
+| Medida | Resultado |
+|---|---|
+| Casos à mão em `arcs.test.ts` | 6 novos ou mudados (de dentro, de fora, em camadas pela prioridade, além da ponta do arco, ponta sobre um encontro, parede fina cruzando a referência do trecho vizinho) |
+| Suíte de propriedade, seed fixa, 100 rodadas | 99 juntam e cobrem exato, 0 avisos, 1 pulado (outra ponta perto do arco: segunda junta), limite 5 |
+| Os 4 candidatos com segunda junta (`arc-corner.test.ts`) | agora juntam nas duas pontas; L exato perto do nó e T exato perto da ponta longe, os 4 |
+
+Achados pelo caminho (todos meus, cada um com contraexemplo): a zona da ponta medida pela extensão de
+junta (metros) saía da varredura; a faixa atravessando o anel contava o outro lado; uma ponta a menos de
+1 mm fora do arco não achava o cruzamento pela tolerância medida ao longo da parede inclinada. Do lado do
+oráculo: o canto preenchido e a ponta que atravessa um arco fino não eram modelados, e o lado de
+chegada saía por arredondamento numa parede-corda.

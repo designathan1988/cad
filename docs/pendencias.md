@@ -24,7 +24,6 @@ o resolve existe e, se for de interface, quando a sessão de teste o viu no nave
 
 ## Motor de paredes
 
-- T contra um arco mais largo que um trecho (hoje: aviso `arcJoinUnsupported`).
 - X com arco.
 - No L na ponta de um arco, canto em miter (ou reta que encosta) que alcança os trechos seguintes:
   ainda avisa (wall-joins-spec.md, parte 6). Nenhum caso real achado até agora.

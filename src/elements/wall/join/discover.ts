@@ -2,10 +2,11 @@
 // Pure and deterministic: walls are always visited in ascending id order.
 
 import { COLLINEAR_ANGLE, MIN_WALL_LENGTH, MITER_LIMIT, POINT_TOLERANCE } from '../../../core/tolerance';
-import { add, cross, distance, dot, intersectLines, scale } from '../../../core/vector';
+import { add, cross, distance, dot, intersectLines, normalize, type Point2, scale, sub } from '../../../core/vector';
 import { endPoint, faceOffsets, offsetOf, stationOf, wallDirection, wallLength } from '../geometry/offset';
 import type { EndRef, WallEnd } from '../schema';
 import type { WallShape } from '../geometry/shape';
+import { parentOf, SEGMENT_MARK } from '../geometry/arc';
 import type { Corner, Crossing, JoinGraph, JoinWarning, JoinNode } from './types';
 
 const ENDS: readonly WallEnd[] = ['start', 'end'];
@@ -22,7 +23,21 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
   const ends: EndRef[] = valid.flatMap((w) => ENDS.map((end) => ({ wallId: w.id, end })));
   const byId = new Map(valid.map((w) => [w.id, w]));
   const at = (r: EndRef) => endPoint(byId.get(r.wallId)!, r.end);
-  const clusters = clusterEnds(ends, at);
+  // A joint of an arc's own chain is not a meeting of walls: another wall's end there is kept apart
+  // from it (a free end, so it abuts the arc), and the joint stays the chain's corner.
+  const internal = (r: EndRef, s: EndRef) => {
+    const [a, b] = r.end === 'end' ? [r, s] : [s, r];
+    if (a.end !== 'end' || b.end !== 'start' || parentOf(a.wallId) === a.wallId || parentOf(a.wallId) !== parentOf(b.wallId)) return false;
+    const index = (id: string) => Number(id.slice(id.lastIndexOf(SEGMENT_MARK) + 1));
+    return index(b.wallId) === index(a.wallId) + 1;
+  };
+  const clusters = clusterEnds(ends, at).flatMap((cluster) => {
+    if (cluster.length <= 2) return [cluster];
+    for (let i = 0; i < cluster.length; i++)
+      for (let j = i + 1; j < cluster.length; j++)
+        if (internal(cluster[i]!, cluster[j]!)) return [[cluster[i]!, cluster[j]!], cluster.filter((_, k) => k !== i && k !== j)];
+    return [cluster];
+  });
 
   const corners: Corner[] = [];
   const nodes: JoinNode[] = [];
@@ -38,12 +53,31 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
     } else warnings.push({ kind: 'complexJoin', walls: cluster.map((r) => r.wallId) });
   }
 
+  // An arc's segments meet one another at joints that are not ends of the wall: a wall end there is
+  // inside the arc, not beside an end of it, so it abuts a segment (the T spreads to the next one).
+  // Each joint is bounded by the plane the two segments share, radial: the bisector of their directions.
+  const segment = new Map<string, WallShape>(valid.filter((w) => parentOf(w.id) !== w.id).map((w) => [w.id, w]));
+  const neighbour = (w: WallShape, step: number) => {
+    const k = w.id.lastIndexOf(SEGMENT_MARK);
+    return segment.get(`${w.id.slice(0, k)}${SEGMENT_MARK}${Number(w.id.slice(k + 1)) + step}`);
+  };
+  const joint = (w: WallShape): Joints => {
+    if (!segment.has(w.id)) return {};
+    const d = wallDirection(w);
+    const before = neighbour(w, -1);
+    const after = neighbour(w, 1);
+    return {
+      ...(before ? { start: normalize(add(wallDirection(before), d)) } : {}),
+      ...(after ? { end: normalize(add(d, wallDirection(after))) } : {}),
+    };
+  };
+
   let abutments: { abutting: EndRef; hostId: string }[] = [];
   for (const ref of free) {
     const wall = byId.get(ref.wallId)!;
     const p = at(ref);
     for (const host of valid) {
-      if (host.id === wall.id || !insideBand(host, p)) continue;
+      if (host.id === wall.id || parentOf(host.id) === parentOf(wall.id) || !insideBand(host, p, joint(host))) continue;
       if (parallel(wall, host)) {
         warnings.push({ kind: 'wallsOverlap', walls: [wall.id, host.id] });
       } else {
@@ -85,7 +119,27 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
     });
   });
   abutments = abutments.filter((_, i) => !mutual.has(i));
-  return { corners, nodes, abutments, crossings: findCrossings(valid), warnings };
+  // A wall whose end abuts an arc can pass the arc's reference line of a neighbouring segment on its
+  // way in, at a slant: that is the same T (footprint.ts spreads it over the segments), not an X. It is
+  // when its axis stays inside the arc's band from that point to its end.
+  const inArc = (parent: string, p: Point2) => valid.some((h) => parentOf(h.id) === parent && h.id !== parent && insideBand(h, p, joint(h)));
+  const crossings = findCrossings(valid).filter(({ throughId, cutId, point }) => {
+    for (const [wallId, segId] of [
+      [cutId, throughId],
+      [throughId, cutId],
+    ] as const) {
+      const parent = parentOf(segId);
+      if (parent === segId) continue;
+      const abut = abutments.find((x) => x.abutting.wallId === wallId && parentOf(x.hostId) === parent);
+      if (!abut) continue;
+      const end = at(abut.abutting);
+      const steps = 16;
+      const within = Array.from({ length: steps + 1 }, (_, k) => add(point, scale({ x: end.x - point.x, y: end.y - point.y }, k / steps))).every((q) => inArc(parent, q));
+      if (within) return false;
+    }
+    return true;
+  });
+  return { corners, nodes, abutments, crossings, warnings };
 }
 
 /**
@@ -149,16 +203,20 @@ function clusterEnds(ends: readonly EndRef[], at: (r: EndRef) => ReturnType<type
   return [...groups.values()];
 }
 
-function insideBand(host: WallShape, p: ReturnType<typeof endPoint>): boolean {
+/** The ends of a segment that join the next ones of its arc: the normal of the radial plane there. */
+interface Joints {
+  readonly start?: Point2;
+  readonly end?: Point2;
+}
+
+/** `joint`: at an end that joins the next segment of its arc, the band goes on up to the radial plane. */
+function insideBand(host: WallShape, p: ReturnType<typeof endPoint>, joint: Joints = {}): boolean {
   const [o0, o1] = faceOffsets(host);
   const f = offsetOf(host, p);
   const s = stationOf(host, p);
-  return (
-    f >= o0 - POINT_TOLERANCE &&
-    f <= o1 + POINT_TOLERANCE &&
-    s > POINT_TOLERANCE &&
-    s < wallLength(host) - POINT_TOLERANCE
-  );
+  const afterStart = joint.start ? dot(sub(p, host.start), joint.start) >= 0 : s > POINT_TOLERANCE;
+  const beforeEnd = joint.end ? dot(sub(p, host.end), joint.end) <= 0 : s < wallLength(host) - POINT_TOLERANCE;
+  return f >= o0 - POINT_TOLERANCE && f <= o1 + POINT_TOLERANCE && afterStart && beforeEnd;
 }
 
 function parallel(a: WallShape, b: WallShape): boolean {

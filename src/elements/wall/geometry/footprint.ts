@@ -2,8 +2,8 @@
 // by the same half-planes. Clipping layers one by one equals splitting the clipped wall at the layer
 // lines, so the layers tile the wall exactly.
 
-import { AREA_EPSILON } from '../../../core/tolerance';
-import { add, dot, type Point2, scale } from '../../../core/vector';
+import { AREA_EPSILON, POINT_TOLERANCE } from '../../../core/tolerance';
+import { add, dot, type Point2, scale, sub } from '../../../core/vector';
 import { resolveCorner } from '../join/cut-l';
 import { type AbutmentResult, resolveAbutment } from '../join/cut-t';
 import { deriveJoins } from '../join/discover';
@@ -11,8 +11,8 @@ import { resolveNode } from '../join/node';
 import type { EndCut, JoinWarning, Notch } from '../join/types';
 import type { EndRef, Wall, WallId, WallType, WallTypeId } from '../schema';
 import { type ArcChain, arcOf, expandArc, inSector, parentOf, sectorOf } from './arc';
-import { area, clipHalfPlane, clipOut, type ConvexPolygon, type HalfPlane, overlapArea } from './convex';
-import { faceOffsets, offsetOf, stationOf as stationAlong, strip, wallDirection, wallNormal } from './offset';
+import { area, clipHalfPlane, clipOut, type ConvexPolygon, type HalfPlane, halfPlaneThrough, overlapArea } from './convex';
+import { endPoint, faceOffsets, intoBody, offsetOf, stationOf as stationAlong, strip, wallDirection, wallNormal } from './offset';
 import { shapeOf, type WallShape } from './shape';
 
 export interface Piece {
@@ -81,13 +81,24 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   }
   // An arc ending against a wall: its end segment takes the T cut, and the segments before it that
   // still reach past the host's face take their own (carryArcStem).
+  // A straight wall against an arc wider than one segment: split near its end by the segments' wedges
+  // (spreadOverArc), each part with that segment's T.
+  const splits = new Map<string, StemSplit[]>();
   for (const { abutting, hostId } of graph.abutments) {
     const stemChain = chains.get(parentOf(abutting.wallId));
     // The end segment's notches stop at the joint with the segment before it, a radial plane.
     const back = stemChain ? wedge(stemChain, abutting.wallId).filter((_, k) => k === (abutting.end === 'end' ? 0 : 1)) : undefined;
     const result = resolveAbutment(byId.get(abutting.wallId)!, abutting.end, byId.get(hostId)!, back);
     if (!fitsArc(result, abutting.wallId, hostId, byId, chains)) {
-      report({ kind: 'arcJoinUnsupported', walls: [abutting.wallId, hostId] });
+      const hostChain = chains.get(parentOf(hostId));
+      const spread = hostChain && !stemChain ? spreadOverArc(byId.get(abutting.wallId)!, abutting.end, hostChain) : null;
+      if (!spread) {
+        report({ kind: 'arcJoinUnsupported', walls: [abutting.wallId, hostId] });
+        continue;
+      }
+      endCuts.set(keyOf(abutting), { extension: spread.extension, cuts: [] });
+      notches.push(...spread.notches);
+      splits.set(abutting.wallId, [...(splits.get(abutting.wallId) ?? []), spread.split]);
       continue;
     }
     endCuts.set(keyOf(abutting), result.cut);
@@ -148,7 +159,8 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   for (const wall of walls) pieces.set(wall.id, []);
   for (const shape of shapes) {
     const own = notches.filter((n) => n.wallId === shape.id);
-    const raw = spans.get(shape.id)!.flatMap((span) => spanPieces(span, own));
+    let raw = spans.get(shape.id)!.flatMap((span) => spanPieces(span, own));
+    for (const split of splits.get(shape.id) ?? []) raw = splitPieces(raw, split);
     pieces.get(parentOf(shape.id))!.push(...(clips.has(shape.id) ? clipPieces(raw, clips.get(shape.id)!) : raw));
   }
   warnings.push(...overlapsWithArcs(pieces, chains, warnings));
@@ -209,6 +221,90 @@ function carryArcStem(
     notches.push(...r.notches);
   }
   return { clips, notches };
+}
+
+/** How a wall's end is cut against an arc wider than one segment: per wedge, that segment's T. */
+interface StemSplit {
+  /** The end zone (kept, then cut per wedge) and the rest of the wall (kept as it is). */
+  readonly near: HalfPlane;
+  readonly far: HalfPlane;
+  readonly parts: readonly { readonly wedge: readonly HalfPlane[]; readonly cut: EndCut }[];
+  /** Behind the wall's own end: what stays of the end zone outside every wedge (past the arc's end). */
+  readonly behind: HalfPlane;
+}
+
+/**
+ * A T against an arc wider than one segment. Near its end the wall is split by the radial wedges of
+ * the segments it reaches, and each part takes that segment's T: its layers stop on that segment's
+ * faces by priority, and the segment is notched where they pass. A wedge is where its segment's faces
+ * are the arc's, so the parts meet the chain exactly. The end zone is where the wall's band meets the
+ * arc's body, measured: from as far past the end as the body reaches to as far back, 1 cm more each
+ * way. What of the zone lies in no wedge (past the arc's end) touches no segment: there the wall keeps
+ * its own body and loses only its extension past the end.
+ */
+function spreadOverArc(stem: WallShape, end: EndRef['end'], chain: ArcChain): { extension: number; split: StemSplit; notches: Notch[] } | null {
+  const MARGIN = 0.01;
+  const into = intoBody(stem, end);
+  const at = endPoint(stem, end);
+  const along = (p: Point2) => dot(sub(p, at), into);
+  const n = wallNormal(stem);
+  const [o0, o1] = faceOffsets(stem);
+  const band = [halfPlaneThrough(add(stem.start, scale(n, o0)), n), halfPlaneThrough(add(stem.start, scale(n, o1)), scale(n, -1))];
+  const clip = (poly: ConvexPolygon, planes: readonly HalfPlane[]) => planes.reduce<ConvexPolygon>((p, h) => (p.length > 0 ? clipHalfPlane(p, h) : p), poly);
+  // Where the band crosses each segment's body (its strip within its wedge), as an interval along the
+  // wall from its end. Only the crossing nearest the end counts, the one it is in or just short of
+  // (discovery takes an end within POINT_TOLERANCE of the band, which along a slanted wall is farther):
+  // past it the band can cross the ring and meet the arc again on the far side, not this T's.
+  const spans = chain.segments
+    .map((segment, i) => clip(clip(strip(segment, 0, 0), sectorOf(chain, i)), band).map(along))
+    .filter((as) => as.length > 0)
+    .map((as) => [Math.min(...as), Math.max(...as)] as const)
+    .sort((a, b) => a[0] - b[0]);
+  const merged: [number, number][] = [];
+  for (const [a, b] of spans) {
+    const last = merged[merged.length - 1];
+    if (last && a <= last[1] + POINT_TOLERANCE) last[1] = Math.max(last[1], b);
+    else merged.push([a, b]);
+  }
+  const crossing = merged.filter(([a]) => a <= POINT_TOLERANCE).sort((x, y) => y[1] - x[1])[0];
+  if (!crossing) return null;
+  const [lo, hi] = crossing;
+  const extension = Math.max(0, -lo) + MARGIN;
+  // The zone always takes in the end itself, even when the arc lies just past it.
+  const edge = add(at, scale(into, Math.max(hi, 0) + MARGIN));
+  const near = halfPlaneThrough(edge, scale(into, -1));
+  const far = halfPlaneThrough(edge, into);
+  const zone = clipHalfPlane(strip(stem, end === 'start' ? extension : 0, end === 'end' ? extension : 0), near);
+  const parts: { wedge: readonly HalfPlane[]; cut: EndCut }[] = [];
+  const notches: Notch[] = [];
+  chain.segments.forEach((segment, i) => {
+    const w = sectorOf(chain, i);
+    const inWedge = w.reduce<ConvexPolygon>((poly, h) => (poly.length > 0 ? clipHalfPlane(poly, h) : poly), zone);
+    if (inWedge.length === 0 || area(inWedge) <= AREA_EPSILON) return;
+    const r = resolveAbutment(stem, end, segment);
+    parts.push({ wedge: w, cut: r.cut });
+    notches.push(...r.notches);
+  });
+  if (parts.length === 0) return null;
+  return { extension, split: { near, far, parts, behind: halfPlaneThrough(at, into) }, notches };
+}
+
+/** A wall's pieces with one end split (StemSplit): the far part as it is, the near part per wedge. */
+function splitPieces(pieces: readonly Piece[], split: StemSplit): Piece[] {
+  const clip = (poly: ConvexPolygon, planes: readonly HalfPlane[]) => planes.reduce<ConvexPolygon>((p, h) => (p.length > 0 ? clipHalfPlane(p, h) : p), poly);
+  const keep = (layerIndex: number, polygon: ConvexPolygon): Piece[] => (polygon.length > 0 && area(polygon) > AREA_EPSILON ? [{ layerIndex, polygon }] : []);
+  return pieces.flatMap((piece) => {
+    const near = clip(piece.polygon, [split.near]);
+    // Outside every wedge: the near part less each wedge, behind the wall's end.
+    const outside = split.parts.reduce<ConvexPolygon[]>((left, part) => left.flatMap((p) => clipOut(p, part.wedge)), [near]);
+    return [
+      ...keep(piece.layerIndex, clip(piece.polygon, [split.far])),
+      ...split.parts.flatMap((part) =>
+        keep(piece.layerIndex, clip(near, [...part.wedge, ...part.cut.cuts, ...(part.cut.layerCuts?.[piece.layerIndex] ?? [])])),
+      ),
+      ...outside.flatMap((p) => keep(piece.layerIndex, clip(p, [split.behind]))),
+    ];
+  });
 }
 
 /** Pieces clipped by more end cuts, layer by layer; slivers left with no area are dropped. */
