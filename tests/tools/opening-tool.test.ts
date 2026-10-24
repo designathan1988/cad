@@ -40,6 +40,14 @@ describe('rule under the cursor', () => {
   });
 });
 
+describe('rule under the cursor, over another opening', () => {
+  it('a reference it would overlap loses to one it clears', () => {
+    // Other [2.5, 3.7]; centre at 4.0 → jambs 3.55 and 4.45, overlapping it: the gap −0.15 from x is
+    // nearest by size, but the wall end is 0.55 away and clear.
+    expect(ruleAt(aim(4, [{ id: 'x', start: 2.5, end: 3.7 }]), 0.9)).toEqual({ kind: 'fromEnd', distance: expect.closeTo(0.55, 12) });
+  });
+});
+
 describe('opening tool table', () => {
   it('idle + hover over a wall → aiming, with the rule under the cursor', () => {
     const r = openingTransition(OPENING_IDLE, { kind: 'hover', aim: aim(1.02) }, 0.9);
