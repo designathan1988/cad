@@ -429,7 +429,7 @@ export function wireInput(app: App): void {
     if (key === 'v') return app.setTool('select');
     if (key === 'f') return app.frameSelection();
     // Choosing and moving elements without a mouse: N / Shift+N go through the level's elements;
-    // the arrows move the selected walls by 5 cm (1 cm with Alt is taken by the browser: Ctrl).
+    // the arrows move the selected walls by 5 cm, the snap grid's step.
     if (key === 'n') return app.stepSelection(e.shiftKey ? -1 : 1);
     const arrows: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
     const arrow = arrows[e.key];
