@@ -153,9 +153,11 @@ describe('layered L corner', () => {
   it('same functions, thicknesses within 1 mm: still the same sequence, so a miter', () => {
     const near = [layer(0.0205, 'finish1'), layer(0.15, 'structure'), layer(0.03, 'finish2')];
     const g = geometry([a, testWall('b', vec(0, 3), vec(0, 0), near)]).pieces;
-    // A miter cuts a on the diagonal: no vertex of a reaches x below −0.1, and a has a vertex inside
-    // the corner square on its inner face, which a butt would not.
-    expect(g.get('a')!.some((p) => p.polygon.some((v) => v.y === 0.1 && v.x > 0))).toBe(true);
+    // A miter: a's interior finish is one piece, never notched, and b's core runs down the diagonal
+    // into the corner, below y = −0.07. A butt would notch that finish and stop b's core at y = 0.07.
+    expect(g.get('a')!.filter((p) => p.layerIndex === 2)).toHaveLength(1);
+    const core = g.get('b')!.find((p) => p.layerIndex === 1)!.polygon;
+    expect(Math.min(...core.map((v) => v.y))).toBeLessThan(-0.07);
   });
 });
 

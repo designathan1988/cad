@@ -34,7 +34,8 @@ function expectExact(walls: readonly Wall[], region: Region, sampleSeed: number)
 
 // Each seed tried passes a layer outside the core in ~550 T joints and ~11 000 points.
 const PRIORITY_JOINTS = 300;
-const BUTT_CORNERS = 0;
+// The fixed seed checks ~1 400 butt corners; other seeds tried gave 1 300 to 2 800.
+const BUTT_CORNERS = 600;
 const PRIORITY_POINTS = 5_000;
 const notch = { joints: 0, points: 0, priorityJoints: 0, priorityPoints: 0 };
 /** I6 by layer and I10, for one T. Counts checked points so I10 cannot pass vacuously. */
