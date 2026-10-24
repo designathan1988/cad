@@ -11,11 +11,10 @@ o resolve existe e, se for de interface, quando a sessão de teste o viu no nave
 - Diagonal clara no núcleo, no canto de um L do mesmo tipo (observação 3 do reteste de e3e18c6):
   as peças de uma mesma cor agora são pintadas num caminho só, então não há costura de
   antisserrilhado entre elas. Corrigido no código, ainda não visto.
+- Arco: cotas de corda e de raio, alça de curvatura e raio editável no painel (427a512).
 
 ## Detalhes da revisão do testador (checklist em 3287502)
 
-- Arco selecionado sem cota temporária e sem alça de curvatura; raio, corda e comprimento só leitura
-  (em andamento).
 - Com zoom grande, a curva do arco mostra os trechos retos: a flecha de 0,5 mm do ADR 0001 aparece
   acima de ~2 000 px/m. Ideia: desenhar a planta do arco com mais trechos que o motor usa.
 - Distribuir com aberturas dos dois lados de um encontro usa a parede inteira (ADR 0003, "Not done").
