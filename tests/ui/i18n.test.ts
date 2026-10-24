@@ -15,6 +15,17 @@ describe('stored names', () => {
     expect(name(defaultName.room(3))).toBe('Room 3');
   });
 
+  it('a new wall type and a copy are named so the built-in part is still translated', () => {
+    expect(defaultName.wallType(2)).toBe('Wall type 2');
+    expect(defaultName.copy('Concrete 20 cm', 2)).toBe('Concrete 20 cm (2)');
+    setLang('pt');
+    expect(name(defaultName.wallType(2))).toBe('Tipo de parede 2');
+    expect(name(defaultName.copy('Concrete 20 cm', 2))).toBe(`${name('Concrete 20 cm')} (2)`);
+    expect(name(defaultName.copy('Concrete 20 cm', 2))).not.toBe('Concrete 20 cm (2)');
+    // A user's own name with a number in brackets stays as typed.
+    expect(name('Fachada (2)')).toBe('Fachada (2)');
+  });
+
   it("the user's own names are never translated", () => {
     setLang('pt');
     expect(name('Level of the roof')).toBe('Level of the roof');
