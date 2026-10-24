@@ -8,6 +8,10 @@ import { layoutRoomTags } from './room-tags';
 import type { Handles } from '../app/handles';
 import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
+import { LAYER_TOKEN } from '../ui/swatch';
+
+/** A wall at least this wide on screen (px) is drawn by layer; narrower, in one colour. */
+export const LAYER_DETAIL_PX = 6;
 
 /** A temporary dimension: measured from a to b, drawn beside the element on `side`, clear of it. */
 export interface DimMark {
@@ -202,20 +206,50 @@ export class PlanView {
       ctx.lineWidth = width;
       for (const s of list) for (const p of s.pieces) (trace(p.polygon), ctx.stroke());
     };
-    const fill = (list: typeof solids, colour: string) => {
-      ctx.fillStyle = colour;
-      ctx.strokeStyle = colour;
+    // By layer when the wall is wide enough on screen to tell them apart: each piece in its layer
+    // function's colour, and a thin line where layers meet (geometry/seams.ts), so they do not depend on
+    // colour alone. Narrower, the wall is one colour, as before.
+    const layered = (s: (typeof solids)[number]) => s.layers.length > 0 && s.layers.reduce((t, l) => t + l.thickness, 0) * this.scale >= LAYER_DETAIL_PX;
+    const fill = (list: typeof solids, colour: string | null) => {
       ctx.lineWidth = 1;
-      for (const s of list) for (const p of s.pieces) (trace(p.polygon), ctx.fill(), ctx.stroke());
+      for (const s of list) {
+        const byLayer = colour === null && layered(s);
+        for (const p of s.pieces) {
+          const fn = s.layers[p.layerIndex]?.function;
+          const c = colour ?? (byLayer && fn ? color(LAYER_TOKEN[fn]) : color('--wall-fill'));
+          ctx.fillStyle = c;
+          ctx.strokeStyle = c;
+          trace(p.polygon);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+    };
+    const seams = (list: typeof solids) => {
+      ctx.strokeStyle = color('--wall-line');
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (const s of list) {
+        if (!layered(s)) continue;
+        for (const seam of s.seams) {
+          const a = this.toScreen(seam.a);
+          const b = this.toScreen(seam.b);
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+        }
+      }
+      ctx.stroke();
     };
     outline(normal, color('--wall-line'), 3);
-    fill(normal, color('--wall-fill'));
+    fill(normal, null);
+    seams(normal);
     // Hover and selection: the wall's own outline in the accent colour over its neighbours.
     for (const s of normal) {
       const sel = o.selected.has(s.wall.id);
       if (!sel && o.hover !== s.wall.id) continue;
       outline([s], color('--wall-sel'), sel ? 4 : 3);
-      fill([s], sel ? color('--wall-sel-fill') : color('--wall-fill'));
+      fill([s], sel ? color('--wall-sel-fill') : null);
+      if (!sel) seams([s]);
     }
     // Preview of walls being drawn.
     const drawn = solids.filter((x) => o.preview.has(x.wall.id));

@@ -3,12 +3,13 @@
 
 import type { LayerFunction, WallLayer } from '../elements/wall/schema';
 
-const FILL: Readonly<Record<LayerFunction, string>> = {
-  structure: 'var(--layer-structure)',
-  substrate: 'var(--layer-substrate)',
-  thermal: 'var(--layer-thermal)',
-  finish1: 'var(--layer-finish)',
-  finish2: 'var(--layer-finish)',
+/** The design token of each layer function's colour: the thumbnails, the plan and the 3D share it. */
+export const LAYER_TOKEN: Readonly<Record<LayerFunction, string>> = {
+  structure: '--layer-structure',
+  substrate: '--layer-substrate',
+  thermal: '--layer-thermal',
+  finish1: '--layer-finish',
+  finish2: '--layer-finish',
 };
 
 export function layerBands(layers: readonly WallLayer[], width: number): { x: number; w: number; fill: string }[] {
@@ -19,7 +20,7 @@ export function layerBands(layers: readonly WallLayer[], width: number): { x: nu
   widths[widest] = widths[widest]! + width - widths.reduce((s, w) => s + w, 0);
   let x = 0;
   return layers.map((l, i) => {
-    const band = { x, w: widths[i]!, fill: FILL[l.function] };
+    const band = { x, w: widths[i]!, fill: `var(${LAYER_TOKEN[l.function]})` };
     x += widths[i]!;
     return band;
   });

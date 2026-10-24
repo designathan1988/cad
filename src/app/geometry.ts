@@ -15,7 +15,8 @@ import { AREA_EPSILON, POINT_TOLERANCE } from '../core/tolerance';
 const JOINT_REACH = 0.01;
 import { shapeOf } from '../elements/wall/geometry/shape';
 import type { JoinWarning } from '../elements/wall/join/types';
-import type { WallId, WallType } from '../elements/wall/schema';
+import type { WallId, WallLayer, WallType } from '../elements/wall/schema';
+import { layerSeams, type Seam } from '../elements/wall/geometry/seams';
 import { deriveFloors, deriveRooms, type FloorSolid, type RoomSolid, type RoomWarning } from '../elements/room/derive';
 import type { FloorId, RoomId } from '../elements/room/schema';
 import type { Point2 as P } from '../core/vector';
@@ -29,6 +30,10 @@ export interface WallSolid {
   readonly blocks: readonly Block[];
   readonly bottom: number;
   readonly top: number;
+  /** Its type's layers, from the exterior face: what each piece's layerIndex is (none when the type is missing). */
+  readonly layers: readonly WallLayer[];
+  /** Lines in plan where its pieces meet pieces of another layer (geometry/seams.ts). */
+  readonly seams: readonly Seam[];
 }
 
 export interface OpeningSolid extends PlacedOpening {
@@ -92,11 +97,25 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     jointWarnings.push({ kind: 'openingAtJoint', openings: [id] });
   }
   const solids = new Map<WallId, WallSolid>();
+  const planPieces = new Map<WallId, Piece[]>();
+  for (const wall of walls) planPieces.set(wall.id, cutPlan(pieces.get(wall.id) ?? [], cuts.get(wall.id) ?? []));
+  // Seams per level: walls on two levels can lie over each other in plan without meeting.
+  const seams = new Map<WallId, Seam[]>();
+  for (const levelId of new Set(walls.map((w) => w.levelId))) {
+    const list = walls
+      .filter((w) => w.levelId === levelId)
+      .flatMap((w) => {
+        const layers = types.get(w.wallTypeId)?.layers ?? [];
+        return (planPieces.get(w.id) ?? []).map((p) => ({ wallId: w.id, polygon: p.polygon, key: `${layers[p.layerIndex]?.function}|${layers[p.layerIndex]?.materialId}` }));
+      });
+    for (const [id, s] of layerSeams(list)) seams.set(id, s);
+  }
   for (const wall of walls) {
     const { bottom, top } = wallHeights(doc, wall);
     const own = pieces.get(wall.id) ?? [];
     const mine = cuts.get(wall.id) ?? [];
-    solids.set(wall.id, { wall, pieces: cutPlan(own, mine), blocks: cutSolid(own, bottom, top, mine), bottom, top });
+    const layers = types.get(wall.wallTypeId)?.layers ?? [];
+    solids.set(wall.id, { wall, pieces: planPieces.get(wall.id)!, blocks: cutSolid(own, bottom, top, mine), bottom, top, layers, seams: seams.get(wall.id) ?? [] });
   }
   // Rooms see the walls before doors and windows are cut: a door does not open a room.
   const piecesByLevel = new Map<string, P[][]>();

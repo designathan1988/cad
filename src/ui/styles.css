@@ -132,10 +132,11 @@
   --3d-leaf: #a0764f;
   --3d-light: #ffffff;
   --3d-ground-light: #9a9fa8;
-  --layer-structure: #9c8f80;
-  --layer-substrate: #b7ad9f;
-  --layer-thermal: #e7c66b;
-  --layer-finish: #ddd8cf;
+  /* Darker in the dark theme: the light wall line must read on every layer (3:1). */
+  --layer-structure: #6f655a;
+  --layer-substrate: #807666;
+  --layer-thermal: #8c7430;
+  --layer-finish: #5a5650;
   --warn: #fb923c;
   --error: #f87171;
   --warn-soft: #3a2618;

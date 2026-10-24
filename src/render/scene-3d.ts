@@ -8,6 +8,8 @@ import type { Point2 } from '../core/vector';
 import type { DerivedGeometry, OpeningSolid, WallSolid } from '../app/geometry';
 import { add, scale } from '../core/vector';
 import type { WallId } from '../elements/wall/schema';
+import { LAYER_TOKEN } from '../ui/swatch';
+import { blockPaint, wallMeshKey } from './wall-paint';
 
 const toThree = (p: Point2, z: number) => new THREE.Vector3(p.x, z, -p.y);
 
@@ -18,6 +20,10 @@ export class Scene3D {
   private readonly scene = new THREE.Scene();
   private readonly walls = new Map<WallId, { group: THREE.Group; key: string }>();
   // Colours come from the design tokens (styles.css, --3d-*), set in setTheme.
+  /** One material per layer colour token, recoloured with the theme like the others. */
+  private readonly layerMaterials = new Map<string, THREE.MeshStandardMaterial>(
+    [...new Set(Object.values(LAYER_TOKEN))].map((name) => [name, new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide })]),
+  );
   private readonly materials = {
     side: new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide }),
     top: new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide }),
@@ -78,6 +84,7 @@ export class Scene3D {
     m.glass.color = c('--3d-glass');
     m.leaf.color = c('--3d-leaf');
     m.invalid.color = c('--warn');
+    for (const [name, mat] of this.layerMaterials) mat.color = c(name);
     this.sky.color = c('--3d-light');
     this.sky.groundColor = c('--3d-ground-light');
     this.sun.color = c('--3d-light');
@@ -174,7 +181,7 @@ export class Scene3D {
     for (const s of g.solids.values()) {
       seen.add(s.wall.id);
       const state = preview.has(s.wall.id) ? 'p' : selected.has(s.wall.id) ? 's' : 'n';
-      const key = state + JSON.stringify(s.blocks);
+      const key = wallMeshKey(state, s.blocks, s.layers);
       const old = this.walls.get(s.wall.id);
       if (old?.key === key) continue;
       if (old) this.drop(old.group);
@@ -194,9 +201,12 @@ export class Scene3D {
 
   private build(s: WallSolid, state: 'p' | 's' | 'n'): THREE.Group {
     const group = new THREE.Group();
-    const side = state === 'p' ? this.materials.preview : state === 's' ? this.materials.sideSel : this.materials.side;
-    const top = state === 'p' ? this.materials.preview : state === 's' ? this.materials.topSel : this.materials.top;
-    for (const b of s.blocks) group.add(new THREE.Mesh(prism(b.polygon, b.bottom, b.top), [side, top]));
+    // Each block in its layer's colour, as in plan (wall-paint.ts).
+    const material = (paint: string): THREE.Material => this.layerMaterials.get(paint) ?? this.materials[paint as keyof typeof this.materials];
+    for (const b of s.blocks) {
+      const { side, top } = blockPaint(s.layers, b.layerIndex, state);
+      group.add(new THREE.Mesh(prism(b.polygon, b.bottom, b.top), [material(side), material(top)]));
+    }
     return group;
   }
 
