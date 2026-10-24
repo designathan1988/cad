@@ -5,6 +5,8 @@ import type { OpeningSolid } from '../app/geometry';
 import type { OpeningWarning } from '../elements/opening/derive';
 import { nextOpeningPanel, openingPanel, openingTitle, type OpeningPanelActions, type OpeningSize } from '../elements/opening/panel';
 import type { OpeningId, OpeningKind } from '../elements/opening/schema';
+import type { FloorSolid, RoomSolid } from '../elements/room/derive';
+import { floorPanel, roomPanel, type RoomPanelActions } from '../elements/room/panel';
 import { distance } from '../core/vector';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { ReferenceLine } from '../elements/wall/schema';
@@ -20,6 +22,8 @@ export interface PanelInput {
   readonly warnings: readonly JoinWarning[];
   /** Selected doors and windows; shown when no wall is selected. */
   readonly openings: readonly OpeningSolid[];
+  readonly rooms: readonly RoomSolid[];
+  readonly floors: readonly FloorSolid[];
   readonly placed: ReadonlyMap<OpeningId, OpeningSolid>;
   readonly openingWarnings: readonly OpeningWarning[];
   /** The door or window tool is active: its next opening's size. */
@@ -31,6 +35,7 @@ export interface PanelActions {
   readonly updateDefaults: (patch: Partial<WallDefaults>) => void;
   readonly close: () => void;
   readonly opening: OpeningPanelActions;
+  readonly room: RoomPanelActions;
   readonly updateOpeningDefaults: (kind: OpeningKind, patch: Partial<OpeningSize>) => void;
 }
 
@@ -50,7 +55,7 @@ function common<T>(walls: readonly DocWall[], get: (w: DocWall) => T): T | null 
 
 export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActions): void {
   const { doc, selected } = input;
-  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window', title: string) => {
+  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window' | 'room' | 'slab', title: string) => {
     const h = el('div', { class: 'panel-head' });
     h.innerHTML = icon(iconName, 16);
     const close = el('button', { class: 'icon-btn', type: 'button', title: t('panel.close'), 'aria-label': t('panel.close') });
@@ -115,6 +120,14 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
       box.append(el('div', {}, ...mine.map((w) => el('div', {}, t(`warn.${w.kind}` as MessageKey)))));
       nodes.push(box);
     }
+  } else if (input.rooms.length > 0) {
+    const one = input.rooms.length === 1 ? input.rooms[0]! : null;
+    nodes.push(head('room', one ? t('room.title', { name: one.room.name }) : t('room.titleMany', { n: input.rooms.length })));
+    nodes.push(...roomPanel(input.rooms, act.room));
+  } else if (input.floors.length > 0) {
+    nodes.push(head('slab', input.floors.length === 1 ? t('floor.title') : t('floor.titleMany', { n: input.floors.length })));
+    const roomName = (id: string) => doc.rooms.find((r) => r.id === id)?.name ?? '—';
+    nodes.push(...floorPanel(input.floors, roomName, act.room));
   } else if (input.openings.length > 0) {
     const kinds = new Set(input.openings.map((o) => o.opening.kind));
     nodes.push(head(kinds.size === 1 && kinds.has('window') ? 'window' : 'door', openingTitle(input.openings)));

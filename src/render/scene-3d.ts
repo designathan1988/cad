@@ -20,6 +20,7 @@ export class Scene3D {
   private readonly materials = {
     side: new THREE.MeshStandardMaterial({ color: 0xd6d0c6, roughness: 0.9, side: THREE.DoubleSide }),
     top: new THREE.MeshStandardMaterial({ color: 0xb4aea6, roughness: 0.9, side: THREE.DoubleSide }),
+    floor: new THREE.MeshStandardMaterial({ color: 0xc9c5bd, roughness: 0.95, side: THREE.DoubleSide }),
     sideSel: new THREE.MeshStandardMaterial({ color: 0x9db6e8, roughness: 0.8, side: THREE.DoubleSide }),
     topSel: new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.8, side: THREE.DoubleSide }),
     preview: new THREE.MeshStandardMaterial({ color: 0x7ea0e6, roughness: 0.8, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
@@ -106,6 +107,27 @@ export class Scene3D {
       if (old?.key === key) continue;
       if (old) this.drop(old.group);
       const group = this.buildOpening(o, state);
+      group.userData.wallId = id;
+      this.scene.add(group);
+      this.walls.set(id, { group, key });
+    }
+    for (const f of g.floors.values()) {
+      if (f.outline.length < 3) continue;
+      const id = f.floor.id;
+      seen.add(id);
+      const state = selected.has(id) ? 's' : 'n';
+      const key = state + JSON.stringify([f.outline, f.bottom, f.top]);
+      const old = this.walls.get(id);
+      if (old?.key === key) continue;
+      if (old) this.drop(old.group);
+      const group = new THREE.Group();
+      const shape = new THREE.Shape(f.outline.map((p) => new THREE.Vector2(p.x, p.y)));
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: f.top - f.bottom, bevelEnabled: false });
+      // The shape lies in x–y; turned −90° about x it lies in three.js x–(−z), extruded upward.
+      const mesh = new THREE.Mesh(geo, state === 's' ? this.materials.sideSel : this.materials.floor);
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.y = f.bottom;
+      group.add(mesh);
       group.userData.wallId = id;
       this.scene.add(group);
       this.walls.set(id, { group, key });

@@ -10,6 +10,7 @@ import { aimAt, OPENING_PREVIEW_ID } from './opening-ui';
 import type { App } from './app';
 import { levelOf } from './document';
 import { selectGestures } from './select-drag';
+import { insideRing } from '../elements/room/derive';
 import { EDIT_LEVELS } from './app';
 import { showLevels } from '../ui/levels-dialog';
 import type { WallId } from '../elements/wall/schema';
@@ -76,7 +77,18 @@ export function wireInput(app: App): void {
 
   /** The element under the pointer: an opening before the wall that hosts it. */
   const pickAt = (e: PointerEvent, at: { p: Point2 } | null) =>
-    ui.view === 'plan' ? (at ? (openingAt(app.visibleGeometry(), at.p) ?? wallAt(app.visibleGeometry(), at.p)) : null) : app.scene.pick(e.clientX, e.clientY);
+    ui.view === 'plan' ? (at ? planPick(at.p) : null) : app.scene.pick(e.clientX, e.clientY);
+  /** In plan: an opening, else a wall, else a room, else a floor under the point. */
+  const planPick = (p: Point2): string | null => {
+    const g = app.visibleGeometry();
+    return (
+      openingAt(g, p) ??
+      wallAt(g, p) ??
+      [...g.rooms.values()].find((r) => r.enclosed && insideRing(r.outline, p))?.room.id ??
+      [...g.floors.values()].find((f) => f.outline.length >= 3 && insideRing(f.outline, p))?.floor.id ??
+      null
+    );
+  };
 
   const onMove = (e: PointerEvent) => {
     shift = e.shiftKey;
@@ -140,6 +152,11 @@ export function wireInput(app: App): void {
     }
     if (moved) return;
     if (app.openingKind()) return app.openingEvent({ kind: 'click' });
+    if (ui.tool === 'room' || ui.tool === 'floor') {
+      const at = worldAt(e);
+      if (!at) return;
+      return ui.tool === 'room' ? app.roomClick(at.p) : app.floorClick(at.p, at.mpp);
+    }
     const s = snapped(e);
     if (s) app.wallEvent({ kind: 'click', point: s.point });
   };
@@ -191,6 +208,8 @@ export function wireInput(app: App): void {
   shell.toolWall.addEventListener('click', () => app.setTool('wall'));
   shell.toolDoor.addEventListener('click', () => app.setTool('door'));
   shell.toolWindow.addEventListener('click', () => app.setTool('window'));
+  shell.toolRoom.addEventListener('click', () => app.setTool('room'));
+  shell.toolFloor.addEventListener('click', () => app.setTool('floor'));
   shell.floatDelete.addEventListener('click', () => app.deleteSelection());
   shell.floatZoom.addEventListener('click', () => app.frameSelection());
   shell.floatFrame.addEventListener('click', () => app.frameAll());
@@ -247,11 +266,17 @@ export function wireInput(app: App): void {
         return showMarquee();
       }
       if (app.openingKind()) return app.setTool('select');
+      if (ui.tool === 'floor' && ui.floorDraft.length > 0) {
+        ui.floorDraft = [];
+        return app.render();
+      }
+      if (ui.tool === 'room' || ui.tool === 'floor') return app.setTool('select');
       if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? app.wallEvent({ kind: 'escape' }) : app.setTool('select');
       ui.selection.clear();
       return app.refresh();
     }
     if (e.key === 'Enter' && ui.tool === 'wall') return app.wallEvent({ kind: 'enter' });
+    if (e.key === 'Enter' && ui.tool === 'floor') return app.floorFinish();
     if (e.key === 'Delete' || e.key === 'Backspace') return app.deleteSelection();
     if (e.key === 'Home') return app.frameAll();
     if (e.key === '?') return showHelp(app);
@@ -261,6 +286,8 @@ export function wireInput(app: App): void {
     if (key === 'w') return app.setTool('wall');
     if (key === 'a' && ui.tool === 'wall') return app.wallEvent({ kind: 'arc' });
     if (key === 'd') return app.setTool('door');
+    if (key === 'r') return app.setTool('room');
+    if (key === 'l') return app.setTool('floor');
     if (key === 'v') return app.setTool('select');
     if (key === 'f') return app.frameSelection();
     if (key === 's') {

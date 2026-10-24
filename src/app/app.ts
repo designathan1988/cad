@@ -27,6 +27,9 @@ import { type Doc, type DocWall, newDocument, type WallDefaults } from './docume
 import { boundsOf, deriveGeometry, type DerivedGeometry, type OpeningSolid, openingOutline } from './geometry';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { newId } from '../core/id';
+import { addFloor, addRoom, updateFloor, updateRoom } from '../elements/room/commands';
+import { insideRing, type FloorSolid, type RoomSolid } from '../elements/room/derive';
+import { FLOOR_DEFAULTS } from '../elements/room/schema';
 
 export interface UiState {
   view: ViewId;
@@ -46,6 +49,8 @@ export interface UiState {
   error: string | null;
   /** A move, stretch or window selection in progress: a preview until release. */
   drag: Drag | null;
+  /** Corners of a floor outline being drawn. */
+  floorDraft: Point2[];
 }
 
 const PREVIEW_ID = '__preview__';
@@ -88,6 +93,7 @@ export class App {
       cursor: null,
       error: null,
       drag: null,
+      floorDraft: [],
     };
     this.shell = buildShell(root);
     this.plan = new PlanView(this.shell.planCanvas);
@@ -155,6 +161,63 @@ export class App {
     } else this.refresh();
   }
 
+  selectedRooms(): RoomSolid[] {
+    return [...this.ui.selection].flatMap((id) => this.geometry.rooms.get(id) ?? []);
+  }
+
+  selectedFloors(): FloorSolid[] {
+    return [...this.ui.selection].flatMap((id) => this.geometry.floors.get(id) ?? []);
+  }
+
+  /** The room tool: a click inside closed walls makes a room there, unless one is there already. */
+  roomClick(p: Point2): void {
+    const doc = this.store.get();
+    const existing = [...this.visibleGeometry().rooms.values()].find((r) => r.enclosed && insideRing(r.outline, p));
+    if (existing) {
+      this.ui.selection = new Set([existing.room.id]);
+      this.ui.error = t('hint.roomExists');
+      return this.refresh();
+    }
+    const n = doc.rooms.filter((r) => r.levelId === this.ui.levelId).length + 1;
+    const room = { id: newId('room'), levelId: this.ui.levelId, seed: p, name: t('room.new', { n }), number: String(n) };
+    const probe = deriveGeometry({ ...doc, rooms: [room] }).rooms.get(room.id);
+    if (!probe?.enclosed) {
+      this.ui.error = t('hint.roomNotEnclosed');
+      return this.renderChrome();
+    }
+    this.ui.error = null;
+    this.store.dispatch(addRoom(room));
+  }
+
+  /** The floor tool: a click in a room floors it; elsewhere it adds a corner to an outline. */
+  floorClick(p: Point2, mpp: number): void {
+    const draft = this.ui.floorDraft;
+    if (draft.length === 0) {
+      const room = [...this.visibleGeometry().rooms.values()].find((r) => r.enclosed && insideRing(r.outline, p));
+      if (room) {
+        const has = this.store.get().floors.find((f) => f.source.kind === 'room' && f.source.roomId === room.room.id);
+        if (has) {
+          this.ui.selection = new Set([has.id]);
+          this.ui.error = t('hint.floorExists');
+          return this.refresh();
+        }
+        this.ui.error = null;
+        return this.store.dispatch(addFloor({ id: newId('floor'), levelId: this.ui.levelId, source: { kind: 'room', roomId: room.room.id }, ...FLOOR_DEFAULTS }));
+      }
+    }
+    // Clicking the first corner again (within 10 px) closes the outline.
+    if (draft.length >= 3 && distance(p, draft[0]!) <= 10 * mpp) return this.floorFinish();
+    this.ui.floorDraft = [...draft, p];
+    this.render();
+  }
+
+  floorFinish(): void {
+    const points = this.ui.floorDraft;
+    this.ui.floorDraft = [];
+    if (points.length < 3) return this.render();
+    this.store.dispatch(addFloor({ id: newId('floor'), levelId: this.ui.levelId, source: { kind: 'outline', points }, ...FLOOR_DEFAULTS }));
+  }
+
   selectedOpenings(): OpeningSolid[] {
     return [...this.ui.selection].filter(isOpeningId).flatMap((id) => this.geometry.openings.get(id) ?? []);
   }
@@ -215,6 +278,7 @@ export class App {
     this.ui.tool = tool;
     this.ui.wall = IDLE;
     this.ui.opening = OPENING_IDLE;
+    this.ui.floorDraft = [];
     this.ui.snap = null;
     this.ui.error = null;
     if (tool !== 'select') this.ui.selection.clear();
@@ -382,6 +446,13 @@ export class App {
         measure: drawing && len >= MIN_WALL_LENGTH ? { at: { x: (w.last.x + w.cursor.x) / 2, y: (w.last.y + w.cursor.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°` } : (guide?.measure ?? null),
         axis: drawing && len >= MIN_WALL_LENGTH ? { start: w.last, end: w.cursor } : (guide?.axis ?? null),
         grips: this.gripPoints(),
+        roomLabels: [...this.visibleGeometry().rooms.values()].map((r) => ({
+          at: r.room.seed,
+          name: `${r.room.number} · ${r.room.name}`,
+          area: r.enclosed ? `${num(r.area)} m²` : t('warn.roomNotEnclosed'),
+          warn: !r.enclosed,
+        })),
+        draft: ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(ui.cursor ? [ui.cursor] : [])] : null,
         openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
       });
     } else {
@@ -407,6 +478,8 @@ export class App {
         defaults: ui.defaults,
         warnings: this.geometry.warnings,
         openings: this.selectedWalls().length === 0 ? this.selectedOpenings() : [],
+        rooms: this.selectedRooms(),
+        floors: this.selectedFloors(),
         placed: this.geometry.openings,
         openingWarnings: this.geometry.openingWarnings,
         openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing] } : null,
@@ -418,6 +491,14 @@ export class App {
           this.refresh();
         },
         close: () => this.togglePanel(false),
+        room: {
+          updateRoom: (id, patch) => this.store.dispatch(updateRoom(id, patch)),
+          updateFloor: (ids, patch) => {
+            const doc = this.store.get();
+            const next = ids.reduce((d, id) => updateFloor(id, patch).apply(d), doc);
+            if (next !== doc) this.store.dispatch({ label: 'cmd.updateFloor', apply: () => next });
+          },
+        },
         opening: {
           update: (ids, patch) => {
             // One command for the whole selection: one undo step.
@@ -452,7 +533,9 @@ export class App {
     if (this.ui.view !== 'plan') return this.geometry;
     const solids = new Map([...this.geometry.solids].filter(([, s]) => s.wall.levelId === this.ui.levelId));
     const openings = new Map([...this.geometry.openings].filter(([, o]) => solids.has(o.opening.wallId)));
-    return { ...this.geometry, solids, openings };
+    const rooms = new Map([...this.geometry.rooms].filter(([, r]) => r.room.levelId === this.ui.levelId));
+    const floors = new Map([...this.geometry.floors].filter(([, f]) => f.floor.levelId === this.ui.levelId));
+    return { ...this.geometry, solids, openings, rooms, floors };
   }
 
   togglePanel(open = !this.ui.panelOpen): void {
@@ -477,6 +560,8 @@ export class App {
     shell.viewWalk.setAttribute('aria-pressed', 'false');
     shell.toolSelect.setAttribute('aria-pressed', String(ui.tool === 'select'));
     shell.toolWall.setAttribute('aria-pressed', String(ui.tool === 'wall'));
+    shell.toolRoom.setAttribute('aria-pressed', String(ui.tool === 'room'));
+    shell.toolFloor.setAttribute('aria-pressed', String(ui.tool === 'floor'));
     shell.toolDoor.setAttribute('aria-pressed', String(ui.tool === 'door'));
     shell.toolWindow.setAttribute('aria-pressed', String(ui.tool === 'window'));
     shell.lang.textContent = getLang().toUpperCase();
@@ -531,10 +616,13 @@ export class App {
         ? t('hint.openingAim', { rule: ruleText(ui.opening.rule) })
         : t('hint.openingPlace', { kind: t(placing === 'door' ? 'panel.door' : 'panel.window').toLowerCase() })
       : null;
-    shell.instr.textContent = ui.error ?? openingHint ?? t(hintKey, { n: ui.selection.size });
+    const toolHint = ui.tool === 'room' ? t('hint.roomPlace') : ui.tool === 'floor' ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace') : null;
+    shell.instr.textContent = ui.error ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size });
     shell.instr.classList.toggle('error', ui.error !== null);
-    const keys = placing
+    const keys = placing || ui.tool === 'room'
       ? [keyHint('Esc', t('key.exit'))]
+      : ui.tool === 'floor'
+      ? [keyHint('Enter', t('key.finish')), keyHint('Esc', t('key.exit'))]
       : drawing
       ? w.kind !== 'idle'
         ? [keyHint('Enter', t('key.finish')), keyHint('A', t('key.arc')), keyHint('Shift', t('key.straight')), keyHint('Esc', t('key.finish'))]

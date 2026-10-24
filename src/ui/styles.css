@@ -44,6 +44,7 @@
   --wall-sel-fill: #a9bde6;
   --kbd-bg: #f1f2f4;
   --kbd-border: #d7dae0;
+  --floor-fill: #e8e4dc;
   color-scheme: light;
 }
 
@@ -74,6 +75,7 @@
   --wall-sel-fill: #3e5c94;
   --kbd-bg: #2a2b31;
   --kbd-border: #3a3b43;
+  --floor-fill: #26272d;
   color-scheme: dark;
 }
 

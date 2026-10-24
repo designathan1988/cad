@@ -19,6 +19,10 @@ export interface PlanOverlay {
   readonly axis: { readonly start: Point2; readonly end: Point2 } | null;
   /** End grips of the selected wall: small squares to drag. */
   readonly grips: readonly Point2[];
+  /** Room name and area tags, at each room's point. */
+  readonly roomLabels: readonly { readonly at: Point2; readonly name: string; readonly area: string; readonly warn: boolean }[];
+  /** A floor outline being drawn, ending at the cursor. */
+  readonly draft: readonly Point2[] | null;
   /** The opening being placed (an id present in the geometry), drawn in the accent colour. */
   readonly openingPreview?: string | null;
 }
@@ -97,6 +101,26 @@ export class PlanView {
       });
       ctx.closePath();
     };
+    // Floors and rooms lie under the walls.
+    for (const f of g.floors.values()) {
+      if (f.outline.length < 3) continue;
+      const sel = o.selected.has(f.floor.id) || o.hover === f.floor.id;
+      trace(f.outline);
+      ctx.fillStyle = sel ? color('--accent-soft') : color('--floor-fill');
+      ctx.fill();
+      ctx.save();
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = sel ? color('--wall-sel') : color('--text-3');
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    }
+    for (const r of g.rooms.values()) {
+      if (!r.enclosed || !(o.selected.has(r.room.id) || o.hover === r.room.id)) continue;
+      trace(r.outline);
+      ctx.fillStyle = color('--accent-soft');
+      ctx.fill();
+    }
     // Square corners stay sharp (miter ratio 1.41); a piece's 45° miter corner (ratio 2.61) is
     // bevelled, or its stroke would poke a spike out of the joined outline.
     ctx.lineJoin = 'miter';
@@ -130,6 +154,24 @@ export class PlanView {
     fill(drawn, color('--wall-sel-fill'));
     this.drawOpenings(g, o, { line: color('--wall-line'), sel: color('--wall-sel'), selFill: color('--wall-sel-fill'), warn: color('--warn'), canvas: color('--canvas') });
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
+    for (const l of o.roomLabels) {
+      this.label(l.at, l.name, l.warn ? color('--warn') : color('--text'), color('--canvas'), '600 12px Inter, system-ui', { x: 0, y: -4 });
+      this.label(l.at, l.area, color('--text-2'), color('--canvas'), '12px Inter, system-ui', { x: 0, y: 12 });
+    }
+    if (o.draft && o.draft.length > 0) {
+      ctx.save();
+      ctx.strokeStyle = color('--wall-sel');
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      o.draft.forEach((v, i) => {
+        const s = this.toScreen(v);
+        if (i === 0) ctx.moveTo(s.x, s.y);
+        else ctx.lineTo(s.x, s.y);
+      });
+      ctx.stroke();
+      ctx.restore();
+    }
     for (const g of o.grips) {
       const p = this.toScreen(g);
       ctx.fillStyle = color('--bg');
