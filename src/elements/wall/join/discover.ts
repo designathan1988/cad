@@ -123,7 +123,7 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
   // way in, at a slant: that is the same T (footprint.ts spreads it over the segments), not an X. It is
   // when its axis stays inside the arc's band from that point to its end.
   const inArc = (parent: string, p: Point2) => valid.some((h) => parentOf(h.id) === parent && h.id !== parent && insideBand(h, p, joint(h)));
-  const crossings = findCrossings(valid).filter(({ throughId, cutId, point }) => {
+  const crossings = findCrossings(valid, joint).filter(({ throughId, cutId, point }) => {
     for (const [wallId, segId] of [
       [cutId, throughId],
       [throughId, cutId],
@@ -146,16 +146,28 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
  * Pairs whose reference lines cross inside both walls, with no end of either inside the other's
  * band (that would be a T or a corner). The through wall is chosen by goesThrough.
  */
-function findCrossings(walls: readonly WallShape[]): Crossing[] {
+/**
+ * `joint`: a segment's ends that are joints of its own arc. Those are not wall ends: one inside the
+ * other wall's band does not make it a T or a corner, and a crossing on one is still a crossing (found
+ * once, on the first of the two segments).
+ */
+function findCrossings(walls: readonly WallShape[], joint: (w: WallShape) => Joints): Crossing[] {
   const crossings: Crossing[] = [];
+  const realEnds = (w: WallShape) => {
+    const j = joint(w);
+    return [...(j.start ? [] : [w.start]), ...(j.end ? [] : [w.end])];
+  };
   walls.forEach((a, i) => {
     walls.slice(i + 1).forEach((b) => {
-      if (parallel(a, b)) return;
+      if (parallel(a, b) || parentOf(a.id) === parentOf(b.id)) return;
       const point = intersectLines(a.start, wallDirection(a), b.start, wallDirection(b));
-      if (point === null || !interior(a, point) || !interior(b, point)) return;
-      if ([a.start, a.end].some((p) => withinBand(b, p)) || [b.start, b.end].some((p) => withinBand(a, p))) return;
+      if (point === null || !interior(a, point, joint(a)) || !interior(b, point, joint(b))) return;
+      if (realEnds(a).some((p) => withinBand(b, p)) || realEnds(b).some((p) => withinBand(a, p))) return;
       const aThrough = goesThrough(a, b);
-      crossings.push({ throughId: aThrough ? a.id : b.id, cutId: aThrough ? b.id : a.id, point });
+      const crossing = { throughId: aThrough ? a.id : b.id, cutId: aThrough ? b.id : a.id, point };
+      const same = (c: Crossing) =>
+        distance(c.point, point) <= POINT_TOLERANCE && parentOf(c.throughId) === parentOf(crossing.throughId) && parentOf(c.cutId) === parentOf(crossing.cutId);
+      if (!crossings.some(same)) crossings.push(crossing);
     });
   });
   return crossings;
@@ -175,9 +187,10 @@ export function goesThrough(a: WallShape, b: WallShape): boolean {
 const coreThickness = (w: WallShape): number =>
   w.layers.slice(w.coreLayers[0], w.coreLayers[1] + 1).reduce((sum, l) => sum + l.thickness, 0);
 
-const interior = (w: WallShape, p: ReturnType<typeof endPoint>): boolean => {
+/** Inside the wall's length, away from its ends; up to an end that is a joint of its arc, which is not one. */
+const interior = (w: WallShape, p: ReturnType<typeof endPoint>, joint: Joints = {}): boolean => {
   const s = stationOf(w, p);
-  return s > POINT_TOLERANCE && s < wallLength(w) - POINT_TOLERANCE;
+  return (joint.start ? s >= 0 : s > POINT_TOLERANCE) && (joint.end ? s <= wallLength(w) : s < wallLength(w) - POINT_TOLERANCE);
 };
 
 /** Inside the wall's rectangle, ends included, with tolerance. */

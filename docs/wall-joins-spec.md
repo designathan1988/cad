@@ -1065,3 +1065,26 @@ junta (metros) saía da varredura; a faixa atravessando o anel contava o outro l
 1 mm fora do arco não achava o cruzamento pela tolerância medida ao longo da parede inclinada. Do lado do
 oráculo: o canto preenchido e a ponta que atravessa um arco fino não eram modelados, e o lado de
 chegada saía por arredondamento numa parede-corda.
+
+**X com arco (2026-10-24):** antes recusado com `arcJoinUnsupported`. A regra do X vale como entre
+retas (§6, Crossing): passa o núcleo mais grosso, a outra é cortada em dois vãos, cada um um T contra a
+que passa.
+- O arco passa: cada vão da reta leva o T contra o arco espalhado pelos trechos (acima), por vão, para
+  que o corte de um lado não mexa no outro.
+- A reta passa: o trecho do arco é cortado no cruzamento, e cada lado termina contra a reta como um
+  arco termina (o trecho leva o T, os anteriores o carregam: `carryArcStem`). Num cruzamento exatamente
+  sobre o encontro de dois trechos, o canto da cadeia ali cede: um trecho termina, o seguinte começa.
+- Descoberta (§6): os encontros de um arco não são pontas na regra "ponta dentro da faixa" (as pontas
+  de trecho dentro da faixa da reta não fazem dele um T), e um cruzamento sobre um encontro é achado
+  (uma vez, no primeiro dos dois trechos).
+
+| Medida | Resultado |
+|---|---|
+| Casos à mão em `arcs.test.ts` | 3: o arco passando a 90° sobre um encontro, a reta passando, inclinado com camadas |
+| Suíte de propriedade, seed fixa, 100 rodadas | 96 cruzam exato, nenhum aviso (é falha: a spec faz todo X), 4 pulados (sem espaço além da faixa antes de a reta voltar ao arco: segunda junta), limite 5 |
+| Controle | com o motor anterior, os 3 casos à mão e a suíte falham |
+
+A suíte do L passou a separar o transbordo da segunda junta pela geometria, não por um número solto:
+o contato com os outros trechos que começa dentro do alcance do canto do L (`cornerReach`: o mais
+longe dos quatro encontros das faces da reta com as do trecho da ponta, com caso à mão) é o
+transbordo; além dele, segunda junta. Separou os mesmos 32 casos que o corte de 0,3 m separava.

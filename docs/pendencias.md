@@ -24,7 +24,6 @@ o resolve existe e, se for de interface, quando a sessão de teste o viu no nave
 
 ## Motor de paredes
 
-- X com arco.
 - **L na ponta de um arco cuja reta alcança os trechos seguintes (transbordo): ainda avisa**
   (wall-joins-spec.md, parte 6). Comum, não raro: 32 de 98 Ls na seed fixa da suíte. Eu tinha escrito
   "nenhum caso real": a busca pulava exatamente esses casos. Próximo item do motor.

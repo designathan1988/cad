@@ -133,8 +133,66 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   for (const { throughId, cutId, point } of [...graph.crossings].sort((x, y) =>
     stationAlong(byId.get(x.cutId)!, x.point) - stationAlong(byId.get(y.cutId)!, y.point),
   )) {
-    if (isArc(throughId) || isArc(cutId)) {
-      report({ kind: 'arcJoinUnsupported', walls: isArc(cutId) ? [throughId, cutId] : [cutId, throughId] });
+    if (isArc(throughId) && isArc(cutId)) {
+      report({ kind: 'arcJoinUnsupported', walls: [throughId, cutId] });
+      continue;
+    }
+    if (isArc(throughId)) {
+      // The arc passes: each side of the straight wall is a T against it (spreadOverArc), per span.
+      const chain = chains.get(parentOf(throughId))!;
+      const list = spans.get(cutId)!;
+      const last = list.pop()!;
+      const before = spreadOverArc({ ...last.shape, end: point }, 'end', chain);
+      const after = spreadOverArc({ ...byId.get(cutId)!, start: point }, 'start', chain);
+      if (!before || !after) {
+        list.push(last);
+        report({ kind: 'arcJoinUnsupported', walls: [cutId, throughId] });
+        continue;
+      }
+      list.push(
+        { shape: { ...last.shape, end: point }, atStart: last.atStart, atEnd: { extension: before.extension, cuts: [] }, splits: [...(last.splits ?? []), before.split] },
+        { shape: { ...last.shape, start: point }, atStart: { extension: after.extension, cuts: [] }, atEnd: last.atEnd, splits: [after.split] },
+      );
+      notches.push(...before.notches, ...after.notches);
+      continue;
+    }
+    if (isArc(cutId)) {
+      // The straight wall passes: the arc is cut there, and each side ends against it as an arc does
+      // (its segment takes the T, the ones before carry it: carryArcStem).
+      const through = byId.get(throughId)!;
+      const chain = chains.get(parentOf(cutId))!;
+      const k = chain.segments.findIndex((x) => x.id === cutId);
+      const seg = chain.segments[k]!;
+      const s = stationAlong(seg, point);
+      const back = (id: string, end: 'start' | 'end') => wedge(chain, id).filter((_, i) => i === (end === 'end' ? 0 : 1));
+      // On a joint the chain's corner there gives way: the segment before ends there, the next starts.
+      const [left, right] =
+        s <= POINT_TOLERANCE ? [chain.segments[k - 1], seg] : s >= stationAlong(seg, seg.end) - POINT_TOLERANCE ? [seg, chain.segments[k + 1]] : [null, null];
+      if (left !== null || right !== null) {
+        for (const [part, end] of [
+          [left, 'end'],
+          [right, 'start'],
+        ] as const) {
+          if (!part) continue;
+          const r = resolveAbutment(part, end, through, back(part.id, end));
+          const list = spans.get(part.id)!;
+          const i = end === 'end' ? list.length - 1 : 0;
+          list[i] = end === 'end' ? { ...list[i]!, atEnd: r.cut } : { ...list[i]!, atStart: r.cut };
+          notches.push(...r.notches);
+          arcStems.push({ end: { wallId: part.id, end }, host: through });
+        }
+        continue;
+      }
+      const list = spans.get(cutId)!;
+      const last = list.pop()!;
+      const before = resolveAbutment({ ...last.shape, end: point }, 'end', through, back(cutId, 'end'));
+      const after = resolveAbutment({ ...seg, start: point }, 'start', through, back(cutId, 'start'));
+      list.push(
+        { shape: { ...last.shape, end: point }, atStart: last.atStart, atEnd: before.cut },
+        { shape: { ...last.shape, start: point }, atStart: after.cut, atEnd: last.atEnd },
+      );
+      notches.push(...before.notches, ...after.notches);
+      arcStems.push({ end: { wallId: cutId, end: 'end' }, host: through }, { end: { wallId: cutId, end: 'start' }, host: through });
       continue;
     }
     const through = byId.get(throughId)!;
@@ -159,7 +217,9 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   for (const wall of walls) pieces.set(wall.id, []);
   for (const shape of shapes) {
     const own = notches.filter((n) => n.wallId === shape.id);
-    let raw = spans.get(shape.id)!.flatMap((span) => spanPieces(span, own));
+    // A span cut against an arc on a side (an X with the arc passing) is split there, by span: the
+    // split of one side must not touch the other.
+    let raw = spans.get(shape.id)!.flatMap((span) => (span.splits ?? []).reduce((ps, split) => splitPieces(ps, split), spanPieces(span, own)));
     for (const split of splits.get(shape.id) ?? []) raw = splitPieces(raw, split);
     pieces.get(parentOf(shape.id))!.push(...(clips.has(shape.id) ? clipPieces(raw, clips.get(shape.id)!) : raw));
   }
@@ -364,6 +424,8 @@ interface Span {
   readonly shape: WallShape;
   readonly atStart: EndCut | undefined;
   readonly atEnd: EndCut | undefined;
+  /** Its ends against an arc it does not go through (an X with the arc passing): split per wedge. */
+  readonly splits?: readonly StemSplit[];
 }
 
 function spanPieces({ shape, atStart, atEnd }: Span, notches: readonly Notch[]): Piece[] {
