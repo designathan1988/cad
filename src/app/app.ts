@@ -833,6 +833,7 @@ export class App {
       {
         updateWalls: (patch) => this.store.dispatch(updateWalls([...ui.selection], patch)),
         resetToType: (fields) => this.store.dispatch(resetWallsToType([...ui.selection], fields)),
+        editType: () => this.openWallTypes(this.store.get().walls.find((w) => ui.selection.has(w.id))?.wallTypeId),
         updateDefaults: (patch) => {
           ui.defaults = { ...ui.defaults, ...patch };
           this.refresh();
@@ -1027,6 +1028,8 @@ export class App {
   private browserKey = '';
   /** Opens the levels dialog; set by the input layer, which owns the dialogs. */
   openLevels: () => void = () => {};
+  /** Opens the wall types dialog, on a type if given; set by the input layer too. */
+  openWallTypes: (typeId?: string) => void = () => {};
 
   private renderBrowserDrawer(): void {
     const { ui, shell } = this;
@@ -1039,7 +1042,7 @@ export class App {
     this.browserKey = key;
     // Keep the focus on the same button across the rebuild.
     const focused = document.activeElement instanceof HTMLElement && shell.browser.contains(document.activeElement) ? [...shell.browser.querySelectorAll('button')].indexOf(document.activeElement as HTMLButtonElement) : -1;
-    renderBrowser(this, shell.browser, () => this.openLevels());
+    renderBrowser(this, shell.browser, () => this.openLevels(), () => this.openWallTypes());
     if (focused >= 0) shell.browser.querySelectorAll('button')[focused]?.focus();
   }
 

@@ -21,6 +21,7 @@ export interface ContextEntry {
 
 const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
   flipWall: { icon: 'flip' },
+  editType: { icon: 'wall' },
   flipHinge: { icon: 'door' },
   flipSwing: { icon: 'swing' },
   centerOpening: { icon: 'center' },
@@ -42,6 +43,7 @@ export function contextEntries(app: App, openCommands: () => void): ContextEntry
   const opening = one ? app.store.get().openings.find((o) => o.id === one) : undefined;
   const run: Record<ContextId, () => void> = {
     flipWall: () => app.store.dispatch(flipWalls(ids)),
+    editType: () => app.openWallTypes(app.store.get().walls.find((w) => w.id === one)?.wallTypeId),
     flipHinge: () => opening && app.store.dispatch(updateOpening(opening.id, { hinge: opening.hinge === 'start' ? 'end' : 'start' })),
     flipSwing: () => opening && app.store.dispatch(updateOpening(opening.id, { swing: opening.swing === 'left' ? 'right' : 'left' })),
     centerOpening: () => opening && app.store.dispatch(updateOpening(opening.id, { rule: { kind: 'centered' } })),

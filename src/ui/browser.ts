@@ -29,7 +29,7 @@ function item(label: string, onClick: () => void, extra: { pressed?: boolean; cu
   return el('div', {}, b);
 }
 
-export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void): void {
+export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void, openWallTypes: () => void): void {
   const { ui } = app;
   const doc = app.store.get();
   const close = el('button', { type: 'button', class: 'icon-btn', title: t('browser.close'), 'aria-label': t('browser.close') });
@@ -69,6 +69,7 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
           disabled: wallsHidden || (usage.get(type.id) ?? 0) === 0,
         }),
       ),
+      item(t('types.edit'), openWallTypes),
     ),
   );
 }

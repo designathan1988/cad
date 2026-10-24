@@ -13,6 +13,8 @@ import type { ReferenceLine } from './schema';
 export interface WallFieldActions {
   readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
   readonly resetToType: (fields: readonly ('top' | 'baseOffset')[]) => void;
+  /** Opens the wall types dialog on the selected walls' type. */
+  readonly editType: () => void;
 }
 
 const REFS: readonly { value: ReferenceLine; key: MessageKey; icon: 'refCenter' | 'refExterior' | 'refInterior' }[] = [
@@ -37,6 +39,15 @@ export function wallFields(doc: Doc, act: WallFieldActions): { general: Field<Do
         options: doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name), keywords: w.name, thumb: layerSwatch(w.layers) })),
         get: (w) => w.wallTypeId,
         set: (v) => act.updateWalls({ wallTypeId: v }),
+      },
+      {
+        id: 'editType',
+        label: 'types.editThis',
+        kind: 'action',
+        sub: true,
+        // One type among the selection: the dialog opens on it.
+        when: (ws) => ws.every((w) => w.wallTypeId === ws[0]!.wallTypeId),
+        run: act.editType,
       },
       {
         id: 'reference',

@@ -21,6 +21,7 @@ export interface Action {
 export interface Openers {
   readonly help: () => void;
   readonly levels: () => void;
+  readonly wallTypes: () => void;
   readonly tour: () => void;
   readonly openFile: () => void;
 }
@@ -89,6 +90,7 @@ export function appActions(app: App, open: Openers): Action[] {
         run: () => app.setLevel(l.id),
       })),
     make('level.edit', 'levels.edit', levels, open.levels),
+    make('type.edit', 'types.edit', edit, open.wallTypes, { keywords: tBoth('types.title') }),
     make('help.shortcuts', 'pal.shortcuts', help, open.help, { keys: '?' }),
     make('help.tour', 'pal.tour', help, open.tour),
   ];

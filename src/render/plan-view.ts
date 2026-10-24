@@ -10,8 +10,33 @@ import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
 import { LAYER_TOKEN } from '../ui/swatch';
 
-/** A wall at least this wide on screen (px) is drawn by layer; narrower, in one colour. */
+/**
+ * A 1 px line along a screen axis, moved onto pixel centres: drawn between two pixels it would be two
+ * half-strength ones, and lose half its contrast. Lines at other angles are left as they are.
+ */
+export function crisp(a: Point2, b: Point2): [Point2, Point2] {
+  const mid = (v: number) => Math.floor(v) + 0.5;
+  if (Math.abs(a.x - b.x) < 0.5) {
+    const x = mid((a.x + b.x) / 2);
+    return [{ x, y: a.y }, { x, y: b.y }];
+  }
+  if (Math.abs(a.y - b.y) < 0.5) {
+    const y = mid((a.y + b.y) / 2);
+    return [{ x: a.x, y }, { x: b.x, y }];
+  }
+  return [a, b];
+}
+
+/** Walls are drawn by layer when the thinnest one shown is at least this wide on screen (px). */
 export const LAYER_DETAIL_PX = 6;
+
+/**
+ * Whether the plan shows layers: one decision for the whole view, from the thinnest wall shown, so it
+ * is never part by layer and part grey.
+ */
+export function byLayers(thicknesses: readonly number[], scale: number): boolean {
+  return thicknesses.length > 0 && Math.min(...thicknesses) * scale >= LAYER_DETAIL_PX;
+}
 
 /** A temporary dimension: measured from a to b, drawn beside the element on `side`, clear of it. */
 export interface DimMark {
@@ -206,10 +231,12 @@ export class PlanView {
       ctx.lineWidth = width;
       for (const s of list) for (const p of s.pieces) (trace(p.polygon), ctx.stroke());
     };
-    // By layer when the wall is wide enough on screen to tell them apart: each piece in its layer
-    // function's colour, and a thin line where layers meet (geometry/seams.ts), so they do not depend on
-    // colour alone. Narrower, the wall is one colour, as before.
-    const layered = (s: (typeof solids)[number]) => s.layers.length > 0 && s.layers.reduce((t, l) => t + l.thickness, 0) * this.scale >= LAYER_DETAIL_PX;
+    // By layer when the walls are wide enough on screen to tell them apart (byLayers): each piece in its
+    // layer function's colour, and a thin line where layers meet (geometry/seams.ts), so they do not
+    // depend on colour alone. Narrower, the walls are one colour, as before.
+    const thick = (s: (typeof solids)[number]) => s.layers.reduce((t, l) => t + l.thickness, 0);
+    const detail = byLayers(normal.filter((s) => s.layers.length > 0).map(thick), this.scale);
+    const layered = (s: (typeof solids)[number]) => detail && s.layers.length > 0;
     const fill = (list: typeof solids, colour: string | null) => {
       ctx.lineWidth = 1;
       for (const s of list) {
@@ -232,8 +259,7 @@ export class PlanView {
       for (const s of list) {
         if (!layered(s)) continue;
         for (const seam of s.seams) {
-          const a = this.toScreen(seam.a);
-          const b = this.toScreen(seam.b);
+          const [a, b] = crisp(this.toScreen(seam.a), this.toScreen(seam.b));
           ctx.moveTo(a.x, a.y);
           ctx.lineTo(b.x, b.y);
         }

@@ -52,6 +52,8 @@
   --palette-max-h: 360px;
   --dialog-w: 420px;
   --dialog-w-lg: 560px;
+  --dialog-w-xl: 860px;
+  --types-list-w: 220px;
   --tour-w: 320px;
   --browser-w: 260px;
   --tooltip-w: 280px;
@@ -132,10 +134,10 @@
   --3d-leaf: #a0764f;
   --3d-light: #ffffff;
   --3d-ground-light: #9a9fa8;
-  /* Darker in the dark theme: the light wall line must read on every layer (3:1). */
+  /* Darker in the dark theme: the light wall line must read on every layer, with room for antialiasing. */
   --layer-structure: #6f655a;
-  --layer-substrate: #807666;
-  --layer-thermal: #8c7430;
+  --layer-substrate: #6b6356;
+  --layer-thermal: #75612a;
   --layer-finish: #5a5650;
   --warn: #fb923c;
   --error: #f87171;
@@ -1311,6 +1313,118 @@ select {
 /* Levels dialog */
 .dialog-wide {
   width: min(var(--dialog-w-lg), calc(100vw - 2 * var(--sp-4)));
+}
+/* Wall types: the list of types, and the chosen one's fields and layers beside it. */
+.types-dialog {
+  width: min(var(--dialog-w-xl), calc(100vw - 2 * var(--sp-4)));
+}
+.types-body {
+  display: grid;
+  grid-template-columns: var(--types-list-w) minmax(0, 1fr);
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+}
+.types-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.types-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: var(--sp-2);
+  align-items: center;
+  min-height: var(--control-h);
+  padding: var(--sp-1) var(--sp-2);
+  border: var(--line) solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.types-item .swatch {
+  grid-row: 1 / 3;
+}
+.types-item:hover {
+  background: var(--hover);
+}
+.types-item[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.types-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.types-count {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.types-detail {
+  min-width: 0;
+}
+.layer-editor h3 {
+  margin: var(--sp-3) 0 var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.layer-preview svg {
+  display: block;
+  width: 100%;
+  border: var(--line) solid var(--wall-line);
+}
+.layer-ends {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.layer-grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) var(--levels-col) var(--levels-col) auto auto;
+  gap: var(--sp-2);
+  align-items: center;
+  margin-top: var(--sp-3);
+}
+.layer-head {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.layer-n {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.layer-core {
+  color: var(--text);
+  text-align: center;
+}
+.layer-actions {
+  display: flex;
+  gap: var(--sp-1);
+}
+.layer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--sp-3);
+}
+.layer-total {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 720px) {
+  .types-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .layer-grid {
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 .levels {
   display: grid;

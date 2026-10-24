@@ -13,6 +13,7 @@ import { selectGestures } from './select-drag';
 import { insideRing } from '../elements/room/derive';
 import { EDIT_LEVELS } from './app';
 import { showLevels } from '../ui/levels-dialog';
+import { showWallTypes } from '../ui/types-dialog';
 import { showPalette } from '../ui/palette';
 import { offerTour, startTour } from '../ui/tour';
 import { appActions, type Openers } from './actions';
@@ -26,12 +27,14 @@ export function wireInput(app: App): void {
   const openers: Openers = {
     help: () => showHelp(app),
     levels: () => showLevels(app),
+    wallTypes: () => showWallTypes(app),
     tour: () => startTour(app),
     openFile: () => shell.fileInput.click(),
   };
   const palette = () => showPalette(appActions(app, openers));
   app.openCommands = palette;
   app.openLevels = () => showLevels(app);
+  app.openWallTypes = (typeId) => showWallTypes(app, typeId);
   shell.sidebar.addEventListener('click', () => app.toggleBrowser());
   offerTour(app);
   let panning: { x: number; y: number } | null = null;

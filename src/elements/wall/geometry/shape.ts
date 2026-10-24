@@ -34,6 +34,14 @@ function exteriorOffset(referenceLine: ReferenceLine, thickness: number): number
   }
 }
 
+/** The core: from the first to the last structure layer (inclusive), or every layer without one. */
+export function coreLayersOf(layers: readonly { readonly function: string }[]): readonly [number, number] {
+  const structural = layers.flatMap((l, i) => (l.function === 'structure' ? [i] : []));
+  const first = structural[0];
+  const last = structural[structural.length - 1];
+  return first === undefined || last === undefined ? [0, layers.length - 1] : [first, last];
+}
+
 export function shapeOf(wall: Wall, type: WallType | undefined): WallShape | ShapeProblem {
   if (type === undefined) return 'missingWallType';
   const { layers } = type;
@@ -44,11 +52,7 @@ export function shapeOf(wall: Wall, type: WallType | undefined): WallShape | Sha
   const layerOffsets = [exteriorOffset(wall.referenceLine, thickness)];
   for (const layer of layers) layerOffsets.push(layerOffsets[layerOffsets.length - 1]! + layer.thickness);
 
-  const structural = layers.flatMap((l, i) => (l.function === 'structure' ? [i] : []));
-  const first = structural[0];
-  const last = structural[structural.length - 1];
-  const coreLayers: readonly [number, number] =
-    first === undefined || last === undefined ? [0, layers.length - 1] : [first, last];
+  const coreLayers = coreLayersOf(layers);
   const core: readonly [number, number] = [layerOffsets[coreLayers[0]]!, layerOffsets[coreLayers[1] + 1]!];
 
   return {

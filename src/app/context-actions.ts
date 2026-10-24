@@ -5,6 +5,7 @@ import type { Doc } from './document';
 
 export type ContextId =
   | 'flipWall'
+  | 'editType'
   | 'flipHinge'
   | 'flipSwing'
   | 'centerOpening'
@@ -27,7 +28,7 @@ export function contextIds(doc: Doc, selection: readonly string[]): ContextId[] 
   }
   const id = selection[0]!;
   const common: ContextId[] = ['frameSelection', 'properties', 'delete'];
-  if (doc.walls.some((w) => w.id === id)) return ['flipWall', ...common];
+  if (doc.walls.some((w) => w.id === id)) return ['flipWall', 'editType', ...common];
   const opening = doc.openings.find((o) => o.id === id);
   if (opening) return opening.kind === 'door' ? ['flipHinge', 'flipSwing', ...common] : ['centerOpening', ...common];
   if (doc.rooms.some((r) => r.id === id)) {

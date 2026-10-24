@@ -35,6 +35,7 @@ export interface PanelActions {
   readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
   /** Takes these values off the selected walls, so they come from their type again. */
   readonly resetToType: (fields: readonly ('top' | 'baseOffset')[]) => void;
+  readonly editType: () => void;
   readonly updateDefaults: (patch: Partial<WallDefaults>) => void;
   readonly close: () => void;
   readonly opening: OpeningPanelActions;
