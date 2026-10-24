@@ -15,6 +15,8 @@ export interface WallFieldActions {
   readonly resetToType: (fields: readonly ('top' | 'baseOffset')[]) => void;
   /** Opens the wall types dialog on the selected walls' type. */
   readonly editType: () => void;
+  /** The one selected arc's radius, its ends kept. */
+  readonly updateRadius: (radius: number) => void;
 }
 
 const REFS: readonly { value: ReferenceLine; key: MessageKey; icon: 'refCenter' | 'refExterior' | 'refInterior' }[] = [
@@ -122,12 +124,13 @@ export function wallFields(doc: Doc, act: WallFieldActions): { general: Field<Do
       {
         id: 'radius',
         label: 'panel.radius',
-        kind: 'readout',
+        kind: 'number',
         when: (ws) => one(ws) && !!ws[0]!.bulge,
-        text: (ws) => {
-          const arc = arcOf({ start: ws[0]!.start, end: ws[0]!.end, bulge: ws[0]!.bulge ?? 0 });
-          return arc ? `${num(arc.radius)} m` : '—';
-        },
+        // No arc on a chord has a radius under half of it.
+        min: (ws) => distance(ws[0]!.start, ws[0]!.end) / 2,
+        get: (w) => arcOf({ start: w.start, end: w.end, bulge: w.bulge ?? 0 })?.radius ?? 0,
+        // The ends stay; the arc keeps its side, and stays a major arc if it was one.
+        set: (v) => act.updateRadius(v),
       },
     ],
   };

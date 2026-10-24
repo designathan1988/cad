@@ -36,6 +36,7 @@ export interface PanelActions {
   /** Takes these values off the selected walls, so they come from their type again. */
   readonly resetToType: (fields: readonly ('top' | 'baseOffset')[]) => void;
   readonly editType: () => void;
+  readonly updateRadius: (radius: number) => void;
   readonly updateDefaults: (patch: Partial<WallDefaults>) => void;
   readonly close: () => void;
   readonly opening: OpeningPanelActions;

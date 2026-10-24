@@ -33,6 +33,7 @@ import { icon } from '../ui/icons';
 import { renderPanel } from '../ui/panel';
 import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui/shell';
 import { snapLabel, type Snap } from '../tools/snap';
+import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, dragTransform, hull } from './select-drag';
 import { moveRooms } from './carry';
@@ -345,6 +346,14 @@ export class App {
     if (d?.kind === 'stretch' || d?.kind === 'grip') {
       const w = d.walls.find((x) => x.id === d.id);
       return w ? { at: { x: (w.start.x + w.end.x) / 2, y: (w.start.y + w.end.y) / 2 }, text: `${num(referenceLength(w))} m` } : null;
+    }
+    if (d?.kind === 'bulge') {
+      // The arc's radius and length at its middle, as while drawing one; straight again, its length.
+      const w = d.walls.find((x) => x.id === d.id);
+      if (!w) return null;
+      const arc = arcOf({ start: w.start, end: w.end, bulge: w.bulge ?? 0 });
+      const at = arcMiddle(w.start, w.end, w.bulge ?? 0);
+      return arc ? { at, text: `R ${num(arc.radius)} m · ${num(referenceLength(w))} m` } : { at, text: `${num(referenceLength(w))} m` };
     }
     if (d?.kind !== 'rotate') return null;
     const deg = (d.angle * 180) / Math.PI;
@@ -834,6 +843,11 @@ export class App {
         updateWalls: (patch) => this.store.dispatch(updateWalls([...ui.selection], patch)),
         resetToType: (fields) => this.store.dispatch(resetWallsToType([...ui.selection], fields)),
         editType: () => this.openWallTypes(this.store.get().walls.find((w) => ui.selection.has(w.id))?.wallTypeId),
+        updateRadius: (radius) => {
+          const w = this.store.get().walls.find((x) => ui.selection.has(x.id));
+          const bulge = w?.bulge ? bulgeKeepingSide(distance(w.start, w.end), w.bulge, radius) : null;
+          if (w && bulge !== null) this.store.dispatch(updateWalls([w.id], { bulge }));
+        },
         updateDefaults: (patch) => {
           ui.defaults = { ...ui.defaults, ...patch };
           this.refresh();
@@ -1111,6 +1125,8 @@ export class App {
               : 'hint.wallNext'
       : d?.kind === 'move' || d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'rotate'
         ? 'hint.moving'
+        : d?.kind === 'bulge'
+          ? 'hint.bending'
         : d?.kind === 'marquee'
           ? d.b.x < d.a.x
             ? 'hint.marqueeCrossing'

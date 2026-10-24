@@ -23,7 +23,8 @@ interface Common<T> {
 export type FieldOption = { readonly value: string; readonly label: string; readonly icon?: IconName; readonly thumb?: string; readonly keywords?: string };
 
 export type Field<T> =
-  | (Common<T> & { readonly kind: 'number'; readonly get: (x: T) => number; readonly set: (v: number) => void; readonly min?: number })
+  /** `min`: the lowest value, or one that depends on what is selected (an arc's radius: half its chord). */
+  | (Common<T> & { readonly kind: 'number'; readonly get: (x: T) => number; readonly set: (v: number) => void; readonly min?: number | ((items: readonly T[]) => number) })
   | (Common<T> & { readonly kind: 'text'; readonly get: (x: T) => string; readonly set: (v: string) => void })
   | (Common<T> & {
       readonly kind: 'select' | 'segmented' | 'search';
@@ -72,12 +73,12 @@ export function fieldsSection<T>(title: string, open: boolean, fields: readonly 
       b.addEventListener('click', field.run);
       return el('div', {}, b);
     }
-    const control = controlFor(field, value);
+    const control = controlFor(field, value, items);
     const own = field.own?.(items) === true;
     // Every number scrubs from its label, as Revit's and Figma's do: one rule for all panels.
     const scrubbing = (r: HTMLElement) => {
       const label = r.querySelector('label');
-      if (field.kind === 'number' && label) scrub(label, () => value as number | null, field.set, field.min ?? -Infinity);
+      if (field.kind === 'number' && label) scrub(label, () => value as number | null, field.set, minOf(field, items));
       return r;
     };
     if (!own) return scrubbing(row(t(field.label), control, { sub: field.sub === true }));
@@ -99,10 +100,13 @@ export function fieldsSection<T>(title: string, open: boolean, fields: readonly 
   return section(title, open, ...rows);
 }
 
-function controlFor<T>(field: Field<T>, value: number | string | null): HTMLElement {
+const minOf = <T>(field: Extract<Field<T>, { kind: 'number' }>, items: readonly T[]): number =>
+  typeof field.min === 'function' ? field.min(items) : (field.min ?? -Infinity);
+
+function controlFor<T>(field: Field<T>, value: number | string | null, items: readonly T[]): HTMLElement {
   switch (field.kind) {
     case 'number':
-      return numberField(value as number | null, field.set, field.min ?? -Infinity);
+      return numberField(value as number | null, field.set, minOf(field, items));
     case 'text':
       return textField(value as string | null, field.set);
     case 'select':

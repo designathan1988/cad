@@ -7,7 +7,9 @@ import { add, distance, normalize, perp, type Point2, scale, sub } from '../core
 import type { Command } from '../core/store';
 import { updateOpening } from '../elements/opening/commands';
 import { setWalls } from '../elements/wall/commands';
+import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { stretchEnd } from '../tools/edit';
+import { arcOf } from '../elements/wall/geometry/arc';
 import type { Doc } from './document';
 import type { DerivedGeometry } from './geometry';
 
@@ -29,7 +31,7 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
   const id = [...selection][0]!;
   const wall = doc.walls.find((w) => w.id === id);
   if (wall) {
-    if (wall.bulge) return [];
+    if (wall.bulge) return arcDims(doc, wall);
     const len = distance(wall.start, wall.end);
     const dir = normalize(sub(wall.end, wall.start));
     const half = thicknessOf(doc, wall.wallTypeId) / 2;
@@ -91,6 +93,44 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
     };
   }
   return dims.filter((x) => x.value >= 0);
+}
+
+/**
+ * An arc's chord, on the side away from its bulge, and its radius, from the centre to the middle of
+ * the arc. A typed chord moves the end along it and keeps the sweep; a typed radius keeps the ends.
+ */
+function arcDims(doc: Doc, wall: Doc['walls'][number]): TempDim[] {
+  const arc = arcOf({ start: wall.start, end: wall.end, bulge: wall.bulge ?? 0 });
+  if (!arc) return [];
+  const bulge = wall.bulge ?? 0;
+  const chord = distance(wall.start, wall.end);
+  const dir = normalize(sub(wall.end, wall.start));
+  const middle = arcMiddle(wall.start, wall.end, bulge);
+  const across = normalize(sub(middle, arc.center));
+  return [
+    {
+      id: `${wall.id}:chord`,
+      a: wall.start,
+      b: wall.end,
+      // A positive bulge lies right of the chord: the dimension goes on its left.
+      side: bulge > 0 ? perp(dir) : scale(perp(dir), -1),
+      clear: thicknessOf(doc, wall.wallTypeId) / 2,
+      value: chord,
+      apply: (v) => (v >= MIN_WALL_LENGTH ? setWalls(stretchEnd(doc, wall.id, 'end', add(wall.start, scale(dir, v)))) : null),
+    },
+    {
+      id: `${wall.id}:radius`,
+      a: arc.center,
+      b: middle,
+      side: perp(across),
+      clear: 0,
+      value: arc.radius,
+      apply: (v) => {
+        const next = bulgeKeepingSide(chord, bulge, v);
+        return next === null ? null : setWalls([{ ...wall, bulge: next }]);
+      },
+    },
+  ];
 }
 
 const thicknessOf = (doc: Doc, typeId: string): number =>

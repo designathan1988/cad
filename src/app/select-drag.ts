@@ -7,6 +7,7 @@ import { add, distance, normalize, type Point2, scale, sub, vec } from '../core/
 import { setWalls } from '../elements/wall/commands';
 import type { WallEnd, WallId } from '../elements/wall/schema';
 import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../tools/edit';
+import { bulgeFromMiddle } from '../tools/arc-edit';
 import { handleAt } from './handles';
 import { moveRooms, roomsGoingWith } from './carry';
 import { GRID_STEP, type Snap } from '../tools/snap';
@@ -28,6 +29,8 @@ export type Drag =
       readonly walls: readonly DocWall[];
       readonly rooms: ReadonlySet<string>;
     }
+  /** The middle of one arc, dragged: its curvature follows the pointer, its ends stay. */
+  | { readonly kind: 'bulge'; readonly id: WallId; readonly walls: readonly DocWall[] }
   | { readonly kind: 'marquee'; readonly a: Point2; readonly b: Point2 };
 
 type Pending =
@@ -35,6 +38,7 @@ type Pending =
   | { kind: 'grip'; id: WallId; end: WallEnd; screen: Point2 }
   | { kind: 'stretch'; id: WallId; end: WallEnd; at: Point2; screen: Point2 }
   | { kind: 'rotate'; pivot: Point2; at: Point2; screen: Point2 }
+  | { kind: 'bulge'; id: WallId; screen: Point2 }
   | { kind: 'empty'; screen: Point2 };
 
 /** Turning snaps to 15° steps (with snaps on, or with Shift). */
@@ -61,6 +65,7 @@ export function selectGestures(app: App): SelectGestures {
       if (handle?.kind === 'square') pending = { kind: 'grip', id: handle.id, end: handle.end, screen };
       else if (handle?.kind === 'arrow' && world) pending = { kind: 'stretch', id: handle.id, end: handle.end, at: world, screen };
       else if (handle?.kind === 'rotate' && world) pending = { kind: 'rotate', pivot: handle.pivot, at: world, screen };
+      else if (handle?.kind === 'bulge') pending = { kind: 'bulge', id: handle.id, screen };
       else if (hit && world) {
         if (shift) ui.selection.has(hit) ? ui.selection.delete(hit) : ui.selection.add(hit);
         else if (!ui.selection.has(hit)) {
@@ -92,6 +97,7 @@ export function selectGestures(app: App): SelectGestures {
           const from = Math.atan2(pending.at.y - pending.pivot.y, pending.at.x - pending.pivot.x);
           ui.drag = { kind: 'rotate', pivot: pending.pivot, from, angle: 0, walls: doc.walls, rooms: going() };
         }
+        else if (pending.kind === 'bulge') ui.drag = { kind: 'bulge', id: pending.id, walls: doc.walls };
         else if (pending.kind === 'empty') ui.drag = { kind: 'marquee', a: pending.screen, b: screen };
       }
       const d = ui.drag;
@@ -117,6 +123,13 @@ export function selectGestures(app: App): SelectGestures {
         const snapped = ui.snaps ? Math.max(GRID_STEP, Math.round(len / GRID_STEP) * GRID_STEP) : len;
         const dir = normalize(sub(moved[d.end], other));
         ui.drag = { ...d, walls: stretchEnd(doc, d.id, d.end, add(other, scale(dir, snapped))) };
+      } else if (d.kind === 'bulge' && world) {
+        // Off the chord by the pointer's distance; with snaps on, a sagitta under half a grid step
+        // makes the wall straight again.
+        const w = doc.walls.find((x) => x.id === d.id)!;
+        let bulge = bulgeFromMiddle(w.start, w.end, world);
+        if (ui.snaps && Math.abs((bulge * distance(w.start, w.end)) / 2) < GRID_STEP / 2) bulge = 0;
+        ui.drag = { ...d, walls: doc.walls.map((x) => (x.id === d.id ? { ...x, bulge } : x)) };
       } else if (d.kind === 'rotate' && world) {
         let angle = Math.atan2(world.y - d.pivot.y, world.x - d.pivot.x) - d.from;
         if (ui.snaps || shift) angle = Math.round(angle / ROTATE_STEP) * ROTATE_STEP;
@@ -139,7 +152,7 @@ export function selectGestures(app: App): SelectGestures {
           const next = walls.apply(x);
           return next === x ? x : { ...next, rooms };
         } });
-      } else if (d?.kind === 'grip' || d?.kind === 'stretch') app.store.dispatch(setWalls(d.walls));
+      } else if (d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'bulge') app.store.dispatch(setWalls(d.walls));
       else if (d?.kind === 'marquee') selectByMarquee(app, d.a, d.b, shift);
       app.refresh();
     },

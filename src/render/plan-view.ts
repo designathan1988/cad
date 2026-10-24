@@ -351,6 +351,18 @@ export class PlanView {
       ctx.fill();
       ctx.stroke();
     }
+    if (h.bulge) {
+      // A diamond at the middle of the arc: not a square, which moves an end.
+      const { x, y } = h.bulge.at;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 6);
+      ctx.lineTo(x + 6, y);
+      ctx.lineTo(x, y + 6);
+      ctx.lineTo(x - 6, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
     if (h.rotate) {
       // A disc with a three-quarter arc and its arrowhead.
       const { x, y } = h.rotate.at;
