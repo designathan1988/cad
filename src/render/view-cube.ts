@@ -26,7 +26,8 @@ export class ViewCube {
     cube.className = 'cube';
     this.inner.className = 'cube-inner';
     for (const f of FACES) {
-      const face = document.createElement('div');
+      const face = document.createElement('button');
+      face.type = 'button';
       face.className = 'cube-face';
       face.style.transform = f.css;
       // Straight up or down, nudged off the vertical so the camera's up direction stays defined.
@@ -47,6 +48,7 @@ export class ViewCube {
     FACES.forEach((f, i) => {
       this.faces[i]!.textContent = t(f.key);
       this.faces[i]!.title = t(f.key);
+      this.faces[i]!.setAttribute('aria-label', t(f.key));
     });
     this.home.title = t('cube.home');
     this.home.setAttribute('aria-label', t('cube.home'));

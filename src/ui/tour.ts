@@ -32,6 +32,9 @@ export function startTour(app: App): void {
   const panelWas = app.ui.panelOpen;
   if (!panelWas) app.togglePanel(true);
   const ring = el('div', { class: 'tour-ring', 'aria-hidden': 'true' });
+  // The rest of the page dimmed by four bands around the part shown (a huge shadow on the ring left
+  // the footer bright in Chrome).
+  const bands = [0, 1, 2, 3].map(() => el('div', { class: 'tour-scrim', 'aria-hidden': 'true' }));
   const title = el('h2', { id: 'tour-title' });
   const text = el('p', { id: 'tour-text' });
   const count = el('div', { class: 'tour-count', 'aria-live': 'polite' });
@@ -40,7 +43,8 @@ export function startTour(app: App): void {
   const next = el('button', { type: 'button', class: 'icon-btn text-btn primary' });
   const card = el(
     'div',
-    { class: 'tour-card', role: 'dialog', 'aria-labelledby': 'tour-title', 'aria-describedby': 'tour-text' },
+    // Named directly (and per stop in show()): some readers missed the name by reference.
+    { class: 'tour-card', role: 'dialog', 'aria-label': t('tour.offerLabel'), 'aria-describedby': 'tour-text' },
     count,
     title,
     text,
@@ -57,7 +61,22 @@ export function startTour(app: App): void {
     const r = stop.target(app).getBoundingClientRect();
     const target = { x: r.left, y: r.top, w: r.width, h: r.height };
     ring.hidden = r.width === 0 || r.height === 0;
-    Object.assign(ring.style, { left: `${r.left - 3}px`, top: `${r.top - 3}px`, width: `${r.width + 6}px`, height: `${r.height + 6}px` });
+    const x0 = r.left - 3;
+    const y0 = r.top - 3;
+    const x1 = r.right + 3;
+    const y1 = r.bottom + 3;
+    Object.assign(ring.style, { left: `${x0}px`, top: `${y0}px`, width: `${x1 - x0}px`, height: `${y1 - y0}px` });
+    // Above, below, left and right of the ring; with no target, one band over everything.
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const rects = ring.hidden
+      ? [[0, 0, W, H], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+      : [[0, 0, W, y0], [0, y1, W, H - y1], [0, y0, x0, y1 - y0], [x1, y0, W - x1, y1 - y0]];
+    bands.forEach((b, i) => {
+      const [x, y, w, h] = rects[i]!;
+      Object.assign(b.style, { left: `${x}px`, top: `${y}px`, width: `${Math.max(0, w!)}px`, height: `${Math.max(0, h!)}px` });
+    });
+    card.setAttribute('aria-label', `${t(stop.title)} · ${t('tour.count', { i: at + 1, n: TOUR.length })}`);
     const p = placeCallout(target, { w: card.offsetWidth, h: card.offsetHeight }, { w: window.innerWidth, h: window.innerHeight });
     card.style.left = `${p.x}px`;
     card.style.top = `${p.y}px`;
@@ -65,6 +84,7 @@ export function startTour(app: App): void {
   };
   const finish = () => {
     ring.remove();
+    bands.forEach((b) => b.remove());
     card.remove();
     window.removeEventListener('resize', show);
     end = null;
@@ -92,7 +112,7 @@ export function startTour(app: App): void {
     e.preventDefault();
     buttons[(i + (e.shiftKey ? -1 : 1) + buttons.length) % buttons.length]!.focus();
   });
-  document.body.append(ring, card);
+  document.body.append(...bands, ring, card);
   window.addEventListener('resize', show);
   end = finish;
   show();

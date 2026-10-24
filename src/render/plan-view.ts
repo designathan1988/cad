@@ -41,7 +41,30 @@ export interface PlanOverlay {
   readonly dims?: readonly DimMark[];
 }
 
+/** How much of the canvas a panel covers, at its right and bottom edges, in screen pixels. */
+export interface Insets {
+  readonly right: number;
+  readonly bottom: number;
+}
+export const NO_INSETS: Insets = { right: 0, bottom: 0 };
+
+/**
+ * Scale and centre that fit the box in the visible part of a canvas of `size`: 70% of it, the box's
+ * centre at the visible part's centre (screen y grows downward, world y upward).
+ */
+export function fitPlan(box: { min: Point2; max: Point2 }, size: { w: number; h: number }, covered: Insets = NO_INSETS): { scale: number; center: Point2 } {
+  const w = Math.max(size.w - covered.right, size.w * 0.3);
+  const h = Math.max(size.h - covered.bottom, size.h * 0.3);
+  const bw = Math.max(box.max.x - box.min.x, 0.5);
+  const bh = Math.max(box.max.y - box.min.y, 0.5);
+  const scale = Math.min(4000, Math.max(2, Math.min((w * 0.7) / bw, (h * 0.7) / bh)));
+  const center = { x: (box.min.x + box.max.x) / 2 + (size.w - w) / 2 / scale, y: (box.min.y + box.max.y) / 2 - (size.h - h) / 2 / scale };
+  return { scale, center };
+}
+
 export class PlanView {
+  /** Room tags drawn last time, in canvas pixels: what the floating bar must not cover. */
+  labelBoxes: { x: number; y: number; w: number; h: number }[] = [];
   /** Screen pixels per metre and the world point at the canvas centre. */
   scale = 60;
   center: Point2 = { x: 4, y: 3 };
@@ -91,13 +114,14 @@ export class PlanView {
   }
 
   /** Fits a world box with a margin; an empty drawing shows 10 m around the origin. */
-  frame(box: { min: Point2; max: Point2 } | null): void {
-    const b = box ?? { min: { x: -1, y: -1 }, max: { x: 9, y: 7 } };
-    const { w, h } = this.size;
-    const bw = Math.max(b.max.x - b.min.x, 0.5);
-    const bh = Math.max(b.max.y - b.min.y, 0.5);
-    this.scale = Math.min(4000, Math.max(2, Math.min((w * 0.7) / bw, (h * 0.7) / bh)));
-    this.center = { x: (b.min.x + b.max.x) / 2, y: (b.min.y + b.max.y) / 2 };
+  /**
+   * Fits the box in the part of the canvas left visible: `covered` is how much a panel lying over the
+   * canvas hides at its right and bottom edges (the drawer on a tablet, the sheet on a phone).
+   */
+  frame(box: { min: Point2; max: Point2 } | null, covered: Insets = NO_INSETS): void {
+    const fit = fitPlan(box ?? { min: { x: -1, y: -1 }, max: { x: 9, y: 7 } }, this.size, covered);
+    this.scale = fit.scale;
+    this.center = fit.center;
   }
 
   draw(g: DerivedGeometry, o: PlanOverlay): void {
@@ -179,9 +203,12 @@ export class PlanView {
     fill(drawn, color('--wall-sel-fill'));
     this.drawOpenings(g, o, { line: color('--wall-line'), sel: color('--wall-sel'), selFill: color('--wall-sel-fill'), warn: color('--warn'), canvas: color('--canvas') });
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
+    this.labelBoxes = [];
     for (const l of o.roomLabels) {
-      this.label(l.at, l.name, l.warn ? color('--warn') : color('--text'), color('--canvas'), '600 12px Inter, system-ui', { x: 0, y: -4 });
-      this.label(l.at, l.area, color('--text-2'), color('--canvas'), '12px Inter, system-ui', { x: 0, y: 12 });
+      this.labelBoxes.push(
+        this.label(l.at, l.name, l.warn ? color('--warn') : color('--text'), color('--canvas'), '600 12px Inter, system-ui', { x: 0, y: -4 }),
+        this.label(l.at, l.area, color('--text-2'), color('--canvas'), '12px Inter, system-ui', { x: 0, y: 12 }),
+      );
     }
     if (o.draft && o.draft.length > 0) {
       ctx.save();

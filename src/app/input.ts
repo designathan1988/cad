@@ -366,5 +366,9 @@ function showHelp(app: App): void {
   back.onkeydown = (e) => {
     if (e.key === 'Escape') hide();
   };
-  close.focus();
+  // The dialog itself takes the focus, so it opens at its title (focusing Close, at the bottom of a
+  // long list, scrolled it there); Tab then reaches Close.
+  dialog.tabIndex = -1;
+  dialog.scrollTop = 0;
+  dialog.focus({ preventScroll: true });
 }

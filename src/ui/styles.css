@@ -32,6 +32,7 @@
   --accent-text: #1d4ed8;
   --accent-contrast: #ffffff;
   --scrim: rgb(0 0 0 / 0.3);
+  --border-strong: #c7cad1;
   --warn: #c2410c;
   --warn-soft: #fff1e6;
   --snap: #ea7a0c;
@@ -64,7 +65,8 @@
   --accent-soft: #24324f;
   --accent-text: #9ab8f6;
   --accent-contrast: #0f1115;
-  --scrim: rgb(0 0 0 / 0.5);
+  --scrim: rgb(0 0 0 / 0.62);
+  --border-strong: #4a4d57;
   --warn: #fb923c;
   --warn-soft: #3a2618;
   --snap: #f59e0b;
@@ -452,11 +454,15 @@ select {
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text-2);
-  font-size: 10px;
-  font-weight: 600;
+  font: 600 var(--fs-xs) / 1 var(--font);
+  padding: 0;
   cursor: pointer;
   backface-visibility: hidden;
   user-select: none;
+}
+.cube-face:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 .cube-face:hover {
   background: var(--accent-soft);
@@ -688,7 +694,7 @@ select {
   border-radius: var(--radius-lg);
   background: var(--bg);
   box-shadow: var(--shadow);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
 }
 .dialog h2 {
   margin: 0;
@@ -819,7 +825,7 @@ select {
 }
 .palette {
   width: min(560px, calc(100vw - 32px));
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--bg);
   box-shadow: var(--shadow);
@@ -877,7 +883,7 @@ select {
   z-index: 30;
   min-width: 180px;
   padding: var(--sp-1);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--bg);
   box-shadow: var(--shadow);
@@ -924,8 +930,12 @@ select {
   z-index: 29;
   border: 2px solid var(--accent);
   border-radius: var(--radius-lg);
-  box-shadow: 0 0 0 9999px var(--scrim);
   pointer-events: none;
+}
+.tour-scrim {
+  position: fixed;
+  z-index: 28;
+  background: var(--scrim);
 }
 .tour-ring[hidden] {
   display: none;
@@ -934,7 +944,7 @@ select {
 .tour-offer {
   width: min(320px, calc(100vw - 32px));
   padding: var(--sp-3) var(--sp-4);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--bg);
   box-shadow: var(--shadow);

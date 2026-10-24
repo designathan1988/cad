@@ -28,6 +28,8 @@ export class Scene3D {
     leaf: new THREE.MeshStandardMaterial({ color: 0xa0764f, roughness: 0.7, side: THREE.DoubleSide }),
     invalid: new THREE.MeshStandardMaterial({ color: 0xea7a0c, roughness: 0.6, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
   };
+  private covered = { right: 0, bottom: 0 };
+  private offsetDirty = false;
   private readonly grid: THREE.GridHelper;
   private needsRender = true;
   private raf = 0;
@@ -86,10 +88,15 @@ export class Scene3D {
     const h = this.canvas.clientHeight;
     if (w === 0 || h === 0) return;
     const size = this.renderer.getSize(new THREE.Vector2());
-    if (size.x !== w || size.y !== h) {
+    if (size.x !== w || size.y !== h || this.offsetDirty) {
       this.renderer.setSize(w, h, false);
       this.camera.aspect = w / h;
+      // A panel over the right or bottom edge: shift the view so its centre is the visible part's.
+      const { right, bottom } = this.covered;
+      if (right > 0 || bottom > 0) this.camera.setViewOffset(w, h, right / 2, bottom / 2, w, h);
+      else this.camera.clearViewOffset();
       this.camera.updateProjectionMatrix();
+      this.offsetDirty = false;
     }
     this.renderer.render(this.scene, this.camera);
   }
@@ -213,11 +220,24 @@ export class Scene3D {
   }
 
   /** Looks at a box from a direction (three.js space), far enough to see all of it. */
+  /** How much a panel covers at the right and bottom edges of the canvas (screen pixels). */
+  setCovered(covered: { right: number; bottom: number }): void {
+    if (covered.right === this.covered.right && covered.bottom === this.covered.bottom) return;
+    this.covered = covered;
+    this.offsetDirty = true;
+    this.invalidate();
+  }
+
   frame(box: { min: Point2; max: Point2 } | null, height: number, dir = new THREE.Vector3(0.55, 0.62, 0.75)): void {
     const b = box ?? { min: { x: -1, y: -1 }, max: { x: 9, y: 7 } };
     const center = toThree({ x: (b.min.x + b.max.x) / 2, y: (b.min.y + b.max.y) / 2 }, height / 2);
     const radius = Math.max(1, Math.hypot(b.max.x - b.min.x, b.max.y - b.min.y, height) / 2);
-    const fit = radius / Math.sin((this.camera.fov * Math.PI) / 360) / Math.min(1, this.camera.aspect || 1);
+    // Fit in the visible part: its aspect, and the share of the height it keeps.
+    const w = this.canvas.clientWidth || 1;
+    const h = this.canvas.clientHeight || 1;
+    const visW = Math.max(w - this.covered.right, w * 0.3);
+    const visH = Math.max(h - this.covered.bottom, h * 0.3);
+    const fit = (radius / Math.sin((this.camera.fov * Math.PI) / 360) / Math.min(1, visW / visH)) * (h / visH);
     this.controls.target.copy(center);
     this.camera.position.copy(center).add(dir.clone().normalize().multiplyScalar(fit * 1.05));
     this.camera.up.set(0, 1, 0);

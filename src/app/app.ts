@@ -25,7 +25,7 @@ import { GROUP_PREFIX, hasDistance, isOpeningId, newOpening, OPENING_DEFAULTS, O
 import { OPENING_IDLE, openingTransition, type OpeningToolEvent, type OpeningToolState } from '../tools/opening-tool';
 import { OPENING_PREVIEW_ID, ruleGuide, ruleText } from './opening-ui';
 import type { WallId } from '../elements/wall/schema';
-import { PlanView } from '../render/plan-view';
+import { type Insets, NO_INSETS, PlanView } from '../render/plan-view';
 import { Scene3D } from '../render/scene-3d';
 import { ViewCube } from '../render/view-cube';
 import { defaultName, getLang, htmlLang, name, num, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
@@ -464,12 +464,24 @@ export class App {
     if (this.store.redo()) this.toast(t('toast.redo'));
   }
 
+  /** How much the panel covers of the viewport, at its right (drawer) or bottom (phone sheet). */
+  covered(): Insets {
+    if (this.shell.panel.hidden) return NO_INSETS;
+    const vp = this.shell.viewport.getBoundingClientRect();
+    const p = this.shell.panel.getBoundingClientRect();
+    if (p.width === 0 || p.height === 0) return NO_INSETS;
+    if (p.top > vp.top + 8 && p.top < vp.bottom) return { right: 0, bottom: vp.bottom - p.top };
+    if (p.left > vp.left && p.left < vp.right) return { right: vp.right - p.left, bottom: 0 };
+    return NO_INSETS;
+  }
+
   frameAll(): void {
     const r = this.shell.viewport.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) return;
     this.framed[this.ui.view] = true;
     const box = boundsOf(this.visibleGeometry());
-    if (this.ui.view === 'plan') this.plan.frame(box);
+    this.scene.setCovered(this.covered());
+    if (this.ui.view === 'plan') this.plan.frame(box, this.covered());
     else this.scene.frame(box, this.height());
     this.render();
   }
@@ -477,7 +489,8 @@ export class App {
   frameSelection(): void {
     if (this.ui.selection.size === 0) return this.frameAll();
     const box = boundsOf(this.geometry, this.ui.selection);
-    if (this.ui.view === 'plan') this.plan.frame(box);
+    this.scene.setCovered(this.covered());
+    if (this.ui.view === 'plan') this.plan.frame(box, this.covered());
     else this.scene.frame(box, this.height());
     this.render();
   }
@@ -554,6 +567,10 @@ export class App {
     shell.planCanvas.classList.toggle('hidden', !plan);
     shell.glCanvas.classList.toggle('hidden', plan);
     this.cube.root.hidden = plan;
+    // The view cube and the 3D view's centre stay in the part of the viewport the panel leaves free.
+    const covered = this.covered();
+    this.cube.root.style.right = `${20 + covered.right}px`;
+    this.scene.setCovered(covered);
     const preview = new Set([...this.previewWall(), ...this.previewOpening()].map((w) => w.id));
     const guide = this.openingKind() ? ruleGuide(this.geometry, OPENING_PREVIEW_ID) : null;
     if (plan) {
@@ -920,8 +937,12 @@ export class App {
     }
     const w = bar.offsetWidth || 104;
     const h = bar.offsetHeight || 36;
-    // Never over a temporary dimension's value: the bar goes above them all, or below when no room.
-    const dims = [...this.shell.dims.children].map((c) => c.getBoundingClientRect()).map((r) => ({ top: r.top - vp.top, bottom: r.bottom - vp.top, left: r.left - vp.left, right: r.right - vp.left }));
+    // Never over a temporary dimension's value or a room's tag: the bar goes above them all, or below
+    // when there is no room.
+    const dims = [
+      ...[...this.shell.dims.children].map((c) => c.getBoundingClientRect()).map((r) => ({ top: r.top - vp.top, bottom: r.bottom - vp.top, left: r.left - vp.left, right: r.right - vp.left })),
+      ...(this.ui.view === 'plan' ? this.plan.labelBoxes.map((b) => ({ top: b.y, bottom: b.y + b.h, left: b.x, right: b.x + b.w })) : []),
+    ];
     const left = Math.min(Math.max(8, x - w / 2), vp.width - w - 8);
     const hits = (top: number) => dims.some((d) => d.left < left + w && left < d.right && d.top < top + h && top < d.bottom);
     let y = yTop - h - 10;

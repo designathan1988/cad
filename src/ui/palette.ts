@@ -66,7 +66,7 @@ export function showPalette(actions: readonly Action[]): void {
         return li;
       }),
     );
-    status.textContent = shown.length === 0 ? t('pal.empty', { q: input.value.trim() }) : t('pal.count', { n: shown.length });
+    status.textContent = shown.length === 0 ? t('pal.empty', { q: input.value.trim() }) : shown.length === 1 ? t('pal.countOne') : t('pal.count', { n: shown.length });
     setActive(shown.length > 0 ? 0 : -1);
   };
 
