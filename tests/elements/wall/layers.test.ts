@@ -58,8 +58,9 @@ describe('layered L corner', () => {
     // Finish 2 of a is notched where b's finish 1 and core pass: x ∈ [−0.07, 0.1].
     const f2 = of('a', 2);
     expect(f2).toHaveLength(2);
-    expectPolygon(f2.find((p) => p.some((v) => v.x === 4))!, [[0.1, 0.07], [4, 0.07], [4, 0.1], [0.1, 0.1]]);
-    expectPolygon(f2.find((p) => p.some((v) => v.x === -0.1))!, [[-0.1, 0.07], [-0.07, 0.07], [-0.07, 0.1], [-0.1, 0.1]]);
+    const at = (x: number) => f2.find((p) => p.some((v) => Math.abs(v.x - x) < 1e-12))!;
+    expectPolygon(at(4), [[0.1, 0.07], [4, 0.07], [4, 0.1], [0.1, 0.1]]);
+    expectPolygon(at(-0.1), [[-0.1, 0.07], [-0.07, 0.07], [-0.07, 0.1], [-0.1, 0.1]]);
     const total = [...g.values()].flat().reduce((s, p) => s + shoelace(p.polygon), 0);
     expect(total).toBeCloseTo(0.82 + 0.58, 12);
   });
@@ -93,6 +94,19 @@ describe('layered L corner', () => {
     expectPolygon(of('b', 2)[0]!, [[0.05, 0.1], [0.06, 0.1], [0.06, 3], [0.05, 3]]);
     const total = [...g.values()].flat().reduce((s, p) => s + shoelace(p.polygon), 0);
     expect(total).toBeCloseTo(4.06 * 0.2 + 0.12 * 2.9, 12);
+  });
+
+  it('butt whose through corner lands past the short wall free end warns wallsOverlap', () => {
+    // a: 40 cm along +x, y ∈ [−0.2, 0.2], goes through. b: 10 cm, 0.3 m long, leaving the node at 135°;
+    // u = (−c, c), c = √2/2, left normal (−c, −c), its outer face (away from a's body) at offset +0.05.
+    // Along u: the miter's inner corner (b inner face ∩ y = 0.2) is at t = (0.2 − 0.05c)/c ≈ 0.233 and
+    // the outer corner is behind the node, both short of b's far end at 0.3, so a miter would hold. The
+    // butt's own corner, a's inner face ∩ b's outer face, is at t = (0.2 + 0.05c)/c ≈ 0.333: past the
+    // far end. a's square end would swallow b.
+    const c = Math.SQRT1_2;
+    const b = testWall('b', vec(-0.3 * c, 0.3 * c), vec(0, 0), [layer(0.1, 'structure')]);
+    const g = geometry([testWall('a', vec(0, 0), vec(4, 0), 0.4), b]);
+    expect(g.warnings).toEqual([{ kind: 'wallsOverlap', walls: ['a', 'b'] }]);
   });
 
   it('same functions, thicknesses within 1 mm: still the same sequence, so a miter', () => {

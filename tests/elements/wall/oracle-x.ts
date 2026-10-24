@@ -2,8 +2,8 @@
 
 import type { WallEnd } from '../../../src/elements/wall/schema';
 import type { TestWall as Wall } from './fixtures';
-import { frameOf, inside, rectOf, shoelace, type P, type Region } from './oracle';
-import { coreLayersOf, layerOffsetsOf } from './oracle-layers';
+import { cornerSpec, expectedL, frameOf, inside, rectOf, shoelace, type P, type Region } from './oracle';
+import { coreLayersOf, layerOffsetsOf, sameSequence } from './oracle-layers';
 
 const pt = (x: number, y: number): P => ({ x, y });
 
@@ -88,4 +88,33 @@ export function sidesOf(
     { abutting: { ...cut, end: x }, end: 'end', keep: (poly) => Math.sign(side(poly)) === startSide },
     { abutting: { ...cut, start: x }, end: 'start', keep: (poly) => Math.sign(side(poly)) === -startSide },
   ];
+}
+
+/**
+ * The L region (§7.1), with the butt's own swallow rule: between different sequences the through wall
+ * reaches the other's outer face across its whole width, so its corner on that face (its inner face
+ * there) must not land past either free end, or the corner swallows a wall and the spec warns.
+ */
+export function expectedCorner(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?: P): Region | 'overlap' {
+  const region = expectedL(a, aEnd, b, bEnd, node);
+  const c = cornerSpec(a, aEnd, b, bEnd, node);
+  if (region === 'overlap' || (c.kind !== 'miter' && c.kind !== 'bevel') || sameSequence(a, aEnd, b, bEnd, node)) {
+    return region;
+  }
+  const { through } = throughOf(a, b);
+  const [tInner, cOuter] = through === a ? [c.aInner, c.bOuter] : [c.bInner, c.aOuter];
+  const cut = through === a ? b : a;
+  const on = (w: Wall, o: number) => {
+    const f = frameOf(w);
+    return pt(w.start.x + f.n.x * o, w.start.y + f.n.y * o);
+  };
+  const q = meet(on(through, tInner), frameOf(through).d, on(cut, cOuter), frameOf(cut).d);
+  const reachOf = (w: Wall, end: WallEnd) => {
+    const f = frameOf(w);
+    const u = end === 'start' ? f.d : pt(-f.d.x, -f.d.y);
+    const farEnd = end === 'start' ? w.end : w.start;
+    const along = (p: P) => (p.x - c.node.x) * u.x + (p.y - c.node.y) * u.y;
+    return along(q) > along(farEnd);
+  };
+  return reachOf(a, aEnd) || reachOf(b, bEnd) ? 'overlap' : region;
 }

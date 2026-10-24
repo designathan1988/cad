@@ -8,13 +8,12 @@ import type { P } from './oracle';
 import {
   checkAgainst,
   cornerSpec,
-  expectedL,
   expectedRoom,
   expectedT,
   type Region,
 } from './oracle';
 import { abutmentPenetration, layerContainmentViolations, layerContinuity, notchFill, sameSequence } from './oracle-layers';
-import { crossingOf, expectedX, sidesOf, throughOf } from './oracle-x';
+import { crossingOf, expectedCorner, expectedX, sidesOf, throughOf } from './oracle-x';
 import { crossedScene, lScene, type Mode, roomScene, tScene, xScene } from './scenes';
 
 const seed = Number(process.env.FUZZ_SEED ?? 20261024);
@@ -96,7 +95,7 @@ describe.each<Mode>(['normal', 'degenerate'])('L, %s', (mode) => {
     fc.assert(
       fc.property(lScene(mode), fc.nat(), ({ a, aEnd, b, bEnd }, sampleSeed) => {
         const walls = [a, b];
-        const region = expectedL(a, aEnd, b, bEnd);
+        const region = expectedCorner(a, aEnd, b, bEnd);
         const kinds = geometry(walls).warnings.map((w) => w.kind);
         if (region === 'overlap') {
           expect(kinds).toEqual(['wallsOverlap']);
@@ -151,7 +150,7 @@ describe('corner whose ends overran each other', () => {
     fc.assert(
       fc.property(crossedScene(), fc.nat(), ({ a, aEnd, b, bEnd, node }, sampleSeed) => {
         const walls = [a, b];
-        const region = expectedL(a, aEnd, b, bEnd, node);
+        const region = expectedCorner(a, aEnd, b, bEnd, node);
         const kinds = geometry(walls).warnings.map((w) => w.kind);
         if (region === 'overlap') {
           expect(kinds).toEqual(['wallsOverlap']);
