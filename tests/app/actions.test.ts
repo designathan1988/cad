@@ -19,6 +19,12 @@ const openers = { help: () => {}, levels: () => {}, wallTypes: () => {}, tour: (
 describe('palette actions', () => {
   afterEach(() => setLang('en'));
 
+  it(`a new project is in the palette: typed "nov" in Portuguese finds it (the tester's K1)`, () => {
+    setLang('pt');
+    const found = appActions(fakeApp(), openers).filter((x) => `${x.label} ${x.keywords}`.toLowerCase().includes('nov'));
+    expect(found.map((x) => x.id)).toContain('file.new');
+  });
+
   it('covers every tool, both views, files, settings, each level and help, with unique ids', () => {
     const ids = appActions(fakeApp(), openers).map((a) => a.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -26,7 +32,7 @@ describe('palette actions', () => {
       'tool.select', 'tool.wall', 'tool.arcWall', 'tool.floor', 'tool.door', 'tool.window', 'tool.room',
       'view.3d', 'view.plan', 'view.frameSelection', 'view.frameAll',
       'edit.undo', 'edit.redo', 'edit.delete', 'edit.selectAll', 'edit.clearSelection',
-      'file.open', 'file.save', 'settings.snaps', 'settings.theme', 'settings.language', 'settings.panel', 'settings.browser',
+      'file.new', 'file.open', 'file.save', 'settings.snaps', 'settings.theme', 'settings.language', 'settings.panel', 'settings.browser',
       'layer.walls', 'layer.openings', 'layer.rooms', 'layer.floors',
       'level.lvl_ground', 'level.lvl_up', 'level.edit', 'help.shortcuts', 'help.tour',
     ]) expect(ids).toContain(id);
