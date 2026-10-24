@@ -603,6 +603,9 @@ export class App {
   private seenSelection = '';
   /** The viewport's size at the last check: a change is a resize, which keeps the selection in view. */
   private seenSize = '';
+  /** The selection and its extent at the last check: the same selection grown is an edit, which does too. */
+  private seenIds = '';
+  private seenShape = '';
 
   /**
    * When the selection changes and the panel lying over the drawing would hide it (the sheet on a
@@ -613,17 +616,23 @@ export class App {
     const vp0 = this.shell.viewport.getBoundingClientRect();
     // Again when the selection changes, or the panel or a drawer (or the window) changes what is free.
     // The selection's own extent counts too: an arc given a larger radius can reach under the panel.
+    const ids = JSON.stringify([...this.ui.selection]);
     const extent = boundsOf(this.geometry, this.ui.selection);
-    const key = JSON.stringify([[...this.ui.selection], covered, Math.round(vp0.width), Math.round(vp0.height), extent && [extent.min, extent.max].map((p) => [Math.round(p.x * 100), Math.round(p.y * 100)])]);
+    const shape = JSON.stringify(extent && [extent.min, extent.max].map((p) => [Math.round(p.x * 100), Math.round(p.y * 100)]));
+    const key = JSON.stringify([ids, shape, covered, Math.round(vp0.width), Math.round(vp0.height)]);
     if (key === this.seenSelection) return false;
     this.seenSelection = key;
     // A new selection moves the plan only from under what covers it: clicking a long wall that runs
-    // past the edge does not pan. A window that changed size moves it back from its own edges too.
+    // past the edge does not pan. A window that changed size, or a selected element that changed
+    // extent (an arc given a larger radius), moves it back from the drawing's own edges too.
     const size = `${Math.round(vp0.width)}x${Math.round(vp0.height)}`;
     const resized = this.seenSize !== '' && size !== this.seenSize;
+    const reshaped = ids === this.seenIds && shape !== this.seenShape;
     this.seenSize = size;
+    this.seenIds = ids;
+    this.seenShape = shape;
     if (this.ui.selection.size === 0) return false;
-    if (!resized && covered.right === 0 && covered.bottom === 0 && !covered.left) return false;
+    if (!resized && !reshaped && covered.right === 0 && covered.bottom === 0 && !covered.left) return false;
     const box = boundsOf(this.geometry, this.ui.selection);
     if (!box) return false;
     // On screen: the selection, its turn handle (handles.ts) and its temporary dimensions with their
