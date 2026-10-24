@@ -1,0 +1,129 @@
+// Project files: the document as JSON, with its version. Reading checks every element on its own:
+// a bad one is dropped (or fixed, when the fix is obvious) and reported, and the rest of the project
+// is kept. Files from older versions are migrated; a file from a newer version is refused, never
+// half-read.
+
+import type { Doc, Level } from '../app/document';
+import type { Opening } from '../elements/opening/schema';
+import type { Floor, Room } from '../elements/room/schema';
+import type { WallType } from '../elements/wall/schema';
+import type { DocWall } from '../app/document';
+
+/** Version 1: walls, openings, rooms and floors, each list optional when empty in older saves. */
+export const CURRENT_VERSION = 1;
+
+export type ReadError = 'notJson' | 'notProject' | 'newerVersion';
+export type Fix =
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors'; readonly count: number }
+  | { readonly kind: 'movedToFirstLevel'; readonly count: number };
+
+export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
+
+const finite = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
+const isObject = (o: unknown): o is Record<string, unknown> => typeof o === 'object' && o !== null;
+export const isPoint = (p: unknown): boolean => isObject(p) && finite(p.x) && finite(p.y);
+
+export const isLevel = (l: unknown): l is Level =>
+  isObject(l) && typeof l.id === 'string' && typeof l.name === 'string' && finite(l.elevation) && finite(l.height) && l.height > 0;
+
+export const isWallType = (t: unknown): t is WallType =>
+  isObject(t) &&
+  typeof t.id === 'string' &&
+  typeof t.name === 'string' &&
+  Array.isArray(t.layers) &&
+  t.layers.length > 0 &&
+  t.layers.every((l: unknown) => isObject(l) && finite(l.thickness) && l.thickness > 0 && typeof l.function === 'string');
+
+export const isWall = (w: unknown): w is DocWall =>
+  isObject(w) &&
+  typeof w.id === 'string' &&
+  isPoint(w.start) &&
+  isPoint(w.end) &&
+  typeof w.wallTypeId === 'string' &&
+  (w.bulge === undefined || finite(w.bulge));
+
+const isRule = (r: unknown): boolean => {
+  if (!isObject(r)) return false;
+  if (r.kind === 'centered') return true;
+  if (r.kind === 'fromStart' || r.kind === 'fromEnd') return finite(r.distance);
+  return r.kind === 'fromOpening' && typeof r.openingId === 'string' && finite(r.distance) && (r.toward === 'start' || r.toward === 'end');
+};
+
+export const isOpening = (o: unknown): o is Opening =>
+  isObject(o) &&
+  typeof o.id === 'string' &&
+  typeof o.wallId === 'string' &&
+  (o.kind === 'door' || o.kind === 'window') &&
+  finite(o.width) &&
+  o.width > 0 &&
+  finite(o.height) &&
+  o.height > 0 &&
+  finite(o.sill) &&
+  (o.hinge === 'start' || o.hinge === 'end') &&
+  (o.swing === 'left' || o.swing === 'right') &&
+  isRule(o.rule);
+
+export const isRoom = (r: unknown): r is Room =>
+  isObject(r) && typeof r.id === 'string' && typeof r.levelId === 'string' && isPoint(r.seed) && typeof r.name === 'string' && typeof r.number === 'string';
+
+export const isFloor = (f: unknown): f is Floor =>
+  isObject(f) &&
+  typeof f.id === 'string' &&
+  typeof f.levelId === 'string' &&
+  finite(f.thickness) &&
+  f.thickness > 0 &&
+  finite(f.offset) &&
+  isObject(f.source) &&
+  ((f.source.kind === 'room' && typeof f.source.roomId === 'string') ||
+    (f.source.kind === 'outline' && Array.isArray(f.source.points) && f.source.points.length >= 3 && f.source.points.every(isPoint)));
+
+export function writeProject(doc: Doc): string {
+  return JSON.stringify({ ...doc, version: CURRENT_VERSION }, null, 2);
+}
+
+export function readProject(text: string): ReadResult {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return { ok: false, error: 'notJson' };
+  }
+  return repairProject(raw);
+}
+
+/** The project from parsed JSON: migrated to the current version, bad elements dropped and reported. */
+export function repairProject(raw: unknown): ReadResult {
+  if (!isObject(raw) || !finite(raw.version)) return { ok: false, error: 'notProject' };
+  if (raw.version > CURRENT_VERSION) return { ok: false, error: 'newerVersion' };
+  const levels = Array.isArray(raw.levels) ? raw.levels.filter(isLevel) : [];
+  const wallTypes = Array.isArray(raw.wallTypes) ? raw.wallTypes.filter(isWallType) : [];
+  if (levels.length === 0 || wallTypes.length === 0) return { ok: false, error: 'notProject' };
+  const fixes: Fix[] = [];
+  const keep = <T>(list: unknown, ok: (x: unknown) => x is T, kind: Extract<Fix, { count: number }>['kind']): T[] => {
+    // Lists missing from older versions are empty, not errors.
+    if (list === undefined) return [];
+    const all = Array.isArray(list) ? list : [];
+    const good = all.filter(ok);
+    if (good.length < all.length || !Array.isArray(list)) fixes.push({ kind, count: all.length - good.length || 1 });
+    return good;
+  };
+  const levelIds = new Set(levels.map((l) => l.id));
+  let moved = 0;
+  const walls = keep(raw.walls, isWall, 'droppedWalls').map((w) => {
+    if (levelIds.has(w.levelId)) return w;
+    moved++;
+    return { ...w, levelId: levels[0]!.id };
+  });
+  if (moved > 0) fixes.push({ kind: 'movedToFirstLevel', count: moved });
+  const doc: Doc = {
+    version: CURRENT_VERSION,
+    name: typeof raw.name === 'string' ? raw.name : '',
+    levels,
+    wallTypes,
+    walls,
+    openings: keep(raw.openings, isOpening, 'droppedOpenings'),
+    rooms: keep(raw.rooms, isRoom, 'droppedRooms'),
+    floors: keep(raw.floors, isFloor, 'droppedFloors'),
+  };
+  return { ok: true, doc, fixes };
+}

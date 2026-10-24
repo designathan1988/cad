@@ -203,6 +203,12 @@ export function wireInput(app: App): void {
   shell.lang.addEventListener('click', () => app.setLanguage(getLang() === 'en' ? 'pt' : 'en'));
   shell.theme.addEventListener('click', () => app.toggleTheme());
   shell.save.addEventListener('click', () => app.saveFile());
+  shell.open.addEventListener('click', () => shell.fileInput.click());
+  shell.fileInput.addEventListener('change', () => {
+    const file = shell.fileInput.files?.[0];
+    shell.fileInput.value = '';
+    if (file) void app.openFile(file);
+  });
   shell.panelToggle.addEventListener('click', () => app.togglePanel());
   shell.toolSelect.addEventListener('click', () => app.setTool('select'));
   shell.toolWall.addEventListener('click', () => app.setTool('wall'));
@@ -240,6 +246,14 @@ export function wireInput(app: App): void {
     if (ctrl && key === 'z') {
       e.preventDefault();
       return e.shiftKey ? app.redo() : app.undo();
+    }
+    if (ctrl && key === 'o') {
+      e.preventDefault();
+      return shell.fileInput.click();
+    }
+    if (ctrl && key === 's') {
+      e.preventDefault();
+      return app.saveFile();
     }
     if (ctrl && key === 'y') {
       e.preventDefault();

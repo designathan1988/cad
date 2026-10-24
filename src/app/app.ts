@@ -26,6 +26,7 @@ import { type Drag, hull } from './select-drag';
 import { type Doc, type DocWall, newDocument, type WallDefaults } from './document';
 import { boundsOf, deriveGeometry, type DerivedGeometry, type OpeningSolid, openingOutline } from './geometry';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
+import { readProject, writeProject } from '../io/project-file';
 import { newId } from '../core/id';
 import { addFloor, addRoom, updateFloor, updateRoom } from '../elements/room/commands';
 import { insideRing, type FloorSolid, type RoomSolid } from '../elements/room/derive';
@@ -401,13 +402,32 @@ export class App {
 
   saveFile(): void {
     const doc = this.store.get();
-    const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' });
+    const blob = new Blob([writeProject(doc)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${doc.name || 'project'}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
     this.toast(t('toast.saved'));
+  }
+
+  /** Opens a project file, replacing the current project (undo history starts over). */
+  async openFile(file: File): Promise<void> {
+    const r = readProject(await file.text());
+    if (!r.ok) {
+      this.ui.error = t(`open.${r.error}`);
+      return this.renderChrome();
+    }
+    this.ui.error = null;
+    this.ui.selection.clear();
+    this.ui.drag = null;
+    this.ui.levelId = r.doc.levels[0]!.id;
+    this.store.reset(r.doc);
+    this.framed.plan = false;
+    this.framed['3d'] = false;
+    this.frameAll();
+    const fixed = r.fixes.reduce((s, f) => s + f.count, 0);
+    this.toast(fixed > 0 ? t('toast.openedFixed', { n: fixed }) : t('toast.opened'));
   }
 
   toast(text: string): void {

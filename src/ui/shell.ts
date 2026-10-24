@@ -55,9 +55,11 @@ export function buildShell(root: HTMLElement) {
   const shortcuts = iconButton('keyboard');
   const lang = el('button', { type: 'button', class: 'icon-btn text-btn' });
   const theme = iconButton('moon');
+  const open = iconButton('folder');
   const save = iconButton('download');
+  const fileInput = el('input', { type: 'file', accept: '.json,application/json', hidden: '' });
   const panelToggle = iconButton('panel');
-  right.append(commands, shortcuts, lang, theme, save, panelToggle);
+  right.append(commands, shortcuts, lang, theme, open, save, panelToggle, fileInput);
   top.append(left, center, right);
 
   const tools = el('nav', { class: 'tools', 'aria-label': 'Tools' });
@@ -122,7 +124,7 @@ export function buildShell(root: HTMLElement) {
   root.append(top, tools, viewport, panel, foot, helpBack);
 
   const parts = {
-    homeBtn, projectName, undo, redo, level, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
+    homeBtn, projectName, undo, redo, level, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
     panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, viewport, planCanvas, glCanvas, floatBar, floatDelete, floatZoom, floatFrame,
     emptyHint, toast, panel, instr, keys, measureLabel, measure, snapBtn, coords, helpBack,
   };
@@ -141,6 +143,7 @@ export function buildShell(root: HTMLElement) {
     tip(lang, 'top.language');
     tip(theme, 'top.theme');
     tip(save, 'top.export');
+    tip(open, 'top.open');
     tip(panelToggle, 'top.panel');
     tip(level, 'top.level');
     tip(toolSelect, 'tool.select');
