@@ -45,3 +45,17 @@ describe('snaps', () => {
     expect(s.point.y).toBeCloseTo(3 - 6, 12);
   });
 });
+
+describe('which wall a snap is on', () => {
+  const two = [
+    { id: 'a', start: vec(0, 0), end: vec(6, 0) },
+    { id: 'b', start: vec(0, 3), end: vec(6, 3) },
+  ];
+  it('end, middle, body and alignment name the wall they come from', () => {
+    expect(snap(input([6.004, 3.002], { segments: two })).wallId).toBe('b');
+    expect(snap(input([3.002, 0.004], { segments: two })).wallId).toBe('a');
+    expect(snap(input([1.5, 2.996], { segments: two })).wallId).toBe('b');
+    const s = snap(input([6.004, 1.5], { segments: two }));
+    expect([s.kind, s.wallId]).toEqual(['aligned', 'a']);
+  });
+});
