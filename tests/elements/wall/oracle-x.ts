@@ -100,8 +100,8 @@ const SPEC_MITER_LIMIT = 10;
  * at an obtuse angle farther than MITER_LIMIT·T from the node it is a long taper (shared cut), as
  * for the miter's corners.
  */
-export function cornerJoin(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?: P): { kind: CornerKind; butt: boolean } {
-  const c = cornerSpec(a, aEnd, b, bEnd, node);
+export function cornerJoin(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?: P, reach: { a?: number; b?: number } = {}): { kind: CornerKind; butt: boolean } {
+  const c = cornerSpec(a, aEnd, b, bEnd, node, reach);
   if ((c.kind !== 'miter' && c.kind !== 'bevel') || sameSequence(a, aEnd, b, bEnd, node)) return { kind: c.kind, butt: false };
   const { through } = throughOf(a, b);
   const [tInner, cOuter] = through === a ? [c.aInner, c.bOuter] : [c.bInner, c.aOuter];
@@ -119,14 +119,14 @@ export function cornerJoin(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?
   const deepest = stops.flatMap((stop, k) =>
     [cutOffs[k]!, cutOffs[k + 1]!].map((o) => meet(on(cut, o), frameOf(cut).d, on(through, stop), frameOf(through).d)),
   );
-  const past = (w: Wall, end: WallEnd, p: P) => {
+  const past = (w: Wall, end: WallEnd, p: P, limit?: number) => {
     const f = frameOf(w);
     const u = end === 'start' ? f.d : pt(-f.d.x, -f.d.y);
     const farEnd = end === 'start' ? w.end : w.start;
     const along = (x: P) => (x.x - c.node.x) * u.x + (x.y - c.node.y) * u.y;
-    return along(p) > along(farEnd);
+    return along(p) > (limit ?? along(farEnd));
   };
-  if ([q, ...deepest].some((p) => past(a, aEnd, p) || past(b, bEnd, p))) return { kind: 'overlap', butt: false };
+  if ([q, ...deepest].some((p) => past(a, aEnd, p, reach.a) || past(b, bEnd, p, reach.b))) return { kind: 'overlap', butt: false };
   const ua = into(a, aEnd);
   const ub = into(b, bEnd);
   const angle = (Math.acos(Math.max(-1, Math.min(1, ua.x * ub.x + ua.y * ub.y))) * 180) / Math.PI;
@@ -136,7 +136,7 @@ export function cornerJoin(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?
 }
 
 /** The L region for the spec's resolution, or 'overlap' when it warns. */
-export function expectedCorner(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?: P): Region | 'overlap' {
-  const { kind } = cornerJoin(a, aEnd, b, bEnd, node);
+export function expectedCorner(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?: P, reach: { a?: number; b?: number } = {}): Region | 'overlap' {
+  const { kind } = cornerJoin(a, aEnd, b, bEnd, node, reach);
   return kind === 'overlap' ? 'overlap' : expectedL(a, aEnd, b, bEnd, node, kind);
 }

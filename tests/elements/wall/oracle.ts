@@ -6,7 +6,7 @@ import type { WallEnd } from '../../../src/elements/wall/schema';
 import { geometry, type TestWall as Wall } from './fixtures';
 
 const SPEC_COLLINEAR_DEG = 0.6;
-const SPEC_MITER_LIMIT = 10;
+export const SPEC_MITER_LIMIT = 10;
 
 export interface P {
   readonly x: number;
@@ -113,7 +113,11 @@ export interface CornerSpec {
  * Classifies an L exactly as the spec (docs/wall-joins-spec.md §7.1, §10) describes it. `node` is
  * the meeting point: by default the midpoint of the two ends.
  */
-export function cornerSpec(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, at0?: P): CornerSpec {
+/**
+ * `freeAt`: how far from the node a wall's free end is, when it is not its own far end (an arc's end
+ * segment goes on into its arc, spec §5.2; only the arc's own far end is free, §7.1).
+ */
+export function cornerSpec(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, at0?: P, freeAt: { a?: number; b?: number } = {}): CornerSpec {
   const fa = frameOf(a);
   const fb = frameOf(b);
   const ua = into(a, aEnd);
@@ -139,8 +143,8 @@ export function cornerSpec(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, at0?:
   const inner = meet(onFace(a, a.start, base.aInner), fa.d, onFace(b, b.start, base.bInner), fb.d);
   const outer = meet(onFace(a, a.start, base.aOuter), fa.d, onFace(b, b.start, base.bOuter), fb.d);
   if (!inner || !outer) return { ...base, kind: 'shared', inner: null, outer: null };
-  const reachA = dotp(minus(far(a, aEnd), node), ua);
-  const reachB = dotp(minus(far(b, bEnd), node), ub);
+  const reachA = freeAt.a ?? dotp(minus(far(a, aEnd), node), ua);
+  const reachB = freeAt.b ?? dotp(minus(far(b, bEnd), node), ub);
   const past = (c: P) => dotp(minus(c, node), ua) > reachA || dotp(minus(c, node), ub) > reachB;
   if (past(inner) || past(outer)) return { ...base, kind: 'overlap', inner, outer };
   const limit = SPEC_MITER_LIMIT * Math.max(a.thickness, b.thickness);

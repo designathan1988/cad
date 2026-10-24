@@ -5,8 +5,9 @@
 
 import { describe, expect, it } from 'vitest';
 import { geometry, layer, testWall, type TestWall as Wall } from './fixtures';
-import { arcBody, arcCorner, coverage, distanceToSegments, intoOf, tBeyond, tFill, touchesArcElsewhere } from './oracle-arc';
+import { arcBody, arcCorner, coverage, distanceToSegments, intoOf, segmentWall, segmentsOf, tBeyond, tFill, touchesArcElsewhere } from './oracle-arc';
 import { inside, rectOf } from './oracle';
+import { cornerJoin } from './oracle-x';
 
 const refs = ['interiorFace', 'centerline', 'exteriorFace'] as const;
 
@@ -118,4 +119,55 @@ describe('candidates whose far end also meets the arc', () => {
       }
     });
   }
+});
+
+// The arc's end segment is not free at its joint with the next one: the arc goes on there, so the L's
+// corner may reach past it, up to the arc's real far end (spec §7.1, "ponta livre", clarified
+// 2026-10-24 by §5.2). Here an arc of 88 segments of 10.7 cm and walls 40 and 60 cm thick at 100° and
+// 140°: the corner reaches past the end segment, and the L is made and is exactly the spec's.
+// Control: under the old rule (the end segment free at its own far end) the same corner is refused.
+const longArc = { ...testWall('arc', { x: 0, y: 0 }, { x: 6, y: 0 }, [layer(0.2)]), bulge: -1 } as Wall;
+const leaving = (deg: number, t: number) => {
+  const a = (deg * Math.PI) / 180;
+  return testWall('s', { x: -2 * Math.sin(a), y: 2 * Math.cos(a) }, { x: 0, y: 0 }, [layer(t)]);
+};
+
+describe("an L whose corner reaches past the arc's end segment", () => {
+  for (const t of [0.4, 0.6])
+    for (const deg of [100, 140]) {
+      it(`${t * 100} cm wall at ${deg}°: joined, exactly the spec's L`, () => {
+        const straight = leaving(deg, t);
+        const walls = [longArc, straight];
+        expect(geometry(walls).warnings).toEqual([]);
+        const corner = arcCorner(longArc, 'start', straight, 'end');
+        if (corner === 'overlap') throw new Error('the spec makes this L');
+        for (let seed = 1; seed <= 5; seed++) {
+          const c = coverage(walls, longArc.start, 10 * t + 0.1, seed, corner, tBeyond(longArc, straight, 'end'));
+          expect({ o: c.overlaps, g: c.gaps, e: c.extras }, JSON.stringify(c.firstBad)).toEqual({ o: 0, g: 0, e: 0 });
+        }
+      });
+      it(`${t * 100} cm wall at ${deg}°, control: with the end segment free at its own far end, refused`, () => {
+        const seg = segmentWall(longArc, 0);
+        expect(segmentsOf(longArc)).toBe(88);
+        expect(Math.hypot(seg.end.x - seg.start.x, seg.end.y - seg.start.y)).toBeCloseTo(0.107, 3);
+        expect(cornerJoin(seg, 'start', leaving(deg, t), 'end').kind).toBe('overlap');
+        expect(cornerJoin(seg, 'start', leaving(deg, t), 'end', undefined, { a: 100 }).kind).toBe('miter');
+      });
+    }
+});
+
+// The rule stays whole at the real free ends: the arc's other end, and the straight wall's far end.
+describe('an L whose corner passes a real free end', () => {
+  it("a 10 cm arc and a 50 cm wall: the corner passes the arc's other end, no join, a warning", () => {
+    const short = { ...testWall('arc', { x: 0, y: 0 }, { x: 0.1, y: 0 }, [layer(0.05)]), bulge: -0.2 } as Wall;
+    const straight = testWall('s', { x: -1.5, y: -1 }, { x: 0, y: 0 }, [layer(0.5)]);
+    expect(segmentsOf(short)).toBe(5);
+    expect(arcCorner(short, 'start', straight, 'end')).toBe('overlap');
+    expect(geometry([short, straight]).warnings.map((w) => w.kind)).toEqual(['wallsOverlap']);
+  });
+  it("a 30 cm wall 60 cm thick on a long arc: the corner passes the wall's far end, no join, a warning", () => {
+    const straight = testWall('s', { x: -0.15, y: 0.26 }, { x: 0, y: 0 }, [layer(0.6)]);
+    expect(arcCorner(longArc, 'start', straight, 'end')).toBe('overlap');
+    expect(geometry([longArc, straight]).warnings.map((w) => w.kind)).toEqual(['wallsOverlap']);
+  });
 });

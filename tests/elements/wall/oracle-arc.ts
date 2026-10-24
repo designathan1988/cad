@@ -4,7 +4,7 @@
 
 import type { WallEnd } from '../../../src/elements/wall/schema';
 import { geometry, layer, type TestWall as Wall } from './fixtures';
-import { frameOf, inside, rectOf, type P, type Region } from './oracle';
+import { cornerSpec, frameOf, inside, rectOf, SPEC_MITER_LIMIT, type P, type Region } from './oracle';
 import { expectedCorner } from './oracle-x';
 
 const SPEC_ARC_SAG = 5e-4;
@@ -122,20 +122,46 @@ export function arcCorner(arc: Wall, arcEnd: WallEnd, straight: Wall, straightEn
   const c = circleOf(arc);
   const n = segmentsOf(arc);
   const d = c.sweep / n;
-  const ang = arcEnd === 'start' ? c.a0 + d : c.a0 + c.sweep - d;
-  const p = pt(c.cx + c.r * Math.cos(ang), c.cy + c.r * Math.sin(ang));
-  const node = arcEnd === 'start' ? arc.start : arc.end;
   const seg = segmentWall(arc, arcEnd === 'start' ? 0 : n - 1);
-  // The spec's corner (oracle-x.ts): the miter rules, and with different sequences the butt's own.
-  const region = expectedCorner(seg, arcEnd, straight, straightEnd);
+  // The spec's corner (oracle-x.ts): the miter rules, and with different sequences the butt's own. The
+  // end segment's free end is the arc's own far end (spec §5.2, §7.1): its reach is the arc's length,
+  // along its chain of chords.
+  const chainLength = n * 2 * c.r * Math.abs(Math.sin(d / 2));
+  // The region is built with the end segment's chord carried on past any corner the spec allows
+  // (MITER_LIMIT × max(T)): with the corner past the segment's own far end, a region with that end as a
+  // vertex folds over itself. Where it applies is still bounded by the segment itself (below).
+  const chordLen = Math.hypot(seg.end.x - seg.start.x, seg.end.y - seg.start.y);
+  const extra = SPEC_MITER_LIMIT * Math.max(seg.thickness, straight.thickness);
+  const ux = (seg.end.x - seg.start.x) / chordLen;
+  const uy = (seg.end.y - seg.start.y) / chordLen;
+  const longSeg: Wall =
+    arcEnd === 'start'
+      ? { ...seg, end: pt(seg.start.x + ux * (chordLen + extra), seg.start.y + uy * (chordLen + extra)) }
+      : { ...seg, start: pt(seg.end.x - ux * (chordLen + extra), seg.end.y - uy * (chordLen + extra)) };
+  const region = expectedCorner(longSeg, arcEnd, straight, straightEnd, undefined, { a: chainLength });
   if (region === 'overlap') return 'overlap';
-  const len = Math.hypot(p.x - node.x, p.y - node.y);
-  const dir = pt((p.x - node.x) / len, (p.y - node.y) / len);
-  const short = len - arc.thickness * Math.abs(Math.tan(d / 2)) - 1e-6;
-  // The rest of the arc is not this L's: its other segments' bodies are checked as bodies.
+  // Where this L is the spec's: in the end segment's wedge (between its two radial planes) and outside
+  // the arc's sweep (the corner's tip past its end), never in the other segments' bodies, which are
+  // checked as bodies. The wedge, not a distance along the chord: an acute butt trims the end
+  // segment's far part too, past the other wall's outer face.
   const body = arcBody(arc);
   const others = arcEnd === 'start' ? body.slice(1) : body.slice(0, -1);
-  return { region, applies: (q) => (q.x - node.x) * dir.x + (q.y - node.y) * dir.y <= short && !others.some((b) => inside(b, q)) };
+  const turn = (q: P) => {
+    const t = ((Math.atan2(q.y - c.cy, q.x - c.cx) - c.a0) * Math.sign(c.sweep)) % (2 * Math.PI);
+    return t < 0 ? t + 2 * Math.PI : t;
+  };
+  const sweep = Math.abs(c.sweep);
+  const step = Math.abs(d);
+  const inEndWedge = (q: P) => (arcEnd === 'start' ? turn(q) <= step : turn(q) >= sweep - step && turn(q) <= sweep);
+  // Outside the sweep on the node's side of the gap only: past the arc's other end is not this corner.
+  const pastNode = (q: P) => {
+    const t = turn(q);
+    if (t <= sweep) return false;
+    const fromEnd = t - sweep;
+    const fromStart = 2 * Math.PI - t;
+    return arcEnd === 'end' ? fromEnd <= fromStart : fromStart < fromEnd;
+  };
+  return { region, applies: (q) => (inEndWedge(q) || pastNode(q)) && !others.some((b) => inside(b, q)) };
 }
 
 /**
@@ -145,7 +171,18 @@ export function arcCorner(arc: Wall, arcEnd: WallEnd, straight: Wall, straightEn
  * applies must be covered once exactly where its region is, and nowhere else: an acute L trims the
  * end of a body that would stick out past the other wall's outer face.
  */
-export function coverage(walls: readonly Wall[], node: P | null, tip: number, seed: number, corner?: { region: Region; applies: (p: P) => boolean }): Coverage {
+/**
+ * `notKept`: points of a wall's own body that its join does not keep (tBeyond: what of a wall abutting
+ * the arc lies past it, spec §7.2), checked as outside every body.
+ */
+export function coverage(
+  walls: readonly Wall[],
+  node: P | null,
+  tip: number,
+  seed: number,
+  corner?: { region: Region; applies: (p: P) => boolean },
+  notKept?: (p: P) => boolean,
+): Coverage {
   const { pieces } = geometry(walls);
   const polys = walls.flatMap((w) => (pieces.get(w.id) ?? []).map((p) => p.polygon));
   const bodies = walls.flatMap(bodyOf);
@@ -177,7 +214,7 @@ export function coverage(walls: readonly Wall[], node: P | null, tip: number, se
       }
       return;
     }
-    const inBody = bodies.some((b) => inside(b, p));
+    const inBody = bodies.some((b) => inside(b, p)) && !notKept?.(p);
     const nearNode = node !== null && Math.hypot(p.x - node.x, p.y - node.y) <= tip;
     let bad = false;
     if (count > 1) (overlaps++, (bad = true));
@@ -358,5 +395,11 @@ export function cornerReach(arc: Wall, arcEnd: WallEnd, wall: Wall): number {
   };
   const on = (w: Wall, f: { n: P }, o: number) => pt(w.start.x + f.n.x * o, w.start.y + f.n.y * o);
   const points = [fs.o0, fs.o1].flatMap((os) => [fw.o0, fw.o1].map((ow) => meetAt(on(seg, fs, os), fs.d, on(wall, fw, ow), fw.d)));
-  return Math.max(...points.map((p) => (p.x - node.x) * u.x + (p.y - node.y) * u.y));
+  const faces = Math.max(...points.map((p) => (p.x - node.x) * u.x + (p.y - node.y) * u.y));
+  // The spec bounds the corner itself (§7.1): an obtuse one past MITER_LIMIT × max(T) is one cut through
+  // the node, reaching along the wall no farther than a thickness; an acute one is bevelled there.
+  const limit = SPEC_MITER_LIMIT * Math.max(seg.thickness, wall.thickness);
+  const spec = cornerSpec(seg, arcEnd, wall, 'end', node);
+  if (spec.kind === 'shared') return Math.max(seg.thickness, wall.thickness);
+  return Math.min(faces, limit);
 }

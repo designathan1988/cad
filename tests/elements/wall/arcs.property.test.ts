@@ -75,11 +75,13 @@ describe('arc with a straight wall at one end', () => {
           const v = { x: u.x * Math.cos(a) - u.y * Math.sin(a), y: u.x * Math.sin(a) + u.y * Math.cos(a) };
           // Where the wall first touches the arc's other segments (touching only grows with length, so a
           // binary search finds it). Within the reach of the L's corner (cornerReach: from the faces and
-          // the angle) that is the L itself reaching past the end segment: the spec still refuses it
-          // (part 6, "Fica aberto"), so it must warn. Beyond, it would be a second junction, which this
-          // oracle does not model: the wall is shortened to 95 % of that length.
+          // the angle) that is the L itself reaching past the end segment, which the spec makes (§7.1,
+          // "ponta livre": the end segment is not free where the arc goes on). Beyond, it would be a
+          // second junction, which this oracle does not model: the wall is shortened to 95 % of that
+          // length.
           const wallOf = (l: number) => testWall('s', { x: node.x + v.x * l, y: node.y + v.y * l }, node, ls, ref);
           let len = len0;
+          let spilling = false;
           if (touchesArcElsewhere(arc, end, wallOf(len))) {
             let [lo, hi] = [0, len];
             for (let k = 0; k < 14; k++) {
@@ -87,14 +89,24 @@ describe('arc with a straight wall at one end', () => {
               if (touchesArcElsewhere(arc, end, wallOf(mid))) hi = mid;
               else lo = mid;
             }
-            if (hi <= cornerReach(arc, end, wallOf(len)) + SPEC_POINT_TOL) {
-              const kinds = geometry([arc, wallOf(len)]).warnings.map((w) => w.kind);
-              expect(kinds.length, `spec warns (L past the end segment): ${JSON.stringify([arc, wallOf(len)])}`).toBeGreaterThan(0);
-              joined.warned++;
-              joined.spill++;
-              return;
-            }
-            len = lo * 0.95;
+            // Within the corner's reach it is the L itself reaching past the end segment, which the
+            // engine makes (spillOverArc): checked below like any L, and counted.
+            const reach = cornerReach(arc, end, wallOf(len)) + SPEC_POINT_TOL;
+            if (hi <= reach) {
+              spilling = true;
+              // It can touch again farther on as well (a second junction): the stretch past the corner's
+              // reach is shortened like any wall, to 95 % of where it would.
+              const tail = (l: number) => testWall('s', { x: node.x + v.x * l, y: node.y + v.y * l }, { x: node.x + v.x * reach, y: node.y + v.y * reach }, ls, ref);
+              if (len > reach && touchesArcElsewhere(arc, end, tail(len))) {
+                let [a2, b2] = [reach, len];
+                for (let k = 0; k < 14; k++) {
+                  const mid = (a2 + b2) / 2;
+                  if (touchesArcElsewhere(arc, end, tail(mid))) b2 = mid;
+                  else a2 = mid;
+                }
+                len = reach + (a2 - reach) * 0.95;
+              }
+            } else len = lo * 0.95;
           }
           const far = { x: node.x + v.x * len, y: node.y + v.y * len };
           // One junction only: a far end that lands on the arc (within POINT_TOLERANCE of a segment's
@@ -112,7 +124,7 @@ describe('arc with a straight wall at one end', () => {
           const straight = testWall('s', far, node, ls, ref);
           // Touching the arc again away from the node is a second junction too (an X or a T, which the
           // engine now makes: spec part 6), not modelled by this L oracle: skipped, counted.
-          if (touchesArcElsewhere(arc, end, straight)) {
+          if (!spilling && touchesArcElsewhere(arc, end, straight)) {
             joined.skipped++;
             joined.touches++;
             return;
@@ -132,8 +144,11 @@ describe('arc with a straight wall at one end', () => {
           }
           expect(kinds, `spec makes this L: ${JSON.stringify(walls)}`).toEqual([]);
           joined.clean++;
+          if (spilling) joined.spill++;
           const tip = 10 * Math.max(arc.thickness, straight.thickness) + 0.1;
-          const c = coverage(walls, node, tip, s, corner);
+          // Past the end segment the arc goes on and the wall abuts it there: what of the wall pokes past
+          // the arc is not kept (tBeyond, as for a T, spec §7.2).
+          const c = coverage(walls, node, tip, s, corner, tBeyond(arc, straight, 'end'));
           expect({ o: c.overlaps, g: c.gaps, e: c.extras }, `${JSON.stringify(walls)} at ${JSON.stringify(c.firstBad)}`).toEqual({ o: 0, g: 0, e: 0 });
         },
       ),
@@ -141,12 +156,15 @@ describe('arc with a straight wall at one end', () => {
     );
   });
 
-  // Not vacuous: most runs make the L and are checked point by point; few are skipped as a second
-  // junction. The fixed seed gives 57 clean, 41 warned (32 of them the L reaching past the end
-  // segment, which the spec still refuses), 2 skipped of 100.
+  // Not vacuous: most runs make the L and are checked point by point, the L reaching past the end
+  // segment among them; few are skipped as a second junction. The fixed seed gives 95 clean (29 of
+  // them past the end segment), 0 warned, 5 skipped of 100 (a wall passing near the arc's other end;
+  // 3 of them also past the end segment).
+  // The warnings the spec asks for are the hand cases in arc-corner.test.ts.
   it('checks enough joins', () => {
-    console.log(`arc L: ${joined.clean} clean, ${joined.warned} warned (${joined.spill} past the end segment), ${joined.skipped} skipped (${joined.nearOther} near the other end, ${joined.touches} touching)`);
+    console.log(`arc L: ${joined.clean} clean (${joined.spill} past the end segment), ${joined.warned} warned, ${joined.skipped} skipped (${joined.nearOther} near the other end, ${joined.touches} touching)`);
     expect(joined.clean).toBeGreaterThan(40);
+    expect(joined.spill).toBeGreaterThan(20);
     expect(joined.skipped).toBeLessThanOrEqual(5);
   });
 });
