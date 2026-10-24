@@ -5,16 +5,23 @@
   --fs-sm: 12px;
   --fs-md: 13px;
   --fs-lg: 14px;
+  --sp-half: 2px;
   --sp-1: 4px;
   --sp-2: 8px;
   --sp-3: 12px;
   --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 28px;
   --radius-sm: 4px;
   --radius: 6px;
   --radius-lg: 8px;
   --top-h: 44px;
   --foot-h: 36px;
   --tools-w: 52px;
+  --control-h: 32px;
+  --control-h-sm: 26px;
+  --field-h: 28px;
   --panel-w: 288px;
   --ease: 120ms ease-out;
 
@@ -44,6 +51,7 @@
   --3d-light: #ffffff;
   --3d-ground-light: #9a9fa8;
   --warn: #c2410c;
+  --error: #dc2626;
   --warn-soft: #fff1e6;
   --snap: #ea7a0c;
   --shadow: 0 2px 8px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.06);
@@ -87,6 +95,7 @@
   --3d-light: #ffffff;
   --3d-ground-light: #9a9fa8;
   --warn: #fb923c;
+  --error: #f87171;
   --warn-soft: #3a2618;
   --snap: #f59e0b;
   --shadow: 0 2px 10px rgb(0 0 0 / 0.4);
@@ -157,7 +166,7 @@ select {
 .top .right {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--sp-half);
   flex: 1 1 0;
   min-width: 0;
 }
@@ -188,9 +197,9 @@ select {
 .icon-btn {
   display: inline-grid;
   place-items: center;
-  min-width: 32px;
-  height: 32px;
-  padding: 0 6px;
+  min-width: var(--control-h);
+  height: var(--control-h);
+  padding: 0 var(--sp-2);
   border: 0;
   border-radius: var(--radius);
   background: transparent;
@@ -213,7 +222,7 @@ select {
 .levels-warn {
   grid-column: 1 / -1;
   display: flex;
-  gap: 6px;
+  gap: var(--sp-2);
   align-items: center;
   color: var(--warn);
   font-size: var(--fs-sm);
@@ -245,8 +254,8 @@ select {
 }
 .select select {
   appearance: none;
-  height: 28px;
-  padding: 0 28px 0 10px;
+  height: var(--field-h);
+  padding: 0 var(--sp-7) 0 var(--sp-2);
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: var(--field);
@@ -269,8 +278,8 @@ select {
 
 .segmented {
   display: inline-flex;
-  padding: 2px;
-  gap: 2px;
+  padding: var(--sp-half);
+  gap: var(--sp-half);
   border-radius: var(--radius);
   background: var(--field);
 }
@@ -278,9 +287,9 @@ select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  height: 26px;
-  padding: 0 10px;
+  gap: var(--sp-2);
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-2);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -313,7 +322,7 @@ select {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   padding: var(--sp-2) 0;
   min-height: 0;
   overflow-y: auto;
@@ -325,11 +334,11 @@ select {
   width: 24px;
   height: 1px;
   background: var(--border);
-  margin: 4px 0;
+  margin: var(--sp-1) 0;
 }
 .tools .tool {
   width: 36px;
-  height: 32px;
+  height: var(--control-h);
   flex: none;
 }
 .tools .spacer {
@@ -358,8 +367,8 @@ select {
 .float-bar {
   position: absolute;
   display: flex;
-  gap: 2px;
-  padding: 3px;
+  gap: var(--sp-half);
+  padding: var(--sp-1);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--bg);
@@ -381,7 +390,7 @@ select {
   background: var(--canvas);
   border: 1px solid transparent;
   border-radius: 4px;
-  padding: 3px 5px;
+  padding: var(--sp-1) var(--sp-1);
 }
 .temp-dims button {
   cursor: text;
@@ -407,7 +416,7 @@ select {
   left: 50%;
   top: 24px;
   transform: translateX(-50%);
-  padding: 8px 14px;
+  padding: var(--sp-2) var(--sp-3);
   border-radius: 999px;
   background: var(--bg);
   border: 1px solid var(--border);
@@ -425,7 +434,7 @@ select {
   left: 50%;
   bottom: 16px;
   transform: translateX(-50%);
-  padding: 6px 12px;
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius);
   background: var(--text);
   color: var(--bg);
@@ -447,7 +456,7 @@ select {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-2);
   z-index: 4;
 }
 .cube-wrap[hidden] {
@@ -456,7 +465,7 @@ select {
 .cube {
   width: 60px;
   height: 60px;
-  margin: 16px;
+  margin: var(--sp-4);
   perspective: 300px;
 }
 .cube-inner {
@@ -526,7 +535,7 @@ select {
 .section > summary {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   height: 34px;
   padding: 0 var(--sp-3);
   font-weight: 600;
@@ -547,9 +556,9 @@ select {
 .rows {
   display: grid;
   grid-template-columns: 96px 1fr;
-  gap: 6px var(--sp-2);
+  gap: var(--sp-2) var(--sp-2);
   align-items: center;
-  padding: 2px var(--sp-3) var(--sp-3);
+  padding: var(--sp-half) var(--sp-3) var(--sp-3);
 }
 .rows label {
   color: var(--text-2);
@@ -560,7 +569,7 @@ select {
   cursor: default;
 }
 .rows label.sub {
-  padding-left: 12px;
+  padding-left: var(--sp-3);
 }
 .rows label.scrub {
   cursor: ew-resize;
@@ -572,8 +581,8 @@ select {
 }
 .num-field input {
   width: 100%;
-  height: 28px;
-  padding: 0 26px 0 10px;
+  height: var(--field-h);
+  padding: 0 var(--sp-7) 0 var(--sp-2);
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: var(--field);
@@ -587,7 +596,7 @@ select {
   outline: none;
 }
 .num-field input.invalid {
-  border-color: var(--warn);
+  border-color: var(--error);
 }
 .num-field .unit {
   position: absolute;
@@ -597,18 +606,18 @@ select {
   pointer-events: none;
 }
 .readout {
-  height: 28px;
+  height: var(--field-h);
   display: flex;
   align-items: center;
-  padding: 0 10px;
+  padding: 0 var(--sp-2);
   color: var(--text-2);
 }
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 28px 20px;
+  gap: var(--sp-2);
+  padding: var(--sp-7) var(--sp-5);
   text-align: center;
   color: var(--text-2);
 }
@@ -623,7 +632,7 @@ select {
   color: var(--warn);
   font-size: var(--fs-sm);
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 
 /* Footer */
@@ -646,7 +655,7 @@ select {
   text-overflow: ellipsis;
 }
 .foot .instr.error {
-  color: var(--warn);
+  color: var(--error);
 }
 .foot .keys {
   display: flex;
@@ -656,8 +665,8 @@ select {
 }
 .kbd {
   display: inline-block;
-  padding: 0 5px;
-  margin-right: 4px;
+  padding: 0 var(--sp-1);
+  margin-right: var(--sp-1);
   border: 1px solid var(--kbd-border);
   border-bottom-width: 2px;
   border-radius: var(--radius-sm);
@@ -676,7 +685,7 @@ select {
 .measure input {
   width: 160px;
   height: 26px;
-  padding: 0 8px;
+  padding: 0 var(--sp-2);
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: var(--field);
@@ -724,7 +733,7 @@ select {
 .dialog dl {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 8px 16px;
+  gap: var(--sp-2) var(--sp-4);
   margin: 0;
   padding: var(--sp-4);
 }
@@ -778,7 +787,7 @@ select {
   .top {
     flex-wrap: wrap;
     align-content: center;
-    row-gap: 2px;
+    row-gap: var(--sp-half);
   }
   .top .center {
     order: 3;
@@ -791,7 +800,9 @@ select {
   .level-select {
     width: 132px;
   }
-  .top .needs-keyboard {
+  /* Keyboard-only help leaves; language and theme are in the command palette, which stays. */
+  .top .needs-keyboard,
+  .top .in-palette {
     display: none;
   }
   .panel {
@@ -803,6 +814,33 @@ select {
     border-top: 1px solid var(--border);
   }
   .foot .measure label {
+    display: none;
+  }
+}
+/* Touch: every target at least 44 × 44 px (WCAG 2.5.5). */
+@media (pointer: coarse) {
+  :root {
+    --control-h: 44px;
+    --control-h-sm: 44px;
+    --field-h: 44px;
+    --tools-w: 56px;
+    --top-h: 56px;
+    --foot-h: 52px;
+  }
+  .tools .tool {
+    width: 44px;
+  }
+  .menu-item,
+  .palette-option {
+    min-height: 44px;
+  }
+}
+@media (pointer: coarse) and (max-width: 600px) {
+  :root {
+    --top-h: 104px;
+  }
+  /* Home, undo, redo, commands, open, save and panel at 44 px fill the row: the name gives way. */
+  .project-name {
     display: none;
   }
 }
@@ -1010,7 +1048,7 @@ select {
 .levels {
   display: grid;
   grid-template-columns: 1fr 120px 120px 32px;
-  gap: 6px var(--sp-2);
+  gap: var(--sp-2) var(--sp-2);
   align-items: center;
   padding: var(--sp-3) var(--sp-4);
 }
@@ -1019,8 +1057,8 @@ select {
   font-size: var(--fs-sm);
 }
 .text-field {
-  height: 28px;
-  padding: 0 10px;
+  height: var(--field-h);
+  padding: 0 var(--sp-2);
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: var(--field);

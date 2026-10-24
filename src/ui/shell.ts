@@ -50,10 +50,10 @@ export function buildShell(root: HTMLElement) {
   center.append(levelBox, views);
 
   const right = el('div', { class: 'right' });
-  const commands = iconButton('command', 'icon-btn needs-keyboard');
+  const commands = iconButton('command');
   const shortcuts = iconButton('keyboard', 'icon-btn needs-keyboard');
-  const lang = el('button', { type: 'button', class: 'icon-btn text-btn' });
-  const theme = iconButton('moon');
+  const lang = el('button', { type: 'button', class: 'icon-btn text-btn in-palette' });
+  const theme = iconButton('moon', 'icon-btn in-palette');
   const open = iconButton('folder');
   const save = iconButton('download');
   const fileInput = el('input', { type: 'file', accept: '.json,application/json', hidden: '' });

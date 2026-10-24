@@ -352,7 +352,29 @@ export class PlanView {
       ctx.strokeStyle = colour;
       ctx.lineWidth = active ? 1.6 : 1;
       for (const line of symbolLines(op, op.frame)) (path(line), ctx.stroke());
+      if (!op.valid) this.warnSign(this.toScreen({ x: (f.start.x + f.end.x) / 2, y: (f.start.y + f.end.y) / 2 }), c.warn, c.canvas);
     }
+  }
+
+  /** A small triangle with "!" at a screen point: the sign of a problem, readable without colour. */
+  private warnSign(p: Point2, colour: string, bg: string): void {
+    const { ctx } = this;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y - 8);
+    ctx.lineTo(p.x + 8, p.y + 6);
+    ctx.lineTo(p.x - 8, p.y + 6);
+    ctx.closePath();
+    ctx.fillStyle = bg;
+    ctx.fill();
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = colour;
+    ctx.font = this.font('700', '--fs-xs');
+    ctx.textAlign = 'center';
+    ctx.fillText('!', p.x, p.y + 4.5);
+    ctx.restore();
   }
 
   private drawGrid(minor: string, major: string, axisX: string, axisY: string): void {

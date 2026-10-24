@@ -20,7 +20,8 @@ export type Drag =
 type Pending = { kind: 'wall'; at: Point2; screen: Point2 } | { kind: 'grip'; id: WallId; end: WallEnd; screen: Point2 } | { kind: 'empty'; screen: Point2 };
 
 const THRESHOLD_PX = 4;
-const GRIP_PX = 8;
+/** Reach of an end grip from its centre: larger than the 9 px square drawn; 22 px (a 44 px target) on touch. */
+const gripPx = (): number => (matchMedia('(pointer: coarse)').matches ? 22 : 8);
 
 export interface SelectGestures {
   readonly down: (screen: Point2, world: Point2 | null, hit: WallId | null, shift: boolean) => void;
@@ -41,7 +42,7 @@ export function selectGestures(app: App): SelectGestures {
     if (!w) return null;
     for (const end of ['start', 'end'] as const) {
       const s = app.toScreen(end === 'start' ? w.start : w.end);
-      if (s && distance(s, screen) <= GRIP_PX) return { id, end };
+      if (s && distance(s, screen) <= gripPx()) return { id, end };
     }
     return null;
   };
