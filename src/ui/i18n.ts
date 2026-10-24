@@ -227,6 +227,10 @@ const en = {
   'cmd.addWalls': 'Draw walls',
   'cmd.deleteWalls': 'Delete walls',
   'cmd.updateWalls': 'Edit walls',
+  'cmd.addWallType': 'New wall type',
+  'cmd.duplicateWallType': 'Duplicate wall type',
+  'cmd.updateWallType': 'Edit wall type',
+  'cmd.deleteWallType': 'Delete wall type',
   'panel.door': 'Door',
   'panel.window': 'Window',
   'panel.openingSize': '{kind} · {w} × {h}',
@@ -606,6 +610,10 @@ const pt: Record<MessageKey, string> = {
   'cmd.addWalls': 'Desenhar paredes',
   'cmd.deleteWalls': 'Apagar paredes',
   'cmd.updateWalls': 'Editar paredes',
+  'cmd.addWallType': 'Novo tipo de parede',
+  'cmd.duplicateWallType': 'Duplicar tipo de parede',
+  'cmd.updateWallType': 'Editar tipo de parede',
+  'cmd.deleteWallType': 'Apagar tipo de parede',
   'panel.door': 'Porta',
   'panel.window': 'Janela',
   'panel.openingSize': '{kind} · {w} × {h}',
@@ -789,10 +797,14 @@ export function t(key: MessageKey, vars: Readonly<Record<string, string | number
 export const defaultName = {
   level: (n: number): string => `Level ${n}`,
   room: (n: number): string => `Room ${n}`,
+  wallType: (n: number): string => `Wall type ${n}`,
+  /** A copy's name: the original's, numbered, so a built-in name is still translated. */
+  copy: (of: string, n: number): string => `${of} (${n})`,
 };
 const ptPatterns: readonly [RegExp, string][] = [
   [/^Level (\d+)$/, 'Pavimento $1'],
   [/^Room (\d+)$/, 'Cômodo $1'],
+  [/^Wall type (\d+)$/, 'Tipo de parede $1'],
 ];
 
 /** A user-facing name stored in the document: built-in names are translated, the user's are not. */
@@ -801,7 +813,9 @@ export const name = (stored: string): string => {
   const known = ptNames[stored];
   if (known) return known;
   const p = ptPatterns.find(([re]) => re.test(stored));
-  return p ? stored.replace(p[0], p[1]) : stored;
+  if (p) return stored.replace(p[0], p[1]);
+  const copy = /^(.*) \((\d+)\)$/.exec(stored);
+  return copy ? `${name(copy[1]!)} (${copy[2]})` : stored;
 };
 
 /** Numbers as the language writes them: 4,50 in Portuguese, 4.50 in English. */
