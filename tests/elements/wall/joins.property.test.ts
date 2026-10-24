@@ -3,7 +3,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { geometry, type TestWall as Wall } from './fixtures';
+import { geometry, layer, testWall, type TestWall as Wall } from './fixtures';
 import type { P } from './oracle';
 import {
   checkAgainst,
@@ -187,6 +187,23 @@ describe('room with a divider', () => {
       runs(300),
     );
   }, TIMEOUT);
+});
+
+describe('regressions found by larger runs', () => {
+  it('butt against a short through wall (FUZZ_SEED=55555, FUZZ_SCALE=10)', () => {
+    // Same type, but b on its exterior face reads its layers reversed from the corner: a butt at 170°
+    // against a 0.5 m through wall. I10 once sampled past the through wall's free end.
+    const ls = [layer(0.014950893618385329, 'finish1'), layer(0.11960714894708263, 'structure'), layer(0.014950893618385329, 'finish2')];
+    const a = testWall('a', { x: 0.5, y: 0 }, { x: 0, y: 0 }, ls);
+    const b = testWall('b', { x: -0.49233721039619344, y: 0.08720132601798186 }, { x: 0, y: 0 }, ls, 'exteriorFace');
+    const walls = [a, b];
+    const region = expectedCorner(a, 'end', b, 'end');
+    if (region === 'overlap') throw new Error('expected a join');
+    expect(geometry(walls).warnings).toEqual([]);
+    expectExact(walls, region, 0);
+    expect(cornerJoin(a, 'end', b, 'end').butt).toBe(true);
+    for (let s = 0; s < 20; s++) expect(notchFill(b, 'end', a, walls, s).bad, `sample seed ${s}`).toBe(0);
+  });
 });
 
 describe('layer checks were really exercised', () => {

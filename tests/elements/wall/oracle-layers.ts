@@ -166,8 +166,8 @@ export function abutmentPenetration(
 }
 
 /**
- * I10: between the host's near face and core face, inside the abutting wall's strip and short of its
- * free end, a point in abutting layer k is covered by layer k where k has passed (between the near
+ * I10: between the host's near face and core face, along the host, inside the abutting wall's strip
+ * and short of its free end, a point in abutting layer k is covered by layer k where k has passed (between the near
  * face and k's stop) and by the host everywhere else.
  */
 export function notchFill(
@@ -207,6 +207,10 @@ export function notchFill(
     const nearEdge =
       aOffs.some((b) => Math.abs(ao - b) < eps) || hOffs.some((b) => Math.abs(o - b) < eps) || Math.abs(pastFree) < eps;
     if (nearEdge) continue;
+    // Only along the host: in a butt the host is the through wall and can be short. Past its end
+    // nothing may be (the region check sees to that), so the rule below does not apply there.
+    const hs = dotp(fh.d, minus(p, host.start));
+    if (hs < eps || hs > fh.len - eps) continue;
     checked++;
     const k = aOffs.findIndex((b, i) => i + 1 < aOffs.length && ao > b && ao < aOffs[i + 1]!);
     const stop = stops[k]!;
