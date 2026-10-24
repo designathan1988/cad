@@ -4,6 +4,7 @@
 import { parseLength } from '../core/measure';
 import { icon, type IconName } from './icons';
 import { num, t } from './i18n';
+import { searchEntries } from './search';
 
 export function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -142,4 +143,106 @@ export function select<T extends string>(
   box.append(s);
   box.insertAdjacentHTML('beforeend', icon('chevronDown', 14));
   return box;
+}
+
+/**
+ * A choice among many, with a search field and a thumbnail per option (ref/chat.txt:213): a button
+ * showing the current one opens a list under it. The field is an APG combobox, as in the command
+ * palette: arrows move, Enter picks, Esc closes and gives the focus back to the button.
+ */
+export function searchSelect<T extends string>(
+  options: readonly { value: T; label: string; keywords?: string; thumb?: string }[],
+  value: T | null,
+  onChange: (v: T) => void,
+  label: string,
+): HTMLElement {
+  const current = options.find((o) => o.value === value);
+  const button = el('button', { type: 'button', class: 'search-select', 'aria-haspopup': 'listbox', 'aria-label': `${label}: ${current?.label ?? t('panel.varies')}` });
+  button.innerHTML = current?.thumb ?? '';
+  button.append(el('span', { class: 'search-select-label' }, current?.label ?? t('panel.varies')));
+  button.insertAdjacentHTML('beforeend', icon('chevronDown', 14));
+  button.addEventListener('click', () => openList());
+
+  function openList(): void {
+    const r = button.getBoundingClientRect();
+    const pop = el('div', { class: 'search-pop', role: 'dialog', 'aria-label': label });
+    const id = `ss-${Math.random().toString(36).slice(2, 8)}`;
+    const input = el('input', {
+      type: 'text',
+      class: 'search-pop-input',
+      role: 'combobox',
+      'aria-expanded': 'true',
+      'aria-controls': id,
+      'aria-autocomplete': 'list',
+      'aria-label': label,
+      placeholder: t('search.placeholder'),
+      autocomplete: 'off',
+      spellcheck: 'false',
+    });
+    const list = el('ul', { class: 'search-pop-list', role: 'listbox', id, 'aria-label': label });
+    pop.append(input, list);
+    let shown: typeof options = [];
+    let active = 0;
+    const setActive = (i: number) => {
+      active = i;
+      [...list.children].forEach((li, k) => li.setAttribute('aria-selected', String(k === i)));
+      const li = list.children[i] as HTMLElement | undefined;
+      if (li) {
+        input.setAttribute('aria-activedescendant', li.id);
+        li.scrollIntoView({ block: 'nearest' });
+      } else input.removeAttribute('aria-activedescendant');
+    };
+    const pick = (o: (typeof options)[number] | undefined) => {
+      if (!o) return;
+      close();
+      if (o.value !== value) onChange(o.value);
+    };
+    const update = () => {
+      shown = searchEntries(options, input.value);
+      list.replaceChildren(
+        ...shown.map((o, i) => {
+          const li = el('li', { id: `${id}-${i}`, role: 'option', class: 'search-pop-option', 'aria-selected': 'false' });
+          li.innerHTML = o.thumb ?? '';
+          li.append(el('span', {}, o.label));
+          if (o.value === value) li.classList.add('current');
+          li.addEventListener('pointermove', () => active !== i && setActive(i));
+          li.addEventListener('click', () => pick(o));
+          return li;
+        }),
+      );
+      const at = shown.findIndex((o) => o.value === value);
+      setActive(shown.length === 0 ? -1 : Math.max(0, at));
+    };
+    input.addEventListener('input', update);
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      const n = shown.length;
+      if (e.key === 'ArrowDown' && n > 0) setActive((active + 1) % n);
+      else if (e.key === 'ArrowUp' && n > 0) setActive((active - 1 + n) % n);
+      else if (e.key === 'Enter') pick(shown[active]);
+      else if (e.key === 'Escape' || e.key === 'Tab') close();
+      else return;
+      e.preventDefault();
+    });
+    const outside = (e: PointerEvent) => {
+      if (!pop.contains(e.target as Node) && e.target !== button) close();
+    };
+    function close(): void {
+      window.removeEventListener('pointerdown', outside, true);
+      pop.remove();
+      button.focus();
+    }
+    document.body.append(pop);
+    const w = Math.max(r.width, 220);
+    pop.style.width = `${w}px`;
+    pop.style.left = `${Math.min(r.left, window.innerWidth - w - 8)}px`;
+    // Under the button, or above it when there is no room below.
+    const below = window.innerHeight - r.bottom;
+    pop.style.top = below > 260 ? `${r.bottom + 4}px` : `${Math.max(8, r.top - 4 - Math.min(260, pop.offsetHeight || 260))}px`;
+    window.addEventListener('pointerdown', outside, true);
+    update();
+    input.focus();
+  }
+
+  return el('div', { class: 'select' }, button);
 }

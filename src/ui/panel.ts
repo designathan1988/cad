@@ -11,7 +11,8 @@ import { floorPanel, roomPanel, type RoomPanelActions } from '../elements/room/p
 import { distance } from '../core/vector';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { ReferenceLine } from '../elements/wall/schema';
-import { el, numberField, row, scrub, section, segmented, select } from './controls';
+import { el, numberField, row, scrub, searchSelect, section, segmented, select } from './controls';
+import { layerSwatch } from './swatch';
 import { name, num, t, type MessageKey } from './i18n';
 import { icon } from './icons';
 
@@ -65,7 +66,8 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     h.append(el('span', { class: 'title' }, title), close);
     return h;
   };
-  const typeOptions = doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name) }));
+  // Types are many and alike: a list with search and a thumbnail of each one's layers.
+  const typeOptions = doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name), keywords: w.name, thumb: layerSwatch(w.layers, name(w.name)) }));
   const refOptions = REFS.map((r) => ({ value: r.value, label: t(r.key), icon: r.icon }));
   const topOptions = [
     { value: 'level' as const, label: t('panel.topLevel') },
@@ -84,7 +86,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     const general = section(
       t('panel.general'),
       true,
-      row(t('panel.type'), select(typeOptions, typeId, (v) => act.updateWalls({ wallTypeId: v }))),
+      row(t('panel.type'), searchSelect(typeOptions, typeId, (v) => act.updateWalls({ wallTypeId: v }), t('panel.type'))),
       row(t('panel.reference'), segmented(refOptions, common(selected, (w) => w.referenceLine), (v) => act.updateWalls({ referenceLine: v }))),
     );
     const constraints = section(
@@ -150,7 +152,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     const s = section(
       t('panel.general'),
       true,
-      row(t('panel.type'), select(typeOptions, d.wallTypeId, (v) => act.updateDefaults({ wallTypeId: v }))),
+      row(t('panel.type'), searchSelect(typeOptions, d.wallTypeId, (v) => act.updateDefaults({ wallTypeId: v }), t('panel.type'))),
       row(t('panel.reference'), segmented(refOptions, d.referenceLine, (v) => act.updateDefaults({ referenceLine: v }))),
       row(t('panel.baseOffset'), numberField(d.baseOffset, (v) => act.updateDefaults({ baseOffset: v }))),
       row(t('panel.top'), select(topOptions, d.top.kind, (v) => act.updateDefaults({ top: v === 'level' ? { kind: 'level', offset: 0 } : { kind: 'fixed', height: 2.8 } }))),
