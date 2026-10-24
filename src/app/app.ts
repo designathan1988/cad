@@ -956,12 +956,22 @@ export class App {
       const ys: number[] = [];
       const project = (v: Point2, z: number) => {
         const p = new THREE.Vector3(v.x, z, -v.y).project(this.scene.camera);
+        // Behind the camera a point projects mirrored: leave it out.
+        if (p.z > 1) return;
         xs.push(((p.x + 1) / 2) * vp.width);
         ys.push(((1 - p.y) / 2) * vp.height);
       };
       for (const id of this.ui.selection) {
         const opening = this.geometry.openings.get(id);
         if (opening) for (const v of openingOutline(opening)) [opening.bottom, opening.top].forEach((z) => project(v, z));
+        // Rooms at their level's floor, floors at both their faces.
+        const room = this.geometry.rooms.get(id);
+        if (room) {
+          const z = this.store.get().levels.find((l) => l.id === room.room.levelId)?.elevation ?? 0;
+          for (const v of room.outline) project(v, z);
+        }
+        const floor = this.geometry.floors.get(id);
+        if (floor) for (const v of floor.outline) [floor.bottom, floor.top].forEach((z) => project(v, z));
         const solid = this.geometry.solids.get(id);
         if (!solid) continue;
         for (const piece of solid.pieces) {
@@ -969,6 +979,11 @@ export class App {
             for (const z of [solid.bottom, solid.top]) project(v, z);
           }
         }
+      }
+      // Nothing of the selection in front of the camera: no bar, rather than one at a stale place.
+      if (xs.length === 0) {
+        bar.hidden = true;
+        return;
       }
       x = (Math.min(...xs) + Math.max(...xs)) / 2;
       yTop = Math.min(...ys);
