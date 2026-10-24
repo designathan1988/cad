@@ -12,8 +12,10 @@ import type { DocWall } from '../app/document';
 /**
  * Version 1: walls, openings, rooms and floors, each list optional when empty in older saves.
  * Version 2: opening groups, and the aligned and in-group rules. A version 1 file has no groups.
+ * Version 3: a wall's top and base offset may be left out (it takes its type's); a wall type may
+ * give them. Older files always have them, so they read unchanged; older apps refuse version 3.
  */
-export const CURRENT_VERSION = 2;
+export const CURRENT_VERSION = 3;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
@@ -29,13 +31,19 @@ export const isPoint = (p: unknown): boolean => isObject(p) && finite(p.x) && fi
 export const isLevel = (l: unknown): l is Level =>
   isObject(l) && typeof l.id === 'string' && typeof l.name === 'string' && finite(l.elevation) && finite(l.height) && l.height > 0;
 
+/** A top rule: the level's height plus an offset, or a fixed height above the base. Absent is fine. */
+const isTop = (r: unknown): boolean =>
+  r === undefined || (isObject(r) && ((r.kind === 'level' && finite(r.offset)) || (r.kind === 'fixed' && finite(r.height) && r.height > 0)));
+
 export const isWallType = (t: unknown): t is WallType =>
   isObject(t) &&
   typeof t.id === 'string' &&
   typeof t.name === 'string' &&
   Array.isArray(t.layers) &&
   t.layers.length > 0 &&
-  t.layers.every((l: unknown) => isObject(l) && finite(l.thickness) && l.thickness > 0 && typeof l.function === 'string');
+  t.layers.every((l: unknown) => isObject(l) && finite(l.thickness) && l.thickness > 0 && typeof l.function === 'string') &&
+  isTop(t.top) &&
+  (t.baseOffset === undefined || finite(t.baseOffset));
 
 export const isWall = (w: unknown): w is DocWall =>
   isObject(w) &&
@@ -43,7 +51,9 @@ export const isWall = (w: unknown): w is DocWall =>
   isPoint(w.start) &&
   isPoint(w.end) &&
   typeof w.wallTypeId === 'string' &&
-  (w.bulge === undefined || finite(w.bulge));
+  (w.bulge === undefined || finite(w.bulge)) &&
+  isTop(w.top) &&
+  (w.baseOffset === undefined || finite(w.baseOffset));
 
 const isRule = (r: unknown): boolean => {
   if (!isObject(r)) return false;
