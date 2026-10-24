@@ -38,8 +38,19 @@ export interface CornerResult {
   readonly notches: readonly Notch[];
 }
 
-/** Every measure is taken from `node`, so ends that overran each other resolve like ends that touch. */
-export function resolveCorner(a: WallShape, aEnd: WallEnd, b: WallShape, bEnd: WallEnd, node: Point2): CornerResult {
+/**
+ * Every measure is taken from `node`, so ends that overran each other resolve like ends that touch.
+ * `reach`: how far from the node a wall's free end is, when it is not its own far end: an arc's end
+ * segment goes on into the rest of its arc (§5.2), so only the arc's own far end is free (§7.1).
+ */
+export function resolveCorner(
+  a: WallShape,
+  aEnd: WallEnd,
+  b: WallShape,
+  bEnd: WallEnd,
+  node: Point2,
+  reach: { readonly a?: number; readonly b?: number } = {},
+): CornerResult {
   const ua = intoBody(a, aEnd);
   const ub = intoBody(b, bEnd);
   const angle = (Math.atan2(Math.abs(cross(ua, ub)), dot(ua, ub)) * 180) / Math.PI;
@@ -56,8 +67,8 @@ export function resolveCorner(a: WallShape, aEnd: WallEnd, b: WallShape, bEnd: W
   if (corners === null) return shared();
   const { inner, outer } = corners;
   // A corner past either wall's far end means the corner swallows that wall: a stub, not a join.
-  const reachA = dot(sub(far(a, aEnd), node), ua);
-  const reachB = dot(sub(far(b, bEnd), node), ub);
+  const reachA = reach.a ?? dot(sub(far(a, aEnd), node), ua);
+  const reachB = reach.b ?? dot(sub(far(b, bEnd), node), ub);
   const beyond = (p: Point2) => dot(sub(p, node), ua) > reachA || dot(sub(p, node), ub) > reachB;
   if (beyond(inner) || beyond(outer)) return overlapping(a, b);
 

@@ -3,7 +3,7 @@
 // lines, so the layers tile the wall exactly.
 
 import { AREA_EPSILON, POINT_TOLERANCE } from '../../../core/tolerance';
-import { add, dot, type Point2, scale, sub } from '../../../core/vector';
+import { add, distance, dot, intersectLines, type Point2, scale, sub } from '../../../core/vector';
 import { resolveCorner } from '../join/cut-l';
 import { type AbutmentResult, resolveAbutment } from '../join/cut-t';
 import { deriveJoins } from '../join/discover';
@@ -11,7 +11,7 @@ import { resolveNode } from '../join/node';
 import type { EndCut, JoinWarning, Notch } from '../join/types';
 import type { EndRef, Wall, WallId, WallType, WallTypeId } from '../schema';
 import { type ArcChain, arcOf, expandArc, inSector, parentOf, sectorOf } from './arc';
-import { area, clipHalfPlane, clipOut, type ConvexPolygon, type HalfPlane, halfPlaneThrough, overlapArea } from './convex';
+import { area, clipHalfPlane, clipOut, type ConvexPolygon, type HalfPlane, halfPlaneThrough, overlapArea, toCounterClockwise } from './convex';
 import { endPoint, faceOffsets, intoBody, offsetOf, stationOf as stationAlong, strip, wallDirection, wallNormal } from './offset';
 import { shapeOf, type WallShape } from './shape';
 
@@ -59,18 +59,53 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   // An L at an arc's end is made with its end segment. In a butt where the arc abuts, the other wall's
   // body can still reach the segments before that one: the cut is carried on as for an arc stem in a T.
   const arcStems: { end: EndRef; host: WallShape }[] = [];
+  // Walls split near an end against an arc wider than one segment (spreadOverArc, spillOverArc).
+  const splits = new Map<string, StemSplit[]>();
+  // An arc's end segment at the arc's free end is not free at its other end: the arc goes on (§5.2).
+  // Its reach in an L is the whole arc's, up to the arc's own far end (§7.1, "ponta livre").
+  const arcReach = (r: EndRef, other: EndRef): number | undefined => {
+    const chain = chains.get(parentOf(r.wallId));
+    if (!chain || parentOf(other.wallId) === parentOf(r.wallId)) return undefined;
+    return chain.segments.reduce((sum, s) => sum + distance(s.start, s.end), 0);
+  };
   for (const { ends: [ra, rb], node } of graph.corners) {
-    const result = resolveCorner(byId.get(ra.wallId)!, ra.end, byId.get(rb.wallId)!, rb.end, node);
+    const reachA = arcReach(ra, rb);
+    const reachB = arcReach(rb, ra);
+    const result = resolveCorner(byId.get(ra.wallId)!, ra.end, byId.get(rb.wallId)!, rb.end, node, {
+      ...(reachA !== undefined ? { a: reachA } : {}),
+      ...(reachB !== undefined ? { b: reachB } : {}),
+    });
     if (result.a) endCuts.set(keyOf(ra), result.a);
     if (result.b) endCuts.set(keyOf(rb), result.b);
     if (result.warning) report(result.warning);
-    notches.push(...result.notches);
-    for (const [arc, other, arcCut] of [
-      [ra, rb, result.a],
-      [rb, ra, result.b],
+    // An arc's end segment abutting in a butt notches the other wall only up to its joint with the next
+    // segment, a radial plane, as in a T (the next segments carry their own): bounded square at its
+    // chord's end, a sliver of the other wall's finish was left un-notched.
+    const abutsArc = (r: EndRef, cut: EndCut | null) => !result.warning && cut?.layerCuts && chains.has(parentOf(r.wallId));
+    if (abutsArc(ra, result.a) || abutsArc(rb, result.b)) {
+      const [arc, other] = abutsArc(ra, result.a) ? [ra, rb] : [rb, ra];
+      const chain = chains.get(parentOf(arc.wallId))!;
+      const back = wedge(chain, arc.wallId).filter((_, k) => k === (arc.end === 'end' ? 0 : 1));
+      notches.push(...resolveAbutment(byId.get(arc.wallId)!, arc.end, byId.get(other.wallId)!, back).notches);
+    } else notches.push(...result.notches);
+    for (const [arc, other, arcCut, otherCut] of [
+      [ra, rb, result.a, result.b],
+      [rb, ra, result.b, result.a],
     ] as const) {
+      if (!chains.has(parentOf(arc.wallId)) || result.warning || !arcCut || !otherCut) continue;
       // The abutting side of a butt has layer cuts (cut-l.ts: resolveAbutment); a miter has none.
-      if (chains.has(parentOf(arc.wallId)) && arcCut?.layerCuts) arcStems.push({ end: arc, host: byId.get(other.wallId)! });
+      if (arcCut.layerCuts) {
+        arcStems.push({ end: arc, host: byId.get(other.wallId)! });
+        continue;
+      }
+      // A miter, or a butt the arc passes: the other wall can reach the segments past the end one.
+      const chain = chains.get(parentOf(arc.wallId))!;
+      if (chains.has(parentOf(other.wallId))) continue;
+      const spill = spillOverArc(byId.get(other.wallId)!, other.end, chain, arc.wallId, otherCut);
+      if (!spill) continue;
+      endCuts.set(keyOf(other), { extension: otherCut.extension, cuts: [] });
+      notches.push(...spill.notches);
+      splits.set(other.wallId, [...(splits.get(other.wallId) ?? []), spill.split]);
     }
   }
   for (const { ends, point } of graph.nodes) {
@@ -83,7 +118,6 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   // still reach past the host's face take their own (carryArcStem).
   // A straight wall against an arc wider than one segment: split near its end by the segments' wedges
   // (spreadOverArc), each part with that segment's T.
-  const splits = new Map<string, StemSplit[]>();
   for (const { abutting, hostId } of graph.abutments) {
     const stemChain = chains.get(parentOf(abutting.wallId));
     // The end segment's notches stop at the joint with the segment before it, a radial plane.
@@ -207,7 +241,7 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     notches.push(...before.notches, ...after.notches);
   }
 
-  const clips = new Map<string, EndCut[]>();
+  const clips = new Map<string, Carried[]>();
   for (const { end, host } of arcStems) {
     const carried = carryArcStem(chains.get(parentOf(end.wallId))!, end, host, (shape) => spans.get(shape.id)!.flatMap((span) => spanPieces(span, [])));
     for (const [id, cut] of carried.clips) clips.set(id, [...(clips.get(id) ?? []), cut]);
@@ -221,7 +255,7 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     // split of one side must not touch the other.
     let raw = spans.get(shape.id)!.flatMap((span) => (span.splits ?? []).reduce((ps, split) => splitPieces(ps, split), spanPieces(span, own)));
     for (const split of splits.get(shape.id) ?? []) raw = splitPieces(raw, split);
-    pieces.get(parentOf(shape.id))!.push(...(clips.has(shape.id) ? clipPieces(raw, clips.get(shape.id)!) : raw));
+    pieces.get(parentOf(shape.id))!.push(...(clips.has(shape.id) ? carriedPieces(raw, clips.get(shape.id)!) : raw));
   }
   warnings.push(...overlapsWithArcs(pieces, chains, warnings));
   return { pieces, warnings: dedupe(warnings) };
@@ -262,25 +296,56 @@ function carryArcStem(
   end: EndRef,
   host: WallShape,
   piecesOf: (shape: WallShape) => Piece[],
-): { clips: Map<string, EndCut>; notches: Notch[] } {
-  const clips = new Map<string, EndCut>();
+): { clips: Map<string, Carried>; notches: Notch[] } {
+  const clips = new Map<string, Carried>();
   const notches: Notch[] = [];
   const at = chain.segments.findIndex((x) => x.id === end.wallId);
   const step = end.end === 'end' ? -1 : 1;
+  // The host as it is, its ends cut: a T's cut is an infinite plane, which must act only where the host
+  // is (an L's straight wall, whose line runs on along the arc's earlier segments past its own end).
+  const within = piecesOf(host).map((p) => p.polygon);
   for (let i = at + step; i >= 0 && i < chain.segments.length; i += step) {
     const segment = chain.segments[i]!;
+    // Reaching: it overlaps the host's body.
+    if (!piecesOf(segment).some((piece) => within.some((h) => overlapArea(piece.polygon, h) > AREA_EPSILON))) break;
     const r = resolveAbutment(segment, end.end, host, wedge(chain, segment.id));
-    // Reaching: some of it is past the host's near face, inside the host's band.
-    const [f0, f1] = faceOffsets(host);
-    const inside = (p: Point2) => {
-      const o = offsetOf(host, p);
-      return o > f0 + 1e-9 && o < f1 - 1e-9;
-    };
-    if (!piecesOf(segment).some((piece) => piece.polygon.some(inside))) break;
-    clips.set(segment.id, { ...r.cut, extension: 0 });
+    clips.set(segment.id, { cut: { ...r.cut, extension: 0 }, within });
     notches.push(...r.notches);
   }
   return { clips, notches };
+}
+
+/** A T carried along an arc (carryArcStem): its cut, and the host's body, the only place it acts. */
+interface Carried {
+  readonly cut: EndCut;
+  readonly within: readonly ConvexPolygon[];
+}
+
+/** Pieces with carried T cuts: inside the host's body, cut layer by layer; outside it, as they are. */
+function carriedPieces(pieces: readonly Piece[], carried: readonly Carried[]): Piece[] {
+  const keep = (layerIndex: number, polygon: ConvexPolygon): Piece[] => (polygon.length > 0 && area(polygon) > AREA_EPSILON ? [{ layerIndex, polygon }] : []);
+  return carried.reduce<Piece[]>(
+    (ps, { cut, within }) =>
+      ps.flatMap((piece) => {
+        const planes = [...cut.cuts, ...(cut.layerCuts?.[piece.layerIndex] ?? [])];
+        const outside = within.reduce<ConvexPolygon[]>((left, h) => left.flatMap((p) => clipOut(p, regionOf(h))), [piece.polygon]);
+        const inside = within.map((h) => regionOf(h).reduce<ConvexPolygon>((p, plane) => (p.length > 0 ? clipHalfPlane(p, plane) : p), piece.polygon));
+        return [
+          ...outside.flatMap((p) => keep(piece.layerIndex, p)),
+          ...inside.flatMap((p) => keep(piece.layerIndex, planes.reduce<ConvexPolygon>((q, plane) => (q.length > 0 ? clipHalfPlane(q, plane) : q), p))),
+        ];
+      }),
+    [...pieces],
+  );
+}
+
+/** A convex polygon as the half-planes of its sides, inside each (either winding). */
+function regionOf(poly: ConvexPolygon): HalfPlane[] {
+  const ccw = toCounterClockwise(poly);
+  return ccw.map((p, i) => {
+    const q = ccw[(i + 1) % ccw.length]!;
+    return halfPlaneThrough(p, { x: -(q.y - p.y), y: q.x - p.x });
+  });
 }
 
 /** How a wall's end is cut against an arc wider than one segment: per wedge, that segment's T. */
@@ -289,8 +354,10 @@ interface StemSplit {
   readonly near: HalfPlane;
   readonly far: HalfPlane;
   readonly parts: readonly { readonly wedge: readonly HalfPlane[]; readonly cut: EndCut }[];
-  /** Behind the wall's own end: what stays of the end zone outside every wedge (past the arc's end). */
-  readonly behind: HalfPlane;
+  /** A T: behind the wall's own end is what stays of the end zone outside every wedge (past the arc's end). */
+  readonly behind?: HalfPlane;
+  /** An L: outside every wedge (its tip past the arc's end) the zone takes the L's own cut. */
+  readonly outsideCut?: EndCut;
 }
 
 /**
@@ -349,6 +416,78 @@ function spreadOverArc(stem: WallShape, end: EndRef['end'], chain: ArcChain): { 
   return { extension, split: { near, far, parts, behind: halfPlaneThrough(at, into) }, notches };
 }
 
+/**
+ * The L at an arc's end, when the other wall's body reaches the segments past the end one (a thick
+ * wall, an obtuse or a tight corner). The corner is made with the end segment (spec part 6); past it the
+ * arc goes on and that wall abuts it: near its end it is split by the segments' wedges, the end
+ * segment's part taking the L's own cut, each other part that segment's T (layers by priority, the
+ * segment notched where they pass), and what lies outside every wedge (the corner's tip past the arc's
+ * end) the L's cut too. Null when it reaches no other segment: the L alone.
+ */
+function spillOverArc(stem: WallShape, end: EndRef['end'], chain: ArcChain, endSegmentId: string, lCut: EndCut): { split: StemSplit; notches: Notch[] } | null {
+  const MARGIN = 0.01;
+  const into = intoBody(stem, end);
+  const at = endPoint(stem, end);
+  const along = (p: Point2) => dot(sub(p, at), into);
+  const n = wallNormal(stem);
+  const [o0, o1] = faceOffsets(stem);
+  const band = [halfPlaneThrough(add(stem.start, scale(n, o0)), n), halfPlaneThrough(add(stem.start, scale(n, o1)), scale(n, -1))];
+  const clip = (poly: ConvexPolygon, planes: readonly HalfPlane[]) => planes.reduce<ConvexPolygon>((p, h) => (p.length > 0 ? clipHalfPlane(p, h) : p), poly);
+  // Where the band crosses the chain's bodies near the node, as for a T (spreadOverArc).
+  const spans = chain.segments
+    .map((segment, i) => clip(clip(strip(segment, 0, 0), sectorOf(chain, i)), band).map(along))
+    .filter((as) => as.length > 0)
+    .map((as) => [Math.min(...as), Math.max(...as)] as const)
+    .sort((a, b) => a[0] - b[0]);
+  const merged: [number, number][] = [];
+  for (const [a, b] of spans) {
+    const last = merged[merged.length - 1];
+    if (last && a <= last[1] + POINT_TOLERANCE) last[1] = Math.max(last[1], b);
+    else merged.push([a, b]);
+  }
+  const crossing = merged.filter(([a]) => a <= POINT_TOLERANCE).sort((x, y) => y[1] - x[1])[0];
+  if (!crossing) return null;
+  // The corner itself: as far along the wall as the end segment's face and layer lines meet the wall's
+  // faces (a butt cuts on layer faces; the end segment of an arc that passes runs into the corner).
+  const endSegment = chain.segments.find((x) => x.id === endSegmentId)!;
+  const ds = wallDirection(endSegment);
+  const ns = wallNormal(endSegment);
+  const dw = wallDirection(stem);
+  const corner = endSegment.layerOffsets.flatMap((os) =>
+    [o0, o1].map((ow) => {
+      const p = intersectLines(add(endSegment.start, scale(ns, os)), ds, add(stem.start, scale(n, ow)), dw);
+      return p ? along(p) : 0;
+    }),
+  );
+  const edge = add(at, scale(into, Math.max(crossing[1], 0, ...corner) + MARGIN));
+  const near = halfPlaneThrough(edge, scale(into, -1));
+  const far = halfPlaneThrough(edge, into);
+  const zone = clipHalfPlane(strip(stem, end === 'start' ? lCut.extension : 0, end === 'end' ? lCut.extension : 0), near);
+  const parts: { wedge: readonly HalfPlane[]; cut: EndCut }[] = [];
+  const notches: Notch[] = [];
+  let spills = false;
+  chain.segments.forEach((segment, i) => {
+    const w = sectorOf(chain, i);
+    const inWedge = clip(zone, w);
+    if (inWedge.length === 0 || area(inWedge) <= AREA_EPSILON) return;
+    if (segment.id === endSegmentId) {
+      parts.push({ wedge: w, cut: lCut });
+      return;
+    }
+    // Only where the wall's own band reaches this segment's body: elsewhere in its wedge the L's cut.
+    if (clip(clip(clip(strip(segment, 0, 0), w), band), [near]).length === 0) {
+      parts.push({ wedge: w, cut: lCut });
+      return;
+    }
+    spills = true;
+    const r = resolveAbutment(stem, end, segment);
+    parts.push({ wedge: w, cut: r.cut });
+    notches.push(...r.notches);
+  });
+  if (!spills) return null;
+  return { split: { near, far, parts, outsideCut: lCut }, notches };
+}
+
 /** A wall's pieces with one end split (StemSplit): the far part as it is, the near part per wedge. */
 function splitPieces(pieces: readonly Piece[], split: StemSplit): Piece[] {
   const clip = (poly: ConvexPolygon, planes: readonly HalfPlane[]) => planes.reduce<ConvexPolygon>((p, h) => (p.length > 0 ? clipHalfPlane(p, h) : p), poly);
@@ -362,17 +501,10 @@ function splitPieces(pieces: readonly Piece[], split: StemSplit): Piece[] {
       ...split.parts.flatMap((part) =>
         keep(piece.layerIndex, clip(near, [...part.wedge, ...part.cut.cuts, ...(part.cut.layerCuts?.[piece.layerIndex] ?? [])])),
       ),
-      ...outside.flatMap((p) => keep(piece.layerIndex, clip(p, [split.behind]))),
+      ...outside.flatMap((p) =>
+        keep(piece.layerIndex, clip(p, split.behind ? [split.behind] : [...(split.outsideCut?.cuts ?? []), ...(split.outsideCut?.layerCuts?.[piece.layerIndex] ?? [])])),
+      ),
     ];
-  });
-}
-
-/** Pieces clipped by more end cuts, layer by layer; slivers left with no area are dropped. */
-function clipPieces(pieces: readonly Piece[], cuts: readonly EndCut[]): Piece[] {
-  return pieces.flatMap((piece) => {
-    const planes = cuts.flatMap((c) => [...c.cuts, ...(c.layerCuts?.[piece.layerIndex] ?? [])]);
-    const polygon = planes.reduce<ConvexPolygon>((poly, h) => (poly.length > 0 ? clipHalfPlane(poly, h) : poly), piece.polygon);
-    return polygon.length > 0 && area(polygon) > AREA_EPSILON ? [{ layerIndex: piece.layerIndex, polygon }] : [];
   });
 }
 

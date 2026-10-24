@@ -308,6 +308,13 @@ o ângulo entre elas. *(Regras revisadas pelo spike — ver §16.)*
   impossível por construção, para qualquer referência e qualquer espessura.
 - Se qualquer canto fica **além da ponta livre** de qualquer das paredes → o
   canto engole a parede curta → sem junta, aviso `WallsOverlap`.
+  *(Esclarecimento de "ponta livre", 2026-10-24: num arco, o trecho da ponta
+  não tem ponta livre no encontro com o trecho seguinte, porque o arco continua
+  ali (§5.2: o arco é uma cadeia de trechos, não paredes soltas). A ponta livre
+  dele é a outra ponta do arco, e o alcance é o comprimento da cadeia. O canto
+  que passa do trecho da ponta, mas não da outra ponta do arco, é um L. A regra
+  vale inteira para a ponta livre da reta e para a outra ponta do arco: passar
+  delas continua sem junta, com aviso.)*
 - θ ≥ 90° e algum canto a mais de `MITER_LIMIT × max(T)` de P → **corte único
   por P** (degrau). É o caso quase em linha com faces desalinhadas, em que o
   miter viraria uma rampa de metros.
@@ -1024,8 +1031,9 @@ A suíte não tem mais faixa de empate nem `cornerOverreach`: o aviso é exigido
 `overlap` ou quando a reta toca outro trecho do arco (`touchesArcElsewhere`, com casos à mão em
 `oracle-arc.test.ts`), e todo o resto precisa juntar e cobrir exato.
 
-**Fica aberto:** um L na ponta de um arco cujo corpo da reta alcança os trechos seguintes continua
-recusado com `arcJoinUnsupported` (a última verificação). **Correção (2026-10-24):** escrevi aqui que
+**Ficava aberto (fechado abaixo, "L que passa do trecho da ponta"):** um L na ponta de um arco cujo
+corpo da reta alcança os trechos seguintes continuava recusado com `arcJoinUnsupported` (a última
+verificação). **Correção (2026-10-24):** escrevi aqui que
 nenhum caso assim aparecia em 12 000 rodadas nem numa busca de 141 742 Ls. Estava errado: a suíte e a
 busca pulavam (ou exigiam aviso de) toda reta que tocasse o arco fora do trecho da ponta
 (`touchesArcElsewhere`), e esse é justamente o caso. Separado da segunda junta, ele é comum: na seed
@@ -1088,3 +1096,31 @@ A suíte do L passou a separar o transbordo da segunda junta pela geometria, nã
 o contato com os outros trechos que começa dentro do alcance do canto do L (`cornerReach`: o mais
 longe dos quatro encontros das faces da reta com as do trecho da ponta, com caso à mão) é o
 transbordo; além dele, segunda junta. Separou os mesmos 32 casos que o corte de 0,3 m separava.
+
+**L que passa do trecho da ponta (2026-10-24):** antes recusado com `arcJoinUnsupported` (32 de 98 Ls
+na seed fixa). Com o esclarecimento de "ponta livre" na §7.1, a spec faz esse L.
+
+- Motor: o alcance do trecho da ponta, no L, é o comprimento da cadeia (`resolveCorner` recebe o
+  alcance de cada lado; `cut-l.ts`). Perto do nó, a reta é dividida pelas cunhas radiais dos trechos
+  (`spillOverArc`), até o mais longe entre o cruzamento da faixa dela com o arco e o canto (os encontros
+  das linhas de camada do trecho da ponta com as faces da reta), mais 1 cm. Na cunha do trecho da ponta
+  e nas cunhas cujo corpo a faixa não alcança, a parte recebe o corte do L; nas outras, o T contra
+  aquele trecho (§7.2). Fora de toda cunha, o corte do L. No butt em que o arco encosta, os entalhes
+  do trecho da ponta param no plano radial dele. O corte levado adiante pelos trechos seguintes
+  (`carryArcStem`) só age dentro dos pedaços desses trechos (antes valia numa faixa infinita).
+- Oráculo: `arcCorner` usa o mesmo alcance (`expectedCorner` com o comprimento da cadeia). A região é
+  feita com a corda do trecho da ponta prolongada (a região com a ponta do trecho como vértice se
+  dobrava quando o canto passava dela). Onde ela decide: na cunha do trecho da ponta, ou fora da
+  varredura do lado do nó, nunca nos corpos dos outros trechos. `cornerReach` é limitado pelas
+  regras da §7.1 (`MITER_LIMIT × max(T)` e o tipo de canto). Na cobertura do L, o que da reta passa
+  do arco não é guardado (`tBeyond`, como num T, §7.2).
+
+| Item | Resultado |
+|---|---|
+| Casos à mão em `arc-corner.test.ts` | 4 que passam do trecho da ponta e juntam exato (paredes de 40 e 60 cm a 100° e 140° de um arco de 88 trechos de 10,7 cm); 2 que passam de uma ponta livre de verdade e avisam (arco de 10 cm com parede de 50 cm; parede de 30 cm de comprimento e 60 cm de espessura) |
+| Controle no oráculo | nos 4 casos, com o trecho da ponta livre na própria ponta (regra antiga), `cornerJoin` dá `overlap` |
+| Controle no motor | sem o alcance da cadeia, os 4 casos à mão e a suíte do L voltam a avisar |
+| Suíte de propriedade do L, seed fixa, 100 rodadas | 95 juntam e cobrem exato (29 deles passando do trecho da ponta), 0 avisos, 5 pulados (a reta passa perto da outra ponta do arco: segunda junta, que o oráculo não modela; 3 deles também passavam do trecho da ponta), limite 5 |
+
+Dos 32, 29 viraram L exatos no oráculo estrito; os outros 3 não são avisos, são pulados como segunda
+junta. Nenhum aviso sobrou na suíte; os avisos que a §7.1 manda estão nos 2 casos à mão.

@@ -24,11 +24,11 @@ o resolve existe e, se for de interface, quando a sessão de teste o viu no nave
 
 ## Motor de paredes
 
-- **L na ponta de um arco cuja reta alcança os trechos seguintes (transbordo): ainda avisa**
-  (wall-joins-spec.md, parte 6). Comum, não raro: 32 de 98 Ls na seed fixa da suíte. Eu tinha escrito
-  "nenhum caso real": a busca pulava exatamente esses casos. Próximo item do motor.
+- Resolvido em 2026-10-24: o L na ponta de um arco cuja reta alcança os trechos seguintes
+  (transbordo) agora junta (wall-joins-spec.md, §7.1 "ponta livre" e parte 6). 29 dos 32 casos da seed
+  fixa cobrem exato; os outros 3 são pulados como segunda junta (item abaixo).
 - Casos com duas juntas que o gerador da suíte de arcos pula (ponta longe sobre o arco, ou passando
-  perto da outra ponta).
+  perto da outra ponta). A suíte do L está no limite: 5 de 100 pulados.
 - Alturas diferentes entre paredes ligadas.
 - Faces de corte no 3D.
 - Overrides de junta (desligar, butt, miter, corte reto).
