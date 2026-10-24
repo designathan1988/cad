@@ -57,7 +57,7 @@ describe('palette actions', () => {
       expect(a.label.trim(), a.id).not.toBe('');
       expect(a.keywords, a.id).toContain(en[i]!.label.split(' ')[0]);
     });
-    expect(pt.find((a) => a.id === 'tool.wall')!.label).toBe('Parede');
+    expect(pt.find((a) => a.id === 'tool.wall')!.label).toBe('Desenhar parede');
     expect(en.find((a) => a.id === 'level.lvl_up')!.label).toBe('Go to level Upper');
   });
 });
