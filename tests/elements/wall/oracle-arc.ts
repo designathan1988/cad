@@ -3,8 +3,8 @@
 // a wall's body left uncovered, and nothing drawn outside the bodies except around the joined node.
 
 import type { WallEnd } from '../../../src/elements/wall/schema';
-import { geometry, type TestWall as Wall } from './fixtures';
-import { frameOf, inside, rectOf, type P } from './oracle';
+import { geometry, layer, type TestWall as Wall } from './fixtures';
+import { expectedL, frameOf, inside, rectOf, type P, type Region } from './oracle';
 
 const SPEC_ARC_SAG = 5e-4;
 const pt = (x: number, y: number): P => ({ x, y });
@@ -95,11 +95,40 @@ export interface Coverage {
 }
 
 /**
+ * The region the spec gives an L between an arc's end and a straight wall: the arc joins as its chain
+ * of straight segments (spec §5.2), so near the node it is the straight L (oracle.ts, expectedL)
+ * between the end segment (the chord of the reference circle, layer offsets × cos(Δ/2)) and the
+ * wall. `applies`: where that alone decides: along the end segment, short of its far joint (radial,
+ * not square as the straight L's far end), by the thickness times tan(Δ/2). 'overlap' when the spec
+ * says that L warns.
+ */
+export function arcCorner(arc: Wall, arcEnd: WallEnd, straight: Wall, straightEnd: WallEnd): { region: Region; applies: (p: P) => boolean } | 'overlap' {
+  const c = circleOf(arc);
+  const n = segmentsOf(arc);
+  const d = c.sweep / n;
+  const ang = arcEnd === 'start' ? c.a0 + d : c.a0 + c.sweep - d;
+  const p = pt(c.cx + c.r * Math.cos(ang), c.cy + c.r * Math.sin(ang));
+  const k = Math.cos(d / 2);
+  const ls = arc.layers.map((l) => layer(l.thickness * k, l.function));
+  const node = arcEnd === 'start' ? arc.start : arc.end;
+  const seg: Wall = { ...arc, id: `${arc.id}#end`, start: arcEnd === 'start' ? node : p, end: arcEnd === 'start' ? p : node, layers: ls, thickness: arc.thickness * k };
+  delete (seg as { bulge?: number }).bulge;
+  const region = expectedL(seg, arcEnd, straight, straightEnd);
+  if (region === 'overlap') return 'overlap';
+  const len = Math.hypot(p.x - node.x, p.y - node.y);
+  const dir = pt((p.x - node.x) / len, (p.y - node.y) / len);
+  const short = len - arc.thickness * Math.abs(Math.tan(d / 2)) - 1e-6;
+  return { region, applies: (q) => (q.x - node.x) * dir.x + (q.y - node.y) * dir.y <= short };
+}
+
+/**
  * Samples around every body and the node. Overlap: two pieces. Gap: a body point no piece covers.
  * Extra: a covered point outside every body, farther than `tip` from the node (the miter's outer tip
- * and the end the corner fills lie within it).
+ * and the end the corner fills lie within it). With `corner` (arcCorner), points near the node where it
+ * applies must be covered once exactly where its region is, and nowhere else: an acute L trims the
+ * end of a body that would stick out past the other wall's outer face.
  */
-export function coverage(walls: readonly Wall[], node: P | null, tip: number, seed: number): Coverage {
+export function coverage(walls: readonly Wall[], node: P | null, tip: number, seed: number, corner?: { region: Region; applies: (p: P) => boolean }): Coverage {
   const { pieces } = geometry(walls);
   const polys = walls.flatMap((w) => (pieces.get(w.id) ?? []).map((p) => p.polygon));
   const bodies = walls.flatMap(bodyOf);
@@ -109,7 +138,8 @@ export function coverage(walls: readonly Wall[], node: P | null, tip: number, se
   let gaps = 0;
   let extras = 0;
   let firstBad: P | null = null;
-  const edges = bodies.flatMap((b) => b.map((v, i) => [v, b[(i + 1) % b.length]!] as const));
+  // Points on an edge (of a body, or of the corner's region) could go either way: not tested.
+  const edges = [...bodies.flatMap((b) => b.map((v, i) => [v, b[(i + 1) % b.length]!] as const)), ...(corner?.region.edges ?? [])];
   const nearEdge = (p: P) =>
     edges.some(([a, b]) => {
       const ab = pt(b.x - a.x, b.y - a.y);
@@ -121,6 +151,15 @@ export function coverage(walls: readonly Wall[], node: P | null, tip: number, se
     if (nearEdge(p)) return;
     samples++;
     const count = polys.filter((q) => inside(q, p)).length;
+    if (corner && node && Math.hypot(p.x - node.x, p.y - node.y) <= tip && corner.applies(p)) {
+      const want = corner.region.contains(p) ? 1 : 0;
+      if (count !== want) {
+        if (count > want) overlaps++;
+        else gaps++;
+        if (firstBad === null) firstBad = p;
+      }
+      return;
+    }
     const inBody = bodies.some((b) => inside(b, p));
     const nearNode = node !== null && Math.hypot(p.x - node.x, p.y - node.y) <= tip;
     let bad = false;

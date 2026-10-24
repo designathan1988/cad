@@ -972,7 +972,12 @@ sempre recusado com aviso, e o aviso dizia "paredes demais num mesmo ponto".
 |---|---|
 | Testes | 13 casos à mão de arcos; suíte inteira 146/146 |
 
-**Defeito aberto** (achado pela verificação por amostragem `oracle-arc.ts`, ainda fora do
-repositório): arco de 1 cm (`interiorFace`, bulge 0,0437, de (0, 0) a (1, 0)) com parede reta de 1 cm
-a 30° na ponta inicial deixa uma fresta perto do nó, em (0,0077, 0,0006). Corrigir antes de pôr a
-suíte de propriedade dos arcos no repositório.
+**Defeito investigado e encerrado (2026-10-24):** o caso (arco de 1 cm, `interiorFace`, bulge
+0,0437, de (0, 0) a (1, 0), com parede reta de 1 cm a 30° na ponta inicial) não era do motor, e sim do
+oráculo de arcos. Num L agudo, a ponta reta de uma parede sai além da face externa da outra, e a
+região do L da spec (§7.1, `expectedL`) a corta. O oráculo exigia cobrir essa ponta. Com a mesma
+configuração com duas paredes retas, o mesmo oráculo acusa a mesma "fresta", e o motor bate com
+`expectedL`. Agora o oráculo (`arcCorner`) usa, perto do nó, o L da spec entre o trecho da ponta (a
+corda, com camadas × cos(Δ/2)) e a parede. `arc-corner.test.ts` confere as 18 combinações de
+referência e lado desse caso. A suíte de propriedade dos arcos ainda está fora do repositório: ela
+acusou um caso de sobreposição perto da outra ponta de um semicírculo, ainda sob investigação.
