@@ -318,6 +318,39 @@ select {
   box-shadow: var(--shadow);
   z-index: 5;
 }
+.temp-dims {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+.temp-dims > * {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  font: 600 12px/1 Inter, system-ui, sans-serif;
+  color: var(--wall-sel);
+  background: var(--canvas);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 3px 5px;
+}
+.temp-dims button {
+  cursor: text;
+}
+.temp-dims button:hover,
+.temp-dims button:focus-visible {
+  border-color: var(--wall-sel);
+  outline: none;
+}
+.temp-dims input {
+  width: 72px;
+  text-align: center;
+  border-color: var(--wall-sel);
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+}
 .float-bar[hidden] {
   display: none;
 }

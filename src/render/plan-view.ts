@@ -7,6 +7,14 @@ import { type DerivedGeometry, openingOutline } from '../app/geometry';
 import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
 
+/** A temporary dimension: measured from a to b, drawn beside the element on `side`, clear of it. */
+export interface DimMark {
+  readonly a: Point2;
+  readonly b: Point2;
+  readonly side: Point2;
+  readonly clear: number;
+}
+
 export interface PlanOverlay {
   readonly selected: ReadonlySet<WallId>;
   readonly hover: WallId | null;
@@ -25,6 +33,8 @@ export interface PlanOverlay {
   readonly draft: readonly Point2[] | null;
   /** The opening being placed (an id present in the geometry), drawn in the accent colour. */
   readonly openingPreview?: string | null;
+  /** Temporary dimensions of the selected element. */
+  readonly dims?: readonly DimMark[];
 }
 
 export class PlanView {
@@ -46,6 +56,17 @@ export class PlanView {
   toScreen(p: Point2): Point2 {
     const { w, h } = this.size;
     return { x: w / 2 + (p.x - this.center.x) * this.scale, y: h / 2 - (p.y - this.center.y) * this.scale };
+  }
+
+  /** A dimension on screen: its line (a to b) and where its extension lines start at the element. */
+  dimLine(d: DimMark): { a: Point2; b: Point2; fromA: Point2; fromB: Point2 } {
+    const side = { x: d.side.x, y: -d.side.y };
+    const at = (p: Point2, px: number) => {
+      const s = this.toScreen(p);
+      return { x: s.x + side.x * px, y: s.y + side.y * px };
+    };
+    const clear = d.clear * this.scale;
+    return { a: at(d.a, clear + 18), b: at(d.b, clear + 18), fromA: at(d.a, clear + 3), fromB: at(d.b, clear + 3) };
   }
 
   toWorld(s: Point2): Point2 {
@@ -180,6 +201,7 @@ export class PlanView {
       ctx.fillRect(Math.round(p.x) - 4.5, Math.round(p.y) - 4.5, 9, 9);
       ctx.strokeRect(Math.round(p.x) - 4.5, Math.round(p.y) - 4.5, 9, 9);
     }
+    for (const d of o.dims ?? []) this.drawDim(d, color('--wall-sel'));
     if (o.snap) this.drawSnap(o.snap, color('--snap'), color('--bg'));
     if (o.measure) this.label(o.measure.at, o.measure.text, color('--accent-text'), color('--canvas'), 'bold 12px Inter, system-ui');
   }
@@ -287,6 +309,43 @@ export class PlanView {
     ctx.lineTo(p.x - 5, p.y + 5);
     ctx.stroke();
     if (s.label) this.label({ x: s.point.x, y: s.point.y }, s.label, colour, bg, '600 11px Inter, system-ui', { x: 14, y: -12 });
+  }
+
+  /** Extension lines, the dimension line and a slash tick at each end; the value is a DOM field. */
+  private drawDim(d: DimMark, colour: string): void {
+    const { ctx } = this;
+    const l = this.dimLine(d);
+    const dx = l.b.x - l.a.x;
+    const dy = l.b.y - l.a.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) return;
+    const ux = dx / len;
+    const uy = dy / len;
+    // The side, on screen, for extending the extension lines a little past the dimension line.
+    const sx = (l.a.x - l.fromA.x) / 15;
+    const sy = (l.a.y - l.fromA.y) / 15;
+    ctx.save();
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (const [from, to] of [
+      [l.fromA, l.a],
+      [l.fromB, l.b],
+    ] as const) {
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x + sx * 4, to.y + sy * 4);
+    }
+    ctx.moveTo(l.a.x, l.a.y);
+    ctx.lineTo(l.b.x, l.b.y);
+    // Ticks at 45° to the line.
+    const tx = (ux + sx) * 4;
+    const ty = (uy + sy) * 4;
+    for (const p of [l.a, l.b]) {
+      ctx.moveTo(p.x - tx, p.y - ty);
+      ctx.lineTo(p.x + tx, p.y + ty);
+    }
+    ctx.stroke();
+    ctx.restore();
   }
 
   /** A text tag on a background pad, at a world point plus a screen offset. */

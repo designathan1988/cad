@@ -27,6 +27,7 @@ import { type Doc, type DocWall, newDocument, type WallDefaults } from './docume
 import { boundsOf, deriveGeometry, type DerivedGeometry, type OpeningSolid, openingOutline } from './geometry';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { readProject, writeProject } from '../io/project-file';
+import { type TempDim, tempDims } from './temp-dims';
 import { newId } from '../core/id';
 import { addFloor, addRoom, updateFloor, updateRoom } from '../elements/room/commands';
 import { insideRing, type FloorSolid, type RoomSolid } from '../elements/room/derive';
@@ -52,6 +53,8 @@ export interface UiState {
   drag: Drag | null;
   /** Corners of a floor outline being drawn. */
   floorDraft: Point2[];
+  /** The temporary dimension whose value is being typed. */
+  dimEdit: string | null;
 }
 
 const PREVIEW_ID = '__preview__';
@@ -95,6 +98,7 @@ export class App {
       error: null,
       drag: null,
       floorDraft: [],
+      dimEdit: null,
     };
     this.shell = buildShell(root);
     this.plan = new PlanView(this.shell.planCanvas);
@@ -474,11 +478,13 @@ export class App {
         })),
         draft: ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(ui.cursor ? [ui.cursor] : [])] : null,
         openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
+        dims: this.currentDims(),
       });
     } else {
       this.scene.sync(this.geometry, ui.selection, preview);
       this.cube.update(this.scene.camera);
     }
+    this.placeDims(plan ? this.currentDims() : []);
     this.renderChrome();
     // The panel is rebuilt only when what it shows changed: rebuilding on every mouse move would
     // close an open list and drop the focus of a field being typed in.
@@ -537,6 +543,91 @@ export class App {
         },
       },
     );
+  }
+
+  /** Temporary dimensions of the one selected element, while selecting (not while dragging). */
+  private currentDims(): TempDim[] {
+    if (this.ui.tool !== 'select' || this.ui.drag) return [];
+    return tempDims(this.store.get(), this.geometry, this.ui.selection);
+  }
+
+  /**
+   * The value of each temporary dimension, as a button at the middle of its line; the one being
+   * edited is a field. Elements are kept between renders so a field being typed in keeps its focus.
+   */
+  private placeDims(dims: readonly TempDim[]): void {
+    const box = this.shell.dims;
+    if (this.ui.dimEdit && !dims.some((d) => d.id === this.ui.dimEdit)) this.ui.dimEdit = null;
+    const keep = new Set(dims.map((d) => `${d.id}|${d.id === this.ui.dimEdit ? 'edit' : 'show'}`));
+    for (const child of [...box.children] as HTMLElement[]) if (!keep.has(child.dataset.key ?? '')) child.remove();
+    for (const d of dims) {
+      const editing = d.id === this.ui.dimEdit;
+      const key = `${d.id}|${editing ? 'edit' : 'show'}`;
+      let node = [...box.children].find((c) => (c as HTMLElement).dataset.key === key) as HTMLElement | undefined;
+      if (!node) {
+        node = editing ? this.dimField(d) : this.dimButton(d);
+        node.dataset.key = key;
+        box.append(node);
+        if (node instanceof HTMLInputElement) {
+          node.focus();
+          node.select();
+        }
+      }
+      if (node instanceof HTMLButtonElement) {
+        node.textContent = num(d.value);
+        node.title = t('dim.edit');
+        node.setAttribute('aria-label', `${num(d.value)} m. ${t('dim.edit')}`);
+      }
+      const l = this.plan.dimLine(d);
+      node.style.left = `${(l.a.x + l.b.x) / 2}px`;
+      node.style.top = `${(l.a.y + l.b.y) / 2}px`;
+    }
+  }
+
+  private dimButton(d: TempDim): HTMLButtonElement {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.addEventListener('click', () => {
+      this.ui.dimEdit = d.id;
+      this.render();
+    });
+    return b;
+  }
+
+  private dimField(d: TempDim): HTMLInputElement {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.value = num(d.value);
+    input.setAttribute('aria-label', t('foot.measure'));
+    const close = () => {
+      if (this.ui.dimEdit !== d.id) return;
+      this.ui.dimEdit = null;
+      this.render();
+    };
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Escape') {
+        this.ui.error = null;
+        return close();
+      }
+      if (e.key !== 'Enter') return;
+      const text = input.value.trim();
+      const v = parseLength(text);
+      // The dimension as it is now: the one this field was made for may be stale.
+      const dim = this.currentDims().find((x) => x.id === d.id);
+      const cmd = v.ok && dim ? dim.apply(v.value) : null;
+      if (!cmd) {
+        this.ui.error = t(v.ok ? 'hint.dimRefused' : 'hint.badMeasure', { text });
+        return this.renderChrome();
+      }
+      this.ui.error = null;
+      this.ui.dimEdit = null;
+      this.store.dispatch(cmd);
+    });
+    input.addEventListener('blur', close);
+    return input;
   }
 
   /** End grips of the one selected wall, while selecting or stretching it. */

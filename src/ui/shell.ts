@@ -103,9 +103,10 @@ export function buildShell(root: HTMLElement) {
   const floatFrame = iconButton('frame');
   floatBar.append(floatDelete, floatZoom, floatFrame);
   floatBar.hidden = true;
+  const dims = el('div', { class: 'temp-dims' });
   const emptyHint = el('div', { class: 'empty-hint' });
   const toast = el('div', { class: 'toast', role: 'status', 'aria-live': 'polite' });
-  viewport.append(planCanvas, glCanvas, floatBar, emptyHint, toast);
+  viewport.append(planCanvas, glCanvas, dims, floatBar, emptyHint, toast);
 
   const panel = el('aside', { class: 'panel', 'aria-label': 'Properties' });
 
@@ -125,7 +126,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, undo, redo, level, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, viewport, planCanvas, glCanvas, floatBar, floatDelete, floatZoom, floatFrame,
+    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, viewport, planCanvas, glCanvas, floatBar, floatDelete, floatZoom, floatFrame, dims,
     emptyHint, toast, panel, instr, keys, measureLabel, measure, snapBtn, coords, helpBack,
   };
 
