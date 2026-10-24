@@ -997,6 +997,11 @@ export class App {
     shell.toolFloor.setAttribute('aria-pressed', String(ui.tool === 'floor'));
     shell.toolDoor.setAttribute('aria-pressed', String(ui.tool === 'door'));
     shell.toolWindow.setAttribute('aria-pressed', String(ui.tool === 'window'));
+    // In a group, the tool in use is the one shown.
+    for (const g of shell.toolGroups) {
+      const active = g.members.find((b) => b.getAttribute('aria-pressed') === 'true');
+      if (active) g.members.forEach((b) => b.classList.toggle('shown', b === active));
+    }
     shell.lang.textContent = getLang().toUpperCase();
     // Rewritten only when it changes: replacing the icon under the pointer between press and release
     // would cancel the click.

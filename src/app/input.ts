@@ -258,6 +258,56 @@ export function wireInput(app: App): void {
   shell.toolWindow.addEventListener('click', () => app.setTool('window'));
   shell.toolRoom.addEventListener('click', () => app.setTool('room'));
   shell.toolFloor.addEventListener('click', () => app.setTool('floor'));
+  // A group's submenu: press and hold, a right-click, or the right arrow key on its button.
+  const toolOf = new Map<HTMLButtonElement, () => void>([
+    [shell.toolWall, () => app.setTool('wall')],
+    [shell.toolFloor, () => app.setTool('floor')],
+    [shell.toolDoor, () => app.setTool('door')],
+    [shell.toolWindow, () => app.setTool('window')],
+  ]);
+  for (const group of shell.toolGroups) {
+    const open = (b: HTMLButtonElement) => {
+      const r = b.getBoundingClientRect();
+      showMenu(
+        group.members.map((m) => ({ label: m.title, run: toolOf.get(m)! })),
+        { x: r.right + 4, y: r.top },
+        t(group.name),
+      );
+    };
+    for (const b of group.members) {
+      let hold = 0;
+      let opened = false;
+      b.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        opened = false;
+        hold = window.setTimeout(() => {
+          opened = true;
+          open(b);
+        }, 350);
+      });
+      const cancel = () => clearTimeout(hold);
+      b.addEventListener('pointerup', cancel);
+      b.addEventListener('pointerleave', cancel);
+      // A hold that opened the submenu is not also a click on the tool.
+      b.addEventListener('click', (e) => {
+        if (opened) {
+          e.stopImmediatePropagation();
+          opened = false;
+        }
+      }, true);
+      b.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        open(b);
+      });
+      b.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          e.stopPropagation();
+          open(b);
+        }
+      });
+    }
+  }
   shell.snapBtn.addEventListener('click', () => app.toggleSnaps());
   shell.shortcuts.addEventListener('click', () => showHelp(app));
   shell.commands.addEventListener('click', () => palette());

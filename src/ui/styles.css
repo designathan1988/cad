@@ -338,6 +338,25 @@ select {
   border-right: 1px solid var(--border);
   background: var(--bg);
 }
+/* A group of tools shows one; a small corner mark says it has more (a submenu). */
+.tool-group {
+  display: contents;
+}
+.tool-group > .tool:not(.shown) {
+  display: none;
+}
+.tool-group > .tool {
+  position: relative;
+}
+.tool-group > .tool::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  border-left: 4px solid transparent;
+  border-bottom: 4px solid currentColor;
+  opacity: 0.6;
+}
 .tools .group-sep {
   width: 24px;
   height: 1px;
