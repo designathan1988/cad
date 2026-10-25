@@ -83,10 +83,15 @@ export const ruleText = (rule: PositionRule, base = 0): string =>
     : t(`ruleShort.${rule.kind}` as MessageKey, hasDistance(rule) ? { d: num(rule.distance) } : {});
 
 /**
- * The dimension of the opening being placed: a dashed line along the wall from the rule's reference
- * to the nearest jamb, and its length. Null when centred or not on a straight wall.
+ * The dimension of the opening being placed, drawn as the temporary dimensions are (extension lines and
+ * ticks): along the wall from the rule's reference to the nearest jamb, off the face away from where a
+ * door opens (a window's exterior face), and its value. Null when centred or not on a straight wall.
  */
-export function ruleGuide(doc: Doc, g: DerivedGeometry, previewId: string): { axis: { start: Point2; end: Point2 }; measure: { at: Point2; text: string } } | null {
+export function ruleGuide(
+  doc: Doc,
+  g: DerivedGeometry,
+  previewId: string,
+): { dim: { a: Point2; b: Point2; side: Point2; clear: number; text: string }; measure: { at: Point2; text: string; normal: Point2; clear: number } } | null {
   const o = g.openings.get(previewId);
   const f = o?.frame;
   if (!o || !f) return null;
@@ -104,9 +109,14 @@ export function ruleGuide(doc: Doc, g: DerivedGeometry, previewId: string): { ax
     if (ref) span = rule.toward === 'end' ? [ref.end, o.start] : [o.end, ref.start];
   }
   if (!span) return null;
-  // Drawn along the wall's exterior face, outside the opening's symbol.
-  const at = (s: number) => add(add(f.start, scale(f.dir, s - o.start)), scale(f.normal, f.faces[0] - 0.5));
-  const start = at(span[0]);
-  const end = at(span[1]);
-  return { axis: { start, end }, measure: { at: scale(add(start, end), 0.5), text: `${num(Math.abs(span[1] - span[0]))} m` } };
+  // A door's leaf sweeps one side: the dimension goes on the other. A window's on its exterior face.
+  const [o0, o1] = f.faces;
+  const positive = o.opening.kind === 'door' ? o.opening.swing === 'right' : o0 > o1;
+  const side = positive ? f.normal : scale(f.normal, -1);
+  const clear = positive ? Math.max(o0, o1) : -Math.min(o0, o1);
+  const at = (s: number) => add(f.start, scale(f.dir, s - o.start));
+  const a = at(span[0]);
+  const b = at(span[1]);
+  const text = `${num(Math.abs(span[1] - span[0]))} m`;
+  return { dim: { a, b, side, clear, text }, measure: { at: scale(add(a, b), 0.5), text, normal: side, clear } };
 }

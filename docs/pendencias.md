@@ -52,9 +52,12 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
 - Paredes paralelas selecionadas juntas: "Alinhar com a primeira selecionada" e "Distribuir com espaços
   iguais" (as das pontas ficam), com as juntas mantidas como num arraste.
 
+- A cota de comprimento da parede vai para o lado sem paredes encostadas (antes a etiqueta cobria a
+  ponta de um T); a cota da porta ou janela sendo colocada é desenhada como as temporárias, com
+  chamadas e marcas, colada à face oposta à folha.
+
 Achados desta rodada ainda abertos:
-- A etiqueta da cota temporária (fundo opaco) cobre a ponta da parede que chega num T.
-- A cota guia da porta sendo colocada é uma linha solta a 50 cm da parede, sem marcas nas pontas.
+- Duas folhas de porta que se cruzam (ao colocar uma porta perto de outra) não dão aviso.
 - Mudar o lado de abertura não tem atalho no próprio desenho (só painel e barra).
 
 ## Esperando reteste no navegador

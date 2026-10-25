@@ -132,4 +132,15 @@ describe('temporary dimensions', () => {
     // Shorter than half the chord: no arc has it.
     expect(radius!.apply(0.9)).toBeNull();
   });
+
+  it("a wall's length goes on the side where no wall stands on it: a T on its left sends it right", () => {
+    const d0 = doc();
+    // w0 runs +x, its left is +y; a partition standing on it at x = 3 rises into +y.
+    const d: Doc = { ...d0, walls: [...d0.walls, wall('p', [3, 0], [3, 3])] };
+    const [len] = tempDims(d, deriveGeometry(d), new Set(['w0']));
+    expect(len!.side.y).toBeCloseTo(-1, 12);
+    // Without it, the left as before.
+    const [plain] = tempDims(d0, deriveGeometry(d0), new Set(['w0']));
+    expect(plain!.side.y).toBeCloseTo(1, 12);
+  });
 });

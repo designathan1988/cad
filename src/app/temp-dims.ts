@@ -42,7 +42,7 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
         id: `${id}:length`,
         a: wall.start,
         b: wall.end,
-        side: perp(dir),
+        side: quieterSide(doc, wall, dir),
         clear: half,
         value: len,
         apply: (v) => (v >= MIN_WALL_LENGTH ? setWalls(stretchEnd(doc, id, 'end', add(wall.start, scale(dir, v)))) : null),
@@ -142,3 +142,30 @@ function arcDims(doc: Doc, wall: Doc['walls'][number]): TempDim[] {
 
 const thicknessOf = (doc: Doc, typeId: string): number =>
   (doc.wallTypes.find((t) => t.id === typeId)?.layers ?? []).reduce((s, l) => s + l.thickness, 0);
+
+/**
+ * The side of a straight wall where fewer walls stand on its flank (Ts): its length is drawn there, so
+ * the label does not sit over a wall's end (the test run of 2026-10-25). The left one on a tie.
+ */
+function quieterSide(doc: Doc, wall: Doc['walls'][number], dir: Point2): Point2 {
+  const left = perp(dir);
+  const len = distance(wall.start, wall.end);
+  const reach = thicknessOf(doc, wall.wallTypeId) / 2 + 0.05;
+  let balance = 0;
+  for (const w of doc.walls) {
+    if (w.id === wall.id || w.levelId !== wall.levelId) continue;
+    for (const [e, other] of [
+      [w.start, w.end],
+      [w.end, w.start],
+    ] as const) {
+      const v = sub(e, wall.start);
+      const along = v.x * dir.x + v.y * dir.y;
+      const across = v.x * left.x + v.y * left.y;
+      // An end on this wall's body, away from its ends: a wall standing on its flank.
+      if (along <= reach || along >= len - reach || Math.abs(across) > reach) continue;
+      const body = sub(other, e);
+      balance += Math.sign(body.x * left.x + body.y * left.y);
+    }
+  }
+  return balance > 0 ? scale(left, -1) : left;
+}

@@ -1013,7 +1013,7 @@ export class App {
                     clear: 0,
                   }
                 : (this.bendMeasure() ?? this.turnMeasure() ?? guide?.measure ?? null),
-        axis: end && len >= MIN_WALL_LENGTH && w.kind === 'drawing' ? { start: w.last, end } : tape && tapeFrom && tapeTo ? { start: tapeFrom, end: tapeTo } : (guide?.axis ?? null),
+        axis: end && len >= MIN_WALL_LENGTH && w.kind === 'drawing' ? { start: w.last, end } : tape && tapeFrom && tapeTo ? { start: tapeFrom, end: tapeTo } : null,
         handles: this.handles(),
         anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : tapeFrom,
         wallTags: this.wallTags(),
@@ -1034,7 +1034,9 @@ export class App {
         draft: ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])] : null,
         draftCorners: ui.tool === 'floor' ? ui.floorDraft : [],
         openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
-        dims: this.currentDims().map((d) => ({ ...d, text: num(d.value) })),
+        // The opening being placed shows its distance as a dimension too (drawn only, not typed in: the
+        // footer field takes the distance while placing).
+        dims: [...this.currentDims().map((d) => ({ ...d, text: num(d.value) })), ...(guide ? [guide.dim] : [])],
         underlay: this.underlay(),
       });
     } else {
