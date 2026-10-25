@@ -339,14 +339,21 @@ export class PlanView {
     outline(cut, color('--wall-line'), 3);
     fill(cut, null);
     seams(cut);
-    // Hover and selection: the wall's own outline in the accent colour over its neighbours.
-    for (const s of normal) {
-      const sel = o.selected.has(s.wall.id);
-      if (!sel && o.hover !== s.wall.id) continue;
-      outline([s], color('--wall-sel'), sel ? 4 : 3);
+    // Hover and selection: the walls' outline in the accent colour over their neighbours. As for the
+    // others, every outline first and the fills over them: wall by wall, each next outline crossed the
+    // join with the one before, and selected walls read as not joined.
+    const lit = normal.filter((s) => o.selected.has(s.wall.id) || o.hover === s.wall.id);
+    for (const s of lit) outline([s], color('--wall-sel'), o.selected.has(s.wall.id) ? 4 : 3);
+    // The selected ones as one path, so no seam shows where they meet.
+    fill(
+      lit.filter((s) => o.selected.has(s.wall.id)),
+      color('--wall-sel-fill'),
+    );
+    for (const s of lit) {
+      if (o.selected.has(s.wall.id)) continue;
       // A seen wall is never filled with its layers, even under the pointer: it is not cut.
-      fill([s], sel || s.plan !== 'cut' ? color('--wall-sel-fill') : null);
-      if (!sel && s.plan === 'cut') seams([s]);
+      fill([s], s.plan !== 'cut' ? color('--wall-sel-fill') : null);
+      if (s.plan === 'cut') seams([s]);
     }
     // Preview of walls being drawn.
     const drawn = solids.filter((x) => o.preview.has(x.wall.id));
