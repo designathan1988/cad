@@ -111,7 +111,9 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   for (const { ends, point } of graph.nodes) {
     const result = resolveNode(byId, ends, point);
     for (const [ref, cut] of result.endCuts) endCuts.set(keyOf(ref), cut);
-    notches.push(...result.notches);
+    // A notch an arc's end segment takes in a node (against the outside of an L) is taken by every
+    // segment of the arc: its short segments next to the end reach into the corner too.
+    notches.push(...result.notches.flatMap((n) => (isArc(n.wallId) ? chains.get(parentOf(n.wallId))!.segments.map((x) => ({ ...n, wallId: x.id })) : [n])));
     result.warnings.forEach(report);
   }
   // An arc ending against a wall: its end segment takes the T cut, and the segments before it that

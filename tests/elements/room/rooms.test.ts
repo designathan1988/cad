@@ -54,6 +54,15 @@ describe('rooms', () => {
     expect(g.rooms.get('out')!.enclosed).toBe(false);
     expect(g.rooms.get('in')!.enclosed).toBe(false);
     expect(g.roomWarnings.map((w) => w.roomId).sort()).toEqual(['in', 'out']);
+    expect(g.rooms.get('in')!.sharing).toEqual([]);
+  });
+
+  it('two rooms in one space (a divider moved away): each names the other, and both are warned', () => {
+    const g = deriveGeometry(doc({ rooms: [room('a', 2, 3), room('b', 6, 3), room('c', 20, 3)] }));
+    expect(g.rooms.get('a')!.sharing).toEqual(['b']);
+    expect(g.rooms.get('b')!.sharing).toEqual(['a']);
+    expect(g.rooms.get('c')!.sharing).toEqual([]);
+    expect(g.roomWarnings.filter((w) => w.kind === 'roomShared').map((w) => w.roomId).sort()).toEqual(['a', 'b']);
   });
 
   it('the room follows its walls: moving the right wall 2 m makes it 9.8 × 5.8', () => {

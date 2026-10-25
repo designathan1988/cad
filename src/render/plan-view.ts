@@ -87,6 +87,8 @@ export interface PlanOverlay {
   readonly openingPreview?: string | null;
   /** Temporary dimensions of the selected element. */
   readonly dims?: readonly DimMark[];
+  /** The walls of the level below, as their pieces: drawn faint under everything, to draw on top of. */
+  readonly underlay?: readonly (readonly Point2[])[];
 }
 
 /** How much of the canvas a panel covers, at its right and bottom edges, in screen pixels. */
@@ -202,6 +204,20 @@ export class PlanView {
       });
       ctx.closePath();
     };
+    // The level below, faint, under everything of this one: an upper floor is drawn over its walls
+    // (it was drawn blind, with nothing to align to). Filled only, so it never reads as this level's.
+    if (o.underlay && o.underlay.length > 0) {
+      ctx.beginPath();
+      for (const poly of o.underlay)
+        poly.forEach((v, i) => {
+          const q = this.toScreen(v);
+          if (i === 0) ctx.moveTo(q.x, q.y);
+          else ctx.lineTo(q.x, q.y);
+          if (i === poly.length - 1) ctx.closePath();
+        });
+      ctx.fillStyle = color('--underlay');
+      ctx.fill('nonzero');
+    }
     // Floors and rooms lie under the walls.
     for (const f of g.floors.values()) {
       if (f.outline.length < 3) continue;

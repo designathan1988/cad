@@ -53,7 +53,8 @@ const gripPx = (): number => (matchMedia('(pointer: coarse)').matches ? 22 : 8);
 export interface SelectGestures {
   readonly down: (screen: Point2, world: Point2 | null, hit: WallId | null, shift: boolean) => void;
   readonly move: (screen: Point2, world: Point2 | null, snapAt: (p: Point2, exclude: ReadonlySet<WallId>) => Snap | null, shift: boolean) => void;
-  readonly up: (shift: boolean) => void;
+  /** True for a click on an element: pressed on it, let go without moving. */
+  readonly up: (shift: boolean) => boolean;
   readonly cancel: () => boolean;
 }
 
@@ -143,6 +144,7 @@ export function selectGestures(app: App): SelectGestures {
 
     up(shift) {
       const d = ui.drag;
+      const clicked = pending?.kind === 'wall' && !d;
       pending = null;
       ui.drag = null;
       ui.snap = null;
@@ -157,6 +159,7 @@ export function selectGestures(app: App): SelectGestures {
       } else if (d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'bulge') app.store.dispatch(setWalls(d.walls));
       else if (d?.kind === 'marquee') selectByMarquee(app, d.a, d.b, shift);
       app.refresh();
+      return clicked;
     },
 
     cancel() {

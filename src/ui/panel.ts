@@ -29,6 +29,8 @@ export interface PanelInput {
   readonly openingWarnings: readonly OpeningWarning[];
   /** The door or window tool is active: its next opening's size. */
   readonly openingTool: { readonly kind: OpeningKind; readonly size: OpeningSize } | null;
+  /** How many elements are selected, of every kind: the panel edits one kind at a time. */
+  readonly total: number;
 }
 
 export interface PanelActions {
@@ -64,6 +66,11 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     return h;
   };
   const nodes: HTMLElement[] = [];
+  // A selection of several kinds shows one of them (walls, else rooms, floors, openings): said, so
+  // "2 walls" over a selection of 5 does not read as if the others were not selected.
+  const part = (shown: number) => {
+    if (shown < input.total) nodes.push(el('div', { class: 'panel-hint' }, t('panel.partOf', { shown, n: input.total })));
+  };
 
   if (selected.length > 0) {
     const typeId = common(selected, (w) => w.wallTypeId);
@@ -71,6 +78,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     const title =
       selected.length === 1 ? t('panel.wall', { n: wallNumber(doc, selected[0]!.id) ?? '', type: type ? name(type.name) : '?' }) : t('panel.walls', { n: selected.length });
     nodes.push(head('wall', title));
+    part(selected.length);
     // Built from the wall's fields (elements/wall/fields.ts).
     const fields = wallFields(doc, act);
     const general = fieldsSection(t('panel.general'), true, fields.general, selected);
@@ -89,9 +97,15 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
   } else if (input.rooms.length > 0) {
     const one = input.rooms.length === 1 ? input.rooms[0]! : null;
     nodes.push(head('room', one ? t('room.title', { name: name(one.room.name) }) : t('room.titleMany', { n: input.rooms.length })));
-    nodes.push(...roomPanel(input.rooms, act.room));
+    part(input.rooms.length);
+    const tag = (id: string) => {
+      const r = doc.rooms.find((x) => x.id === id);
+      return r ? `${r.number} · ${name(r.name)}` : '—';
+    };
+    nodes.push(...roomPanel(input.rooms, act.room, tag));
   } else if (input.floors.length > 0) {
     nodes.push(head('slab', input.floors.length === 1 ? t('floor.title') : t('floor.titleMany', { n: input.floors.length })));
+    part(input.floors.length);
     // Shown as the room's own tag and footer show it: a default name in the interface's language.
     const roomName = (id: string) => {
       const r = doc.rooms.find((x) => x.id === id);
@@ -101,6 +115,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
   } else if (input.openings.length > 0) {
     const kinds = new Set(input.openings.map((o) => o.opening.kind));
     nodes.push(head(kinds.size === 1 && kinds.has('window') ? 'window' : 'door', openingTitle(input.openings)));
+    part(input.openings.length);
     nodes.push(...openingPanel(doc, input.placed, input.openings, input.openingWarnings, act.opening));
   } else if (input.openingTool) {
     const { kind, size } = input.openingTool;

@@ -3,6 +3,27 @@
 Lista viva do que ainda não está feito, com a origem de cada item. Um item sai daqui quando o commit que
 o resolve existe e, se for de interface, quando a sessão de teste o viu no navegador.
 
+## Teste com gestos de 2026-10-25 (Playwright headless, 1920×1080, 1024×768, 390×844)
+
+Corrigidos nesta rodada (não commitados): barra flutuante agindo sobre o elemento selecionado antes;
+alça de girar sobre a seta de esticar em parede vertical; barra no lugar velho depois do cubo 3D;
+paredes 3D escuras no tema escuro; prévia de camadas no terço do meio; "Caminhar" cortado; anel do
+tour fora da tela; "Fechar" dos atalhos fora da tela; rótulo "Início · fecha" velho; cômodo novo sem
+seleção nem aviso; piso por contorno sem encaixe nem cota; clique de novo para chegar ao piso sob o
+cômodo; prévia vermelha logo depois de colocar porta/janela; nome do projeto editável (arquivo e aba
+com o nome); textos (dica vazia, rodapé de cômodo/piso, seleção mista, maiúscula depois de dois-pontos,
+N e Shift+N); duração dos avisos; aviso ao ligar/desligar encaixes; coordenadas velhas depois de Home/F.
+
+Segunda rodada (mesmo dia), também vistos no navegador:
+- Faces de corte no 3D: só as faces à mostra dos blocos são desenhadas (faces.ts ligado ao 3D, com
+  teste); sumiram os pontinhos claros nas paredes. O `npm run typecheck` voltou a passar.
+- Arco saindo do canto externo de um L: junta sem aviso (nó de 3 pontas, encaixe por fora do canto,
+  com teste); e a ponta de uma parede grossa encaixa também pelo seu canto externo (teste do encaixe).
+- Pavimento de cima mostra o de baixo, claro, e encaixa nas paredes dele.
+- Dois cômodos no mesmo espaço: aviso na etiqueta e no painel (com teste).
+- Celular: a dica do rodapé em até três linhas.
+- "Desfeito: Apagar" / "Refeito: …": o aviso diz o que foi desfeito (o histórico guarda o nome).
+
 ## Esperando reteste no navegador
 
 - Diálogo "Tipos de parede" e editor de camadas (17, parte 4; 08f1a21). Planta e 3D por camada já
@@ -30,7 +51,7 @@ o resolve existe e, se for de interface, quando a sessão de teste o viu no nave
 - Casos com duas juntas que o gerador da suíte de arcos pula (ponta longe sobre o arco, ou passando
   perto da outra ponta). A suíte do L está no limite: 5 de 100 pulados.
 - Resolvido em 2026-10-24: alturas diferentes entre paredes ligadas (wall-joins-spec.md, §7.5 e parte 6).
-- Faces de corte no 3D.
+- Resolvido em 2026-10-25: faces de corte no 3D (faces.ts).
 - Overrides de junta (desligar, butt, miter, corte reto).
 - Mutação ≥ 90 %.
 

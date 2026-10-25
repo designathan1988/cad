@@ -60,6 +60,16 @@ describe('handles', () => {
     expect(h.rotate!.at.y).toBeCloseTo(700 + 28, 6);
   });
 
+  it('a wall upright on screen: the turn handle goes under the arrow of its lower end, which stays reachable', () => {
+    // From (1, 1) up to (1, 4): the start's arrow is 20 px under its end, at (100, 420); 28 px under the
+    // wall, the turn handle fell on it (8 px away) and took its clicks.
+    const h = handlesFor([wall('w', [1, 1], [1, 4])], toScreen);
+    expect(h.arrows.find((a) => a.end === 'start')!.at).toEqual({ x: 100, y: 420 });
+    expect(h.rotate!.at).toEqual({ x: 100, y: 448 });
+    expect(handleAt(h, { x: 100, y: 422 }, 8)).toEqual({ kind: 'arrow', id: 'w', end: 'start' });
+    expect(handleAt(h, { x: 100, y: 446 }, 8)).toEqual({ kind: 'rotate', pivot: { x: 1, y: 2.5 } });
+  });
+
   it('a straight wall has no curvature handle', () => {
     expect(handlesFor([wall('w', [1, 1], [4, 1])], toScreen).bulge).toBeNull();
   });

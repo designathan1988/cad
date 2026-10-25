@@ -30,7 +30,9 @@ export function layerEditor<L extends EditableLayer>(layers: readonly L[], onCha
     .map((b) => `<rect x="${b.x}" y="0" width="${b.w}" height="24" fill="${b.fill}"/>`)
     .join('');
   const preview = el('div', { class: 'layer-preview' });
-  preview.insertAdjacentHTML('beforeend', `<svg width="240" height="24" viewBox="0 0 240 24" aria-hidden="true">${bands}</svg>`);
+  // Stretched across the dialog's width (only bands, so nothing is distorted): kept to its aspect, the
+  // stack sat in the middle third with blank on both sides, its faces far from "Exterior" and "Interior".
+  preview.insertAdjacentHTML('beforeend', `<svg width="240" height="24" viewBox="0 0 240 24" preserveAspectRatio="none" aria-hidden="true">${bands}</svg>`);
   preview.append(el('div', { class: 'layer-ends' }, el('span', {}, t('types.exterior')), el('span', {}, t('types.interior'))));
 
   // One row per layer, named, so a screen reader hears which layer each control is in. On a phone the

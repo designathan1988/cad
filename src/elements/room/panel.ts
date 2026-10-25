@@ -11,12 +11,15 @@ import type { RoomId } from './schema';
 
 export type RoomPanelActions = RoomFieldActions;
 
-export function roomPanel(rooms: readonly RoomSolid[], act: RoomPanelActions): HTMLElement[] {
+/** `tag`: how a room is named on its plan tag ("2 · Bedroom"), for a room sharing this one's space. */
+export function roomPanel(rooms: readonly RoomSolid[], act: RoomPanelActions, tag: (id: RoomId) => string): HTMLElement[] {
   const nodes: HTMLElement[] = [fieldsSection(t('panel.general'), true, roomFields(rooms, act), rooms)];
-  if (rooms.length === 1 && !rooms[0]!.enclosed) {
+  const one = rooms.length === 1 ? rooms[0]! : null;
+  const problem = one && !one.enclosed ? t('warn.roomNotEnclosed') : one && one.sharing.length > 0 ? t('warn.roomShared', { rooms: one.sharing.map(tag).join(', ') }) : null;
+  if (problem) {
     const box = el('div', { class: 'warn-list', role: 'status' });
     box.innerHTML = icon('warning', 16);
-    box.append(el('div', {}, t('warn.roomNotEnclosed')));
+    box.append(el('div', {}, problem));
     nodes.push(box);
   }
   return nodes;

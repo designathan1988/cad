@@ -16,6 +16,11 @@ export interface RoomSolid {
   readonly perimeter: number;
   /** Where its name goes: the middle of the room as it is now (labelPoint), or its point when not enclosed. */
   readonly label: Point2;
+  /**
+   * The other rooms of the same space (two points in one hole, after a dividing wall was moved or
+   * deleted): one name went over the other and was never seen. Empty for a room alone in its space.
+   */
+  readonly sharing: readonly RoomId[];
 }
 
 export interface FloorSolid {
@@ -27,7 +32,7 @@ export interface FloorSolid {
 }
 
 export interface RoomWarning {
-  readonly kind: 'roomNotEnclosed';
+  readonly kind: 'roomNotEnclosed' | 'roomShared';
   readonly roomId: RoomId;
 }
 
@@ -149,6 +154,8 @@ export function deriveRooms(
 ): { solids: Map<RoomId, RoomSolid>; warnings: RoomWarning[] } {
   const solids = new Map<RoomId, RoomSolid>();
   const warnings: RoomWarning[] = [];
+  // Rooms by the hole they are in (the same array from holesOf for one level).
+  const spaces = new Map<string, RoomId[]>();
   for (const room of rooms) {
     const holes = holesOf(piecesByLevel.get(room.levelId) ?? []);
     // The smallest hole holding the point: holes do not overlap, but stay safe if one is nested.
@@ -156,12 +163,21 @@ export function deriveRooms(
       .filter((h) => insideRing(h, room.seed))
       .sort((a, b) => Math.abs(signedArea(a)) - Math.abs(signedArea(b)))[0];
     if (!hole) {
-      solids.set(room.id, { room, enclosed: false, outline: [], area: 0, perimeter: 0, label: room.seed });
+      solids.set(room.id, { room, enclosed: false, outline: [], area: 0, perimeter: 0, label: room.seed, sharing: [] });
       warnings.push({ kind: 'roomNotEnclosed', roomId: room.id });
       continue;
     }
     const outline = signedArea(hole) < 0 ? [...hole].reverse() : hole;
-    solids.set(room.id, { room, enclosed: true, outline, area: Math.abs(signedArea(outline)), perimeter: perimeterOf(outline), label: labelPoint(outline) });
+    solids.set(room.id, { room, enclosed: true, outline, area: Math.abs(signedArea(outline)), perimeter: perimeterOf(outline), label: labelPoint(outline), sharing: [] });
+    const key = `${room.levelId}|${JSON.stringify(hole)}`;
+    spaces.set(key, [...(spaces.get(key) ?? []), room.id]);
+  }
+  for (const ids of spaces.values()) {
+    if (ids.length < 2) continue;
+    for (const id of ids) {
+      solids.set(id, { ...solids.get(id)!, sharing: ids.filter((x) => x !== id) });
+      warnings.push({ kind: 'roomShared', roomId: id });
+    }
   }
   return { solids, warnings };
 }

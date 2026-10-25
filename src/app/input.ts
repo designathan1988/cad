@@ -98,16 +98,28 @@ export function wireInput(app: App): void {
     return p ? { p, mpp: app.scene.metresPerPixel(p, z) } : null;
   };
 
+  /** Half a wall's thickness: its ends snap from anywhere on its body near them (snap.ts: reach). */
+  const halfOf = (id: string) => (app.geometry.solids.get(id)?.layers.reduce((t, l) => t + l.thickness, 0) ?? 0) / 2;
   const snapped = (e: PointerEvent | MouseEvent) => {
     const at = worldAt(e);
     if (!at) return null;
     const w = ui.wall;
+    // A floor's outline snaps as a wall chain does: from its last corner, closing on its first once
+    // it has three (its corners were free points, off the walls and the grid).
+    const draft = ui.tool === 'floor' ? ui.floorDraft : null;
+    // The level below's walls too, without their numbers (those are the other level's): drawing an
+    // upper floor snaps onto the walls it stands on.
+    const below = ui.hidden.has('walls') ? null : app.levelBelow();
+    const walls = app.store.get().walls;
     return snap({
       cursor: at.p,
       mpp: at.mpp,
-      segments: app.store.get().walls.filter((x) => x.levelId === ui.levelId),
-      from: w.kind === 'drawing' ? w.last : null,
-      chainStart: (w.kind === 'drawing' && w.count >= 2) || w.kind === 'bend' ? w.start : null,
+      segments: [
+        ...walls.filter((x) => x.levelId === ui.levelId).map((x) => ({ id: x.id, start: x.start, end: x.end, reach: halfOf(x.id) })),
+        ...walls.filter((x) => x.levelId === below).map((x) => ({ start: x.start, end: x.end, reach: halfOf(x.id) })),
+      ],
+      from: draft ? (draft.at(-1) ?? null) : w.kind === 'drawing' ? w.last : null,
+      chainStart: draft ? (draft.length >= 3 ? draft[0]! : null) : (w.kind === 'drawing' && w.count >= 2) || w.kind === 'bend' ? w.start : null,
       enabled: ui.snaps,
       orthogonal: shift,
     });
@@ -116,20 +128,26 @@ export function wireInput(app: App): void {
   /** The element under the pointer: an opening before the wall that hosts it. */
   const pickAt = (e: PointerEvent, at: { p: Point2 } | null) =>
     ui.view === 'plan' ? (at ? planPick(at.p) : null) : app.scene.pick(e.clientX, e.clientY);
-  /** In plan: an opening, else a wall, else a room, else a floor under the point. */
-  const planPick = (p: Point2): string | null => {
+  /** In plan: what is under the point, in the order a click takes it: an opening, its wall, rooms, floors. */
+  const planHits = (p: Point2): string[] => {
     const g = app.visibleGeometry();
-    return (
-      openingAt(g, p) ??
-      wallAt(g, p) ??
-      [...g.rooms.values()].find((r) => r.enclosed && insideRing(r.outline, p))?.room.id ??
-      [...g.floors.values()].find((f) => f.outline.length >= 3 && insideRing(f.outline, p))?.floor.id ??
-      null
-    );
+    return [
+      openingAt(g, p),
+      wallAt(g, p),
+      ...[...g.rooms.values()].filter((r) => r.enclosed && insideRing(r.outline, p)).map((r) => r.room.id),
+      ...[...g.floors.values()].filter((f) => f.outline.length >= 3 && insideRing(f.outline, p)).map((f) => f.floor.id),
+    ].filter((id): id is string => id !== null);
   };
+  const planPick = (p: Point2): string | null => planHits(p)[0] ?? null;
+  /**
+   * A click again on the one element selected takes the next one under the point, round to the first:
+   * a room's floor lies under the room and was reached by no click; so is a door's wall under the door.
+   */
+  let again: string | null = null;
 
   const onMove = (e: PointerEvent) => {
     shift = e.shiftKey;
+    app.pointer = { x: e.clientX, y: e.clientY };
     if (panning && ui.view === 'plan') {
       app.plan.panBy(e.clientX - panning.x, e.clientY - panning.y);
       panning = { x: e.clientX, y: e.clientY };
@@ -144,6 +162,18 @@ export function wireInput(app: App): void {
       const s = snapped(e);
       ui.snap = s;
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
+      return app.render();
+    }
+    if (ui.tool === 'floor') {
+      // The outline's next corner where a click would put it: snapped, shown with its label.
+      ui.snap = snapped(e);
+      if (ui.floorDraft.length > 0) return app.render();
+    }
+    if (ui.tool === 'room' || ui.tool === 'floor') {
+      // These tools act on rooms: only the room under the pointer is lit, never a wall (lit, it looked
+      // as if the click would take it).
+      const g = app.visibleGeometry();
+      ui.hover = at && ui.view === 'plan' ? ([...g.rooms.values()].find((r) => r.enclosed && insideRing(r.outline, at.p))?.room.id ?? null) : null;
       return app.render();
     }
     if (app.openingKind()) {
@@ -176,7 +206,9 @@ export function wireInput(app: App): void {
     if (ui.tool === 'select') {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       const at = worldAt(e);
-      gestures.down(local(e), at?.p ?? null, pickAt(e, at), e.shiftKey);
+      const hit = pickAt(e, at);
+      again = ui.view === 'plan' && !e.shiftKey && hit !== null && ui.selection.size === 1 && ui.selection.has(hit) ? hit : null;
+      gestures.down(local(e), at?.p ?? null, hit, e.shiftKey);
     }
   };
 
@@ -196,8 +228,18 @@ export function wireInput(app: App): void {
     const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 4;
     downAt = null;
     if (ui.tool === 'select') {
-      gestures.up(e.shiftKey);
+      const clicked = gestures.up(e.shiftKey);
       showMarquee();
+      const at = clicked && again !== null ? worldAt(e) : null;
+      if (at) {
+        const hits = planHits(at.p);
+        const next = hits[(hits.indexOf(again!) + 1) % hits.length];
+        if (next && next !== again) {
+          ui.selection = new Set([next]);
+          app.refresh();
+        }
+      }
+      again = null;
       return;
     }
     if (moved) return;
@@ -205,7 +247,9 @@ export function wireInput(app: App): void {
     if (ui.tool === 'room' || ui.tool === 'floor') {
       const at = worldAt(e);
       if (!at) return;
-      return ui.tool === 'room' ? app.roomClick(at.p) : app.floorClick(at.p, at.mpp);
+      if (ui.tool === 'room') return app.roomClick(at.p);
+      // Inside a room (its floor) as clicked; a corner where it snaps.
+      return app.floorClick(at.p, at.mpp, false, snapped(e)?.point ?? at.p);
     }
     const s = snapped(e);
     if (s) app.wallEvent({ kind: 'click', point: s.point });
@@ -219,6 +263,7 @@ export function wireInput(app: App): void {
     c.addEventListener('pointerleave', () => {
       ui.hover = null;
       ui.cursor = null;
+      app.pointer = null;
       if (app.openingKind()) return app.openingEvent({ kind: 'hover', aim: null });
       app.render();
     });
@@ -253,6 +298,7 @@ export function wireInput(app: App): void {
   shell.save.addEventListener('click', () => app.saveFile());
   shell.open.addEventListener('click', () => shell.fileInput.click());
   shell.newFile.addEventListener('click', () => app.newProject());
+  shell.projectName.addEventListener('click', () => renameInPlace(app));
   shell.fileInput.addEventListener('change', () => {
     const file = shell.fileInput.files?.[0];
     shell.fileInput.value = '';
@@ -276,8 +322,12 @@ export function wireInput(app: App): void {
     const open = (b: HTMLButtonElement) => {
       const r = b.getBoundingClientRect();
       showMenu(
-        // The accessible name: the title moves into the tooltip once shown (tooltip.ts).
-        group.members.map((m) => ({ label: m.getAttribute('aria-label') ?? '', run: toolOf.get(m)! })),
+        // The accessible name: the title moves into the tooltip once shown (tooltip.ts). "Draw wall (W)"
+        // is split into its name and its key, shown apart as in the right-click menu.
+        group.members.map((m) => {
+          const named = /^(.*) \(([^)]+)\)$/.exec(m.getAttribute('aria-label') ?? '');
+          return { label: named ? named[1]! : (m.getAttribute('aria-label') ?? ''), ...(named ? { keys: named[2]! } : {}), run: toolOf.get(m)! };
+        }),
         { x: r.right + 4, y: r.top },
         t(group.name),
         // Starting on the tool the group shows.
@@ -460,6 +510,40 @@ export function wireInput(app: App): void {
   });
 }
 
+/**
+ * The project's name, typed where it is shown: Enter or leaving the field keeps it, Esc puts the old one
+ * back. It names the saved file and the browser tab (the name could not be changed at all before).
+ */
+function renameInPlace(app: App): void {
+  const button = app.shell.projectName;
+  const input = el('input', { type: 'text', class: 'project-name-input', autocomplete: 'off', spellcheck: 'false', 'aria-label': t('top.rename') });
+  input.value = app.store.get().name;
+  input.placeholder = t('app.untitled');
+  button.hidden = true;
+  button.after(input);
+  input.focus();
+  input.select();
+  let done = false;
+  const finish = (keep: boolean) => {
+    if (done) return;
+    done = true;
+    const name = input.value;
+    input.remove();
+    button.hidden = false;
+    if (keep) app.renameProject(name);
+    button.focus();
+  };
+  input.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key !== 'Enter' && e.key !== 'Escape') return;
+    // Not let through: the focus goes back to the name's button, and the same Enter would press it,
+    // opening the field again.
+    e.preventDefault();
+    finish(e.key === 'Enter');
+  });
+  input.addEventListener('blur', () => finish(true));
+}
+
 function showHelp(app: App): void {
   const back = app.shell.helpBack;
   // The same names as the palette, buttons and menus (ref/chat.txt:200): read from the same messages.
@@ -489,9 +573,11 @@ function showHelp(app: App): void {
     ['Ctrl+S', t('pal.save')],
     ['Ctrl+K', t('pal.commands')],
     ['Shift+L', t('pal.language')],
-    ['N / Shift+N', t('pal.stepSelection')],
+    ['N', t('pal.stepSelection')],
+    ['Shift+N', t('pal.stepBack')],
     [t('help.arrowsKey'), t('help.arrows')],
     ['?', t('pal.shortcuts')],
+    [t('help.clickAgainKey'), t('help.clickAgain')],
     [t('help.wheelKey'), t('help.wheel')],
     [t('help.middleKey'), t('help.middle')],
     [t('help.orbitKey'), t('help.orbit')],
@@ -499,7 +585,7 @@ function showHelp(app: App): void {
   const close = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
   const dl = el('dl');
   for (const [k, v] of rows) dl.append(el('dt', {}, el('span', { class: 'kbd' }, k)), el('dd', {}, v));
-  const dialog = el('div', { class: 'dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('help.title') }, el('h2', {}, t('help.title')), dl, el('div', { class: 'actions' }, close));
+  const dialog = el('div', { class: 'dialog help-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('help.title') }, el('h2', {}, t('help.title')), dl, el('div', { class: 'actions' }, close));
   back.replaceChildren(dialog);
   back.hidden = false;
   const hide = () => {
@@ -513,9 +599,10 @@ function showHelp(app: App): void {
   back.onkeydown = (e) => {
     if (e.key === 'Escape') hide();
   };
-  // The dialog itself takes the focus, so it opens at its title (focusing Close, at the bottom of a
-  // long list, scrolled it there); Tab then reaches Close.
-  dialog.tabIndex = -1;
-  dialog.scrollTop = 0;
-  dialog.focus({ preventScroll: true });
+  // The list takes the focus, so it opens at its top and the arrows and Page Down scroll it (only the
+  // list scrolls, help-dialog in styles.css); Tab then reaches Close.
+  dl.tabIndex = 0;
+  dl.setAttribute('aria-label', t('help.title'));
+  dl.scrollTop = 0;
+  dl.focus({ preventScroll: true });
 }

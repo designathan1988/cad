@@ -86,6 +86,12 @@
   --3d-leaf: #a0764f;
   --3d-light: #ffffff;
   --3d-ground-light: #9a9fa8;
+  /* Layers in 3D: lit by the scene's own light, the same in both themes like the rest of the 3D; the
+     plan's layer colours below darken in the dark theme for the light wall line, which 3D does not have. */
+  --3d-layer-structure: #9c8f80;
+  --3d-layer-substrate: #b7ad9f;
+  --3d-layer-thermal: #e7c66b;
+  --3d-layer-finish: #ddd8cf;
   --layer-structure: #9c8f80;
   --layer-substrate: #b7ad9f;
   --layer-thermal: #e7c66b;
@@ -106,6 +112,8 @@
   --kbd-bg: #f1f2f4;
   --kbd-border: #d7dae0;
   --floor-fill: #e8e4dc;
+  /* The level below, under an upper level's plan. */
+  --underlay: #dcdee3;
   color-scheme: light;
 }
 
@@ -155,6 +163,7 @@
   --kbd-bg: #2a2b31;
   --kbd-border: #3a3b43;
   --floor-fill: #26272d;
+  --underlay: #2f3138;
   color-scheme: dark;
 }
 
@@ -223,6 +232,10 @@ select {
   align-items: center;
   gap: var(--sp-1);
 }
+/* The views keep their whole name: shared out equally, "Caminhar" (the longest) was cut at its end. */
+.top .segmented button {
+  min-width: max-content;
+}
 .project-name {
   font-weight: 600;
   font-size: var(--fs-md);
@@ -231,6 +244,34 @@ select {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: var(--name-w);
+}
+/* The name is a button that renames the project in place: text until pointed at. */
+button.project-name {
+  height: var(--control-h-sm);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  cursor: text;
+}
+button.project-name:hover {
+  background: var(--hover);
+}
+.project-name-input {
+  width: var(--name-w);
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-2);
+  border: var(--line) solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+.project-name-input:focus {
+  outline: none;
 }
 .sep {
   width: var(--line);
@@ -837,6 +878,21 @@ select {
   justify-content: flex-end;
   padding: 0 var(--sp-4) var(--sp-3);
 }
+/* The shortcuts: only the list scrolls, the title and Close stay in sight (at 1080 px high Close was
+   below the fold, half cut, and reached only by scrolling). */
+.help-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.help-dialog dl {
+  min-height: 0;
+  overflow-y: auto;
+}
+.help-dialog .actions {
+  padding-top: var(--sp-3);
+  border-top: var(--line) solid var(--border);
+}
 
 /* Narrow screens: the panel becomes a drawer over the canvas; key hints go. */
 @media (max-width: 1100px) {
@@ -907,6 +963,19 @@ select {
   .foot .measure label {
     display: none;
   }
+  /* What to do now in up to three lines, not cut after a few words ("Clique para selecionar, a…"):
+     the measure field, narrower here, leaves the line little room on a phone. */
+  :root {
+    --foot-h: 60px;
+    --measure-w: 132px;
+  }
+  .foot .instr {
+    white-space: normal;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
 }
 /* Touch: every target at least 44 × 44 px (WCAG 2.5.5). */
 @media (pointer: coarse) {
@@ -930,6 +999,8 @@ select {
 @media (pointer: coarse) and (max-width: 600px) {
   :root {
     --top-h: 104px;
+    /* The footer's three lines, as on any phone (the touch sizes above came later and won). */
+    --foot-h: 60px;
   }
   /* Home, undo, redo, commands, open, save and panel at 44 px fill the row: the name gives way. */
   .project-name {

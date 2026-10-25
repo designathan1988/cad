@@ -61,14 +61,16 @@ export function startTour(app: App): void {
     const r = stop.target(app).getBoundingClientRect();
     const target = { x: r.left, y: r.top, w: r.width, h: r.height };
     ring.hidden = r.width === 0 || r.height === 0;
-    const x0 = r.left - 3;
-    const y0 = r.top - 3;
-    const x1 = r.right + 3;
-    const y1 = r.bottom + 3;
-    Object.assign(ring.style, { left: `${x0}px`, top: `${y0}px`, width: `${x1 - x0}px`, height: `${y1 - y0}px` });
-    // Above, below, left and right of the ring; with no target, one band over everything.
     const W = window.innerWidth;
     const H = window.innerHeight;
+    // Inside the window: around a part at its edge (the tool bar, the panel, the footer) the ring went
+    // past it and showed on one side only.
+    const x0 = Math.max(0, r.left - 3);
+    const y0 = Math.max(0, r.top - 3);
+    const x1 = Math.min(W, r.right + 3);
+    const y1 = Math.min(H, r.bottom + 3);
+    Object.assign(ring.style, { left: `${x0}px`, top: `${y0}px`, width: `${x1 - x0}px`, height: `${y1 - y0}px` });
+    // Above, below, left and right of the ring; with no target, one band over everything.
     const rects = ring.hidden
       ? [[0, 0, W, H], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
       : [[0, 0, W, y0], [0, y1, W, H - y1], [0, y0, x0, y1 - y0], [x1, y0, W - x1, y1 - y0]];

@@ -6,7 +6,7 @@ import { parseLength, parseLengthAngle, parsePoint } from '../core/measure';
 import { createStore, type Store } from '../core/store';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
-import { arcOf } from '../elements/wall/geometry/arc';
+import { arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { addWalls, resetWallsToType, updateWalls } from '../elements/wall/commands';
 import {
   addOpening,
@@ -39,7 +39,7 @@ import { type Drag, dragTransform, hull } from './select-drag';
 import { moveRooms } from './carry';
 import { stepSelection } from './keyboard-select';
 import { nudge } from '../tools/nudge';
-import { type Doc, type DocWall, elementIds, newDocument, startLevel, type WallDefaults, wallNumber, wallOverrides } from './document';
+import { type Doc, type DocWall, elementIds, levelOf, newDocument, startLevel, type WallDefaults, wallNumber, wallOverrides } from './document';
 
 /** The snap labels that name their wall. */
 const SNAP_OF = { endpoint: 'snap.endpointOf', midpoint: 'snap.midpointOf', onWall: 'snap.onWallOf', aligned: 'snap.alignedOf' } as const;
@@ -89,6 +89,8 @@ export interface UiState {
 }
 
 const PREVIEW_ID = '__preview__';
+/** A message going after a colon in another ("Cannot place it here: overlaps…"): lower case first. */
+const afterColon = (text: string): string => text.charAt(0).toLowerCase() + text.slice(1);
 /** The level list's last entry: opens the levels dialog. */
 export const EDIT_LEVELS = '__edit_levels__';
 
@@ -210,10 +212,13 @@ export class App {
       const opening = newOpening(newId(OPENING_PREFIX), r.place.wallId, kind, r.place.rule, { ...size, swing: r.place.swing });
       const problem = placementProblem(this.store.get(), opening);
       if (problem) {
-        this.ui.error = t('hint.openingRefused', { reason: t(`warn.${problem}`) });
+        this.ui.error = t('hint.openingRefused', { reason: afterColon(t(`warn.${problem}`)) });
         return this.refresh();
       }
       this.ui.error = null;
+      // Placed: no preview until the pointer aims again. Left aiming at the same spot, the preview lay
+      // over the opening just placed, red, with "overlaps another opening", as if it had been refused.
+      this.ui.opening = OPENING_IDLE;
       this.store.dispatch(addOpening(opening));
     } else this.refresh();
   }
@@ -222,7 +227,7 @@ export class App {
   private previewProblem(): string | null {
     const p = this.geometry.openings.get(OPENING_PREVIEW_ID);
     const k = p?.warnings.find((w) => w === 'openingOverlap' || w === 'openingOutside');
-    return k ? t('hint.openingRefused', { reason: t(`warn.${k}`) }) : null;
+    return k ? t('hint.openingRefused', { reason: afterColon(t(`warn.${k}`)) }) : null;
   }
 
   selectedRooms(): RoomSolid[] {
@@ -252,13 +257,17 @@ export class App {
     }
     this.ui.error = null;
     this.store.dispatch(addRoom(room));
+    // Said and selected at once, as a new floor is: its name and number are in the panel to change.
+    this.ui.selection = new Set([room.id]);
+    this.ui.info = t('hint.roomAdded', { room: name(room.name) });
+    this.refresh();
   }
 
   /**
    * The floor tool: a click in a room floors it; elsewhere it adds a corner to an outline. A typed
    * point is always a corner, as the footer says: typing inside a room draws an outline there.
    */
-  floorClick(p: Point2, mpp: number, typed = false): void {
+  floorClick(p: Point2, mpp: number, typed = false, corner = p): void {
     const draft = this.ui.floorDraft;
     if (draft.length === 0 && !typed) {
       const room = [...this.visibleGeometry().rooms.values()].find((r) => r.enclosed && insideRing(r.outline, p));
@@ -275,10 +284,11 @@ export class App {
       }
     }
     // Clicking the first corner again (within 10 px) closes the outline.
-    if (draft.length >= 3 && distance(p, draft[0]!) <= 10 * mpp) return this.floorFinish();
-    // A corner: the outline is what the footer is about now, not a room's floor said before.
+    if (draft.length >= 3 && distance(corner, draft[0]!) <= 10 * mpp) return this.floorFinish();
+    // A corner (where the pointer snapped): the outline is what the footer is about now, not a room's
+    // floor said before.
     this.ui.info = null;
-    this.ui.floorDraft = [...draft, p];
+    this.ui.floorDraft = [...draft, corner];
     this.render();
   }
 
@@ -304,6 +314,7 @@ export class App {
   floorFinish(): void {
     const points = this.ui.floorDraft;
     this.ui.floorDraft = [];
+    this.ui.snap = null;
     if (points.length < 3) return this.render();
     const id = newId('floor');
     this.store.dispatch(addFloor({ id, levelId: this.ui.levelId, source: { kind: 'outline', points }, ...FLOOR_DEFAULTS }));
@@ -337,8 +348,14 @@ export class App {
     if (this.ui.snap?.wallId) ids.add(this.ui.snap.wallId);
     return doc.walls
       .filter((w) => ids.has(w.id) && w.levelId === this.ui.levelId)
-      // A third of the way along: the middle is where the temporary dimension shows its value.
-      .map((w) => ({ at: { x: w.start.x + (w.end.x - w.start.x) / 3, y: w.start.y + (w.end.y - w.start.y) / 3 }, text: t('wall.tag', { n: wallNumber(doc, w.id) ?? '' }) }));
+      // A third of the way along: the middle is where the temporary dimension shows its value. Along an
+      // arc, on the arc: on its chord the tag sat inside the curve, across the chord and radius dimensions.
+      // At 70 % of its sweep, clear of the radius dimension (30 %, temp-dims.ts) and the bend handle (50 %).
+      .map((w) => {
+        const arc = arcOf({ start: w.start, end: w.end, bulge: w.bulge ?? 0 });
+        const at = arc ? pointAt(arc, arc.startAngle + arc.sweep * 0.7) : { x: w.start.x + (w.end.x - w.start.x) / 3, y: w.start.y + (w.end.y - w.start.y) / 3 };
+        return { at, text: t('wall.tag', { n: wallNumber(doc, w.id) ?? '' }) };
+      });
   }
 
   /** While turning the selection: the angle, at the point it turns about. */
@@ -472,6 +489,9 @@ export class App {
     const r = wallTransition(this.ui.wall, event);
     // A value typed for one step (a length, a radius) never carries over to the next.
     if (r.state.kind !== this.ui.wall.kind || r.segment) this.shell.measure.value = '';
+    // A chain just ended (closed on its start, Enter, Esc): the snap it showed is the old chain's, as
+    // "Start · closes" left under the pointer until it moved. The next move snaps afresh.
+    if (r.state.kind === 'idle' && this.ui.wall.kind !== 'idle') this.ui.snap = null;
     this.ui.wall = r.state;
     if (r.segment) this.store.dispatch(addWalls([this.makeWall(r.segment.start, r.segment.end, newId('wall'), r.segment.bulge ?? 0)]));
     else this.refresh();
@@ -594,6 +614,9 @@ export class App {
 
   toggleSnaps(): void {
     this.ui.snaps = !this.ui.snaps;
+    // Said, not only shown by the magnet's state: S is one key, easy to press by mistake, and drawing
+    // then stops snapping with nothing else to tell why.
+    this.toast(t(this.ui.snaps ? 'toast.snapsOn' : 'toast.snapsOff'));
     this.render();
   }
 
@@ -615,12 +638,15 @@ export class App {
     this.store.dispatch(deleteElements([...this.ui.selection]));
   }
 
+  // Said with what was undone or redone ("Undone: Delete"): "Undone" alone left the user to look for it.
   undo(): void {
-    if (this.store.undo()) this.toast(t('toast.undo'));
+    const what = this.store.undoLabel();
+    if (this.store.undo()) this.toast(what ? `${t('toast.undo')}: ${t(what as MessageKey)}` : t('toast.undo'));
   }
 
   redo(): void {
-    if (this.store.redo()) this.toast(t('toast.redo'));
+    const what = this.store.redoLabel();
+    if (this.store.redo()) this.toast(what ? `${t('toast.redo')}: ${t(what as MessageKey)}` : t('toast.redo'));
   }
 
   private seenSelection = '';
@@ -665,7 +691,9 @@ export class App {
       const a = this.plan.toScreen({ x: box.min.x, y: box.max.y });
       const b = this.plan.toScreen({ x: box.max.x, y: box.min.y });
       const xs = [a.x, b.x];
-      const ys = [a.y, b.y + ROTATE_OFFSET + 12];
+      // The turn handle: under the selection, lower still where it keeps clear of an end's arrow.
+      const turn = this.handles().rotate?.at.y;
+      const ys = [a.y, Math.max(b.y + ROTATE_OFFSET, turn ?? 0) + 12];
       const TEXT = 12;
       for (const d of this.currentDims()) {
         const line = this.plan.dimLine(d);
@@ -744,12 +772,20 @@ export class App {
     this.scene.setTheme(this.ui.theme === 'dark', (name) => css.getPropertyValue(name).trim());
   }
 
+  /** The project's name, as one undo step; an empty name is "Untitled project" again. */
+  renameProject(next: string): void {
+    const name = next.trim();
+    if (name === this.store.get().name) return;
+    this.store.dispatch({ label: 'cmd.renameProject', apply: (d) => ({ ...d, name }) });
+  }
+
   saveFile(): void {
     const doc = this.store.get();
     const blob = new Blob([writeProject(doc)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `${doc.name || 'project'}.json`;
+    // Named after the project, without what a file name cannot hold: every save was "project.json".
+    a.download = `${(doc.name || t('app.untitled')).replace(/[\\/:*?"<>|]+/g, '-')}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
     this.toast(t('toast.saved'));
@@ -803,8 +839,10 @@ export class App {
     this.ui.drag = null;
     this.ui.levelId = startLevel(r.doc);
     savePrefs({ levelId: this.ui.levelId });
+    // A project saved without a name is called by its file's: "casa.json" opens as "casa".
+    const opened = r.doc.name ? r.doc : { ...r.doc, name: file.name.replace(/\.json$/i, '') };
     // One undo step, like any other change: opening by mistake never loses the project that was open.
-    this.store.dispatch({ label: 'cmd.openProject', apply: () => r.doc });
+    this.store.dispatch({ label: 'cmd.openProject', apply: () => opened });
     this.framed.plan = false;
     this.framed['3d'] = false;
     this.frameAll();
@@ -817,7 +855,30 @@ export class App {
     el.textContent = text;
     el.classList.add('show');
     clearTimeout(this.toastTimer);
-    this.toastTimer = window.setTimeout(() => el.classList.remove('show'), 1600);
+    // Long enough to be read: 1.6 s took away "Project opened; 1 bad element was left out. Ctrl+Z goes
+    // back" before its end. Short ones ("Undone") still go quickly.
+    this.toastTimer = window.setTimeout(() => el.classList.remove('show'), Math.max(2500, 1500 + text.length * 50));
+  }
+
+  /** The level just below the one shown, if any: its plan is drawn faint under this one, and snapped to. */
+  levelBelow(): string | null {
+    const levels = this.store.get().levels;
+    const here = levels.find((l) => l.id === this.ui.levelId);
+    return (here ? levels.filter((l) => l.elevation < here.elevation).sort((a, b) => b.elevation - a.elevation)[0]?.id : undefined) ?? null;
+  }
+
+  /** The wall pieces of the level below (none for the lowest, or with walls hidden). */
+  private underlay(): Point2[][] {
+    const below = this.levelBelow();
+    if (!below || this.ui.hidden.has('walls')) return [];
+    return [...this.geometry.solids.values()].filter((s) => s.wall.levelId === below).flatMap((s) => s.pieces.map((p) => [...p.polygon]));
+  }
+
+  /** How many kinds of element (walls, doors and windows, rooms, floors) the selection holds. */
+  private selectionKinds(): number {
+    const g = this.geometry;
+    const ids = [...this.ui.selection];
+    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length;
   }
 
   selectedWalls(): DocWall[] {
@@ -845,9 +906,26 @@ export class App {
     console.info(`[cad2 perf] ${this.ui.view} ${(this.marks.at(-1)![1] - this.marks[0]![1]).toFixed(1)} ms: ${steps.join(', ')}`);
   }
 
+  /** Where the pointer is over the drawing (client pixels), set by the input layer; null off it. */
+  pointer: Point2 | null = null;
+
+  /** The world point under the pointer, on the level shown, for the view as it is now. */
+  private pointerWorld(): Point2 | null {
+    if (!this.pointer) return null;
+    if (this.ui.view === 'plan') {
+      const r = this.shell.planCanvas.getBoundingClientRect();
+      return this.plan.toWorld({ x: this.pointer.x - r.left, y: this.pointer.y - r.top });
+    }
+    const z = levelOf(this.store.get(), this.ui.levelId)?.elevation ?? 0;
+    return this.scene.groundPoint(this.pointer.x, this.pointer.y, z);
+  }
+
   private renderFrame(): void {
     const { ui, shell } = this;
     const plan = ui.view === 'plan';
+    // The point under a pointer that has not moved changes with the view (Home, F, the keys, a drawer):
+    // taken again, so the footer's coordinates and a floor outline's last side follow it.
+    if (this.pointer) ui.cursor = this.pointerWorld();
     // On narrow screens the panel is a drawer over the drawing: it opens only when it has something
     // to show, so it never covers the model for nothing. Set first: what it covers shapes the view.
     const narrow = matchMedia('(max-width: 900px)').matches;
@@ -870,6 +948,12 @@ export class App {
       const len = end && w.kind === 'drawing' ? distance(w.last, end) : 0;
       const ang = end && w.kind === 'drawing' ? ((Math.atan2(end.y - w.last.y, end.x - w.last.x) * 180) / Math.PI + 360) % 360 : 0;
       const along = end && w.kind === 'drawing' && len > 0 ? { x: (end.x - w.last.x) / len, y: (end.y - w.last.y) / len } : null;
+      // A floor outline's side being drawn: from its last corner to where the next would snap.
+      const floorFrom = ui.tool === 'floor' ? (ui.floorDraft.at(-1) ?? null) : null;
+      const floorTo = floorFrom ? (ui.snap?.point ?? ui.cursor) : null;
+      const floorLen = floorFrom && floorTo ? distance(floorFrom, floorTo) : 0;
+      const floorAlong = floorFrom && floorTo && floorLen > 0 ? { x: (floorTo.x - floorFrom.x) / floorLen, y: (floorTo.y - floorFrom.y) / floorLen } : null;
+      const floorAng = floorAlong ? ((Math.atan2(floorAlong.y, floorAlong.x) * 180) / Math.PI + 360) % 360 : 0;
       // How far the drawn preview reaches on the measure's side: its pieces as derived (reference line,
       // thickness and joins included), so the measure is set off past them.
       const side = along ? { x: -along.y, y: along.x } : null;
@@ -886,13 +970,15 @@ export class App {
         hover: ui.hover,
         preview,
         snap:
-          ui.tool === 'wall' && ui.snap
-            ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...(along ? { away: along } : {}) }
+          (ui.tool === 'wall' || ui.tool === 'floor') && ui.snap
+            ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
             : null,
         measure:
           end && along && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
             ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°`, normal: side!, clear: reach }
-            : (this.bendMeasure() ?? this.turnMeasure() ?? guide?.measure ?? null),
+            : floorFrom && floorTo && floorAlong && floorLen >= MIN_WALL_LENGTH
+              ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${num(floorLen)} m · ${num(floorAng, 1)}°`, normal: { x: -floorAlong.y, y: floorAlong.x }, clear: 0 }
+              : (this.bendMeasure() ?? this.turnMeasure() ?? guide?.measure ?? null),
         axis: end && len >= MIN_WALL_LENGTH && w.kind === 'drawing' ? { start: w.last, end } : (guide?.axis ?? null),
         handles: this.handles(),
         anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : null,
@@ -901,14 +987,21 @@ export class App {
           at: r.label,
           name: `${r.room.number} · ${name(r.room.name)}`,
           short: r.room.number,
-          area: r.enclosed ? `${num(r.area)} m²` : t('warn.roomNotEnclosed'),
-          warn: !r.enclosed,
+          // A room sharing its space with another says so on its tag: the two tags fell on one another
+          // and one name was simply not seen.
+          area: !r.enclosed
+            ? t('warn.roomNotEnclosed')
+            : r.sharing.length > 0
+              ? t('warn.roomShared', { rooms: r.sharing.map((id) => this.store.get().rooms.find((x) => x.id === id)).flatMap((x) => (x ? [`${x.number} · ${name(x.name)}`] : [])).join(', ') })
+              : `${num(r.area)} m²`,
+          warn: !r.enclosed || r.sharing.length > 0,
           outline: r.outline,
         })),
-        draft: ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(ui.cursor ? [ui.cursor] : [])] : null,
+        draft: ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])] : null,
         draftCorners: ui.tool === 'floor' ? ui.floorDraft : [],
         openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
         dims: this.currentDims().map((d) => ({ ...d, text: num(d.value) })),
+        underlay: this.underlay(),
       });
     } else {
       this.scene.sync(this.visibleGeometry(), ui.selection, preview);
@@ -944,6 +1037,7 @@ export class App {
         placed: this.geometry.openings,
         openingWarnings: this.geometry.openingWarnings,
         openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing] } : null,
+        total: ui.selection.size,
       },
       {
         updateWalls: (patch) => this.store.dispatch(updateWalls([...ui.selection], patch)),
@@ -1182,6 +1276,7 @@ export class App {
     const doc = store.get();
     shell.panelToggle.setAttribute('aria-pressed', String(ui.panelOpen));
     shell.projectName.textContent = doc.name || t('app.untitled');
+    document.title = `${doc.name || t('app.untitled')} · cad2`;
     shell.undo.disabled = !store.canUndo();
     shell.redo.disabled = !store.canRedo();
     shell.view3d.setAttribute('aria-pressed', String(ui.view === '3d'));
@@ -1215,7 +1310,8 @@ export class App {
     }
     if (!doc.levels.some((l) => l.id === ui.levelId)) ui.levelId = doc.levels[0]!.id;
     shell.level.value = ui.levelId;
-    shell.emptyHint.hidden = doc.walls.length > 0 || (ui.tool === 'wall' && ui.wall.kind === 'drawing');
+    // Gone once the wall tool is on: "press W" no longer applies, and the footer says what to click.
+    shell.emptyHint.hidden = doc.walls.length > 0 || ui.tool === 'wall';
 
     // Footer: what to do now, the keys that work now, and the measure field.
     const drawing = ui.tool === 'wall';
@@ -1243,9 +1339,13 @@ export class App {
             ? 'hint.marqueeCrossing'
             : 'hint.marqueeWindow'
           : ui.selection.size > 1
-            ? 'hint.selectedMany'
+            ? // Of several kinds, the panel edits one of them (panel.ts): "edit them together" was not so.
+              this.selectionKinds() > 1
+              ? 'hint.selectedMixed'
+              : 'hint.selectedMany'
             : ui.selection.size === 1
-              ? ui.view === 'plan'
+              ? // "click a dimension" only where there is one: a room or a floor has none.
+                ui.view === 'plan' && this.currentDims().length > 0
                 ? 'hint.selected'
                 : 'hint.selected3d'
               : 'hint.select';
@@ -1317,7 +1417,10 @@ export class App {
           b.innerHTML = icon(e.icon);
           b.title = e.keys ? `${e.label} (${e.keys})` : e.label;
           b.setAttribute('aria-label', b.title);
-          b.addEventListener('click', () => e.run());
+          // The buttons outlive the selection they were made for (they are rebuilt only when the set of
+          // actions changes): the action is looked up at the click, for what is selected then. Kept from
+          // when the bar was built, "Centre" centred the window selected before.
+          b.addEventListener('click', () => contextEntries(this, () => this.openCommands()).find((x) => x.id === e.id)?.run());
           return b;
         }),
       );

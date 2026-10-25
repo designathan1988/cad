@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { vec } from '../../../src/core/vector';
 import { geometry, layer, testWall } from './fixtures';
 import { shoelace } from './oracle';
+import { overlapArea } from '../../../src/elements/wall/geometry/convex';
 
 type XY = readonly [number, number];
 
@@ -140,3 +141,36 @@ describe('5 ends, and ends that do not fit', () => {
     expectPolygon(g.pieces.get('a')![0]!.polygon, [[-4, -0.1], [0, -0.1], [0, 0.1], [-4, 0.1]]);
   });
 });
+
+describe('node: an arc from the outside of an L corner', () => {
+  // The outer corner of a 26.5 cm house wall, (10, 8): the arc starts there and leaves to the
+  // upper right, bending down (a curved porch). Its end segments are 10 cm long: the first few still
+  // lie in the corner. Refused before (complexJoin, then "join with an arc not supported").
+  const ext = [layer(0.015, 'finish1'), layer(0.22, 'structure'), layer(0.015, 'thermal'), layer(0.015, 'finish2')];
+  const m15 = [layer(0.015, 'finish1'), layer(0.12, 'structure'), layer(0.015, 'finish2')];
+  const walls = [
+    testWall('w0', vec(0, 0), vec(10, 0), ext),
+    testWall('w1', vec(10, 0), vec(10, 8), ext),
+    testWall('w2', vec(10, 8), vec(0, 8), ext),
+    testWall('w3', vec(0, 8), vec(0, 0), ext),
+    { ...testWall('arc', vec(10, 8), vec(13.5396, 4.60589), m15), bulge: -0.6495 },
+  ];
+  const g = geometry(walls);
+
+  it('joins without a warning', () => {
+    expect(g.warnings).toEqual([]);
+  });
+
+  it('no piece of the arc overlaps the corner walls, and it starts on their outer faces', () => {
+    const arc = g.pieces.get('arc')!;
+    for (const id of ['w1', 'w2']) {
+      for (const p of g.pieces.get(id)!) for (const a of arc) expect(overlapArea(a.polygon, p.polygon)).toBeLessThan(1e-9);
+    }
+    // Outer faces x = 10.1325 (w1) and y = 8.1325 (w2): nothing of the arc lies inside both.
+    const inCorner = arc.flatMap((a) => a.polygon).filter((v) => v.x < 10.1325 - 1e-9 && v.y < 8.1325 - 1e-9);
+    expect(inCorner).toEqual([]);
+    // And it reaches them: some of its vertices lie on one of those faces.
+    expect(arc.flatMap((a) => a.polygon).some((v) => Math.abs(v.x - 10.1325) < 1e-9 || Math.abs(v.y - 8.1325) < 1e-9)).toBe(true);
+  });
+});
+

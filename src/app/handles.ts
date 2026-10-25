@@ -12,6 +12,8 @@ import { arcOf } from '../elements/wall/geometry/arc';
 /** How far beyond its end an arrow sits, and how far under the selection the turn handle (px). */
 export const ARROW_OFFSET = 20;
 export const ROTATE_OFFSET = 28;
+/** Least distance between the turn handle and another handle (px): both reaches and a gap. */
+const HANDLE_CLEAR = 26;
 
 export interface Handles {
   readonly squares: readonly { readonly id: WallId; readonly end: WallEnd; readonly at: Point2 }[];
@@ -50,7 +52,12 @@ export function handlesFor(walls: readonly DocWall[], toScreen: (p: Point2) => P
   const below = Math.max(...corners.map((c) => c.y));
   const centre = toScreen(pivot);
   const bulge = one?.bulge ? { id: one.id, at: toScreen(arcMiddle(one.start, one.end, one.bulge)) } : null;
-  return { squares, arrows, rotate: { at: { x: centre.x, y: below + ROTATE_OFFSET }, pivot }, bulge };
+  // Under the selection, clear of the other handles: under a wall standing upright on screen it fell on
+  // the arrow of its lower end, which it hid and took the clicks of. Then it goes under that arrow.
+  const others = [...squares.map((s) => s.at), ...arrows.map((a) => a.at), ...(bulge ? [bulge.at] : [])];
+  let at = { x: centre.x, y: below + ROTATE_OFFSET };
+  if (others.some((o) => Math.hypot(o.x - at.x, o.y - at.y) < HANDLE_CLEAR)) at = { x: at.x, y: Math.max(below, ...others.map((o) => o.y)) + ROTATE_OFFSET };
+  return { squares, arrows, rotate: { at, pivot }, bulge };
 }
 
 /** The points that bound a wall: its ends, and for an arc the points where it turns along an axis. */

@@ -25,7 +25,8 @@ export function buildShell(root: HTMLElement) {
   const top = el('header', { class: 'top' });
   const left = el('div', { class: 'left' });
   const homeBtn = iconButton('home');
-  const projectName = el('span', { class: 'project-name' });
+  // A button: a click (or Enter) renames the project in place (input.ts).
+  const projectName = el('button', { type: 'button', class: 'project-name' });
   const undo = iconButton('undo');
   const redo = iconButton('redo');
   left.append(homeBtn, projectName, el('span', { class: 'sep' }), undo, redo);
@@ -141,6 +142,7 @@ export function buildShell(root: HTMLElement) {
       b.setAttribute('aria-label', t(key));
     };
     tip(homeBtn, 'float.frame');
+    projectName.title = t('top.rename');
     tip(undo, 'top.undo');
     tip(redo, 'top.redo');
     tip(commands, 'top.commands');

@@ -61,4 +61,15 @@ describe('store', () => {
       { numRuns: 200, seed: 20261024 },
     );
   });
+  it('names what an undo and a redo would take back: the label of that step', () => {
+    const s = createStore(newDocument());
+    expect(s.undoLabel()).toBeNull();
+    s.dispatch(addWalls([wall('a', 0)]));
+    s.dispatch(deleteWalls(['a']));
+    expect(s.undoLabel()).toBe('cmd.deleteWalls');
+    s.undo();
+    expect([s.undoLabel(), s.redoLabel()]).toEqual(['cmd.addWalls', 'cmd.deleteWalls']);
+    s.redo();
+    expect([s.undoLabel(), s.redoLabel()]).toEqual(['cmd.deleteWalls', null]);
+  });
 });

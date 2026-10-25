@@ -19,7 +19,11 @@ export interface SnapInput {
   readonly cursor: Point2;
   /** Metres per screen pixel at the cursor. */
   readonly mpp: number;
-  readonly segments: readonly { readonly id?: string; readonly start: Point2; readonly end: Point2 }[];
+  /**
+   * `reach`: how far from its axis the wall's body goes (half its thickness, m). Its ends are taken
+   * from anywhere on that body near them: the corner one sees is the faces', not the axis's.
+   */
+  readonly segments: readonly { readonly id?: string; readonly start: Point2; readonly end: Point2; readonly reach?: number }[];
   /** The point being drawn from, if any. */
   readonly from: Point2 | null;
   /** The first point of the chain: clicking it closes the outline. */
@@ -58,7 +62,9 @@ export function snap(input: SnapInput): Snap {
     const id = input.segments[i]?.id;
     return id === undefined ? {} : { wallId: id };
   };
-  const nearEnd = closest(ends, cursor, r);
+  // The corners of the end's square of body are reach·√2 from it, at any angle of the wall.
+  const reaches = input.segments.flatMap((s) => [(s.reach ?? 0) * Math.SQRT2, (s.reach ?? 0) * Math.SQRT2]);
+  const nearEnd = closest(ends, cursor, r, reaches);
   if (nearEnd) return { point: nearEnd, kind: 'endpoint', ...of(Math.floor(ends.indexOf(nearEnd) / 2)) };
   const mids = input.segments.map((s) => scale(add(s.start, s.end), 0.5));
   const nearMid = closest(mids, cursor, r);
@@ -113,16 +119,17 @@ function orthogonal(cursor: Point2, from: Point2, grid: boolean): Snap {
 export const onGrid = (p: Point2): Point2 =>
   vec(Math.round(p.x / GRID_STEP) * GRID_STEP, Math.round(p.y / GRID_STEP) * GRID_STEP);
 
-function closest(points: readonly Point2[], p: Point2, r: number): Point2 | null {
+/** The nearest point within r (plus, per point, its reach: d − reach is what is compared). */
+function closest(points: readonly Point2[], p: Point2, r: number, reaches: readonly number[] = []): Point2 | null {
   let best: Point2 | null = null;
   let bestD = r;
-  for (const q of points) {
-    const d = distance(p, q);
+  points.forEach((q, i) => {
+    const d = distance(p, q) - (reaches[i] ?? 0);
     if (d <= bestD) {
       best = q;
       bestD = d;
     }
-  }
+  });
   return best;
 }
 

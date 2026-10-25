@@ -23,6 +23,14 @@ describe('snaps', () => {
     expect(s.point.y).toBeCloseTo(0, 12);
   });
 
+  it("a thick wall's end is taken from its outer corner too: within its reach (half its thickness) plus the radius", () => {
+    // 25 cm wall: its outer corner at (6.125, 0.125) is 17.7 cm from the end, the click 6 mm past it.
+    const thick = { segments: [{ start: vec(0, 0), end: vec(6, 0), reach: 0.125 }] };
+    expect(snap(input([6.13, 0.128], thick))).toMatchObject({ kind: 'endpoint', point: { x: 6, y: 0 } });
+    // Without the reach the same click is no end.
+    expect(snap(input([6.13, 0.128])).kind).not.toBe('endpoint');
+  });
+
   it('ends and middle still win over the wall body', () => {
     expect(snap(input([0.005, 0.003])).kind).toBe('endpoint');
     expect(snap(input([3.004, 0.002])).kind).toBe('midpoint');

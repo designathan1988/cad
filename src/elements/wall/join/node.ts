@@ -10,6 +10,7 @@ import { area, clipHalfPlane, type ConvexPolygon, type HalfPlane, halfPlaneThrou
 import { endPoint, faceOffsets, intoBody, offsetOf, strip, wallDirection, wallLength, wallNormal } from '../geometry/offset';
 import type { WallShape } from '../geometry/shape';
 import type { EndRef, WallEnd, WallId } from '../schema';
+import { parentOf } from '../geometry/arc';
 import { resolveCorner } from './cut-l';
 import { type AbutmentResult, resolveAbutment } from './cut-t';
 import { goesThrough } from './discover';
@@ -49,9 +50,15 @@ export function resolveNode(walls: ReadonlyMap<WallId, WallShape>, refs: readonl
   if (corner.warning) warnings.push(corner.warning);
 
   for (const c of others) {
+    // An arc's end segment from outside the corner: the T against one wall (alone) fits that segment,
+    // but the arc's next segments, short and still in the corner, cut through the wall's finish; the
+    // corner's outer faces bound all of them (footprint.ts gives the notches to every segment).
+    const arcEnd = parentOf(c.wall.id) !== c.wall.id;
     const fit =
+      (corner.a && corner.b && arcEnd && outside(c, p, corner.a, q, corner.b)) ||
       (corner.a && corner.b && (alone(c, p, corner.a, q, corner.b) ?? alone(c, q, corner.b, p, corner.a))) ||
-      (corner.a && corner.b && matching(c, p, q, point));
+      (corner.a && corner.b && matching(c, p, q, point)) ||
+      (corner.a && corner.b && outside(c, p, corner.a, q, corner.b));
     if (fit) {
       endCuts.push([c.ref, fit.cut]);
       notches.push(...fit.notches);
@@ -172,6 +179,41 @@ function matching(c: End, p: End, q: End, node: Point2): AbutmentResult | null {
 }
 
 const far = (w: End): Point2 => endPoint(w.wall, w.ref.end === 'start' ? 'end' : 'start');
+
+/**
+ * The third end against the outside of the L's corner: it comes from the reflex side (outside the
+ * angle between the two passage walls), so its end lies in the corner and its body leaves through
+ * the L's two outer faces. It keeps its own end and loses, in every layer, what lies inside either
+ * passage wall as this node cuts it: it then starts exactly on those faces. An arc drawn from the
+ * outer corner of a house was refused here (complexJoin, then "join with an arc not supported").
+ */
+function outside(c: End, p: End, pCut: EndCut, q: End, qCut: EndCut): AbutmentResult | null {
+  const up = intoBody(p.wall, p.ref.end);
+  const uq = intoBody(q.wall, q.ref.end);
+  const dc = intoBody(c.wall, c.ref.end);
+  const turn = cross(up, uq);
+  // A corner, not a passage in line; and c not inside its angle (where it would meet the inner faces).
+  if (angleBetween(up, uq) > 180 - COLLINEAR_ANGLE || Math.abs(turn) < 1e-9) return null;
+  const inside = Math.sign(cross(up, dc)) === Math.sign(turn) && Math.sign(cross(dc, uq)) === Math.sign(turn);
+  if (inside) return null;
+  const body = (w: End, cut: EndCut): HalfPlane[] => {
+    let poly: ConvexPolygon = strip(w.wall, w.ref.end === 'start' ? cut.extension : 0, w.ref.end === 'end' ? cut.extension : 0);
+    for (const plane of cut.cuts) poly = clipHalfPlane(poly, plane);
+    return poly.map((a, k) => {
+      const b = poly[(k + 1) % poly.length]!;
+      return halfPlaneThrough(a, { x: -(b.y - a.y), y: b.x - a.x });
+    });
+  };
+  const all: [number, number] = [0, c.wall.layers.length - 1];
+  return {
+    cut: { extension: 0, cuts: [] },
+    notches: [
+      { wallId: c.wall.id, region: body(p, pCut), layers: all },
+      { wallId: c.wall.id, region: body(q, qCut), layers: all },
+    ],
+    deepest: [],
+  };
+}
 
 /**
  * The host's layer boundaries on the abutting wall's side, from the near face to the core face, each

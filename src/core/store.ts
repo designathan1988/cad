@@ -14,6 +14,9 @@ export interface Store<D> {
   readonly redo: () => boolean;
   readonly canUndo: () => boolean;
   readonly canRedo: () => boolean;
+  /** The label of what Ctrl+Z would undo, and of what Ctrl+Shift+Z would redo; null when none. */
+  readonly undoLabel: () => string | null;
+  readonly redoLabel: () => string | null;
   /** Replaces the document and clears history, as when a project is opened. */
   readonly reset: (doc: D) => void;
   readonly subscribe: (listener: (doc: D) => void) => () => void;
@@ -23,6 +26,9 @@ export function createStore<D>(initial: D): Store<D> {
   let doc = initial;
   let past: D[] = [];
   let future: D[] = [];
+  // The label of each step, beside the version it leads away from (past) or back to (future).
+  let pastLabels: string[] = [];
+  let futureLabels: string[] = [];
   const listeners = new Set<(doc: D) => void>();
   const emit = () => listeners.forEach((l) => l(doc));
   return {
@@ -31,7 +37,9 @@ export function createStore<D>(initial: D): Store<D> {
       const next = command.apply(doc);
       if (next === doc) return;
       past.push(doc);
+      pastLabels.push(command.label);
       future = [];
+      futureLabels = [];
       doc = next;
       emit();
     },
@@ -39,6 +47,7 @@ export function createStore<D>(initial: D): Store<D> {
       const prev = past.pop();
       if (prev === undefined) return false;
       future.push(doc);
+      futureLabels.push(pastLabels.pop() ?? '');
       doc = prev;
       emit();
       return true;
@@ -47,16 +56,21 @@ export function createStore<D>(initial: D): Store<D> {
       const next = future.pop();
       if (next === undefined) return false;
       past.push(doc);
+      pastLabels.push(futureLabels.pop() ?? '');
       doc = next;
       emit();
       return true;
     },
     canUndo: () => past.length > 0,
     canRedo: () => future.length > 0,
+    undoLabel: () => pastLabels.at(-1) ?? null,
+    redoLabel: () => futureLabels.at(-1) ?? null,
     reset(next) {
       doc = next;
       past = [];
       future = [];
+      pastLabels = [];
+      futureLabels = [];
       emit();
     },
     subscribe(listener) {

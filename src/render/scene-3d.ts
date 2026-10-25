@@ -10,6 +10,7 @@ import { add, scale } from '../core/vector';
 import type { WallId } from '../elements/wall/schema';
 import { LAYER_TOKEN } from '../ui/swatch';
 import { blockPaint, wallMeshKey } from './wall-paint';
+import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
 
 const toThree = (p: Point2, z: number) => new THREE.Vector3(p.x, z, -p.y);
 
@@ -60,6 +61,10 @@ export class Scene3D {
     this.controls.maxPolarAngle = Math.PI * 0.495;
     this.controls.addEventListener('change', () => {
       this.invalidate();
+      // What is placed by projecting through the camera (the floating bar) must use the camera as it
+      // is now: its world matrices are otherwise updated only by the next frame's render, and a jump
+      // (the cube's Top, F, a turn by keyboard) left the bar where the selection was before it.
+      this.camera.updateMatrixWorld();
       this.onChange();
     });
     this.scene.add(this.sky);
@@ -86,7 +91,9 @@ export class Scene3D {
     m.glass.color = c('--3d-glass');
     m.leaf.color = c('--3d-leaf');
     m.invalid.color = c('--warn');
-    for (const [name, mat] of this.layerMaterials) mat.color = c(name);
+    // Each layer token has its 3D twin (--layer-structure, --3d-layer-structure): the plan's darken in
+    // the dark theme, and the walls in 3D turned a muddy brown under a bright floor.
+    for (const [name, mat] of this.layerMaterials) mat.color = c(name.replace(/^--layer-/, '--3d-layer-'));
     this.sky.color = c('--3d-light');
     this.sky.groundColor = c('--3d-ground-light');
     this.sun.color = c('--3d-light');
@@ -184,18 +191,21 @@ export class Scene3D {
       this.scene.add(group);
       this.walls.set(id, { group, key });
     }
+    const faces = this.facesOf(g);
     for (const s of g.solids.values()) {
       seen.add(s.wall.id);
       const state = preview.has(s.wall.id) ? 'p' : selected.has(s.wall.id) ? 's' : 'n';
       // The shape's part of the key, once per solid: solids are only replaced when the geometry is
       // computed again, and a switch of view (148 walls) stringified every block each time.
       let shape = this.shapeKeys.get(s);
-      if (shape === undefined) this.shapeKeys.set(s, (shape = wallMeshKey('', s.blocks, s.layers)));
+      // What shows of a wall depends on its neighbours too (faces.ts): their faces are in the key.
+      const mine = faces.get(s.wall.id) ?? [];
+      if (shape === undefined) this.shapeKeys.set(s, (shape = wallMeshKey('', s.blocks, s.layers) + JSON.stringify(mine)));
       const key = state + shape;
       const old = this.walls.get(s.wall.id);
       if (old?.key === key) continue;
       if (old) this.drop(old.group);
-      const group = this.build(s, state);
+      const group = this.build(s, state, mine);
       group.userData.wallId = s.wall.id;
       this.scene.add(group);
       this.walls.set(s.wall.id, { group, key });
@@ -209,14 +219,32 @@ export class Scene3D {
     this.invalidate();
   }
 
-  private build(s: WallSolid, state: 'p' | 's' | 'n'): THREE.Group {
+  /**
+   * The faces of every wall's blocks that show (faces.ts), by wall, once per derived geometry: the
+   * faces between touching blocks, coplanar and facing, were drawn both and fought for the same pixels
+   * (light specks on the walls). Blocks of every level and wall together, as joins span walls.
+   */
+  private facesCache: { solids: DerivedGeometry['solids']; faces: Map<WallId, PrismFaces[]> } | null = null;
+  private facesOf(g: DerivedGeometry): Map<WallId, PrismFaces[]> {
+    if (this.facesCache?.solids === g.solids) return this.facesCache.faces;
+    const owners: WallId[] = [];
+    const prisms = [...g.solids.values()].flatMap((s) => s.blocks.map((b) => (owners.push(s.wall.id), b)));
+    const all = visibleFaces(prisms);
+    const faces = new Map<WallId, PrismFaces[]>();
+    all.forEach((f, i) => faces.set(owners[i]!, [...(faces.get(owners[i]!) ?? []), f]));
+    this.facesCache = { solids: g.solids, faces };
+    return faces;
+  }
+
+  private build(s: WallSolid, state: 'p' | 's' | 'n', faces: readonly PrismFaces[]): THREE.Group {
     const group = new THREE.Group();
     // Each block in its layer's colour, as in plan (wall-paint.ts).
     const material = (paint: string): THREE.Material => this.layerMaterials.get(paint) ?? this.materials[paint as keyof typeof this.materials];
-    for (const b of s.blocks) {
+    s.blocks.forEach((b, i) => {
       const { side, top } = blockPaint(s.layers, b.layerIndex, state);
-      group.add(new THREE.Mesh(prism(b.polygon, b.bottom, b.top), [material(side), material(top)]));
-    }
+      const f = faces[i];
+      group.add(new THREE.Mesh(f ? shownPrism(b.polygon, b.bottom, b.top, f) : prism(b.polygon, b.bottom, b.top), [material(side), material(top)]));
+    });
     return group;
   }
 
@@ -327,6 +355,36 @@ export class Scene3D {
     this.controls.dispose();
     this.renderer.dispose();
   }
+}
+
+/** A prism of only the faces that show (faces.ts), wound as prism(): sides in group 0, caps in group 1. */
+function shownPrism(poly: readonly Point2[], bottom: number, top: number, f: PrismFaces): THREE.BufferGeometry {
+  const pos: number[] = [];
+  const push = (v: THREE.Vector3) => pos.push(v.x, v.y, v.z);
+  const n = poly.length;
+  for (let i = 0; i < n; i++) {
+    const a = poly[i]!;
+    const b = poly[(i + 1) % n]!;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len === 0) continue;
+    const at = (t: number) => ({ x: a.x + ((b.x - a.x) * t) / len, y: a.y + ((b.y - a.y) * t) / len });
+    for (const r of f.sides[i] ?? []) {
+      const a0 = toThree(at(r.t0), r.z0);
+      const b0 = toThree(at(r.t1), r.z0);
+      const a1 = toThree(at(r.t0), r.z1);
+      const b1 = toThree(at(r.t1), r.z1);
+      [a0, b0, b1, a0, b1, a1].forEach(push);
+    }
+  }
+  const sides = pos.length / 3;
+  for (const c of f.top) for (let i = 1; i < c.length - 1; i++) [toThree(c[0]!, top), toThree(c[i]!, top), toThree(c[i + 1]!, top)].forEach(push);
+  for (const c of f.bottom) for (let i = 1; i < c.length - 1; i++) [toThree(c[0]!, bottom), toThree(c[i + 1]!, bottom), toThree(c[i]!, bottom)].forEach(push);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.addGroup(0, sides, 0);
+  g.addGroup(sides, pos.length / 3 - sides, 1);
+  g.computeVertexNormals();
+  return g;
 }
 
 /** A vertical prism over a convex CCW polygon: sides in group 0, top and bottom in group 1. */
