@@ -8,11 +8,12 @@ import { newDocument } from '../../src/app/document';
 import { createStore } from '../../src/core/store';
 import { addLevel } from '../../src/elements/level/commands';
 import { setLang } from '../../src/ui/i18n';
+import { VIEW_3D_DEFAULT } from '../../src/app/view-3d';
 
 // Only what appActions reads; the actions themselves are not run here.
 function fakeApp(selection: string[] = [], view: '3d' | 'plan' = 'plan') {
   const store = createStore(addLevel('lvl_up', 'Upper').apply(newDocument()));
-  return { store, ui: { selection: new Set(selection), view, levelId: 'lvl_ground', hidden: new Set() } } as unknown as App;
+  return { store, ui: { selection: new Set(selection), view, levelId: 'lvl_ground', hidden: new Set(), view3d: VIEW_3D_DEFAULT } } as unknown as App;
 }
 const openers = { help: () => {}, levels: () => {}, wallTypes: () => {}, tour: () => {}, openFile: () => {} };
 
@@ -33,7 +34,8 @@ describe('palette actions', () => {
       'view.3d', 'view.plan', 'view.frameSelection', 'view.frameAll',
       'edit.undo', 'edit.redo', 'edit.delete', 'edit.selectAll', 'edit.clearSelection',
       'file.new', 'file.open', 'file.save', 'settings.snaps', 'settings.theme', 'settings.language', 'settings.panel', 'settings.browser',
-      'layer.walls', 'layer.openings', 'layer.rooms', 'layer.floors',
+      'layer.walls', 'layer.openings', 'layer.rooms', 'layer.floors', 'layer.guides', 'edit.clearGuides',
+      'view.levelsAll', 'view.levelsBelow', 'view.levelsCurrent', 'view.explode', 'view.cut',
       'level.lvl_ground', 'level.lvl_up', 'level.edit', 'help.shortcuts', 'help.tour',
     ]) expect(ids).toContain(id);
   });

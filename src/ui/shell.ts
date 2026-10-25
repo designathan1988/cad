@@ -96,7 +96,23 @@ export function buildShell(root: HTMLElement) {
   const dims = el('div', { class: 'temp-dims' });
   const emptyHint = el('div', { class: 'empty-hint' });
   const toast = el('div', { class: 'toast', role: 'status', 'aria-live': 'polite' });
-  viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, emptyHint, toast, browser);
+  // The 3D view's own controls (view-3d.ts): which levels show, exploded, cut. In 3D only.
+  const viewBar = el('div', { class: 'view-bar', role: 'toolbar' });
+  viewBar.hidden = true;
+  const levelsBox = el('div', { class: 'segmented', role: 'group' });
+  const barButton = (box: HTMLElement, ic: IconName) => {
+    const b = el('button', { type: 'button', class: 'has-icon' });
+    b.innerHTML = icon(ic, 16);
+    b.append(el('span', { class: 'label' }));
+    box.append(b);
+    return b;
+  };
+  const levelsShown = { all: barButton(levelsBox, 'levelsAll'), below: barButton(levelsBox, 'levelsBelow'), current: barButton(levelsBox, 'levelsOne') };
+  const togglesBox = el('div', { class: 'segmented', role: 'group' });
+  const explode = barButton(togglesBox, 'explode');
+  const cut = barButton(togglesBox, 'cut');
+  viewBar.append(levelsBox, togglesBox);
+  viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, viewBar, emptyHint, toast, browser);
 
   const panel = el('aside', { class: 'panel', 'aria-label': 'Properties' });
 
@@ -116,7 +132,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, undo, redo, level, newFile, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, dims, browser, sidebar,
+    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, dims, browser, sidebar,
     emptyHint, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack,
   };
 
@@ -158,6 +174,18 @@ export function buildShell(root: HTMLElement) {
     view3d.title = `${t('view.3d')} (1)`;
     viewPlan.title = `${t('view.plan')} (2)`;
     floatBar.setAttribute('aria-label', t('ctx.label'));
+    viewBar.setAttribute('aria-label', t('view3d.bar'));
+    levelsBox.setAttribute('aria-label', t('view3d.levels'));
+    const labelled = (b: HTMLElement, label: MessageKey, tipKey: MessageKey) => {
+      b.querySelector('.label')!.textContent = t(label);
+      b.title = t(tipKey);
+      b.setAttribute('aria-label', t(tipKey));
+    };
+    labelled(levelsShown.all, 'view3d.all', 'view3d.allTip');
+    labelled(levelsShown.below, 'view3d.below', 'view3d.belowTip');
+    labelled(levelsShown.current, 'view3d.current', 'view3d.currentTip');
+    labelled(explode, 'view3d.explode', 'view3d.explodeTip');
+    labelled(cut, 'view3d.cut', 'view3d.cutTip');
     tip(snapBtn, 'foot.snap');
     emptyHint.textContent = t('empty.hint');
     tools.setAttribute('aria-label', t('aria.tools'));

@@ -288,18 +288,23 @@ export function marqueePick(items: readonly Pickable[], a: Point2, b: Point2): s
 /** Walls, openings, rooms and floors of what is shown, as screen outlines (hulls in 3D). */
 function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): void {
   const g = app.visibleGeometry();
-  const level = app.store.get().levels.find((l) => l.id === app.ui.levelId);
-  const z = level?.elevation ?? 0;
-  const screen = (poly: readonly Point2[], bottom: number, top: number) => {
-    const pts = app.outlineOnScreen(poly, bottom, top);
+  const elevation = (levelId: string) => app.store.get().levels.find((l) => l.id === levelId)?.elevation ?? 0;
+  // Each at its level's height in the view (lifted when exploded).
+  const screen = (poly: readonly Point2[], bottom: number, top: number, levelId: string) => {
+    const pts = app.outlineOnScreen(poly, bottom, top, app.lift(levelId));
     // In plan the outline keeps its order; in 3D the prism's corners become their hull.
     return app.ui.view === 'plan' ? pts : hull(pts);
   };
   const items: Pickable[] = [
-    ...[...g.solids.values()].map((s) => ({ id: s.wall.id, outlines: s.pieces.map((p) => screen(p.polygon, s.bottom, s.top)) })),
-    ...[...g.openings.values()].map((o) => ({ id: o.opening.id, outlines: [screen(openingOutline(o), o.bottom, o.top)] })),
-    ...[...g.rooms.values()].filter((r) => r.enclosed).map((r) => ({ id: r.room.id, outlines: [screen(r.outline, z, z)] })),
-    ...[...g.floors.values()].map((f) => ({ id: f.floor.id, outlines: [screen(f.outline, f.bottom, f.top)] })),
+    ...[...g.solids.values()].map((s) => ({ id: s.wall.id, outlines: s.pieces.map((p) => screen(p.polygon, s.bottom, s.top, s.wall.levelId)) })),
+    ...[...g.openings.values()].map((o) => ({
+      id: o.opening.id,
+      outlines: [screen(openingOutline(o), o.bottom, o.top, g.solids.get(o.opening.wallId)?.wall.levelId ?? '')],
+    })),
+    ...[...g.rooms.values()]
+      .filter((r) => r.enclosed)
+      .map((r) => ({ id: r.room.id, outlines: [screen(r.outline, elevation(r.room.levelId), elevation(r.room.levelId), r.room.levelId)] })),
+    ...[...g.floors.values()].map((f) => ({ id: f.floor.id, outlines: [screen(f.outline, f.bottom, f.top, f.floor.levelId)] })),
     // A guide has no ends: only a crossing selection, which it runs through, takes it.
     ...app.levelGuides().map((x) => {
       const a = app.plan.toScreen(x.point);

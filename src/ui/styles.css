@@ -81,6 +81,8 @@
   --3d-floor: #c9c5bd;
   --3d-side-sel: #9db6e8;
   --3d-preview: #7ea0e6;
+  /* What a cut through the walls shows of them, as the plan's poché. */
+  --3d-cut: #5b5f66;
   --3d-glass: #9cc7e6;
   --3d-leaf: #a0764f;
   --3d-light: #ffffff;
@@ -518,6 +520,24 @@ button.project-name:hover {
   outline: none;
 }
 .float-bar[hidden] {
+  display: none;
+}
+/* The 3D view's controls, at the top of the drawing, in its middle. */
+.view-bar {
+  position: absolute;
+  top: var(--sp-3);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: var(--sp-2);
+  padding: var(--sp-1);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  z-index: 4;
+}
+.view-bar[hidden] {
   display: none;
 }
 .empty-hint {

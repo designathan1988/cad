@@ -23,6 +23,7 @@ import { arrowStep } from '../tools/nudge';
 import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
 import { GUIDE_PX, guideBaseAt } from '../tools/guide-tool';
+import type { LevelsShown } from './view-3d';
 import { cross, sub } from '../core/vector';
 
 /** How near (screen pixels) the pointer must come to a wall, a door or a window to take it. */
@@ -108,7 +109,7 @@ export function wireInput(app: App): void {
       const r = shell.planCanvas.getBoundingClientRect();
       return { p: app.plan.toWorld({ x: e.clientX - r.left, y: e.clientY - r.top }), mpp: 1 / app.plan.scale };
     }
-    const z = levelOf(app.store.get(), ui.levelId)?.elevation ?? 0;
+    const z = (levelOf(app.store.get(), ui.levelId)?.elevation ?? 0) + app.lift(ui.levelId);
     const p = app.scene.groundPoint(e.clientX, e.clientY, z);
     return p ? { p, mpp: app.scene.metresPerPixel(p, z) } : null;
   };
@@ -430,6 +431,9 @@ export function wireInput(app: App): void {
   shell.toolFloor.addEventListener('click', () => app.setTool('floor'));
   shell.toolMeasure.addEventListener('click', () => app.setTool('measure'));
   shell.snapBtn.addEventListener('click', () => app.toggleSnaps());
+  for (const [mode, b] of Object.entries(shell.levelsShown)) b.addEventListener('click', () => app.setView3D({ levels: mode as LevelsShown }));
+  shell.explode.addEventListener('click', () => app.setView3D({ explode: !ui.view3d.explode }));
+  shell.cut.addEventListener('click', () => app.setView3D({ cut: !ui.view3d.cut }));
   shell.shortcuts.addEventListener('click', () => showHelp(app));
   shell.commands.addEventListener('click', () => palette());
   // The preview follows what is typed, before Enter: the wall preview is geometry, so refresh it.

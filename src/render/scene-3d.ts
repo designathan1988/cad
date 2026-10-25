@@ -38,6 +38,12 @@ export class Scene3D {
     leaf: new THREE.MeshStandardMaterial({ roughness: 0.7, side: THREE.DoubleSide }),
     invalid: new THREE.MeshStandardMaterial({ roughness: 0.6, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
   };
+  /** The cut (view-3d.ts): everything above its plane is clipped away; shared by every material, so a cut is one change. */
+  private readonly clip: THREE.Plane[] = [];
+  /** Where the cut goes through walls, filled as the plan fills them (not clipped itself). */
+  private readonly caps = new THREE.Group();
+  private readonly capMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  private capsKey = '';
   private readonly sky = new THREE.HemisphereLight(undefined, undefined, 2.7);
   private readonly sun = new THREE.DirectionalLight(undefined, 1.5);
   private readonly fill = new THREE.DirectionalLight(undefined, 0.6);
@@ -75,6 +81,37 @@ export class Scene3D {
     this.grid = new THREE.GridHelper(200, 200);
     this.grid.position.y = -0.001;
     this.scene.add(this.grid);
+    this.renderer.localClippingEnabled = true;
+    for (const m of [...Object.values(this.materials), ...this.layerMaterials.values()]) m.clippingPlanes = this.clip;
+    this.scene.add(this.caps);
+  }
+
+  /**
+   * Cuts everything above height z away (null: no cut), and fills where it goes through the walls with
+   * `sections`, the walls' pieces at that height (the plan's, which already leave the doors and windows out).
+   */
+  setCut(z: number | null, sections: readonly (readonly Point2[])[]): void {
+    const key = z === null ? '' : JSON.stringify([z, sections]);
+    if (key === this.capsKey) return;
+    this.capsKey = key;
+    this.clip.length = 0;
+    if (z !== null) this.clip.push(new THREE.Plane(new THREE.Vector3(0, -1, 0), z));
+    for (const c of [...this.caps.children]) {
+      this.caps.remove(c);
+      if (c instanceof THREE.Mesh) c.geometry.dispose();
+    }
+    if (z !== null) {
+      for (const poly of sections) {
+        if (poly.length < 3) continue;
+        const mesh = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(poly.map((p) => new THREE.Vector2(p.x, p.y)))), this.capMaterial);
+        // The shape lies in x–y; turned −90° about x it lies in three.js x–(−z), as the floors do.
+        mesh.rotation.x = -Math.PI / 2;
+        // Just under the plane, which would otherwise clip it half the time.
+        mesh.position.y = z - 0.0005;
+        this.caps.add(mesh);
+      }
+    }
+    this.invalidate();
   }
 
   /** Colours of the theme, read from the design tokens: `token('--3d-side')` and so on. */
@@ -91,6 +128,7 @@ export class Scene3D {
     m.glass.color = c('--3d-glass');
     m.leaf.color = c('--3d-leaf');
     m.invalid.color = c('--warn');
+    this.capMaterial.color = c('--3d-cut');
     // Each layer token has its 3D twin (--layer-structure, --3d-layer-structure): the plan's darken in
     // the dark theme, and the walls in 3D turned a muddy brown under a bright floor.
     for (const [name, mat] of this.layerMaterials) mat.color = c(name.replace(/^--layer-/, '--3d-layer-'));
@@ -149,9 +187,17 @@ export class Scene3D {
     if (resized) this.onChange();
   }
 
-  /** Brings the meshes in line with the geometry: only walls whose shape or state changed are rebuilt. */
-  sync(g: DerivedGeometry, selected: ReadonlySet<WallId>, preview: ReadonlySet<WallId>): void {
+  /**
+   * Brings the meshes in line with the geometry: only walls whose shape or state changed are rebuilt.
+   * `lift`: how far up each level is drawn (an exploded view), by level id.
+   */
+  sync(g: DerivedGeometry, selected: ReadonlySet<WallId>, preview: ReadonlySet<WallId>, lift: (levelId: string) => number = () => 0): void {
     const seen = new Set<WallId>();
+    // Moved up or down as a whole, never rebuilt for it: the lift is not part of any key.
+    const place = (id: WallId, levelId: string) => {
+      const w = this.walls.get(id);
+      if (w) w.group.position.y = lift(levelId);
+    };
     for (const o of g.openings.values()) {
       if (!o.frame) continue;
       const id = o.opening.id;
@@ -161,12 +207,17 @@ export class Scene3D {
       if (shape === undefined) this.shapeKeys.set(o, (shape = JSON.stringify([o.frame, o.opening, o.bottom, o.top])));
       const key = state + shape;
       const old = this.walls.get(id);
-      if (old?.key === key) continue;
+      const levelId = g.solids.get(o.opening.wallId)?.wall.levelId ?? '';
+      if (old?.key === key) {
+        place(id, levelId);
+        continue;
+      }
       if (old) this.drop(old.group);
       const group = this.buildOpening(o, state);
       group.userData.wallId = id;
       this.scene.add(group);
       this.walls.set(id, { group, key });
+      place(id, levelId);
     }
     for (const f of g.floors.values()) {
       if (f.outline.length < 3) continue;
@@ -177,7 +228,10 @@ export class Scene3D {
       if (fkey === undefined) this.shapeKeys.set(f, (fkey = JSON.stringify([f.outline, f.bottom, f.top])));
       const key = state + fkey;
       const old = this.walls.get(id);
-      if (old?.key === key) continue;
+      if (old?.key === key) {
+        place(id, f.floor.levelId);
+        continue;
+      }
       if (old) this.drop(old.group);
       const group = new THREE.Group();
       const shape = new THREE.Shape(f.outline.map((p) => new THREE.Vector2(p.x, p.y)));
@@ -190,6 +244,7 @@ export class Scene3D {
       group.userData.wallId = id;
       this.scene.add(group);
       this.walls.set(id, { group, key });
+      place(id, f.floor.levelId);
     }
     const faces = this.facesOf(g);
     for (const s of g.solids.values()) {
@@ -203,12 +258,16 @@ export class Scene3D {
       if (shape === undefined) this.shapeKeys.set(s, (shape = wallMeshKey('', s.blocks, s.layers) + JSON.stringify(mine)));
       const key = state + shape;
       const old = this.walls.get(s.wall.id);
-      if (old?.key === key) continue;
+      if (old?.key === key) {
+        place(s.wall.id, s.wall.levelId);
+        continue;
+      }
       if (old) this.drop(old.group);
       const group = this.build(s, state, mine);
       group.userData.wallId = s.wall.id;
       this.scene.add(group);
       this.walls.set(s.wall.id, { group, key });
+      place(s.wall.id, s.wall.levelId);
     }
     for (const [id, w] of this.walls) {
       if (!seen.has(id)) {

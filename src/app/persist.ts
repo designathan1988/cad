@@ -5,6 +5,7 @@
 import type { Lang } from '../ui/i18n';
 import { readProject, repairProject } from '../io/project-file';
 import type { Doc } from './document';
+import type { View3D } from './view-3d';
 
 const DOC_KEY = 'cad2.document.v1';
 const PREFS_KEY = 'cad2.prefs.v1';
@@ -20,6 +21,8 @@ export interface Prefs {
   browserOpen?: boolean;
   /** The first-use tour was taken, skipped or declined: it is not offered again. */
   tourSeen?: boolean;
+  /** How the 3D view shows the levels (view-3d.ts). */
+  view3d?: View3D;
 }
 
 function storage(): Storage | null {

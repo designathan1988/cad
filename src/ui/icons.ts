@@ -43,6 +43,11 @@ const paths = {
   center: 'M12 3v18M7 8l-4 4 4 4M17 8l4 4-4 4',
   distribute: 'M4 4v16M20 4v16M8 9h3v6H8zM13 9h3v6h-3z',
   guide: 'M3 21l3-3M9 15l3-3M15 9l3-3M20 4l1-1',
+  levelsAll: 'M3 7l9-4 9 4-9 4zM3 12l9 4 9-4M3 17l9 4 9-4',
+  levelsBelow: 'M3 10l9-4 9 4-9 4zM3 15l9 4 9-4',
+  levelsOne: 'M3 12l9-4 9 4-9 4z',
+  explode: 'M3 6l9-3 9 3-9 3zM3 18l9-3 9 3-9 3zM12 10v4M10 12l2 2 2-2',
+  cut: 'M5 9h14v11H5zM2 12h20M5 9l3-5h8l3 5',
 } as const;
 
 export type IconName = keyof typeof paths;

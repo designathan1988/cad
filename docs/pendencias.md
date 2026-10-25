@@ -81,7 +81,24 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
   trecho com o comprimento e o ângulo, o início e o contorno de piso. Cada ferramenta tem o seu cursor
   (mira com o ícone dela), na planta e no 3D.
 
+- Vista 3D com controle dos pavimentos (barra no topo do 3D, com ícones e rótulos, e na paleta): mostrar
+  todos, o pavimento em edição e os de baixo, ou só ele (como Sweet Home 3D e o Floor Overview do Chief
+  Architect); explodir (cada pavimento sobe 2,5 m além do de baixo, só na vista, como o Displace
+  Elements do Revit); cortar na altura de corte da planta do pavimento em edição, com as paredes
+  cortadas preenchidas (poché) pelas mesmas peças que a planta desenha. Estado de interface, guardado
+  nas preferências. Seleção, desenho, a barra flutuante e a seleção por janela acompanham o
+  deslocamento dos pavimentos explodidos.
+- Seleção na planta com tolerância de 6 px para paredes, portas e janelas, e porta/janela pela folha e
+  pelo arco. Barra de ferramentas sem grupos: parede, piso, porta e janela com botão e ícone próprios.
+  Alt (arrastar sem as paredes unidas) dito no rodapé antes do arraste; Esc cancela o arraste com Alt.
+
 Achados desta rodada ainda abertos:
+- Paredes empilhadas com faces desalinhadas (ex.: 20 cm sob 15 cm, ambas no eixo) deixam um degrau
+  visível na fachada. Falta: aviso e ação "Alinhar com a parede de baixo" (Chief Architect: Align With
+  Wall Above/Below), encaixe na face da parede de baixo ao desenhar, arestas finas no 3D. A linha que
+  apareceu na Casa Jardim vinha de uma parede de 20 cm (provável resto de teste meu), devolvida a 15 cm.
+- Caixa de corte com alças (Revit Section Box, Vectorworks Clip Cube), corte vertical a partir de uma
+  linha na planta, elevações, ocultar/isolar temporário, raio-X, vistas salvas.
 - Duas folhas de porta que se cruzam (ao colocar uma porta perto de outra) não dão aviso.
 - Mudar o lado de abertura não tem atalho no próprio desenho (só painel e barra).
 

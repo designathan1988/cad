@@ -57,6 +57,7 @@ import { readProject, writeProject } from '../io/project-file';
 import { fitFactor, keepInView } from './keep-in-view';
 import type { ViewKey } from './view-keys';
 import { type TempDim, tempDims } from './temp-dims';
+import { cutAt, liftOf, readView3D, shownLevels, type View3D } from './view-3d';
 import { contextEntries } from './context-menu';
 import { referenceLength } from '../elements/opening/derive';
 import { type Handles, handlesFor, ROTATE_OFFSET } from './handles';
@@ -95,6 +96,8 @@ export interface UiState {
   measure: MeasureState;
   /** A guide being placed (guide-tool.ts): Alt over a wall or a guide in a drawing tool. */
   guide: GuideDraft | null;
+  /** How the 3D view shows the levels: which, exploded, cut (view-3d.ts). */
+  view3d: View3D;
   /** The temporary dimension whose value is being typed. */
   dimEdit: string | null;
 }
@@ -151,6 +154,7 @@ export class App {
       floorDraft: [],
       measure: MEASURE_IDLE,
       guide: null,
+      view3d: readView3D(prefs.view3d),
       dimEdit: null,
     };
     this.shell = buildShell(root);
@@ -189,7 +193,26 @@ export class App {
   }
 
   height(): number {
-    return Math.max(2.8, ...[...this.geometry.solids.values()].map((s) => s.top));
+    return Math.max(2.8, ...[...this.geometry.solids.values()].map((s) => s.top + this.lift(s.wall.levelId)));
+  }
+
+  /** How far up a level is drawn in 3D: exploded, each level above the one below; else not at all. */
+  lift(levelId: string): number {
+    return this.ui.view === '3d' ? liftOf(this.store.get().levels, levelId, this.ui.view3d.explode) : 0;
+  }
+
+  /** How the 3D view shows the levels; kept with the preferences, as the view is. */
+  setView3D(patch: Partial<View3D>): void {
+    // From the plan (the palette), the 3D view it is about is shown.
+    if (this.ui.view !== '3d') this.setView('3d');
+    this.ui.view3d = { ...this.ui.view3d, ...patch };
+    savePrefs({ view3d: this.ui.view3d });
+    // Levels hidden now leave the selection, as a hidden category does.
+    const shown = this.visibleGeometry();
+    for (const id of [...this.ui.selection]) {
+      if (!isGuideId(id) && !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
+    }
+    this.refresh();
   }
 
   /** Recomputes the derived geometry (with the wall being drawn) and redraws. */
@@ -449,7 +472,7 @@ export class App {
   /** A world point on the current level, on the screen (viewport pixels); null when behind the camera. */
   toScreen(p: Point2): Point2 | null {
     if (this.ui.view === 'plan') return this.plan.toScreen(p);
-    return this.projectAt(p, this.store.get().levels.find((l) => l.id === this.ui.levelId)?.elevation ?? 0);
+    return this.projectAt(p, (this.store.get().levels.find((l) => l.id === this.ui.levelId)?.elevation ?? 0) + this.lift(this.ui.levelId));
   }
 
   /** A world point at a height, on the screen of the 3D view (viewport pixels); null when behind the camera. */
@@ -460,13 +483,13 @@ export class App {
     return { x: ((v.x + 1) / 2) * r.width, y: ((1 - v.y) / 2) * r.height };
   }
 
-  /** A piece's outline on the screen: the polygon in plan, the hull of its prism in 3D. */
-  outlineOnScreen(poly: readonly Point2[], bottom: number, top: number): Point2[] {
+  /** A piece's outline on the screen: the polygon in plan, the hull of its prism in 3D (lifted with its level). */
+  outlineOnScreen(poly: readonly Point2[], bottom: number, top: number, lift = 0): Point2[] {
     if (this.ui.view === 'plan') return poly.map((p) => this.plan.toScreen(p));
     const r = this.shell.viewport.getBoundingClientRect();
     const pts: Point2[] = [];
     for (const p of poly) {
-      for (const z of [bottom, top]) {
+      for (const z of [bottom + lift, top + lift]) {
         const v = new THREE.Vector3(p.x, z, -p.y).project(this.scene.camera);
         if (v.z <= 1) pts.push({ x: ((v.x + 1) / 2) * r.width, y: ((1 - v.y) / 2) * r.height });
       }
@@ -1030,7 +1053,7 @@ export class App {
       const r = this.shell.planCanvas.getBoundingClientRect();
       return this.plan.toWorld({ x: this.pointer.x - r.left, y: this.pointer.y - r.top });
     }
-    const z = levelOf(this.store.get(), this.ui.levelId)?.elevation ?? 0;
+    const z = (levelOf(this.store.get(), this.ui.levelId)?.elevation ?? 0) + this.lift(this.ui.levelId);
     return this.scene.groundPoint(this.pointer.x, this.pointer.y, z);
   }
 
@@ -1143,14 +1166,22 @@ export class App {
         underlay: this.underlay(),
       });
     } else {
-      this.scene.sync(this.visibleGeometry(), ui.selection, preview);
+      const shown = this.visibleGeometry();
+      this.scene.sync(shown, ui.selection, preview, (id) => this.lift(id));
+      // Cut at the level's cut height: where it goes through the level's walls, their plan pieces.
+      const doc = this.store.get();
+      const cut = cutAt(doc.levels, ui.levelId, ui.view3d);
+      this.scene.setCut(
+        cut,
+        cut === null ? [] : [...shown.solids.values()].filter((s) => s.wall.levelId === ui.levelId && s.plan === 'cut').flatMap((s) => s.pieces.map((p) => p.polygon)),
+      );
       this.cube.update(this.scene.camera);
       // Where the tool snaps and what it draws, over the 3D view as in plan.
       const level = levelOf(this.store.get(), ui.levelId);
       const active = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure';
       this.overlayState = {
         project: (p, z) => this.projectAt(p, z),
-        floor: level?.elevation ?? 0,
+        floor: (level?.elevation ?? 0) + this.lift(ui.levelId),
         height: level?.height ?? 2.8,
         snap: active && ui.snap ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null } : null,
         axis: end && len >= MIN_WALL_LENGTH && w.kind === 'drawing' ? { start: w.last, end } : tape && tapeFrom && tapeTo ? { start: tapeFrom, end: tapeTo } : null,
@@ -1382,10 +1413,22 @@ export class App {
     );
   }
 
-  /** In plan, only the current level's walls and openings; in 3D, every level. */
+  /** In plan, only the current level's walls and openings; in 3D, the levels the view shows (view-3d.ts). */
   visibleGeometry(): DerivedGeometry {
     const g = hideCategories(this.geometry, this.ui.hidden);
-    if (this.ui.view !== 'plan') return g;
+    if (this.ui.view !== 'plan') {
+      const doc = this.store.get();
+      const shown = shownLevels(doc.levels, this.ui.levelId, this.ui.view3d.levels);
+      if (shown.size === doc.levels.length) return g;
+      const solids = new Map([...g.solids].filter(([, s]) => shown.has(s.wall.levelId)));
+      return {
+        ...g,
+        solids,
+        openings: new Map([...g.openings].filter(([, o]) => solids.has(o.opening.wallId))),
+        rooms: new Map([...g.rooms].filter(([, r]) => shown.has(r.room.levelId))),
+        floors: new Map([...g.floors].filter(([, f]) => shown.has(f.floor.levelId))),
+      };
+    }
     const solids = new Map([...g.solids].filter(([, s]) => s.wall.levelId === this.ui.levelId));
     const levelWalls = new Set(this.store.get().walls.filter((w) => w.levelId === this.ui.levelId).map((w) => w.id));
     const openings = new Map([...g.openings].filter(([, o]) => levelWalls.has(o.opening.wallId)));
@@ -1484,6 +1527,11 @@ export class App {
       shell.theme.dataset.icon = themeIcon;
     }
     shell.snapBtn.setAttribute('aria-pressed', String(ui.snaps));
+    // The 3D view's own controls, in 3D only.
+    shell.viewBar.hidden = ui.view !== '3d';
+    for (const [mode, b] of Object.entries(shell.levelsShown)) b.setAttribute('aria-pressed', String(ui.view3d.levels === mode));
+    shell.explode.setAttribute('aria-pressed', String(ui.view3d.explode));
+    shell.cut.setAttribute('aria-pressed', String(ui.view3d.cut));
     const levelKey = JSON.stringify([getLang(), doc.levels.map((l) => [l.id, l.name, l.elevation])]);
     if (shell.level.dataset.key !== levelKey) {
       const sorted = [...doc.levels].sort((a, b) => b.elevation - a.elevation);
@@ -1673,21 +1721,26 @@ export class App {
         ys.push(((1 - p.y) / 2) * vp.height);
       };
       for (const id of this.ui.selection) {
+        // Each at its level's height in the view (lifted when exploded).
         const opening = this.geometry.openings.get(id);
-        if (opening) for (const v of openingOutline(opening)) [opening.bottom, opening.top].forEach((z) => project(v, z));
+        if (opening) {
+          const up = this.lift(this.geometry.solids.get(opening.opening.wallId)?.wall.levelId ?? '');
+          for (const v of openingOutline(opening)) [opening.bottom, opening.top].forEach((z) => project(v, z + up));
+        }
         // Rooms at their level's floor, floors at both their faces.
         const room = this.geometry.rooms.get(id);
         if (room) {
-          const z = this.store.get().levels.find((l) => l.id === room.room.levelId)?.elevation ?? 0;
+          const z = (this.store.get().levels.find((l) => l.id === room.room.levelId)?.elevation ?? 0) + this.lift(room.room.levelId);
           for (const v of room.outline) project(v, z);
         }
         const floor = this.geometry.floors.get(id);
-        if (floor) for (const v of floor.outline) [floor.bottom, floor.top].forEach((z) => project(v, z));
+        if (floor) for (const v of floor.outline) [floor.bottom, floor.top].forEach((z) => project(v, z + this.lift(floor.floor.levelId)));
         const solid = this.geometry.solids.get(id);
         if (!solid) continue;
+        const up = this.lift(solid.wall.levelId);
         for (const piece of solid.pieces) {
           for (const v of piece.polygon) {
-            for (const z of [solid.bottom, solid.top]) project(v, z);
+            for (const z of [solid.bottom, solid.top]) project(v, z + up);
           }
         }
       }
