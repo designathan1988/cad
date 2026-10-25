@@ -1573,7 +1573,14 @@ export class App {
         ? [keyHint('Enter', t('key.finish')), keyHint('A', t('key.arc')), keyHint('Shift', t('key.straight')), ...altGuide, keyHint('Esc', t('key.finish'))]
         : [keyHint('A', t('key.arc')), ...altGuide, keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.exit'))]
       : ui.selection.size > 0
-        ? [keyHint('Shift', t('key.addRemove')), keyHint('Del', t('key.delete')), keyHint('F', t('key.frame')), keyHint('Esc', t('key.clear'))]
+        ? [
+            keyHint('Shift', t('key.addRemove')),
+            // Said before the drag, where it is decided: during it was too late to be found.
+            ...(this.selectedWalls().length > 0 ? [keyHint('Alt', t('key.dragAlone'))] : []),
+            keyHint('Del', t('key.delete')),
+            keyHint('F', t('key.frame')),
+            keyHint('Esc', t('key.clear')),
+          ]
         : [keyHint('Ctrl K', t('key.commands')), keyHint('Ctrl A', t('key.selectAll')), keyHint('?', t('key.shortcuts'))];
     shell.keys.replaceChildren(...keys);
     const lengthMode = drawing && w.kind === 'drawing';

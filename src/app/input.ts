@@ -476,6 +476,8 @@ export function wireInput(app: App): void {
 
   window.addEventListener('keyup', (e) => {
     if (e.key !== 'Alt') return;
+    const target = e.target as HTMLElement;
+    if (!target.closest('input, select, textarea')) e.preventDefault();
     const held = altAt !== null;
     altAt = null;
     if (!ui.guide) return;
@@ -520,6 +522,9 @@ export function wireInput(app: App): void {
       e.preventDefault();
       return app.keyView(view);
     }
+    // Alt is the drawing's (a guide, a wall dragged alone): the browser's menu must not take the keys
+    // typed after it is let go.
+    if (e.key === 'Alt') e.preventDefault();
     if (e.key === 'Alt' && guideTools()) {
       // Kept from the browser, whose menu would take the keys typed next.
       e.preventDefault();
@@ -547,6 +552,12 @@ export function wireInput(app: App): void {
     if (step) {
       e.preventDefault();
       return app.nudgeSelection(step);
+    }
+    // Esc cancels a drag whatever is held: with Alt (a wall dragged alone) it never got below, and
+    // letting go of the button then kept the move.
+    if (e.key === 'Escape' && gestures.cancel()) {
+      downAt = null;
+      return showMarquee();
     }
     if (ctrl || e.altKey) return;
     // Typing a number goes straight to the measure field, as in Revit and SketchUp, while a measure is
@@ -665,6 +676,7 @@ function showHelp(app: App): void {
     ['Tab', t('help.tab')],
     ['Esc', t('help.esc')],
     [t('help.rightClickKey'), t('help.rightClick')],
+    [t('help.dragAloneKey'), t('help.dragAlone')],
     ['Del', t('pal.delete')],
     ['F', t('pal.frameSelection')],
     ['Home', t('pal.frameAll')],
