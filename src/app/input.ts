@@ -648,6 +648,8 @@ export function wireInput(app: App): void {
     if (key === 'c' && ui.tool === 'modify') return app.toggleModifyCopy();
     if (key === 'w') return app.setTool('wall');
     if (key === 'a' && ui.tool === 'wall') return app.wallEvent({ kind: 'arc' });
+    // Q: rectangles of four walls, two corners (Revit's and ArchiCAD's rectangle).
+    if (key === 'q' && ui.tool === 'wall') return app.wallEvent({ kind: 'rect' });
     // Space while drawing walls: the body to the other side of the line (Revit's flip).
     if (e.key === ' ' && ui.tool === 'wall') {
       e.preventDefault();
@@ -709,6 +711,7 @@ function showHelp(app: App): void {
     ['V', t('tool.select')],
     ['W', t('tool.wall')],
     ['W, A', t('pal.arcWall')],
+    ['W, Q', t('pal.rectWall')],
     ['D', t('tool.door')],
     ['Shift+W', t('tool.window')],
     ['R', t('tool.room')],

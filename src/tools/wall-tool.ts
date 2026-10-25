@@ -17,12 +17,20 @@
 // | bend    | click p              | drawing | arc wall last→end through p            |
 // | bend    | typed radius r       | drawing | arc of radius r, bulging to the cursor |
 // | bend    | escape               | drawing | the chord is dropped                   |
+// | any     | rect (Q)             | idle    | rectangle mode on or off               |
+// | idle    | click p, rect mode   | rect    | the first corner is p                  |
+// | rect    | move p               | rect    | the rectangle from the corner to p     |
+// | rect    | click p              | idle    | four walls, counter-clockwise          |
+// | rect    | typed sides w;d      | idle    | four walls, the sides toward the cursor|
+// | rect    | escape, enter        | idle    | the rectangle is dropped               |
 
 import { MIN_WALL_LENGTH, POINT_TOLERANCE } from '../core/tolerance';
 import { add, cross, distance, dot, normalize, type Point2, scale, sub, vec } from '../core/vector';
 
 export type WallToolState =
-  | { readonly kind: 'idle'; readonly arc?: boolean }
+  | { readonly kind: 'idle'; readonly arc?: boolean; readonly rect?: boolean }
+  /** Rectangle mode, first corner placed: the cursor is the opposite one. */
+  | { readonly kind: 'rect'; readonly start: Point2; readonly cursor: Point2; readonly rect: true }
   | {
       readonly kind: 'drawing';
       readonly start: Point2;
@@ -49,6 +57,9 @@ export type WallToolEvent =
   | { readonly kind: 'typed'; readonly length: number; readonly angle: number | null }
   | { readonly kind: 'typedRadius'; readonly radius: number }
   | { readonly kind: 'arc' }
+  | { readonly kind: 'rect' }
+  /** Rectangle mode: the sides typed, laid toward the cursor from the first corner. */
+  | { readonly kind: 'typedSides'; readonly width: number; readonly depth: number }
   | { readonly kind: 'enter' }
   | { readonly kind: 'escape' };
 
@@ -56,6 +67,8 @@ export interface WallToolResult {
   readonly state: WallToolState;
   /** A wall to create, in drawing order. */
   readonly segment?: { readonly start: Point2; readonly end: Point2; readonly bulge?: number };
+  /** Several walls at once, as one step (a rectangle). */
+  readonly segments?: readonly { readonly start: Point2; readonly end: Point2 }[];
   /** The event did nothing useful (a zero-length click, a zero typed length). */
   readonly rejected?: boolean;
 }
@@ -63,15 +76,21 @@ export interface WallToolResult {
 export const IDLE: WallToolState = { kind: 'idle' };
 
 export function wallTransition(state: WallToolState, event: WallToolEvent): WallToolResult {
+  // Rectangle mode on or off, whatever is under way: a chain ends there, its walls staying.
+  if (event.kind === 'rect') return { state: { kind: 'idle', rect: !(state.kind === 'rect' || (state.kind === 'idle' && state.rect)) } };
+  if (state.kind === 'rect') return rectTransition(state, event);
   if (event.kind === 'arc') {
     if (state.kind === 'bend') return { state: { ...state, kind: 'drawing', cursor: state.end, arc: false } };
+    // The arc and the rectangle are each their own way of drawing: one turns the other off.
+    if (state.kind === 'idle') return { state: { kind: 'idle', arc: !state.arc } };
     return { state: { ...state, arc: !state.arc } };
   }
   if (state.kind === 'idle') {
+    if (event.kind === 'click' && state.rect) return { state: { kind: 'rect', start: event.point, cursor: event.point, rect: true } };
     if (event.kind === 'click') {
       return { state: { kind: 'drawing', start: event.point, last: event.point, cursor: event.point, count: 0, arc: state.arc ?? false } };
     }
-    return { state, rejected: event.kind === 'typed' || event.kind === 'typedRadius' };
+    return { state, rejected: event.kind === 'typed' || event.kind === 'typedRadius' || event.kind === 'typedSides' };
   }
   if (state.kind === 'bend') return bendTransition(state, event);
   switch (event.kind) {
@@ -98,10 +117,47 @@ export function wallTransition(state: WallToolState, event: WallToolEvent): Wall
       };
     }
     case 'typedRadius':
+    case 'typedSides':
       return { state, rejected: true };
     case 'enter':
     case 'escape':
       return { state: state.arc ? { kind: 'idle', arc: true } : IDLE };
+  }
+}
+
+/**
+ * The four walls of the rectangle with corners a and b, counter-clockwise (in plan, y up), so each
+ * wall's right, its exterior side, faces out. Null when a side is shorter than a wall can be.
+ */
+export function rectangle(a: Point2, b: Point2): { start: Point2; end: Point2 }[] | null {
+  const [x0, x1] = [Math.min(a.x, b.x), Math.max(a.x, b.x)];
+  const [y0, y1] = [Math.min(a.y, b.y), Math.max(a.y, b.y)];
+  if (x1 - x0 < MIN_WALL_LENGTH || y1 - y0 < MIN_WALL_LENGTH) return null;
+  const c = [vec(x0, y0), vec(x1, y0), vec(x1, y1), vec(x0, y1)];
+  return c.map((p, i) => ({ start: p, end: c[(i + 1) % 4]! }));
+}
+
+function rectTransition(state: Extract<WallToolState, { kind: 'rect' }>, event: WallToolEvent): WallToolResult {
+  const done = (corner: Point2): WallToolResult => {
+    const segments = rectangle(state.start, corner);
+    return segments ? { state: { kind: 'idle', rect: true }, segments } : { state, rejected: true };
+  };
+  switch (event.kind) {
+    case 'move':
+      return { state: { ...state, cursor: event.point } };
+    case 'click':
+      return done(event.point);
+    case 'typedSides': {
+      // Toward the cursor's quadrant from the first corner (up and right when it is on it).
+      const sx = state.cursor.x < state.start.x ? -1 : 1;
+      const sy = state.cursor.y < state.start.y ? -1 : 1;
+      return done(vec(state.start.x + sx * event.width, state.start.y + sy * event.depth));
+    }
+    case 'escape':
+    case 'enter':
+      return { state: { kind: 'idle', rect: true } };
+    default:
+      return { state, rejected: true };
   }
 }
 

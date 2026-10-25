@@ -133,3 +133,35 @@ describe('arc mode', () => {
     expect(r.segment).toBeUndefined();
   });
 });
+
+describe('rectangle mode (Q)', () => {
+  const at = (x: number, y: number) => ({ x, y });
+
+  it('two corners make four walls counter-clockwise, so each one faces out on its right', () => {
+    const on = wallTransition(IDLE, { kind: 'rect' }).state;
+    const first = wallTransition(on, { kind: 'click', point: at(4, 3) }).state;
+    expect(first).toEqual({ kind: 'rect', start: at(4, 3), cursor: at(4, 3), rect: true });
+    const r = wallTransition(first, { kind: 'click', point: at(0, 0) });
+    expect(r.segments).toEqual([
+      { start: at(0, 0), end: at(4, 0) },
+      { start: at(4, 0), end: at(4, 3) },
+      { start: at(4, 3), end: at(0, 3) },
+      { start: at(0, 3), end: at(0, 0) },
+    ]);
+    // Ready for the next rectangle.
+    expect(r.state).toEqual({ kind: 'idle', rect: true });
+  });
+
+  it('typed sides go toward the cursor from the first corner: 4;3 down and left of (10, 10)', () => {
+    const s = { kind: 'rect' as const, start: at(10, 10), cursor: at(9, 9), rect: true as const };
+    const r = wallTransition(s, { kind: 'typedSides', width: 4, depth: 3 });
+    expect(r.segments![0]).toEqual({ start: at(6, 7), end: at(10, 7) });
+  });
+
+  it('a side too short is refused; Q again or the arc turns the mode off', () => {
+    const s = { kind: 'rect' as const, start: at(0, 0), cursor: at(0, 0), rect: true as const };
+    expect(wallTransition(s, { kind: 'click', point: at(3, 0) }).rejected).toBe(true);
+    expect(wallTransition({ kind: 'idle', rect: true }, { kind: 'rect' }).state).toEqual({ kind: 'idle', rect: false });
+    expect(wallTransition({ kind: 'idle', rect: true }, { kind: 'arc' }).state).toEqual({ kind: 'idle', arc: true });
+  });
+});

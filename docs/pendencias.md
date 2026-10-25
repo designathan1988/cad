@@ -115,6 +115,10 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
   opção "Linhas de referência" no navegador do projeto ou na paleta. Espaço, desenhando paredes, põe o
   corpo do outro lado da linha (como no Revit), dito no rodapé.
 
+- Retângulo de paredes (Q na ferramenta de parede, ou a paleta): um canto e o oposto, ou os lados
+  digitados como largura;profundidade (para o lado do cursor); quatro paredes num só passo de desfazer,
+  no sentido anti-horário para o lado externo ficar para fora; prévia com as juntas e a medida "L × P".
+
 Achados desta rodada ainda abertos:
 - Modificar: porta ou janela sozinha não é levada (vai com a parede); cópia para outro pavimento;
   matriz (várias cópias em série) e deslocamento paralelo (offset) ainda não.

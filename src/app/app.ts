@@ -41,7 +41,7 @@ import { renderPanel } from '../ui/panel';
 import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui/shell';
 import { snapLabel, type Snap } from '../tools/snap';
 import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
-import { bulgeThrough, IDLE, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
+import { bulgeThrough, IDLE, rectangle, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, dragTransform, hull, moveGuides } from './select-drag';
 import { moveFloors, moveRooms } from './carry';
 import { stepSelection } from './keyboard-select';
@@ -400,6 +400,10 @@ export class App {
   previewWall(): DocWall[] {
     const w = this.ui.wall;
     if (this.ui.tool !== 'wall') return [];
+    if (w.kind === 'rect') {
+      const sides = rectangle(w.start, this.rectCorner());
+      return (sides ?? []).map((s, i) => this.oriented(s.start, s.end, `${PREVIEW_ID}${i}`));
+    }
     if (w.kind === 'bend') {
       const b = bulgeThrough(w.last, w.end, w.cursor);
       return [this.oriented(w.last, w.end, PREVIEW_ID, b ?? 0)];
@@ -464,6 +468,17 @@ export class App {
     return { at, text: `R ${num(arc.radius)} m · ${num(length)} m`, normal: out, clear: 0.2 };
   }
 
+  /** The rectangle's opposite corner: its typed sides ("w;d", toward the cursor) when typed, else the cursor. */
+  private rectCorner(): Point2 {
+    const w = this.ui.wall;
+    if (w.kind !== 'rect') return { x: 0, y: 0 };
+    const sides = parsePoint(this.shell.measure.value);
+    if (!sides.ok) return w.cursor;
+    const sx = w.cursor.x < w.start.x ? -1 : 1;
+    const sy = w.cursor.y < w.start.y ? -1 : 1;
+    return { x: w.start.x + sx * Math.abs(sides.value.x), y: w.start.y + sy * Math.abs(sides.value.y) };
+  }
+
   /** The end of the segment being drawn: the typed length (and angle) when there is one, else the cursor. */
   drawingEnd(): Point2 {
     const w = this.ui.wall;
@@ -498,7 +513,7 @@ export class App {
   /** The reference lines to show: every wall's when asked for, the selected ones' and the one being drawn. */
   private refLines(): { start: Point2; end: Point2; bulge?: number }[] {
     const ids = new Set(this.ui.selection);
-    const shown = [...this.visibleGeometry().solids.values()].map((s) => s.wall).filter((w) => this.ui.refLines || ids.has(w.id) || w.id === PREVIEW_ID);
+    const shown = [...this.visibleGeometry().solids.values()].map((s) => s.wall).filter((w) => this.ui.refLines || ids.has(w.id) || w.id.startsWith(PREVIEW_ID));
     return shown.map((w) => ({ start: w.start, end: w.end, ...(w.bulge ? { bulge: w.bulge } : {}) }));
   }
 
@@ -760,7 +775,10 @@ export class App {
     // "Start · closes" left under the pointer until it moved. The next move snaps afresh.
     if (r.state.kind === 'idle' && this.ui.wall.kind !== 'idle') this.ui.snap = null;
     this.ui.wall = r.state;
+    if (r.segment || r.segments) this.shell.measure.value = '';
     if (r.segment) this.store.dispatch(addWalls([this.oriented(r.segment.start, r.segment.end, newId('wall'), r.segment.bulge ?? 0)]));
+    // A rectangle's four walls, as one undo step.
+    else if (r.segments) this.store.dispatch(addWalls(r.segments.map((s) => this.oriented(s.start, s.end, newId('wall')))));
     else this.refresh();
   }
 
@@ -799,6 +817,18 @@ export class App {
       }
       this.ui.error = null;
       this.wallEvent({ kind: 'typedRadius', radius: radius.value });
+      return true;
+    }
+    // A rectangle's sides, "width;depth", from its first corner toward the cursor.
+    if (this.ui.tool === 'wall' && this.ui.wall.kind === 'rect') {
+      const sides = parsePoint(text);
+      if (!sides.ok) {
+        this.ui.error = t('hint.badMeasure', { text });
+        this.renderChrome();
+        return false;
+      }
+      this.ui.error = null;
+      this.wallEvent({ kind: 'typedSides', width: Math.abs(sides.value.x), depth: Math.abs(sides.value.y) });
       return true;
     }
     // "x;y": a point, as a click there would be: the start or the next point of a wall, a floor's
@@ -1290,6 +1320,12 @@ export class App {
     // The guide being placed, at the distance typed or pointed; its distance as a dimension.
     const guideOff = this.guideOffset();
     const marks = this.modifyMarks();
+    // A rectangle being drawn: its sides, at its middle.
+    const rc = ui.tool === 'wall' && w.kind === 'rect' ? this.rectCorner() : null;
+    const rectMeasure =
+      rc && w.kind === 'rect'
+        ? { at: { x: (w.start.x + rc.x) / 2, y: (w.start.y + rc.y) / 2 }, text: `${num(Math.abs(rc.x - w.start.x))} × ${num(Math.abs(rc.y - w.start.y))} m`, clear: 0 }
+        : null;
     const guideDim = ui.guide && guideOff !== null ? guideMeasure(ui.guide, guideOff) : null;
     if (plan) {
       this.plan.draw(this.visibleGeometry(), {
@@ -1305,6 +1341,8 @@ export class App {
             : null,
         measure: guideDim
           ? { at: { x: (guideDim.a.x + guideDim.b.x) / 2, y: (guideDim.a.y + guideDim.b.y) / 2 }, text: `${num(guideOff!)} m`, normal: ui.guide!.base.dir, clear: 0 }
+          : rectMeasure
+            ? rectMeasure
           : marks?.to && marks.text
             ? { at: { x: (marks.base.x + marks.to.x) / 2, y: (marks.base.y + marks.to.y) / 2 }, text: marks.text, clear: 0 }
           : end && along && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
@@ -1759,13 +1797,18 @@ export class App {
     // Footer: what to do now, the keys that work now, and the measure field.
     const drawing = ui.tool === 'wall';
     const w = ui.wall;
-    const arc = w.arc === true;
+    const arc = w.kind !== 'rect' && w.arc === true;
+    const rect = w.kind === 'rect' || (w.kind === 'idle' && w.rect === true);
     const d = ui.drag;
     const hintKey: MessageKey = drawing
-      ? w.kind === 'bend'
+      ? w.kind === 'rect'
+        ? 'hint.rectEnd'
+        : w.kind === 'bend'
         ? 'hint.arcBend'
         : w.kind === 'idle'
-          ? arc
+          ? rect
+            ? 'hint.rectStart'
+            : arc
             ? 'hint.arcStart'
             : 'hint.wallStart'
           : arc
@@ -1838,6 +1881,8 @@ export class App {
       ? [keyHint('Shift', t('key.straight')), ...altGuide, keyHint('S', t('key.snapOff')), keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clear'))]
       : ui.tool === 'floor'
       ? [keyHint('Enter', t('key.finish')), ...altGuide, keyHint('Esc', t('key.exit'))]
+      : drawing && w.kind === 'rect'
+      ? [keyHint('Q', t('key.rectOff')), keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')), keyHint('Esc', t('key.back'))]
       : drawing
       ? w.kind !== 'idle'
         ? [
@@ -1849,7 +1894,7 @@ export class App {
             ...altGuide,
             keyHint('Esc', t('key.finish')),
           ]
-        : [keyHint('A', t('key.arc')), keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')), ...altGuide, keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.exit'))]
+        : [keyHint('A', t('key.arc')), keyHint('Q', t('key.rect')), keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')), ...altGuide, keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.exit'))]
       : ui.selection.size > 0
         ? [
             keyHint('Shift', t('key.addRemove')),
@@ -1868,8 +1913,11 @@ export class App {
     const angleMode = mod !== null && (mod.kind === 'rotate' || mod.kind === 'mirror');
     const factorMode = mod !== null && mod.kind === 'scale';
     const withAngle = lengthMode && shell.measure.value.includes('<');
+    const sidesMode = drawing && w.kind === 'rect';
     shell.measureLabel.textContent = t(
-      angleMode
+      sidesMode
+        ? 'foot.sides'
+        : angleMode
         ? 'foot.angle'
         : factorMode
         ? 'foot.factor'
@@ -1890,8 +1938,9 @@ export class App {
     // "Measure: Distance", but never "Measure: Measure".
     const what = shell.measureLabel.textContent ?? '';
     shell.measure.setAttribute('aria-label', what === t('foot.measure') ? what : `${t('foot.measure')}: ${what}`);
-    shell.measure.placeholder = t(angleMode ? 'foot.angleHint' : factorMode ? 'foot.factorHint' : ui.guide ? 'foot.distanceHint' : pointMode && !lengthMode ? 'foot.pointHint' : lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
+    shell.measure.placeholder = t(sidesMode ? 'foot.sidesHint' : angleMode ? 'foot.angleHint' : factorMode ? 'foot.factorHint' : ui.guide ? 'foot.distanceHint' : pointMode && !lengthMode ? 'foot.pointHint' : lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
     shell.toolWall.classList.toggle('arc-mode', drawing && arc);
+    shell.toolWall.classList.toggle('rect-mode', drawing && rect);
     shell.coords.textContent = ui.cursor ? `x ${num(ui.cursor.x)} m  y ${num(ui.cursor.y)} m` : '';
     this.placeFloatBar();
   }
