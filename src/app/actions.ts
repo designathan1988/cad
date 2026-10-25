@@ -4,6 +4,7 @@
 
 import { tBoth, name, t, type MessageKey } from '../ui/i18n';
 import type { App } from './app';
+import { canTransform } from '../tools/transform';
 
 export interface Action {
   readonly id: string;
@@ -72,6 +73,12 @@ export function appActions(app: App, open: Openers): Action[] {
     make('edit.delete', 'pal.delete', edit, () => app.deleteSelection(), { keys: 'Del', enabled: has }),
     make('edit.selectAll', 'pal.selectAll', edit, () => app.selectAllWalls(), { keys: 'Ctrl+A' }),
     make('edit.clearSelection', 'pal.clearSelection', edit, () => app.clearSelection(), { keys: 'Esc', enabled: has }),
+    ...(['move', 'copy', 'rotate', 'scale', 'mirror'] as const).map((k) =>
+      make(`edit.${k}`, `pal.${k}`, edit, () => app.startModify(k), {
+        keys: { move: 'Shift+M', copy: 'Shift+C', rotate: 'Shift+R', scale: 'Shift+E', mirror: 'Shift+X' }[k],
+        enabled: canTransform(doc, [...ui.selection]),
+      }),
+    ),
     make('edit.clearGuides', 'pal.clearGuides', edit, () => app.clearGuides(), { enabled: doc.guides.some((g) => g.levelId === ui.levelId) }),
     make('edit.next', 'pal.stepSelection', edit, () => app.stepSelection(1), { keys: 'N' }),
     make('edit.previous', 'pal.stepBack', edit, () => app.stepSelection(-1), { keys: 'Shift+N' }),

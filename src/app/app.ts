@@ -2,7 +2,7 @@
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
 import * as THREE from 'three';
-import { parseLength, parseLengthAngle, parsePoint } from '../core/measure';
+import { parseLength, parseLengthAngle, parseNumber, parsePoint } from '../core/measure';
 import { createStore, type Store } from '../core/store';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
@@ -58,6 +58,8 @@ import { fitFactor, keepInView } from './keep-in-view';
 import type { ViewKey } from './view-keys';
 import { type TempDim, tempDims } from './temp-dims';
 import { cutAt, liftOf, readView3D, shownLevels, type View3D } from './view-3d';
+import { MODIFY_START, type ModifyEvent, type ModifyKind, type ModifyState, modifyTransition, previewTransform } from '../tools/modify-tool';
+import { canTransform, transformSelection } from '../tools/transform';
 import { contextEntries } from './context-menu';
 import { referenceLength } from '../elements/opening/derive';
 import { type Handles, handlesFor, ROTATE_OFFSET } from './handles';
@@ -98,6 +100,8 @@ export interface UiState {
   guide: GuideDraft | null;
   /** How the 3D view shows the levels: which, exploded, cut (view-3d.ts). */
   view3d: View3D;
+  /** The Modify tool in use (Move, Copy, Rotate, Scale, Mirror): its points so far; `copy` keeps the originals. */
+  modify: { readonly kind: ModifyKind; readonly copy: boolean; readonly state: ModifyState } | null;
   /** The temporary dimension whose value is being typed. */
   dimEdit: string | null;
 }
@@ -155,6 +159,7 @@ export class App {
       measure: MEASURE_IDLE,
       guide: null,
       view3d: readView3D(prefs.view3d),
+      modify: null,
       dimEdit: null,
     };
     this.shell = buildShell(root);
@@ -219,6 +224,16 @@ export class App {
   refresh(): void {
     const doc = this.store.get();
     const d = this.ui.drag;
+    // The Modify tool's result as it would be with the pointer where it is, copies included.
+    const m = this.ui.tool === 'modify' ? this.ui.modify : null;
+    const t = m ? previewTransform(m.kind, m.state, this.ui.snap?.point ?? this.ui.cursor) : null;
+    if (m && t) {
+      let n = 0;
+      const previewId = (prefix: string) => `${prefix}_preview${++n}`;
+      const shownDoc = transformSelection(doc, this.modifyBefore ?? this.geometry, [...this.ui.selection], t, m.copy, previewId).doc;
+      this.geometry = deriveGeometry(shownDoc);
+      return this.render();
+    }
     // While dragging, the walls as dragged; the rooms going with a move or a turn go in the preview too,
     // so they never show as open mid-drag.
     const shown =
@@ -394,7 +409,9 @@ export class App {
     const ids = new Set([...this.ui.selection].slice(0, 12));
     if (this.ui.hover) ids.add(this.ui.hover);
     if (this.ui.snap?.wallId) ids.add(this.ui.snap.wallId);
-    return doc.walls
+    // As shown: a wall being dragged, moved or turned by a Modify tool carries its number along.
+    return [...this.geometry.solids.values()]
+      .map((s) => s.wall)
       .filter((w) => ids.has(w.id) && w.levelId === this.ui.levelId)
       // A third of the way along: the middle is where the temporary dimension shows its value. Along an
       // arc, on the arc: on its chord the tag sat inside the curve, across the chord and radius dimensions.
@@ -512,6 +529,8 @@ export class App {
     this.ui.floorDraft = [];
     this.ui.measure = MEASURE_IDLE;
     this.ui.guide = null;
+    this.ui.modify = null;
+    this.modifyBefore = null;
     this.ui.snap = null;
     this.ui.hover = null;
     this.ui.error = null;
@@ -600,6 +619,94 @@ export class App {
     this.store.dispatch(clearGuides(this.ui.levelId));
   }
 
+  /** The geometry before a Modify tool started: which rooms go with the walls (transform.ts). */
+  private modifyBefore: DerivedGeometry | null = null;
+
+  /** Starts Move, Copy, Rotate, Scale or Mirror on the selection; said why not when there is nothing they take. */
+  startModify(kind: ModifyKind): void {
+    const doc = this.store.get();
+    if (!canTransform(doc, [...this.ui.selection])) {
+      this.ui.info = t('hint.modifyNothing');
+      return this.renderChrome();
+    }
+    const selection = new Set(this.ui.selection);
+    this.setTool('select');
+    this.ui.selection = selection;
+    this.ui.tool = 'modify';
+    // Copy copies; a mirror makes a mirrored copy as Revit's does (C changes either).
+    this.ui.modify = { kind, copy: kind === 'copy' || kind === 'mirror', state: MODIFY_START };
+    this.modifyBefore = deriveGeometry(doc);
+    this.refresh();
+  }
+
+  /** C in a Modify tool: copy, or take the originals. */
+  toggleModifyCopy(): void {
+    const m = this.ui.modify;
+    if (!m) return;
+    this.ui.modify = { ...m, copy: !m.copy };
+    this.refresh();
+  }
+
+  /** A click, a typed value or Esc in a Modify tool (modify-tool.ts); the transform, when done, is one undo step. */
+  modifyEvent(event: ModifyEvent): void {
+    const m = this.ui.modify;
+    if (!m) return;
+    const r = modifyTransition(m.kind, m.state, event, this.ui.snap?.point ?? this.ui.cursor);
+    if (r.leave) return this.setTool('select');
+    if (r.rejected) {
+      if (event.kind === 'typed') this.ui.error = t('hint.badMeasure', { text: this.shell.measure.value });
+      return this.renderChrome();
+    }
+    this.ui.error = null;
+    this.shell.measure.value = '';
+    if (!r.apply) {
+      this.ui.modify = { ...m, state: r.state };
+      return this.refresh();
+    }
+    const doc = this.store.get();
+    const result = transformSelection(doc, this.modifyBefore ?? deriveGeometry(doc), [...this.ui.selection], r.apply, m.copy, newId);
+    const label = m.kind === 'move' && m.copy ? 'cmd.copy' : (`cmd.${m.kind}` as MessageKey);
+    this.ui.tool = 'select';
+    this.ui.modify = null;
+    this.modifyBefore = null;
+    this.ui.snap = null;
+    this.ui.selection = new Set(result.selection);
+    this.store.dispatch({ label, apply: () => result.doc });
+  }
+
+  /** The middle of the selection's extent: the centre a turn, a scale or a mirror takes on Enter. */
+  selectionCentre(): Point2 | null {
+    const box = boundsOf(this.geometry, this.ui.selection);
+    const guides = this.store.get().guides.filter((x) => this.ui.selection.has(x.id));
+    if (box) return { x: (box.min.x + box.max.x) / 2, y: (box.min.y + box.max.y) / 2 };
+    return guides[0]?.point ?? null;
+  }
+
+  /**
+   * What a Modify tool shows: its base, the line to the pointer, the reference of an angle or a scale,
+   * a mirror's axis, and the value it would apply.
+   */
+  private modifyMarks(): { base: Point2; to: Point2 | null; ref: Point2 | null; axis: { point: Point2; dir: Point2 } | null; text: string | null } | null {
+    const m = this.ui.modify;
+    if (this.ui.tool !== 'modify' || !m || m.state.step === 'base') return null;
+    const base = m.state.base;
+    const to = this.ui.snap?.point ?? this.ui.cursor;
+    const ref = m.state.step === 'third' ? m.state.ref : null;
+    const tr = previewTransform(m.kind, m.state, to);
+    const deg = (v: Point2) => (Math.atan2(v.y, v.x) * 180) / Math.PI;
+    let text: string | null = null;
+    if (to) {
+      if (m.kind === 'move' || m.kind === 'copy') text = `${num(distance(base, to))} m`;
+      else if (m.kind === 'rotate' && ref) text = `${num(((((deg({ x: to.x - base.x, y: to.y - base.y }) - deg({ x: ref.x - base.x, y: ref.y - base.y })) % 360) + 540) % 360) - 180, 1)}°`;
+      else if (m.kind === 'scale' && ref) text = tr ? `× ${num(tr.factor, 3)}` : null;
+      else if (m.kind === 'scale' || m.kind === 'rotate') text = `${num(distance(base, to))} m`;
+      else if (m.kind === 'mirror') text = `${num((deg({ x: to.x - base.x, y: to.y - base.y }) + 360) % 180, 1)}°`;
+    }
+    const len = to ? distance(base, to) : 0;
+    const axis = m.kind === 'mirror' && to && len > 1e-9 ? { point: base, dir: { x: (to.x - base.x) / len, y: (to.y - base.y) / len } } : null;
+    return { base, to, ref, axis, text };
+  }
+
   /** The measure tool: a click or Esc (measure-tool.ts). Nothing is added to the drawing. */
   measureEvent(event: MeasureEvent): void {
     this.ui.measure = measureTransition(this.ui.measure, event);
@@ -623,6 +730,18 @@ export class App {
   /** The footer field: a length (and angle) while drawing; a new length for one selected wall. */
   submitMeasure(text: string): boolean {
     if (text.trim() === '') return false;
+    const mod = this.ui.tool === 'modify' ? this.ui.modify : null;
+    if (mod) {
+      // A distance for Move and Copy (units allowed); degrees or a factor for the others.
+      const v = mod.kind === 'move' || mod.kind === 'copy' ? parseLength(text) : parseNumber(text);
+      if (!v.ok) {
+        this.ui.error = t('hint.badMeasure', { text });
+        this.renderChrome();
+        return false;
+      }
+      this.modifyEvent({ kind: 'typed', value: v.value });
+      return this.ui.error === null;
+    }
     if (this.ui.guide) {
       const d = parseLength(text);
       if (!d.ok || d.value < 0) {
@@ -1108,6 +1227,7 @@ export class App {
     const labelKey = ofKey ?? (ui.snap ? snapLabel[ui.snap.kind] : null);
     // The guide being placed, at the distance typed or pointed; its distance as a dimension.
     const guideOff = this.guideOffset();
+    const marks = this.modifyMarks();
     const guideDim = ui.guide && guideOff !== null ? guideMeasure(ui.guide, guideOff) : null;
     if (plan) {
       this.plan.draw(this.visibleGeometry(), {
@@ -1117,12 +1237,14 @@ export class App {
         guides: this.levelGuides(),
         guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
         snap:
-          // Drawing, measuring, or dragging a wall's end: where it snaps, said as it is.
-          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.drag?.kind === 'grip') && ui.snap
+          // Drawing, measuring, modifying, or dragging a wall's end: where it snaps, said as it is.
+          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'modify' || ui.drag?.kind === 'grip') && ui.snap
             ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
             : null,
         measure: guideDim
           ? { at: { x: (guideDim.a.x + guideDim.b.x) / 2, y: (guideDim.a.y + guideDim.b.y) / 2 }, text: `${num(guideOff!)} m`, normal: ui.guide!.base.dir, clear: 0 }
+          : marks?.to && marks.text
+            ? { at: { x: (marks.base.x + marks.to.x) / 2, y: (marks.base.y + marks.to.y) / 2 }, text: marks.text, clear: 0 }
           : end && along && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
             ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°`, normal: side!, clear: reach }
             : floorFrom && floorTo && floorAlong && floorLen >= MIN_WALL_LENGTH
@@ -1135,9 +1257,18 @@ export class App {
                     clear: 0,
                   }
                 : (this.bendMeasure() ?? this.turnMeasure() ?? guide?.measure ?? null),
-        axis: end && len >= MIN_WALL_LENGTH && w.kind === 'drawing' ? { start: w.last, end } : tape && tapeFrom && tapeTo ? { start: tapeFrom, end: tapeTo } : null,
+        axis:
+          end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
+            ? { start: w.last, end }
+            : tape && tapeFrom && tapeTo
+              ? { start: tapeFrom, end: tapeTo }
+              : marks?.to && !marks.axis
+                ? { start: marks.base, end: marks.to }
+                : null,
+        axisLine: marks?.axis ?? null,
+        ray: marks?.ref ? { start: marks.base, end: marks.ref } : null,
         handles: this.handles(),
-        anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : tapeFrom,
+        anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
         wallTags: this.wallTags(),
         roomLabels: [...this.visibleGeometry().rooms.values()].map((r) => ({
           at: r.label,
@@ -1178,22 +1309,30 @@ export class App {
       this.cube.update(this.scene.camera);
       // Where the tool snaps and what it draws, over the 3D view as in plan.
       const level = levelOf(this.store.get(), ui.levelId);
-      const active = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure';
+      const active = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'modify';
       this.overlayState = {
         project: (p, z) => this.projectAt(p, z),
         floor: (level?.elevation ?? 0) + this.lift(ui.levelId),
         height: level?.height ?? 2.8,
         snap: active && ui.snap ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null } : null,
-        axis: end && len >= MIN_WALL_LENGTH && w.kind === 'drawing' ? { start: w.last, end } : tape && tapeFrom && tapeTo ? { start: tapeFrom, end: tapeTo } : null,
-        measure:
+        axis:
           end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
+            ? { start: w.last, end }
+            : tape && tapeFrom && tapeTo
+              ? { start: tapeFrom, end: tapeTo }
+              : marks?.to
+                ? { start: marks.base, end: marks.to }
+                : null,
+        measure: marks?.to && marks.text
+          ? { at: { x: (marks.base.x + marks.to.x) / 2, y: (marks.base.y + marks.to.y) / 2 }, text: marks.text }
+          : end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
             ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°` }
             : floorFrom && floorTo && floorLen >= MIN_WALL_LENGTH
               ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${num(floorLen)} m · ${num(floorAng, 1)}°` }
               : tape && tapeFrom && tapeTo
                 ? { at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 }, text: `${num(tape.length)} m · ${num(tape.angle, 1)}°` }
                 : this.bendMeasure(),
-        anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : tapeFrom,
+        anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
         draft: ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])] : null,
       };
       this.overlay3d.draw(this.overlayState);
@@ -1518,6 +1657,13 @@ export class App {
     shell.toolDoor.setAttribute('aria-pressed', String(ui.tool === 'door'));
     shell.toolWindow.setAttribute('aria-pressed', String(ui.tool === 'window'));
     shell.toolMeasure.setAttribute('aria-pressed', String(ui.tool === 'measure'));
+    // The Modify tools: the one in use pressed; dimmed while the selection holds nothing they take (a
+    // click then says what to select).
+    const transformable = canTransform(doc, [...ui.selection]);
+    for (const [kind, b] of Object.entries(shell.modifyTools)) {
+      b.setAttribute('aria-pressed', String(ui.tool === 'modify' && ui.modify?.kind === kind));
+      b.setAttribute('aria-disabled', String(!transformable));
+    }
     shell.lang.textContent = getLang().toUpperCase();
     // Rewritten only when it changes: replacing the icon under the pointer between press and release
     // would cancel the click.
@@ -1604,12 +1750,21 @@ export class App {
           base: ui.guide.base.wallId ? t('guide.fromWall', { n: wallNumber(this.store.get(), ui.guide.base.wallId) ?? '' }) : t('guide.fromGuide'),
         })
       : null;
-    shell.instr.textContent = ui.error ?? guideHint ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size });
+    const mod = ui.tool === 'modify' ? ui.modify : null;
+    const modifyHint = mod ? t(`hint.modify.${mod.kind === 'copy' ? 'move' : mod.kind}.${mod.state.step}` as MessageKey) : null;
+    shell.instr.textContent = ui.error ?? guideHint ?? modifyHint ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size });
     shell.instr.classList.toggle('error', ui.error !== null);
     // Alt sets a guide in the tools that draw by points (input.ts), in plan.
     const altGuide = ui.view === 'plan' ? [keyHint('Alt', t('key.guide'))] : [];
     const keys = ui.guide
       ? [keyHint('Enter', t('key.placeGuide')), keyHint('Esc', t('key.cancel'))]
+      : mod
+      ? [
+          keyHint('C', t(mod.copy ? 'key.copyOn' : 'key.copyOff')),
+          ...(mod.state.step === 'base' && mod.kind !== 'move' && mod.kind !== 'copy' ? [keyHint('Enter', t('key.centre'))] : []),
+          keyHint('Shift', t('key.straight')),
+          keyHint('Esc', t(mod.state.step === 'base' ? 'key.exit' : 'key.back')),
+        ]
       : placing || ui.tool === 'room'
       ? [keyHint('Esc', t('key.exit'))]
       : ui.tool === 'measure'
@@ -1634,10 +1789,16 @@ export class App {
     const lengthMode = drawing && w.kind === 'drawing';
     // Where a point is asked for: the wall's start, a floor's corners, a room's point.
     const pointMode = (drawing && w.kind === 'idle') || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || (lengthMode && shell.measure.value.includes(';'));
-    const distanceMode = ui.guide !== null || aiming || (ui.selection.size === 1 && this.selectedOpenings().length === 1);
+    const distanceMode = ui.guide !== null || (mod !== null && (mod.kind === 'move' || mod.kind === 'copy')) || aiming || (ui.selection.size === 1 && this.selectedOpenings().length === 1);
+    const angleMode = mod !== null && (mod.kind === 'rotate' || mod.kind === 'mirror');
+    const factorMode = mod !== null && mod.kind === 'scale';
     const withAngle = lengthMode && shell.measure.value.includes('<');
     shell.measureLabel.textContent = t(
-      ui.guide
+      angleMode
+        ? 'foot.angle'
+        : factorMode
+        ? 'foot.factor'
+        : ui.guide
         ? 'foot.distance'
         : drawing && w.kind === 'bend'
         ? 'foot.radius'
@@ -1654,7 +1815,7 @@ export class App {
     // "Measure: Distance", but never "Measure: Measure".
     const what = shell.measureLabel.textContent ?? '';
     shell.measure.setAttribute('aria-label', what === t('foot.measure') ? what : `${t('foot.measure')}: ${what}`);
-    shell.measure.placeholder = t(ui.guide ? 'foot.distanceHint' : pointMode && !lengthMode ? 'foot.pointHint' : lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
+    shell.measure.placeholder = t(angleMode ? 'foot.angleHint' : factorMode ? 'foot.factorHint' : ui.guide ? 'foot.distanceHint' : pointMode && !lengthMode ? 'foot.pointHint' : lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
     shell.toolWall.classList.toggle('arc-mode', drawing && arc);
     shell.coords.textContent = ui.cursor ? `x ${num(ui.cursor.x)} m  y ${num(ui.cursor.y)} m` : '';
     this.placeFloatBar();

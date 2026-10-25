@@ -92,7 +92,19 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
   pelo arco. Barra de ferramentas sem grupos: parede, piso, porta e janela com botão e ícone próprios.
   Alt (arrastar sem as paredes unidas) dito no rodapé antes do arraste; Esc cancela o arraste com Alt.
 
+- Modificar (como o painel Modificar do Revit e Move/Rotate/Scale do SketchUp): Mover (Shift+M), Copiar
+  (Shift+C), Girar (Shift+R), Espelhar (Shift+X) e Escalar (Shift+E), na barra de ferramentas (cada um
+  com o seu ícone), na paleta, e Mover no menu e na barra flutuante. Ponto-base e destino com encaixes
+  (ângulos de 15° e Shift a partir da base), ou valor digitado (distância, graus, fator); Enter usa o
+  centro da seleção como centro do giro, da escala ou do espelho; C liga/desliga a cópia (Espelhar já
+  copia, como no Revit); Esc volta um passo. Prévia ao vivo da seleção inteira, cópias incluídas. Levam
+  as paredes com portas, janelas e grupos, os cômodos cujas paredes vão juntas, pisos de contorno e
+  guias; no lugar, as paredes unidas mantêm as juntas; espelhada, cada parede troca as pontas (camadas e
+  dobradiças espelhadas); escalada, espessuras e tamanhos de porta e janela ficam.
+
 Achados desta rodada ainda abertos:
+- Modificar: porta ou janela sozinha não é levada (vai com a parede); cópia para outro pavimento;
+  matriz (várias cópias em série) e deslocamento paralelo (offset) ainda não.
 - Paredes empilhadas com faces desalinhadas (ex.: 20 cm sob 15 cm, ambas no eixo) deixam um degrau
   visível na fachada. Falta: aviso e ação "Alinhar com a parede de baixo" (Chief Architect: Align With
   Wall Above/Below), encaixe na face da parede de baixo ao desenhar, arestas finas no 3D. A linha que

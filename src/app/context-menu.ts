@@ -20,6 +20,11 @@ export interface ContextEntry {
 }
 
 const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
+  move: { icon: 'move', keys: 'Shift+M' },
+  copy: { icon: 'copy', keys: 'Shift+C' },
+  rotate: { icon: 'rotate', keys: 'Shift+R' },
+  mirror: { icon: 'mirror', keys: 'Shift+X' },
+  scale: { icon: 'scale', keys: 'Shift+E' },
   flipWall: { icon: 'flip' },
   editType: { icon: 'wall' },
   flipHinge: { icon: 'door' },
@@ -43,6 +48,11 @@ export function contextEntries(app: App, openCommands: () => void): ContextEntry
   const one = ids.length === 1 ? ids[0]! : null;
   const opening = one ? app.store.get().openings.find((o) => o.id === one) : undefined;
   const run: Record<ContextId, () => void> = {
+    move: () => app.startModify('move'),
+    copy: () => app.startModify('copy'),
+    rotate: () => app.startModify('rotate'),
+    mirror: () => app.startModify('mirror'),
+    scale: () => app.startModify('scale'),
     flipWall: () => app.store.dispatch(flipWalls(ids)),
     editType: () => app.openWallTypes(app.store.get().walls.find((w) => w.id === one)?.wallTypeId),
     flipHinge: () => opening && app.store.dispatch(updateOpening(opening.id, { hinge: opening.hinge === 'start' ? 'end' : 'start' })),

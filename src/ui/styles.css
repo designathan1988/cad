@@ -449,6 +449,10 @@ button.project-name:hover {
   height: var(--control-h);
   flex: none;
 }
+/* A Modify tool with nothing selected that it takes: dimmed, still clickable (it says what to select). */
+.tools .tool[aria-disabled='true'] {
+  opacity: 0.4;
+}
 .tools .spacer {
   flex: 1;
 }

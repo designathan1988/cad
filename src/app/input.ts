@@ -24,6 +24,7 @@ import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
 import { GUIDE_PX, guideBaseAt } from '../tools/guide-tool';
 import type { LevelsShown } from './view-3d';
+import type { ModifyKind } from '../tools/modify-tool';
 import { cross, sub } from '../core/vector';
 
 /** How near (screen pixels) the pointer must come to a wall, a door or a window to take it. */
@@ -146,6 +147,7 @@ export function wireInput(app: App): void {
     // The tape snaps from its start, and onto the walls' faces and corners too: one measures a room
     // from wall to wall, not from axis to axis.
     const tape = ui.tool === 'measure' && ui.measure.kind === 'from' ? ui.measure.a : null;
+    const modifyFrom = ui.tool === 'modify' && ui.modify && ui.modify.state.step !== 'base' ? ui.modify.state.base : null;
     const faces =
       ui.tool === 'measure'
         ? [...app.geometry.solids.values()]
@@ -166,7 +168,8 @@ export function wireInput(app: App): void {
         ...walls.filter((x) => x.levelId === ui.levelId).map((x) => ({ id: x.id, start: x.start, end: x.end, reach: ui.tool === 'measure' ? 0 : halfOf(x.id) })),
         ...walls.filter((x) => x.levelId === below).map((x) => ({ start: x.start, end: x.end, reach: ui.tool === 'measure' ? 0 : halfOf(x.id) })),
       ],
-      from: tape ?? (draft ? (draft.at(-1) ?? null) : w.kind === 'drawing' ? w.last : null),
+      // Modifying, snapped from the base point: right angles and 15° steps from it, as a wall from its last point.
+      from: tape ?? modifyFrom ?? (draft ? (draft.at(-1) ?? null) : w.kind === 'drawing' ? w.last : null),
       chainStart: draft ? (draft.length >= 3 ? draft[0]! : null) : (w.kind === 'drawing' && w.count >= 2) || w.kind === 'bend' ? w.start : null,
       enabled: ui.snaps,
       orthogonal: shift,
@@ -237,6 +240,11 @@ export function wireInput(app: App): void {
       ui.snap = snapped(e);
       return app.render();
     }
+    if (ui.tool === 'modify') {
+      // The result follows the pointer: a preview of the whole selection, copies included.
+      ui.snap = snapped(e);
+      return app.refresh();
+    }
     if (ui.tool === 'floor') {
       // The outline's next corner where a click would put it: snapped, shown with its label.
       ui.snap = snapped(e);
@@ -292,6 +300,10 @@ export function wireInput(app: App): void {
    * Esc). True when it ended something.
    */
   const endWithRightClick = (): boolean => {
+    if (ui.tool === 'modify') {
+      app.setTool('select');
+      return true;
+    }
     if (ui.guide) {
       app.cancelGuide();
       return true;
@@ -357,6 +369,11 @@ export function wireInput(app: App): void {
     }
     if (moved) return;
     if (app.openingKind()) return app.openingEvent({ kind: 'click' });
+    if (ui.tool === 'modify') {
+      const at = aimAt3d(e);
+      if (at) app.modifyEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
+      return;
+    }
     if (ui.tool === 'measure') {
       const at = worldAt(e);
       if (at) app.measureEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
@@ -430,6 +447,7 @@ export function wireInput(app: App): void {
   shell.toolRoom.addEventListener('click', () => app.setTool('room'));
   shell.toolFloor.addEventListener('click', () => app.setTool('floor'));
   shell.toolMeasure.addEventListener('click', () => app.setTool('measure'));
+  for (const [kind, b] of Object.entries(shell.modifyTools)) b.addEventListener('click', () => app.startModify(kind as ModifyKind));
   shell.snapBtn.addEventListener('click', () => app.toggleSnaps());
   for (const [mode, b] of Object.entries(shell.levelsShown)) b.addEventListener('click', () => app.setView3D({ levels: mode as LevelsShown }));
   shell.explode.addEventListener('click', () => app.setView3D({ explode: !ui.view3d.explode }));
@@ -472,6 +490,7 @@ export function wireInput(app: App): void {
       ui.error = null;
       shell.measure.blur();
       if (!had && ui.guide) return app.cancelGuide();
+      if (!had && ui.tool === 'modify') return app.modifyEvent({ kind: 'escape' });
       // An empty field has nothing to cancel: Esc acts on the drawing, as it does outside the field.
       if (!had && ui.tool === 'wall' && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'escape' });
       app.render();
@@ -520,7 +539,7 @@ export function wireInput(app: App): void {
       return palette();
     }
     // The view by keyboard (view-keys.ts): + and − zoom, Shift+arrows move or turn it (the tester's K4).
-    const typingNow = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || app.openingKind() !== null;
+    const typingNow = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'modify' || app.openingKind() !== null;
     const view = viewKey(e.key, { shift: e.shiftKey, ctrl, alt: e.altKey, typing: typingNow });
     if (view) {
       e.preventDefault();
@@ -569,7 +588,7 @@ export function wireInput(app: App): void {
     // temporary dimensions or in the panel, so 1 and 2 keep switching the view.
     // In the door and window tools a digit is always a measure, aimed or not: it never switches the view
     // (the tester's K2: "1" turned to 3D).
-    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || app.openingKind() !== null;
+    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'modify' || app.openingKind() !== null;
     if (/^[\d.,-]$/.test(e.key) && typing) {
       e.preventDefault();
       shell.measure.focus();
@@ -584,6 +603,7 @@ export function wireInput(app: App): void {
         shell.measure.value = '';
       }
       if (ui.guide) return app.cancelGuide();
+      if (ui.tool === 'modify') return app.modifyEvent({ kind: 'escape' });
       if (gestures.cancel()) {
         downAt = null;
         return showMarquee();
@@ -600,6 +620,12 @@ export function wireInput(app: App): void {
       return app.refresh();
     }
     if (e.key === 'Enter' && ui.guide) return app.placeGuide();
+    // Enter before the first point of a turn, a scale or a mirror: the selection's centre.
+    if (e.key === 'Enter' && ui.tool === 'modify' && ui.modify?.state.step === 'base') {
+      const c = app.selectionCentre();
+      if (c) return app.modifyEvent({ kind: 'click', point: c });
+      return;
+    }
     if (e.key === 'Enter' && ui.tool === 'wall') return app.wallEvent({ kind: 'enter' });
     if (e.key === 'Enter' && ui.tool === 'floor') return app.floorFinish();
     // Enter places the opening where it is aimed, as a click there does.
@@ -610,7 +636,14 @@ export function wireInput(app: App): void {
     if (e.shiftKey && key === 'l') return app.setLanguage(app.otherLanguage());
     if (e.shiftKey && key === 'w') return app.setTool('window');
     if (e.shiftKey && key === 'n') return app.stepSelection(-1);
+    // The Modify tools, on the selection (Revit's MV, CO, RO, SC, MM; SketchUp's M, Q, S).
+    if (e.shiftKey && key === 'm') return app.startModify('move');
+    if (e.shiftKey && key === 'c') return app.startModify('copy');
+    if (e.shiftKey && key === 'r') return app.startModify('rotate');
+    if (e.shiftKey && key === 'e') return app.startModify('scale');
+    if (e.shiftKey && key === 'x') return app.startModify('mirror');
     if (e.shiftKey) return;
+    if (key === 'c' && ui.tool === 'modify') return app.toggleModifyCopy();
     if (key === 'w') return app.setTool('wall');
     if (key === 'a' && ui.tool === 'wall') return app.wallEvent({ kind: 'arc' });
     if (key === 'd') return app.setTool('door');
@@ -674,6 +707,11 @@ function showHelp(app: App): void {
     ['R', t('tool.room')],
     ['L', t('tool.floor')],
     ['M', t('tool.measure')],
+    ['Shift+M', t('pal.move')],
+    ['Shift+C', t('pal.copy')],
+    ['Shift+R', t('pal.rotate')],
+    ['Shift+E', t('pal.scale')],
+    ['Shift+X', t('pal.mirror')],
     [t('help.guideKey'), t('help.guide')],
     ['1 / 2', `${t('view.3d')} / ${t('view.plan')}`],
     ['Enter', t('help.enter')],

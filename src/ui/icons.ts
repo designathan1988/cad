@@ -48,6 +48,11 @@ const paths = {
   levelsOne: 'M3 12l9-4 9 4-9 4z',
   explode: 'M3 6l9-3 9 3-9 3zM3 18l9-3 9 3-9 3zM12 10v4M10 12l2 2 2-2',
   cut: 'M5 9h14v11H5zM2 12h20M5 9l3-5h8l3 5',
+  move: 'M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3',
+  copy: 'M8 8h12v12H8zM4 16V4h12',
+  rotate: 'M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5',
+  scale: 'M4 14v6h6M4 20l7-7M14 4h6v6M20 4l-7 7',
+  mirror: 'M12 3v18M9 7l-5 10h5zM15 7l5 10h-5z',
 } as const;
 
 export type IconName = keyof typeof paths;

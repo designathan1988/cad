@@ -58,6 +58,10 @@ export interface PlanOverlay {
   readonly guides?: readonly { readonly id: string; readonly point: Point2; readonly dir: Point2 }[];
   /** The guide being placed. */
   readonly guideDraft?: { readonly point: Point2; readonly dir: Point2 } | null;
+  /** A mirror's axis while it is set: a line without ends, in the snap's colour. */
+  readonly axisLine?: { readonly point: Point2; readonly dir: Point2 } | null;
+  /** The reference of an angle or a scale being set (Rotate, Scale), dashed from its base. */
+  readonly ray?: { readonly start: Point2; readonly end: Point2 } | null;
   /** `away`: the direction the segment being drawn arrives from, so the label goes beyond its end. */
   readonly snap: { readonly point: Point2; readonly label: string | null; readonly guideFrom?: Point2; readonly away?: Point2 } | null;
   /**
@@ -356,6 +360,8 @@ export class PlanView {
       this.drawLine(g.point, g.dir, lit ? color('--wall-sel') : color('--guide'), lit ? 2 : 1, lit ? [10, 4] : [8, 5]);
     }
     if (o.guideDraft) this.drawLine(o.guideDraft.point, o.guideDraft.dir, color('--guide'), 1.6, [10, 4]);
+    if (o.axisLine) this.drawLine(o.axisLine.point, o.axisLine.dir, color('--snap'), 1.4, [12, 4, 2, 4]);
+    if (o.ray) this.dashed(o.ray.start, o.ray.end, color('--snap'));
     this.drawRoomTags(o.roomLabels, color, this.dimValueBoxes(o.dims ?? []));
     if (o.draft && o.draft.length > 0) {
       ctx.save();

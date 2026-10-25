@@ -30,8 +30,8 @@ const doc: Doc = {
 };
 
 describe('actions for the selection', () => {
-  it('a wall: flip, frame, properties, delete', () => {
-    expect(contextIds(doc, ['w'])).toEqual(['flipWall', 'editType', 'frameSelection', 'properties', 'delete']);
+  it('a wall: move, flip, frame, properties, delete', () => {
+    expect(contextIds(doc, ['w'])).toEqual(['move', 'flipWall', 'editType', 'frameSelection', 'properties', 'delete']);
   });
 
   it('a door: flip hinge, flip swing, frame, properties, delete', () => {
@@ -43,19 +43,19 @@ describe('actions for the selection', () => {
   });
 
   it('a room without a floor offers one; with a floor, not', () => {
-    expect(contextIds(doc, ['r'])).toEqual(['addFloor', 'frameSelection', 'properties', 'delete']);
+    expect(contextIds(doc, ['r'])).toEqual(['move', 'addFloor', 'frameSelection', 'properties', 'delete']);
     const floored = { ...doc, floors: [{ ...doc.floors[0]!, source: { kind: 'room' as const, roomId: 'r' } }] };
-    expect(contextIds(floored, ['r'])).toEqual(['frameSelection', 'properties', 'delete']);
+    expect(contextIds(floored, ['r'])).toEqual(['move', 'frameSelection', 'properties', 'delete']);
   });
 
-  it('a floor: frame, properties, delete', () => {
-    expect(contextIds(doc, ['f'])).toEqual(['frameSelection', 'properties', 'delete']);
+  it('an outline floor: move, frame, properties, delete', () => {
+    expect(contextIds(doc, ['f'])).toEqual(['move', 'frameSelection', 'properties', 'delete']);
   });
 
   it('several: distribute when they are openings of one wall, then frame, clear, delete', () => {
     expect(contextIds(doc, ['d', 'n'])).toEqual(['distribute', 'frameSelection', 'clearSelection', 'delete']);
     expect(contextIds(doc, ['d', 'm'])).toEqual(['frameSelection', 'clearSelection', 'delete']);
-    expect(contextIds(doc, ['w', 'v'])).toEqual(['frameSelection', 'clearSelection', 'delete']);
+    expect(contextIds(doc, ['w', 'v'])).toEqual(['move', 'frameSelection', 'clearSelection', 'delete']);
   });
 
   it('nothing: draw a wall, frame all, commands', () => {
@@ -78,6 +78,6 @@ describe('guides in the menu', () => {
   });
 
   it('a guide selected: no zoom to it (it has no ends), its properties, the level\'s guides, delete', () => {
-    expect(contextIds(withGuide, ['guide_1'], 'lvl_ground')).toEqual(['properties', 'clearGuides', 'delete']);
+    expect(contextIds(withGuide, ['guide_1'], 'lvl_ground')).toEqual(['move', 'properties', 'clearGuides', 'delete']);
   });
 });

@@ -20,18 +20,18 @@ function onBody(p: Point2, a: Point2, b: Point2): boolean {
 
 /**
  * New positions for every wall after the walls in `moved` take their new ends. The others keep
- * their joins: an end at a moved wall's old end goes to its new end; an end on a moved wall's body
- * slides along its own line to the moved wall's new line.
+ * their joins: an end at a moved wall's old end goes where `map` takes that end; an end on a moved
+ * wall's body slides along its own line to the moved wall's new line.
  */
-function follow(walls: readonly DocWall[], moved: ReadonlyMap<WallId, Ends>): DocWall[] {
+function follow(walls: readonly DocWall[], moved: ReadonlyMap<WallId, Ends>, map: (p: Point2) => Point2): DocWall[] {
   return walls.map((w) => {
     const target = moved.get(w.id);
     if (target) return { ...w, ...target };
     const fix = (p: Point2, other: Point2): Point2 => {
-      for (const [id, next] of moved) {
+      for (const [id] of moved) {
         const before = walls.find((x) => x.id === id)!;
-        if (distance(p, before.start) <= POINT_TOLERANCE) return next.start;
-        if (distance(p, before.end) <= POINT_TOLERANCE) return next.end;
+        if (distance(p, before.start) <= POINT_TOLERANCE) return map(before.start);
+        if (distance(p, before.end) <= POINT_TOLERANCE) return map(before.end);
       }
       for (const [id, next] of moved) {
         const before = walls.find((x) => x.id === id)!;
@@ -47,11 +47,25 @@ function follow(walls: readonly DocWall[], moved: ReadonlyMap<WallId, Ends>): Do
   });
 }
 
-export function moveWalls(doc: Doc, ids: readonly WallId[], delta: Point2): DocWall[] {
+/**
+ * Every wall after those in `ids` are taken by `map` (a move, a turn, a scale or a mirror), the others
+ * keeping their joins. `swap`: the moved walls' ends trade places, as a mirror needs so each wall keeps
+ * its layers on the mirrored side (a mirror turns a wall's left into its right).
+ */
+export function transformWalls(doc: Doc, ids: readonly WallId[], map: (p: Point2) => Point2, swap = false): DocWall[] {
   const set = new Set(ids);
   const moved = new Map<WallId, Ends>();
-  for (const w of doc.walls) if (set.has(w.id)) moved.set(w.id, { start: add(w.start, delta), end: add(w.end, delta) });
-  return follow(doc.walls, moved);
+  for (const w of doc.walls) {
+    if (!set.has(w.id)) continue;
+    const start = map(w.start);
+    const end = map(w.end);
+    moved.set(w.id, swap ? { start: end, end: start } : { start, end });
+  }
+  return follow(doc.walls, moved, map);
+}
+
+export function moveWalls(doc: Doc, ids: readonly WallId[], delta: Point2): DocWall[] {
+  return transformWalls(doc, ids, (p) => add(p, delta));
 }
 
 export function stretchEnd(doc: Doc, id: WallId, end: WallEnd, to: Point2): DocWall[] {
@@ -77,9 +91,7 @@ export function rotateWalls(doc: Doc, ids: readonly WallId[], pivot: Point2, ang
     const d = sub(p, pivot);
     return add(pivot, { x: d.x * c - d.y * s, y: d.x * s + d.y * c });
   };
-  const moved = new Map<WallId, Ends>();
-  for (const w of doc.walls) if (set.has(w.id)) moved.set(w.id, { start: turn(w.start), end: turn(w.end) });
-  return follow(doc.walls, moved);
+  return transformWalls(doc, [...set], turn);
 }
 
 /** Stretches an end along the wall's own line, to the foot of `cursor` on it: the direction stays. */

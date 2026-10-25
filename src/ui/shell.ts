@@ -5,7 +5,8 @@ import { el } from './controls';
 import { t, type MessageKey } from './i18n';
 import { icon, type IconName } from './icons';
 
-export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'measure';
+/** `modify`: Move, Copy, Rotate, Scale or Mirror on the selection (tools/modify-tool.ts); no button of its own. */
+export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'measure' | 'modify';
 export type ViewId = '3d' | 'plan';
 
 const SOON: readonly { icon: IconName; key: MessageKey }[] = [{ icon: 'dimension', key: 'tool.dimension' }];
@@ -67,11 +68,19 @@ export function buildShell(root: HTMLElement) {
   const toolFloor = iconButton('slab', 'icon-btn tool');
   const toolRoom = iconButton('room', 'icon-btn tool');
   const toolMeasure = iconButton('ruler', 'icon-btn tool');
+  // The Modify tools, on the selection (tools/modify-tool.ts), as Revit's Modify panel: each its own button.
+  const modifyTools = {
+    move: iconButton('move', 'icon-btn tool'),
+    copy: iconButton('copy', 'icon-btn tool'),
+    rotate: iconButton('rotate', 'icon-btn tool'),
+    mirror: iconButton('mirror', 'icon-btn tool'),
+    scale: iconButton('scale', 'icon-btn tool'),
+  };
   // Every tool its own button and icon, one click away, in families parted by a line: building
   // (wall, floor), openings (door, window), spaces (room). A tool kept in another's submenu was not
   // found (the user's request: "cada uma das 4 deve ter o seu ícone").
   const sep = () => el('div', { class: 'group-sep' });
-  tools.append(toolSelect, sep(), toolWall, toolFloor, sep(), toolDoor, toolWindow, sep(), toolRoom);
+  tools.append(toolSelect, sep(), toolWall, toolFloor, sep(), toolDoor, toolWindow, sep(), toolRoom, sep(), ...Object.values(modifyTools));
   // Measuring and dimensioning, together: the tape works, the dimension is to come.
   tools.append(el('div', { class: 'group-sep' }), toolMeasure);
   const soonButtons: { b: HTMLButtonElement; key: MessageKey }[] = [];
@@ -132,7 +141,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, undo, redo, level, newFile, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, dims, browser, sidebar,
+    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, modifyTools, dims, browser, sidebar,
     emptyHint, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack,
   };
 
@@ -161,6 +170,11 @@ export function buildShell(root: HTMLElement) {
     tip(toolRoom, 'tool.roomKey');
     tip(toolFloor, 'tool.floorKey');
     tip(toolMeasure, 'tool.measureKey');
+    tip(modifyTools.move, 'tool.moveKey');
+    tip(modifyTools.copy, 'tool.copyKey');
+    tip(modifyTools.rotate, 'tool.rotateKey');
+    tip(modifyTools.mirror, 'tool.mirrorKey');
+    tip(modifyTools.scale, 'tool.scaleKey');
     for (const s of soonButtons) {
       s.b.title = `${t(s.key)}: ${t('tool.soon')}`;
       s.b.setAttribute('aria-label', s.b.title);

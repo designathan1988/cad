@@ -12,6 +12,13 @@ export function parseLength(text: string): Parsed<number> {
   return value !== null && p.done() && Number.isFinite(value) ? { ok: true, value } : { ok: false };
 }
 
+/** A plain number without units (degrees, a factor): "90", "1,5", "45+45". */
+export function parseNumber(text: string): Parsed<number> {
+  const p = new Parser(text, false);
+  const value = p.expression();
+  return value !== null && p.done() && Number.isFinite(value) ? { ok: true, value } : { ok: false };
+}
+
 /** "x;y": a point in metres, each coordinate a length (units and expressions as parseLength). */
 export function parsePoint(text: string): Parsed<{ x: number; y: number }> {
   const parts = text.split(';');
