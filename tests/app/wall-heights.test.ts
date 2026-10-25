@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument, wallHeights } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 import { computeWallGeometry } from '../../src/elements/wall/geometry/footprint';
-import { area } from '../../src/elements/wall/geometry/convex';
+import { area, overlapArea } from '../../src/elements/wall/geometry/convex';
 import { inside } from '../elements/wall/oracle';
 
 type P = { x: number; y: number };
@@ -163,4 +163,70 @@ describe('cross-sections are the joins of the walls present', () => {
       );
     });
   }
+});
+
+// The plan is a section at the level's cut height (ref/chat.txt:118: "linhas cortadas e vistas
+// distintas"), 1.20 m above the level by default and set per level. A wall crossing it shows its
+// slice there, cut; a wall below it, or above it, is seen, not cut: its slice nearest to the cut,
+// drawn as an outline.
+const planOf = (doc: Doc, id: string) => deriveGeometry(doc).solids.get(id)!;
+const inPlan = (doc: Doc, id: string, p: P) => planOf(doc, id).pieces.some((q) => inside(q.polygon, p));
+
+describe('the plan: a section at the cut height', () => {
+  it('a wall on a 1 m base offset and a full one: both cut at 1.20 m, the mitre, no overlap', () => {
+    // The case where the lowest slice overlapped: a below 1 m is alone and square, b starts at 1 m.
+    const doc = docOf([wall('a', [0, 0], [4, 0]), wall('b', [4, 0], [4, 3], 1)]);
+    expect(planOf(doc, 'a').plan).toBe('cut');
+    expect(planOf(doc, 'b').plan).toBe('cut');
+    expect(inPlan(doc, 'a', { x: 3.98, y: 0.07 })).toBe(false);
+    expect(inPlan(doc, 'b', { x: 3.98, y: 0.07 })).toBe(true);
+    expect(inPlan(doc, 'b', { x: 4.07, y: -0.05 })).toBe(true);
+    const a = planOf(doc, 'a').pieces.map((q) => q.polygon);
+    const b = planOf(doc, 'b').pieces.map((q) => q.polygon);
+    expect(a.flatMap((x) => b.map((y) => overlapArea(x, y))).reduce((s, v) => s + v, 0)).toBeCloseTo(0, 9);
+  });
+
+  it('a 1 m wall is below the cut: seen, its top slice (the mitre); the 2.8 m one is cut alone, square', () => {
+    const doc = docOf([wall('a', [0, 0], [4, 0], 0, 1), wall('b', [4, 0], [4, 3])]);
+    expect(planOf(doc, 'a').plan).toBe('below');
+    expect(planOf(doc, 'b').plan).toBe('cut');
+    expect(inPlan(doc, 'b', { x: 4.07, y: -0.05 })).toBe(false);
+    expect(inPlan(doc, 'b', { x: 3.95, y: 0.03 })).toBe(true);
+    expect(inPlan(doc, 'a', { x: 3.95, y: 0.03 })).toBe(true);
+    expect(inPlan(doc, 'a', { x: 3.98, y: 0.07 })).toBe(false);
+  });
+
+  it('a wall from 1.5 m is above the cut: seen, its lowest slice', () => {
+    const doc = docOf([wall('a', [0, 0], [4, 0]), wall('b', [4, 0], [4, 3], 1.5)]);
+    expect(planOf(doc, 'b').plan).toBe('above');
+    expect(planOf(doc, 'a').plan).toBe('cut');
+    // At 1.20 m a is alone: square at x = 4.
+    expect(inPlan(doc, 'a', { x: 3.98, y: 0.07 })).toBe(true);
+    // b's lowest slice is joined with a: the mitre.
+    expect(inPlan(doc, 'b', { x: 4.07, y: -0.05 })).toBe(true);
+  });
+
+  it("a wall ending at the cut height, or starting at it, is not cut", () => {
+    const doc = docOf([wall('a', [0, 0], [4, 0], 0, 1.2), wall('b', [0, 2], [4, 2], 1.2)]);
+    expect(planOf(doc, 'a').plan).toBe('below');
+    expect(planOf(doc, 'b').plan).toBe('above');
+  });
+
+  it("the cut height is the level's: at 0.50 m the 1 m wall is cut, and the corner is the mitre", () => {
+    const base = docOf([wall('a', [0, 0], [4, 0], 0, 1), wall('b', [4, 0], [4, 3])]);
+    const doc: Doc = { ...base, levels: base.levels.map((l) => ({ ...l, cutHeight: 0.5 })) };
+    expect(planOf(doc, 'a').plan).toBe('cut');
+    expect(inPlan(doc, 'b', { x: 4.07, y: -0.05 })).toBe(true);
+    expect(inPlan(doc, 'a', { x: 3.95, y: 0.03 })).toBe(true);
+  });
+
+  it('on an upper level the cut is above that level, not above zero', () => {
+    const base = docOf([]);
+    const doc: Doc = {
+      ...base,
+      levels: [...base.levels, { id: 'lvl_up', name: 'Up', elevation: 2.8, height: 2.8 }],
+      walls: [{ ...wall('u', [0, 0], [4, 0], 0, 1), levelId: 'lvl_up' }],
+    };
+    expect(planOf(doc, 'u').plan).toBe('below');
+  });
 });

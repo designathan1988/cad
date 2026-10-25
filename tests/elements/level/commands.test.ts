@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument, wallHeights } from '../../../src/app/document';
+import { cutHeightOf, type Doc, type DocWall, newDocument, wallHeights } from '../../../src/app/document';
 import { createStore } from '../../../src/core/store';
 import { vec } from '../../../src/core/vector';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../../../src/elements/level/commands';
@@ -39,6 +39,19 @@ describe('levels', () => {
     s.dispatch(updateLevel('lvl_ground', { height: 0 }));
     s.dispatch(updateLevel('lvl_ground', { name: '   ' }));
     expect(s.canUndo()).toBe(false);
+  });
+
+  it('the cut height: 1.20 m when not set, changed by a command, zero or less refused', () => {
+    const s = createStore(newDocument());
+    expect(cutHeightOf(s.get().levels[0]!)).toBe(1.2);
+    s.dispatch(updateLevel('lvl_ground', { cutHeight: 0 }));
+    s.dispatch(updateLevel('lvl_ground', { cutHeight: -1 }));
+    expect(s.canUndo()).toBe(false);
+    s.dispatch(updateLevel('lvl_ground', { cutHeight: 1.5 }));
+    expect(cutHeightOf(s.get().levels[0]!)).toBe(1.5);
+    // A new level on top takes the highest one's cut height, as it takes its height.
+    s.dispatch(addLevel('lvl_1', 'Level 1'));
+    expect(cutHeightOf(s.get().levels.find((x) => x.id === 'lvl_1')!)).toBe(1.5);
   });
 
   it('deleting: refused for the last level and for a level that still has walls', () => {

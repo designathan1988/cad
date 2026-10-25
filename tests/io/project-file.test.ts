@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/app/document';
-import { CURRENT_VERSION, readProject, writeProject } from '../../src/io/project-file';
+import { CURRENT_VERSION, isLevel, readProject, writeProject } from '../../src/io/project-file';
 
 const wall = (id: string, x: number) => ({
   id,
@@ -17,6 +17,16 @@ describe('project files', () => {
     const r = readProject(writeProject(doc));
     expect(r.ok && r.doc).toEqual(doc);
     expect(r.ok && r.fixes).toEqual([]);
+  });
+
+  it("a level's cut height reads back; one without it reads as it was (1.20 m by default)", () => {
+    const base = newDocument();
+    const doc = { ...base, levels: [{ ...base.levels[0]!, cutHeight: 1.5 }] };
+    const r = readProject(writeProject(doc));
+    expect(r.ok && r.doc.levels).toEqual(doc.levels);
+    expect(isLevel({ ...base.levels[0]!, cutHeight: 0 })).toBe(false);
+    expect(isLevel({ ...base.levels[0]!, cutHeight: '1' })).toBe(false);
+    expect(isLevel(base.levels[0]!)).toBe(true);
   });
 
   it('a version 1 file without openings, rooms or floors is migrated: it gets empty lists', () => {
