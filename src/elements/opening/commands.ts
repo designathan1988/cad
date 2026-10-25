@@ -79,7 +79,14 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
     const gone = new Set(doc.openings.filter((o) => drop.has(o.id) || drop.has(o.wallId)).map((o) => o.id));
     const rooms = doc.rooms.filter((r) => !drop.has(r.id));
     const floorsLeft = doc.floors.filter((f) => !drop.has(f.id));
-    if (walls.length === doc.walls.length && gone.size === 0 && rooms.length === doc.rooms.length && floorsLeft.length === doc.floors.length) {
+    const guides = doc.guides.filter((g) => !drop.has(g.id));
+    if (
+      walls.length === doc.walls.length &&
+      gone.size === 0 &&
+      rooms.length === doc.rooms.length &&
+      floorsLeft.length === doc.floors.length &&
+      guides.length === doc.guides.length
+    ) {
       return doc;
     }
     // A floor following a deleted room keeps the outline it had, so it does not move.
@@ -97,7 +104,7 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
           ? { ...o, rule: { kind: 'fromStart' as const, distance: placed.get(o.id)!.start } }
           : o,
       );
-    return settleGroups(doc, { ...doc, walls, openings, rooms, floors });
+    return settleGroups(doc, { ...doc, walls, openings, rooms, floors, guides });
   },
 });
 

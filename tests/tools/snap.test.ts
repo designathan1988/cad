@@ -117,3 +117,34 @@ describe('which wall a snap is on', () => {
     expect(snap(input([3.004, 0.103], face)).kind).toBe('onFace');
   });
 });
+
+describe('snaps on guides', () => {
+  // A guide 1.2 m above the wall, along it; another across it at x = 2.
+  const along = { point: vec(0, 1.2), dir: vec(1, 0) };
+  const across = { point: vec(2, -5), dir: vec(0, 1) };
+
+  it('near a guide: on it, its distance along it on the 5 cm grid', () => {
+    expect(snap(input([2.003, 1.205], { guides: [along] }))).toMatchObject({ kind: 'onGuide', point: { x: 2, y: 1.2 } });
+  });
+
+  it("where a guide crosses a wall's line, or another guide: that point, before the wall's body", () => {
+    expect(snap(input([2.004, 0.003], { guides: [across] }))).toMatchObject({ kind: 'guideCross', point: { x: 2, y: 0 } });
+    expect(snap(input([2.006, 1.204], { guides: [along, across] }))).toMatchObject({ kind: 'guideCross', point: { x: 2, y: 1.2 } });
+  });
+
+  it('drawing on a snapped angle, the point is where that direction meets the guide: a partition stops on it square', () => {
+    const s = snap(input([1.002, 1.204], { guides: [along], from: vec(1, -2) }));
+    expect(s.kind).toBe('onGuide');
+    expect(s.point.x).toBeCloseTo(1, 12);
+    expect(s.point.y).toBeCloseTo(1.2, 12);
+  });
+
+  it('with Shift, straight up from the last point, it stops on a guide crossed near the cursor', () => {
+    const s = snap(input([1.3, 1.205], { guides: [along], from: vec(1, -2), orthogonal: true }));
+    expect(s.kind).toBe('onGuide');
+    expect(s.point.x).toBeCloseTo(1, 12);
+    expect(s.point.y).toBeCloseTo(1.2, 12);
+    // Farther than the radius from it: the right angle alone.
+    expect(snap(input([1.3, 1.3], { guides: [along], from: vec(1, -2), orthogonal: true })).kind).toBe('angle');
+  });
+});

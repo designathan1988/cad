@@ -114,6 +114,8 @@
   --floor-fill: #e8e4dc;
   /* The level below, under an upper level's plan. */
   --underlay: #dcdee3;
+  /* Guides: construction lines, apart from the snap's amber and the selection's blue. */
+  --guide: #9333ea;
   color-scheme: light;
 }
 
@@ -164,6 +166,7 @@
   --kbd-border: #3a3b43;
   --floor-fill: #26272d;
   --underlay: #2f3138;
+  --guide: #c084fc;
   color-scheme: dark;
 }
 

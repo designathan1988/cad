@@ -67,6 +67,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('edit.delete', 'pal.delete', edit, () => app.deleteSelection(), { keys: 'Del', enabled: has }),
     make('edit.selectAll', 'pal.selectAll', edit, () => app.selectAllWalls(), { keys: 'Ctrl+A' }),
     make('edit.clearSelection', 'pal.clearSelection', edit, () => app.clearSelection(), { keys: 'Esc', enabled: has }),
+    make('edit.clearGuides', 'pal.clearGuides', edit, () => app.clearGuides(), { enabled: doc.guides.some((g) => g.levelId === ui.levelId) }),
     make('edit.next', 'pal.stepSelection', edit, () => app.stepSelection(1), { keys: 'N' }),
     make('edit.previous', 'pal.stepBack', edit, () => app.stepSelection(-1), { keys: 'Shift+N' }),
     make('file.new', 'pal.new', file, () => app.newProject()),
@@ -77,7 +78,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('settings.language', 'pal.language', settings, () => app.setLanguage(app.otherLanguage()), { keys: 'Shift+L', keywords: 'English Português' }),
     make('settings.panel', 'pal.panel', settings, () => app.togglePanel()),
     make('settings.browser', 'pal.browser', settings, () => app.toggleBrowser()),
-    ...(['walls', 'openings', 'rooms', 'floors'] as const).map((c) =>
+    ...(['walls', 'openings', 'rooms', 'floors', 'guides'] as const).map((c) =>
       make(`layer.${c}`, ui.hidden.has(c) ? (`pal.show.${c}` as const) : (`pal.hide.${c}` as const), settings, () => app.toggleCategory(c)),
     ),
     ...[...doc.levels]

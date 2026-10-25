@@ -66,3 +66,18 @@ describe('actions for the selection', () => {
     for (const sel of [[], ['w'], ['d'], ['n'], ['r'], ['f'], ['d', 'n']]) expect(contextIds(doc, sel).length).toBeLessThanOrEqual(6);
   });
 });
+
+describe('guides in the menu', () => {
+  const guide = { id: 'guide_1', levelId: 'lvl_ground', point: { x: 0, y: 1 }, dir: { x: 1, y: 0 } };
+  const withGuide: Doc = { ...doc, guides: [guide] };
+
+  it('with nothing selected, deleting the guides of the level shown is offered only when it has some', () => {
+    expect(contextIds(withGuide, [], 'lvl_ground')).toEqual(['drawWall', 'frameAll', 'clearGuides', 'commands']);
+    expect(contextIds(withGuide, [], 'other')).toEqual(['drawWall', 'frameAll', 'commands']);
+    expect(contextIds(doc, [], 'lvl_ground')).toEqual(['drawWall', 'frameAll', 'commands']);
+  });
+
+  it('a guide selected: no zoom to it (it has no ends), its properties, the level\'s guides, delete', () => {
+    expect(contextIds(withGuide, ['guide_1'], 'lvl_ground')).toEqual(['properties', 'clearGuides', 'delete']);
+  });
+});

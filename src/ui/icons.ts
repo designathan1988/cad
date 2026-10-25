@@ -42,6 +42,7 @@ const paths = {
   swing: 'M5 20V4M5 4a15 15 0 0 1 15 16H5',
   center: 'M12 3v18M7 8l-4 4 4 4M17 8l4 4-4 4',
   distribute: 'M4 4v16M20 4v16M8 9h3v6H8zM13 9h3v6h-3z',
+  guide: 'M3 21l3-3M9 15l3-3M15 9l3-3M20 4l1-1',
 } as const;
 
 export type IconName = keyof typeof paths;

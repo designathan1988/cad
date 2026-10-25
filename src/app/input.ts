@@ -22,6 +22,8 @@ import { contextEntries } from './context-menu';
 import { arrowStep } from '../tools/nudge';
 import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
+import { GUIDE_PX, guideBaseAt } from '../tools/guide-tool';
+import { cross, sub } from '../core/vector';
 
 /** The corner of a tool group's button where its submenu mark sits, in pixels: a click there opens it. */
 const CORNER_PX = 14;
@@ -89,7 +91,17 @@ export function wireInput(app: App): void {
       chainStart: null,
       enabled: ui.snaps,
       orthogonal: false,
+      guides: app.levelGuides(),
     });
+  /**
+   * A guide (guide-tool.ts), in the tools that draw by points, in plan: Alt over a wall or a guide
+   * starts it. Held, moved and let go, it is placed where it was let go; tapped, it stays until a
+   * click, Enter or a typed distance (or Alt again) places it, or Esc drops it.
+   */
+  const guideTools = () => ui.view === 'plan' && (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure') && !ui.drag;
+  /** Where the pointer was when Alt was pressed, while it is held; whether it moved since. */
+  let altAt: Point2 | null = null;
+  let altMoved = false;
 
   const worldAt = (e: PointerEvent | MouseEvent): { p: Point2; mpp: number } | null => {
     if (ui.view === 'plan') {
@@ -137,6 +149,7 @@ export function wireInput(app: App): void {
       chainStart: draft ? (draft.length >= 3 ? draft[0]! : null) : (w.kind === 'drawing' && w.count >= 2) || w.kind === 'bend' ? w.start : null,
       enabled: ui.snaps,
       orthogonal: shift,
+      guides: app.levelGuides(),
     });
   };
 
@@ -146,9 +159,18 @@ export function wireInput(app: App): void {
   /** In plan: what is under the point, in the order a click takes it: an opening, its wall, rooms, floors. */
   const planHits = (p: Point2): string[] => {
     const g = app.visibleGeometry();
+    const reach = GUIDE_PX / app.plan.scale;
     return [
       openingAt(g, p),
       wallAt(g, p),
+      // A guide where the pointer is on it: before the room it runs across.
+      ...app
+        .levelGuides()
+        .map((x) => ({ id: x.id, off: Math.abs(cross(x.dir, sub(p, x.point))) }))
+        .filter((x) => x.off <= reach)
+        .sort((a, b) => a.off - b.off)
+        .slice(0, 1)
+        .map((x) => x.id),
       ...[...g.rooms.values()].filter((r) => r.enclosed && insideRing(r.outline, p)).map((r) => r.room.id),
       ...[...g.floors.values()].filter((f) => f.outline.length >= 3 && insideRing(f.outline, p)).map((f) => f.floor.id),
     ].filter((id): id is string => id !== null);
@@ -176,6 +198,11 @@ export function wireInput(app: App): void {
     ui.cursor = at?.p ?? null;
     // Only selecting highlights what is under the pointer; another tool must not leave it lit.
     if (ui.tool !== 'select') ui.hover = null;
+    if (ui.guide) {
+      if (altAt && Math.hypot(e.clientX - altAt.x, e.clientY - altAt.y) > 4) altMoved = true;
+      if (at) app.moveGuide(at.p);
+      return;
+    }
     if (ui.tool === 'wall') {
       const s = snapped(e);
       ui.snap = s;
@@ -240,6 +267,10 @@ export function wireInput(app: App): void {
    * Esc). True when it ended something.
    */
   const endWithRightClick = (): boolean => {
+    if (ui.guide) {
+      app.cancelGuide();
+      return true;
+    }
     if (gestures.cancel()) {
       downAt = null;
       showMarquee();
@@ -282,6 +313,8 @@ export function wireInput(app: App): void {
     if (e.button !== 0 || !downAt) return;
     const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 4;
     downAt = null;
+    // A click places the guide being set; it is no point of the drawing.
+    if (ui.guide) return app.placeGuide();
     if (ui.tool === 'select') {
       const clicked = gestures.up(e.shiftKey);
       showMarquee();
@@ -457,18 +490,34 @@ export function wireInput(app: App): void {
       } else if (text.trim() === '') {
         // An empty Enter does what Enter does outside the field: end the wall chain, close the floor.
         shell.measure.blur();
+        if (ui.guide) return app.placeGuide();
         if (ui.tool === 'wall') app.wallEvent({ kind: 'enter' });
         if (ui.tool === 'floor') app.floorFinish();
       }
+    } else if (e.altKey && ui.guide && /^[\d.,]$/.test(e.key)) {
+      // Alt still held: Windows types nothing with it, so the digit is put in by hand.
+      e.preventDefault();
+      shell.measure.value += e.key;
+      app.refresh();
     } else if (e.key === 'Escape') {
       const had = shell.measure.value.trim() !== '';
       shell.measure.value = '';
       ui.error = null;
       shell.measure.blur();
+      if (!had && ui.guide) return app.cancelGuide();
       // An empty field has nothing to cancel: Esc acts on the drawing, as it does outside the field.
       if (!had && ui.tool === 'wall' && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'escape' });
       app.render();
     }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (e.key !== 'Alt') return;
+    const held = altAt !== null;
+    altAt = null;
+    if (!ui.guide) return;
+    e.preventDefault();
+    if (held && altMoved && shell.measure.value.trim() === '') app.placeGuide();
   });
 
   window.addEventListener('keydown', (e) => {
@@ -508,6 +557,28 @@ export function wireInput(app: App): void {
       e.preventDefault();
       return app.keyView(view);
     }
+    if (e.key === 'Alt' && guideTools()) {
+      // Kept from the browser, whose menu would take the keys typed next.
+      e.preventDefault();
+      if (e.repeat) return;
+      if (ui.guide) return app.placeGuide();
+      const at = app.pointer && ui.cursor;
+      const base = at ? guideBaseAt(app.store.get(), ui.levelId, at, 1 / app.plan.scale, { walls: !ui.hidden.has('walls'), guides: !ui.hidden.has('guides') }) : null;
+      if (!base || !at) {
+        ui.info = t('hint.guideNoBase');
+        return app.render();
+      }
+      altAt = app.pointer;
+      altMoved = false;
+      return app.startGuide(base, at);
+    }
+    // A distance for the guide being set, Alt held or not.
+    if (ui.guide && /^[\d.,]$/.test(e.key) && !ctrl) {
+      e.preventDefault();
+      shell.measure.focus();
+      shell.measure.value = e.key;
+      return app.refresh();
+    }
     // Arrows, with or without Alt, before Alt shortcuts are left to the browser.
     const step = !ctrl && !e.shiftKey && ui.selection.size > 0 && ui.view === 'plan' ? arrowStep(e.key, e.altKey) : null;
     if (step) {
@@ -534,6 +605,7 @@ export function wireInput(app: App): void {
         ui.error = null;
         shell.measure.value = '';
       }
+      if (ui.guide) return app.cancelGuide();
       if (gestures.cancel()) {
         downAt = null;
         return showMarquee();
@@ -549,6 +621,7 @@ export function wireInput(app: App): void {
       ui.selection.clear();
       return app.refresh();
     }
+    if (e.key === 'Enter' && ui.guide) return app.placeGuide();
     if (e.key === 'Enter' && ui.tool === 'wall') return app.wallEvent({ kind: 'enter' });
     if (e.key === 'Enter' && ui.tool === 'floor') return app.floorFinish();
     // Enter places the opening where it is aimed, as a click there does.
@@ -623,6 +696,7 @@ function showHelp(app: App): void {
     ['R', t('tool.room')],
     ['L', t('tool.floor')],
     ['M', t('tool.measure')],
+    [t('help.guideKey'), t('help.guide')],
     ['1 / 2', `${t('view.3d')} / ${t('view.plan')}`],
     ['Enter', t('help.enter')],
     ['Tab', t('help.tab')],

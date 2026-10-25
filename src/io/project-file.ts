@@ -4,6 +4,7 @@
 // half-read.
 
 import { type Doc, type Level, ownValuesOnly } from '../app/document';
+import type { Guide } from '../elements/guide/schema';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { Floor, Room } from '../elements/room/schema';
 import type { WallType } from '../elements/wall/schema';
@@ -16,12 +17,13 @@ import type { DocWall } from '../app/document';
  * give them. Older files always have them, so they read unchanged; older apps refuse version 3.
  * Version 4: a distributed group may keep to a stretch of its wall (`between`: the walls whose joints
  * bound it). Older groups have none and take the whole wall, as they did.
+ * Version 5: guides (construction lines of a level's plan). Older files have none.
  */
-export const CURRENT_VERSION = 4;
+export const CURRENT_VERSION = 5;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups'; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides'; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -114,6 +116,15 @@ export const isFloor = (f: unknown): f is Floor =>
   ((f.source.kind === 'room' && typeof f.source.roomId === 'string') ||
     (f.source.kind === 'outline' && Array.isArray(f.source.points) && f.source.points.length >= 3 && f.source.points.every(isPoint)));
 
+/** A guide: a point and a unit direction (a zero one would be no line at all). */
+export const isGuide = (g: unknown): g is Guide =>
+  isObject(g) &&
+  typeof g.id === 'string' &&
+  typeof g.levelId === 'string' &&
+  isPoint(g.point) &&
+  isPoint(g.dir) &&
+  Math.abs(Math.hypot((g.dir as { x: number }).x, (g.dir as { y: number }).y) - 1) < 1e-6;
+
 export function writeProject(doc: Doc): string {
   return JSON.stringify({ ...doc, version: CURRENT_VERSION }, null, 2);
 }
@@ -166,6 +177,12 @@ export function repairProject(raw: unknown): ReadResult {
     openingGroups: keep(raw.openingGroups, isOpeningGroup, 'droppedGroups'),
     rooms: keep(raw.rooms, isRoom, 'droppedRooms'),
     floors: keep(raw.floors, isFloor, 'droppedFloors'),
+    // A guide of a level that is gone has nothing to guide: dropped, and said.
+    guides: keep(raw.guides, isGuide, 'droppedGuides').filter((g, _, all) => {
+      if (levelIds.has(g.levelId)) return true;
+      if (g === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedGuides', count: all.filter((x) => !levelIds.has(x.levelId)).length });
+      return false;
+    }),
   };
   return { ok: true, doc, fixes };
 }

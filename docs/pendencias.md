@@ -64,6 +64,16 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
 - Cotas inteligentes: uma parede selecionada mostra o vão livre até a parede paralela mais próxima de
   cada lado; digitar o vão move a parede (juntas mantidas). As cotas seguem o arraste de uma parede.
 
+- Guias (linhas de construção, como as do SketchUp e os planos de referência do Revit): Alt sobre uma
+  parede reta (ou outra guia) nas ferramentas de parede, piso e medir cria uma guia paralela, medida da
+  face do lado do ponteiro (o vão livre). Segurando o Alt, arrastar e soltar fixa; um toque no Alt deixa
+  a guia seguindo até um clique, Enter ou uma distância digitada; Esc cancela. O desenho se prende à
+  guia e aos cruzamentos dela com paredes e outras guias (com Shift também). As guias ficam no
+  documento (versão 5 do arquivo): desfazer, salvar, selecionar, mover (arraste e setas), Del, "Apagar
+  as guias deste pavimento" (menu, paleta, painel) e a camada "Guias" no navegador do projeto.
+  Só em planta. Não verificado: se o Chrome real deixa de focar o menu dele ao soltar o Alt sozinho
+  (o preventDefault foi posto; o Playwright injeta as teclas por fora do menu do navegador).
+
 Achados desta rodada ainda abertos:
 - Duas folhas de porta que se cruzam (ao colocar uma porta perto de outra) não dão aviso.
 - Mudar o lado de abertura não tem atalho no próprio desenho (só painel e barra).

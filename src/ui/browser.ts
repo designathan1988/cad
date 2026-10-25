@@ -14,6 +14,7 @@ const CATEGORIES: readonly { id: Category; key: MessageKey }[] = [
   { id: 'openings', key: 'layer.openings' },
   { id: 'rooms', key: 'layer.rooms' },
   { id: 'floors', key: 'layer.floors' },
+  { id: 'guides', key: 'layer.guides' },
 ];
 
 /** A full-width button row in a browser section. */

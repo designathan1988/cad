@@ -1,6 +1,6 @@
 // Moving the selection from the keyboard by a small step (ref/chat.txt:242): walls move with their
 // joins (and the rooms they surround), doors and windows slide along their wall by the part of the
-// step along it, a room's point and an outline floor move. One document out, for one undo step.
+// step along it, a room's point, an outline floor and a guide move. One document out, for one undo step.
 
 import { moveFloors, moveRooms, roomsGoingWith } from '../app/carry';
 import type { Doc } from '../app/document';
@@ -40,9 +40,14 @@ export function nudge(doc: Doc, g: DerivedGeometry, ids: readonly string[], step
   });
   const rooms = next.rooms.map((r) => (set.has(r.id) && !carried.has(r.id) ? { ...r, seed: moved(r.seed) } : r));
   const floors = moveFloors(next.floors, set, moved);
+  const guides = next.guides.map((g) => (set.has(g.id) ? { ...g, point: moved(g.point) } : g));
   const changed =
-    next !== doc || openings.some((o, i) => o !== next.openings[i]) || rooms.some((r, i) => r !== next.rooms[i]) || floors.some((f, i) => f !== next.floors[i]);
-  return changed ? { ...next, openings, rooms, floors } : doc;
+    next !== doc ||
+    openings.some((o, i) => o !== next.openings[i]) ||
+    rooms.some((r, i) => r !== next.rooms[i]) ||
+    floors.some((f, i) => f !== next.floors[i]) ||
+    guides.some((g, i) => g !== next.guides[i]);
+  return changed ? { ...next, openings, rooms, floors, guides } : doc;
 }
 
 /** The rule moved `along` metres toward the wall's end; one without a distance is measured from the start. */

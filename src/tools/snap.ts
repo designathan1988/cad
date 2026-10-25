@@ -4,7 +4,21 @@
 import { add, distance, dot, normalize, type Point2, scale, sub, vec } from '../core/vector';
 import type { MessageKey } from '../ui/i18n';
 
-export type SnapKind = 'endpoint' | 'corner' | 'start' | 'origin' | 'midpoint' | 'onWall' | 'onFace' | 'aligned' | 'axis' | 'angle' | 'grid' | 'none';
+export type SnapKind =
+  | 'endpoint'
+  | 'corner'
+  | 'start'
+  | 'guideCross'
+  | 'origin'
+  | 'midpoint'
+  | 'onWall'
+  | 'onFace'
+  | 'onGuide'
+  | 'aligned'
+  | 'axis'
+  | 'angle'
+  | 'grid'
+  | 'none';
 
 export interface Snap {
   readonly point: Point2;
@@ -32,6 +46,17 @@ export interface SnapInput {
   readonly enabled: boolean;
   /** Shift: only right angles from `from`. */
   readonly orthogonal: boolean;
+  /**
+   * Guides (elements/guide/schema.ts): lines without ends, `dir` a unit vector. The pointer takes the
+   * point where one crosses another or a wall's line, and else the guide itself.
+   */
+  readonly guides?: readonly GuideLine[];
+}
+
+/** A line without ends: a point of it and its unit direction. */
+export interface GuideLine {
+  readonly point: Point2;
+  readonly dir: Point2;
 }
 
 export const GRID_STEP = 0.05;
@@ -44,10 +69,12 @@ export const snapLabel: Readonly<Record<SnapKind, MessageKey | null>> = {
   endpoint: 'snap.endpoint',
   corner: 'snap.corner',
   start: 'snap.start',
+  guideCross: 'snap.guideCross',
   origin: 'snap.origin',
   midpoint: 'snap.midpoint',
   onWall: 'snap.onWall',
   onFace: 'snap.onFace',
+  onGuide: 'snap.onGuide',
   aligned: 'snap.alignedX',
   axis: 'snap.axis',
   angle: null,
@@ -57,9 +84,10 @@ export const snapLabel: Readonly<Record<SnapKind, MessageKey | null>> = {
 
 export function snap(input: SnapInput): Snap {
   const { cursor, mpp, from } = input;
-  if (from && input.orthogonal) return orthogonal(cursor, from, input.enabled);
-  if (!input.enabled) return { point: cursor, kind: 'none' };
   const r = RADIUS_PX * mpp;
+  const guides = input.guides ?? [];
+  if (from && input.orthogonal) return orthogonal(cursor, from, input.enabled, guides, r);
+  if (!input.enabled) return { point: cursor, kind: 'none' };
 
   if (input.chainStart && from && distance(cursor, input.chainStart) <= r) return { point: input.chainStart, kind: 'start' };
   const ends = input.segments.flatMap((s) => [s.start, s.end]);
@@ -75,6 +103,18 @@ export function snap(input: SnapInput): Snap {
     const i = Math.floor(ends.indexOf(nearEnd) / 2);
     return { point: nearEnd, kind: input.segments[i]?.face ? 'corner' : 'endpoint', ...of(i) };
   }
+  // Where a guide crosses another guide or a wall's line: what guides are set for (a corridor's wall
+  // starts where its guide meets the wall across).
+  const crossings = guides.flatMap((g, k) => [
+    ...guides.slice(k + 1).flatMap((h) => lineCrossing(g.point, g.dir, h.point, h.dir) ?? []),
+    ...input.segments.flatMap((s) => {
+      const p = lineCrossing(g.point, g.dir, s.start, sub(s.end, s.start));
+      // On the segment, ends included (a guide through a wall's end crosses it there).
+      return p && dot(sub(p, s.start), sub(p, s.end)) <= 1e-12 ? [p] : [];
+    }),
+  ]);
+  const nearCross = closest(crossings, cursor, r);
+  if (nearCross) return { point: nearCross, kind: 'guideCross' };
   // The crossing of the axes drawn on the plan: where a project is usually started.
   if (distance(cursor, ORIGIN) <= r) return { point: ORIGIN, kind: 'origin' };
   // A face's edges are pieces of a wall's body, cut where other walls and openings meet it: their
@@ -117,6 +157,18 @@ export function snap(input: SnapInput): Snap {
     return { point: p, kind: s.face ? 'onFace' : 'onWall', ...of(i) };
   }
 
+  // On a guide: where the snapped direction meets it (a partition drawn square to a wall stops on the
+  // guide), else the foot of the cursor, its distance along the guide on the 5 cm grid.
+  for (const g of guides) {
+    const off = dot(sub(cursor, g.point), perpOf(g.dir));
+    if (Math.abs(off) > r) continue;
+    const slack = from ? r + distance(cursor, from) * Math.tan((ANGLE_TOL_DEG * Math.PI) / 180) : r;
+    const crossing = ray && from ? lineCrossing(from, ray, g.point, g.dir) : null;
+    const onRay = crossing && dot(sub(crossing, from!), ray!) > 0 && distance(crossing, cursor) <= slack ? crossing : null;
+    const along = Math.round(dot(sub(cursor, g.point), g.dir) / GRID_STEP) * GRID_STEP;
+    return { point: onRay ?? add(g.point, scale(g.dir, along)), kind: 'onGuide' };
+  }
+
   // Aligned with another wall end, horizontally or vertically, within the radius. On a snapped
   // direction the point slides along that direction to the line, so it never leaves the angle.
   const dir = best && from ? normalize(sub(best.point, from)) : null;
@@ -140,12 +192,28 @@ export function snap(input: SnapInput): Snap {
   return { point: onGrid(cursor), kind: 'grid' };
 }
 
-function orthogonal(cursor: Point2, from: Point2, grid: boolean): Snap {
+/** Shift: straight across or up from `from`; stopped on a guide it crosses near the cursor. */
+function orthogonal(cursor: Point2, from: Point2, grid: boolean, guides: readonly GuideLine[], r: number): Snap {
   const d = sub(cursor, from);
   const u = Math.abs(d.x) >= Math.abs(d.y) ? vec(Math.sign(d.x) || 1, 0) : vec(0, Math.sign(d.y) || 1);
   const raw = dot(d, u);
   const len = grid ? Math.round(raw / GRID_STEP) * GRID_STEP : raw;
-  return { point: add(from, scale(u, len)), kind: 'angle' };
+  const point = add(from, scale(u, len));
+  for (const g of grid ? guides : []) {
+    const p = lineCrossing(from, u, g.point, g.dir);
+    if (p && dot(sub(p, from), u) > 0 && Math.abs(dot(sub(p, from), u) - raw) <= r) return { point: p, kind: 'onGuide' };
+  }
+  return { point, kind: 'angle' };
+}
+
+const perpOf = (u: Point2): Point2 => vec(-u.y, u.x);
+
+/** Where the line through p along u meets the line through q along v; null when they are parallel. */
+function lineCrossing(p: Point2, u: Point2, q: Point2, v: Point2): Point2 | null {
+  const den = u.x * v.y - u.y * v.x;
+  if (Math.abs(den) < 1e-9 * Math.hypot(u.x, u.y) * Math.hypot(v.x, v.y)) return null;
+  const w = sub(q, p);
+  return add(p, scale(u, (w.x * v.y - w.y * v.x) / den));
 }
 
 export const onGrid = (p: Point2): Point2 =>

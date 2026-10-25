@@ -54,6 +54,10 @@ export interface PlanOverlay {
   readonly hover: WallId | null;
   /** Walls being drawn (ids present in the geometry), shown as a translucent preview. */
   readonly preview: ReadonlySet<WallId>;
+  /** The level's guides: lines without ends, dashed across the whole plan (selected and hovered as elements). */
+  readonly guides?: readonly { readonly id: string; readonly point: Point2; readonly dir: Point2 }[];
+  /** The guide being placed. */
+  readonly guideDraft?: { readonly point: Point2; readonly dir: Point2 } | null;
   /** `away`: the direction the segment being drawn arrives from, so the label goes beyond its end. */
   readonly snap: { readonly point: Point2; readonly label: string | null; readonly guideFrom?: Point2; readonly away?: Point2 } | null;
   /**
@@ -346,6 +350,12 @@ export class PlanView {
     fill(drawn, color('--wall-sel-fill'));
     this.drawOpenings(g, o, { line: color('--wall-line'), sel: color('--wall-sel'), selFill: color('--wall-sel-fill'), warn: color('--warn'), canvas: color('--canvas') });
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
+    // Guides over the walls, thin: a guide laid on a wall's face is seen there.
+    for (const g of o.guides ?? []) {
+      const lit = o.selected.has(g.id) || o.hover === g.id;
+      this.drawLine(g.point, g.dir, lit ? color('--wall-sel') : color('--guide'), lit ? 2 : 1, lit ? [10, 4] : [8, 5]);
+    }
+    if (o.guideDraft) this.drawLine(o.guideDraft.point, o.guideDraft.dir, color('--guide'), 1.6, [10, 4]);
     this.drawRoomTags(o.roomLabels, color, this.dimValueBoxes(o.dims ?? []));
     if (o.draft && o.draft.length > 0) {
       ctx.save();
@@ -645,6 +655,31 @@ export class PlanView {
     ctx.moveTo(Math.round(o.x) + 0.5, 0);
     ctx.lineTo(Math.round(o.x) + 0.5, h);
     ctx.stroke();
+  }
+
+  /** A line without ends through `point` along `dir`, dashed across the canvas, its dashes fixed to the plan. */
+  private drawLine(point: Point2, dir: Point2, colour: string, width: number, dash: readonly number[]): void {
+    const { ctx } = this;
+    const a = this.toScreen(point);
+    const b = this.toScreen({ x: point.x + dir.x, y: point.y + dir.y });
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len === 0) return;
+    const ux = (b.x - a.x) / len;
+    const uy = (b.y - a.y) / len;
+    const { w, h } = this.size;
+    // Past both edges of the canvas from the line's point, wherever that point is.
+    const reach = Math.hypot(w, h) + Math.hypot(a.x - w / 2, a.y - h / 2);
+    const period = dash.reduce((s, x) => s + x, 0);
+    ctx.save();
+    ctx.setLineDash([...dash]);
+    ctx.lineDashOffset = -(reach % period);
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(a.x - ux * reach, a.y - uy * reach);
+    ctx.lineTo(a.x + ux * reach, a.y + uy * reach);
+    ctx.stroke();
+    ctx.restore();
   }
 
   private dashed(a: Point2, b: Point2, colour: string): void {

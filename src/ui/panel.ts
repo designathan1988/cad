@@ -9,6 +9,8 @@ import type { OpeningId, OpeningKind } from '../elements/opening/schema';
 import type { FloorSolid, RoomSolid } from '../elements/room/derive';
 import { floorPanel, roomPanel, type RoomPanelActions } from '../elements/room/panel';
 import { nextWallFields, wallFields } from '../elements/wall/fields';
+import { guideFields } from '../elements/guide/fields';
+import type { Guide } from '../elements/guide/schema';
 import type { JoinWarning } from '../elements/wall/join/types';
 import { el } from './controls';
 import { fieldsSection } from './fields';
@@ -33,6 +35,8 @@ export interface PanelInput {
   readonly openingTool: { readonly kind: OpeningKind; readonly size: OpeningSize } | null;
   /** How many elements are selected, of every kind: the panel edits one kind at a time. */
   readonly total: number;
+  /** The selected guides. */
+  readonly guides: readonly Guide[];
 }
 
 export interface PanelActions {
@@ -48,6 +52,8 @@ export interface PanelActions {
   readonly opening: OpeningPanelActions;
   readonly room: RoomPanelActions;
   readonly updateOpeningDefaults: (kind: OpeningKind, patch: Partial<OpeningSize>) => void;
+  /** Deletes every guide of the level shown. */
+  readonly clearGuides: () => void;
 }
 
 /** The common value of a field across the selection, or null when it differs. */
@@ -60,7 +66,7 @@ function common<T>(walls: readonly DocWall[], get: (w: DocWall) => T): T | null 
 
 export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActions): void {
   const { doc, selected } = input;
-  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window' | 'room' | 'slab', title: string) => {
+  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window' | 'room' | 'slab' | 'guide', title: string) => {
     const h = el('div', { class: 'panel-head' });
     h.innerHTML = icon(iconName, 16);
     const close = el('button', { class: 'icon-btn', type: 'button', title: t('panel.close'), 'aria-label': t('panel.close') });
@@ -122,6 +128,11 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     nodes.push(head(kinds.size === 1 && kinds.has('window') ? 'window' : 'door', openingTitle(input.openings)));
     part(input.openings.length);
     nodes.push(...openingPanel(doc, input.placed, input.openings, input.openingWarnings, act.opening, input.levelRooms));
+  } else if (input.guides.length > 0) {
+    const n = input.guides.length;
+    nodes.push(head('guide', n === 1 ? t('guide.title') : t('guide.titleMany', { n })));
+    part(n);
+    nodes.push(fieldsSection(t('panel.general'), true, guideFields(act.clearGuides), input.guides));
   } else if (input.openingTool) {
     const { kind, size } = input.openingTool;
     nodes.push(head(kind, t(kind === 'door' ? 'panel.nextDoor' : 'panel.nextWindow')));

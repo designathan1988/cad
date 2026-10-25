@@ -112,12 +112,12 @@ describe('version 3', () => {
 describe('version 4', () => {
   const group = { id: 'g', wallId: 'a', members: ['x', 'y'], spacing: { kind: 'equal' } };
   it("a group's stretch reads back as it is; a version 3 group has none and keeps the whole wall", () => {
-    expect(CURRENT_VERSION).toBe(4);
+    expect(CURRENT_VERSION).toBeGreaterThanOrEqual(4);
     const doc = { ...newDocument(), openingGroups: [{ ...group, between: [null, 'c'] }] };
     const back = readProject(writeProject(doc as never));
     expect(back.ok && back.doc.openingGroups).toEqual([{ ...group, between: [null, 'c'] }]);
     const v3 = readProject(JSON.stringify({ ...newDocument(), version: 3, openingGroups: [group] }));
-    expect(v3.ok && v3.doc.version).toBe(4);
+    expect(v3.ok && v3.doc.version).toBe(CURRENT_VERSION);
     expect(v3.ok && v3.doc.openingGroups).toEqual([group]);
   });
 
@@ -152,3 +152,24 @@ describe('walls from before version 3', () => {
   });
 });
 
+
+describe('version 5', () => {
+  const guide = { id: 'guide_1', levelId: 'lvl_ground', point: { x: 0, y: 1.2 }, dir: { x: 1, y: 0 } };
+  it('guides read back as they are; an older file has none', () => {
+    expect(CURRENT_VERSION).toBe(5);
+    const back = readProject(writeProject({ ...newDocument(), guides: [guide] }));
+    expect(back.ok && back.doc.guides).toEqual([guide]);
+    const v4 = readProject(JSON.stringify({ ...newDocument(), version: 4, guides: undefined }));
+    expect(v4.ok && v4.doc.guides).toEqual([]);
+  });
+
+  it('a malformed guide, or one on a level that is gone, is dropped and reported', () => {
+    const bad = [{ ...guide, id: 'guide_2', dir: { x: 2, y: 0 } }, { ...guide, id: 'guide_3', point: { x: 'a', y: 0 } }];
+    const r = readProject(JSON.stringify({ ...newDocument(), guides: [guide, ...bad, { ...guide, id: 'guide_4', levelId: 'gone' }] }));
+    expect(r.ok && r.doc.guides.map((g) => g.id)).toEqual(['guide_1']);
+    expect(r.ok && r.fixes).toEqual([
+      { kind: 'droppedGuides', count: 2 },
+      { kind: 'droppedGuides', count: 1 },
+    ]);
+  });
+});

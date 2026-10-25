@@ -329,8 +329,8 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
   return minX === Infinity ? null : { min: { x: minX, y: minY }, max: { x: maxX, y: maxY } };
 }
 
-/** Categories of elements the project browser can hide from view (not from the document). */
-export type Category = 'walls' | 'openings' | 'rooms' | 'floors';
+/** Categories of elements the project browser can hide from view (not from the document). Guides have no geometry: the plan and the snaps leave them out themselves. */
+export type Category = 'walls' | 'openings' | 'rooms' | 'floors' | 'guides';
 
 /** The geometry without the hidden categories; the same object when nothing is hidden. */
 export function hideCategories(g: DerivedGeometry, hidden: ReadonlySet<Category>): DerivedGeometry {

@@ -2,6 +2,7 @@
 // always derived from it.
 
 import type { Point2 } from '../core/vector';
+import type { Guide } from '../elements/guide/schema';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { Floor, Room } from '../elements/room/schema';
 import type { HeightRule, ReferenceLine, Wall, WallType, WallTypeId } from '../elements/wall/schema';
@@ -35,7 +36,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 4;
+  readonly version: 5;
   readonly name: string;
   readonly levels: readonly Level[];
   readonly wallTypes: readonly WallType[];
@@ -47,6 +48,8 @@ export interface Doc {
   /** Rooms: a point inside walls, a name and a number. */
   readonly rooms: readonly Room[];
   readonly floors: readonly Floor[];
+  /** Construction lines of a level's plan: drawing snaps to them; nothing is built from them. */
+  readonly guides: readonly Guide[];
 }
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */
@@ -57,13 +60,13 @@ export interface WallDefaults {
   readonly top: HeightRule;
 }
 
-/** The ids of every element that can be selected: walls, openings, rooms and floors. */
+/** The ids of every element that can be selected: walls, openings, rooms, floors and guides. */
 export const elementIds = (doc: Doc): Set<string> =>
-  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors].map((e) => e.id));
+  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.guides].map((e) => e.id));
 
 export function newDocument(): Doc {
   return {
-    version: 4,
+    version: 5,
     name: '',
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
     wallTypes: [
@@ -101,6 +104,7 @@ export function newDocument(): Doc {
     openingGroups: [],
     rooms: [],
     floors: [],
+    guides: [],
   };
 }
 

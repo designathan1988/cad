@@ -25,6 +25,9 @@ import { GROUP_PREFIX, hasDistance, isOpeningId, newOpening, OPENING_DEFAULTS, O
 import { OPENING_IDLE, openingTransition, ruleBase, type OpeningToolEvent, type OpeningToolState } from '../tools/opening-tool';
 import { MEASURE_IDLE, type MeasureEvent, type MeasureState, measureTransition, reading } from '../tools/measure-tool';
 import { alignWalls, distributeWalls } from '../tools/arrange-walls';
+import { draftAt, type GuideBase, type GuideDraft, guideLine, guideMeasure, newGuide } from '../tools/guide-tool';
+import { addGuide, clearGuides } from '../elements/guide/commands';
+import { GUIDE_PREFIX, type Guide, isGuideId } from '../elements/guide/schema';
 import { aimAlong, OPENING_PREVIEW_ID, ruleGuide, ruleText } from './opening-ui';
 import type { WallId } from '../elements/wall/schema';
 import { type Insets, PlanView } from '../render/plan-view';
@@ -37,7 +40,7 @@ import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui
 import { snapLabel, type Snap } from '../tools/snap';
 import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
-import { type Drag, dragTransform, hull } from './select-drag';
+import { type Drag, dragTransform, hull, moveGuides } from './select-drag';
 import { moveFloors, moveRooms } from './carry';
 import { stepSelection } from './keyboard-select';
 import { nudge } from '../tools/nudge';
@@ -88,6 +91,8 @@ export interface UiState {
   floorDraft: Point2[];
   /** The measure tool's tape (measure-tool.ts). */
   measure: MeasureState;
+  /** A guide being placed (guide-tool.ts): Alt over a wall or a guide in a drawing tool. */
+  guide: GuideDraft | null;
   /** The temporary dimension whose value is being typed. */
   dimEdit: string | null;
 }
@@ -140,6 +145,7 @@ export class App {
       drag: null,
       floorDraft: [],
       measure: MEASURE_IDLE,
+      guide: null,
       dimEdit: null,
     };
     this.shell = buildShell(root);
@@ -471,6 +477,7 @@ export class App {
     this.ui.opening = OPENING_IDLE;
     this.ui.floorDraft = [];
     this.ui.measure = MEASURE_IDLE;
+    this.ui.guide = null;
     this.ui.snap = null;
     this.ui.hover = null;
     this.ui.error = null;
@@ -493,9 +500,70 @@ export class App {
   setView(view: ViewId): void {
     if (this.ui.view === view) return;
     this.ui.view = view;
+    // Guides are the plan's: one being placed is dropped.
+    this.ui.guide = null;
     savePrefs({ view });
     this.render();
     if (!this.framed[view]) this.frameAll();
+  }
+
+  /** The guides, as a move being dragged takes them. */
+  private shownGuides(): readonly Guide[] {
+    const d = this.ui.drag;
+    const guides = this.store.get().guides;
+    return d?.kind === 'move' ? moveGuides(guides, d) : guides;
+  }
+
+  /** The guides of the level shown, unless hidden. Plan only: they are neither drawn nor snapped to in 3D. */
+  levelGuides(): Guide[] {
+    if (this.ui.view !== 'plan' || this.ui.hidden.has('guides')) return [];
+    return this.shownGuides().filter((g) => g.levelId === this.ui.levelId);
+  }
+
+  /** Starts a guide off a wall's face or a guide, at the distance the pointer at p sets (guide-tool.ts). */
+  startGuide(base: GuideBase, p: Point2): void {
+    this.ui.guide = draftAt(base, p, this.ui.snaps);
+    // The point the tool snapped to before is not what a click does now: it places the guide.
+    this.ui.snap = null;
+    this.ui.error = null;
+    this.ui.info = null;
+    this.shell.measure.value = '';
+    this.render();
+  }
+
+  moveGuide(p: Point2): void {
+    if (!this.ui.guide) return;
+    this.ui.guide = draftAt(this.ui.guide.base, p, this.ui.snaps);
+    this.render();
+  }
+
+  /** The guide's distance: the one being typed, while it reads as one, else the pointer's. */
+  guideOffset(): number | null {
+    const g = this.ui.guide;
+    if (!g) return null;
+    const typed = parseLength(this.shell.measure.value);
+    return typed.ok && typed.value >= 0 ? typed.value : g.offset;
+  }
+
+  /** Places the guide being set, as one undo step; the drawing tool goes on as it was. */
+  placeGuide(offset = this.guideOffset()): void {
+    const g = this.ui.guide;
+    if (!g || offset === null) return;
+    this.ui.guide = null;
+    this.shell.measure.value = '';
+    this.store.dispatch(addGuide(newGuide(newId(GUIDE_PREFIX), this.ui.levelId, g, offset)));
+  }
+
+  cancelGuide(): void {
+    this.ui.guide = null;
+    this.shell.measure.value = '';
+    this.ui.error = null;
+    this.render();
+  }
+
+  /** Every guide of the level shown, as one undo step. */
+  clearGuides(): void {
+    this.store.dispatch(clearGuides(this.ui.levelId));
   }
 
   /** The measure tool: a click or Esc (measure-tool.ts). Nothing is added to the drawing. */
@@ -521,6 +589,17 @@ export class App {
   /** The footer field: a length (and angle) while drawing; a new length for one selected wall. */
   submitMeasure(text: string): boolean {
     if (text.trim() === '') return false;
+    if (this.ui.guide) {
+      const d = parseLength(text);
+      if (!d.ok || d.value < 0) {
+        this.ui.error = t('hint.badMeasure', { text });
+        this.renderChrome();
+        return false;
+      }
+      this.ui.error = null;
+      this.placeGuide(d.value);
+      return true;
+    }
     if (this.ui.tool === 'wall' && this.ui.wall.kind === 'bend') {
       const radius = parseLength(text);
       if (!radius.ok || radius.value <= 0) {
@@ -652,6 +731,7 @@ export class App {
     this.ui.levelId = id;
     savePrefs({ levelId: id });
     this.ui.selection.clear();
+    this.ui.guide = null;
     this.refresh();
   }
 
@@ -764,8 +844,9 @@ export class App {
   }
 
   frameSelection(): void {
-    if (this.ui.selection.size === 0) return this.frameAll();
     const box = boundsOf(this.geometry, this.ui.selection);
+    // Nothing selected, or nothing with an extent (a guide has no ends): the whole drawing.
+    if (box === null) return this.frameAll();
     this.scene.setCovered(this.covered());
     if (this.ui.view === 'plan') this.plan.frame(box, this.covered());
     else this.scene.frame(box, this.height());
@@ -900,7 +981,7 @@ export class App {
   private selectionKinds(): number {
     const g = this.geometry;
     const ids = [...this.ui.selection];
-    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length;
+    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0);
   }
 
   selectedWalls(): DocWall[] {
@@ -992,17 +1073,23 @@ export class App {
       const snapWall = ui.snap?.wallId ? wallNumber(this.store.get(), ui.snap.wallId) : null;
       const ofKey = ui.snap && snapWall !== null && ui.snap.kind in SNAP_OF ? SNAP_OF[ui.snap.kind as keyof typeof SNAP_OF] : null;
       const labelKey = ofKey ?? (ui.snap ? snapLabel[ui.snap.kind] : null);
+      // The guide being placed, at the distance typed or pointed; its distance as a dimension.
+      const guideOff = this.guideOffset();
+      const guideDim = ui.guide && guideOff !== null ? guideMeasure(ui.guide, guideOff) : null;
       this.plan.draw(this.visibleGeometry(), {
         selected: ui.selection,
         hover: ui.hover,
         preview,
+        guides: this.levelGuides(),
+        guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
         snap:
           // Drawing, measuring, or dragging a wall's end: where it snaps, said as it is.
           (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.drag?.kind === 'grip') && ui.snap
             ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
             : null,
-        measure:
-          end && along && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
+        measure: guideDim
+          ? { at: { x: (guideDim.a.x + guideDim.b.x) / 2, y: (guideDim.a.y + guideDim.b.y) / 2 }, text: `${num(guideOff!)} m`, normal: ui.guide!.base.dir, clear: 0 }
+          : end && along && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
             ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°`, normal: side!, clear: reach }
             : floorFrom && floorTo && floorAlong && floorLen >= MIN_WALL_LENGTH
               ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${num(floorLen)} m · ${num(floorAng, 1)}°`, normal: { x: -floorAlong.y, y: floorAlong.x }, clear: 0 }
@@ -1037,7 +1124,11 @@ export class App {
         openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
         // The opening being placed shows its distance as a dimension too (drawn only, not typed in: the
         // footer field takes the distance while placing).
-        dims: [...this.currentDims().map((d) => ({ ...d, text: num(d.value) })), ...(guide ? [guide.dim] : [])],
+        dims: [
+          ...this.currentDims().map((d) => ({ ...d, text: num(d.value) })),
+          ...(guide ? [guide.dim] : []),
+          ...(guideDim && guideOff! > 0 ? [{ ...guideDim, side: ui.guide!.base.dir, clear: 0 }] : []),
+        ],
         underlay: this.underlay(),
       });
     } else {
@@ -1076,6 +1167,7 @@ export class App {
         openingWarnings: this.geometry.openingWarnings,
         openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing] } : null,
         total: ui.selection.size,
+        guides: doc.guides.filter((g) => ui.selection.has(g.id)),
       },
       {
         updateWalls: (patch) => this.store.dispatch(updateWalls([...ui.selection], patch)),
@@ -1131,6 +1223,7 @@ export class App {
           ui.openingDefaults = { ...ui.openingDefaults, [kind]: { ...ui.openingDefaults[kind], ...patch } };
           this.refresh();
         },
+        clearGuides: () => this.clearGuides(),
       },
     );
     this.afterPanel();
@@ -1286,7 +1379,10 @@ export class App {
     else this.ui.hidden.add(c);
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      if (!shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
+      // Guides have no geometry: they go only when guides are hidden.
+      if (isGuideId(id) ? this.ui.hidden.has('guides') : !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) {
+        this.ui.selection.delete(id);
+      }
     }
     this.refresh();
   }
@@ -1425,18 +1521,28 @@ export class App {
           : ui.tool === 'measure'
             ? this.measureHint()
             : null;
-    shell.instr.textContent = ui.error ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size });
+    const guideHint = ui.guide
+      ? t('hint.guide', {
+          d: num(this.guideOffset() ?? 0),
+          base: ui.guide.base.wallId ? t('guide.fromWall', { n: wallNumber(this.store.get(), ui.guide.base.wallId) ?? '' }) : t('guide.fromGuide'),
+        })
+      : null;
+    shell.instr.textContent = ui.error ?? guideHint ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size });
     shell.instr.classList.toggle('error', ui.error !== null);
-    const keys = placing || ui.tool === 'room'
+    // Alt sets a guide in the tools that draw by points (input.ts), in plan.
+    const altGuide = ui.view === 'plan' ? [keyHint('Alt', t('key.guide'))] : [];
+    const keys = ui.guide
+      ? [keyHint('Enter', t('key.placeGuide')), keyHint('Esc', t('key.cancel'))]
+      : placing || ui.tool === 'room'
       ? [keyHint('Esc', t('key.exit'))]
       : ui.tool === 'measure'
-      ? [keyHint('Shift', t('key.straight')), keyHint('S', t('key.snapOff')), keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clear'))]
+      ? [keyHint('Shift', t('key.straight')), ...altGuide, keyHint('S', t('key.snapOff')), keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clear'))]
       : ui.tool === 'floor'
-      ? [keyHint('Enter', t('key.finish')), keyHint('Esc', t('key.exit'))]
+      ? [keyHint('Enter', t('key.finish')), ...altGuide, keyHint('Esc', t('key.exit'))]
       : drawing
       ? w.kind !== 'idle'
-        ? [keyHint('Enter', t('key.finish')), keyHint('A', t('key.arc')), keyHint('Shift', t('key.straight')), keyHint('Esc', t('key.finish'))]
-        : [keyHint('A', t('key.arc')), keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.exit'))]
+        ? [keyHint('Enter', t('key.finish')), keyHint('A', t('key.arc')), keyHint('Shift', t('key.straight')), ...altGuide, keyHint('Esc', t('key.finish'))]
+        : [keyHint('A', t('key.arc')), ...altGuide, keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.exit'))]
       : ui.selection.size > 0
         ? [keyHint('Shift', t('key.addRemove')), keyHint('Del', t('key.delete')), keyHint('F', t('key.frame')), keyHint('Esc', t('key.clear'))]
         : [keyHint('Ctrl K', t('key.commands')), keyHint('Ctrl A', t('key.selectAll')), keyHint('?', t('key.shortcuts'))];
@@ -1444,10 +1550,12 @@ export class App {
     const lengthMode = drawing && w.kind === 'drawing';
     // Where a point is asked for: the wall's start, a floor's corners, a room's point.
     const pointMode = (drawing && w.kind === 'idle') || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || (lengthMode && shell.measure.value.includes(';'));
-    const distanceMode = aiming || (ui.selection.size === 1 && this.selectedOpenings().length === 1);
+    const distanceMode = ui.guide !== null || aiming || (ui.selection.size === 1 && this.selectedOpenings().length === 1);
     const withAngle = lengthMode && shell.measure.value.includes('<');
     shell.measureLabel.textContent = t(
-      drawing && w.kind === 'bend'
+      ui.guide
+        ? 'foot.distance'
+        : drawing && w.kind === 'bend'
         ? 'foot.radius'
         : withAngle
           ? 'foot.lengthAngle'
@@ -1462,7 +1570,7 @@ export class App {
     // "Measure: Distance", but never "Measure: Measure".
     const what = shell.measureLabel.textContent ?? '';
     shell.measure.setAttribute('aria-label', what === t('foot.measure') ? what : `${t('foot.measure')}: ${what}`);
-    shell.measure.placeholder = t(pointMode && !lengthMode ? 'foot.pointHint' : lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
+    shell.measure.placeholder = t(ui.guide ? 'foot.distanceHint' : pointMode && !lengthMode ? 'foot.pointHint' : lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
     shell.toolWall.classList.toggle('arc-mode', drawing && arc);
     shell.coords.textContent = ui.cursor ? `x ${num(ui.cursor.x)} m  y ${num(ui.cursor.y)} m` : '';
     this.placeFloatBar();
