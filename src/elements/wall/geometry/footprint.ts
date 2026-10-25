@@ -71,10 +71,17 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   for (const { ends: [ra, rb], node } of graph.corners) {
     const reachA = arcReach(ra, rb);
     const reachB = arcReach(rb, ra);
-    const result = resolveCorner(byId.get(ra.wallId)!, ra.end, byId.get(rb.wallId)!, rb.end, node, {
-      ...(reachA !== undefined ? { a: reachA } : {}),
-      ...(reachB !== undefined ? { b: reachB } : {}),
-    });
+    // Two straight walls butt layer by layer; with an arc's segment, the T butt its chain relies on.
+    const straight = !chains.has(parentOf(ra.wallId)) && !chains.has(parentOf(rb.wallId));
+    const result = resolveCorner(
+      byId.get(ra.wallId)!,
+      ra.end,
+      byId.get(rb.wallId)!,
+      rb.end,
+      node,
+      { ...(reachA !== undefined ? { a: reachA } : {}), ...(reachB !== undefined ? { b: reachB } : {}) },
+      straight,
+    );
     if (result.a) endCuts.set(keyOf(ra), result.a);
     if (result.b) endCuts.set(keyOf(rb), result.b);
     if (result.warning) report(result.warning);

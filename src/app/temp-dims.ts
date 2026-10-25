@@ -1,6 +1,7 @@
 // Temporary dimensions of the one selected element, as in Revit: a wall's length, an opening's
-// distances to the ends of its wall, or, on the side of the opening it is measured from, the gap to
-// that one. Each can be typed: the value becomes one command.
+// distances to the nearest wall meeting its own on each side (its face; the wall's end when none), or,
+// on the side of the opening it is measured from, the gap to that one. Each can be typed: the value
+// becomes one command.
 
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { add, distance, normalize, perp, type Point2, scale, sub } from '../core/vector';
@@ -12,6 +13,7 @@ import { stretchEnd } from '../tools/edit';
 import { arcOf } from '../elements/wall/geometry/arc';
 import type { Doc } from './document';
 import type { DerivedGeometry } from './geometry';
+import { stopAfter, stopBefore, wallStops } from './wall-stops';
 
 export interface TempDim {
   readonly id: string;
@@ -56,25 +58,28 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
   const at = (s: number) => add(host.start, scale(dir, s));
   const half = thicknessOf(doc, host.wallTypeId) / 2;
   const side = perp(dir);
+  const stops = wallStops(doc, host.id);
+  const before = stopBefore(stops, o.start);
+  const after = stopAfter(stops, o.end, len);
   // A distance below zero means the opening runs past that end: there is nothing to measure there.
   const dims: TempDim[] = [
     {
       id: `${id}:fromStart`,
-      a: host.start,
+      a: at(before),
       b: at(o.start),
       side,
       clear: half,
-      value: o.start,
-      apply: (v) => (v >= 0 ? updateOpening(id, { rule: { kind: 'fromStart', distance: v } }) : null),
+      value: o.start - before,
+      apply: (v) => (v >= 0 ? updateOpening(id, { rule: { kind: 'fromStart', distance: before + v } }) : null),
     },
     {
       id: `${id}:fromEnd`,
       a: at(o.end),
-      b: host.end,
+      b: at(after),
       side,
       clear: half,
-      value: len - o.end,
-      apply: (v) => (v >= 0 ? updateOpening(id, { rule: { kind: 'fromEnd', distance: v } }) : null),
+      value: after - o.end,
+      apply: (v) => (v >= 0 ? updateOpening(id, { rule: { kind: 'fromEnd', distance: len - after + v } }) : null),
     },
   ];
   // Measured from another opening: on that side, the gap to it, and a typed value keeps the rule.

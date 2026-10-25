@@ -2,7 +2,7 @@
 // joins (and the rooms they surround), doors and windows slide along their wall by the part of the
 // step along it, a room's point and an outline floor move. One document out, for one undo step.
 
-import { carriedRooms } from '../app/carry';
+import { moveFloors, moveRooms, roomsGoingWith } from '../app/carry';
 import type { Doc } from '../app/document';
 import { type DerivedGeometry, hostsIn } from '../app/geometry';
 import { dot, normalize, type Point2, sub } from '../core/vector';
@@ -20,16 +20,17 @@ export function arrowStep(key: string, fine: boolean): Point2 | null {
 export function nudge(doc: Doc, g: DerivedGeometry, ids: readonly string[], step: Point2): Doc {
   const set = new Set(ids);
   const wallIds = doc.walls.filter((w) => set.has(w.id)).map((w) => w.id);
+  const movedWalls = new Set(wallIds);
   const moved = (p: Point2) => ({ x: p.x + step.x, y: p.y + step.y });
+  // The rooms whose walls all move go along, once: a selected one among them is not moved again.
+  const carried = wallIds.length > 0 ? roomsGoingWith(doc, g, movedWalls) : new Set<string>();
   let next: Doc = doc;
-  if (wallIds.length > 0) {
-    next = { ...next, walls: moveWalls(doc, wallIds, step), rooms: carriedRooms(doc, g, new Set(wallIds), moved) };
-  }
+  if (wallIds.length > 0) next = { ...next, walls: moveWalls(doc, wallIds, step), rooms: moveRooms(doc.rooms, carried, moved) };
   // Openings on a moved wall go with it; the others slide along their own wall.
   const placed = deriveOpenings(doc.openings, hostsIn(doc), doc.openingGroups).placed;
   const openings = next.openings.map((o) => {
     // A member of a distributed group is placed by its group: the arrows leave it (move the wall).
-    if (!set.has(o.id) || set.has(o.wallId) || o.rule.kind === 'inGroup') return o;
+    if (!set.has(o.id) || movedWalls.has(o.wallId) || o.rule.kind === 'inGroup') return o;
     const host = doc.walls.find((w) => w.id === o.wallId);
     const p = placed.get(o.id);
     if (!host || !p || host.bulge) return o;
@@ -37,10 +38,8 @@ export function nudge(doc: Doc, g: DerivedGeometry, ids: readonly string[], step
     if (Math.abs(along) < 1e-12) return o;
     return { ...o, rule: slid(o.rule, along, p.start) };
   });
-  const rooms = next.rooms.map((r) => (set.has(r.id) ? { ...r, seed: moved(r.seed) } : r));
-  const floors = next.floors.map((f) =>
-    set.has(f.id) && f.source.kind === 'outline' ? { ...f, source: { kind: 'outline' as const, points: f.source.points.map(moved) } } : f,
-  );
+  const rooms = next.rooms.map((r) => (set.has(r.id) && !carried.has(r.id) ? { ...r, seed: moved(r.seed) } : r));
+  const floors = moveFloors(next.floors, set, moved);
   const changed =
     next !== doc || openings.some((o, i) => o !== next.openings[i]) || rooms.some((r, i) => r !== next.rooms[i]) || floors.some((f, i) => f !== next.floors[i]);
   return changed ? { ...next, openings, rooms, floors } : doc;

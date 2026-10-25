@@ -1,7 +1,7 @@
 // Crossing (X) expectations for the oracle. Own math only.
 
 import type { WallEnd } from '../../../src/elements/wall/schema';
-import type { TestWall as Wall } from './fixtures';
+import { geometry, type TestWall as Wall } from './fixtures';
 import { type CornerKind, cornerSpec, expectedL, frameOf, inside, into, rectOf, shoelace, type P, type Region } from './oracle';
 import { coreLayersOf, layerOffsetsOf, sameSequence, tFaces } from './oracle-layers';
 
@@ -93,16 +93,174 @@ export function sidesOf(
 const SPEC_MITER_LIMIT = 10;
 
 /**
- * How the spec resolves an L (§7.1): the miter classification, and for different sequences a butt.
- * The butt has one corner of its own, the through wall's inner face on the other's outer face, where
- * its square end reaches across its whole width; and the abutting layers reach into the through wall
- * as in a T. Any of those points past either free end swallows a wall (overlap);
- * at an obtuse angle farther than MITER_LIMIT·T from the node it is a long taper (shared cut), as
- * for the miter's corners.
+ * The butt layer by layer between two straight walls (§7.1): `t` goes through (throughOf), `c` stops
+ * against it. Each wall's layers are inner (on the side of the other wall's body), core, or outer, and
+ * each stops on a line of the other wall, given as an offset across that wall:
+ *
+ * - t: outer layers on c's outer face, core on c's outer core face, inner layers on c's inner core face;
+ * - c: inner layers on t's inner face, core on t's inner core face, outer layers on t's outer core face.
+ *
+ * `tPositive`: t's body lies on the positive side of c's frame; `cPositive`: c's on t's.
  */
-export function cornerJoin(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?: P, reach: { a?: number; b?: number } = {}): { kind: CornerKind; butt: boolean } {
+export function buttRule(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd) {
+  const { through: t, cut: c } = throughOf(a, b);
+  const tEnd = t === a ? aEnd : bEnd;
+  const cEnd = c === a ? aEnd : bEnd;
+  const ft = frameOf(t);
+  const fc = frameOf(c);
+  const ut = into(t, tEnd);
+  const uc = into(c, cEnd);
+  const tPositive = ut.x * fc.n.x + ut.y * fc.n.y > 0;
+  const cPositive = uc.x * ft.n.x + uc.y * ft.n.y > 0;
+  const tOffs = layerOffsetsOf(t);
+  const cOffs = layerOffsetsOf(c);
+  const [tc0, tc1] = coreLayersOf(t);
+  const [cc0, cc1] = coreLayersOf(c);
+  const kind = (k: number, c0: number, c1: number, innerPositive: boolean): 'inner' | 'core' | 'outer' =>
+    k >= c0 && k <= c1 ? 'core' : (k > c1) === innerPositive ? 'inner' : 'outer';
+  const cLines = {
+    outer: tPositive ? fc.o0 : fc.o1,
+    core: tPositive ? cOffs[cc0]! : cOffs[cc1 + 1]!,
+    inner: tPositive ? cOffs[cc1 + 1]! : cOffs[cc0]!,
+  };
+  const tLines = {
+    inner: cPositive ? ft.o1 : ft.o0,
+    core: cPositive ? tOffs[tc1 + 1]! : tOffs[tc0]!,
+    outer: cPositive ? tOffs[tc0]! : tOffs[tc1 + 1]!,
+  };
+  const tStops = t.layers.map((_, k) => cLines[kind(k, tc0, tc1, cPositive)]);
+  const cStops = c.layers.map((_, k) => tLines[kind(k, cc0, cc1, tPositive)]);
+  return { t, tEnd, c, cEnd, ft, fc, tPositive, cPositive, tOffs, cOffs, tStops, cStops };
+}
+
+/** Where each layer's band edges meet the line it stops on: the butt's own corners. */
+export function buttReached(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd): P[] {
+  const r = buttRule(a, aEnd, b, bEnd);
+  const on = (w: Wall, o: number) => {
+    const f = frameOf(w);
+    return pt(w.start.x + f.n.x * o, w.start.y + f.n.y * o);
+  };
+  return [
+    ...r.tStops.flatMap((stop, k) => [r.tOffs[k]!, r.tOffs[k + 1]!].map((o) => meet(on(r.t, o), r.ft.d, on(r.c, stop), r.fc.d))),
+    ...r.cStops.flatMap((stop, k) => [r.cOffs[k]!, r.cOffs[k + 1]!].map((o) => meet(on(r.c, o), r.fc.d, on(r.t, stop), r.ft.d))),
+  ];
+}
+
+/** How far any layer piece of either wall passes the line its layer stops on (≤ 0: none). */
+export function buttPenetration(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, walls: readonly Wall[]): number {
+  const r = buttRule(a, aEnd, b, bEnd);
+  const { pieces } = geometry(walls);
+  let worst = -Infinity;
+  const check = (w: Wall, other: Wall, stops: readonly number[], positive: boolean) => {
+    const fo = frameOf(other);
+    for (const piece of pieces.get(w.id) ?? []) {
+      const limit = stops[piece.layerIndex]!;
+      for (const v of piece.polygon) {
+        const o = fo.n.x * (v.x - other.start.x) + fo.n.y * (v.y - other.start.y);
+        worst = Math.max(worst, positive ? limit - o : o - limit);
+      }
+    }
+  };
+  check(r.t, r.c, r.tStops, r.tPositive);
+  check(r.c, r.t, r.cStops, r.cPositive);
+  return worst;
+}
+
+/**
+ * Inside the overlap of the two bands, short of both free ends, every point belongs to exactly one
+ * layer by the rule: t's layer there if the point is on t's side of that layer's stop, else c's layer
+ * there if on c's side of its own; and the engine's piece there is that layer. Points on a line are
+ * skipped. `bad` also counts points the rule itself gives to both or neither.
+ */
+export function buttOwnership(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, walls: readonly Wall[], seed: number): { checked: number; bad: number } {
+  const r = buttRule(a, aEnd, b, bEnd);
+  const { pieces } = geometry(walls);
+  const quad = overlapOf(a, b);
+  const eps = 1e-6;
+  let x = seed >>> 0 || 1;
+  const rnd = () => ((x = (Math.imul(x, 1664525) + 1013904223) >>> 0) / 4294967296);
+  const offset = (w: Wall, p: P) => {
+    const f = frameOf(w);
+    return f.n.x * (p.x - w.start.x) + f.n.y * (p.y - w.start.y);
+  };
+  const shortOfFree = (w: Wall, end: WallEnd, p: P) => {
+    const free = end === 'start' ? w.end : w.start;
+    const u = into(w, end);
+    return (p.x - free.x) * u.x + (p.y - free.y) * u.y < -eps;
+  };
+  const layerAt = (offs: readonly number[], o: number) => offs.findIndex((v, i) => i + 1 < offs.length && o > v && o < offs[i + 1]!);
+  const near = (o: number, lines: readonly number[]) => lines.some((v) => Math.abs(o - v) < eps);
+  let checked = 0;
+  let bad = 0;
+  for (let i = 0; i < 300; i++) {
+    // A point of the parallelogram: its first corner plus a mix of the two sides from it.
+    const s = rnd();
+    const t = rnd();
+    const p = pt(
+      quad[0]!.x + (quad[1]!.x - quad[0]!.x) * s + (quad[3]!.x - quad[0]!.x) * t,
+      quad[0]!.y + (quad[1]!.y - quad[0]!.y) * s + (quad[3]!.y - quad[0]!.y) * t,
+    );
+    if (!shortOfFree(r.t, r.tEnd, p) || !shortOfFree(r.c, r.cEnd, p)) continue;
+    const ot = offset(r.t, p);
+    const oc = offset(r.c, p);
+    if (near(ot, [...r.tOffs, ...r.cStops]) || near(oc, [...r.cOffs, ...r.tStops])) continue;
+    const kt = layerAt(r.tOffs, ot);
+    const kc = layerAt(r.cOffs, oc);
+    if (kt < 0 || kc < 0) continue;
+    checked++;
+    const tOwns = r.tPositive ? oc > r.tStops[kt]! : oc < r.tStops[kt]!;
+    const cOwns = r.cPositive ? ot > r.cStops[kc]! : ot < r.cStops[kc]!;
+    if (tOwns === cOwns) {
+      bad++;
+      continue;
+    }
+    const [wall, layerIndex] = tOwns ? [r.t, kt] : [r.c, kc];
+    const owner = walls.find((w) => (pieces.get(w.id) ?? []).some((piece) => inside(piece.polygon, p)));
+    const piece = owner && (pieces.get(owner.id) ?? []).find((q) => inside(q.polygon, p));
+    if (owner?.id !== wall.id || piece?.layerIndex !== layerIndex) bad++;
+  }
+  return { checked, bad };
+}
+
+/**
+ * How the spec resolves an L (§7.1): the miter classification, and for different sequences a butt.
+ * Between two straight walls the butt goes layer by layer (buttRule): each layer's band edges on the
+ * line it stops on are its corners. With an arc's segment (`layered` off) the butt is a T: one corner,
+ * the through wall's inner face on the other's outer face, where its square end reaches across its
+ * whole width, and the abutting layers reach into the through wall as in a T. Any of those points past
+ * either free end swallows a wall (overlap); at an obtuse angle farther than MITER_LIMIT·T from the
+ * node it is a long taper (shared cut), as for the miter's corners.
+ */
+export function cornerJoin(
+  a: Wall,
+  aEnd: WallEnd,
+  b: Wall,
+  bEnd: WallEnd,
+  node?: P,
+  reach: { a?: number; b?: number } = {},
+  layered = true,
+): { kind: CornerKind; butt: boolean } {
   const c = cornerSpec(a, aEnd, b, bEnd, node, reach);
   if ((c.kind !== 'miter' && c.kind !== 'bevel') || sameSequence(a, aEnd, b, bEnd, node)) return { kind: c.kind, butt: false };
+  const past = (w: Wall, end: WallEnd, p: P, limit?: number) => {
+    const f = frameOf(w);
+    const u = end === 'start' ? f.d : pt(-f.d.x, -f.d.y);
+    const farEnd = end === 'start' ? w.end : w.start;
+    const along = (x: P) => (x.x - c.node.x) * u.x + (x.y - c.node.y) * u.y;
+    return along(p) > (limit ?? along(farEnd));
+  };
+  const ua = into(a, aEnd);
+  const ub = into(b, bEnd);
+  const angle = (Math.acos(Math.max(-1, Math.min(1, ua.x * ub.x + ua.y * ub.y))) * 180) / Math.PI;
+  const tooFar = (p: P) => Math.hypot(p.x - c.node.x, p.y - c.node.y) > SPEC_MITER_LIMIT * Math.max(a.thickness, b.thickness);
+  if (layered) {
+    const reached = buttReached(a, aEnd, b, bEnd);
+    if (reached.some((p) => !Number.isFinite(p.x) || !Number.isFinite(p.y) || past(a, aEnd, p, reach.a) || past(b, bEnd, p, reach.b))) {
+      return { kind: 'overlap', butt: false };
+    }
+    if (angle >= 90 && reached.some(tooFar)) return { kind: 'shared', butt: false };
+    return { kind: c.kind, butt: true };
+  }
   const { through } = throughOf(a, b);
   const [tInner, cOuter] = through === a ? [c.aInner, c.bOuter] : [c.bInner, c.aOuter];
   const cut = through === a ? b : a;
@@ -119,24 +277,21 @@ export function cornerJoin(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?
   const deepest = stops.flatMap((stop, k) =>
     [cutOffs[k]!, cutOffs[k + 1]!].map((o) => meet(on(cut, o), frameOf(cut).d, on(through, stop), frameOf(through).d)),
   );
-  const past = (w: Wall, end: WallEnd, p: P, limit?: number) => {
-    const f = frameOf(w);
-    const u = end === 'start' ? f.d : pt(-f.d.x, -f.d.y);
-    const farEnd = end === 'start' ? w.end : w.start;
-    const along = (x: P) => (x.x - c.node.x) * u.x + (x.y - c.node.y) * u.y;
-    return along(p) > (limit ?? along(farEnd));
-  };
   if ([q, ...deepest].some((p) => past(a, aEnd, p, reach.a) || past(b, bEnd, p, reach.b))) return { kind: 'overlap', butt: false };
-  const ua = into(a, aEnd);
-  const ub = into(b, bEnd);
-  const angle = (Math.acos(Math.max(-1, Math.min(1, ua.x * ub.x + ua.y * ub.y))) * 180) / Math.PI;
-  const far = Math.hypot(q.x - c.node.x, q.y - c.node.y) > SPEC_MITER_LIMIT * Math.max(a.thickness, b.thickness);
-  if (angle >= 90 && far) return { kind: 'shared', butt: false };
+  if (angle >= 90 && tooFar(q)) return { kind: 'shared', butt: false };
   return { kind: c.kind, butt: true };
 }
 
-/** The L region for the spec's resolution, or 'overlap' when it warns. */
-export function expectedCorner(a: Wall, aEnd: WallEnd, b: Wall, bEnd: WallEnd, node?: P, reach: { a?: number; b?: number } = {}): Region | 'overlap' {
-  const { kind } = cornerJoin(a, aEnd, b, bEnd, node, reach);
+/** The L region for the spec's resolution, or 'overlap' when it warns. `layered`: see cornerJoin. */
+export function expectedCorner(
+  a: Wall,
+  aEnd: WallEnd,
+  b: Wall,
+  bEnd: WallEnd,
+  node?: P,
+  reach: { a?: number; b?: number } = {},
+  layered = true,
+): Region | 'overlap' {
+  const { kind } = cornerJoin(a, aEnd, b, bEnd, node, reach, layered);
   return kind === 'overlap' ? 'overlap' : expectedL(a, aEnd, b, bEnd, node, kind);
 }

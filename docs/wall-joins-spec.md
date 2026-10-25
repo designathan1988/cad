@@ -324,23 +324,41 @@ o ângulo entre elas. *(Regras revisadas pelo spike — ver §16.)*
   camadas **lida a partir da face externa do canto** é a mesma nas duas paredes
   (mesmas funções, espessuras a menos de `POINT_TOLERANCE`), o canto é o miter
   acima. Senão é **butt**: passa a parede de **núcleo mais grosso** (empate a
-  menos de `POINT_TOLERANCE`: menor ID, a mesma regra do X). Ela é cortada na
-  linha da **face externa** da outra, e a outra **encosta nela como um T**, com
-  a regra de prioridade e o entalhe da §7.2. Uma parede desenhada ao contrário
-  lê as camadas invertidas e por isso entra em butt.
+  menos de `POINT_TOLERANCE`: menor ID, a mesma regra do X). Uma parede desenhada
+  ao contrário lê as camadas invertidas e por isso entra em butt.
+- **Butt camada por camada** *(entrega 6, 25/10/2026, entre duas paredes retas)*:
+  como o Revit limpa um L entre dois tipos, os núcleos se encontram, as camadas
+  de fora dos núcleos **dão a volta no canto externo** e as de dentro se
+  encontram no **canto interno**. Cada camada é "interna" (do lado do corpo da
+  outra parede), "núcleo" ou "externa", e para numa linha da outra:
+  - a que passa (*t*): externas na **face externa** da outra, núcleo na **face
+    externa do núcleo** da outra, internas na **face interna do núcleo** da outra
+    (o núcleo da outra passa por elas, como um núcleo passa acabamentos no T);
+  - a que encosta (*c*): internas na **face interna** de *t*, núcleo na **face
+    interna do núcleo** de *t*, externas **por cima do núcleo de *t*** até a
+    **face externa do núcleo** de *t*.
+
+  Assim nenhum acabamento interno nem núcleo nu aparece do lado de fora. Não há
+  entalhe: nenhuma camada atravessa a faixa de outra. Sem camada `structure` o
+  núcleo é a parede inteira e o canto vira um butt reto. *(Achado do teste de uso
+  de 25/10/2026: como T, o reboco interno da parede que passa ia até a face
+  externa da outra e o tijolo dela ficava exposto na quina.)*
+- **Com o segmento de um arco**, e na passagem de um nó (§7.4), o butt continua
+  o da entrega 4: a outra **encosta como um T**, com a regra de prioridade e o
+  entalhe da §7.2, e a que passa é cortada inteira na face externa da outra.
+  As cadeias dos arcos e os nós dependem disso (pendência em `docs/pendencias.md`).
 - O butt cobre a **mesma região** do miter (faces externas até o canto externo,
   internas até o interno), então todas as regras de canto acima valem para ele.
-  Ele tem mais pontos próprios, e cada um tem a sua regra:
-  - o **canto do butt**: a face interna da que passa na face externa da outra,
-    onde o corte reto alcança a largura toda;
-  - os **pontos mais fundos** de cada camada que encosta: as bordas da faixa
-    dela na face onde para.
+  Ele tem mais pontos próprios: onde as **bordas da faixa de cada camada** das
+  duas paredes encontram a linha em que ela para (no butt como T: o **canto do
+  butt**, a face interna da que passa na face externa da outra, e os **pontos
+  mais fundos** de cada camada que encosta).
 
   Qualquer desses pontos além de uma ponta livre → sem junta, aviso
-  `WallsOverlap` (a ponta engole a parede curta). Ângulo θ ≥ 90° com o canto do
-  butt a mais de `MITER_LIMIT × max(T)` de P → **corte único por P**, como no
-  miter (a ponta reta viraria uma cunha de metros). No chanfro, o mesmo semiplano
-  corta as duas paredes.
+  `WallsOverlap` (a ponta engole a parede curta). Ângulo θ ≥ 90° com algum deles
+  a mais de `MITER_LIMIT × max(T)` de P → **corte único por P**, como no miter (a
+  ponta reta viraria uma cunha de metros). No chanfro, o mesmo semiplano corta
+  as duas paredes.
 - Se `config` do override for `butt`: a parede com prioridade (override, senão
   núcleo mais grosso, senão menor ID) passa reto e é cortada quadrada; a outra é
   cortada na **face** da primeira.
@@ -862,6 +880,22 @@ Achados:
 
 Por pedido do usuário não houve seeds extras, rodadas grandes nem laço de
 mutantes nesta entrega; o portão foi o `npm run check`.
+
+### Entrega 6 — butt camada por camada no L entre paredes retas
+
+Pedido do usuário no teste de uso de 25/10/2026 ("olha o que aconteceu com o
+canto da parede"): numa casa de Alvenaria 15 cm, uma parede trocada para
+Alvenaria 20 cm deixava, na quina, o reboco interno dela na face externa da casa
+e o tijolo à mostra. Era a regra da entrega 4 funcionando como escrita: a que
+passa ia inteira até a face externa da outra.
+
+| Medida | Resultado |
+|---|---|
+| Oráculo novo (`buttRule`, `buttPenetration`, `buttOwnership` em `oracle-x.ts`) | cada camada das duas paredes para na sua linha; cada ponto da sobreposição das faixas é da camada que a regra dá |
+| Seed fixa | 1 403 cantos em butt, 418 710 pontos conferidos (pisos: 600 e 20 000) |
+| Seeds 1, 777 e 4242 | sem falha; 1 443 a 1 451 cantos, 431 a 434 mil pontos |
+| Mutantes à mão | reboco interno de *t* até a face externa (o defeito) e reboco externo de *c* parando na face de *t*: os dois pegos |
+| Casos à mão refeitos | 5 (`layers.test.ts`), com os valores trabalhados de novo; a parede de 2 cm que avisava como T agora fecha |
 
 ### Entrega 4, parte 2 — butt no L entre sequências diferentes
 

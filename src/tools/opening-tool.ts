@@ -16,9 +16,12 @@
 // The rule under the cursor: within 10 px of the wall's middle it is centred; otherwise the nearest
 // reference wins (the wall's start, its end, or the jamb of a neighbouring opening), measured to the
 // nearest jamb in 5 cm steps; a reference the opening would overlap counts only when none is clear.
+// The start and the end are measured from the nearest face of a wall meeting this one on that side
+// (a stop), when there is one: the gap to it goes in 5 cm steps and a typed distance is that gap.
 
 import { type DistanceRule, hasDistance, type OpeningId, type PositionRule } from '../elements/opening/schema';
 import type { WallId } from '../elements/wall/schema';
+import { stopAfter, stopBefore } from '../app/wall-stops';
 
 export const OPENING_STEP = 0.05;
 const CENTRE_PX = 10;
@@ -36,6 +39,8 @@ export interface Aim {
   readonly others: readonly { readonly id: OpeningId; readonly start: number; readonly end: number }[];
   /** Metres per screen pixel. */
   readonly mpp: number;
+  /** Stations of the faces of the walls meeting this one (sorted): what the ends are measured from. */
+  readonly stops?: readonly number[];
 }
 
 export type OpeningToolState =
@@ -58,23 +63,41 @@ export const OPENING_IDLE: OpeningToolState = { kind: 'idle' };
 
 const step = (d: number): number => Math.round(d / OPENING_STEP) * OPENING_STEP;
 
+/**
+ * What a start or end rule is measured from, as its own distance: the station of the stop before the
+ * opening for `fromStart`, the length past the stop after it for `fromEnd` (0 at the wall's ends).
+ * The gap shown and typed is the rule's distance less this.
+ */
+export function ruleBase(aim: Pick<Aim, 'length' | 'stops'>, rule: PositionRule): number {
+  const stops = aim.stops ?? [];
+  if (rule.kind === 'fromStart') return stopBefore(stops, rule.distance);
+  if (rule.kind === 'fromEnd') return aim.length - stopAfter(stops, aim.length - rule.distance, aim.length);
+  return 0;
+}
+
 export function ruleAt(aim: Aim, width: number): PositionRule {
   if (Math.abs(aim.station - aim.length / 2) <= CENTRE_PX * aim.mpp) return { kind: 'centered' };
   const lo = aim.station - width / 2;
   const hi = aim.station + width / 2;
-  const candidates: DistanceRule[] = [
-    { kind: 'fromStart', distance: lo },
-    { kind: 'fromEnd', distance: aim.length - hi },
+  const stops = aim.stops ?? [];
+  // Start and end: the gap to the nearest stop on that side (the wall's end when none).
+  const before = stopBefore(stops, lo);
+  const after = stopAfter(stops, hi, aim.length);
+  const candidates: { rule: DistanceRule; base: number }[] = [
+    { rule: { kind: 'fromStart', distance: lo - before }, base: before },
+    { rule: { kind: 'fromEnd', distance: after - hi }, base: aim.length - after },
   ];
   for (const o of aim.others) {
-    if (o.end <= aim.station) candidates.push({ kind: 'fromOpening', openingId: o.id, distance: lo - o.end, toward: 'end' });
-    else if (o.start >= aim.station) candidates.push({ kind: 'fromOpening', openingId: o.id, distance: o.start - hi, toward: 'start' });
+    if (o.end <= aim.station) candidates.push({ rule: { kind: 'fromOpening', openingId: o.id, distance: lo - o.end, toward: 'end' }, base: 0 });
+    else if (o.start >= aim.station) candidates.push({ rule: { kind: 'fromOpening', openingId: o.id, distance: o.start - hi, toward: 'start' }, base: 0 });
   }
   // A reference the opening clears (distance ≥ 0) beats one it would overlap, however near.
   const rank = (r: { distance: number }) => (r.distance >= 0 ? r.distance : Infinity);
-  const clear = candidates.some((r) => r.distance >= 0);
-  const best = candidates.reduce((a, b) => (clear ? rank(b) < rank(a) : Math.abs(b.distance) < Math.abs(a.distance)) ? b : a);
-  return { ...best, distance: step(best.distance) };
+  const clear = candidates.some((c) => c.rule.distance >= 0);
+  const best = candidates.reduce((a, b) =>
+    (clear ? rank(b.rule) < rank(a.rule) : Math.abs(b.rule.distance) < Math.abs(a.rule.distance)) ? b : a,
+  );
+  return { ...best.rule, distance: best.base + step(best.rule.distance) };
 }
 
 export function openingTransition(state: OpeningToolState, event: OpeningToolEvent, width: number): OpeningToolResult {
@@ -90,8 +113,9 @@ export function openingTransition(state: OpeningToolState, event: OpeningToolEve
       if (state.kind === 'idle' || !(event.distance >= 0)) return { state, rejected: true };
       const r = state.rule;
       const d = event.distance;
+      // From the same reference the preview is measured from: for the start and the end, past the stop.
       const rule: PositionRule = hasDistance(r)
-        ? { ...r, distance: d }
+        ? { ...r, distance: ruleBase(state.aim, r) + d }
         : // The nearer end; at the very middle (an aim from the keyboard) the start, as reading goes.
           state.aim.station <= state.aim.length / 2
           ? { kind: 'fromStart', distance: d }

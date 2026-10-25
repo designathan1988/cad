@@ -19,7 +19,8 @@ const wall = (id: string, a: [number, number], b: [number, number]): DocWall => 
 const doc = (): Doc => ({
   ...newDocument(),
   walls: [wall('w0', [0, 0], [6, 0]), wall('w1', [6, 0], [6, 4])],
-  // A 0.90 m door 1.00 m from w0's start: jambs at 1.00 and 1.90, 4.10 m to the end.
+  // A 0.90 m door 1.00 m from w0's start: jambs at 1.00 and 1.90, 4.10 m to the end, 4.00 m to the
+  // inner face of w1 (20 cm, its face at 5.90), which is what the end side measures to.
   openings: [newOpening('o', 'w0', 'door', { kind: 'fromStart', distance: 1 })],
 });
 
@@ -34,17 +35,34 @@ describe('temporary dimensions', () => {
     expect(next.walls.find((w) => w.id === 'w1')!.start).toEqual(vec(8, 0));
   });
 
-  it('a selected opening shows its distances to both ends of its wall', () => {
+  it('a selected opening shows its distances to the wall meeting its own on each side: its face, or the end when none', () => {
     const d = doc();
     const dims = tempDims(d, deriveGeometry(d), new Set(['o']));
-    expect(dims.map((x) => Math.round(x.value * 1e9) / 1e9)).toEqual([1, 4.1]);
+    // No wall at w0's start: from the end. At its end, w1: from its inner face.
+    expect(dims.map((x) => Math.round(x.value * 1e9) / 1e9)).toEqual([1, 4]);
+    expect(dims[1]!.b.x).toBeCloseTo(5.9, 12);
+  });
+
+  it('a partition between the opening and the end: measured to its face, not across it to the far corner', () => {
+    const d0 = doc();
+    // A 20 cm partition at x = 3.5 standing on w0: its faces at 3.40 and 3.60.
+    const d: Doc = { ...d0, walls: [...d0.walls, wall('p', [3.5, 0], [3.5, 3])] };
+    const dims = tempDims(d, deriveGeometry(d), new Set(['o']));
+    expect(dims.map((x) => Math.round(x.value * 1e9) / 1e9)).toEqual([1, 1.5]);
+    // Typing 0.60 there: the door's end jamb 0.60 from the partition's face, kept as a rule from the end.
+    const next = dims[1]!.apply(0.6)!.apply(d);
+    const rule = next.openings[0]!.rule;
+    expect(rule.kind).toBe('fromEnd');
+    expect(rule.kind === 'fromEnd' && rule.distance).toBeCloseTo(6 - 3.4 + 0.6, 12);
   });
 
   it('typing a distance sets the rule from that end, keeping the opening where the user said', () => {
     const d = doc();
     const [fromStart, fromEnd] = tempDims(d, deriveGeometry(d), new Set(['o']));
     expect(fromStart!.apply(2)!.apply(d).openings[0]!.rule).toEqual({ kind: 'fromStart', distance: 2 });
-    expect(fromEnd!.apply(0.5)!.apply(d).openings[0]!.rule).toEqual({ kind: 'fromEnd', distance: 0.5 });
+    // From w1's inner face (0.10 m in from w0's end): 0.50 from it is 0.60 from the end.
+    const r = fromEnd!.apply(0.5)!.apply(d).openings[0]!.rule;
+    expect(r.kind === 'fromEnd' && r.distance).toBeCloseTo(0.6, 12);
   });
 
   it('a length of zero is refused; several selected show nothing', () => {
@@ -62,8 +80,8 @@ describe('temporary dimensions', () => {
   it('measured from another opening: the dimension on that side is the gap to it, and typing keeps the rule', () => {
     const d = fromDoor('end');
     const dims = tempDims(d, deriveGeometry(d), new Set(['w']));
-    // The gap to the door (1.90 to 2.40), then the far end (3.30 to 6).
-    expect(dims.map((x) => Math.round(x.value * 1e9) / 1e9)).toEqual([0.5, 2.7]);
+    // The gap to the door (1.90 to 2.40), then w1's inner face (3.30 to 5.90).
+    expect(dims.map((x) => Math.round(x.value * 1e9) / 1e9)).toEqual([0.5, 2.6]);
     expect(dims[0]!.a).toEqual(vec(1.9, 0));
     const next = dims[0]!.apply(0.8)!.apply(d);
     expect(next.openings.find((o) => o.id === 'w')!.rule).toEqual({ kind: 'fromOpening', openingId: 'o', distance: 0.8, toward: 'end' });

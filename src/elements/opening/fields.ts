@@ -3,6 +3,10 @@
 // selection is in, and arranging several. Also the size of the next opening the tool places.
 
 import { type Doc, wallNumber } from '../../app/document';
+import { stopAfter, stopBefore, wallStops } from '../../app/wall-stops';
+import { referenceLength } from './derive';
+import type { RoomSolid } from '../room/derive';
+import { openingSides } from './sides';
 import type { OpeningSolid } from '../../app/geometry';
 import type { Field } from '../../ui/fields';
 import { name, num, t, type MessageKey } from '../../ui/i18n';
@@ -80,9 +84,20 @@ export function positionFields(doc: Doc, one: OpeningSolid, placed: ReadonlyMap<
     if (level && levelOf(r.wallId) !== levelOf(o.wallId)) where.push(name(level.name));
     return `${label(r)} · ${where.join(' · ')}`;
   };
+  // The start and the end are measured from the face of the nearest wall meeting this one on that
+  // side, as the plan's dimensions are (wall-stops.ts): the field shows and takes that gap.
+  const host = doc.walls.find((w) => w.id === o.wallId);
+  const stops = host ? wallStops(doc, host.id) : [];
+  const length = host ? referenceLength(host) : 0;
+  const baseOf = (x: OpeningSolid): number =>
+    x.opening.rule.kind === 'fromStart' ? stopBefore(stops, x.start) : x.opening.rule.kind === 'fromEnd' ? length - stopAfter(stops, x.end, length) : 0;
+  const startBase = stopBefore(stops, one.start);
+  const endBase = length - stopAfter(stops, one.end, length);
+  const ruleLabel = (k: RuleKind): string =>
+    k === 'fromStart' && startBase > 0 ? t('rule.fromStartFace') : k === 'fromEnd' && endBase > 0 ? t('rule.fromEndFace') : t(`rule.${k}` as MessageKey);
   const ruleOptions = (['fromStart', 'fromEnd', 'centered', 'fromOpening', 'aligned', 'inGroup'] as const)
     .filter((k) => k === rule.kind || (k === 'fromOpening' ? refs.length > 0 : k === 'aligned' ? aligns.length > 0 : k !== 'inGroup'))
-    .map((k) => ({ value: k, label: t(`rule.${k}` as MessageKey) }));
+    .map((k) => ({ value: k, label: ruleLabel(k) }));
   return [
     {
       id: 'rule',
@@ -129,16 +144,25 @@ export function positionFields(doc: Doc, one: OpeningSolid, placed: ReadonlyMap<
       label: 'panel.distance',
       kind: 'number',
       when: () => hasDistance(rule),
-      get: (x) => (hasDistance(x.opening.rule) ? x.opening.rule.distance : 0),
-      set: (v) => hasDistance(rule) && act.update([o.id], { rule: { ...rule, distance: v } }),
+      get: (x) => (hasDistance(x.opening.rule) ? x.opening.rule.distance - baseOf(x) : 0),
+      set: (v) => hasDistance(rule) && act.update([o.id], { rule: { ...rule, distance: baseOf(one) + v } }),
     },
     { id: 'jambs', label: 'panel.jambs', kind: 'readout', text: (xs) => `${num(xs[0]!.start)} – ${num(xs[0]!.end)} m` },
   ];
 }
 
-/** A door's leaf: which jamb it hangs on, and to which side it opens. */
-export function leafFields(one: OpeningSolid, update: OpeningPanelActions['update']): Field<OpeningSolid>[] {
+/**
+ * A door's leaf: which jamb it hangs on, and to which side it opens. The sides are named by the room
+ * on each (the other "outside"); with no room on either, by left and right of the wall.
+ */
+export function leafFields(one: OpeningSolid, update: OpeningPanelActions['update'], rooms: readonly RoomSolid[] = []): Field<OpeningSolid>[] {
   const ids = [one.opening.id];
+  const sides = openingSides(one, rooms);
+  const sideLabel = (v: 'left' | 'right'): string => {
+    if (!sides.left && !sides.right) return t(`swing.${v}`);
+    const r = sides[v];
+    return r ? name(r.room.name) : t('swing.outside');
+  };
   return [
     {
       id: 'hinge',
@@ -152,7 +176,7 @@ export function leafFields(one: OpeningSolid, update: OpeningPanelActions['updat
       id: 'swing',
       label: 'panel.swing',
       kind: 'segmented',
-      options: (['left', 'right'] as const).map((v) => ({ value: v, label: t(`swing.${v}`) })),
+      options: (['left', 'right'] as const).map((v) => ({ value: v, label: sideLabel(v) })),
       get: (x) => x.opening.swing,
       set: (v) => update(ids, { swing: v as 'left' | 'right' }),
     },

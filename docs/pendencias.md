@@ -24,6 +24,28 @@ Segunda rodada (mesmo dia), também vistos no navegador:
 - Celular: a dica do rodapé em até três linhas.
 - "Desfeito: Apagar" / "Refeito: …": o aviso diz o que foi desfeito (o histórico guarda o nome).
 
+Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com gestos), vistos no navegador:
+- Encaixe na origem e nos eixos (o primeiro clique a 3 px do cruzamento ficava 5 cm fora).
+- Parede terminada sobre outra seguindo o ângulo travado (a divisória saía a 90,3°), e o ponto sobre
+  a parede em passos de 5 cm; o corpo desenhado da parede (não só o eixo) conta para o encaixe.
+- Portas e janelas medidas da face da parede ao lado (wall-stops.ts): na colocação, nas cotas
+  temporárias e no painel ("Da parede no início/fim"); antes media da ponta de uma parede de 10 m.
+- Arrastar porta ou janela: desliza pela parede ou passa para outra (antes nada se movia).
+- "Abre para" com o nome do cômodo de cada lado ("Sala e cozinha" | "Lado de fora").
+- Triângulo do grupo de ferramentas abre o submenu com um clique.
+- Botões só de texto quebram em duas linhas em vez de vazar.
+- Canto entre tipos diferentes (wall-joins-spec.md, entrega 6).
+- Arrastar um cômodo move o ponto dele (para outro espaço, se soltar lá); um piso por contorno, o
+  contorno. Alt ao arrastar paredes: elas vão sozinhas, sem levar as juntas (não testado com gesto:
+  a ferramenta de teste não segura Alt durante o arraste; coberto só pela leitura do código).
+
+Achados desta rodada ainda abertos:
+- Altura da parede só aparece escolhendo "Altura fixa"; com "Pé-direito" o painel não diz quanto é.
+- "Dobradiça: Início / Fim" fala da direção em que a parede foi desenhada, que o usuário não vê.
+- A etiqueta da cota temporária (fundo opaco) cobre a ponta da parede que chega num T.
+- A cota guia da porta sendo colocada é uma linha solta a 50 cm da parede, sem marcas nas pontas.
+- Mudar o lado de abertura não tem atalho no próprio desenho (só painel e barra).
+
 ## Esperando reteste no navegador
 
 - Diálogo "Tipos de parede" e editor de camadas (17, parte 4; 08f1a21). Planta e 3D por camada já
@@ -52,6 +74,12 @@ Segunda rodada (mesmo dia), também vistos no navegador:
   perto da outra ponta). A suíte do L está no limite: 5 de 100 pulados.
 - Resolvido em 2026-10-24: alturas diferentes entre paredes ligadas (wall-joins-spec.md, §7.5 e parte 6).
 - Resolvido em 2026-10-25: faces de corte no 3D (faces.ts).
+- Resolvido em 2026-10-25: L entre tipos diferentes em butt camada por camada (wall-joins-spec.md, §7.1 e
+  entrega 6): o reboco interno e o núcleo não aparecem mais na quina de fora.
+- Falta: o mesmo butt camada por camada quando uma das paredes é o segmento de um arco, e na passagem
+  de um nó de 3 ou 4 pontas. Ali o butt ainda é como T (a parede que passa vai inteira até a face
+  externa da outra), porque as cadeias dos arcos (footprint.ts) e os nós (node.ts, `alone`) reconhecem
+  a parede que encosta por ter cortes por camada.
 - Overrides de junta (desligar, butt, miter, corte reto).
 - Mutação ≥ 90 %.
 

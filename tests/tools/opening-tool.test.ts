@@ -99,3 +99,29 @@ describe('opening tool table', () => {
     expect(openingTransition(a, { kind: 'escape' }, 0.9).state).toEqual(OPENING_IDLE);
   });
 });
+
+describe('measured from the walls meeting this one', () => {
+  // A partition's faces at 2.93 and 3.08 (15 cm, off the 5 cm grid on purpose).
+  const stops = [2.93, 3.08];
+  const at = (station: number): Aim => ({ ...aim(station), stops });
+
+  it('between the start and a partition, nearer the partition: from its face, the gap in 5 cm steps', () => {
+    // Centre at 2.21: end jamb at 2.66, 0.27 from the face at 2.93 → 0.25; stored from the wall's end.
+    const r = ruleAt(at(2.21), 0.9);
+    expect(r.kind).toBe('fromEnd');
+    expect(r.kind === 'fromEnd' && r.distance).toBeCloseTo(5 - 2.93 + 0.25, 12);
+  });
+
+  it('past the partition: from its far face, not from the wall start', () => {
+    // Centre at 3.6: start jamb at 3.15, 0.07 from the face at 3.08 → 0.05.
+    const r = ruleAt(at(3.6), 0.9);
+    expect(r.kind).toBe('fromStart');
+    expect(r.kind === 'fromStart' && r.distance).toBeCloseTo(3.08 + 0.05, 12);
+  });
+
+  it('a typed distance is the gap to that face', () => {
+    const s = { kind: 'aiming' as const, aim: at(3.6), rule: ruleAt(at(3.6), 0.9) };
+    const r = openingTransition(s, { kind: 'typed', distance: 0.4 }, 0.9).place!.rule;
+    expect(r.kind === 'fromStart' && r.distance).toBeCloseTo(3.08 + 0.4, 12);
+  });
+});

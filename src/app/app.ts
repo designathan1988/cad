@@ -22,7 +22,7 @@ import {
 } from '../elements/opening/commands';
 import type { OpeningSize } from '../elements/opening/panel';
 import { GROUP_PREFIX, hasDistance, isOpeningId, newOpening, OPENING_DEFAULTS, OPENING_PREFIX, type Opening, type OpeningKind } from '../elements/opening/schema';
-import { OPENING_IDLE, openingTransition, type OpeningToolEvent, type OpeningToolState } from '../tools/opening-tool';
+import { OPENING_IDLE, openingTransition, ruleBase, type OpeningToolEvent, type OpeningToolState } from '../tools/opening-tool';
 import { aimAlong, OPENING_PREVIEW_ID, ruleGuide, ruleText } from './opening-ui';
 import type { WallId } from '../elements/wall/schema';
 import { type Insets, PlanView } from '../render/plan-view';
@@ -36,7 +36,7 @@ import { snapLabel, type Snap } from '../tools/snap';
 import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, dragTransform, hull } from './select-drag';
-import { moveRooms } from './carry';
+import { moveFloors, moveRooms } from './carry';
 import { stepSelection } from './keyboard-select';
 import { nudge } from '../tools/nudge';
 import { type Doc, type DocWall, elementIds, levelOf, newDocument, startLevel, type WallDefaults, wallNumber, wallOverrides } from './document';
@@ -182,10 +182,17 @@ export class App {
     // so they never show as open mid-drag.
     const shown =
       d?.kind === 'move' || d?.kind === 'rotate'
-        ? { ...doc, walls: d.walls, rooms: moveRooms(doc.rooms, d.rooms, dragTransform(d)) }
-        : d && d.kind !== 'marquee'
-          ? { ...doc, walls: d.walls }
-          : doc;
+        ? {
+            ...doc,
+            walls: d.walls,
+            rooms: moveRooms(doc.rooms, d.rooms, dragTransform(d)),
+            floors: d.kind === 'move' ? moveFloors(doc.floors, d.floors, dragTransform(d)) : doc.floors,
+          }
+        : d?.kind === 'slide'
+          ? { ...doc, openings: d.openings }
+          : d && d.kind !== 'marquee'
+            ? { ...doc, walls: d.walls }
+            : doc;
     this.geometry = deriveGeometry(shown, this.previewWall(), this.previewOpening());
     this.render();
   }
@@ -940,7 +947,7 @@ export class App {
     this.cube.root.style.right = `${20 + covered.right}px`;
     this.scene.setCovered(covered);
     const preview = new Set([...this.previewWall(), ...this.previewOpening()].map((w) => w.id));
-    const guide = this.openingKind() ? ruleGuide(this.geometry, OPENING_PREVIEW_ID) : null;
+    const guide = this.openingKind() ? ruleGuide(this.store.get(), this.geometry, OPENING_PREVIEW_ID) : null;
     if (plan) {
       const w = ui.wall;
       const drawing = ui.tool === 'wall' && w.kind === 'drawing';
@@ -1033,6 +1040,7 @@ export class App {
         warnings: this.geometry.warnings,
         openings: this.selectedWalls().length === 0 ? this.selectedOpenings() : [],
         rooms: this.selectedRooms(),
+        levelRooms: [...this.geometry.rooms.values()].filter((r) => r.room.levelId === ui.levelId),
         floors: this.selectedFloors(),
         placed: this.geometry.openings,
         openingWarnings: this.geometry.openingWarnings,
@@ -1095,10 +1103,15 @@ export class App {
     if (this.ui.view === 'plan' && this.keepSelectionInView()) this.render();
   }
 
-  /** Temporary dimensions of the one selected element, while selecting (not while dragging). */
+  /**
+   * Temporary dimensions of the one selected element, while selecting; not while dragging, except a
+   * door or a window being slid, whose distances follow it.
+   */
   private currentDims(): TempDim[] {
-    if (this.ui.tool !== 'select' || this.ui.drag) return [];
-    return tempDims(this.store.get(), this.geometry, this.ui.selection);
+    const d = this.ui.drag;
+    if (this.ui.tool !== 'select' || (d && d.kind !== 'slide')) return [];
+    const doc = this.store.get();
+    return tempDims(d?.kind === 'slide' ? { ...doc, openings: d.openings } : doc, this.geometry, this.ui.selection);
   }
 
   /**
@@ -1330,7 +1343,9 @@ export class App {
             : w.count >= 2
               ? 'hint.wallNextClose'
               : 'hint.wallNext'
-      : d?.kind === 'move' || d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'rotate'
+      : d?.kind === 'slide'
+        ? 'hint.sliding'
+        : d?.kind === 'move' || d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'rotate'
         ? 'hint.moving'
         : d?.kind === 'bulge'
           ? 'hint.bending'
@@ -1353,7 +1368,7 @@ export class App {
     const aiming = placing !== null && ui.opening.kind === 'aiming';
     const openingHint = placing
       ? ui.opening.kind === 'aiming'
-        ? this.previewProblem() ?? t('hint.openingAim', { rule: ruleText(ui.opening.rule) })
+        ? this.previewProblem() ?? t('hint.openingAim', { rule: ruleText(ui.opening.rule, ruleBase(ui.opening.aim, ui.opening.rule)) })
         : t('hint.openingPlace', { kind: t(placing === 'door' ? 'panel.door' : 'panel.window').toLowerCase() })
       : null;
     const toolHint = ui.tool === 'room' ? t('hint.roomPlace') : ui.tool === 'floor' ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace') : null;

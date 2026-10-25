@@ -386,6 +386,24 @@ button.project-name:hover {
   flex: 1 1 0;
   min-width: 0;
 }
+/* Words only: a long label (a room's name on a door's side) takes a second line, then gives way with
+   an ellipsis; the title holds it whole. Buttons with an icon keep one line, as before. */
+.segmented button:not(.has-icon) {
+  height: auto;
+  min-height: var(--control-h-sm);
+  white-space: normal;
+  line-height: 1.2;
+  text-align: center;
+  overflow: hidden;
+}
+.segmented button:not(.has-icon) .label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
 .segmented button:hover:not(:disabled) {
   color: var(--text);
 }

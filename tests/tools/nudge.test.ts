@@ -70,8 +70,14 @@ describe('nudging the selection', () => {
   it("a room's point and an outline floor move by the step", () => {
     const next = nudge(doc, deriveGeometry(doc), ['room', 'f'], { x: 0.05, y: 0 });
     near(next.rooms[0]!.seed.x, 2.05);
+    expect(next.walls).toBe(doc.walls);
     const pts = next.floors[0]!.source.kind === 'outline' ? next.floors[0]!.source.points : [];
     near(pts[0]!.x, 6.05);
+  });
+
+  it('a room selected with all its walls goes along with them once, not twice', () => {
+    const next = nudge(doc, deriveGeometry(doc), ['room', 'b', 'r', 't', 'l'], { x: 0.05, y: 0 });
+    near(next.rooms[0]!.seed.x, 2.05);
   });
 
   it('every wall of the room: the room goes along', () => {

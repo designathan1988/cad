@@ -3,7 +3,7 @@
 // and keeps its name. A room with a wall left behind stays where it is.
 
 import type { Point2 } from '../core/vector';
-import type { Room } from '../elements/room/schema';
+import type { Floor, Room } from '../elements/room/schema';
 import type { Doc } from './document';
 import type { DerivedGeometry } from './geometry';
 
@@ -18,25 +18,36 @@ function toSegment(p: Point2, a: Point2, b: Point2): number {
   return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
 }
 
+/** The walls around a room: every wall of its level whose pieces touch its outline. None when it is open. */
+export function wallsAround(g: DerivedGeometry, room: Room): string[] {
+  const solid = g.rooms.get(room.id);
+  if (!solid || !solid.enclosed) return [];
+  return [...g.solids.values()]
+    .filter(
+      (s) =>
+        s.wall.levelId === room.levelId &&
+        s.pieces.some((piece) =>
+          solid.outline.some((v) => piece.polygon.some((a, i) => toSegment(v, a, piece.polygon[(i + 1) % piece.polygon.length]!) <= NEAR)),
+        ),
+    )
+    .map((s) => s.wall.id);
+}
+
 /** The rooms whose every surrounding wall is in `moved`: they go with a move or a turn of those walls. */
 export function roomsGoingWith(doc: Doc, before: DerivedGeometry, moved: ReadonlySet<string>): Set<string> {
   return new Set(
     doc.rooms
       .filter((room) => {
-        const solid = before.rooms.get(room.id);
-        if (!solid || !solid.enclosed) return false;
-        const touching = [...before.solids.values()].filter(
-          (s) =>
-            s.wall.levelId === room.levelId &&
-            s.pieces.some((piece) =>
-              solid.outline.some((v) => piece.polygon.some((a, i) => toSegment(v, a, piece.polygon[(i + 1) % piece.polygon.length]!) <= NEAR)),
-            ),
-        );
-        return touching.length > 0 && touching.every((s) => moved.has(s.wall.id));
+        const around = wallsAround(before, room);
+        return around.length > 0 && around.every((id) => moved.has(id));
       })
       .map((room) => room.id),
   );
 }
+
+/** The outline floors in `ids` with their points moved by `transform`; a room's floor follows its room. */
+export const moveFloors = (floors: readonly Floor[], ids: ReadonlySet<string>, transform: (p: Point2) => Point2): Floor[] =>
+  floors.map((f) => (ids.has(f.id) && f.source.kind === 'outline' ? { ...f, source: { kind: 'outline', points: f.source.points.map(transform) } } : f));
 
 /** The rooms with the points of those in `going` moved by `transform`. */
 export const moveRooms = (rooms: readonly Room[], going: ReadonlySet<string>, transform: (p: Point2) => Point2): Room[] =>

@@ -9,6 +9,7 @@ import { fieldsSection } from '../../ui/fields';
 import { num, t, type MessageKey } from '../../ui/i18n';
 import { icon } from '../../ui/icons';
 import type { OpeningWarning } from './derive';
+import type { RoomSolid } from '../room/derive';
 import {
   arrangeFields,
   groupFields,
@@ -30,6 +31,8 @@ export function openingPanel(
   selected: readonly OpeningSolid[],
   warnings: readonly OpeningWarning[],
   act: OpeningPanelActions,
+  /** The rooms of the level, to name the sides a door opens to. */
+  rooms: readonly RoomSolid[] = [],
 ): HTMLElement[] {
   const list = selected.map((s) => s.opening);
   const ids = list.map((o) => o.id);
@@ -41,7 +44,7 @@ export function openingPanel(
   const group = groupIds.size === 1 ? doc.openingGroups.find((g) => groupIds.has(g.id)) : undefined;
   if (group) nodes.push(fieldsSection(t('panel.group'), true, groupFields(group, placed, act), [group]));
   if (list.length >= 2) nodes.push(fieldsSection(t('panel.arrange'), true, arrangeFields(doc, list, placed, act), list));
-  if (one && one.opening.kind === 'door') nodes.push(fieldsSection(t('panel.door.leaf'), true, leafFields(one, act.update), selected));
+  if (one && one.opening.kind === 'door') nodes.push(fieldsSection(t('panel.door.leaf'), true, leafFields(one, act.update, rooms), selected));
   const mine = warnings.filter((w) => w.openings.some((id) => ids.includes(id)));
   if (mine.length > 0) {
     const box = el('div', { class: 'warn-list', role: 'status' });

@@ -44,52 +44,55 @@ describe('layered L corner', () => {
 
   it('a flipped wall reads its layers in reverse from the corner: not the same sequence, so butt', () => {
     // b drawn upward: left normal (−1, 0), exterior finish x ∈ [0.08, 0.1], core x ∈ [−0.07, 0.08],
-    // interior finish x ∈ [−0.1, −0.07]. Equal cores: a (lower id) goes through, cut on b's outer face
-    // x = −0.1; b abuts a from +y, where a shows its finish 2 (y ∈ [0.07, 0.1]).
+    // interior finish x ∈ [−0.1, −0.07]. Equal cores: a (lower id) goes through. Layer by layer: a's
+    // outer finish 1 runs to b's outer face x = −0.1, its core to b's outer core face x = −0.07, its
+    // inner finish 2 stops on b's inner core face x = 0.08. b's inner finish 1 stops on a's inner face
+    // y = 0.1, its core on a's inner core face y = 0.07, and its outer finish 2 runs over a's core to
+    // a's outer core face y = −0.08: the outer finishes wrap the corner, no core shows outside.
     const flipped = testWall('b', vec(0, 0), vec(0, 3), plastered);
     const g = geometry([a, flipped]).pieces;
     const of = (id: string, k: number) => g.get(id)!.filter((p) => p.layerIndex === k).map((p) => p.polygon);
     expectPolygon(of('a', 0)[0]!, [[-0.1, -0.1], [4, -0.1], [4, -0.08], [-0.1, -0.08]]);
-    expectPolygon(of('a', 1)[0]!, [[-0.1, -0.08], [4, -0.08], [4, 0.07], [-0.1, 0.07]]);
-    // Finish 1 of b (4) passes finish 2 of a (5) to a's core; finish 2 of b stops on the face.
-    expectPolygon(of('b', 0)[0]!, [[0.08, 0.07], [0.1, 0.07], [0.1, 3], [0.08, 3]]);
+    expectPolygon(of('a', 1)[0]!, [[-0.07, -0.08], [4, -0.08], [4, 0.07], [-0.07, 0.07]]);
+    expect(of('a', 2)).toHaveLength(1);
+    expectPolygon(of('a', 2)[0]!, [[0.08, 0.07], [4, 0.07], [4, 0.1], [0.08, 0.1]]);
+    expectPolygon(of('b', 0)[0]!, [[0.08, 0.1], [0.1, 0.1], [0.1, 3], [0.08, 3]]);
     expectPolygon(of('b', 1)[0]!, [[-0.07, 0.07], [0.08, 0.07], [0.08, 3], [-0.07, 3]]);
-    expectPolygon(of('b', 2)[0]!, [[-0.1, 0.1], [-0.07, 0.1], [-0.07, 3], [-0.1, 3]]);
-    // Finish 2 of a is notched where b's finish 1 and core pass: x ∈ [−0.07, 0.1].
-    const f2 = of('a', 2);
-    expect(f2).toHaveLength(2);
-    const at = (x: number) => f2.find((p) => p.some((v) => Math.abs(v.x - x) < 1e-12))!;
-    expectPolygon(at(4), [[0.1, 0.07], [4, 0.07], [4, 0.1], [0.1, 0.1]]);
-    expectPolygon(at(-0.1), [[-0.1, 0.07], [-0.07, 0.07], [-0.07, 0.1], [-0.1, 0.1]]);
+    expectPolygon(of('b', 2)[0]!, [[-0.1, -0.08], [-0.07, -0.08], [-0.07, 3], [-0.1, 3]]);
     const total = [...g.values()].flat().reduce((s, p) => s + shoelace(p.polygon), 0);
     expect(total).toBeCloseTo(0.82 + 0.58, 12);
   });
 
-  it('different types butt: the thicker core goes through to the outer face of the other', () => {
-    // a: 20 cm structure, y ∈ [−0.1, 0.1]. b drawn down: finish 1 x ∈ [−0.1, −0.05], structure
-    // x ∈ [−0.05, 0.1]. Cores 0.2 and 0.15: a goes through, cut on b's outer face x = −0.1; b stops on
-    // a's face y = 0.1, which is a's core face too.
+  it("different types butt: the cores meet and the other wall's finish wraps the end of the through core", () => {
+    // a: 20 cm structure, y ∈ [−0.1, 0.1], all core. b drawn down: finish 1 x ∈ [−0.1, −0.05], structure
+    // x ∈ [−0.05, 0.1]. Cores 0.2 and 0.15: a goes through, to b's outer core face x = −0.05; b's core
+    // stops on a's face y = 0.1 (a's core face too), and b's outer finish runs down to a's outer core
+    // face y = −0.1, over the end of a: no bare concrete on the outside.
     const two = [layer(0.05, 'finish1'), layer(0.15, 'structure')];
     const walls = [testWall('a', vec(0, 0), vec(4, 0), 0.2), testWall('b', vec(0, 3), vec(0, 0), two)];
     const g = geometry(walls).pieces;
-    expectPolygon(g.get('a')![0]!.polygon, [[-0.1, -0.1], [4, -0.1], [4, 0.1], [-0.1, 0.1]]);
-    expectPolygon(g.get('b')!.find((p) => p.layerIndex === 0)!.polygon, [[-0.1, 0.1], [-0.05, 0.1], [-0.05, 3], [-0.1, 3]]);
+    expectPolygon(g.get('a')![0]!.polygon, [[-0.05, -0.1], [4, -0.1], [4, 0.1], [-0.05, 0.1]]);
+    expectPolygon(g.get('b')!.find((p) => p.layerIndex === 0)!.polygon, [[-0.1, -0.1], [-0.05, -0.1], [-0.05, 3], [-0.1, 3]]);
     expectPolygon(g.get('b')!.find((p) => p.layerIndex === 1)!.polygon, [[-0.05, 0.1], [0.1, 0.1], [0.1, 3], [-0.05, 3]]);
     const total = [...g.values()].flat().reduce((s, p) => s + shoelace(p.polygon), 0);
     expect(total).toBeCloseTo(0.82 + 0.58, 12);
   });
 
-  it('butt with finishes: the abutting wall follows the T priority rule against the through wall', () => {
-    // a: plastered, through (core 15 cm against 10 cm). b drawn down: finish 1 x ∈ [−0.06, −0.05],
-    // structure x ∈ [−0.05, 0.05], finish 2 x ∈ [0.05, 0.06]; its outer face is x = −0.06.
+  it('butt with finishes: cores meet, outer finishes wrap the outside, inner finishes meet inside', () => {
+    // a: plastered, through (core 15 cm against 10 cm): finish 1 y ∈ [−0.1, −0.08] (outer), core
+    // y ∈ [−0.08, 0.07], finish 2 y ∈ [0.07, 0.1] (inner, toward b). b drawn down: finish 1
+    // x ∈ [−0.06, −0.05] (outer), structure x ∈ [−0.05, 0.05], finish 2 x ∈ [0.05, 0.06] (inner).
+    // a: finish 1 to b's outer face x = −0.06, core to b's outer core face x = −0.05, finish 2 to b's
+    // inner core face x = 0.05. b: finish 2 to a's inner face y = 0.1, core to a's inner core face
+    // y = 0.07, finish 1 over a's core to a's outer core face y = −0.08.
     const thin = [layer(0.01, 'finish1'), layer(0.1, 'structure'), layer(0.01, 'finish2')];
     const g = geometry([a, testWall('b', vec(0, 3), vec(0, 0), thin)]).pieces;
     const of = (id: string, k: number) => g.get(id)!.filter((p) => p.layerIndex === k).map((p) => p.polygon);
     expectPolygon(of('a', 0)[0]!, [[-0.06, -0.1], [4, -0.1], [4, -0.08], [-0.06, -0.08]]);
-    expectPolygon(of('a', 1)[0]!, [[-0.06, -0.08], [4, -0.08], [4, 0.07], [-0.06, 0.07]]);
+    expectPolygon(of('a', 1)[0]!, [[-0.05, -0.08], [4, -0.08], [4, 0.07], [-0.05, 0.07]]);
     expect(of('a', 2)).toHaveLength(1);
     expectPolygon(of('a', 2)[0]!, [[0.05, 0.07], [4, 0.07], [4, 0.1], [0.05, 0.1]]);
-    expectPolygon(of('b', 0)[0]!, [[-0.06, 0.07], [-0.05, 0.07], [-0.05, 3], [-0.06, 3]]);
+    expectPolygon(of('b', 0)[0]!, [[-0.06, -0.08], [-0.05, -0.08], [-0.05, 3], [-0.06, 3]]);
     expectPolygon(of('b', 1)[0]!, [[-0.05, 0.07], [0.05, 0.07], [0.05, 3], [-0.05, 3]]);
     expectPolygon(of('b', 2)[0]!, [[0.05, 0.1], [0.06, 0.1], [0.06, 3], [0.05, 3]]);
     const total = [...g.values()].flat().reduce((s, p) => s + shoelace(p.polygon), 0);
@@ -109,30 +112,33 @@ describe('layered L corner', () => {
     expect(g.warnings).toEqual([{ kind: 'wallsOverlap', walls: ['a', 'b'] }]);
   });
 
-  it('butt whose abutting layer would reach past the through wall free end warns wallsOverlap', () => {
+  it('a short through wall: no layer of either wall reaches past its free end, so it butts', () => {
     // a: plastered on its axis, 2 cm long, from (0.02, 0) back to the node; its left normal is (0, −1),
-    // so finish 1 is y ∈ [0.08, 0.1] and its core face on that side is y = 0.08. b: finish 2 1 cm,
-    // structure 10 cm, thermal 1 cm, leaving the node at 120°, so its face toward a's body is offset
-    // +0.06 (normal (√3/2, 1/2)). a goes through (core 15 cm against 10).
-    // Miter corners: inner (y = 0.1 on b's +0.06 face) at x = 0.01155, outer behind the node: inside a.
-    // Butt corner (y = 0.1 on b's −0.06 face): x = −0.127, behind the node.
-    // But b's thermal layer (3) passes a's finish 1 (4) to y = 0.08, where its +0.06 edge is at
-    // x = 0.0231: past a's free end at 0.02. a's end would swallow it.
+    // so finish 1 is y ∈ [0.08, 0.1] (inner, toward b) and its inner core face is y = 0.08. b: finish 2
+    // 1 cm, structure 10 cm, thermal 1 cm, leaving the node at 120°, normal (√3/2, 1/2): the thermal
+    // layer (offset [0.05, 0.06]) is on a's side. a goes through (core 15 cm against 10).
+    // As a T the thermal layer passed a's finish 1 to y = 0.08 at x = 0.0231, past a's end at 0.02, and
+    // the corner warned. Layer by layer it stops on a's inner face y = 0.1, and b's core on y = 0.08: the
+    // farthest along a is the core's +0.05 edge there, x = 0.0433 − 0.5 · 0.0635 = 0.0115, inside a.
     const ls = [layer(0.01, 'finish2'), layer(0.1, 'structure'), layer(0.01, 'thermal')];
     const u = vec(Math.cos((2 * Math.PI) / 3), Math.sin((2 * Math.PI) / 3));
-    const b = testWall('b', vec(2 * u.x, 2 * u.y), vec(0, 0), ls);
-    const g = geometry([testWall('a', vec(0.02, 0), vec(0, 0), plastered), b]);
-    expect(g.warnings).toEqual([{ kind: 'wallsOverlap', walls: ['a', 'b'] }]);
+    const g = geometry([testWall('a', vec(0.02, 0), vec(0, 0), plastered), testWall('b', vec(2 * u.x, 2 * u.y), vec(0, 0), ls)]);
+    expect(g.warnings).toEqual([]);
+    const thermal = g.pieces.get('b')!.find((p) => p.layerIndex === 2)!.polygon;
+    expect(Math.min(...thermal.map((v) => v.y))).toBeCloseTo(0.1, 14);
+    const core = g.pieces.get('b')!.find((p) => p.layerIndex === 1)!.polygon;
+    expect(Math.min(...core.map((v) => v.y))).toBeCloseTo(0.08, 14);
+    expect(Math.max(...[...g.pieces.values()].flat().flatMap((p) => p.polygon).map((v) => v.x))).toBeLessThanOrEqual(0.02 + 1e-12);
   });
 
-  it('the same with a 3 cm wall: every point stays inside, so it butts', () => {
+  it("the same with a 3 cm wall: b's outer finish wraps over a's core to its outer core face", () => {
+    // b's finish 2 (offset [−0.06, −0.05], away from a's body) runs to a's outer core face y = −0.07.
     const ls = [layer(0.01, 'finish2'), layer(0.1, 'structure'), layer(0.01, 'thermal')];
     const u = vec(Math.cos((2 * Math.PI) / 3), Math.sin((2 * Math.PI) / 3));
     const g = geometry([testWall('a', vec(0.03, 0), vec(0, 0), plastered), testWall('b', vec(2 * u.x, 2 * u.y), vec(0, 0), ls)]);
     expect(g.warnings).toEqual([]);
-    // The thermal layer stops on a's core face y = 0.08.
-    const thermal = g.pieces.get('b')!.find((p) => p.layerIndex === 2)!.polygon;
-    expect(Math.min(...thermal.map((v) => v.y))).toBeCloseTo(0.08, 14);
+    const finish = g.pieces.get('b')!.find((p) => p.layerIndex === 0)!.polygon;
+    expect(Math.min(...finish.map((v) => v.y))).toBeCloseTo(-0.07, 14);
   });
 
   it('butt nearly in line: its own corner more than 10 T from the node, so one shared cut', () => {

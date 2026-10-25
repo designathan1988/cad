@@ -24,6 +24,8 @@ export interface PanelInput {
   /** Selected doors and windows; shown when no wall is selected. */
   readonly openings: readonly OpeningSolid[];
   readonly rooms: readonly RoomSolid[];
+  /** Every room of the level shown: what lies on each side of a door. */
+  readonly levelRooms: readonly RoomSolid[];
   readonly floors: readonly FloorSolid[];
   readonly placed: ReadonlyMap<OpeningId, OpeningSolid>;
   readonly openingWarnings: readonly OpeningWarning[];
@@ -116,7 +118,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     const kinds = new Set(input.openings.map((o) => o.opening.kind));
     nodes.push(head(kinds.size === 1 && kinds.has('window') ? 'window' : 'door', openingTitle(input.openings)));
     part(input.openings.length);
-    nodes.push(...openingPanel(doc, input.placed, input.openings, input.openingWarnings, act.opening));
+    nodes.push(...openingPanel(doc, input.placed, input.openings, input.openingWarnings, act.opening, input.levelRooms));
   } else if (input.openingTool) {
     const { kind, size } = input.openingTool;
     nodes.push(head(kind, t(kind === 'door' ? 'panel.nextDoor' : 'panel.nextWindow')));

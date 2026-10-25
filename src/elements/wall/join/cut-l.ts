@@ -1,7 +1,8 @@
 // Two wall ends meeting at a node (L). With the same layer sequence read from the corner's outer
-// face, a miter through the face corners; otherwise a butt: the thicker core goes through to the
-// other wall's outer face and the other wall abuts it as a T. An acute outer tip past MITER_LIMIT is
-// bevelled; nearly in line, one shared cut through the node.
+// face, a miter through the face corners; otherwise a butt, layer by layer, as Revit cleans an L
+// between two types: the cores meet (the thicker one goes through to the other's outer core face),
+// the layers outside the cores wrap the outer corner, and those inside meet at the inner corner. An
+// acute outer tip past MITER_LIMIT is bevelled; nearly in line, one shared cut through the node.
 
 import { COLLINEAR_ANGLE, MITER_LIMIT, POINT_TOLERANCE } from '../../../core/tolerance';
 import {
@@ -50,6 +51,12 @@ export function resolveCorner(
   bEnd: WallEnd,
   node: Point2,
   reach: { readonly a?: number; readonly b?: number } = {},
+  /**
+   * Butt layer by layer (two straight walls in an L). Off: the abutting wall meets the through wall
+   * as a T and only it has layer cuts, which arcs' chains and nodes' passages rely on (footprint.ts,
+   * node.ts); those keep the T butt for now (docs/pendencias.md).
+   */
+  layered = false,
 ): CornerResult {
   const ua = intoBody(a, aEnd);
   const ub = intoBody(b, bEnd);
@@ -85,30 +92,19 @@ export function resolveCorner(
 
   // A butt covers the same region as the miter (outer faces to the outer corner, inner faces to the
   // inner one), so every degenerate rule above holds for both.
+  if (!sameSequence(a, aEnd, b, bEnd) && !layered) return tButt(a, aEnd, b, bEnd, node, extension, bevel, beyond, angle, limit, shared);
   if (!sameSequence(a, aEnd, b, bEnd)) {
     const aThrough = goesThrough(a, b);
     const [t, tEnd, c, cEnd] = aThrough ? [a, aEnd, b, bEnd] : [b, bEnd, a, aEnd];
-    // The through wall stops on the other's outer face: the face away from its own body. Its square
-    // end reaches that face across its whole width, so its inner-face corner there must stay short of
-    // both free ends, or the end swallows the other wall; and, obtuse, within the limit, or the end
-    // becomes a long taper, which steps at the node like the miter.
-    const n = wallNormal(c);
-    const towardT = dot(n, intoBody(t, tEnd)) > 0 ? n : scale(n, -1);
-    const [c0, c1] = faceOffsets(c);
-    const outerFace = faceLine(c, dot(towardT, n) > 0 ? c0 : c1);
-    const m = wallNormal(t);
-    const [t0, t1] = faceOffsets(t);
-    const innerFace = faceLine(t, dot(m, intoBody(c, cEnd)) > 0 ? t1 : t0);
-    const q = intersectLines(innerFace.point, innerFace.direction, outerFace.point, outerFace.direction);
-    const { cut, notches, deepest } = resolveAbutment(c, cEnd, t);
-    // The abutting layers reach into the through wall as in a T; a short through wall can end first.
-    if (q === null || beyond(q) || deepest.some(beyond)) return overlapping(a, b);
-    if (angle >= 90 && distance(node, q) > limit) return shared();
-    const through: EndCut = { extension, cuts: [halfPlaneThrough(outerFace.point, towardT), ...bevel] };
-    const abutting: EndCut = { ...cut, cuts: [...cut.cuts, ...bevel] };
-    return aThrough
-      ? { a: through, b: abutting, warning: null, notches }
-      : { a: abutting, b: through, warning: null, notches };
+    const { through, abutting, reached } = butt(t, tEnd, c, cEnd, extension);
+    // Every layer's end must stay short of both free ends, or the end swallows the other wall; and,
+    // obtuse, within the limit, or the square end becomes a long taper, which steps at the node like
+    // the miter.
+    if (reached.length === 0 || reached.some(beyond)) return overlapping(a, b);
+    if (angle >= 90 && reached.some((p) => distance(node, p) > limit)) return shared();
+    const t2: EndCut = { ...through, cuts: [...through.cuts, ...bevel] };
+    const c2: EndCut = { ...abutting, cuts: [...abutting.cuts, ...bevel] };
+    return aThrough ? { a: t2, b: c2, warning: null, notches: [] } : { a: c2, b: t2, warning: null, notches: [] };
   }
 
   const across = normalize(perp(sub(inner, outer)));
@@ -133,6 +129,90 @@ function sameSequence(a: WallShape, aEnd: WallEnd, b: WallShape, bEnd: WallEnd):
 }
 
 const far = (w: WallShape, end: WallEnd): Point2 => endPoint(w, end === 'start' ? 'end' : 'start');
+
+/**
+ * The butt as a T: the thicker core goes through to the other wall's outer face, whole, and the other
+ * abuts it by the T priority rule. Its butt corner (the through wall's inner face on that outer face)
+ * and the abutting layers' deepest points must stay short of both free ends.
+ */
+function tButt(
+  a: WallShape,
+  aEnd: WallEnd,
+  b: WallShape,
+  bEnd: WallEnd,
+  node: Point2,
+  extension: number,
+  bevel: readonly HalfPlane[],
+  beyond: (p: Point2) => boolean,
+  angle: number,
+  limit: number,
+  shared: () => CornerResult,
+): CornerResult {
+  const aThrough = goesThrough(a, b);
+  const [t, tEnd, c, cEnd] = aThrough ? [a, aEnd, b, bEnd] : [b, bEnd, a, aEnd];
+  const n = wallNormal(c);
+  const towardT = dot(n, intoBody(t, tEnd)) > 0 ? n : scale(n, -1);
+  const [c0, c1] = faceOffsets(c);
+  const outerFace = faceLine(c, dot(towardT, n) > 0 ? c0 : c1);
+  const m = wallNormal(t);
+  const [t0, t1] = faceOffsets(t);
+  const innerFace = faceLine(t, dot(m, intoBody(c, cEnd)) > 0 ? t1 : t0);
+  const q = intersectLines(innerFace.point, innerFace.direction, outerFace.point, outerFace.direction);
+  const { cut, notches, deepest } = resolveAbutment(c, cEnd, t);
+  if (q === null || beyond(q) || deepest.some(beyond)) return overlapping(a, b);
+  if (angle >= 90 && distance(node, q) > limit) return shared();
+  const through: EndCut = { extension, cuts: [halfPlaneThrough(outerFace.point, towardT), ...bevel] };
+  const abutting: EndCut = { ...cut, cuts: [...cut.cuts, ...bevel] };
+  return aThrough ? { a: through, b: abutting, warning: null, notches } : { a: abutting, b: through, warning: null, notches };
+}
+
+/**
+ * The butt between two sequences, layer by layer. `t` goes through, `c` stops against it. Each wall's
+ * layers are read as inner (on the side of the other wall's body), core, or outer:
+ *
+ * - t's core runs to c's outer core face, and t's outer layers to c's outer face: the corner's outside;
+ * - t's inner layers stop at c's inner core face: c's core passes them, as a core passes finishes in a T;
+ * - c's core stops at t's inner core face, its inner layers at t's inner face (they meet t's inner
+ *   layers at the inner corner), and its outer layers run over t's core to t's outer core face, so the
+ *   outer finishes wrap the corner and no inner finish or bare core shows outside.
+ *
+ * The region covered is the miter's: outer faces to the outer corner, inner faces to the inner one.
+ * Without a core layer the core is the whole wall, and this is a plain square butt. `reached`: where
+ * each layer's band edges meet the line it stops on, for the corner's checks.
+ */
+function butt(t: WallShape, tEnd: WallEnd, c: WallShape, cEnd: WallEnd, extension: number): { through: EndCut; abutting: EndCut; reached: Point2[] } {
+  const n = wallNormal(c);
+  const m = wallNormal(t);
+  // Across c, toward t's body (its inner side); across t, toward c's body (its inner side).
+  const cInnerPositive = dot(n, intoBody(t, tEnd)) > 0;
+  const tInnerPositive = dot(m, intoBody(c, cEnd)) > 0;
+  const towardT = cInnerPositive ? n : scale(n, -1);
+  const towardC = tInnerPositive ? m : scale(m, -1);
+  const [c0, c1] = faceOffsets(c);
+  const [t0, t1] = faceOffsets(t);
+  const side = (w: WallShape, innerPositive: boolean, k: number): 'inner' | 'core' | 'outer' => {
+    if (k >= w.coreLayers[0] && k <= w.coreLayers[1]) return 'core';
+    return (k > w.coreLayers[1]) === innerPositive ? 'inner' : 'outer';
+  };
+  // The lines each wall's layers stop on, as offsets across the other wall.
+  const tStops = { outer: cInnerPositive ? c0 : c1, core: cInnerPositive ? c.core[0] : c.core[1], inner: cInnerPositive ? c.core[1] : c.core[0] };
+  const cStops = { inner: tInnerPositive ? t1 : t0, core: tInnerPositive ? t.core[1] : t.core[0], outer: tInnerPositive ? t.core[0] : t.core[1] };
+  const line = (w: WallShape, offset: number) => add(w.start, scale(wallNormal(w), offset));
+  const reached: Point2[] = [];
+  const layerCuts = (w: WallShape, innerPositive: boolean, other: WallShape, stops: Record<'inner' | 'core' | 'outer', number>, inward: Point2) =>
+    w.layers.map((_, k) => {
+      const at = line(other, stops[side(w, innerPositive, k)]);
+      for (const o of [w.layerOffsets[k]!, w.layerOffsets[k + 1]!]) {
+        const p = intersectLines(line(w, o), wallDirection(w), at, wallDirection(other));
+        if (p) reached.push(p);
+      }
+      return [halfPlaneThrough(at, inward)];
+    });
+  // Every layer has its own cut, so none is needed for the wall as a whole (as for a T's abutting end).
+  const through: EndCut = { extension, cuts: [], layerCuts: layerCuts(t, tInnerPositive, c, tStops, towardT) };
+  const abutting: EndCut = { extension, cuts: [], layerCuts: layerCuts(c, cInnerPositive, t, cStops, towardC) };
+  return { through, abutting, reached };
+}
 
 /** Intersections of the two inner faces and of the two outer faces. */
 export function faceCorners(

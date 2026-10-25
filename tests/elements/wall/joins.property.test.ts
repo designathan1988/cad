@@ -12,7 +12,7 @@ import {
   type Region,
 } from './oracle';
 import { abutmentPenetration, layerContainmentViolations, layerContinuity, notchFill } from './oracle-layers';
-import { cornerJoin, crossingOf, expectedCorner, expectedX, sidesOf, throughOf } from './oracle-x';
+import { buttOwnership, buttPenetration, cornerJoin, crossingOf, expectedCorner, expectedX, sidesOf, throughOf } from './oracle-x';
 import { crossedScene, lScene, type Mode, nodeScene, roomScene, tScene, xScene } from './scenes';
 
 const seed = Number(process.env.FUZZ_SEED ?? 20261024);
@@ -36,6 +36,8 @@ function expectExact(walls: readonly Wall[], region: Region, sampleSeed: number)
 const PRIORITY_JOINTS = 300;
 // The fixed seed checks ~1 400 butt corners; other seeds tried gave 1 300 to 2 800.
 const BUTT_CORNERS = 600;
+// Points whose layer was checked in those corners' overlap.
+const BUTT_POINTS = 20_000;
 // The fixed seed checks I10 on 220 stems (stems without finishes on that side have nothing to check).
 const NODE_STEMS = 100;
 const PRIORITY_POINTS = 5_000;
@@ -68,11 +70,12 @@ function expectContinuous(result: ReturnType<typeof layerContinuity>, walls: rea
 }
 
 /**
- * A corner between different sequences is a butt (§7.1): the thicker core goes through and the other
- * wall abuts it as a T, so I6 by layer and I10 apply. I10 is skipped when the tip is bevelled: the
- * bevel can remove host points the T rule alone would keep.
+ * A corner between different sequences is a butt (§7.1), layer by layer between straight walls: no
+ * layer of either wall passes the line it stops on (buttRule), and in the overlap of the two bands
+ * each point is the layer the rule gives it. Ownership is skipped when the tip is bevelled: the bevel
+ * can remove points the rule alone would keep.
  */
-const butt = { corners: 0 };
+const butt = { corners: 0, points: 0 };
 function expectCorner(a: Wall, aEnd: 'start' | 'end', b: Wall, bEnd: 'start' | 'end', walls: readonly Wall[], s: number, node?: P): void {
   const { kind, butt: isButt } = cornerJoin(a, aEnd, b, bEnd, node);
   if (kind !== 'miter' && kind !== 'bevel') return;
@@ -81,13 +84,11 @@ function expectCorner(a: Wall, aEnd: 'start' | 'end', b: Wall, bEnd: 'start' | '
     return;
   }
   butt.corners++;
-  const { through, cut } = throughOf(a, b);
-  const cutEnd = cut === a ? aEnd : bEnd;
-  if (kind === 'bevel') {
-    expect(abutmentPenetration(cut, cutEnd, through, walls), JSON.stringify(walls)).toBeLessThanOrEqual(1e-12);
-  } else {
-    expectAbutment(cut, cutEnd, through, walls, s);
-  }
+  expect(buttPenetration(a, aEnd, b, bEnd, walls), JSON.stringify(walls)).toBeLessThanOrEqual(1e-12);
+  if (kind === 'bevel') return;
+  const own = buttOwnership(a, aEnd, b, bEnd, walls, s);
+  expect(own.bad, JSON.stringify(walls)).toBe(0);
+  butt.points += own.checked;
 }
 
 const dump = (walls: readonly Wall[]) => JSON.stringify([...geometry(walls).pieces].sort());
@@ -234,7 +235,8 @@ describe('regressions found by larger runs', () => {
     expect(geometry(walls).warnings).toEqual([]);
     expectExact(walls, region, 0);
     expect(cornerJoin(a, 'end', b, 'end').butt).toBe(true);
-    for (let s = 0; s < 20; s++) expect(notchFill(b, 'end', a, walls, s).bad, `sample seed ${s}`).toBe(0);
+    expect(buttPenetration(a, 'end', b, 'end', walls)).toBeLessThanOrEqual(1e-12);
+    for (let s = 0; s < 20; s++) expect(buttOwnership(a, 'end', b, 'end', walls, s).bad, `sample seed ${s}`).toBe(0);
   });
 });
 
@@ -254,7 +256,8 @@ describe('layer checks were really exercised', () => {
     console.log(`node scenes: ${node.scenes}, stems with I10 checked: ${node.stems}`);
     expect(node.scenes).toBe(300 * scale);
     expect(node.stems).toBeGreaterThan(NODE_STEMS * scale);
-    console.log(`butt corners checked as T: ${butt.corners}`);
+    console.log(`butt corners checked layer by layer: ${butt.corners}, ${butt.points} points`);
     expect(butt.corners).toBeGreaterThan(BUTT_CORNERS * scale);
+    expect(butt.points).toBeGreaterThan(BUTT_POINTS * scale);
   });
 });

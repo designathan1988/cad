@@ -4,7 +4,7 @@
 import { add, distance, dot, normalize, type Point2, scale, sub, vec } from '../core/vector';
 import type { MessageKey } from '../ui/i18n';
 
-export type SnapKind = 'endpoint' | 'start' | 'midpoint' | 'onWall' | 'aligned' | 'angle' | 'grid' | 'none';
+export type SnapKind = 'endpoint' | 'start' | 'origin' | 'midpoint' | 'onWall' | 'aligned' | 'axis' | 'angle' | 'grid' | 'none';
 
 export interface Snap {
   readonly point: Point2;
@@ -35,15 +35,18 @@ export interface SnapInput {
 
 export const GRID_STEP = 0.05;
 const RADIUS_PX = 10;
+const ORIGIN = vec(0, 0);
 const ANGLE_STEP = 15;
 const ANGLE_TOL_DEG = 3;
 
 export const snapLabel: Readonly<Record<SnapKind, MessageKey | null>> = {
   endpoint: 'snap.endpoint',
   start: 'snap.start',
+  origin: 'snap.origin',
   midpoint: 'snap.midpoint',
   onWall: 'snap.onWall',
   aligned: 'snap.alignedX',
+  axis: 'snap.axis',
   angle: null,
   grid: null,
   none: null,
@@ -66,42 +69,59 @@ export function snap(input: SnapInput): Snap {
   const reaches = input.segments.flatMap((s) => [(s.reach ?? 0) * Math.SQRT2, (s.reach ?? 0) * Math.SQRT2]);
   const nearEnd = closest(ends, cursor, r, reaches);
   if (nearEnd) return { point: nearEnd, kind: 'endpoint', ...of(Math.floor(ends.indexOf(nearEnd) / 2)) };
+  // The crossing of the axes drawn on the plan: where a project is usually started.
+  if (distance(cursor, ORIGIN) <= r) return { point: ORIGIN, kind: 'origin' };
   const mids = input.segments.map((s) => scale(add(s.start, s.end), 0.5));
   const nearMid = closest(mids, cursor, r);
   if (nearMid) return { point: nearMid, kind: 'midpoint', ...of(mids.indexOf(nearMid)) };
-  // On the body of a wall: before alignment, which every wall's own ends would otherwise always win.
-  for (const [i, s] of input.segments.entries()) {
-    const p = projectOnSegment(cursor, s.start, s.end);
-    if (p && distance(p, cursor) <= r) return { point: p, kind: 'onWall', ...of(i) };
-  }
-
   // Angle from the last point in 15° steps, with the length on the 5 cm grid.
   let best: Snap | null = null;
+  let ray: Point2 | null = null;
   if (from && distance(cursor, from) > r) {
     const d = sub(cursor, from);
     const deg = (Math.atan2(d.y, d.x) * 180) / Math.PI;
     const snapped = Math.round(deg / ANGLE_STEP) * ANGLE_STEP;
     if (Math.abs(deg - snapped) <= ANGLE_TOL_DEG) {
-      const u = vec(Math.cos((snapped * Math.PI) / 180), Math.sin((snapped * Math.PI) / 180));
-      const len = Math.max(GRID_STEP, Math.round(dot(d, u) / GRID_STEP) * GRID_STEP);
-      best = { point: add(from, scale(u, len)), kind: 'angle' };
+      ray = vec(Math.cos((snapped * Math.PI) / 180), Math.sin((snapped * Math.PI) / 180));
+      const len = Math.max(GRID_STEP, Math.round(dot(d, ray) / GRID_STEP) * GRID_STEP);
+      best = { point: add(from, scale(ray, len)), kind: 'angle' };
     }
+  }
+
+  // On the body of a wall: before alignment, which every wall's own ends would otherwise always win.
+  // Drawing on a snapped angle, the point is where that direction meets the wall, so a partition
+  // ended on a wall stays square. Otherwise the foot of the cursor, its distance along the wall on
+  // the 5 cm grid.
+  for (const [i, s] of input.segments.entries()) {
+    // Anywhere on its drawn body (half its thickness each side of the axis) plus the radius.
+    const foot = projectOnSegment(cursor, s.start, s.end);
+    if (!foot || distance(foot, cursor) > r + (s.reach ?? 0)) continue;
+    // No farther from the cursor than the angle snap itself would move it (a wall almost along the
+    // ray would otherwise pull the point far down that wall).
+    const slack = from ? r + distance(cursor, from) * Math.tan((ANGLE_TOL_DEG * Math.PI) / 180) : r;
+    const crossing = ray && from ? rayOnSegment(from, ray, s.start, s.end) : null;
+    const onRay = crossing && distance(crossing, cursor) <= slack ? crossing : null;
+    const p = onRay ?? projectOnSegment(cursor, s.start, s.end, GRID_STEP) ?? foot;
+    return { point: p, kind: 'onWall', ...of(i) };
   }
 
   // Aligned with another wall end, horizontally or vertically, within the radius. On a snapped
   // direction the point slides along that direction to the line, so it never leaves the angle.
   const dir = best && from ? normalize(sub(best.point, from)) : null;
-  for (const [k, e] of [...ends, ...(input.chainStart ? [input.chainStart] : [])].entries()) {
+  // The origin last: the axes it stands for are a weaker guide than the walls' own ends.
+  const targets = [...ends, ...(input.chainStart ? [input.chainStart] : []), ORIGIN];
+  for (const [k, e] of targets.entries()) {
     const base = best?.point ?? cursor;
     if (distance(e, cursor) <= r) continue;
     const wall = k < ends.length ? of(Math.floor(k / 2)) : {};
+    const kind: SnapKind = k === targets.length - 1 ? 'axis' : 'aligned';
     if (Math.abs(base.x - e.x) <= r) {
       const p = dir && from ? (Math.abs(dir.x) > 1e-9 ? add(from, scale(dir, (e.x - from.x) / dir.x)) : null) : vec(e.x, base.y);
-      if (p) return { point: p, kind: 'aligned', guideFrom: e, ...wall };
+      if (p) return { point: p, kind, guideFrom: e, ...wall };
     }
     if (Math.abs(base.y - e.y) <= r) {
       const p = dir && from ? (Math.abs(dir.y) > 1e-9 ? add(from, scale(dir, (e.y - from.y) / dir.y)) : null) : vec(base.x, e.y);
-      if (p) return { point: p, kind: 'aligned', guideFrom: e, ...wall };
+      if (p) return { point: p, kind, guideFrom: e, ...wall };
     }
   }
   if (best) return best;
@@ -133,10 +153,23 @@ function closest(points: readonly Point2[], p: Point2, r: number, reaches: reado
   return best;
 }
 
-function projectOnSegment(p: Point2, a: Point2, b: Point2): Point2 | null {
+/** The foot of p on ab, strictly inside it; with a step, its distance from a rounded to that step. */
+function projectOnSegment(p: Point2, a: Point2, b: Point2, step = 0): Point2 | null {
   const len = distance(a, b);
   if (len === 0) return null;
   const u = normalize(sub(b, a));
-  const t = dot(sub(p, a), u);
+  const raw = dot(sub(p, a), u);
+  const t = step > 0 && raw > step && raw < len - step ? Math.round(raw / step) * step : raw;
   return t > 0 && t < len ? add(a, scale(u, t)) : null;
+}
+
+/** Where the ray from `from` along `u` crosses ab, strictly inside it, ahead of `from`. */
+function rayOnSegment(from: Point2, u: Point2, a: Point2, b: Point2): Point2 | null {
+  const e = sub(b, a);
+  const den = u.x * e.y - u.y * e.x;
+  if (Math.abs(den) < 1e-12) return null;
+  const w = sub(a, from);
+  const t = (w.x * e.y - w.y * e.x) / den;
+  const s = (w.x * u.y - w.y * u.x) / den;
+  return t > 0 && s > 0 && s < 1 ? add(from, scale(u, t)) : null;
 }

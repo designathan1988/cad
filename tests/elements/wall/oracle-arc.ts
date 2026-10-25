@@ -138,7 +138,7 @@ export function arcCorner(arc: Wall, arcEnd: WallEnd, straight: Wall, straightEn
     arcEnd === 'start'
       ? { ...seg, end: pt(seg.start.x + ux * (chordLen + extra), seg.start.y + uy * (chordLen + extra)) }
       : { ...seg, start: pt(seg.end.x - ux * (chordLen + extra), seg.end.y - uy * (chordLen + extra)) };
-  const region = expectedCorner(longSeg, arcEnd, straight, straightEnd, undefined, { a: chainLength });
+  const region = expectedCorner(longSeg, arcEnd, straight, straightEnd, undefined, { a: chainLength }, false);
   if (region === 'overlap') return 'overlap';
   // Where this L is the spec's: in the end segment's wedge (between its two radial planes) and outside
   // the arc's sweep (the corner's tip past its end), never in the other segments' bodies, which are

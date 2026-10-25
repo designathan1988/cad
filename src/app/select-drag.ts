@@ -1,23 +1,40 @@
 // The select tool's gestures. Click: select (Shift adds or removes). Drag a wall: move the selection,
-// with joins kept and a live preview; one command on release. Drag an end grip: stretch that end,
+// with joins kept and a live preview (the rooms all of whose walls go, go too); with Alt the walls move
+// alone, leaving their joins behind. A selected room moves its point, into another space if dropped
+// there (as in Revit); an outline floor its outline. One command on release. Drag a door or a window (alone in the
+// selection): it slides along its wall, or onto another one under the pointer, placed by the same rule
+// as when it was put there (measured from the nearest wall face or opening, in 5 cm steps). Drag an end grip: stretch that end,
 // with snaps. Drag on empty space: window selection (left to right: wholly inside) or crossing
 // selection (right to left: anything touched), as in Revit and AutoCAD. Esc cancels any drag.
 
-import { add, distance, normalize, type Point2, scale, sub, vec } from '../core/vector';
+import { add, distance, dot, normalize, type Point2, scale, sub, vec } from '../core/vector';
 import { setWalls } from '../elements/wall/commands';
 import type { WallEnd, WallId } from '../elements/wall/schema';
 import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../tools/edit';
 import { bulgeFromMiddle, straightNear } from '../tools/arc-edit';
 import { handleAt } from './handles';
-import { moveRooms, roomsGoingWith } from './carry';
+import { moveFloors, moveRooms, roomsGoingWith } from './carry';
 import { GRID_STEP, type Snap } from '../tools/snap';
 import type { App } from './app';
 import type { DocWall } from './document';
 import { insidePolygon, openingOutline } from './geometry';
+import { updateOpening } from '../elements/opening/commands';
+import type { Opening } from '../elements/opening/schema';
+import { ruleAt } from '../tools/opening-tool';
+import { aimAlong, aimAt } from './opening-ui';
 
 /** `rooms`: the rooms going with a move or a turn (carry.ts), found once when the drag starts. */
 export type Drag =
-  | { readonly kind: 'move'; readonly origin: Point2; readonly delta: Point2; readonly walls: readonly DocWall[]; readonly rooms: ReadonlySet<string> }
+  /** `ids`: the walls moved; `rooms`: the points moved (rooms going with them, and the selected ones); `floors`: the outlines. */
+  | {
+      readonly kind: 'move';
+      readonly origin: Point2;
+      readonly delta: Point2;
+      readonly ids: readonly string[];
+      readonly walls: readonly DocWall[];
+      readonly rooms: ReadonlySet<string>;
+      readonly floors: ReadonlySet<string>;
+    }
   | { readonly kind: 'grip'; readonly id: WallId; readonly end: WallEnd; readonly walls: readonly DocWall[] }
   /** `grab`: from the end to where the arrow was taken, kept all along so the end does not jump. */
   | { readonly kind: 'stretch'; readonly id: WallId; readonly end: WallEnd; readonly grab: Point2; readonly walls: readonly DocWall[] }
@@ -31,6 +48,11 @@ export type Drag =
     }
   /** The middle of one arc, dragged: its curvature follows the pointer, its ends stay. */
   | { readonly kind: 'bulge'; readonly id: WallId; readonly walls: readonly DocWall[] }
+  /**
+   * A door or a window slid along its wall (or onto another): `openings` as they would be, `grab` how
+   * far along the wall from its centre it was taken, so it does not jump to the pointer.
+   */
+  | { readonly kind: 'slide'; readonly id: string; readonly grab: number; readonly walls: readonly DocWall[]; readonly openings: readonly Opening[] }
   | { readonly kind: 'marquee'; readonly a: Point2; readonly b: Point2 };
 
 type Pending =
@@ -52,7 +74,8 @@ const gripPx = (): number => (matchMedia('(pointer: coarse)').matches ? 22 : 8);
 
 export interface SelectGestures {
   readonly down: (screen: Point2, world: Point2 | null, hit: WallId | null, shift: boolean) => void;
-  readonly move: (screen: Point2, world: Point2 | null, snapAt: (p: Point2, exclude: ReadonlySet<WallId>) => Snap | null, shift: boolean) => void;
+  /** `alone` (Alt): a move takes the walls without their joins. */
+  readonly move: (screen: Point2, world: Point2 | null, snapAt: (p: Point2, exclude: ReadonlySet<WallId>) => Snap | null, shift: boolean, alone: boolean) => void;
   /** True for a click on an element: pressed on it, let go without moving. */
   readonly up: (shift: boolean) => boolean;
   readonly cancel: () => boolean;
@@ -84,13 +107,26 @@ export function selectGestures(app: App): SelectGestures {
       app.refresh();
     },
 
-    move(screen, world, snapAt, shift) {
+    move(screen, world, snapAt, shift, alone) {
       const drag = ui.drag;
       if (pending && !drag) {
         if (distance(screen, pending.screen) < THRESHOLD_PX) return;
         const doc = app.store.get();
+        const moving = doc.walls.filter((w) => ui.selection.has(w.id)).map((w) => w.id);
         const going = () => roomsGoingWith(doc, app.geometry, ui.selection);
-        if (pending.kind === 'wall' && ui.selection.size > 0) ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), walls: doc.walls, rooms: going() };
+        const rooms = new Set([...going(), ...doc.rooms.filter((r) => ui.selection.has(r.id)).map((r) => r.id)]);
+        const floors = new Set(doc.floors.filter((f) => ui.selection.has(f.id) && f.source.kind === 'outline').map((f) => f.id));
+        const only = ui.selection.size === 1 ? [...ui.selection][0]! : null;
+        const sliding = only !== null ? doc.openings.find((o) => o.id === only) : undefined;
+        const placed = sliding ? app.geometry.openings.get(sliding.id) : undefined;
+        if (pending.kind === 'wall' && sliding && placed?.frame) {
+          // Taken where it was pressed: that point's distance along the wall from the opening's centre.
+          const f = placed.frame;
+          const centre = add(f.start, scale(f.dir, (placed.end - placed.start) / 2));
+          ui.drag = { kind: 'slide', id: sliding.id, grab: dot(sub(pending.at, centre), f.dir), walls: doc.walls, openings: doc.openings };
+        } else if (pending.kind === 'wall' && moving.length + rooms.size + floors.size > 0) {
+          ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, floors };
+        }
         else if (pending.kind === 'grip') ui.drag = { kind: 'grip', id: pending.id, end: pending.end, walls: doc.walls };
         else if (pending.kind === 'stretch') {
           const p = pending;
@@ -111,7 +147,11 @@ export function selectGestures(app: App): SelectGestures {
         let delta = sub(world, d.origin);
         if (shift) delta = Math.abs(delta.x) >= Math.abs(delta.y) ? vec(delta.x, 0) : vec(0, delta.y);
         if (ui.snaps) delta = vec(Math.round(delta.x / GRID_STEP) * GRID_STEP, Math.round(delta.y / GRID_STEP) * GRID_STEP);
-        ui.drag = { ...d, delta, walls: moveWalls(doc, [...ui.selection], delta) };
+        // Alone, only these walls move: the walls they met keep their ends, and the joins open.
+        const walls = alone
+          ? doc.walls.map((w) => (d.ids.includes(w.id) ? { ...w, start: add(w.start, delta), end: add(w.end, delta) } : w))
+          : moveWalls(doc, d.ids, delta);
+        ui.drag = { ...d, delta, walls };
       } else if (d.kind === 'grip' && world) {
         const s = snapAt(world, new Set([d.id]));
         ui.snap = s;
@@ -133,6 +173,25 @@ export function selectGestures(app: App): SelectGestures {
         let bulge = bulgeFromMiddle(w.start, w.end, world);
         if (ui.snaps) bulge = straightNear(bulge, distance(w.start, w.end), STRAIGHT_PX / app.plan.scale);
         ui.drag = { ...d, walls: doc.walls.map((x) => (x.id === d.id ? { ...x, bulge } : x)) };
+      } else if (d.kind === 'slide' && world) {
+        const o = doc.openings.find((x) => x.id === d.id);
+        const placed = app.geometry.openings.get(d.id);
+        if (o && placed?.frame) {
+          const mpp = 1 / app.plan.scale;
+          // Its centre goes where the pointer is, less where along it the opening was taken.
+          const at = sub(world, scale(placed.frame.dir, d.grab));
+          const host = doc.walls.find((w) => w.id === o.wallId);
+          // On a wall under the pointer (its own or another of the level); off every wall, along its own.
+          const aim =
+            aimAt(doc, app.geometry, ui.levelId, at, mpp, d.id) ??
+            (host && !host.bulge ? aimAlong(doc, app.geometry, host.id, dot(sub(at, host.start), normalize(sub(host.end, host.start))), mpp, d.id) : null);
+          if (aim) {
+            const rule = ruleAt(aim, o.width);
+            // Onto another wall a door opens to the side the pointer is on, as when it is placed.
+            const next: Opening = aim.wallId === o.wallId ? { ...o, rule } : { ...o, wallId: aim.wallId, rule, swing: aim.side };
+            ui.drag = { ...d, openings: doc.openings.map((x) => (x.id === d.id ? next : x)) };
+          }
+        }
       } else if (d.kind === 'rotate' && world) {
         let angle = Math.atan2(world.y - d.pivot.y, world.x - d.pivot.x) - d.from;
         if (ui.snaps || shift) angle = Math.round(angle / ROTATE_STEP) * ROTATE_STEP;
@@ -150,13 +209,21 @@ export function selectGestures(app: App): SelectGestures {
       ui.snap = null;
       if (d?.kind === 'move' || d?.kind === 'rotate') {
         // The rooms whose walls all went along go too (carry.ts): one undo step for both.
-        const rooms = moveRooms(app.store.get().rooms, d.rooms, dragTransform(d));
+        const before = app.store.get();
+        const rooms = moveRooms(before.rooms, d.rooms, dragTransform(d));
+        const floors = d.kind === 'move' ? moveFloors(before.floors, d.floors, dragTransform(d)) : before.floors;
         const walls = setWalls(d.walls);
-        app.store.dispatch({ label: walls.label, apply: (x) => {
+        // One undo step for the walls and what went with them; a room or a floor alone is a move too.
+        const moved = rooms.some((r, i) => r !== before.rooms[i]) || floors.some((f, i) => f !== before.floors[i]);
+        app.store.dispatch({ label: d.kind === 'move' ? 'cmd.move' : walls.label, apply: (x) => {
           const next = walls.apply(x);
-          return next === x ? x : { ...next, rooms };
+          return next === x && !moved ? x : { ...next, rooms, floors };
         } });
       } else if (d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'bulge') app.store.dispatch(setWalls(d.walls));
+      else if (d?.kind === 'slide') {
+        const o = d.openings.find((x) => x.id === d.id);
+        if (o) app.store.dispatch(updateOpening(o.id, { wallId: o.wallId, rule: o.rule, swing: o.swing }));
+      }
       else if (d?.kind === 'marquee') selectByMarquee(app, d.a, d.b, shift);
       app.refresh();
       return clicked;

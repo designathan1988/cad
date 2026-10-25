@@ -23,6 +23,9 @@ import { arrowStep } from '../tools/nudge';
 import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
 
+/** The corner of a tool group's button where its submenu mark sits, in pixels: a click there opens it. */
+const CORNER_PX = 14;
+
 export function wireInput(app: App): void {
   const { shell, ui } = app;
   const openers: Openers = {
@@ -180,7 +183,7 @@ export function wireInput(app: App): void {
       return app.openingEvent({ kind: 'hover', aim: at ? aimAt(app.store.get(), app.geometry, ui.levelId, at.p, at.mpp, OPENING_PREVIEW_ID) : null });
     }
     if (downAt && ui.tool === 'select') {
-      gestures.move(local(e), at?.p ?? null, snapAt, e.shiftKey);
+      gestures.move(local(e), at?.p ?? null, snapAt, e.shiftKey, e.altKey);
       showMarquee();
       return;
     }
@@ -348,9 +351,13 @@ export function wireInput(app: App): void {
       const cancel = () => clearTimeout(hold);
       b.addEventListener('pointerup', cancel);
       b.addEventListener('pointerleave', cancel);
-      // A hold that opened the submenu is not also a click on the tool.
+      // A hold that opened the submenu is not also a click on the tool. A click on the corner mark
+      // (the little triangle saying there is more) opens it too: that is where users click for it.
       b.addEventListener('click', (e) => {
-        if (opened) {
+        const r = b.getBoundingClientRect();
+        const onMark = e.detail > 0 && e.clientX > r.right - CORNER_PX && e.clientY > r.bottom - CORNER_PX;
+        if (onMark && !opened) open(b);
+        if (opened || onMark) {
           e.stopImmediatePropagation();
           opened = false;
         }

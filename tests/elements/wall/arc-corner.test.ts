@@ -150,8 +150,8 @@ describe("an L whose corner reaches past the arc's end segment", () => {
         const seg = segmentWall(longArc, 0);
         expect(segmentsOf(longArc)).toBe(88);
         expect(Math.hypot(seg.end.x - seg.start.x, seg.end.y - seg.start.y)).toBeCloseTo(0.107, 3);
-        expect(cornerJoin(seg, 'start', leaving(deg, t), 'end').kind).toBe('overlap');
-        expect(cornerJoin(seg, 'start', leaving(deg, t), 'end', undefined, { a: 100 }).kind).toBe('miter');
+        expect(cornerJoin(seg, 'start', leaving(deg, t), 'end', undefined, {}, false).kind).toBe('overlap');
+        expect(cornerJoin(seg, 'start', leaving(deg, t), 'end', undefined, { a: 100 }, false).kind).toBe('miter');
       });
     }
 });

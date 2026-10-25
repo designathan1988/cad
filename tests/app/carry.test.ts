@@ -2,7 +2,7 @@
 // room with a wall left behind stays where it is.
 
 import { describe, expect, it } from 'vitest';
-import { carriedRooms } from '../../src/app/carry';
+import { carriedRooms, wallsAround } from '../../src/app/carry';
 import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 
@@ -44,5 +44,14 @@ describe('rooms carried with their walls', () => {
 
   it('one wall only: no room moves', () => {
     expect(carriedRooms(doc, deriveGeometry(doc), new Set(['l']), shift)).toEqual(doc.rooms);
+  });
+});
+
+describe('the walls around a room', () => {
+  it('every wall whose pieces touch its outline, the shared one included; none when it is open', () => {
+    const room = doc.rooms.find((r) => r.id === 'L')!;
+    expect(wallsAround(deriveGeometry(doc), room).sort()).toEqual(['b1', 'l', 'm', 't1']);
+    const open = { ...doc, walls: doc.walls.filter((w) => w.id !== 'l') };
+    expect(wallsAround(deriveGeometry(open), room)).toEqual([]);
   });
 });
