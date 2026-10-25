@@ -90,6 +90,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('settings.language', 'pal.language', settings, () => app.setLanguage(app.otherLanguage()), { keys: 'Shift+L', keywords: 'English Português' }),
     make('settings.panel', 'pal.panel', settings, () => app.togglePanel()),
     make('settings.browser', 'pal.browser', settings, () => app.toggleBrowser()),
+    make('settings.refLines', 'pal.refLines', settings, () => app.toggleRefLines()),
     ...(['walls', 'openings', 'rooms', 'floors', 'guides'] as const).map((c) =>
       make(`layer.${c}`, ui.hidden.has(c) ? (`pal.show.${c}` as const) : (`pal.hide.${c}` as const), settings, () => app.toggleCategory(c)),
     ),

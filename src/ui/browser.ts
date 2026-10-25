@@ -59,6 +59,8 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
       t('browser.layers'),
       true,
       ...CATEGORIES.map((c) => item(t(c.key), () => app.toggleCategory(c.id), { pressed: !ui.hidden.has(c.id), trail: ui.hidden.has(c.id) ? t('layer.hidden') : t('layer.shown') })),
+      // Every wall's reference line and direction, as ArchiCAD's view option (the selected ones' always show).
+      item(t('layer.refLines'), () => app.toggleRefLines(), { pressed: ui.refLines, trail: ui.refLines ? t('layer.shown') : t('layer.hidden') }),
     ),
     section(
       t('browser.types'),

@@ -117,6 +117,8 @@
   --underlay: #dcdee3;
   /* Guides: construction lines, apart from the snap's amber and the selection's blue. */
   --guide: #9333ea;
+  /* A wall's reference line, with its direction: apart from the selection's blue it lies on. */
+  --ref-line: #0d9488;
   color-scheme: light;
 }
 
@@ -168,6 +170,7 @@
   --floor-fill: #26272d;
   --underlay: #2f3138;
   --guide: #c084fc;
+  --ref-line: #2dd4bf;
   color-scheme: dark;
 }
 

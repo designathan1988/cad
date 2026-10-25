@@ -648,6 +648,11 @@ export function wireInput(app: App): void {
     if (key === 'c' && ui.tool === 'modify') return app.toggleModifyCopy();
     if (key === 'w') return app.setTool('wall');
     if (key === 'a' && ui.tool === 'wall') return app.wallEvent({ kind: 'arc' });
+    // Space while drawing walls: the body to the other side of the line (Revit's flip).
+    if (e.key === ' ' && ui.tool === 'wall') {
+      e.preventDefault();
+      return app.toggleWallFlip();
+    }
     if (key === 'd') return app.setTool('door');
     if (key === 'r') return app.setTool('room');
     if (key === 'l') return app.setTool('floor');
@@ -720,6 +725,7 @@ function showHelp(app: App): void {
     ['Tab', t('help.tab')],
     ['Esc', t('help.esc')],
     ['Backspace', t('help.backspace')],
+    [t('key.spaceKey'), t('help.space')],
     [t('help.rightClickKey'), t('help.rightClick')],
     [t('help.dragAloneKey'), t('help.dragAlone')],
     ['Del', t('pal.delete')],

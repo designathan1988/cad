@@ -109,6 +109,12 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
   rodapé soltava as juntas (agora como a cota temporária); Ctrl+Z no meio da cadeia deixava a cadeia no
   ponto antigo (agora desfaz o trecho e segue do início dele; Backspace faz o mesmo, como no ArchiCAD).
 
+- Linha de referência na planta (como o ArchiCAD mostra): nas paredes selecionadas e na que está sendo
+  desenhada, a linha por onde a parede é desenhada (eixo, face externa ou interna), com um ponto no
+  início e uma seta no sentido (o lado externo fica à direita do sentido); de todas as paredes, pela
+  opção "Linhas de referência" no navegador do projeto ou na paleta. Espaço, desenhando paredes, põe o
+  corpo do outro lado da linha (como no Revit), dito no rodapé.
+
 Achados desta rodada ainda abertos:
 - Modificar: porta ou janela sozinha não é levada (vai com a parede); cópia para outro pavimento;
   matriz (várias cópias em série) e deslocamento paralelo (offset) ainda não.

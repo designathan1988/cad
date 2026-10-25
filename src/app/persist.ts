@@ -23,6 +23,8 @@ export interface Prefs {
   tourSeen?: boolean;
   /** How the 3D view shows the levels (view-3d.ts). */
   view3d?: View3D;
+  /** Every wall's reference line shown in plan, not only the selected ones'. */
+  refLines?: boolean;
 }
 
 function storage(): Storage | null {

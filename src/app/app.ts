@@ -101,6 +101,10 @@ export interface UiState {
   guide: GuideDraft | null;
   /** How the 3D view shows the levels: which, exploded, cut (view-3d.ts). */
   view3d: View3D;
+  /** Every wall's reference line shown in plan (the selected ones' always are). */
+  refLines: boolean;
+  /** Space while drawing walls: their bodies go to the other side of the line drawn (Revit's flip). */
+  wallFlip: boolean;
   /** The Modify tool in use (Move, Copy, Rotate, Scale, Mirror): its points so far; `copy` keeps the originals. */
   modify: { readonly kind: ModifyKind; readonly copy: boolean; readonly state: ModifyState } | null;
   /** The temporary dimension whose value is being typed. */
@@ -161,6 +165,8 @@ export class App {
       guide: null,
       view3d: readView3D(prefs.view3d),
       modify: null,
+      refLines: prefs.refLines ?? false,
+      wallFlip: false,
       dimEdit: null,
     };
     this.shell = buildShell(root);
@@ -396,12 +402,12 @@ export class App {
     if (this.ui.tool !== 'wall') return [];
     if (w.kind === 'bend') {
       const b = bulgeThrough(w.last, w.end, w.cursor);
-      return [this.makeWall(w.last, w.end, PREVIEW_ID, b ?? 0)];
+      return [this.oriented(w.last, w.end, PREVIEW_ID, b ?? 0)];
     }
     if (w.kind !== 'drawing') return [];
     const end = this.drawingEnd();
     if (distance(w.last, end) < MIN_WALL_LENGTH) return [];
-    return [this.makeWall(w.last, end, PREVIEW_ID)];
+    return [this.oriented(w.last, end, PREVIEW_ID)];
   }
 
   /** The numbers of the walls selected (a few) or under the pointer, or snapped to while drawing. */
@@ -468,6 +474,34 @@ export class App {
     return typed.ok && typed.value.length >= MIN_WALL_LENGTH ? typedEnd(w, typed.value.length, typed.value.angle) : w.cursor;
   }
 
+  /**
+   * The wall drawn from `start` to `end`, turned round when Space flipped the side: the same line, the
+   * body on its other side (its exterior is on the right of its direction, so the direction is what flips).
+   */
+  private oriented(start: Point2, end: Point2, id: string, bulge = 0): DocWall {
+    return this.ui.wallFlip ? this.makeWall(end, start, id, -bulge) : this.makeWall(start, end, id, bulge);
+  }
+
+  /** Space while drawing walls. */
+  toggleWallFlip(): void {
+    this.ui.wallFlip = !this.ui.wallFlip;
+    this.refresh();
+  }
+
+  /** Every wall's reference line in plan, or only the selected ones'; kept with the preferences. */
+  toggleRefLines(): void {
+    this.ui.refLines = !this.ui.refLines;
+    savePrefs({ refLines: this.ui.refLines });
+    this.render();
+  }
+
+  /** The reference lines to show: every wall's when asked for, the selected ones' and the one being drawn. */
+  private refLines(): { start: Point2; end: Point2; bulge?: number }[] {
+    const ids = new Set(this.ui.selection);
+    const shown = [...this.visibleGeometry().solids.values()].map((s) => s.wall).filter((w) => this.ui.refLines || ids.has(w.id) || w.id === PREVIEW_ID);
+    return shown.map((w) => ({ start: w.start, end: w.end, ...(w.bulge ? { bulge: w.bulge } : {}) }));
+  }
+
   makeWall(start: Point2, end: Point2, id = newId('wall'), bulge = 0): DocWall {
     const d = this.ui.defaults;
     const wall: DocWall = {
@@ -526,6 +560,8 @@ export class App {
     const host = (tool === 'door' || tool === 'window') && this.ui.selection.size === 1 ? this.store.get().walls.find((w) => this.ui.selection.has(w.id)) : undefined;
     this.ui.tool = tool;
     this.ui.wall = IDLE;
+    // A side flipped for some walls is not left for later ones, drawn another time.
+    this.ui.wallFlip = false;
     this.ui.opening = OPENING_IDLE;
     this.ui.floorDraft = [];
     this.ui.measure = MEASURE_IDLE;
@@ -724,7 +760,7 @@ export class App {
     // "Start · closes" left under the pointer until it moved. The next move snaps afresh.
     if (r.state.kind === 'idle' && this.ui.wall.kind !== 'idle') this.ui.snap = null;
     this.ui.wall = r.state;
-    if (r.segment) this.store.dispatch(addWalls([this.makeWall(r.segment.start, r.segment.end, newId('wall'), r.segment.bulge ?? 0)]));
+    if (r.segment) this.store.dispatch(addWalls([this.oriented(r.segment.start, r.segment.end, newId('wall'), r.segment.bulge ?? 0)]));
     else this.refresh();
   }
 
@@ -1292,6 +1328,7 @@ export class App {
                 ? { start: marks.base, end: marks.to }
                 : null,
         axisLine: marks?.axis ?? null,
+        refLines: this.refLines(),
         ray: marks?.ref ? { start: marks.base, end: marks.ref } : null,
         handles: this.handles(),
         anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
@@ -1654,7 +1691,7 @@ export class App {
     shell.sidebar.setAttribute('aria-pressed', String(ui.browserOpen));
     if (!ui.browserOpen) return;
     const doc = this.store.get();
-    const key = JSON.stringify([getLang(), ui.view, ui.levelId, [...ui.hidden], doc.levels, doc.wallTypes.map((x) => [x.id, x.name]), doc.walls.map((w) => w.wallTypeId)]);
+    const key = JSON.stringify([getLang(), ui.view, ui.levelId, [...ui.hidden], ui.refLines, doc.levels, doc.wallTypes.map((x) => [x.id, x.name]), doc.walls.map((w) => w.wallTypeId)]);
     if (key === this.browserKey) return;
     this.browserKey = key;
     // Keep the focus on the same button across the rebuild.
@@ -1807,11 +1844,12 @@ export class App {
             keyHint('Enter', t('key.finish')),
             ...(w.kind === 'drawing' && w.count > 0 ? [keyHint('⌫', t('key.undoSegment'))] : []),
             keyHint('A', t('key.arc')),
+            keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')),
             keyHint('Shift', t('key.straight')),
             ...altGuide,
             keyHint('Esc', t('key.finish')),
           ]
-        : [keyHint('A', t('key.arc')), ...altGuide, keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.exit'))]
+        : [keyHint('A', t('key.arc')), keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')), ...altGuide, keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.exit'))]
       : ui.selection.size > 0
         ? [
             keyHint('Shift', t('key.addRemove')),

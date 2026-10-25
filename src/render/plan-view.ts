@@ -3,6 +3,7 @@
 // filled over the strokes, so lines between joined pieces disappear and only the outside stays.
 
 import type { Point2 } from '../core/vector';
+import { arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { type DerivedGeometry, openingOutline } from '../app/geometry';
 import { layoutRoomTags } from './room-tags';
 import type { Handles } from '../app/handles';
@@ -58,6 +59,11 @@ export interface PlanOverlay {
   readonly guides?: readonly { readonly id: string; readonly point: Point2; readonly dir: Point2 }[];
   /** The guide being placed. */
   readonly guideDraft?: { readonly point: Point2; readonly dir: Point2 } | null;
+  /**
+   * Walls' reference lines (the line they are drawn by: centre, exterior or interior face), each with
+   * an arrow at its end: the drawing direction, whose right is the exterior side. As ArchiCAD shows them.
+   */
+  readonly refLines?: readonly { readonly start: Point2; readonly end: Point2; readonly bulge?: number }[];
   /** A mirror's axis while it is set: a line without ends, in the snap's colour. */
   readonly axisLine?: { readonly point: Point2; readonly dir: Point2 } | null;
   /** The reference of an angle or a scale being set (Rotate, Scale), dashed from its base. */
@@ -368,6 +374,7 @@ export class PlanView {
     }
     if (o.guideDraft) this.drawLine(o.guideDraft.point, o.guideDraft.dir, color('--guide'), 1.6, [10, 4]);
     if (o.axisLine) this.drawLine(o.axisLine.point, o.axisLine.dir, color('--snap'), 1.4, [12, 4, 2, 4]);
+    for (const r of o.refLines ?? []) this.drawRefLine(r, color('--ref-line'));
     if (o.ray) this.dashed(o.ray.start, o.ray.end, color('--snap'));
     this.drawRoomTags(o.roomLabels, color, this.dimValueBoxes(o.dims ?? []));
     if (o.draft && o.draft.length > 0) {
@@ -668,6 +675,42 @@ export class PlanView {
     ctx.moveTo(Math.round(o.x) + 0.5, 0);
     ctx.lineTo(Math.round(o.x) + 0.5, h);
     ctx.stroke();
+  }
+
+  /** A reference line along the wall (its arc, for an arc wall), a dot at its start and an arrow at its end. */
+  private drawRefLine(r: { start: Point2; end: Point2; bulge?: number }, colour: string): void {
+    const { ctx } = this;
+    const arc = r.bulge ? arcOf({ start: r.start, end: r.end, bulge: r.bulge }) : null;
+    const pts = arc ? Array.from({ length: 33 }, (_, i) => pointAt(arc, arc.startAngle + (arc.sweep * i) / 32)) : [r.start, r.end];
+    const screen = pts.map((p) => this.toScreen(p));
+    ctx.save();
+    ctx.strokeStyle = colour;
+    ctx.fillStyle = colour;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    screen.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.stroke();
+    const a = screen[0]!;
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    // The arrow along the line's last stretch, short of its end, where the end's grip would cover it.
+    const end = screen.at(-1)!;
+    const p = screen.at(-2)!;
+    const len = Math.hypot(end.x - p.x, end.y - p.y);
+    if (len > 0) {
+      const ux = (end.x - p.x) / len;
+      const uy = (end.y - p.y) / len;
+      const back = Math.min(14, len / 2);
+      const b = { x: end.x - ux * back, y: end.y - uy * back };
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x - ux * 9 - uy * 4.5, b.y - uy * 9 + ux * 4.5);
+      ctx.lineTo(b.x - ux * 9 + uy * 4.5, b.y - uy * 9 - ux * 4.5);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   /** A line without ends through `point` along `dir`, dashed across the canvas, its dashes fixed to the plan. */
