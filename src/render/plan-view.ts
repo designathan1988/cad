@@ -238,7 +238,7 @@ export class PlanView {
     // layer function's colour, and a thin line where layers meet (geometry/seams.ts), so they do not
     // depend on colour alone. Narrower, the walls are one colour, as before.
     const thick = (s: (typeof solids)[number]) => s.layers.reduce((t, l) => t + l.thickness, 0);
-    const detail = byLayers(normal.filter((s) => s.layers.length > 0).map(thick), this.scale);
+    const detail = byLayers(normal.filter((s) => s.layers.length > 0 && s.plan === 'cut').map(thick), this.scale);
     const layered = (s: (typeof solids)[number]) => detail && s.layers.length > 0;
     // Pieces of one colour are filled as one path: the canvas covers a path as a whole, so where two
     // of them meet (a core through an L's mitre) no antialiased seam lets the outline under them show.
@@ -283,16 +283,46 @@ export class PlanView {
       }
       ctx.stroke();
     };
-    outline(normal, color('--wall-line'), 3);
-    fill(normal, null);
-    seams(normal);
+    // The plan is a section at the level's cut height (app/geometry.ts): walls that do not cross it are
+    // seen, not cut, and drawn as their outline only, thin, under the cut ones; dashed above the cut.
+    // The stroke is clipped to outside the wall's pieces (the canvas less them, even-odd), so the lines
+    // between its own pieces and the inner half of the stroke do not show.
+    const seen = normal.filter((s) => s.plan !== 'cut');
+    const cut = normal.filter((s) => s.plan === 'cut');
+    const pieces = (s: (typeof solids)[number]) => {
+      for (const p of s.pieces)
+        p.polygon.forEach((v, i) => {
+          const q = this.toScreen(v);
+          if (i === 0) ctx.moveTo(q.x, q.y);
+          else ctx.lineTo(q.x, q.y);
+          if (i === p.polygon.length - 1) ctx.closePath();
+        });
+    };
+    for (const s of seen) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, w, h);
+      pieces(s);
+      ctx.clip('evenodd');
+      if (s.plan === 'above') ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = color('--wall-line');
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      pieces(s);
+      ctx.stroke();
+      ctx.restore();
+    }
+    outline(cut, color('--wall-line'), 3);
+    fill(cut, null);
+    seams(cut);
     // Hover and selection: the wall's own outline in the accent colour over its neighbours.
     for (const s of normal) {
       const sel = o.selected.has(s.wall.id);
       if (!sel && o.hover !== s.wall.id) continue;
       outline([s], color('--wall-sel'), sel ? 4 : 3);
-      fill([s], sel ? color('--wall-sel-fill') : null);
-      if (!sel) seams([s]);
+      // A seen wall is never filled with its layers, even under the pointer: it is not cut.
+      fill([s], sel || s.plan !== 'cut' ? color('--wall-sel-fill') : null);
+      if (!sel && s.plan === 'cut') seams([s]);
     }
     // Preview of walls being drawn.
     const drawn = solids.filter((x) => o.preview.has(x.wall.id));

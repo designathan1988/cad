@@ -463,10 +463,23 @@ onde o vizinho não está.
 
 *(Decisão de implementação, 2026-10-24: as cotas são as de todas as paredes do
 pavimento, não só as dos vizinhos. Dá o mesmo resultado, porque uma parede que
-não encosta não muda a pegada, e as slices iguais seguidas são fundidas. Na
-planta, cada parede mostra a sua slice mais baixa, onde ela fica sobre o
-pavimento. Uma parede que começa acima da base de outra pode, por isso,
-aparecer sobreposta a ela na planta: são cortes de alturas diferentes.)*
+não encosta não muda a pegada, e as slices iguais seguidas são fundidas.)*
+
+**Planta (2026-10-24, revisado pelo VIGIA):** a planta é um corte na **altura
+de corte** do pavimento (ref/chat.txt:118, "linhas cortadas e vistas
+distintas"), 1,20 m acima da cota do pavimento por padrão (`CUT_HEIGHT`, como o
+view range do Revit). Ela é guardada no pavimento (`cutHeight`, opcional) e
+editada na caixa de Pavimentos.
+- A parede que **atravessa** a altura de corte mostra a slice que a contém,
+  cortada (preenchida, com as camadas).
+- A parede **abaixo** dela (topo na altura de corte ou abaixo) aparece **em
+  vista**: a sua slice mais alta, só o contorno fino, sem preenchimento.
+- A parede **acima** dela (base na altura de corte ou acima) aparece em vista
+  com a sua slice mais baixa, em contorno tracejado.
+
+Começar ou terminar exatamente na altura de corte não é atravessar. A primeira
+versão mostrava a slice mais baixa, e com ela uma parede sobre `baseOffset`
+aparecia sobreposta à vizinha. No corte, as duas ficam em meia-esquadria.
 
 ---
 
@@ -1136,7 +1149,11 @@ junta. Nenhum aviso sobrou na suíte; os avisos que a §7.1 manda estão nos 2 c
 alta cortava a alta na altura toda, e paredes com faixas de altura sem sobreposição se uniam. Agora é a
 §7.5: as bases e os topos das paredes do pavimento dividem a altura em faixas, e cada faixa é unida só
 com as paredes de pé nela (`app/geometry.ts`, `wallPieces`). Acima do topo da vizinha, a parede termina
-como sozinha (ponta livre, quadrada). Faixas que só se tocam não se unem.
+como sozinha (ponta livre, quadrada). Faixas que só se tocam não se unem. A planta é o corte na altura
+de corte do pavimento (§7.5): 6 casos à mão a mais (as duas paredes da sobreposição cortadas em
+meia-esquadria, parede baixa em vista, parede alta em vista, começar ou terminar na altura de corte,
+altura de corte do pavimento, pavimento de cima), mais o comando e o arquivo. No motor anterior, os 8
+falham.
 
 | Item | Resultado |
 |---|---|

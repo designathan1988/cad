@@ -31,7 +31,13 @@ const isObject = (o: unknown): o is Record<string, unknown> => typeof o === 'obj
 export const isPoint = (p: unknown): boolean => isObject(p) && finite(p.x) && finite(p.y);
 
 export const isLevel = (l: unknown): l is Level =>
-  isObject(l) && typeof l.id === 'string' && typeof l.name === 'string' && finite(l.elevation) && finite(l.height) && l.height > 0;
+  isObject(l) &&
+  typeof l.id === 'string' &&
+  typeof l.name === 'string' &&
+  finite(l.elevation) &&
+  finite(l.height) &&
+  l.height > 0 &&
+  (l.cutHeight === undefined || (finite(l.cutHeight) && l.cutHeight > 0));
 
 /** A top rule: the level's height plus an offset, or a fixed height above the base. Absent is fine. */
 const isTop = (r: unknown): boolean =>

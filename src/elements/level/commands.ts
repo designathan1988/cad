@@ -4,21 +4,23 @@
 import type { Doc, Level, LevelId } from '../../app/document';
 import type { Command } from '../../core/store';
 
-/** A new level on top of the highest one, with that one's height. */
+/** A new level on top of the highest one, with that one's height and cut height. */
 export const addLevel = (id: LevelId, name: string): Command<Doc> => ({
   label: 'cmd.addLevel',
   apply: (doc) => {
     const top = [...doc.levels].sort((a, b) => b.elevation + b.height - (a.elevation + a.height))[0]!;
-    return { ...doc, levels: [...doc.levels, { id, name, elevation: top.elevation + top.height, height: top.height }] };
+    const level = { id, name, elevation: top.elevation + top.height, height: top.height, ...(top.cutHeight !== undefined ? { cutHeight: top.cutHeight } : {}) };
+    return { ...doc, levels: [...doc.levels, level] };
   },
 });
 
-/** Name, elevation or height. A blank name or a height of zero or less changes nothing. */
+/** Name, elevation, height or cut height. A blank name, or a height or cut height of zero or less, changes nothing. */
 export const updateLevel = (id: LevelId, patch: Partial<Omit<Level, 'id'>>): Command<Doc> => ({
   label: 'cmd.updateLevel',
   apply: (doc) => {
     if (patch.name !== undefined && patch.name.trim() === '') return doc;
     if (patch.height !== undefined && !(patch.height > 0)) return doc;
+    if (patch.cutHeight !== undefined && !(patch.cutHeight > 0 && Number.isFinite(patch.cutHeight))) return doc;
     if (patch.elevation !== undefined && !Number.isFinite(patch.elevation)) return doc;
     let changed = false;
     const levels = doc.levels.map((l) => {

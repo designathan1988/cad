@@ -20,12 +20,19 @@ import { layerSeams, type Seam } from '../elements/wall/geometry/seams';
 import { deriveFloors, deriveRooms, type FloorSolid, type RoomSolid, type RoomWarning } from '../elements/room/derive';
 import type { FloorId, RoomId } from '../elements/room/schema';
 import type { Point2 as P } from '../core/vector';
-import { type Doc, type DocWall, wallHeights } from './document';
+import { CUT_HEIGHT, cutHeightOf, type Doc, type DocWall, levelOf, wallHeights } from './document';
+
+export type PlanCut = 'cut' | 'below' | 'above';
 
 export interface WallSolid {
   readonly wall: DocWall;
   /** Plan pieces, with the openings cut through. */
   readonly pieces: readonly Piece[];
+  /**
+   * How it shows in plan, a section at its level's cut height: 'cut' when it crosses that height (its
+   * pieces there), 'below' or 'above' when it is only seen (its slice nearest to the cut).
+   */
+  readonly plan: PlanCut;
   /** 3D blocks: the pieces sliced in height around the openings' holes. */
   readonly blocks: readonly Block[];
   readonly bottom: number;
@@ -61,7 +68,7 @@ export interface DerivedGeometry {
 export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOpenings: readonly Opening[] = []): DerivedGeometry {
   const walls = [...doc.walls, ...extra];
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
-  const { pieces, slices, warnings } = wallPieces(walls, types, (w) => wallHeights(doc, w));
+  const { pieces, plan, slices, warnings } = wallPieces(walls, types, (w) => wallHeights(doc, w), (w) => planCutHeight(doc, w));
   const placed = deriveOpenings([...doc.openings, ...extraOpenings], hostsOf(doc, walls, jointsIn(walls, types, pieces)), doc.openingGroups);
   const byId = new Map(walls.map((w) => [w.id, w]));
   const openings = new Map<OpeningId, OpeningSolid>();
@@ -99,11 +106,12 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
   const solids = new Map<WallId, WallSolid>();
   const planPieces = new Map<WallId, Piece[]>();
   for (const wall of walls) planPieces.set(wall.id, cutPlan(pieces.get(wall.id) ?? [], cuts.get(wall.id) ?? []));
-  // Seams per level: walls on two levels can lie over each other in plan without meeting.
+  // Seams per level: walls on two levels can lie over each other in plan without meeting. Only cut
+  // walls have them: a wall only seen is drawn as its outline.
   const seams = new Map<WallId, Seam[]>();
   for (const levelId of new Set(walls.map((w) => w.levelId))) {
     const list = walls
-      .filter((w) => w.levelId === levelId)
+      .filter((w) => w.levelId === levelId && plan.get(w.id) === 'cut')
       .flatMap((w) => {
         const layers = types.get(w.wallTypeId)?.layers ?? [];
         return (planPieces.get(w.id) ?? []).map((p) => ({ wallId: w.id, polygon: p.polygon, key: `${layers[p.layerIndex]?.function}|${layers[p.layerIndex]?.materialId}` }));
@@ -115,7 +123,7 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     const mine = cuts.get(wall.id) ?? [];
     const layers = types.get(wall.wallTypeId)?.layers ?? [];
     const blocks = (slices.get(wall.id) ?? []).flatMap((sl) => cutSolid(sl.pieces, sl.bottom, sl.top, mine));
-    solids.set(wall.id, { wall, pieces: planPieces.get(wall.id)!, blocks, bottom, top, layers, seams: seams.get(wall.id) ?? [] });
+    solids.set(wall.id, { wall, pieces: planPieces.get(wall.id)!, plan: plan.get(wall.id)!, blocks, bottom, top, layers, seams: seams.get(wall.id) ?? [] });
   }
   // Rooms see the walls before doors and windows are cut: a door does not open a room.
   const piecesByLevel = new Map<string, P[][]>();
@@ -142,13 +150,15 @@ interface WallSlice {
  * the height into ranges, and each range is joined with only the walls standing over it, so a wall
  * past the top of the one it meets ends there as if alone, and walls whose heights do not overlap do
  * not join (§10). A wall's consecutive ranges with the same pieces are one slice. In plan a wall shows
- * its lowest slice, where it stands on its level.
+ * its slice at the cut height (`cutOf`, absolute) when it crosses it, and otherwise the slice nearest
+ * to it: its top one below the cut, its lowest above.
  */
 function wallPieces(
   walls: readonly DocWall[],
   types: ReadonlyMap<string, WallType>,
   heightOf: (w: DocWall) => { bottom: number; top: number },
-): { pieces: Map<WallId, readonly Piece[]>; slices: Map<WallId, WallSlice[]>; warnings: JoinWarning[] } {
+  cutOf: (w: DocWall) => number,
+): { pieces: Map<WallId, readonly Piece[]>; plan: Map<WallId, PlanCut>; slices: Map<WallId, WallSlice[]>; warnings: JoinWarning[] } {
   const byLevel = new Map<string, DocWall[]>();
   for (const w of walls) byLevel.set(w.levelId, [...(byLevel.get(w.levelId) ?? []), w]);
   const slices = new Map<WallId, WallSlice[]>();
@@ -178,12 +188,19 @@ function wallPieces(
     }
   }
   const pieces = new Map<WallId, readonly Piece[]>();
+  const plan = new Map<WallId, PlanCut>();
   for (const w of walls) {
-    const lowest = slices.get(w.id)?.[0];
+    const { bottom, top } = heightOf(w);
+    const z = cutOf(w);
+    // Ending or starting at the cut height is not crossing it.
+    const kind: PlanCut = bottom < z - POINT_TOLERANCE && top > z + POINT_TOLERANCE ? 'cut' : top <= z + POINT_TOLERANCE ? 'below' : 'above';
+    const own = slices.get(w.id) ?? [];
+    const shown = kind === 'cut' ? own.find((sl) => sl.bottom <= z && sl.top > z) : kind === 'below' ? own[own.length - 1] : own[0];
     // A wall with no height stands in no range: in plan, its pieces alone, and nothing in 3D.
-    pieces.set(w.id, lowest ? lowest.pieces : (computeWallGeometry([w], types).pieces.get(w.id) ?? []));
+    pieces.set(w.id, shown ? shown.pieces : (computeWallGeometry([w], types).pieces.get(w.id) ?? []));
+    plan.set(w.id, kind);
   }
-  return { pieces, slices, warnings: [...warnings.values()] };
+  return { pieces, plan, slices, warnings: [...warnings.values()] };
 }
 
 /**
@@ -225,10 +242,16 @@ function jointsIn(
   return out;
 }
 
+/** The absolute height where the plan of the wall's level cuts it. */
+function planCutHeight(doc: Doc, wall: DocWall): number {
+  const level = levelOf(doc, wall.levelId);
+  return (level?.elevation ?? 0) + (level ? cutHeightOf(level) : CUT_HEIGHT);
+}
+
 /** Hosts for placing openings, with the joints inside each (which bound a distributed group's stretch). */
 export function hostsIn(doc: Doc, walls: readonly DocWall[] = doc.walls) {
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
-  return hostsOf(doc, walls, jointsIn(walls, types, wallPieces(walls, types, (w) => wallHeights(doc, w)).pieces));
+  return hostsOf(doc, walls, jointsIn(walls, types, wallPieces(walls, types, (w) => wallHeights(doc, w), (w) => planCutHeight(doc, w)).pieces));
 }
 
 /** The opening's outline in plan: the jambs across the wall's thickness. */

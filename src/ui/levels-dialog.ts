@@ -1,6 +1,8 @@
-// The levels dialog: create, rename, elevation and floor-to-floor height. Every change is one command.
+// The levels dialog: create, rename, elevation, floor-to-floor height and the plan's cut height. Every
+// change is one command.
 
 import type { App } from '../app/app';
+import { cutHeightOf } from '../app/document';
 import { newId } from '../core/id';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../elements/level/commands';
 import { el, numberField } from './controls';
@@ -16,6 +18,7 @@ export function showLevels(app: App): void {
       el('span', { class: 'levels-head' }, t('levels.name')),
       el('span', { class: 'levels-head' }, t('levels.elevation')),
       el('span', { class: 'levels-head' }, t('levels.height')),
+      el('span', { class: 'levels-head', title: t('levels.cutHint') }, t('levels.cut')),
       el('span'),
     );
     const overlaps = levelOverlaps(doc);
@@ -65,6 +68,7 @@ export function showLevels(app: App): void {
         input,
         named(numberField(l.elevation, (v) => app.store.dispatch(updateLevel(l.id, { elevation: v }))), t('levels.elevation')),
         named(numberField(l.height, (v) => app.store.dispatch(updateLevel(l.id, { height: v })), 0.01), t('levels.height')),
+        named(numberField(cutHeightOf(l), (v) => app.store.dispatch(updateLevel(l.id, { cutHeight: v })), 0.01), t('levels.cut')),
         del,
       );
       const over = overlaps.find((o) => o.levelId === l.id);

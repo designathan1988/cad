@@ -15,7 +15,13 @@ export interface Level {
   readonly elevation: number;
   /** Floor to floor height (m): a wall topped at its level reaches this. */
   readonly height: number;
+  /** Where its plan cuts the walls, above its floor (m); CUT_HEIGHT when not set. */
+  readonly cutHeight?: number;
 }
+
+/** A plan's cut height above its level when the level sets none (m), as Revit's view range default. */
+export const CUT_HEIGHT = 1.2;
+export const cutHeightOf = (level: Level): number => level.cutHeight ?? CUT_HEIGHT;
 
 /**
  * A wall as the user placed it: the engine's wall plus where it stands and how high it goes. Its base

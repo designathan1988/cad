@@ -1486,10 +1486,16 @@ select {
 }
 .levels {
   display: grid;
-  grid-template-columns: 1fr var(--levels-col) var(--levels-col) var(--control-h);
+  grid-template-columns: 1fr var(--levels-col) var(--levels-col) var(--levels-col) var(--control-h);
   gap: var(--sp-2) var(--sp-2);
   align-items: center;
   padding: var(--sp-3) var(--sp-4);
+}
+/* Narrow: the name and the three measures share the width; the heads wrap. */
+@media (max-width: 720px) {
+  .levels {
+    grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)) var(--control-h);
+  }
 }
 .levels-head {
   color: var(--text-2);
