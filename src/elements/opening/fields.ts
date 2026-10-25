@@ -93,8 +93,21 @@ export function positionFields(doc: Doc, one: OpeningSolid, placed: ReadonlyMap<
     x.opening.rule.kind === 'fromStart' ? stopBefore(stops, x.start) : x.opening.rule.kind === 'fromEnd' ? length - stopAfter(stops, x.end, length) : 0;
   const startBase = stopBefore(stops, one.start);
   const endBase = length - stopAfter(stops, one.end, length);
-  const ruleLabel = (k: RuleKind): string =>
-    k === 'fromStart' && startBase > 0 ? t('rule.fromStartFace') : k === 'fromEnd' && endBase > 0 ? t('rule.fromEndFace') : t(`rule.${k}` as MessageKey);
+  // The plan is always seen north up, so the start and the end of a straight wall are named by where
+  // they lie on screen: the drawing direction they come from is never seen.
+  const side = (fromStart: boolean): string | null => {
+    const f = one.frame;
+    if (!f || host?.bulge) return null;
+    const v = fromStart ? { x: -f.dir.x, y: -f.dir.y } : f.dir;
+    return t(Math.abs(v.x) >= Math.abs(v.y) ? (v.x < 0 ? 'side.left' : 'side.right') : v.y > 0 ? 'side.above' : 'side.below');
+  };
+  const ruleLabel = (k: RuleKind): string => {
+    if (k !== 'fromStart' && k !== 'fromEnd') return t(`rule.${k}` as MessageKey);
+    const where = side(k === 'fromStart');
+    const face = (k === 'fromStart' ? startBase : endBase) > 0;
+    if (where) return t(face ? 'rule.fromWallSide' : 'rule.fromEndSide', { side: where });
+    return face ? t(k === 'fromStart' ? 'rule.fromStartFace' : 'rule.fromEndFace') : t(`rule.${k}` as MessageKey);
+  };
   const ruleOptions = (['fromStart', 'fromEnd', 'centered', 'fromOpening', 'aligned', 'inGroup'] as const)
     .filter((k) => k === rule.kind || (k === 'fromOpening' ? refs.length > 0 : k === 'aligned' ? aligns.length > 0 : k !== 'inGroup'))
     .map((k) => ({ value: k, label: ruleLabel(k) }));
@@ -148,12 +161,31 @@ export function positionFields(doc: Doc, one: OpeningSolid, placed: ReadonlyMap<
       set: (v) => hasDistance(rule) && act.update([o.id], { rule: { ...rule, distance: baseOf(one) + v } }),
     },
     { id: 'jambs', label: 'panel.jambs', kind: 'readout', text: (xs) => `${num(xs[0]!.start)} – ${num(xs[0]!.end)} m` },
+    // In the middle of its room's stretch of wall: between the faces of the walls beside it (the
+    // wall's ends when none), measured from the start from then on.
+    {
+      id: 'centerBetween',
+      label: 'panel.centerBetween',
+      kind: 'action',
+      enabled: () => {
+        const before = stopBefore(stops, one.start);
+        const after = stopAfter(stops, one.end, length);
+        const middle = (one.start + one.end) / 2;
+        return rule.kind !== 'inGroup' && after - before >= one.end - one.start && Math.abs(middle - (before + after) / 2) > 1e-6;
+      },
+      run: () => {
+        const before = stopBefore(stops, one.start);
+        const after = stopAfter(stops, one.end, length);
+        act.update([o.id], { rule: { kind: 'fromStart', distance: (before + after) / 2 - (one.end - one.start) / 2 } });
+      },
+    },
   ];
 }
 
 /**
- * A door's leaf: which jamb it hangs on, and to which side it opens. The sides are named by the room
- * on each (the other "outside"); with no room on either, by left and right of the wall.
+ * A door's leaf: to which side it opens, then which jamb it hangs on. The sides are named by the room
+ * on each (the other "outside"); with no room on either, by left and right of the wall. The hinge is
+ * left or right as seen from the side it opens to (hingeOptions).
  */
 export function leafFields(one: OpeningSolid, update: OpeningPanelActions['update'], rooms: readonly RoomSolid[] = []): Field<OpeningSolid>[] {
   const ids = [one.opening.id];
@@ -165,14 +197,6 @@ export function leafFields(one: OpeningSolid, update: OpeningPanelActions['updat
   };
   return [
     {
-      id: 'hinge',
-      label: 'panel.hinge',
-      kind: 'segmented',
-      options: (['start', 'end'] as const).map((v) => ({ value: v, label: t(`hinge.${v}`) })),
-      get: (x) => x.opening.hinge,
-      set: (v) => update(ids, { hinge: v as 'start' | 'end' }),
-    },
-    {
       id: 'swing',
       label: 'panel.swing',
       kind: 'segmented',
@@ -180,7 +204,44 @@ export function leafFields(one: OpeningSolid, update: OpeningPanelActions['updat
       get: (x) => x.opening.swing,
       set: (v) => update(ids, { swing: v as 'left' | 'right' }),
     },
+    {
+      id: 'hinge',
+      label: 'panel.hinge',
+      kind: 'segmented',
+      options: hingeOptions(one),
+      get: (x) => x.opening.hinge,
+      set: (v) => update(ids, { hinge: v as 'start' | 'end' }),
+    },
+    {
+      id: 'hingeSeen',
+      label: 'panel.hinge',
+      kind: 'note',
+      when: () => one.frame !== null,
+      text: () => {
+        const r = sides[one.opening.swing];
+        return r ? t('hinge.seenFrom', { room: name(r.room.name) }) : t('hinge.seenFromOutside');
+      },
+    },
   ];
+}
+
+/**
+ * The hinge jambs as left and right, as seen by someone on the side the door opens to, facing it: the
+ * start and end of the wall's drawing direction mean nothing to the user. Left first. Without a frame
+ * (no wall to stand on), start and end.
+ */
+function hingeOptions(one: OpeningSolid): { value: 'start' | 'end'; label: string }[] {
+  const f = one.frame;
+  if (!f) return (['start', 'end'] as const).map((v) => ({ value: v, label: t(`hinge.${v}`) }));
+  // Standing on the swing side, facing the wall; their right hand is the facing direction turned −90°.
+  const facing = one.opening.swing === 'left' ? { x: -f.normal.x, y: -f.normal.y } : f.normal;
+  const right = { x: facing.y, y: -facing.x };
+  // The start jamb lies back along the wall from the opening's middle.
+  const startOnRight = -(f.dir.x * right.x + f.dir.y * right.y) > 0;
+  const label = (v: 'start' | 'end') => t((v === 'start') === startOnRight ? 'hinge.right' : 'hinge.left');
+  return (['start', 'end'] as const)
+    .map((v) => ({ value: v, label: label(v) }))
+    .sort((a, b) => (a.label === t('hinge.left') ? -1 : b.label === t('hinge.left') ? 1 : 0));
 }
 
 /** A group's spacing: equal, or a fixed gap with the row centred or measured from one end. */

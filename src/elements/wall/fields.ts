@@ -1,7 +1,7 @@
 // The fields walls show in the panel, in three sections (ui/fields.ts builds the rows). Base offset
 // and top are the wall's own or its type's (app/document.ts): an own one is marked, with the way back.
 
-import { type Doc, type DocWall, type WallDefaults, wallBase, wallOverrides, wallTop } from '../../app/document';
+import { type Doc, type DocWall, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop } from '../../app/document';
 import { distance } from '../../core/vector';
 import type { Field } from '../../ui/fields';
 import { name, num, t, type MessageKey } from '../../ui/i18n';
@@ -102,6 +102,21 @@ export function wallFields(doc: Doc, act: WallFieldActions): { general: Field<Do
           return r.kind === 'level' ? r.offset : 0;
         },
         set: (v) => act.updateWalls({ top: { kind: 'level', offset: v } }),
+      },
+      // Up to the level's ceiling the height is not typed: said, so it is never a guess.
+      {
+        id: 'heightNow',
+        label: 'panel.height',
+        kind: 'readout',
+        sub: true,
+        when: all('level'),
+        text: (ws) =>
+          sameText(
+            ws.map((w) => {
+              const h = wallHeights(doc, w);
+              return `${num(h.top - h.bottom)} m`;
+            }),
+          ),
       },
       {
         id: 'topHeight',

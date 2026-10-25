@@ -39,9 +39,13 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
   contorno. Alt ao arrastar paredes: elas vão sozinhas, sem levar as juntas (não testado com gesto:
   a ferramenta de teste não segura Alt durante o arraste; coberto só pela leitura do código).
 
+- Altura da parede em leitura sob "Ajuste do topo" quando o topo é o pé-direito.
+- Dobradiça "Esquerda / Direita" vista do lado para onde a porta abre, com a nota de onde se olha;
+  a medida da posição diz "Parede à esquerda / à direita / acima / abaixo" (planta sempre com o norte
+  para cima), e não início/fim do desenho.
+- "Centralizar entre as paredes ao lado": a janela no meio do trecho do próprio cômodo.
+
 Achados desta rodada ainda abertos:
-- Altura da parede só aparece escolhendo "Altura fixa"; com "Pé-direito" o painel não diz quanto é.
-- "Dobradiça: Início / Fim" fala da direção em que a parede foi desenhada, que o usuário não vê.
 - A etiqueta da cota temporária (fundo opaco) cobre a ponta da parede que chega num T.
 - A cota guia da porta sendo colocada é uma linha solta a 50 cm da parede, sem marcas nas pontas.
 - Mudar o lado de abertura não tem atalho no próprio desenho (só painel e barra).
