@@ -102,6 +102,13 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
   guias; no lugar, as paredes unidas mantêm as juntas; espelhada, cada parede troca as pontas (camadas e
   dobradiças espelhadas); escalada, espessuras e tamanhos de porta e janela ficam.
 
+- Defeitos achados pela pesquisa (docs/pesquisa/paredes-portas-janelas.md), corrigidos: o snap em
+  parede em arco pegava a corda (agora o meio do arco, o pé no arco em passos de 5 cm, e o ângulo de
+  15° cortando o arco); trocar a linha de referência deslocava o corpo da parede (agora o corpo fica e
+  a linha vai à face, como no Revit e no ArchiCAD; as unidas acompanham); o comprimento digitado no
+  rodapé soltava as juntas (agora como a cota temporária); Ctrl+Z no meio da cadeia deixava a cadeia no
+  ponto antigo (agora desfaz o trecho e segue do início dele; Backspace faz o mesmo, como no ArchiCAD).
+
 Achados desta rodada ainda abertos:
 - Modificar: porta ou janela sozinha não é levada (vai com a parede); cópia para outro pavimento;
   matriz (várias cópias em série) e deslocamento paralelo (offset) ainda não.

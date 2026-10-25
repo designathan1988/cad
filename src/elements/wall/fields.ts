@@ -13,6 +13,8 @@ import { canAlignWalls, canDistributeWalls } from '../../tools/arrange-walls';
 
 export interface WallFieldActions {
   readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
+  /** Another reference line for the selected walls, their bodies kept where they are. */
+  readonly setReferenceLine: (line: ReferenceLine) => void;
   readonly resetToType: (fields: readonly ('top' | 'baseOffset')[]) => void;
   /** Opens the wall types dialog on the selected walls' type. */
   readonly editType: () => void;
@@ -65,7 +67,8 @@ export function wallFields(
         kind: 'segmented',
         options: REFS.map((r) => ({ value: r.value, label: t(r.key), icon: r.icon })),
         get: (w) => w.referenceLine,
-        set: (v) => act.updateWalls({ referenceLine: v as ReferenceLine }),
+        // The body stays where it is; the line moves to its face or centre (edit.ts).
+        set: (v) => act.setReferenceLine(v as ReferenceLine),
       },
     ],
     constraints: [

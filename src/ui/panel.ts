@@ -12,6 +12,7 @@ import { nextWallFields, wallFields } from '../elements/wall/fields';
 import { guideFields } from '../elements/guide/fields';
 import type { Guide } from '../elements/guide/schema';
 import type { JoinWarning } from '../elements/wall/join/types';
+import type { ReferenceLine } from '../elements/wall/schema';
 import { el } from './controls';
 import { fieldsSection } from './fields';
 import { name, t, type MessageKey } from './i18n';
@@ -41,6 +42,7 @@ export interface PanelInput {
 
 export interface PanelActions {
   readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
+  readonly setReferenceLine: (line: ReferenceLine) => void;
   /** Takes these values off the selected walls, so they come from their type again. */
   readonly resetToType: (fields: readonly ('top' | 'baseOffset')[]) => void;
   readonly editType: () => void;

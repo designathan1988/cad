@@ -148,3 +148,31 @@ describe('snaps on guides', () => {
     expect(snap(input([1.3, 1.3], { guides: [along], from: vec(1, -2), orthogonal: true })).kind).toBe('angle');
   });
 });
+
+describe('snaps on an arc wall', () => {
+  // A half circle from (0, 0) to (4, 0), bulge 1: centre (2, 0), radius 2, through (2, −2) below the chord.
+  const arc = { segments: [{ start: vec(0, 0), end: vec(4, 0), bulge: 1 }] };
+
+  it('its middle is on the arc, (2, −2), not on the chord', () => {
+    expect(snap(input([2.004, -1.996], arc))).toMatchObject({ kind: 'midpoint', point: { x: 2, y: -2 } });
+    // The chord's middle is nothing on this wall now.
+    expect(snap(input([2.003, 0.002], arc)).kind).not.toBe('midpoint');
+  });
+
+  it('on its body: the foot on the arc, 2 m from the centre', () => {
+    const s = snap(input([3.004, -1.733], arc));
+    expect(s.kind).toBe('onWall');
+    expect(Math.hypot(s.point.x - 2, s.point.y)).toBeCloseTo(2, 9);
+  });
+
+  it('off its sweep (the other half of the circle), nothing on it', () => {
+    expect(snap(input([2.002, 2.001], arc)).kind).not.toBe('onWall');
+  });
+
+  it('drawing straight down from (3, 1), the point is where that direction cuts the arc: (3, −√3)', () => {
+    const s = snap(input([3.004, -1.74], { ...arc, from: vec(3, 1) }));
+    expect(s.kind).toBe('onWall');
+    expect(s.point.x).toBeCloseTo(3, 9);
+    expect(s.point.y).toBeCloseTo(-Math.sqrt(3), 9);
+  });
+});

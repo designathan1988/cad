@@ -60,6 +60,7 @@ import { type TempDim, tempDims } from './temp-dims';
 import { cutAt, liftOf, readView3D, shownLevels, type View3D } from './view-3d';
 import { MODIFY_START, type ModifyEvent, type ModifyKind, type ModifyState, modifyTransition, previewTransform } from '../tools/modify-tool';
 import { canTransform, transformSelection } from '../tools/transform';
+import { changeReferenceLine, stretchEnd } from '../tools/edit';
 import { contextEntries } from './context-menu';
 import { referenceLength } from '../elements/opening/derive';
 import { type Handles, handlesFor, ROTATE_OFFSET } from './handles';
@@ -815,7 +816,9 @@ export class App {
       const w = sel[0]!;
       const len = distance(w.start, w.end);
       const k = r.value.length / len;
-      this.store.dispatch(updateWalls([w.id], { end: { x: w.start.x + (w.end.x - w.start.x) * k, y: w.start.y + (w.end.y - w.start.y) * k } }));
+      // Its end moved, the walls joined there going with it, as its length dimension does.
+      const end = { x: w.start.x + (w.end.x - w.start.x) * k, y: w.start.y + (w.end.y - w.start.y) * k };
+      this.store.dispatch(setWalls(stretchEnd(this.store.get(), w.id, 'end', end)));
       return true;
     }
     return false;
@@ -893,8 +896,31 @@ export class App {
     this.store.dispatch(deleteElements([...this.ui.selection]));
   }
 
+  /**
+   * Drawing a chain, the last step to undo is its last wall: undone, the chain goes on from where that
+   * wall began (ArchiCAD's Backspace), instead of from the end of a wall that is gone. False otherwise.
+   */
+  private chainStepBack(): boolean {
+    const w = this.ui.wall;
+    const last = this.store.get().walls.at(-1);
+    if (this.ui.tool !== 'wall' || w.kind !== 'drawing' || w.count === 0 || this.store.undoLabel() !== 'cmd.addWalls' || !last) return false;
+    if (distance(last.end, w.last) > 1e-9) return false;
+    if (!this.store.undo()) return false;
+    this.ui.wall = { ...w, last: last.start, cursor: last.start, count: w.count - 1 };
+    this.shell.measure.value = '';
+    this.refresh();
+    this.toast(`${t('toast.undo')}: ${t('cmd.addWalls')}`);
+    return true;
+  }
+
+  /** Backspace while drawing a chain: its last wall undone, the chain going on from its start. */
+  undoChainStep(): boolean {
+    return this.chainStepBack();
+  }
+
   // Said with what was undone or redone ("Undone: Delete"): "Undone" alone left the user to look for it.
   undo(): void {
+    if (this.chainStepBack()) return;
     const what = this.store.undoLabel();
     if (this.store.undo()) this.toast(what ? `${t('toast.undo')}: ${t(what as MessageKey)}` : t('toast.undo'));
   }
@@ -1375,6 +1401,10 @@ export class App {
       },
       {
         updateWalls: (patch) => this.store.dispatch(updateWalls([...ui.selection], patch)),
+        setReferenceLine: (line) => {
+          const ids = this.selectedWalls().map((w) => w.id);
+          this.store.dispatch(setWalls(changeReferenceLine(this.store.get(), ids, line), 'cmd.referenceLine'));
+        },
         resetToType: (fields) => this.store.dispatch(resetWallsToType([...ui.selection], fields)),
         editType: () => this.openWallTypes(this.store.get().walls.find((w) => ui.selection.has(w.id))?.wallTypeId),
         updateRadius: (radius) => {
@@ -1773,7 +1803,14 @@ export class App {
       ? [keyHint('Enter', t('key.finish')), ...altGuide, keyHint('Esc', t('key.exit'))]
       : drawing
       ? w.kind !== 'idle'
-        ? [keyHint('Enter', t('key.finish')), keyHint('A', t('key.arc')), keyHint('Shift', t('key.straight')), ...altGuide, keyHint('Esc', t('key.finish'))]
+        ? [
+            keyHint('Enter', t('key.finish')),
+            ...(w.kind === 'drawing' && w.count > 0 ? [keyHint('⌫', t('key.undoSegment'))] : []),
+            keyHint('A', t('key.arc')),
+            keyHint('Shift', t('key.straight')),
+            ...altGuide,
+            keyHint('Esc', t('key.finish')),
+          ]
         : [keyHint('A', t('key.arc')), ...altGuide, keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.exit'))]
       : ui.selection.size > 0
         ? [

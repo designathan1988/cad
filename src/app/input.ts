@@ -165,8 +165,8 @@ export function wireInput(app: App): void {
       // tape takes the face, not the axis the body otherwise stands for.
       segments: [
         ...faces,
-        ...walls.filter((x) => x.levelId === ui.levelId).map((x) => ({ id: x.id, start: x.start, end: x.end, reach: ui.tool === 'measure' ? 0 : halfOf(x.id) })),
-        ...walls.filter((x) => x.levelId === below).map((x) => ({ start: x.start, end: x.end, reach: ui.tool === 'measure' ? 0 : halfOf(x.id) })),
+        ...walls.filter((x) => x.levelId === ui.levelId).map((x) => ({ id: x.id, start: x.start, end: x.end, reach: ui.tool === 'measure' ? 0 : halfOf(x.id), ...(x.bulge ? { bulge: x.bulge } : {}) })),
+        ...walls.filter((x) => x.levelId === below).map((x) => ({ start: x.start, end: x.end, reach: ui.tool === 'measure' ? 0 : halfOf(x.id), ...(x.bulge ? { bulge: x.bulge } : {}) })),
       ],
       // Modifying, snapped from the base point: right angles and 15° steps from it, as a wall from its last point.
       from: tape ?? modifyFrom ?? (draft ? (draft.at(-1) ?? null) : w.kind === 'drawing' ? w.last : null),
@@ -630,6 +630,8 @@ export function wireInput(app: App): void {
     if (e.key === 'Enter' && ui.tool === 'floor') return app.floorFinish();
     // Enter places the opening where it is aimed, as a click there does.
     if (e.key === 'Enter' && app.openingKind() && ui.opening.kind === 'aiming') return app.openingEvent({ kind: 'click' });
+    // Backspace while drawing a chain takes its last wall back and goes on from its start (ArchiCAD).
+    if (e.key === 'Backspace' && app.undoChainStep()) return;
     if (e.key === 'Delete' || e.key === 'Backspace') return app.deleteSelection();
     if (e.key === 'Home') return app.frameAll();
     if (e.key === '?') return showHelp(app);
@@ -717,6 +719,7 @@ function showHelp(app: App): void {
     ['Enter', t('help.enter')],
     ['Tab', t('help.tab')],
     ['Esc', t('help.esc')],
+    ['Backspace', t('help.backspace')],
     [t('help.rightClickKey'), t('help.rightClick')],
     [t('help.dragAloneKey'), t('help.dragAlone')],
     ['Del', t('pal.delete')],

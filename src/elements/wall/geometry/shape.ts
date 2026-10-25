@@ -23,7 +23,8 @@ export interface WallShape {
 export type ShapeProblem = 'missingWallType' | 'invalidWallType';
 
 /** Offset of the exterior face from the reference line, along the left normal. */
-function exteriorOffset(referenceLine: ReferenceLine, thickness: number): number {
+/** Where the exterior face lies across the reference line (along the wall's left normal), for a thickness. */
+export function exteriorOffset(referenceLine: ReferenceLine, thickness: number): number {
   switch (referenceLine) {
     case 'centerline':
       return -thickness / 2;

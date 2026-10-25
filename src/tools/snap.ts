@@ -2,6 +2,8 @@
 // pixels (converted by the caller's metres-per-pixel), so snapping feels the same at any zoom.
 
 import { add, distance, dot, normalize, type Point2, scale, sub, vec } from '../core/vector';
+import { type Arc, arcOf, pointAt } from '../elements/wall/geometry/arc';
+import { arcMiddle } from './arc-edit';
 import type { MessageKey } from '../ui/i18n';
 
 export type SnapKind =
@@ -38,7 +40,15 @@ export interface SnapInput {
    * from anywhere on that body near them: the corner one sees is the faces', not the axis's. `face`:
    * an edge of a wall's drawn body (the measure tool): its ends are corners, its points on the face.
    */
-  readonly segments: readonly { readonly id?: string; readonly start: Point2; readonly end: Point2; readonly reach?: number; readonly face?: boolean }[];
+  readonly segments: readonly {
+    readonly id?: string;
+    readonly start: Point2;
+    readonly end: Point2;
+    readonly reach?: number;
+    readonly face?: boolean;
+    /** An arc wall's bulge: its middle and its body are on the arc, not on the chord. */
+    readonly bulge?: number;
+  }[];
   /** The point being drawn from, if any. */
   readonly from: Point2 | null;
   /** The first point of the chain: clicking it closes the outline. */
@@ -107,7 +117,10 @@ export function snap(input: SnapInput): Snap {
   // starts where its guide meets the wall across).
   const crossings = guides.flatMap((g, k) => [
     ...guides.slice(k + 1).flatMap((h) => lineCrossing(g.point, g.dir, h.point, h.dir) ?? []),
+    // A guide meets an arc wall where it cuts the circle, within its sweep.
     ...input.segments.flatMap((s) => {
+      const arc = s.bulge ? arcOf({ start: s.start, end: s.end, bulge: s.bulge }) : null;
+      if (arc) return circleCrossings(arc, g.point, g.dir).filter((p) => arcFoot(arc, p, 0) !== null);
       const p = lineCrossing(g.point, g.dir, s.start, sub(s.end, s.start));
       // On the segment, ends included (a guide through a wall's end crosses it there).
       return p && dot(sub(p, s.start), sub(p, s.end)) <= 1e-12 ? [p] : [];
@@ -119,7 +132,7 @@ export function snap(input: SnapInput): Snap {
   if (distance(cursor, ORIGIN) <= r) return { point: ORIGIN, kind: 'origin' };
   // A face's edges are pieces of a wall's body, cut where other walls and openings meet it: their
   // middles mean nothing, and would catch the tape halfway across a room.
-  const mids = input.segments.flatMap((s, i) => (s.face ? [] : [{ i, p: scale(add(s.start, s.end), 0.5) }]));
+  const mids = input.segments.flatMap((s, i) => (s.face ? [] : [{ i, p: s.bulge ? arcMiddle(s.start, s.end, s.bulge) : scale(add(s.start, s.end), 0.5) }]));
   const nearMid = closest(
     mids.map((m) => m.p),
     cursor,
@@ -145,6 +158,20 @@ export function snap(input: SnapInput): Snap {
   // ended on a wall stays square. Otherwise the foot of the cursor, its distance along the wall on
   // the 5 cm grid.
   for (const [i, s] of input.segments.entries()) {
+    const arc = s.bulge ? arcOf({ start: s.start, end: s.end, bulge: s.bulge }) : null;
+    if (arc) {
+      // An arc wall: the cursor's foot on the arc, its distance along it on the 5 cm grid; on a
+      // snapped angle, where that direction cuts the arc.
+      if (Math.abs(distance(cursor, arc.center) - arc.radius) > r + (s.reach ?? 0) || !arcFoot(arc, cursor, 0)) continue;
+      const slack = from ? r + distance(cursor, from) * Math.tan((ANGLE_TOL_DEG * Math.PI) / 180) : r;
+      const cut =
+        ray && from
+          ? circleCrossings(arc, from, ray)
+              .filter((p) => dot(sub(p, from), ray!) > 0 && arcFoot(arc, p, 0) !== null && distance(p, cursor) <= slack)
+              .sort((a, b) => distance(a, cursor) - distance(b, cursor))[0]
+          : undefined;
+      return { point: cut ?? arcFoot(arc, cursor, GRID_STEP)!, kind: 'onWall', ...of(i) };
+    }
     // Anywhere on its drawn body (half its thickness each side of the axis) plus the radius.
     const foot = projectOnSegment(cursor, s.start, s.end);
     if (!foot || distance(foot, cursor) > r + (s.reach ?? 0)) continue;
@@ -207,6 +234,33 @@ function orthogonal(cursor: Point2, from: Point2, grid: boolean, guides: readonl
 }
 
 const perpOf = (u: Point2): Point2 => vec(-u.y, u.x);
+
+/**
+ * The point of the arc at p's angle about its centre, strictly within its sweep; with a step, its
+ * length along the arc from the start rounded to it (away from the ends). Null outside the sweep.
+ */
+function arcFoot(arc: Arc, p: Point2, step: number): Point2 | null {
+  const dir = Math.sign(arc.sweep);
+  const span = Math.abs(arc.sweep);
+  const a = Math.atan2(p.y - arc.center.y, p.x - arc.center.x);
+  const delta = ((((a - arc.startAngle) * dir) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  if (delta <= 1e-9 || delta >= span - 1e-9) return null;
+  let along = delta * arc.radius;
+  const len = span * arc.radius;
+  if (step > 0 && along > step && along < len - step) along = Math.round(along / step) * step;
+  return pointAt(arc, arc.startAngle + (dir * along) / arc.radius);
+}
+
+/** Where the line through p along u (unit) cuts the arc's circle: none, one or two points. */
+function circleCrossings(arc: Arc, p: Point2, u: Point2): Point2[] {
+  const w = sub(p, arc.center);
+  const b = dot(u, w);
+  const c = dot(w, w) - arc.radius * arc.radius;
+  const disc = b * b - c;
+  if (disc < 0) return [];
+  const s = Math.sqrt(disc);
+  return [-b - s, -b + s].map((t) => add(p, scale(u, t)));
+}
 
 /** Where the line through p along u meets the line through q along v; null when they are parallel. */
 function lineCrossing(p: Point2, u: Point2, q: Point2, v: Point2): Point2 | null {
