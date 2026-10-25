@@ -26,10 +26,10 @@ export interface WallFieldActions {
   readonly firstWall?: string;
 }
 
-const REFS: readonly { value: ReferenceLine; key: MessageKey; icon: 'refCenter' | 'refExterior' | 'refInterior' }[] = [
-  { value: 'centerline', key: 'ref.centerline', icon: 'refCenter' },
-  { value: 'exteriorFace', key: 'ref.exteriorFace', icon: 'refExterior' },
-  { value: 'interiorFace', key: 'ref.interiorFace', icon: 'refInterior' },
+const REFS: readonly { value: ReferenceLine; key: MessageKey; short: MessageKey; icon: 'refCenter' | 'refExterior' | 'refInterior' }[] = [
+  { value: 'centerline', key: 'ref.centerline', short: 'ref.short.centerline', icon: 'refCenter' },
+  { value: 'exteriorFace', key: 'ref.exteriorFace', short: 'ref.short.exteriorFace', icon: 'refExterior' },
+  { value: 'interiorFace', key: 'ref.interiorFace', short: 'ref.short.interiorFace', icon: 'refInterior' },
 ];
 
 const thickness = (doc: Doc, w: DocWall) => (doc.wallTypes.find((x) => x.id === w.wallTypeId)?.layers ?? []).reduce((s, l) => s + l.thickness, 0);
@@ -65,7 +65,10 @@ export function wallFields(
         id: 'reference',
         label: 'panel.reference',
         kind: 'segmented',
-        options: REFS.map((r) => ({ value: r.value, label: t(r.key), icon: r.icon })),
+        options: REFS.map((r) => ({ value: r.value, label: t(r.key), short: t(r.short), icon: r.icon })),
+        // The icons alone did not say which line each was: their names beside them, across the panel.
+        labelled: true,
+        wide: true,
         get: (w) => w.referenceLine,
         // The body stays where it is; the line moves to its face or centre (edit.ts).
         set: (v) => act.setReferenceLine(v as ReferenceLine),
@@ -180,7 +183,10 @@ export function nextWallFields(doc: Doc, update: (patch: Partial<WallDefaults>) 
       id: 'reference',
       label: 'panel.reference',
       kind: 'segmented',
-      options: REFS.map((r) => ({ value: r.value, label: t(r.key), icon: r.icon })),
+      options: REFS.map((r) => ({ value: r.value, label: t(r.key), short: t(r.short), icon: r.icon })),
+        // The icons alone did not say which line each was: their names beside them, across the panel.
+        labelled: true,
+        wide: true,
       get: (d) => d.referenceLine,
       set: (v) => update({ referenceLine: v as ReferenceLine }),
     },

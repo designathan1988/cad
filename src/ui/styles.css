@@ -30,7 +30,7 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.08);
   /* Component sizes */
   --tool-w: 36px;
-  --label-w: 96px;
+  --label-w: 112px;
   --level-w: 168px;
   --name-w: 220px;
   --head-h: 44px;
@@ -57,7 +57,7 @@
   --browser-w: 260px;
   --tooltip-w: 280px;
   --touch: 44px;
-  --panel-w: 288px;
+  --panel-w: 300px;
   --ease: 120ms ease-out;
 
   --bg: #ffffff;
@@ -710,6 +710,9 @@ button.project-name:hover {
   min-width: 0;
 }
 .rows label {
+  display: flex;
+  align-items: center;
+  min-width: 0;
   color: var(--text-2);
   font-size: var(--fs-sm);
   white-space: nowrap;
@@ -717,8 +720,26 @@ button.project-name:hover {
   text-overflow: ellipsis;
   cursor: default;
 }
+/* A control too wide for its column (a segmented one with words): its label over it, both across the row. */
+.rows > label.wide,
+.rows > .wide-control {
+  grid-column: 1 / -1;
+}
+.rows > label.wide {
+  margin-bottom: calc(-1 * var(--sp-1));
+}
 .rows label.sub {
   padding-left: var(--sp-3);
+}
+/* A field's icon before its words: the eye finds the field by it. */
+.rows label .field-icon {
+  flex: none;
+  margin-right: var(--sp-1);
+  color: var(--text-3);
+}
+.rows label .field-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .rows label.scrub {
   cursor: ew-resize;

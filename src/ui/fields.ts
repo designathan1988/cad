@@ -11,6 +11,10 @@ import { icon, type IconName } from './icons';
 interface Common<T> {
   readonly id: string;
   readonly label: MessageKey;
+  /** Drawn before the label, to tell the fields apart at a glance; by default the one FIELD_ICONS gives its id. */
+  readonly icon?: IconName;
+  /** The label over the control, both across the panel: a segmented control with words needs the width. */
+  readonly wide?: boolean;
   /** Indented under the field before it. */
   readonly sub?: boolean;
   /** Shown only for these selections (default: always). */
@@ -20,7 +24,8 @@ interface Common<T> {
   readonly reset?: () => void;
 }
 
-export type FieldOption = { readonly value: string; readonly label: string; readonly icon?: IconName; readonly thumb?: string; readonly keywords?: string };
+/** `short`: what a segmented button shows under its icon, the full label being its name and tooltip. */
+export type FieldOption = { readonly value: string; readonly label: string; readonly short?: string; readonly icon?: IconName; readonly thumb?: string; readonly keywords?: string };
 
 export type Field<T> =
   /** `min`: the lowest value, or one that depends on what is selected (an arc's radius: half its chord). */
@@ -60,6 +65,49 @@ export function fieldStates<T>(fields: readonly Field<T>[], items: readonly T[])
     });
 }
 
+/**
+ * The icon each kind of field shows before its label, by its id, in every panel alike (a field may give
+ * its own): a CAD inspector reads by these as much as by the words.
+ */
+const FIELD_ICONS: Readonly<Record<string, IconName>> = {
+  type: 'wall',
+  kind: 'door',
+  reference: 'refCenter',
+  level: 'slab',
+  baseOffset: 'raise',
+  top: 'arrowUp',
+  topOffset: 'lower',
+  topHeight: 'height',
+  heightNow: 'height',
+  length: 'dimension',
+  chord: 'dimension',
+  radius: 'radius',
+  thickness: 'wall',
+  width: 'width',
+  height: 'height',
+  sill: 'raise',
+  rule: 'ruler',
+  distance: 'dimension',
+  anchorDistance: 'dimension',
+  gap: 'distribute',
+  spacing: 'distribute',
+  jambs: 'width',
+  swing: 'swing',
+  hinge: 'door',
+  name: 'text',
+  number: 'hash',
+  area: 'room',
+  perimeter: 'frame',
+  source: 'room',
+  offset: 'raise',
+};
+
+/** The label of a row: its icon, then its words. */
+function labelled<T>(field: Field<T>): string | { text: string; icon: IconName } {
+  const ic = field.icon ?? FIELD_ICONS[field.id];
+  return ic ? { text: t(field.label), icon: ic } : t(field.label);
+}
+
 /** A section of rows for the selection, from the fields. */
 export function fieldsSection<T>(title: string, open: boolean, fields: readonly Field<T>[], items: readonly T[]): HTMLElement {
   const states = fieldStates(fields, items);
@@ -81,7 +129,7 @@ export function fieldsSection<T>(title: string, open: boolean, fields: readonly 
       if (field.kind === 'number' && label) scrub(label, () => value as number | null, field.set, minOf(field, items));
       return r;
     };
-    if (!own) return scrubbing(row(t(field.label), control, { sub: field.sub === true }));
+    if (!own) return scrubbing(row(labelled(field), control, { sub: field.sub === true, wide: field.wide === true }));
     anyOwn = true;
     // The note is the field's description; the way back says which field it puts back.
     control.querySelector('input, select, button')?.setAttribute('aria-describedby', noteId);
@@ -94,7 +142,7 @@ export function fieldsSection<T>(title: string, open: boolean, fields: readonly 
     });
     back.innerHTML = icon('undo', 14);
     back.addEventListener('click', () => field.reset?.());
-    return scrubbing(row(what, el('div', { class: 'overridden' }, control, back), { sub: field.sub === true, mark: true }));
+    return scrubbing(row(labelled(field), el('div', { class: 'overridden' }, control, back), { sub: field.sub === true, mark: true }));
   });
   if (anyOwn) rows.push(el('div', {}, el('div', { class: 'panel-note', id: noteId }, t('panel.overrideNote'))));
   return section(title, open, ...rows);

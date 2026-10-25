@@ -39,9 +39,17 @@ export function section(title: string, open: boolean, ...rows: HTMLElement[]): H
 
 /** A label + control pair, unwrapped into the section's two-column grid. */
 /** `mark`: the value is the element's own, over its type's: a dot after the label, for the eye only. */
-export function row(label: string, control: HTMLElement, opts: { sub?: boolean; id?: string; mark?: boolean } = {}): HTMLElement {
+/** `label` with an icon: drawn before the words, for the eye (the words stay the label read out). */
+/** `wide`: the label over the control, both across the row, for a control too wide for its column. */
+export function row(label: string | { text: string; icon: IconName }, control: HTMLElement, opts: { sub?: boolean; id?: string; mark?: boolean; wide?: boolean } = {}): HTMLElement {
   const id = opts.id ?? `f_${Math.random().toString(36).slice(2, 8)}`;
-  const l = el('label', { for: id, class: opts.sub ? 'sub' : '' }, label);
+  const l = el('label', { for: id, class: [opts.sub ? 'sub' : '', opts.wide ? 'wide' : ''].filter(Boolean).join(' ') });
+  if (opts.wide) control.classList.add('wide-control');
+  if (typeof label === 'string') l.append(label);
+  else {
+    l.insertAdjacentHTML('beforeend', icon(label.icon, 14).replace('class="icon"', 'class="icon field-icon"'));
+    l.append(el('span', { class: 'field-label' }, label.text));
+  }
   if (opts.mark) l.append(el('span', { class: 'own-mark', 'aria-hidden': 'true' }, ' •'));
   const focusable = control.querySelector('input, select, button') ?? control;
   focusable.id = id;
@@ -147,7 +155,7 @@ export function scrub(label: HTMLElement, get: () => number | null, onCommit: (v
 }
 
 export function segmented<T extends string>(
-  options: readonly { value: T; label: string; icon?: IconName }[],
+  options: readonly { value: T; label: string; short?: string; icon?: IconName }[],
   value: T | null,
   onChange: (v: T) => void,
   labelled = false,
@@ -158,7 +166,7 @@ export function segmented<T extends string>(
     b.innerHTML = o.icon ? icon(o.icon, 16) : '';
     // Narrow screens keep only the icon of a button that has one; one without keeps its words.
     if (o.icon) b.classList.add('has-icon');
-    if (!o.icon || labelled) b.append(el('span', { class: 'label' }, o.label));
+    if (!o.icon || labelled) b.append(el('span', { class: 'label' }, o.short ?? o.label));
     b.addEventListener('click', () => onChange(o.value));
     box.append(b);
   }
