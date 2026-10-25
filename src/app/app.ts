@@ -997,7 +997,8 @@ export class App {
         hover: ui.hover,
         preview,
         snap:
-          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure') && ui.snap
+          // Drawing, measuring, or dragging a wall's end: where it snaps, said as it is.
+          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.drag?.kind === 'grip') && ui.snap
             ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
             : null,
         measure:
@@ -1386,8 +1387,10 @@ export class App {
               : 'hint.wallNext'
       : d?.kind === 'slide'
         ? 'hint.sliding'
-        : d?.kind === 'move' || d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'rotate'
+        : d?.kind === 'move'
         ? 'hint.moving'
+        : d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'rotate'
+        ? 'hint.handle'
         : d?.kind === 'bulge'
           ? 'hint.bending'
         : d?.kind === 'marquee'

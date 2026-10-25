@@ -56,6 +56,9 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
   ponta de um T); a cota da porta ou janela sendo colocada é desenhada como as temporárias, com
   chamadas e marcas, colada à face oposta à folha.
 
+- Ao arrastar a ponta de uma parede, o encaixe aparece como ao desenhar ("Sobre a parede 5"); girar e
+  esticar dizem "Shift mantém reto, Esc cancela" (o Alt só vale para mover).
+
 Achados desta rodada ainda abertos:
 - Duas folhas de porta que se cruzam (ao colocar uma porta perto de outra) não dão aviso.
 - Mudar o lado de abertura não tem atalho no próprio desenho (só painel e barra).
