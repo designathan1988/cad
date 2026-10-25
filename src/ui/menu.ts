@@ -2,10 +2,13 @@
 // item runs it; clicking anywhere else, Esc or Tab closes it, and the focus goes back where it was.
 
 import { el } from './controls';
+import { icon, type IconName } from './icons';
 import { menuKey } from './menu-keys';
 
 export interface MenuItem {
   readonly label: string;
+  /** Drawn before the label: the icon of the button the item stands for. */
+  readonly icon?: IconName;
   /** The key that does the same, shown at the right. */
   readonly keys?: string;
   readonly disabled?: boolean;
@@ -24,6 +27,7 @@ export function showMenu(items: readonly MenuItem[], at: { x: number; y: number 
   const menu = el('div', { class: 'menu', role: 'menu', 'aria-label': label });
   const buttons = items.map((item) => {
     const b = el('button', { type: 'button', role: 'menuitem', class: 'menu-item', tabindex: '-1' }, el('span', { class: 'menu-label' }, item.label));
+    if (item.icon) b.insertAdjacentHTML('afterbegin', icon(item.icon, 16));
     if (item.keys) b.append(el('span', { class: 'menu-keys' }, item.keys));
     if (item.disabled) b.setAttribute('aria-disabled', 'true');
     if (item.separated) b.classList.add('separated');
@@ -75,5 +79,7 @@ export function showMenu(items: readonly MenuItem[], at: { x: number; y: number 
   window.addEventListener('pointerdown', outside, true);
   window.addEventListener('resize', close);
   open = close;
-  focus(Math.min(start, items.length - 1));
+  // The first item that can be chosen, from `start`: a greyed one never takes the focus first.
+  const first = items.findIndex((x, i) => i >= start && !x.disabled);
+  focus(first >= 0 ? first : Math.min(start, items.length - 1));
 }

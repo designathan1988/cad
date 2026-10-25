@@ -70,6 +70,7 @@ import { cutAt, liftOf, readView3D, shownLevels, type View3D } from './view-3d';
 import { MODIFY_START, type ModifyEvent, type ModifyKind, type ModifyState, modifyTransition, previewTransform } from '../tools/modify-tool';
 import { canTransform, transformSelection } from '../tools/transform';
 import { changeReferenceLine, stretchEnd } from '../tools/edit';
+import { canMerge, cornerWalls, mergeWalls, splitWall } from '../tools/split';
 import { contextEntries } from './context-menu';
 import { referenceLength } from '../elements/opening/derive';
 import { type Handles, handlesFor, ROTATE_OFFSET } from './handles';
@@ -735,6 +736,65 @@ export class App {
     this.store.dispatch({ label, apply: () => result.doc });
   }
 
+  /** The Split tool: the wall under the point divided there (tools/split.ts), as one undo step. */
+  splitAt(point: Point2, wallId: string | undefined): void {
+    const doc = this.store.get();
+    if (!wallId || !doc.walls.some((w) => w.id === wallId)) {
+      this.ui.info = t('hint.splitNoWall');
+      return this.renderChrome();
+    }
+    const r = splitWall(doc, wallId, point, newId('wall'));
+    if (typeof r === 'string') {
+      this.ui.error = t(r === 'throughOpening' ? 'hint.splitThroughOpening' : 'hint.splitTooShort');
+      return this.renderChrome();
+    }
+    this.ui.error = null;
+    this.store.dispatch({ label: 'cmd.split', apply: () => r });
+  }
+
+  /** The Corner tool: the first wall clicked, then the second, met at the corner of their lines. */
+  cornerClick(wallId: string | null): void {
+    const doc = this.store.get();
+    if (!wallId || !doc.walls.some((w) => w.id === wallId)) {
+      this.ui.info = t('hint.cornerNoWall');
+      return this.renderChrome();
+    }
+    const first = [...this.ui.selection][0];
+    if (!first || first === wallId) {
+      this.ui.selection = new Set([wallId]);
+      this.ui.error = null;
+      return this.refresh();
+    }
+    const walls = cornerWalls(doc, first, wallId);
+    this.ui.selection.clear();
+    if (!walls) {
+      this.ui.error = t('hint.cornerNone');
+      return this.refresh();
+    }
+    this.ui.error = null;
+    this.store.dispatch(setWalls(walls, 'cmd.corner'));
+  }
+
+  /** Two walls in line, end to end, of one type, joined into one (tools/split.ts). */
+  mergeSelection(): void {
+    const ids = this.selectedWalls().map((w) => w.id);
+    const doc = this.store.get();
+    if (ids.length !== 2) return;
+    const next = mergeWalls(doc, ids[0]!, ids[1]!);
+    if (!next) {
+      this.ui.info = t('hint.mergeNot');
+      return this.renderChrome();
+    }
+    this.ui.selection = new Set([ids[0]!]);
+    this.store.dispatch({ label: 'cmd.merge', apply: () => next });
+  }
+
+  /** Whether the selection is two walls that can be joined into one. */
+  canMergeSelection(): boolean {
+    const ids = this.selectedWalls().map((w) => w.id);
+    return ids.length === 2 && canMerge(this.store.get(), ids[0]!, ids[1]!);
+  }
+
   /** The middle of the selection's extent: the centre a turn, a scale or a mirror takes on Enter. */
   selectionCentre(): Point2 | null {
     const box = boundsOf(this.geometry, this.ui.selection);
@@ -1344,8 +1404,8 @@ export class App {
         guides: this.levelGuides(),
         guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
         snap:
-          // Drawing, measuring, modifying, or dragging a wall's end: where it snaps, said as it is.
-          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'modify' || ui.drag?.kind === 'grip') && ui.snap
+          // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
+          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
             ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
             : null,
         measure: guideDim
@@ -1757,8 +1817,13 @@ export class App {
     const { ui, shell, store } = this;
     const doc = store.get();
     shell.panelToggle.setAttribute('aria-pressed', String(ui.panelOpen));
-    shell.projectName.textContent = doc.name || t('app.untitled');
-    document.title = `${doc.name || t('app.untitled')} · cad2`;
+    const projectName = doc.name || t('app.untitled');
+    // Another name, another width: the top bar's edit tools fitted again.
+    if (shell.projectName.textContent !== projectName) {
+      shell.projectName.textContent = projectName;
+      shell.fitTop();
+    }
+    document.title = `${projectName} · cad2`;
     shell.undo.disabled = !store.canUndo();
     shell.redo.disabled = !store.canRedo();
     shell.view3d.setAttribute('aria-pressed', String(ui.view === '3d'));
@@ -1771,6 +1836,8 @@ export class App {
     shell.toolDoor.setAttribute('aria-pressed', String(ui.tool === 'door'));
     shell.toolWindow.setAttribute('aria-pressed', String(ui.tool === 'window'));
     shell.toolMeasure.setAttribute('aria-pressed', String(ui.tool === 'measure'));
+    shell.toolSplit.setAttribute('aria-pressed', String(ui.tool === 'split'));
+    shell.toolCorner.setAttribute('aria-pressed', String(ui.tool === 'corner'));
     // The Modify tools: the one in use pressed; dimmed while the selection holds nothing they take (a
     // click then says what to select).
     const transformable = canTransform(doc, [...ui.selection]);
@@ -1778,6 +1845,7 @@ export class App {
       b.setAttribute('aria-pressed', String(ui.tool === 'modify' && ui.modify?.kind === kind));
       b.setAttribute('aria-disabled', String(!transformable));
     }
+    shell.syncMore();
     shell.lang.textContent = getLang().toUpperCase();
     // Rewritten only when it changes: replacing the icon under the pointer between press and release
     // would cancel the click.
@@ -1856,7 +1924,11 @@ export class App {
         : t('hint.openingPlace', { kind: t(placing === 'door' ? 'panel.door' : 'panel.window').toLowerCase() })
       : null;
     const toolHint =
-      ui.tool === 'room'
+      ui.tool === 'split'
+        ? t('hint.split')
+        : ui.tool === 'corner'
+        ? t(ui.selection.size === 0 ? 'hint.corner1' : 'hint.corner2')
+        : ui.tool === 'room'
         ? t('hint.roomPlace')
         : ui.tool === 'floor'
           ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
@@ -1877,6 +1949,8 @@ export class App {
     const altGuide = ui.view === 'plan' ? [keyHint('Alt', t('key.guide'))] : [];
     const keys = ui.guide
       ? [keyHint('Enter', t('key.placeGuide')), keyHint('Esc', t('key.cancel'))]
+      : ui.tool === 'split' || ui.tool === 'corner'
+      ? [keyHint('Esc', t('key.exit'))]
       : mod
       ? [
           keyHint('C', t(mod.copy ? 'key.copyOn' : 'key.copyOff')),

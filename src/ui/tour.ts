@@ -1,5 +1,5 @@
-// The optional first-use tour (ref/chat.txt:240): four stops, the tool bar, the properties panel,
-// the footer and the command palette. A non-modal card beside each part (callout.ts), the part
+// The optional first-use tour (ref/chat.txt:240): five stops, the tool bar, the edit tools, the
+// properties panel, the footer and the command palette. A non-modal card beside each part (callout.ts), the part
 // ringed, the rest of the page still visible (docs/adr/0002-ui-patterns.md): the focus moves into
 // the card at each stop and Tab stays in it, Esc skips, each stop says in words where the part is.
 
@@ -17,6 +17,7 @@ interface Stop {
 
 export const TOUR: readonly Stop[] = [
   { target: (app) => app.shell.tools, title: 'tour.tools.title', text: 'tour.tools.text' },
+  { target: (app) => app.shell.editTools, title: 'tour.edit.title', text: 'tour.edit.text' },
   { target: (app) => app.shell.panel, title: 'tour.panel.title', text: 'tour.panel.text' },
   { target: (app) => app.shell.foot, title: 'tour.foot.title', text: 'tour.foot.text' },
   { target: (app) => app.shell.commands, title: 'tour.palette.title', text: 'tour.palette.text' },

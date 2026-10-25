@@ -4,9 +4,10 @@
 import { el } from './controls';
 import { t, type MessageKey } from './i18n';
 import { icon, type IconName } from './icons';
+import type { MenuItem } from './menu';
 
-/** `modify`: Move, Copy, Rotate, Scale or Mirror on the selection (tools/modify-tool.ts); no button of its own. */
-export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'measure' | 'modify';
+/** `modify`: Move, Copy, Rotate, Scale or Mirror on the selection (tools/modify-tool.ts), a button each. */
+export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'measure' | 'modify' | 'split' | 'corner';
 export type ViewId = '3d' | 'plan';
 
 const SOON: readonly { icon: IconName; key: MessageKey }[] = [{ icon: 'dimension', key: 'tool.dimension' }];
@@ -60,6 +61,7 @@ export function buildShell(root: HTMLElement) {
   right.append(commands, shortcuts, lang, theme, newFile, open, save, panelToggle, fileInput);
   top.append(left, center, right);
 
+  // The side bar holds what draws; what changes or measures the drawing is in the top bar (below).
   const tools = el('nav', { class: 'tools', 'aria-label': 'Tools' });
   const toolSelect = iconButton('pointer', 'icon-btn tool');
   const toolWall = iconButton('wall', 'icon-btn tool');
@@ -67,29 +69,55 @@ export function buildShell(root: HTMLElement) {
   const toolWindow = iconButton('window', 'icon-btn tool');
   const toolFloor = iconButton('slab', 'icon-btn tool');
   const toolRoom = iconButton('room', 'icon-btn tool');
-  const toolMeasure = iconButton('ruler', 'icon-btn tool');
-  // The Modify tools, on the selection (tools/modify-tool.ts), as Revit's Modify panel: each its own button.
-  const modifyTools = {
-    move: iconButton('move', 'icon-btn tool'),
-    copy: iconButton('copy', 'icon-btn tool'),
-    rotate: iconButton('rotate', 'icon-btn tool'),
-    mirror: iconButton('mirror', 'icon-btn tool'),
-    scale: iconButton('scale', 'icon-btn tool'),
-  };
   // Every tool its own button and icon, one click away, in families parted by a line: building
   // (wall, floor), openings (door, window), spaces (room). A tool kept in another's submenu was not
   // found (the user's request: "cada uma das 4 deve ter o seu ícone").
   const sep = () => el('div', { class: 'group-sep' });
-  tools.append(toolSelect, sep(), toolWall, toolFloor, sep(), toolDoor, toolWindow, sep(), toolRoom, sep(), ...Object.values(modifyTools));
+  tools.append(toolSelect, sep(), toolWall, toolFloor, sep(), toolDoor, toolWindow, sep(), toolRoom);
+
+  // The tools that change or measure what is drawn, in the top bar beside undo and redo, as the Modify
+  // tab of Revit's ribbon and the top tool bars of SketchUp and ArchiCAD (the user's request: "essas
+  // ferramentas deveriam ficar na barra superior e não na barra de ferramentas lateral").
+  const editTools = el('div', { class: 'edit-tools', role: 'group' });
+  const editIcons = new Map<HTMLButtonElement, IconName>();
+  const editTool = (name: IconName) => {
+    const b = iconButton(name, 'icon-btn tool');
+    editIcons.set(b, name);
+    return b;
+  };
+  // Move, Copy, Rotate, Mirror and Scale on the selection (tools/modify-tool.ts), as Revit's Modify panel.
+  const modifyTools = {
+    move: editTool('move'),
+    copy: editTool('copy'),
+    rotate: editTool('rotate'),
+    mirror: editTool('mirror'),
+    scale: editTool('scale'),
+  };
+  // On walls under the pointer, without a selection first: divide one, make two meet at a corner.
+  const toolSplit = editTool('split');
+  const toolCorner = editTool('corner');
   // Measuring and dimensioning, together: the tape works, the dimension is to come.
-  tools.append(el('div', { class: 'group-sep' }), toolMeasure);
-  const soonButtons: { b: HTMLButtonElement; key: MessageKey }[] = [];
-  for (const s of SOON) {
-    const b = iconButton(s.icon, 'icon-btn tool');
+  const toolMeasure = editTool('ruler');
+  const soonButtons = SOON.map((s) => {
+    const b = editTool(s.icon);
     b.disabled = true;
-    soonButtons.push({ b, key: s.key });
-    tools.append(b);
-  }
+    return { b, key: s.key };
+  });
+  const moreTools = iconButton('more');
+  moreTools.setAttribute('aria-haspopup', 'menu');
+  moreTools.hidden = true;
+  const editItems: HTMLElement[] = [
+    ...Object.values(modifyTools),
+    el('span', { class: 'sep' }),
+    toolSplit,
+    toolCorner,
+    el('span', { class: 'sep' }),
+    toolMeasure,
+    ...soonButtons.map((s) => s.b),
+  ];
+  editTools.append(...editItems, moreTools);
+  left.append(el('span', { class: 'sep edit-sep' }), editTools);
+
   const sidebar = iconButton('sidebar', 'icon-btn tool');
   tools.append(el('div', { class: 'spacer' }), sidebar);
   const browser = el('aside', { class: 'browser', 'aria-label': 'Project browser' });
@@ -139,10 +167,65 @@ export function buildShell(root: HTMLElement) {
   helpBack.hidden = true;
   root.append(top, tools, viewport, panel, foot, helpBack);
 
+  /** The More button pressed while the tool in use is one of those folded into it. */
+  const syncMore = () => moreTools.setAttribute('aria-pressed', String(editItems.some((x) => x.hidden && x.getAttribute('aria-pressed') === 'true')));
+  // The edit tools keep to the room the top bar has: from the last, those that do not fit go to the
+  // More menu (a tool bar's overflow, as Revit folds its ribbon's panels). The level and the views stay
+  // centred while both sides fit beside them; when they do not, the left side takes what the right one
+  // leaves. On a phone the tools share the second row with the level and the views (styles.css).
+  const phone = matchMedia('(max-width: 600px)');
+  const overflowing = () => {
+    if (!phone.matches) return top.scrollWidth > top.clientWidth + 1;
+    // Wrapped below the level and the views (centred on one row, they are of other heights), or past the edge.
+    const e = editTools.getBoundingClientRect();
+    return e.top >= center.getBoundingClientRect().bottom || e.right > top.getBoundingClientRect().right;
+  };
+  const fitTop = () => {
+    // On a phone the tools are the bar's own item, for its second row; the first row stays as it was.
+    if (phone.matches && editTools.parentElement !== top) right.before(editTools);
+    if (!phone.matches && editTools.parentElement !== left) left.append(editTools);
+    for (const x of editItems) x.hidden = false;
+    moreTools.hidden = true;
+    left.style.minWidth = right.style.minWidth = phone.matches ? '' : 'max-content';
+    for (let i = editItems.length - 1; i >= 0 && overflowing(); i--) {
+      editItems[i]!.hidden = true;
+      // A line with nothing after it goes with what it parted.
+      if (editItems[i - 1]?.classList.contains('sep')) editItems[--i]!.hidden = true;
+      moreTools.hidden = false;
+    }
+    // Too narrow with every tool folded: the project's name gives way, as before the tools came here.
+    if (overflowing()) left.style.minWidth = right.style.minWidth = '';
+    syncMore();
+  };
+  new ResizeObserver(fitTop).observe(top);
+  phone.addEventListener('change', fitTop);
+  void document.fonts.ready.then(fitTop);
+  /** The folded tools as menu items: each one's icon, its tip's name and key; choosing it clicks it. */
+  const foldedTools = (): MenuItem[] => {
+    const items: MenuItem[] = [];
+    let line = false;
+    for (const x of editItems) {
+      if (!x.hidden) continue;
+      if (x.classList.contains('sep')) {
+        line = items.length > 0;
+        continue;
+      }
+      const b = x as HTMLButtonElement;
+      // Its name as the tip gives it (tooltip.ts takes the title away; the aria-label stays), the
+      // trailing "(key)" to the right, as the right-click menu shows keys.
+      const [, label, keys] = /^(.*?)(?: \(([^)]+)\))?$/.exec(b.getAttribute('aria-label') ?? '')!;
+      // Dimmed on the bar (nothing selected that it takes), not to be chosen in the menu, as in the palette.
+      const off = b.disabled || b.getAttribute('aria-disabled') === 'true';
+      items.push({ label: label!, ...(keys ? { keys } : {}), icon: editIcons.get(b)!, disabled: off, separated: line, run: () => b.click() });
+      line = false;
+    }
+    return items;
+  };
+
   const parts = {
     homeBtn, projectName, undo, redo, level, newFile, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, modifyTools, dims, browser, sidebar,
-    emptyHint, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack,
+    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, modifyTools, toolSplit, toolCorner, dims, browser, sidebar,
+    emptyHint, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, editTools, moreTools, fitTop, syncMore, foldedTools,
   };
 
   const relabel = () => {
@@ -175,6 +258,8 @@ export function buildShell(root: HTMLElement) {
     tip(modifyTools.rotate, 'tool.rotateKey');
     tip(modifyTools.mirror, 'tool.mirrorKey');
     tip(modifyTools.scale, 'tool.scaleKey');
+    tip(toolSplit, 'tool.splitKey');
+    tip(toolCorner, 'tool.cornerKey');
     for (const s of soonButtons) {
       s.b.title = `${t(s.key)}: ${t('tool.soon')}`;
       s.b.setAttribute('aria-label', s.b.title);
@@ -201,11 +286,15 @@ export function buildShell(root: HTMLElement) {
     labelled(explode, 'view3d.explode', 'view3d.explodeTip');
     labelled(cut, 'view3d.cut', 'view3d.cutTip');
     tip(snapBtn, 'foot.snap');
+    tip(moreTools, 'top.moreTools');
+    editTools.setAttribute('aria-label', t('aria.editTools'));
     emptyHint.textContent = t('empty.hint');
     tools.setAttribute('aria-label', t('aria.tools'));
     planCanvas.setAttribute('aria-label', t('view.plan'));
     glCanvas.setAttribute('aria-label', t('view.3d'));
     panel.setAttribute('aria-label', t('aria.properties'));
+    // Another language, other widths: the views' names, the tips the folded tools are named by.
+    fitTop();
   };
   return { ...parts, relabel };
 }

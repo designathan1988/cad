@@ -93,7 +93,7 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
   Alt (arrastar sem as paredes unidas) dito no rodapé antes do arraste; Esc cancela o arraste com Alt.
 
 - Modificar (como o painel Modificar do Revit e Move/Rotate/Scale do SketchUp): Mover (Shift+M), Copiar
-  (Shift+C), Girar (Shift+R), Espelhar (Shift+X) e Escalar (Shift+E), na barra de ferramentas (cada um
+  (Shift+C), Girar (Shift+R), Espelhar (Shift+X) e Escalar (Shift+E), na barra superior (cada um
   com o seu ícone), na paleta, e Mover no menu e na barra flutuante. Ponto-base e destino com encaixes
   (ângulos de 15° e Shift a partir da base), ou valor digitado (distância, graus, fator); Enter usa o
   centro da seleção como centro do giro, da escala ou do espelho; C liga/desliga a cópia (Espelhar já
@@ -124,6 +124,22 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
   da ponta (até 8 m, com a tracejada saindo da ponta) e paralela/perpendicular a uma parede inclinada ao
   desenhar; cada um com o nome da parede no rótulo.
 
+- Dividir (Shift+S), Unir (Shift+J) e Canto (Shift+T), como Split, juntar paredes e Trim/Extend to
+  Corner do Revit: Dividir corta a parede onde se clica (o meio encaixa; arco vira dois arcos), recusa
+  passar por porta ou janela e parte menor que 5 cm, e as portas e janelas ficam onde estavam (cada uma
+  na parte em que está); a parte nova vem depois das outras paredes, que mantêm os números. Unir junta
+  duas paredes retas em linha, ponta com ponta, do mesmo tipo, linha de referência e altura (menu,
+  barra flutuante e paleta). Canto: clique numa parede e na outra, e as duas vão até onde as linhas se
+  cruzam; Esc solta a primeira, outro Esc sai.
+
+- Barra superior com as ferramentas de edição (pedido: "essas ferramentas deveriam ficar na barra
+  superior e não na barra de ferramentas lateral"): Mover, Copiar, Girar, Espelhar, Escalar | Dividir,
+  Canto | Medir, Cota, ao lado de desfazer e refazer, como a aba Modificar do Revit e as barras do
+  SketchUp e do ArchiCAD; a barra lateral fica com o que desenha. O que não cabe vai, do fim para o
+  começo, para o botão "Mais ferramentas" (…), um menu com ícone, nome e tecla, marcado quando a
+  ferramenta em uso está nele; no celular as ferramentas vão para a segunda linha, ao lado do pavimento
+  e das vistas. O tour ganhou a parada "Editar".
+
 Achados desta rodada ainda abertos:
 - Modificar: porta ou janela sozinha não é levada (vai com a parede); cópia para outro pavimento;
   matriz (várias cópias em série) e deslocamento paralelo (offset) ainda não.
@@ -133,6 +149,10 @@ Achados desta rodada ainda abertos:
   apareceu na Casa Jardim vinha de uma parede de 20 cm (provável resto de teste meu), devolvida a 15 cm.
 - Caixa de corte com alças (Revit Section Box, Vectorworks Clip Cube), corte vertical a partir de uma
   linha na planta, elevações, ocultar/isolar temporário, raio-X, vistas salvas.
+- Barra superior em tela de toque (botões de 44 px), visto com a emulação de toque do Chrome: a 768 px
+  os botões da direita (comandos, atalhos, idioma, tema…) cobrem as vistas, e a 375 px Refazer fica sob
+  Comandos. Já acontecia antes das ferramentas de edição irem para o alto (os mesmos botões, sem elas,
+  não cabem); falta decidir quais saem para a paleta nessas larguras.
 - Duas folhas de porta que se cruzam (ao colocar uma porta perto de outra) não dão aviso.
 - Mudar o lado de abertura não tem atalho no próprio desenho (só painel e barra).
 
@@ -238,9 +258,8 @@ Ferramentas de edição (valem para todos os elementos)
   retas paralelas (alinhar com a primeira, distribuir com espaços iguais, 2026-10-25); falta alinhar
   cômodos e paredes a outros elementos (a um eixo, a uma face).
 - Deslocar, offset (l.109): falta.
-- Aparar e estender (l.109): falta.
-- Dividir (l.109): falta.
-- Unir (l.109): falta.
+- Aparar e estender (l.109): parcial. Canto (Shift+T) leva duas paredes até se encontrarem; falta aparar
+  ou estender uma parede até outra sem mexer nesta (Trim/Extend Single Element do Revit).
 - Cortar pelo meio (l.109): falta.
 - Editar contornos: arrastar vértices e lados, inserir e remover vértices, lado reto em arco (l.110): falta.
 - Alças e cotas temporárias clicáveis em cada elemento (l.111): parcial, paredes e aberturas; o arco não tem cota nem alça.

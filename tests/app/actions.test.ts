@@ -13,7 +13,7 @@ import { VIEW_3D_DEFAULT } from '../../src/app/view-3d';
 // Only what appActions reads; the actions themselves are not run here.
 function fakeApp(selection: string[] = [], view: '3d' | 'plan' = 'plan') {
   const store = createStore(addLevel('lvl_up', 'Upper').apply(newDocument()));
-  return { store, ui: { selection: new Set(selection), view, levelId: 'lvl_ground', hidden: new Set(), view3d: VIEW_3D_DEFAULT } } as unknown as App;
+  return { store, ui: { selection: new Set(selection), view, levelId: 'lvl_ground', hidden: new Set(), view3d: VIEW_3D_DEFAULT }, canMergeSelection: () => false } as unknown as App;
 }
 const openers = { help: () => {}, levels: () => {}, wallTypes: () => {}, tour: () => {}, openFile: () => {} };
 
@@ -32,7 +32,7 @@ describe('palette actions', () => {
     for (const id of [
       'tool.select', 'tool.wall', 'tool.arcWall', 'tool.floor', 'tool.door', 'tool.window', 'tool.room',
       'view.3d', 'view.plan', 'view.frameSelection', 'view.frameAll',
-      'edit.undo', 'edit.redo', 'edit.delete', 'edit.selectAll', 'edit.clearSelection',
+      'edit.undo', 'edit.redo', 'edit.delete', 'edit.selectAll', 'edit.clearSelection', 'edit.split', 'edit.corner', 'edit.merge',
       'file.new', 'file.open', 'file.save', 'settings.snaps', 'settings.theme', 'settings.language', 'settings.panel', 'settings.browser',
       'layer.walls', 'layer.openings', 'layer.rooms', 'layer.floors', 'layer.guides', 'edit.clearGuides',
       'view.levelsAll', 'view.levelsBelow', 'view.levelsCurrent', 'view.explode', 'view.cut',
@@ -46,6 +46,7 @@ describe('palette actions', () => {
       'tool.select': 'V', 'tool.wall': 'W', 'tool.floor': 'L', 'tool.door': 'D', 'tool.window': 'Shift+W', 'tool.room': 'R',
       'view.3d': '1', 'view.plan': '2', 'view.frameSelection': 'F', 'view.frameAll': 'Home',
       'edit.undo': 'Ctrl+Z', 'edit.redo': 'Ctrl+Shift+Z', 'edit.delete': 'Del', 'edit.selectAll': 'Ctrl+A',
+      'edit.split': 'Shift+S', 'edit.corner': 'Shift+T', 'edit.merge': 'Shift+J',
       'file.open': 'Ctrl+O', 'file.save': 'Ctrl+S', 'settings.snaps': 'S', 'settings.language': 'Shift+L', 'help.shortcuts': '?',
     });
   });
@@ -53,7 +54,7 @@ describe('palette actions', () => {
   it('enabled only when it can run: nothing to undo, nothing selected, the view and level already shown', () => {
     const on = (app: App) => Object.fromEntries(appActions(app, openers).map((a) => [a.id, a.enabled]));
     const empty = on(fakeApp());
-    expect(empty).toMatchObject({ 'edit.undo': false, 'edit.redo': false, 'edit.delete': false, 'view.frameSelection': false, 'view.plan': false, 'view.3d': true, 'level.lvl_ground': false, 'level.lvl_up': true });
+    expect(empty).toMatchObject({ 'edit.merge': false, 'edit.undo': false, 'edit.redo': false, 'edit.delete': false, 'view.frameSelection': false, 'view.plan': false, 'view.3d': true, 'level.lvl_ground': false, 'level.lvl_up': true });
     expect(on(fakeApp(['w1'], '3d'))).toMatchObject({ 'edit.delete': true, 'view.frameSelection': true, 'view.3d': false, 'view.plan': true });
   });
 

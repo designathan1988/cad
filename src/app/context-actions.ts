@@ -3,6 +3,7 @@
 
 import type { Doc } from './document';
 import { canTransform } from '../tools/transform';
+import { canMerge } from '../tools/split';
 
 export type ContextId =
   | 'move'
@@ -10,6 +11,7 @@ export type ContextId =
   | 'rotate'
   | 'mirror'
   | 'scale'
+  | 'merge'
   | 'flipWall'
   | 'editType'
   | 'flipHinge'
@@ -28,6 +30,8 @@ export type ContextId =
 
 /** `levelId`: the level shown, whose guides can be deleted at once. */
 export function contextIds(doc: Doc, selection: readonly string[], levelId?: string): ContextId[] {
+  const walls = selection.filter((id) => doc.walls.some((w) => w.id === id));
+  const merge = selection.length === 2 && walls.length === 2 && canMerge(doc, walls[0]!, walls[1]!) ? (['merge'] as const) : [];
   const guides = levelId !== undefined && doc.guides.some((g) => g.levelId === levelId) ? (['clearGuides'] as const) : [];
   if (selection.length === 0) return ['drawWall', 'frameAll', ...guides, 'commands'];
   // Move first, for what the Modify tools take (walls, rooms, outline floors, guides); the five of them
@@ -36,7 +40,7 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: str
   if (selection.length > 1) {
     const openings = selection.map((id) => doc.openings.find((o) => o.id === id));
     const oneWall = openings.every((o) => o !== undefined && o.wallId === openings[0]!.wallId);
-    return [...modify, ...(oneWall ? (['distribute'] as const) : []), 'frameSelection', 'clearSelection', 'delete'];
+    return [...modify, ...merge, ...(oneWall ? (['distribute'] as const) : []), 'frameSelection', 'clearSelection', 'delete'];
   }
   const id = selection[0]!;
   // A guide has no extent to frame.

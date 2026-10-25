@@ -245,6 +245,16 @@ export function wireInput(app: App): void {
       ui.snap = snapped(e);
       return app.refresh();
     }
+    if (ui.tool === 'split') {
+      // Where the cut would go: on a wall's body or its middle, named.
+      ui.snap = snapped(e);
+      return app.render();
+    }
+    if (ui.tool === 'corner') {
+      // The wall a click would take, lit.
+      ui.hover = at && ui.view === 'plan' ? wallAt(app.visibleGeometry(), at.p, undefined, PICK_PX / app.plan.scale) : null;
+      return app.render();
+    }
     if (ui.tool === 'floor') {
       // The outline's next corner where a click would put it: snapped, shown with its label.
       ui.snap = snapped(e);
@@ -374,6 +384,17 @@ export function wireInput(app: App): void {
       if (at) app.modifyEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
       return;
     }
+    if (ui.tool === 'split') {
+      const s = snapped(e);
+      const at = aimAt3d(e);
+      if (at) app.splitAt(s?.point ?? at.p, s?.wallId ?? (ui.view === 'plan' ? (wallAt(app.visibleGeometry(), at.p, undefined, PICK_PX / app.plan.scale) ?? undefined) : undefined));
+      return;
+    }
+    if (ui.tool === 'corner') {
+      const at = worldAt(e);
+      if (at) app.cornerClick(ui.view === 'plan' ? wallAt(app.visibleGeometry(), at.p, undefined, PICK_PX / app.plan.scale) : app.scene.pick(e.clientX, e.clientY));
+      return;
+    }
     if (ui.tool === 'measure') {
       const at = worldAt(e);
       if (at) app.measureEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
@@ -447,7 +468,14 @@ export function wireInput(app: App): void {
   shell.toolRoom.addEventListener('click', () => app.setTool('room'));
   shell.toolFloor.addEventListener('click', () => app.setTool('floor'));
   shell.toolMeasure.addEventListener('click', () => app.setTool('measure'));
+  shell.toolSplit.addEventListener('click', () => app.setTool('split'));
+  shell.toolCorner.addEventListener('click', () => app.setTool('corner'));
   for (const [kind, b] of Object.entries(shell.modifyTools)) b.addEventListener('click', () => app.startModify(kind as ModifyKind));
+  // The edit tools the top bar had no room for, under its More button.
+  shell.moreTools.addEventListener('click', () => {
+    const r = shell.moreTools.getBoundingClientRect();
+    showMenu(shell.foldedTools(), { x: r.left, y: r.bottom + 4 }, t('top.moreTools'));
+  });
   shell.snapBtn.addEventListener('click', () => app.toggleSnaps());
   for (const [mode, b] of Object.entries(shell.levelsShown)) b.addEventListener('click', () => app.setView3D({ levels: mode as LevelsShown }));
   shell.explode.addEventListener('click', () => app.setView3D({ explode: !ui.view3d.explode }));
@@ -616,6 +644,9 @@ export function wireInput(app: App): void {
       if (ui.tool === 'room' || ui.tool === 'floor') return app.setTool('select');
       if (ui.tool === 'measure') return ui.measure.kind !== 'idle' ? app.measureEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? app.wallEvent({ kind: 'escape' }) : app.setTool('select');
+      if (ui.tool === 'split') return app.setTool('select');
+      // The Corner tool lets go of its first wall first (below), then of itself.
+      if (ui.tool === 'corner' && ui.selection.size === 0) return app.setTool('select');
       ui.selection.clear();
       return app.refresh();
     }
@@ -644,6 +675,9 @@ export function wireInput(app: App): void {
     if (e.shiftKey && key === 'r') return app.startModify('rotate');
     if (e.shiftKey && key === 'e') return app.startModify('scale');
     if (e.shiftKey && key === 'x') return app.startModify('mirror');
+    if (e.shiftKey && key === 's') return app.setTool('split');
+    if (e.shiftKey && key === 't') return app.setTool('corner');
+    if (e.shiftKey && key === 'j') return app.mergeSelection();
     if (e.shiftKey) return;
     if (key === 'c' && ui.tool === 'modify') return app.toggleModifyCopy();
     if (key === 'w') return app.setTool('wall');
@@ -722,6 +756,9 @@ function showHelp(app: App): void {
     ['Shift+R', t('pal.rotate')],
     ['Shift+E', t('pal.scale')],
     ['Shift+X', t('pal.mirror')],
+    ['Shift+S', t('pal.split')],
+    ['Shift+T', t('pal.corner')],
+    ['Shift+J', t('pal.merge')],
     [t('help.guideKey'), t('help.guide')],
     ['1 / 2', `${t('view.3d')} / ${t('view.plan')}`],
     ['Enter', t('help.enter')],

@@ -453,11 +453,21 @@ button.project-name:hover {
   flex: none;
 }
 /* A Modify tool with nothing selected that it takes: dimmed, still clickable (it says what to select). */
-.tools .tool[aria-disabled='true'] {
+.tool[aria-disabled='true'] {
   opacity: 0.4;
 }
 .tools .spacer {
   flex: 1;
+}
+
+/* The edit tools in the top bar (shell.ts): those that do not fit are folded into the More menu. */
+.edit-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-half);
+}
+.edit-tools > [hidden] {
+  display: none;
 }
 
 /* Viewport */
@@ -977,8 +987,9 @@ button.project-name:hover {
     display: none;
   }
 }
-/* Phones: the top bar takes two rows (the level and the views go below), the buttons that need a
-   keyboard leave, and the panel is a sheet over the lower part of the drawing, not a column over it. */
+/* Phones: the top bar takes two rows (the level, the views and the edit tools go below), the buttons
+   that need a keyboard leave, and the panel is a sheet over the lower part of the drawing, not a column
+   over it. */
 @media (max-width: 600px) {
   :root {
     --top-h: 84px;
@@ -988,10 +999,23 @@ button.project-name:hover {
     align-content: center;
     row-gap: var(--sp-half);
   }
+  /* The second row, after a break: the level, the views and the edit tools, centred together (on a
+     phone shell.ts: fitTop puts the edit tools in the bar itself, out of its left part). */
+  .top::after {
+    content: '';
+    order: 2;
+    flex-basis: 100%;
+  }
   .top .center {
     order: 3;
-    flex: 1 0 100%;
-    justify-content: center;
+    margin-left: auto;
+  }
+  .top > .edit-tools {
+    order: 4;
+    margin-right: auto;
+  }
+  .top .edit-sep {
+    display: none;
   }
   .project-name {
     max-width: calc(var(--name-w) * 0.44);
@@ -1190,6 +1214,16 @@ button.project-name:hover {
 }
 .menu-label {
   flex: 1;
+}
+/* With icons (the folded tools): the icon near its name, the key still apart. */
+.menu-item:has(> .icon) {
+  gap: var(--sp-2);
+}
+.menu-item:has(> .icon) .menu-keys {
+  margin-left: var(--sp-4);
+}
+.menu-item > .icon {
+  color: var(--text-2);
 }
 .menu-keys {
   color: var(--text-2);
