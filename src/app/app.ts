@@ -49,7 +49,16 @@ import { nudge } from '../tools/nudge';
 import { type Doc, type DocWall, elementIds, levelOf, newDocument, startLevel, type WallDefaults, wallNumber, wallOverrides } from './document';
 
 /** The snap labels that name their wall. */
-const SNAP_OF = { endpoint: 'snap.endpointOf', midpoint: 'snap.midpointOf', onWall: 'snap.onWallOf', aligned: 'snap.alignedOf' } as const;
+const SNAP_OF = {
+  endpoint: 'snap.endpointOf',
+  midpoint: 'snap.midpointOf',
+  onWall: 'snap.onWallOf',
+  aligned: 'snap.alignedOf',
+  perpendicular: 'snap.perpendicularOf',
+  extension: 'snap.extensionOf',
+  parallel: 'snap.parallelOf',
+  intersection: 'snap.intersectionOf',
+} as const;
 import { boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, openingOutline } from './geometry';
 import { renderBrowser } from '../ui/browser';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';

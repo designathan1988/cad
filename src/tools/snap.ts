@@ -11,11 +11,15 @@ export type SnapKind =
   | 'corner'
   | 'start'
   | 'guideCross'
+  | 'intersection'
   | 'origin'
   | 'midpoint'
   | 'onWall'
   | 'onFace'
   | 'onGuide'
+  | 'perpendicular'
+  | 'extension'
+  | 'parallel'
   | 'aligned'
   | 'axis'
   | 'angle'
@@ -74,12 +78,20 @@ const RADIUS_PX = 10;
 const ORIGIN = vec(0, 0);
 const ANGLE_STEP = 15;
 const ANGLE_TOL_DEG = 3;
+/** How far past a wall's end its extension catches the cursor (m). */
+const EXTENSION_REACH = 8;
+/** A perpendicular foot this near the last point is the point itself, not a snap. */
+const MIN_SNAP_RUN = 0.01;
 
 export const snapLabel: Readonly<Record<SnapKind, MessageKey | null>> = {
   endpoint: 'snap.endpoint',
   corner: 'snap.corner',
   start: 'snap.start',
   guideCross: 'snap.guideCross',
+  intersection: 'snap.intersection',
+  perpendicular: 'snap.perpendicular',
+  extension: 'snap.extension',
+  parallel: 'snap.parallel',
   origin: 'snap.origin',
   midpoint: 'snap.midpoint',
   onWall: 'snap.onWall',
@@ -128,6 +140,16 @@ export function snap(input: SnapInput): Snap {
   ]);
   const nearCross = closest(crossings, cursor, r);
   if (nearCross) return { point: nearCross, kind: 'guideCross' };
+  // Where two walls' lines cross near the cursor, on them or on their extensions (Revit's SI): a wall
+  // drawn to where two others would meet. Straight walls whose lines pass within reach of the cursor.
+  const straight = input.segments.map((s, i) => ({ s, i })).filter(({ s }) => !s.face && !s.bulge && distance(s.start, s.end) > 0);
+  const nearLine = straight.filter(({ s }) => Math.abs(dot(sub(cursor, s.start), perpOf(normalize(sub(s.end, s.start))))) <= r + (s.reach ?? 0));
+  for (let a = 0; a < nearLine.length; a++) {
+    for (let b = a + 1; b < nearLine.length; b++) {
+      const p = lineCrossing(nearLine[a]!.s.start, normalize(sub(nearLine[a]!.s.end, nearLine[a]!.s.start)), nearLine[b]!.s.start, normalize(sub(nearLine[b]!.s.end, nearLine[b]!.s.start)));
+      if (p && distance(p, cursor) <= r) return { point: p, kind: 'intersection', ...of(nearLine[a]!.i) };
+    }
+  }
   // The crossing of the axes drawn on the plan: where a project is usually started.
   if (distance(cursor, ORIGIN) <= r) return { point: ORIGIN, kind: 'origin' };
   // A face's edges are pieces of a wall's body, cut where other walls and openings meet it: their
@@ -139,17 +161,44 @@ export function snap(input: SnapInput): Snap {
     r,
   );
   if (nearMid) return { point: nearMid, kind: 'midpoint', ...of(mids.find((m) => m.p === nearMid)!.i) };
-  // Angle from the last point in 15° steps, with the length on the 5 cm grid.
+  // Angle from the last point in 15° steps, or along a wall's own direction (parallel to it, or square
+  // to it, as SketchUp's and ArchiCAD's do), whichever is nearest; the length on the 5 cm grid.
   let best: Snap | null = null;
   let ray: Point2 | null = null;
   if (from && distance(cursor, from) > r) {
     const d = sub(cursor, from);
     const deg = (Math.atan2(d.y, d.x) * 180) / Math.PI;
-    const snapped = Math.round(deg / ANGLE_STEP) * ANGLE_STEP;
-    if (Math.abs(deg - snapped) <= ANGLE_TOL_DEG) {
-      ray = vec(Math.cos((snapped * Math.PI) / 180), Math.sin((snapped * Math.PI) / 180));
+    const off = (a: number) => Math.abs(((((deg - a) % 180) + 270) % 180) - 90);
+    const step = Math.round(deg / ANGLE_STEP) * ANGLE_STEP;
+    let pick: { deg: number; kind: SnapKind; wall?: number } | null = Math.abs(deg - step) <= ANGLE_TOL_DEG ? { deg: step, kind: 'angle' } : null;
+    for (const { s, i } of straight) {
+      const w = (Math.atan2(s.end.y - s.start.y, s.end.x - s.start.x) * 180) / Math.PI;
+      // A wall at a multiple of 15° adds nothing the steps do not give.
+      if (Math.abs(w / ANGLE_STEP - Math.round(w / ANGLE_STEP)) * ANGLE_STEP < 1e-6) continue;
+      for (const a of [w, w + 90]) {
+        const e = off(a);
+        if (e > ANGLE_TOL_DEG || (pick && e >= off(pick.deg))) continue;
+        // The direction a takes nearest the pointer's, along it or against it.
+        const along = Math.abs(((((deg - a) % 360) + 540) % 360) - 180) <= 90 ? a : a + 180;
+        pick = { deg: along, kind: 'parallel', wall: i };
+      }
+    }
+    if (pick) {
+      ray = vec(Math.cos((pick.deg * Math.PI) / 180), Math.sin((pick.deg * Math.PI) / 180));
       const len = Math.max(GRID_STEP, Math.round(dot(d, ray) / GRID_STEP) * GRID_STEP);
-      best = { point: add(from, scale(ray, len)), kind: 'angle' };
+      best = { point: add(from, scale(ray, len)), kind: pick.kind, ...(pick.wall !== undefined ? of(pick.wall) : {}) };
+    }
+  }
+
+  // Square to a wall from the last point (Revit's SP): the foot of the point on the wall's line, when
+  // the cursor is near it.
+  if (from) {
+    for (const { s, i } of straight) {
+      const u = normalize(sub(s.end, s.start));
+      const foot = add(s.start, scale(u, dot(sub(from, s.start), u)));
+      const t = dot(sub(foot, s.start), u);
+      if (t <= 0 || t >= distance(s.start, s.end) || distance(foot, from) < MIN_SNAP_RUN) continue;
+      if (distance(foot, cursor) <= r) return { point: foot, kind: 'perpendicular', ...of(i) };
     }
   }
 
@@ -194,6 +243,23 @@ export function snap(input: SnapInput): Snap {
     const onRay = crossing && dot(sub(crossing, from!), ray!) > 0 && distance(crossing, cursor) <= slack ? crossing : null;
     const along = Math.round(dot(sub(cursor, g.point), g.dir) / GRID_STEP) * GRID_STEP;
     return { point: onRay ?? add(g.point, scale(g.dir, along)), kind: 'onGuide' };
+  }
+
+  // On a wall's line past its end (SketchUp's extension, ArchiCAD's): within the radius of it and a
+  // few metres of the end, the dashed line from the end showing it. On a snapped direction, where that
+  // direction meets the extension.
+  for (const { s, i } of straight) {
+    const u = normalize(sub(s.end, s.start));
+    const len = distance(s.start, s.end);
+    const t = dot(sub(cursor, s.start), u);
+    const beyond = t > len ? t - len : t < 0 ? -t : 0;
+    if (beyond <= r || beyond > EXTENSION_REACH) continue;
+    if (Math.abs(dot(sub(cursor, s.start), perpOf(u))) > r) continue;
+    const end = t > len ? s.end : s.start;
+    const cut = ray && from ? lineCrossing(from, ray, s.start, u) : null;
+    const slack = from ? r + distance(cursor, from) * Math.tan((ANGLE_TOL_DEG * Math.PI) / 180) : r;
+    const p = cut && distance(cut, cursor) <= slack ? cut : add(s.start, scale(u, Math.round(t / GRID_STEP) * GRID_STEP));
+    return { point: p, kind: 'extension', guideFrom: end, ...of(i) };
   }
 
   // Aligned with another wall end, horizontally or vertically, within the radius. On a snapped

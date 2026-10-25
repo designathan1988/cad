@@ -119,6 +119,11 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
   digitados como largura;profundidade (para o lado do cursor); quatro paredes num só passo de desfazer,
   no sentido anti-horário para o lado externo ficar para fora; prévia com as juntas e a medida "L × P".
 
+- Encaixes novos: interseção das linhas de duas paredes (inclusive onde se encontrariam se fossem
+  prolongadas), perpendicular a uma parede a partir do último ponto, extensão da linha de uma parede além
+  da ponta (até 8 m, com a tracejada saindo da ponta) e paralela/perpendicular a uma parede inclinada ao
+  desenhar; cada um com o nome da parede no rótulo.
+
 Achados desta rodada ainda abertos:
 - Modificar: porta ou janela sozinha não é levada (vai com a parede); cópia para outro pavimento;
   matriz (várias cópias em série) e deslocamento paralelo (offset) ainda não.

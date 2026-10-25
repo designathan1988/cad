@@ -176,3 +176,31 @@ describe('snaps on an arc wall', () => {
     expect(s.point.y).toBeCloseTo(-Math.sqrt(3), 9);
   });
 });
+
+describe('smart snaps', () => {
+  it('intersection: where two walls would meet if they went on, (4, 0), before either reaches it', () => {
+    const s = snap(input([4.004, 0.003], { segments: [{ start: vec(0, 0), end: vec(2, 0) }, { start: vec(4, 1), end: vec(4, 3) }] }));
+    expect(s.kind).toBe('intersection');
+    expect(s.point.x).toBeCloseTo(4, 12);
+    expect(s.point.y).toBeCloseTo(0, 12);
+  });
+
+  it('perpendicular: from (1, 3) down to the wall, the foot (1, 0)', () => {
+    const s = snap(input([1.004, 0.004], { from: vec(1, 3) }));
+    expect(s.kind).toBe('perpendicular');
+    expect(s.point).toEqual(vec(1, 0));
+  });
+
+  it('extension: 2 m past the wall end on its line, with the dashed line from that end', () => {
+    const short = { segments: [{ start: vec(0, 0), end: vec(4, 0) }] };
+    expect(snap(input([6.002, 0.004], short))).toMatchObject({ kind: 'extension', point: { x: 6, y: 0 }, guideFrom: { x: 4, y: 0 } });
+  });
+
+  it('parallel: drawing from (0, 3) along a wall at 14°, the direction is the wall’s exactly', () => {
+    const wall = { start: vec(0, 0), end: vec(4, 1) };
+    const s = snap(input([3, 3.75], { segments: [wall], from: vec(0, 3), mpp: 0.002 }));
+    expect(s.kind).toBe('parallel');
+    const d = Math.atan2(s.point.y - 3, s.point.x);
+    expect(d).toBeCloseTo(Math.atan2(1, 4), 9);
+  });
+});
