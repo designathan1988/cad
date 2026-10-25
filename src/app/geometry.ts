@@ -263,9 +263,49 @@ export function openingOutline(o: OpeningSolid): Point2[] {
 }
 
 /** The opening whose outline contains p, last placed first. */
-export function openingAt(g: DerivedGeometry, p: Point2): OpeningId | null {
-  for (const o of [...g.openings.values()].reverse()) if (insidePolygon(openingOutline(o), p)) return o.opening.id;
-  return null;
+/**
+ * The door or window under p: inside its outline in the wall, or within `reach` (m) of it or of its
+ * symbol (a door's leaf and swing, a window's panes), the nearest winning. Its symbol is what the plan
+ * shows of it: a click on a door's leaf took the room behind it.
+ */
+export function openingAt(g: DerivedGeometry, p: Point2, reach = 0): OpeningId | null {
+  let best: OpeningId | null = null;
+  let bestD = reach;
+  for (const o of [...g.openings.values()].reverse()) {
+    const outline = openingOutline(o);
+    if (insidePolygon(outline, p)) return o.opening.id;
+    if (reach <= 0) continue;
+    const d = Math.min(polygonDistance(outline, p), ...symbolLines(o, o.frame).map((line) => polylineDistance(line, p)));
+    if (d <= bestD) {
+      best = o.opening.id;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/** Distance from p to the segment ab. */
+function segmentDistance(p: Point2, a: Point2, b: Point2): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+/** Distance from p to an open polyline. */
+function polylineDistance(line: readonly Point2[], p: Point2): number {
+  let d = Infinity;
+  for (let i = 1; i < line.length; i++) d = Math.min(d, segmentDistance(p, line[i - 1]!, line[i]!));
+  return d;
+}
+
+/** Distance from p to a polygon: 0 inside, else to its nearest edge. */
+export function polygonDistance(poly: readonly Point2[], p: Point2): number {
+  if (insidePolygon(poly, p)) return 0;
+  let d = Infinity;
+  for (let i = 0; i < poly.length; i++) d = Math.min(d, segmentDistance(p, poly[i]!, poly[(i + 1) % poly.length]!));
+  return d;
 }
 
 /** Even-odd ray crossing: is p inside the polygon? */
@@ -279,14 +319,24 @@ export function insidePolygon(poly: readonly Point2[], p: Point2): boolean {
   return c;
 }
 
-/** The wall whose drawn pieces contain p, topmost (last drawn) first. */
-export function wallAt(g: DerivedGeometry, p: Point2, ids?: ReadonlySet<WallId>): WallId | null {
-  const list = [...g.solids.values()].reverse();
-  for (const s of list) {
-    if (ids && !ids.has(s.wall.id)) continue;
-    if (s.pieces.some((piece) => insidePolygon(piece.polygon, p))) return s.wall.id;
+/**
+ * The wall whose drawn pieces contain p, topmost (last drawn) first; else the one whose pieces come
+ * nearest p within `reach` (m): a wall 15 cm thick is a few pixels wide, and missing it by one took
+ * the room beside it.
+ */
+export function wallAt(g: DerivedGeometry, p: Point2, ids?: ReadonlySet<WallId>, reach = 0): WallId | null {
+  const list = [...g.solids.values()].reverse().filter((s) => !ids || ids.has(s.wall.id));
+  for (const s of list) if (s.pieces.some((piece) => insidePolygon(piece.polygon, p))) return s.wall.id;
+  let best: WallId | null = null;
+  let bestD = reach;
+  for (const s of reach > 0 ? list : []) {
+    const d = Math.min(...s.pieces.map((piece) => polygonDistance(piece.polygon, p)));
+    if (d <= bestD) {
+      best = s.wall.id;
+      bestD = d;
+    }
   }
-  return null;
+  return best;
 }
 
 /** Bounding box of the drawn pieces and openings, or null when there is nothing. */

@@ -25,6 +25,9 @@ import type { WallId } from '../elements/wall/schema';
 import { GUIDE_PX, guideBaseAt } from '../tools/guide-tool';
 import { cross, sub } from '../core/vector';
 
+/** How near (screen pixels) the pointer must come to a wall, a door or a window to take it. */
+const PICK_PX = 6;
+
 export function wireInput(app: App): void {
   const { shell, ui } = app;
   const openers: Openers = {
@@ -177,9 +180,12 @@ export function wireInput(app: App): void {
   const planHits = (p: Point2): string[] => {
     const g = app.visibleGeometry();
     const reach = GUIDE_PX / app.plan.scale;
+    // Within a few pixels of a wall, a door or a window, it is taken: aiming inside a thin wall, or at a
+    // door's leaf, was the only way before.
+    const near = PICK_PX / app.plan.scale;
     return [
-      openingAt(g, p),
-      wallAt(g, p),
+      openingAt(g, p, near),
+      wallAt(g, p, undefined, near),
       // A guide where the pointer is on it: before the room it runs across.
       ...app
         .levelGuides()
