@@ -26,7 +26,6 @@
   --line: 1px;
   --line-2: 2px;
   --own-bar: 3px;
-  --mark: 4px;
   --pill: 999px;
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.08);
   /* Component sizes */
@@ -436,25 +435,6 @@ button.project-name:hover {
   scrollbar-width: none;
   border-right: var(--line) solid var(--border);
   background: var(--bg);
-}
-/* A group of tools shows one; a small corner mark says it has more (a submenu). */
-.tool-group {
-  display: contents;
-}
-.tool-group > .tool:not(.shown) {
-  display: none;
-}
-.tool-group > .tool {
-  position: relative;
-}
-.tool-group > .tool::after {
-  content: '';
-  position: absolute;
-  right: var(--sp-1);
-  bottom: var(--sp-1);
-  border-left: var(--mark) solid transparent;
-  border-bottom: var(--mark) solid currentColor;
-  opacity: 0.6;
 }
 .tools .group-sep {
   width: var(--sep-w);

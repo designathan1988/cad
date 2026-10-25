@@ -67,24 +67,11 @@ export function buildShell(root: HTMLElement) {
   const toolFloor = iconButton('slab', 'icon-btn tool');
   const toolRoom = iconButton('room', 'icon-btn tool');
   const toolMeasure = iconButton('ruler', 'icon-btn tool');
-  // Groups of several tools take one place in the bar: the last one used shows, the others are in
-  // its submenu (ref/chat.txt:204). The input layer opens the submenu and keeps the shown one.
-  const groupOf = (name: MessageKey, ...members: HTMLButtonElement[]) => {
-    const box = el('div', { class: 'tool-group', 'data-group': name });
-    members.forEach((b, i) => {
-      b.classList.toggle('shown', i === 0);
-      b.setAttribute('aria-haspopup', 'menu');
-    });
-    box.append(...members);
-    return box;
-  };
-  const construction = groupOf('group.construction', toolWall, toolFloor);
-  const openings = groupOf('group.openings', toolDoor, toolWindow);
-  tools.append(toolSelect, el('div', { class: 'group-sep' }), construction, el('div', { class: 'group-sep' }), openings, el('div', { class: 'group-sep' }), toolRoom);
-  const toolGroups = [
-    { name: 'group.construction' as MessageKey, members: [toolWall, toolFloor] },
-    { name: 'group.openings' as MessageKey, members: [toolDoor, toolWindow] },
-  ];
+  // Every tool its own button and icon, one click away, in families parted by a line: building
+  // (wall, floor), openings (door, window), spaces (room). A tool kept in another's submenu was not
+  // found (the user's request: "cada uma das 4 deve ter o seu ícone").
+  const sep = () => el('div', { class: 'group-sep' });
+  tools.append(toolSelect, sep(), toolWall, toolFloor, sep(), toolDoor, toolWindow, sep(), toolRoom);
   // Measuring and dimensioning, together: the tape works, the dimension is to come.
   tools.append(el('div', { class: 'group-sep' }), toolMeasure);
   const soonButtons: { b: HTMLButtonElement; key: MessageKey }[] = [];
@@ -129,7 +116,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, undo, redo, level, newFile, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, dims, browser, sidebar, toolGroups,
+    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, dims, browser, sidebar,
     emptyHint, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack,
   };
 
