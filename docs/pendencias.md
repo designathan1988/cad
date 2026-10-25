@@ -74,6 +74,13 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
   Só em planta. Não verificado: se o Chrome real deixa de focar o menu dele ao soltar o Alt sozinho
   (o preventDefault foi posto; o Playwright injeta as teclas por fora do menu do navegador).
 
+- Desenho em 3D: o ponto das ferramentas de desenho e da mira de portas/janelas é o que se vê sob o
+  ponteiro nas paredes, portas, janelas e pisos do pavimento em edição (e do de baixo), não o chão atrás
+  delas: clicar no topo da ponta de uma parede pega a ponta e une. Sobre o 3D aparecem o marcador do
+  encaixe com o nome ("Extremidade da parede 2"), uma linha subindo a altura do pavimento, o eixo do
+  trecho com o comprimento e o ângulo, o início e o contorno de piso. Cada ferramenta tem o seu cursor
+  (mira com o ícone dela), na planta e no 3D.
+
 Achados desta rodada ainda abertos:
 - Duas folhas de porta que se cruzam (ao colocar uma porta perto de outra) não dão aviso.
 - Mudar o lado de abertura não tem atalho no próprio desenho (só painel e barra).

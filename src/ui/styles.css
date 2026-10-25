@@ -490,6 +490,9 @@ button.project-name:hover {
 .viewport canvas.hidden {
   display: none;
 }
+.viewport canvas.overlay-3d {
+  pointer-events: none;
+}
 .float-bar {
   position: absolute;
   display: flex;

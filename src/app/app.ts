@@ -32,6 +32,8 @@ import { aimAlong, OPENING_PREVIEW_ID, ruleGuide, ruleText } from './opening-ui'
 import type { WallId } from '../elements/wall/schema';
 import { type Insets, PlanView } from '../render/plan-view';
 import { Scene3D } from '../render/scene-3d';
+import { Overlay3D, type Overlay3DState } from '../render/overlay-3d';
+import { toolCursor } from '../ui/cursors';
 import { ViewCube } from '../render/view-cube';
 import { defaultName, getLang, htmlLang, name, num, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
 import { icon } from '../ui/icons';
@@ -109,6 +111,9 @@ export class App {
   readonly plan: PlanView;
   readonly scene: Scene3D;
   readonly cube: ViewCube;
+  private readonly overlay3d: Overlay3D;
+  /** What the overlay showed last: drawn again as the camera turns, without a whole render. */
+  private overlayState: Overlay3DState | null = null;
   readonly ui: UiState;
   geometry: DerivedGeometry;
   /** Each view is framed on its first show; after that the camera is the user's. */
@@ -151,6 +156,7 @@ export class App {
     this.shell = buildShell(root);
     this.plan = new PlanView(this.shell.planCanvas);
     this.scene = new Scene3D(this.shell.glCanvas);
+    this.overlay3d = new Overlay3D(this.shell.overlay3d);
     this.cube = new ViewCube(
       (dir) => this.scene.frame(boundsOf(this.geometry), this.height(), dir),
       () => this.scene.frame(boundsOf(this.geometry), this.height()),
@@ -159,6 +165,7 @@ export class App {
     this.scene.onChange = () => {
       this.cube.update(this.scene.camera);
       this.placeFloatBar();
+      if (this.ui.view === '3d' && this.overlayState) this.overlay3d.draw(this.overlayState);
     };
     this.geometry = deriveGeometry(doc);
     this.store.subscribe((d) => {
@@ -442,7 +449,11 @@ export class App {
   /** A world point on the current level, on the screen (viewport pixels); null when behind the camera. */
   toScreen(p: Point2): Point2 | null {
     if (this.ui.view === 'plan') return this.plan.toScreen(p);
-    const z = this.store.get().levels.find((l) => l.id === this.ui.levelId)?.elevation ?? 0;
+    return this.projectAt(p, this.store.get().levels.find((l) => l.id === this.ui.levelId)?.elevation ?? 0);
+  }
+
+  /** A world point at a height, on the screen of the 3D view (viewport pixels); null when behind the camera. */
+  private projectAt(p: Point2, z: number): Point2 | null {
     const v = new THREE.Vector3(p.x, z, -p.y).project(this.scene.camera);
     if (v.z > 1) return null;
     const r = this.shell.viewport.getBoundingClientRect();
@@ -1044,38 +1055,38 @@ export class App {
     this.scene.setCovered(covered);
     const preview = new Set([...this.previewWall(), ...this.previewOpening()].map((w) => w.id));
     const guide = this.openingKind() ? ruleGuide(this.store.get(), this.geometry, OPENING_PREVIEW_ID) : null;
+    const w = ui.wall;
+    const drawing = ui.tool === 'wall' && w.kind === 'drawing';
+    const end = drawing ? this.drawingEnd() : null;
+    const len = end && w.kind === 'drawing' ? distance(w.last, end) : 0;
+    const ang = end && w.kind === 'drawing' ? ((Math.atan2(end.y - w.last.y, end.x - w.last.x) * 180) / Math.PI + 360) % 360 : 0;
+    const along = end && w.kind === 'drawing' && len > 0 ? { x: (end.x - w.last.x) / len, y: (end.y - w.last.y) / len } : null;
+    // A floor outline's side being drawn: from its last corner to where the next would snap.
+    const floorFrom = ui.tool === 'floor' ? (ui.floorDraft.at(-1) ?? null) : null;
+    const floorTo = floorFrom ? (ui.snap?.point ?? ui.cursor) : null;
+    const floorLen = floorFrom && floorTo ? distance(floorFrom, floorTo) : 0;
+    const floorAlong = floorFrom && floorTo && floorLen > 0 ? { x: (floorTo.x - floorFrom.x) / floorLen, y: (floorTo.y - floorFrom.y) / floorLen } : null;
+    const floorAng = floorAlong ? ((Math.atan2(floorAlong.y, floorAlong.x) * 180) / Math.PI + 360) % 360 : 0;
+    // The tape: from its start to where the next click would land, or as measured.
+    const m = ui.tool === 'measure' ? ui.measure : MEASURE_IDLE;
+    const tapeFrom = m.kind === 'idle' ? null : m.a;
+    const tapeTo = m.kind === 'done' ? m.b : m.kind === 'from' ? (ui.snap?.point ?? ui.cursor) : null;
+    const tape = tapeFrom && tapeTo && distance(tapeFrom, tapeTo) > 0 ? reading(tapeFrom, tapeTo) : null;
+    // How far the drawn preview reaches on the measure's side: its pieces as derived (reference line,
+    // thickness and joins included), so the measure is set off past them.
+    const side = along ? { x: -along.y, y: along.x } : null;
+    const reach =
+      side && w.kind === 'drawing'
+        ? Math.max(0, ...(this.geometry.solids.get(PREVIEW_ID)?.pieces ?? []).flatMap((p) => p.polygon.map((v) => (v.x - w.last.x) * side.x + (v.y - w.last.y) * side.y)))
+        : 0;
+    // A snap on a wall says which one, by its number (shown in the panel's title): "end of wall 3".
+    const snapWall = ui.snap?.wallId ? wallNumber(this.store.get(), ui.snap.wallId) : null;
+    const ofKey = ui.snap && snapWall !== null && ui.snap.kind in SNAP_OF ? SNAP_OF[ui.snap.kind as keyof typeof SNAP_OF] : null;
+    const labelKey = ofKey ?? (ui.snap ? snapLabel[ui.snap.kind] : null);
+    // The guide being placed, at the distance typed or pointed; its distance as a dimension.
+    const guideOff = this.guideOffset();
+    const guideDim = ui.guide && guideOff !== null ? guideMeasure(ui.guide, guideOff) : null;
     if (plan) {
-      const w = ui.wall;
-      const drawing = ui.tool === 'wall' && w.kind === 'drawing';
-      const end = drawing ? this.drawingEnd() : null;
-      const len = end && w.kind === 'drawing' ? distance(w.last, end) : 0;
-      const ang = end && w.kind === 'drawing' ? ((Math.atan2(end.y - w.last.y, end.x - w.last.x) * 180) / Math.PI + 360) % 360 : 0;
-      const along = end && w.kind === 'drawing' && len > 0 ? { x: (end.x - w.last.x) / len, y: (end.y - w.last.y) / len } : null;
-      // A floor outline's side being drawn: from its last corner to where the next would snap.
-      const floorFrom = ui.tool === 'floor' ? (ui.floorDraft.at(-1) ?? null) : null;
-      const floorTo = floorFrom ? (ui.snap?.point ?? ui.cursor) : null;
-      const floorLen = floorFrom && floorTo ? distance(floorFrom, floorTo) : 0;
-      const floorAlong = floorFrom && floorTo && floorLen > 0 ? { x: (floorTo.x - floorFrom.x) / floorLen, y: (floorTo.y - floorFrom.y) / floorLen } : null;
-      const floorAng = floorAlong ? ((Math.atan2(floorAlong.y, floorAlong.x) * 180) / Math.PI + 360) % 360 : 0;
-      // The tape: from its start to where the next click would land, or as measured.
-      const m = ui.tool === 'measure' ? ui.measure : MEASURE_IDLE;
-      const tapeFrom = m.kind === 'idle' ? null : m.a;
-      const tapeTo = m.kind === 'done' ? m.b : m.kind === 'from' ? (ui.snap?.point ?? ui.cursor) : null;
-      const tape = tapeFrom && tapeTo && distance(tapeFrom, tapeTo) > 0 ? reading(tapeFrom, tapeTo) : null;
-      // How far the drawn preview reaches on the measure's side: its pieces as derived (reference line,
-      // thickness and joins included), so the measure is set off past them.
-      const side = along ? { x: -along.y, y: along.x } : null;
-      const reach =
-        side && w.kind === 'drawing'
-          ? Math.max(0, ...(this.geometry.solids.get(PREVIEW_ID)?.pieces ?? []).flatMap((p) => p.polygon.map((v) => (v.x - w.last.x) * side.x + (v.y - w.last.y) * side.y)))
-          : 0;
-      // A snap on a wall says which one, by its number (shown in the panel's title): "end of wall 3".
-      const snapWall = ui.snap?.wallId ? wallNumber(this.store.get(), ui.snap.wallId) : null;
-      const ofKey = ui.snap && snapWall !== null && ui.snap.kind in SNAP_OF ? SNAP_OF[ui.snap.kind as keyof typeof SNAP_OF] : null;
-      const labelKey = ofKey ?? (ui.snap ? snapLabel[ui.snap.kind] : null);
-      // The guide being placed, at the distance typed or pointed; its distance as a dimension.
-      const guideOff = this.guideOffset();
-      const guideDim = ui.guide && guideOff !== null ? guideMeasure(ui.guide, guideOff) : null;
       this.plan.draw(this.visibleGeometry(), {
         selected: ui.selection,
         hover: ui.hover,
@@ -1134,7 +1145,30 @@ export class App {
     } else {
       this.scene.sync(this.visibleGeometry(), ui.selection, preview);
       this.cube.update(this.scene.camera);
+      // Where the tool snaps and what it draws, over the 3D view as in plan.
+      const level = levelOf(this.store.get(), ui.levelId);
+      const active = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure';
+      this.overlayState = {
+        project: (p, z) => this.projectAt(p, z),
+        floor: level?.elevation ?? 0,
+        height: level?.height ?? 2.8,
+        snap: active && ui.snap ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null } : null,
+        axis: end && len >= MIN_WALL_LENGTH && w.kind === 'drawing' ? { start: w.last, end } : tape && tapeFrom && tapeTo ? { start: tapeFrom, end: tapeTo } : null,
+        measure:
+          end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
+            ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°` }
+            : floorFrom && floorTo && floorLen >= MIN_WALL_LENGTH
+              ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${num(floorLen)} m · ${num(floorAng, 1)}°` }
+              : tape && tapeFrom && tapeTo
+                ? { at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 }, text: `${num(tape.length)} m · ${num(tape.angle, 1)}°` }
+                : this.bendMeasure(),
+        anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : tapeFrom,
+        draft: ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])] : null,
+      };
+      this.overlay3d.draw(this.overlayState);
     }
+    this.overlay3d.canvas.classList.toggle('hidden', plan);
+    shell.viewport.style.cursor = toolCursor(ui.tool);
     this.mark(plan ? 'plan' : '3d');
     this.placeDims(plan ? this.currentDims() : []);
     this.mark('dims');

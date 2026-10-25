@@ -102,12 +102,14 @@ export function buildShell(root: HTMLElement) {
   const viewport = el('main', { class: 'viewport' });
   const planCanvas = el('canvas', { 'aria-label': 'Plan' });
   const glCanvas = el('canvas', { 'aria-label': '3D' });
+  // What a tool shows while it works, over the 3D view (render/overlay-3d.ts); it takes no pointer.
+  const overlay3d = el('canvas', { class: 'overlay-3d', 'aria-hidden': 'true' });
   const floatBar = el('div', { class: 'float-bar', role: 'toolbar' });
   floatBar.hidden = true;
   const dims = el('div', { class: 'temp-dims' });
   const emptyHint = el('div', { class: 'empty-hint' });
   const toast = el('div', { class: 'toast', role: 'status', 'aria-live': 'polite' });
-  viewport.append(planCanvas, glCanvas, dims, floatBar, emptyHint, toast, browser);
+  viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, emptyHint, toast, browser);
 
   const panel = el('aside', { class: 'panel', 'aria-label': 'Properties' });
 
@@ -127,7 +129,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, undo, redo, level, newFile, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, floatBar, dims, browser, sidebar, toolGroups,
+    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, dims, browser, sidebar, toolGroups,
     emptyHint, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack,
   };
 

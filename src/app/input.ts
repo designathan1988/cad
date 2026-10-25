@@ -113,10 +113,30 @@ export function wireInput(app: App): void {
     return p ? { p, mpp: app.scene.metresPerPixel(p, z) } : null;
   };
 
+  /**
+   * The point a drawing tool or an opening aims at. In 3D it is the one seen under the pointer, on the
+   * level's walls, doors, windows and floors (or the level below's, which upper walls stand on): the top
+   * of a wall is where its end is, not the floor far behind it. Elsewhere, and for dragging (whose
+   * moves must stay on one plane), worldAt.
+   */
+  const aimAt3d = (e: PointerEvent | MouseEvent): { p: Point2; mpp: number } | null => {
+    if (ui.view === 'plan') return worldAt(e);
+    const doc = app.store.get();
+    const levels = new Set([ui.levelId, app.levelBelow()]);
+    const onLevel = new Set([
+      ...doc.walls.filter((w) => levels.has(w.levelId)).map((w) => w.id),
+      ...doc.floors.filter((f) => levels.has(f.levelId)).map((f) => f.id),
+    ]);
+    const walls = new Set(doc.walls.filter((w) => levels.has(w.levelId)).map((w) => w.id));
+    for (const o of doc.openings) if (walls.has(o.wallId)) onLevel.add(o.id);
+    const hit = app.scene.surfacePoint(e.clientX, e.clientY, (id) => onLevel.has(id));
+    return hit ? { p: hit.p, mpp: app.scene.metresPerPixel(hit.p, hit.height) } : worldAt(e);
+  };
+
   /** Half a wall's thickness: its ends snap from anywhere on its body near them (snap.ts: reach). */
   const halfOf = (id: string) => (app.geometry.solids.get(id)?.layers.reduce((t, l) => t + l.thickness, 0) ?? 0) / 2;
   const snapped = (e: PointerEvent | MouseEvent) => {
-    const at = worldAt(e);
+    const at = aimAt3d(e);
     if (!at) return null;
     const w = ui.wall;
     // A floor's outline snaps as a wall chain does: from its last corner, closing on its first once
@@ -226,7 +246,8 @@ export function wireInput(app: App): void {
       return app.render();
     }
     if (app.openingKind()) {
-      return app.openingEvent({ kind: 'hover', aim: at ? aimAt(app.store.get(), app.geometry, ui.levelId, at.p, at.mpp, OPENING_PREVIEW_ID) : null });
+      const seen = aimAt3d(e);
+      return app.openingEvent({ kind: 'hover', aim: seen ? aimAt(app.store.get(), app.geometry, ui.levelId, seen.p, seen.mpp, OPENING_PREVIEW_ID) : null });
     }
     if (downAt && ui.tool === 'select') {
       gestures.move(local(e), at?.p ?? null, snapAt, e.shiftKey, e.altKey);

@@ -47,6 +47,9 @@ const paths = {
 
 export type IconName = keyof typeof paths;
 
+/** An icon's drawing, for composing it into something else (ui/cursors.ts). */
+export const iconPath = (name: IconName): string => paths[name];
+
 export function icon(name: IconName, size = 18): string {
   return `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name]}"/></svg>`;
 }

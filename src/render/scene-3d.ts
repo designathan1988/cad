@@ -282,6 +282,21 @@ export class Scene3D {
     return (o?.userData.wallId as WallId | undefined) ?? null;
   }
 
+  /**
+   * The point seen under a screen point, on the first element hit that `accept` takes (by id): in
+   * plan coordinates, with the height it was hit at. Drawing on a wall's top in a perspective, the
+   * floor plane alone gave the point far behind it, where the line of sight meets the floor.
+   */
+  surfacePoint(clientX: number, clientY: number, accept: (id: string) => boolean): { p: Point2; height: number } | null {
+    const r = this.canvas.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(ndc, this.camera);
+    const groups = [...this.walls.entries()].filter(([id]) => accept(id)).map(([, w]) => w.group);
+    const hit = ray.intersectObjects(groups, true)[0];
+    return hit ? { p: { x: hit.point.x, y: -hit.point.z }, height: hit.point.y } : null;
+  }
+
   /** Where a screen point meets the horizontal plane at height z, in world plan coordinates. */
   groundPoint(clientX: number, clientY: number, z: number): Point2 | null {
     const r = this.canvas.getBoundingClientRect();
