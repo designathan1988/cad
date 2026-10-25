@@ -61,7 +61,7 @@ export interface DerivedGeometry {
 export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOpenings: readonly Opening[] = []): DerivedGeometry {
   const walls = [...doc.walls, ...extra];
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
-  const { pieces, warnings } = wallPieces(walls, types);
+  const { pieces, slices, warnings } = wallPieces(walls, types, (w) => wallHeights(doc, w));
   const placed = deriveOpenings([...doc.openings, ...extraOpenings], hostsOf(doc, walls, jointsIn(walls, types, pieces)), doc.openingGroups);
   const byId = new Map(walls.map((w) => [w.id, w]));
   const openings = new Map<OpeningId, OpeningSolid>();
@@ -112,10 +112,10 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
   }
   for (const wall of walls) {
     const { bottom, top } = wallHeights(doc, wall);
-    const own = pieces.get(wall.id) ?? [];
     const mine = cuts.get(wall.id) ?? [];
     const layers = types.get(wall.wallTypeId)?.layers ?? [];
-    solids.set(wall.id, { wall, pieces: planPieces.get(wall.id)!, blocks: cutSolid(own, bottom, top, mine), bottom, top, layers, seams: seams.get(wall.id) ?? [] });
+    const blocks = (slices.get(wall.id) ?? []).flatMap((sl) => cutSolid(sl.pieces, sl.bottom, sl.top, mine));
+    solids.set(wall.id, { wall, pieces: planPieces.get(wall.id)!, blocks, bottom, top, layers, seams: seams.get(wall.id) ?? [] });
   }
   // Rooms see the walls before doors and windows are cut: a door does not open a room.
   const piecesByLevel = new Map<string, P[][]>();
@@ -129,18 +129,61 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
   return { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors };
 }
 
-/** The joined plan pieces of every wall. Walls join only within their level: one level's walls never cut, notch or warn about another's. */
-function wallPieces(walls: readonly DocWall[], types: ReadonlyMap<string, WallType>): { pieces: Map<WallId, readonly Piece[]>; warnings: JoinWarning[] } {
+/** A height range of a wall, and its plan pieces there: joined only with the walls standing over all of it. */
+interface WallSlice {
+  readonly bottom: number;
+  readonly top: number;
+  readonly pieces: readonly Piece[];
+}
+
+/**
+ * The joined pieces of every wall, by height (spec §7.5). Walls join only within their level: one
+ * level's walls never cut, notch or warn about another's. On a level, the walls' bases and tops cut
+ * the height into ranges, and each range is joined with only the walls standing over it, so a wall
+ * past the top of the one it meets ends there as if alone, and walls whose heights do not overlap do
+ * not join (§10). A wall's consecutive ranges with the same pieces are one slice. In plan a wall shows
+ * its lowest slice, where it stands on its level.
+ */
+function wallPieces(
+  walls: readonly DocWall[],
+  types: ReadonlyMap<string, WallType>,
+  heightOf: (w: DocWall) => { bottom: number; top: number },
+): { pieces: Map<WallId, readonly Piece[]>; slices: Map<WallId, WallSlice[]>; warnings: JoinWarning[] } {
   const byLevel = new Map<string, DocWall[]>();
   for (const w of walls) byLevel.set(w.levelId, [...(byLevel.get(w.levelId) ?? []), w]);
-  const pieces = new Map<WallId, readonly Piece[]>();
-  const warnings: JoinWarning[] = [];
+  const slices = new Map<WallId, WallSlice[]>();
+  const warnings = new Map<string, JoinWarning>();
   for (const list of byLevel.values()) {
-    const g = computeWallGeometry(list, types);
-    for (const [id, p] of g.pieces) pieces.set(id, p);
-    warnings.push(...g.warnings);
+    const range = new Map(list.map((w) => [w.id, heightOf(w)]));
+    const zs: number[] = [];
+    for (const z of [...range.values()].flatMap((r) => [r.bottom, r.top]).sort((a, b) => a - b)) {
+      if (zs.length === 0 || z > zs[zs.length - 1]! + POINT_TOLERANCE) zs.push(z);
+    }
+    for (let k = 0; k + 1 < zs.length; k++) {
+      const z0 = zs[k]!;
+      const z1 = zs[k + 1]!;
+      const present = list.filter((w) => range.get(w.id)!.bottom <= z0 + POINT_TOLERANCE && range.get(w.id)!.top >= z1 - POINT_TOLERANCE);
+      if (present.length === 0) continue;
+      const g = computeWallGeometry(present, types);
+      // The same problem at several heights is one warning.
+      for (const w of g.warnings) warnings.set(JSON.stringify(w), w);
+      for (const w of present) {
+        const pieces = g.pieces.get(w.id) ?? [];
+        const own = slices.get(w.id) ?? [];
+        const last = own[own.length - 1];
+        if (last && JSON.stringify(last.pieces) === JSON.stringify(pieces)) own[own.length - 1] = { ...last, top: z1 };
+        else own.push({ bottom: z0, top: z1, pieces });
+        slices.set(w.id, own);
+      }
+    }
   }
-  return { pieces, warnings };
+  const pieces = new Map<WallId, readonly Piece[]>();
+  for (const w of walls) {
+    const lowest = slices.get(w.id)?.[0];
+    // A wall with no height stands in no range: in plan, its pieces alone, and nothing in 3D.
+    pieces.set(w.id, lowest ? lowest.pieces : (computeWallGeometry([w], types).pieces.get(w.id) ?? []));
+  }
+  return { pieces, slices, warnings: [...warnings.values()] };
 }
 
 /**
@@ -185,7 +228,7 @@ function jointsIn(
 /** Hosts for placing openings, with the joints inside each (which bound a distributed group's stretch). */
 export function hostsIn(doc: Doc, walls: readonly DocWall[] = doc.walls) {
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
-  return hostsOf(doc, walls, jointsIn(walls, types, wallPieces(walls, types).pieces));
+  return hostsOf(doc, walls, jointsIn(walls, types, wallPieces(walls, types, (w) => wallHeights(doc, w)).pieces));
 }
 
 /** The opening's outline in plan: the jambs across the wall's thickness. */

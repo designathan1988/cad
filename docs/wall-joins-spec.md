@@ -461,6 +461,13 @@ Isso elimina o limite conhecido "paredes unidas com alturas diferentes: a face
 de encontro fica oculta no 3D": a face passa a existir de verdade, só na parte
 onde o vizinho não está.
 
+*(Decisão de implementação, 2026-10-24: as cotas são as de todas as paredes do
+pavimento, não só as dos vizinhos. Dá o mesmo resultado, porque uma parede que
+não encosta não muda a pegada, e as slices iguais seguidas são fundidas. Na
+planta, cada parede mostra a sua slice mais baixa, onde ela fica sobre o
+pavimento. Uma parede que começa acima da base de outra pode, por isso,
+aparecer sobreposta a ela na planta: são cortes de alturas diferentes.)*
+
 ---
 
 ## 8. Pegada e sólido
@@ -1124,3 +1131,15 @@ na seed fixa). Com o esclarecimento de "ponta livre" na §7.1, a spec faz esse L
 
 Dos 32, 29 viraram L exatos no oráculo estrito; os outros 3 não são avisos, são pulados como segunda
 junta. Nenhum aviso sobrou na suíte; os avisos que a §7.1 manda estão nos 2 casos à mão.
+
+**Alturas diferentes (2026-10-24):** antes, as juntas ignoravam a altura. Uma parede baixa unida a uma
+alta cortava a alta na altura toda, e paredes com faixas de altura sem sobreposição se uniam. Agora é a
+§7.5: as bases e os topos das paredes do pavimento dividem a altura em faixas, e cada faixa é unida só
+com as paredes de pé nela (`app/geometry.ts`, `wallPieces`). Acima do topo da vizinha, a parede termina
+como sozinha (ponta livre, quadrada). Faixas que só se tocam não se unem.
+
+| Item | Resultado |
+|---|---|
+| Casos à mão em `tests/app/wall-heights.test.ts` | 8 testes em 6 situações: L entre paredes de 1 m e 2,8 m (miter abaixo, só a alta e quadrada acima, blocos 0–1 e 1–2,8), T com a hospedeira mais baixa, T com a que encosta mais baixa, parede sobre `baseOffset`, faixas separadas e faixas que se tocam |
+| Propriedade | L, T, X e um L com T, 60 rodadas cada: em 300 pontos e alturas sorteados, os blocos que contêm o ponto são as peças da junta das paredes de pé naquela altura (`computeWallGeometry` só com elas), e o volume é o I2 |
+| Controle | no motor anterior, 10 de 12 falham; os 2 que passam são casos em que nada muda (as duas de pé na altura testada, ou a hospedeira inteira) |

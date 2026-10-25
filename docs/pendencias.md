@@ -29,7 +29,7 @@ o resolve existe e, se for de interface, quando a sessão de teste o viu no nave
   fixa cobrem exato; os outros 3 são pulados como segunda junta (item abaixo).
 - Casos com duas juntas que o gerador da suíte de arcos pula (ponta longe sobre o arco, ou passando
   perto da outra ponta). A suíte do L está no limite: 5 de 100 pulados.
-- Alturas diferentes entre paredes ligadas.
+- Resolvido em 2026-10-24: alturas diferentes entre paredes ligadas (wall-joins-spec.md, §7.5 e parte 6).
 - Faces de corte no 3D.
 - Overrides de junta (desligar, butt, miter, corte reto).
 - Mutação ≥ 90 %.
