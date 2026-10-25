@@ -49,6 +49,9 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
   nas faces e nos cantos das paredes ("Na face da parede", "Canto"), não só nos eixos. A Cota continua
   "em breve" (cotas permanentes, item do Adendo 2).
 
+- Paredes paralelas selecionadas juntas: "Alinhar com a primeira selecionada" e "Distribuir com espaços
+  iguais" (as das pontas ficam), com as juntas mantidas como num arraste.
+
 Achados desta rodada ainda abertos:
 - A etiqueta da cota temporária (fundo opaco) cobre a ponta da parede que chega num T.
 - A cota guia da porta sendo colocada é uma linha solta a 50 cm da parede, sem marcas nas pontas.
@@ -152,7 +155,9 @@ Ferramentas de edição (valem para todos os elementos)
 - Matriz linear (l.108): falta.
 - Matriz polar (l.108): falta.
 - Matriz por caminho (l.108): falta.
-- Alinhar (l.109): parcial, só aberturas.
+- Alinhar (l.109): parcial. Aberturas (alinhar, distribuir, centralizar entre as paredes ao lado) e paredes
+  retas paralelas (alinhar com a primeira, distribuir com espaços iguais, 2026-10-25); falta alinhar
+  cômodos e paredes a outros elementos (a um eixo, a uma face).
 - Deslocar, offset (l.109): falta.
 - Aparar e estender (l.109): falta.
 - Dividir (l.109): falta.

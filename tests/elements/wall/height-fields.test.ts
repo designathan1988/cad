@@ -7,7 +7,7 @@ import { wallFields } from '../../../src/elements/wall/fields';
 import { fieldStates } from '../../../src/ui/fields';
 
 const wall: DocWall = { id: 'w', wallTypeId: 'wt_concrete20', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground' };
-const act = { updateWalls: () => {}, resetToType: () => {}, editType: () => {}, updateRadius: () => {} };
+const act = { updateWalls: () => {}, resetToType: () => {}, editType: () => {}, arrangeWalls: () => {}, updateRadius: () => {} };
 
 describe("a wall's height in the panel", () => {
   it("up to the level's ceiling: the level's height plus the offset, as a readout", () => {

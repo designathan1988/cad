@@ -9,6 +9,7 @@ import { layerSwatch } from '../../ui/swatch';
 import { referenceLength } from '../opening/derive';
 import { arcOf } from './geometry/arc';
 import type { ReferenceLine } from './schema';
+import { canAlignWalls, canDistributeWalls } from '../../tools/arrange-walls';
 
 export interface WallFieldActions {
   readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
@@ -17,6 +18,10 @@ export interface WallFieldActions {
   readonly editType: () => void;
   /** The one selected arc's radius, its ends kept. */
   readonly updateRadius: (radius: number) => void;
+  /** Several parallel walls: onto the first selected one's line, or with equal spaces (tools/arrange-walls.ts). */
+  readonly arrangeWalls: (how: 'align' | 'distribute') => void;
+  /** The first selected wall, the reference for aligning: its number on the plan. */
+  readonly firstWall?: string;
 }
 
 const REFS: readonly { value: ReferenceLine; key: MessageKey; icon: 'refCenter' | 'refExterior' | 'refInterior' }[] = [
@@ -27,7 +32,10 @@ const REFS: readonly { value: ReferenceLine; key: MessageKey; icon: 'refCenter' 
 
 const thickness = (doc: Doc, w: DocWall) => (doc.wallTypes.find((x) => x.id === w.wallTypeId)?.layers ?? []).reduce((s, l) => s + l.thickness, 0);
 
-export function wallFields(doc: Doc, act: WallFieldActions): { general: Field<DocWall>[]; constraints: Field<DocWall>[]; more: Field<DocWall>[] } {
+export function wallFields(
+  doc: Doc,
+  act: WallFieldActions,
+): { general: Field<DocWall>[]; constraints: Field<DocWall>[]; more: Field<DocWall>[]; arrange: Field<DocWall>[] } {
   const top = (w: DocWall) => wallTop(doc, w);
   const all = (kind: 'level' | 'fixed') => (ws: readonly DocWall[]) => ws.every((w) => top(w).kind === kind);
   const one = (ws: readonly DocWall[]) => ws.length === 1;
@@ -147,6 +155,12 @@ export function wallFields(doc: Doc, act: WallFieldActions): { general: Field<Do
         // The ends stay; the arc keeps its side, and stays a major arc if it was one.
         set: (v) => act.updateRadius(v),
       },
+    ],
+    // Several straight, parallel walls: their lines aligned, or spaced evenly between the outer two.
+    arrange: [
+      { id: 'arrangeHint', label: 'panel.arrange', kind: 'note', text: () => t('panel.arrangeWallsHint', { ref: act.firstWall ?? '' }) },
+      { id: 'alignWalls', label: 'panel.alignWalls', kind: 'action', enabled: (ws) => canAlignWalls(doc, ws.map((w) => w.id)), run: () => act.arrangeWalls('align') },
+      { id: 'distributeWalls', label: 'panel.distribute', kind: 'action', enabled: (ws) => canDistributeWalls(doc, ws.map((w) => w.id)), run: () => act.arrangeWalls('distribute') },
     ],
   };
 }

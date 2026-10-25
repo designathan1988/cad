@@ -12,7 +12,7 @@ const arc: DocWall = { id: 'a', wallTypeId: 'wt_concrete20', start: { x: 0, y: 0
 describe('an arc in the panel', () => {
   it('its radius is a number, 1 m, with half the chord as its least value, and sets through updateRadius', () => {
     const asked: number[] = [];
-    const act = { updateWalls: () => {}, resetToType: () => {}, editType: () => {}, updateRadius: (r: number) => asked.push(r) };
+    const act = { updateWalls: () => {}, resetToType: () => {}, editType: () => {}, arrangeWalls: () => {}, updateRadius: (r: number) => asked.push(r) };
     const fields = wallFields({ ...newDocument(), walls: [arc] }, act).more;
     const radius = fieldStates(fields, [arc]).find((s) => s.field.id === 'radius')!;
     expect(radius.field.kind).toBe('number');
@@ -25,7 +25,7 @@ describe('an arc in the panel', () => {
 
   it('a straight wall has no radius field', () => {
     const straight = { ...arc, bulge: 0 };
-    const act = { updateWalls: () => {}, resetToType: () => {}, editType: () => {}, updateRadius: () => {} };
+    const act = { updateWalls: () => {}, resetToType: () => {}, editType: () => {}, arrangeWalls: () => {}, updateRadius: () => {} };
     const fields = wallFields({ ...newDocument(), walls: [straight] }, act).more;
     expect(fieldStates(fields, [straight]).some((s) => s.field.id === 'radius')).toBe(false);
   });

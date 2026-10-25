@@ -41,6 +41,8 @@ export interface PanelActions {
   readonly resetToType: (fields: readonly ('top' | 'baseOffset')[]) => void;
   readonly editType: () => void;
   readonly updateRadius: (radius: number) => void;
+  readonly arrangeWalls: (how: 'align' | 'distribute') => void;
+  readonly firstWall?: string;
   readonly updateDefaults: (patch: Partial<WallDefaults>) => void;
   readonly close: () => void;
   readonly opening: OpeningPanelActions;
@@ -87,6 +89,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     const constraints = fieldsSection(t('panel.constraints'), true, fields.constraints, selected);
     const more = fieldsSection(t('panel.more'), false, fields.more, selected);
     nodes.push(general, constraints, more);
+    if (selected.length >= 2) nodes.push(fieldsSection(t('panel.arrange'), true, fields.arrange, selected));
     const ids = new Set(selected.map((w) => w.id));
     const mine = input.warnings.filter((w) => w.walls.some((id) => ids.has(id)));
     if (mine.length > 0) {

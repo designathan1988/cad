@@ -7,7 +7,7 @@ import { createStore, type Store } from '../core/store';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
-import { addWalls, resetWallsToType, updateWalls } from '../elements/wall/commands';
+import { addWalls, resetWallsToType, setWalls, updateWalls } from '../elements/wall/commands';
 import {
   addOpening,
   alignHeads,
@@ -24,6 +24,7 @@ import type { OpeningSize } from '../elements/opening/panel';
 import { GROUP_PREFIX, hasDistance, isOpeningId, newOpening, OPENING_DEFAULTS, OPENING_PREFIX, type Opening, type OpeningKind } from '../elements/opening/schema';
 import { OPENING_IDLE, openingTransition, ruleBase, type OpeningToolEvent, type OpeningToolState } from '../tools/opening-tool';
 import { MEASURE_IDLE, type MeasureEvent, type MeasureState, measureTransition, reading } from '../tools/measure-tool';
+import { alignWalls, distributeWalls } from '../tools/arrange-walls';
 import { aimAlong, OPENING_PREVIEW_ID, ruleGuide, ruleText } from './opening-ui';
 import type { WallId } from '../elements/wall/schema';
 import { type Insets, PlanView } from '../render/plan-view';
@@ -1082,6 +1083,17 @@ export class App {
           const bulge = w?.bulge ? bulgeKeepingSide(distance(w.start, w.end), w.bulge, radius) : null;
           if (w && bulge !== null) this.store.dispatch(updateWalls([w.id], { bulge }));
         },
+        arrangeWalls: (how) => {
+          // In the order they were picked: the first is the reference.
+          const ids = [...ui.selection].filter((id) => this.store.get().walls.some((w) => w.id === id));
+          const walls = how === 'align' ? alignWalls(this.store.get(), ids) : distributeWalls(this.store.get(), ids);
+          if (walls) this.store.dispatch(setWalls(walls, how === 'align' ? 'cmd.alignWalls' : 'cmd.distributeWalls'));
+        },
+        ...(() => {
+          const first = [...ui.selection].find((id) => this.store.get().walls.some((w) => w.id === id));
+          const n = first ? wallNumber(this.store.get(), first) : null;
+          return n !== null ? { firstWall: t('wall.tag', { n }) } : {};
+        })(),
         updateDefaults: (patch) => {
           ui.defaults = { ...ui.defaults, ...patch };
           this.refresh();
