@@ -57,6 +57,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('tool.door', 'tool.door', tools, () => app.setTool('door'), { keys: 'D' }),
     make('tool.window', 'tool.window', tools, () => app.setTool('window'), { keys: 'Shift+W' }),
     make('tool.room', 'tool.room', tools, () => app.setTool('room'), { keys: 'R' }),
+    make('tool.measure', 'tool.measure', tools, () => app.setTool('measure'), { keys: 'M' }),
     make('view.3d', 'view.3d', views, () => app.setView('3d'), { keys: '1', enabled: ui.view !== '3d' }),
     make('view.plan', 'view.plan', views, () => app.setView('plan'), { keys: '2', enabled: ui.view !== 'plan' }),
     make('view.frameSelection', 'pal.frameSelection', views, () => app.frameSelection(), { keys: 'F', enabled: has }),

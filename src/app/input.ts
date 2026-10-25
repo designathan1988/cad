@@ -110,6 +110,15 @@ export function wireInput(app: App): void {
     // A floor's outline snaps as a wall chain does: from its last corner, closing on its first once
     // it has three (its corners were free points, off the walls and the grid).
     const draft = ui.tool === 'floor' ? ui.floorDraft : null;
+    // The tape snaps from its start, and onto the walls' faces and corners too: one measures a room
+    // from wall to wall, not from axis to axis.
+    const tape = ui.tool === 'measure' && ui.measure.kind === 'from' ? ui.measure.a : null;
+    const faces =
+      ui.tool === 'measure'
+        ? [...app.geometry.solids.values()]
+            .filter((s) => s.wall.levelId === ui.levelId)
+            .flatMap((s) => s.pieces.flatMap((p) => p.polygon.map((a, i) => ({ start: a, end: p.polygon[(i + 1) % p.polygon.length]!, face: true }))))
+        : [];
     // The level below's walls too, without their numbers (those are the other level's): drawing an
     // upper floor snaps onto the walls it stands on.
     const below = ui.hidden.has('walls') ? null : app.levelBelow();
@@ -117,11 +126,14 @@ export function wireInput(app: App): void {
     return snap({
       cursor: at.p,
       mpp: at.mpp,
+      // Measuring, the faces come first and an axis catches only near itself: on a wall's body the
+      // tape takes the face, not the axis the body otherwise stands for.
       segments: [
-        ...walls.filter((x) => x.levelId === ui.levelId).map((x) => ({ id: x.id, start: x.start, end: x.end, reach: halfOf(x.id) })),
-        ...walls.filter((x) => x.levelId === below).map((x) => ({ start: x.start, end: x.end, reach: halfOf(x.id) })),
+        ...faces,
+        ...walls.filter((x) => x.levelId === ui.levelId).map((x) => ({ id: x.id, start: x.start, end: x.end, reach: ui.tool === 'measure' ? 0 : halfOf(x.id) })),
+        ...walls.filter((x) => x.levelId === below).map((x) => ({ start: x.start, end: x.end, reach: ui.tool === 'measure' ? 0 : halfOf(x.id) })),
       ],
-      from: draft ? (draft.at(-1) ?? null) : w.kind === 'drawing' ? w.last : null,
+      from: tape ?? (draft ? (draft.at(-1) ?? null) : w.kind === 'drawing' ? w.last : null),
       chainStart: draft ? (draft.length >= 3 ? draft[0]! : null) : (w.kind === 'drawing' && w.count >= 2) || w.kind === 'bend' ? w.start : null,
       enabled: ui.snaps,
       orthogonal: shift,
@@ -165,6 +177,10 @@ export function wireInput(app: App): void {
       const s = snapped(e);
       ui.snap = s;
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
+      return app.render();
+    }
+    if (ui.tool === 'measure') {
+      ui.snap = snapped(e);
       return app.render();
     }
     if (ui.tool === 'floor') {
@@ -247,6 +263,11 @@ export function wireInput(app: App): void {
     }
     if (moved) return;
     if (app.openingKind()) return app.openingEvent({ kind: 'click' });
+    if (ui.tool === 'measure') {
+      const at = worldAt(e);
+      if (at) app.measureEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
+      return;
+    }
     if (ui.tool === 'room' || ui.tool === 'floor') {
       const at = worldAt(e);
       if (!at) return;
@@ -314,6 +335,7 @@ export function wireInput(app: App): void {
   shell.toolWindow.addEventListener('click', () => app.setTool('window'));
   shell.toolRoom.addEventListener('click', () => app.setTool('room'));
   shell.toolFloor.addEventListener('click', () => app.setTool('floor'));
+  shell.toolMeasure.addEventListener('click', () => app.setTool('measure'));
   // A group's submenu: press and hold, a right-click, or the right arrow key on its button.
   const toolOf = new Map<HTMLButtonElement, () => void>([
     [shell.toolWall, () => app.setTool('wall')],
@@ -444,7 +466,7 @@ export function wireInput(app: App): void {
       return palette();
     }
     // The view by keyboard (view-keys.ts): + and − zoom, Shift+arrows move or turn it (the tester's K4).
-    const typingNow = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || app.openingKind() !== null;
+    const typingNow = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || app.openingKind() !== null;
     const view = viewKey(e.key, { shift: e.shiftKey, ctrl, alt: e.altKey, typing: typingNow });
     if (view) {
       e.preventDefault();
@@ -462,7 +484,7 @@ export function wireInput(app: App): void {
     // temporary dimensions or in the panel, so 1 and 2 keep switching the view.
     // In the door and window tools a digit is always a measure, aimed or not: it never switches the view
     // (the tester's K2: "1" turned to 3D).
-    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || app.openingKind() !== null;
+    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || app.openingKind() !== null;
     if (/^[\d.,-]$/.test(e.key) && typing) {
       e.preventDefault();
       shell.measure.focus();
@@ -486,6 +508,7 @@ export function wireInput(app: App): void {
         return app.render();
       }
       if (ui.tool === 'room' || ui.tool === 'floor') return app.setTool('select');
+      if (ui.tool === 'measure') return ui.measure.kind !== 'idle' ? app.measureEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? app.wallEvent({ kind: 'escape' }) : app.setTool('select');
       ui.selection.clear();
       return app.refresh();
@@ -506,6 +529,7 @@ export function wireInput(app: App): void {
     if (key === 'd') return app.setTool('door');
     if (key === 'r') return app.setTool('room');
     if (key === 'l') return app.setTool('floor');
+    if (key === 'm') return app.setTool('measure');
     if (key === 'v') return app.setTool('select');
     if (key === 'f') return app.frameSelection();
     // Choosing and moving elements without a mouse: N / Shift+N go through the level's elements;
@@ -562,6 +586,7 @@ function showHelp(app: App): void {
     ['Shift+W', t('tool.window')],
     ['R', t('tool.room')],
     ['L', t('tool.floor')],
+    ['M', t('tool.measure')],
     ['1 / 2', `${t('view.3d')} / ${t('view.plan')}`],
     ['Enter', t('help.enter')],
     ['Tab', t('help.tab')],

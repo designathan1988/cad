@@ -108,4 +108,12 @@ describe('which wall a snap is on', () => {
     // Past the body and the radius: not on it.
     expect(snap(input([2.5, 0.09], thick)).kind).not.toBe('onWall');
   });
+
+  it("a wall face's edge (the measure tool): its ends are corners, its points on the face", () => {
+    const face = { segments: [{ start: vec(0, 0.1), end: vec(6, 0.1), face: true }] };
+    expect(snap(input([6.004, 0.103], face))).toMatchObject({ kind: 'corner', point: { x: 6, y: 0.1 } });
+    expect(snap(input([2.5, 0.104], face))).toMatchObject({ kind: 'onFace' });
+    // Its middle is no snap: a face's edge is a piece of a wall's body.
+    expect(snap(input([3.004, 0.103], face)).kind).toBe('onFace');
+  });
 });

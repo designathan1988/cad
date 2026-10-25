@@ -5,15 +5,10 @@ import { el } from './controls';
 import { t, type MessageKey } from './i18n';
 import { icon, type IconName } from './icons';
 
-export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor';
+export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'measure';
 export type ViewId = '3d' | 'plan';
 
-const SOON: readonly { icon: IconName; key: MessageKey }[][] = [
-  [
-    { icon: 'dimension', key: 'tool.dimension' },
-    { icon: 'ruler', key: 'tool.measure' },
-  ],
-];
+const SOON: readonly { icon: IconName; key: MessageKey }[] = [{ icon: 'dimension', key: 'tool.dimension' }];
 
 function iconButton(name: IconName, cls = 'icon-btn'): HTMLButtonElement {
   const b = el('button', { type: 'button', class: cls });
@@ -71,6 +66,7 @@ export function buildShell(root: HTMLElement) {
   const toolWindow = iconButton('window', 'icon-btn tool');
   const toolFloor = iconButton('slab', 'icon-btn tool');
   const toolRoom = iconButton('room', 'icon-btn tool');
+  const toolMeasure = iconButton('ruler', 'icon-btn tool');
   // Groups of several tools take one place in the bar: the last one used shows, the others are in
   // its submenu (ref/chat.txt:204). The input layer opens the submenu and keeps the shown one.
   const groupOf = (name: MessageKey, ...members: HTMLButtonElement[]) => {
@@ -89,15 +85,14 @@ export function buildShell(root: HTMLElement) {
     { name: 'group.construction' as MessageKey, members: [toolWall, toolFloor] },
     { name: 'group.openings' as MessageKey, members: [toolDoor, toolWindow] },
   ];
+  // Measuring and dimensioning, together: the tape works, the dimension is to come.
+  tools.append(el('div', { class: 'group-sep' }), toolMeasure);
   const soonButtons: { b: HTMLButtonElement; key: MessageKey }[] = [];
-  for (const group of SOON) {
-    tools.append(el('div', { class: 'group-sep' }));
-    for (const s of group) {
-      const b = iconButton(s.icon, 'icon-btn tool');
-      b.disabled = true;
-      soonButtons.push({ b, key: s.key });
-      tools.append(b);
-    }
+  for (const s of SOON) {
+    const b = iconButton(s.icon, 'icon-btn tool');
+    b.disabled = true;
+    soonButtons.push({ b, key: s.key });
+    tools.append(b);
   }
   const sidebar = iconButton('sidebar', 'icon-btn tool');
   tools.append(el('div', { class: 'spacer' }), sidebar);
@@ -132,7 +127,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, undo, redo, level, newFile, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, viewport, planCanvas, glCanvas, floatBar, dims, browser, sidebar, toolGroups,
+    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, floatBar, dims, browser, sidebar, toolGroups,
     emptyHint, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack,
   };
 
@@ -160,6 +155,7 @@ export function buildShell(root: HTMLElement) {
     tip(toolWindow, 'tool.windowKey');
     tip(toolRoom, 'tool.roomKey');
     tip(toolFloor, 'tool.floorKey');
+    tip(toolMeasure, 'tool.measureKey');
     for (const s of soonButtons) {
       s.b.title = `${t(s.key)}: ${t('tool.soon')}`;
       s.b.setAttribute('aria-label', s.b.title);

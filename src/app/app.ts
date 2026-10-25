@@ -23,6 +23,7 @@ import {
 import type { OpeningSize } from '../elements/opening/panel';
 import { GROUP_PREFIX, hasDistance, isOpeningId, newOpening, OPENING_DEFAULTS, OPENING_PREFIX, type Opening, type OpeningKind } from '../elements/opening/schema';
 import { OPENING_IDLE, openingTransition, ruleBase, type OpeningToolEvent, type OpeningToolState } from '../tools/opening-tool';
+import { MEASURE_IDLE, type MeasureEvent, type MeasureState, measureTransition, reading } from '../tools/measure-tool';
 import { aimAlong, OPENING_PREVIEW_ID, ruleGuide, ruleText } from './opening-ui';
 import type { WallId } from '../elements/wall/schema';
 import { type Insets, PlanView } from '../render/plan-view';
@@ -84,6 +85,8 @@ export interface UiState {
   drag: Drag | null;
   /** Corners of a floor outline being drawn. */
   floorDraft: Point2[];
+  /** The measure tool's tape (measure-tool.ts). */
+  measure: MeasureState;
   /** The temporary dimension whose value is being typed. */
   dimEdit: string | null;
 }
@@ -135,6 +138,7 @@ export class App {
       info: null,
       drag: null,
       floorDraft: [],
+      measure: MEASURE_IDLE,
       dimEdit: null,
     };
     this.shell = buildShell(root);
@@ -465,6 +469,7 @@ export class App {
     this.ui.wall = IDLE;
     this.ui.opening = OPENING_IDLE;
     this.ui.floorDraft = [];
+    this.ui.measure = MEASURE_IDLE;
     this.ui.snap = null;
     this.ui.hover = null;
     this.ui.error = null;
@@ -490,6 +495,14 @@ export class App {
     savePrefs({ view });
     this.render();
     if (!this.framed[view]) this.frameAll();
+  }
+
+  /** The measure tool: a click or Esc (measure-tool.ts). Nothing is added to the drawing. */
+  measureEvent(event: MeasureEvent): void {
+    this.ui.measure = measureTransition(this.ui.measure, event);
+    if (event.kind === 'escape') this.ui.snap = null;
+    this.shell.measure.value = '';
+    this.render();
   }
 
   wallEvent(event: WallToolEvent): void {
@@ -523,13 +536,14 @@ export class App {
     const point = parsePoint(text);
     if (point.ok) {
       const wall = this.ui.tool === 'wall' && this.ui.wall.kind !== 'bend';
-      if (!wall && this.ui.tool !== 'floor' && this.ui.tool !== 'room') {
+      if (!wall && this.ui.tool !== 'floor' && this.ui.tool !== 'room' && this.ui.tool !== 'measure') {
         this.ui.error = t('hint.pointHere', { text });
         this.renderChrome();
         return false;
       }
       this.ui.error = null;
       if (wall) this.wallEvent({ kind: 'click', point: point.value });
+      else if (this.ui.tool === 'measure') this.measureEvent({ kind: 'click', point: point.value });
       else if (this.ui.tool === 'floor') this.floorClick(point.value, 0, true);
       else this.roomClick(point.value);
       return true;
@@ -961,6 +975,11 @@ export class App {
       const floorLen = floorFrom && floorTo ? distance(floorFrom, floorTo) : 0;
       const floorAlong = floorFrom && floorTo && floorLen > 0 ? { x: (floorTo.x - floorFrom.x) / floorLen, y: (floorTo.y - floorFrom.y) / floorLen } : null;
       const floorAng = floorAlong ? ((Math.atan2(floorAlong.y, floorAlong.x) * 180) / Math.PI + 360) % 360 : 0;
+      // The tape: from its start to where the next click would land, or as measured.
+      const m = ui.tool === 'measure' ? ui.measure : MEASURE_IDLE;
+      const tapeFrom = m.kind === 'idle' ? null : m.a;
+      const tapeTo = m.kind === 'done' ? m.b : m.kind === 'from' ? (ui.snap?.point ?? ui.cursor) : null;
+      const tape = tapeFrom && tapeTo && distance(tapeFrom, tapeTo) > 0 ? reading(tapeFrom, tapeTo) : null;
       // How far the drawn preview reaches on the measure's side: its pieces as derived (reference line,
       // thickness and joins included), so the measure is set off past them.
       const side = along ? { x: -along.y, y: along.x } : null;
@@ -977,7 +996,7 @@ export class App {
         hover: ui.hover,
         preview,
         snap:
-          (ui.tool === 'wall' || ui.tool === 'floor') && ui.snap
+          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure') && ui.snap
             ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
             : null,
         measure:
@@ -985,10 +1004,17 @@ export class App {
             ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°`, normal: side!, clear: reach }
             : floorFrom && floorTo && floorAlong && floorLen >= MIN_WALL_LENGTH
               ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${num(floorLen)} m · ${num(floorAng, 1)}°`, normal: { x: -floorAlong.y, y: floorAlong.x }, clear: 0 }
-              : (this.bendMeasure() ?? this.turnMeasure() ?? guide?.measure ?? null),
-        axis: end && len >= MIN_WALL_LENGTH && w.kind === 'drawing' ? { start: w.last, end } : (guide?.axis ?? null),
+              : tape && tapeFrom && tapeTo
+                ? {
+                    at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 },
+                    text: `${num(tape.length)} m · ${num(tape.angle, 1)}°`,
+                    normal: { x: -tape.dy / tape.length, y: tape.dx / tape.length },
+                    clear: 0,
+                  }
+                : (this.bendMeasure() ?? this.turnMeasure() ?? guide?.measure ?? null),
+        axis: end && len >= MIN_WALL_LENGTH && w.kind === 'drawing' ? { start: w.last, end } : tape && tapeFrom && tapeTo ? { start: tapeFrom, end: tapeTo } : (guide?.axis ?? null),
         handles: this.handles(),
-        anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : null,
+        anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : tapeFrom,
         wallTags: this.wallTags(),
         roomLabels: [...this.visibleGeometry().rooms.values()].map((r) => ({
           at: r.label,
@@ -1301,6 +1327,7 @@ export class App {
     shell.toolFloor.setAttribute('aria-pressed', String(ui.tool === 'floor'));
     shell.toolDoor.setAttribute('aria-pressed', String(ui.tool === 'door'));
     shell.toolWindow.setAttribute('aria-pressed', String(ui.tool === 'window'));
+    shell.toolMeasure.setAttribute('aria-pressed', String(ui.tool === 'measure'));
     // In a group, the tool in use is the one shown.
     for (const g of shell.toolGroups) {
       const active = g.members.find((b) => b.getAttribute('aria-pressed') === 'true');
@@ -1371,11 +1398,20 @@ export class App {
         ? this.previewProblem() ?? t('hint.openingAim', { rule: ruleText(ui.opening.rule, ruleBase(ui.opening.aim, ui.opening.rule)) })
         : t('hint.openingPlace', { kind: t(placing === 'door' ? 'panel.door' : 'panel.window').toLowerCase() })
       : null;
-    const toolHint = ui.tool === 'room' ? t('hint.roomPlace') : ui.tool === 'floor' ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace') : null;
+    const toolHint =
+      ui.tool === 'room'
+        ? t('hint.roomPlace')
+        : ui.tool === 'floor'
+          ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
+          : ui.tool === 'measure'
+            ? this.measureHint()
+            : null;
     shell.instr.textContent = ui.error ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size });
     shell.instr.classList.toggle('error', ui.error !== null);
     const keys = placing || ui.tool === 'room'
       ? [keyHint('Esc', t('key.exit'))]
+      : ui.tool === 'measure'
+      ? [keyHint('Shift', t('key.straight')), keyHint('S', t('key.snapOff')), keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clear'))]
       : ui.tool === 'floor'
       ? [keyHint('Enter', t('key.finish')), keyHint('Esc', t('key.exit'))]
       : drawing
@@ -1388,7 +1424,7 @@ export class App {
     shell.keys.replaceChildren(...keys);
     const lengthMode = drawing && w.kind === 'drawing';
     // Where a point is asked for: the wall's start, a floor's corners, a room's point.
-    const pointMode = (drawing && w.kind === 'idle') || ui.tool === 'floor' || ui.tool === 'room' || (lengthMode && shell.measure.value.includes(';'));
+    const pointMode = (drawing && w.kind === 'idle') || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || (lengthMode && shell.measure.value.includes(';'));
     const distanceMode = aiming || (ui.selection.size === 1 && this.selectedOpenings().length === 1);
     const withAngle = lengthMode && shell.measure.value.includes('<');
     shell.measureLabel.textContent = t(
@@ -1411,6 +1447,15 @@ export class App {
     shell.toolWall.classList.toggle('arc-mode', drawing && arc);
     shell.coords.textContent = ui.cursor ? `x ${num(ui.cursor.x)} m  y ${num(ui.cursor.y)} m` : '';
     this.placeFloatBar();
+  }
+
+  /** The footer for the measure tool: what to click, or what the tape read. */
+  private measureHint(): string {
+    const m = this.ui.measure;
+    if (m.kind === 'idle') return t('hint.measureStart');
+    if (m.kind === 'from') return t('hint.measureEnd');
+    const r = reading(m.a, m.b);
+    return t('hint.measured', { d: num(r.length), dx: num(Math.abs(r.dx)), dy: num(Math.abs(r.dy)), a: num(r.angle, 1) });
   }
 
   /** The selection's quick actions, above the selection and never over it. */

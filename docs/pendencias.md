@@ -45,6 +45,10 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
   para cima), e não início/fim do desenho.
 - "Centralizar entre as paredes ao lado": a janela no meio do trecho do próprio cômodo.
 
+- Ferramenta Medir (M; antes "em breve"): dois cliques dão a distância, as projeções e o ângulo; encaixa
+  nas faces e nos cantos das paredes ("Na face da parede", "Canto"), não só nos eixos. A Cota continua
+  "em breve" (cotas permanentes, item do Adendo 2).
+
 Achados desta rodada ainda abertos:
 - A etiqueta da cota temporária (fundo opaco) cobre a ponta da parede que chega num T.
 - A cota guia da porta sendo colocada é uma linha solta a 50 cm da parede, sem marcas nas pontas.

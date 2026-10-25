@@ -4,7 +4,7 @@
 import { add, distance, dot, normalize, type Point2, scale, sub, vec } from '../core/vector';
 import type { MessageKey } from '../ui/i18n';
 
-export type SnapKind = 'endpoint' | 'start' | 'origin' | 'midpoint' | 'onWall' | 'aligned' | 'axis' | 'angle' | 'grid' | 'none';
+export type SnapKind = 'endpoint' | 'corner' | 'start' | 'origin' | 'midpoint' | 'onWall' | 'onFace' | 'aligned' | 'axis' | 'angle' | 'grid' | 'none';
 
 export interface Snap {
   readonly point: Point2;
@@ -21,9 +21,10 @@ export interface SnapInput {
   readonly mpp: number;
   /**
    * `reach`: how far from its axis the wall's body goes (half its thickness, m). Its ends are taken
-   * from anywhere on that body near them: the corner one sees is the faces', not the axis's.
+   * from anywhere on that body near them: the corner one sees is the faces', not the axis's. `face`:
+   * an edge of a wall's drawn body (the measure tool): its ends are corners, its points on the face.
    */
-  readonly segments: readonly { readonly id?: string; readonly start: Point2; readonly end: Point2; readonly reach?: number }[];
+  readonly segments: readonly { readonly id?: string; readonly start: Point2; readonly end: Point2; readonly reach?: number; readonly face?: boolean }[];
   /** The point being drawn from, if any. */
   readonly from: Point2 | null;
   /** The first point of the chain: clicking it closes the outline. */
@@ -41,10 +42,12 @@ const ANGLE_TOL_DEG = 3;
 
 export const snapLabel: Readonly<Record<SnapKind, MessageKey | null>> = {
   endpoint: 'snap.endpoint',
+  corner: 'snap.corner',
   start: 'snap.start',
   origin: 'snap.origin',
   midpoint: 'snap.midpoint',
   onWall: 'snap.onWall',
+  onFace: 'snap.onFace',
   aligned: 'snap.alignedX',
   axis: 'snap.axis',
   angle: null,
@@ -68,12 +71,21 @@ export function snap(input: SnapInput): Snap {
   // The corners of the end's square of body are reach·√2 from it, at any angle of the wall.
   const reaches = input.segments.flatMap((s) => [(s.reach ?? 0) * Math.SQRT2, (s.reach ?? 0) * Math.SQRT2]);
   const nearEnd = closest(ends, cursor, r, reaches);
-  if (nearEnd) return { point: nearEnd, kind: 'endpoint', ...of(Math.floor(ends.indexOf(nearEnd) / 2)) };
+  if (nearEnd) {
+    const i = Math.floor(ends.indexOf(nearEnd) / 2);
+    return { point: nearEnd, kind: input.segments[i]?.face ? 'corner' : 'endpoint', ...of(i) };
+  }
   // The crossing of the axes drawn on the plan: where a project is usually started.
   if (distance(cursor, ORIGIN) <= r) return { point: ORIGIN, kind: 'origin' };
-  const mids = input.segments.map((s) => scale(add(s.start, s.end), 0.5));
-  const nearMid = closest(mids, cursor, r);
-  if (nearMid) return { point: nearMid, kind: 'midpoint', ...of(mids.indexOf(nearMid)) };
+  // A face's edges are pieces of a wall's body, cut where other walls and openings meet it: their
+  // middles mean nothing, and would catch the tape halfway across a room.
+  const mids = input.segments.flatMap((s, i) => (s.face ? [] : [{ i, p: scale(add(s.start, s.end), 0.5) }]));
+  const nearMid = closest(
+    mids.map((m) => m.p),
+    cursor,
+    r,
+  );
+  if (nearMid) return { point: nearMid, kind: 'midpoint', ...of(mids.find((m) => m.p === nearMid)!.i) };
   // Angle from the last point in 15° steps, with the length on the 5 cm grid.
   let best: Snap | null = null;
   let ray: Point2 | null = null;
@@ -102,7 +114,7 @@ export function snap(input: SnapInput): Snap {
     const crossing = ray && from ? rayOnSegment(from, ray, s.start, s.end) : null;
     const onRay = crossing && distance(crossing, cursor) <= slack ? crossing : null;
     const p = onRay ?? projectOnSegment(cursor, s.start, s.end, GRID_STEP) ?? foot;
-    return { point: p, kind: 'onWall', ...of(i) };
+    return { point: p, kind: s.face ? 'onFace' : 'onWall', ...of(i) };
   }
 
   // Aligned with another wall end, horizontally or vertically, within the radius. On a snapped
