@@ -1,15 +1,17 @@
-// Temporary dimensions of the one selected element, as in Revit: a wall's length, an opening's
-// distances to the nearest wall meeting its own on each side (its face; the wall's end when none), or,
-// on the side of the opening it is measured from, the gap to that one. Each can be typed: the value
-// becomes one command.
+// Temporary dimensions of the one selected element, as in Revit: a wall's length and the clear gaps
+// to the nearest parallel walls facing it on each side; an opening's distances to the nearest wall
+// meeting its own on each side (its face; the wall's end when none), or, on the side of the opening it
+// is measured from, the gap to that one. Each can be typed: the value becomes one command.
 
 import { MIN_WALL_LENGTH } from '../core/tolerance';
-import { add, distance, normalize, perp, type Point2, scale, sub } from '../core/vector';
+import { add, cross, distance, dot, normalize, perp, type Point2, scale, sub } from '../core/vector';
 import type { Command } from '../core/store';
 import { updateOpening } from '../elements/opening/commands';
 import { setWalls } from '../elements/wall/commands';
 import { bulgeKeepingSide } from '../tools/arc-edit';
-import { stretchEnd } from '../tools/edit';
+import { moveWalls, stretchEnd } from '../tools/edit';
+import { faceOffsets, wallDirection, wallNormal } from '../elements/wall/geometry/offset';
+import { shapeOf } from '../elements/wall/geometry/shape';
 import { arcOf } from '../elements/wall/geometry/arc';
 import type { Doc } from './document';
 import type { DerivedGeometry } from './geometry';
@@ -47,6 +49,7 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
         value: len,
         apply: (v) => (v >= MIN_WALL_LENGTH ? setWalls(stretchEnd(doc, id, 'end', add(wall.start, scale(dir, v)))) : null),
       },
+      ...gapDims(doc, wall),
     ];
   }
   const o = g.openings.get(id);
@@ -168,4 +171,67 @@ function quieterSide(doc: Doc, wall: Doc['walls'][number], dir: Point2): Point2 
     }
   }
   return balance > 0 ? scale(left, -1) : left;
+}
+
+/**
+ * The clear gaps from a straight wall to the nearest parallel wall facing it on each side (face to
+ * face, where their runs overlap), drawn across the gap at the middle of the overlap. A typed gap moves
+ * the wall across, its joins kept as a drag keeps them: walls are spaced from one another by typing.
+ */
+function gapDims(doc: Doc, wall: Doc['walls'][number]): TempDim[] {
+  const types = new Map(doc.wallTypes.map((x) => [x.id, x]));
+  const shape = shapeOf(wall, types.get(wall.wallTypeId));
+  if (typeof shape === 'string') return [];
+  const d = wallDirection(shape);
+  const n = wallNormal(shape);
+  const [f0, f1] = faceOffsets(shape);
+  const len = distance(wall.start, wall.end);
+  let above: { gap: number; station: number } | null = null;
+  let below: { gap: number; station: number } | null = null;
+  for (const o of doc.walls) {
+    if (o.id === wall.id || o.levelId !== wall.levelId || o.bulge) continue;
+    const other = shapeOf(o, types.get(o.wallTypeId));
+    if (typeof other === 'string' || Math.abs(cross(d, wallDirection(other))) > 1e-6) continue;
+    const s0 = dot(sub(o.start, wall.start), d);
+    const s1 = dot(sub(o.end, wall.start), d);
+    const lo = Math.max(0, Math.min(s0, s1));
+    const hi = Math.min(len, Math.max(s0, s1));
+    if (hi - lo < 1e-6) continue;
+    // The other wall's faces across this one's normal.
+    const across = dot(sub(o.start, wall.start), n);
+    const sign = Math.sign(dot(wallNormal(other), n));
+    const faces = faceOffsets(other).map((g) => across + sign * g);
+    const near = Math.min(...faces);
+    const far = Math.max(...faces);
+    const station = (lo + hi) / 2;
+    if (near >= f1 && (!above || near - f1 < above.gap)) above = { gap: near - f1, station };
+    if (far <= f0 && (!below || f0 - far < below.gap)) below = { gap: f0 - far, station };
+  }
+  const at = (station: number, offset: number) => add(wall.start, add(scale(d, station), scale(n, offset)));
+  const dims: TempDim[] = [];
+  if (above) {
+    const { gap, station } = above;
+    dims.push({
+      id: `${wall.id}:gapAbove`,
+      a: at(station, f1),
+      b: at(station, f1 + gap),
+      side: d,
+      clear: 0,
+      value: gap,
+      apply: (v) => (v >= 0 ? setWalls(moveWalls(doc, [wall.id], scale(n, gap - v)), 'cmd.move') : null),
+    });
+  }
+  if (below) {
+    const { gap, station } = below;
+    dims.push({
+      id: `${wall.id}:gapBelow`,
+      a: at(station, f0 - gap),
+      b: at(station, f0),
+      side: d,
+      clear: 0,
+      value: gap,
+      apply: (v) => (v >= 0 ? setWalls(moveWalls(doc, [wall.id], scale(n, v - gap)), 'cmd.move') : null),
+    });
+  }
+  return dims;
 }

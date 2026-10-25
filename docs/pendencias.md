@@ -59,6 +59,11 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
 - Ao arrastar a ponta de uma parede, o encaixe aparece como ao desenhar ("Sobre a parede 5"); girar e
   esticar dizem "Shift mantém reto, Esc cancela" (o Alt só vale para mover).
 
+- Botão direito termina o que está em andamento (sequência de paredes, contorno de piso, fita de medir,
+  arraste) antes de abrir menu, como no Revit e no AutoCAD.
+- Cotas inteligentes: uma parede selecionada mostra o vão livre até a parede paralela mais próxima de
+  cada lado; digitar o vão move a parede (juntas mantidas). As cotas seguem o arraste de uma parede.
+
 Achados desta rodada ainda abertos:
 - Duas folhas de porta que se cruzam (ao colocar uma porta perto de outra) não dão aviso.
 - Mudar o lado de abertura não tem atalho no próprio desenho (só painel e barra).

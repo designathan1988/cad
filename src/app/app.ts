@@ -1145,14 +1145,16 @@ export class App {
   }
 
   /**
-   * Temporary dimensions of the one selected element, while selecting; not while dragging, except a
-   * door or a window being slid, whose distances follow it.
+   * Temporary dimensions of the one selected element, while selecting; while dragging only when they
+   * follow the drag: a door or a window slid, or one wall moved (its length and its gaps to the walls
+   * parallel to it, as they become).
    */
   private currentDims(): TempDim[] {
     const d = this.ui.drag;
-    if (this.ui.tool !== 'select' || (d && d.kind !== 'slide')) return [];
+    if (this.ui.tool !== 'select' || (d && d.kind !== 'slide' && d.kind !== 'move')) return [];
     const doc = this.store.get();
-    return tempDims(d?.kind === 'slide' ? { ...doc, openings: d.openings } : doc, this.geometry, this.ui.selection);
+    const shown = d?.kind === 'slide' ? { ...doc, openings: d.openings } : d?.kind === 'move' ? { ...doc, walls: d.walls } : doc;
+    return tempDims(shown, this.geometry, this.ui.selection);
   }
 
   /**

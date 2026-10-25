@@ -143,4 +143,27 @@ describe('temporary dimensions', () => {
     const [plain] = tempDims(d0, deriveGeometry(d0), new Set(['w0']));
     expect(plain!.side.y).toBeCloseTo(1, 12);
   });
+
+  it('a wall facing a parallel one: the clear gap between their faces, and typing it moves the wall, its corner following', () => {
+    const d0 = doc();
+    // w0 along y = 0 and a parallel 20 cm wall along y = 3 over x 1..5: faces 0.10 and 2.90, a 2.80 gap.
+    const d: Doc = { ...d0, walls: [...d0.walls, wall('p', [1, 3], [5, 3])] };
+    const dims = tempDims(d, deriveGeometry(d), new Set(['w0']));
+    const gap = dims.find((x) => x.id === 'w0:gapAbove')!;
+    expect(gap.value).toBeCloseTo(2.8, 12);
+    // Drawn across the gap at the middle of the overlap (x = 3).
+    expect(gap.a.x).toBeCloseTo(3, 12);
+    expect([gap.a.y, gap.b.y].map((v) => Math.round(v * 1e9) / 1e9)).toEqual([0.1, 2.9]);
+    expect(dims.some((x) => x.id === 'w0:gapBelow')).toBe(false);
+    // 2.50: w0 moves 0.30 toward p; w1, meeting it at (6, 0), follows.
+    const next = gap.apply(2.5)!.apply(d);
+    expect(next.walls.find((w) => w.id === 'w0')!.start.y).toBeCloseTo(0.3, 12);
+    expect(next.walls.find((w) => w.id === 'w1')!.start.y).toBeCloseTo(0.3, 12);
+  });
+
+  it('a parallel wall whose run does not overlap, or one on another level, gives no gap', () => {
+    const d0 = doc();
+    const d: Doc = { ...d0, walls: [...d0.walls, wall('p', [7, 3], [9, 3]), { ...wall('q', [0, 2], [6, 2]), levelId: 'lvl_other' }] };
+    expect(tempDims(d, deriveGeometry(d), new Set(['w0'])).map((x) => x.id)).toEqual(['w0:length']);
+  });
 });
