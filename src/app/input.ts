@@ -162,6 +162,9 @@ export function wireInput(app: App): void {
 
   const onMove = (e: PointerEvent) => {
     shift = e.shiftKey;
+    // The right button pressed while the left one is held (a chord) comes as a move, not a down:
+    // during a drag it cancels it, as a right click does.
+    if (e.button === 2 && (e.buttons & 1) === 1 && endWithRightClick()) return;
     app.pointer = { x: e.clientX, y: e.clientY };
     if (panning && ui.view === 'plan') {
       app.plan.panBy(e.clientX - panning.x, e.clientY - panning.y);
@@ -231,6 +234,36 @@ export function wireInput(app: App): void {
     }
   };
 
+  /**
+   * What a right click ends before it opens any menu: a wall chain (as Enter: the walls drawn stay), a
+   * floor outline (closed from three corners, dropped before), the measure tool's tape, a drag (as
+   * Esc). True when it ended something.
+   */
+  const endWithRightClick = (): boolean => {
+    if (gestures.cancel()) {
+      downAt = null;
+      showMarquee();
+      return true;
+    }
+    if (ui.tool === 'wall' && ui.wall.kind !== 'idle') {
+      app.wallEvent({ kind: 'enter' });
+      return true;
+    }
+    if (ui.tool === 'floor' && ui.floorDraft.length > 0) {
+      if (ui.floorDraft.length >= 3) app.floorFinish();
+      else {
+        ui.floorDraft = [];
+        app.render();
+      }
+      return true;
+    }
+    if (ui.tool === 'measure' && ui.measure.kind !== 'idle') {
+      app.measureEvent({ kind: 'escape' });
+      return true;
+    }
+    return false;
+  };
+
   const onUp = (e: PointerEvent) => {
     if (panning) {
       panning = null;
@@ -240,7 +273,10 @@ export function wireInput(app: App): void {
       // A right drag orbits the 3D view; only a click opens the menu.
       const moved = Math.hypot(e.clientX - rightAt.x, e.clientY - rightAt.y) > 4;
       rightAt = null;
-      if (!moved) contextMenu(e);
+      if (moved) return;
+      // As in Revit and AutoCAD, a right click first ends what is under way, without a menu.
+      if (endWithRightClick()) return;
+      contextMenu(e);
       return;
     }
     if (e.button !== 0 || !downAt) return;
@@ -591,6 +627,7 @@ function showHelp(app: App): void {
     ['Enter', t('help.enter')],
     ['Tab', t('help.tab')],
     ['Esc', t('help.esc')],
+    [t('help.rightClickKey'), t('help.rightClick')],
     ['Del', t('pal.delete')],
     ['F', t('pal.frameSelection')],
     ['Home', t('pal.frameAll')],
