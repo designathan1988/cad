@@ -250,7 +250,8 @@ Quarto 1); arco com cotas de corda e de raio, alça de curvatura e raio editado 
 - Resolvido em 2026-10-26: distribuir com aberturas dos dois lados de um encontro, quando a parede
   inteira poria uma sobre o encontro, faz um grupo para cada trecho (ADR 0003). Falta só o caso de uma
   abertura sozinha de cada lado com a distribuição caindo no encontro (fica com o aviso).
-- Grupo v3 que já começa com uma janela sobre o X continua assim até ser editado (reteste de 16453d5).
+- Resolvido em 2026-10-26: grupo de arquivo versão 3 com uma janela sobre o X é redistribuído por trecho ao
+  abrir o arquivo (o lado de cada abertura vai pelo meio dela); grupos longe dos encontros ficam como estavam.
 - Resolvidos e vistos no reteste de 16453d5: cota de "De outra abertura", pavimento na lista "Com",
   nome do cômodo no centro, pavimento ao recarregar e ao abrir.
 
