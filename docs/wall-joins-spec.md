@@ -126,10 +126,18 @@ interface EndJoin   { nodeId: NodeId; members: { wallId: WallId; end: WallEnd }[
 interface Abutment  { abutting: { wallId: WallId; end: WallEnd }; hostId: WallId; t: number }
 interface Crossing  { throughId: WallId; cutId: WallId; point: Point2 }
 
+interface Junction  {                       // §7.6
+  point: Point2;
+  passing: WallId[];                         // paredes que passam pelo ponto: dois braços cada
+  ends: { wallId: WallId; end: WallEnd }[];  // pontas no ponto: um braço cada
+  absorbs: { corners; nodes; crossings; abutments };  // as juntas que ela substitui
+}
+
 interface JoinGraph {
   nodes: EndJoin[];
   abutments: Abutment[];
   crossings: Crossing[];
+  junctions: Junction[];
   warnings: JoinWarning[];
 }
 
@@ -476,6 +484,16 @@ ATSTART/ATEND, T é ATPATH + ATSTART); exporta-se como dois T.
 4. Nó com **mais de 4 pontas**: corte quadrado em todas, aviso `ComplexJoin`.
    (O Revit também limita a configuração de junta a 4 paredes ou menos.)
 
+*(2026-10-26, entrega 7)* Entre paredes retas, o nó vai para os **setores**
+(§7.6) quando: não há par em linha; há mais de 4 pontas; uma ponta não cabe na
+passagem (o aviso do item 2); duas pontas encostam do mesmo lado da passagem
+(sobrepostas uma à outra onde as duas chegam nela, o "K"); ou uma ponta só cabe
+contra o lado de fora do canto da passagem (§7.4 `outside`: ela começaria nas
+faces da passagem, com o acabamento da passagem entre os núcleos — num "λ",
+passagem dobrada poucos graus com o terceiro ramo do lado aberto, o acabamento
+atravessava a ponta do ramo). Os itens 3 e 4 só valem quando os setores não são
+exatos; aí o aviso `ComplexJoin` fica. Arcos mantêm a regra da passagem.
+
 ### 7.5 Alturas diferentes
 
 Para cada parede, monta o conjunto de cotas
@@ -509,6 +527,53 @@ editada na caixa de Pavimentos.
 Começar ou terminar exatamente na altura de corte não é atravessar. A primeira
 versão mostrava a slice mais baixa, e com ela uma parede sobre `baseOffset`
 aparecia sobreposta à vizinha. No corte, as duas ficam em meia-esquadria.
+
+### 7.6 Setores e junções *(2026-10-26, entrega 7)*
+
+**Setores** (`join/sectors.ts`). Paredes retas num ponto `P`: cada ponta é um
+**braço**; cada parede que passa por `P` são dois braços, um para cada lado,
+divididos onde `P` cai na linha dela. Os braços são ordenados pelo ângulo. Para
+cada par de vizinhos (anti-horário), o canto `c` é o encontro das faces que se
+olham. A linha entre os dois vai de `P` a `c`, e cada braço fica com o setor
+entre as suas duas linhas, todas as camadas cortadas pelos mesmos dois
+semiplanos. Vizinhos ficam com os dois lados da mesma linha: nada se sobrepõe,
+nada fica aberto. As faces se encontram nos cantos e os núcleos no meio.
+
+- Vão reto (os dois braços de uma parede que passa, sem nada entre eles
+  daquele lado): sem canto, a linha é a bissetriz.
+- Vão entre 90° e 180° com o canto além de `MITER_LIMIT × max(T)`: quase em
+  linha com outras faces, o canto foge. A linha é a bissetriz, um degrau, como
+  no L.
+- Vão maior que 180° (todos os braços de um lado) com o canto além desse
+  limite: chanfro, como no L.
+- Não é exato, e o chamador volta à regra anterior com o aviso, quando: dois
+  braços quase sobrepostos (vão menor que `COLLINEAR_ANGLE`); a linha cai fora
+  do vão que ela divide; um canto passa da outra ponta de um braço; ou um setor
+  passa de meia volta.
+- **Espessuras muito diferentes** (25 cm entre 15 e 10, em ângulos abertos): as
+  linhas das paredes se cruzam fora dos cantos que as faces fazem, e visto de
+  `P` o setor do braço grosso passa de meia volta. Tenta-se então o centro dos
+  cantos, se ele está dentro da faixa de todos os braços. Dali todo setor é
+  menor. Antes o nó caía na passagem, e o acabamento do ramo fino parava antes
+  do canto, sobre núcleo exposto.
+
+**Junções** (`join/junctions.ts`). A descoberta vê os pares sozinhos. Viram uma
+junção:
+- cruzamentos (X entre retas) a menos de uma espessura um do outro, quando os
+  pontos quase coincidem (um quarto da parede mais fina) ou quando o centro deles
+  fica dentro da faixa de cada parede, com folga de 1/8 da espessura (três
+  paredes desenhadas à mão se cruzando a poucos centímetros: cada X cortado
+  sozinho deixava tocos de acabamento e contornos dentro do bloco de núcleo);
+- uma ponta, um L ou um nó no ponto de um cruzamento, ou dentro de duas das
+  paredes que passam por ele;
+- uma ponta dentro de um L (dentro das duas paredes, a menos de uma espessura do
+  canto) ou de duas paredes de um nó.
+
+A pegada (`footprint.ts`) resolve as junções antes de tudo. Se os setores são
+exatos, as juntas absorvidas são postas de lado e as paredes que passam são
+divididas no ponto (cada lado com o corte do seu setor, na ordem das divisões
+ao longo da parede, junto com os X). Se não, aviso `ComplexJoin`, e as juntas
+absorvidas seguem como antes.
 
 ---
 
@@ -565,7 +630,7 @@ overlap") e ArchiCAD ("Check for Linear Overlaps") fazem.
 |---|---|
 | `WallTooShort` | comprimento `< MIN_WALL_LENGTH` |
 | `WallsOverlap` | paredes paralelas sobrepostas no comprimento |
-| `ComplexJoin` | nó com mais de 4 pontas |
+| `ComplexJoin` | nó ou junção que nem os setores (§7.6) nem a passagem (§7.4) resolvem exatos |
 | `MiterTooLong` | miter cortado quadrado por exceder `MITER_LIMIT` |
 | `JoinDisallowed` | override do usuário removeu a junta |
 
@@ -594,7 +659,9 @@ regra que o elimina.
 | ponta a `< 1 mm` de uma ponta da hospedeira | é EndJoin, não T |
 | as duas pontas dentro da mesma hospedeira | a parede está dentro dela; sem junta; `WallsOverlap` |
 | peça com área `< 1e-9 m²` | descartada |
-| nó com > 4 pontas | todas quadradas; `ComplexJoin` |
+| nó com > 4 pontas | setores (§7.6); se não são exatos, todas quadradas e `ComplexJoin` |
+| setor de um braço passa de meia volta visto de P | setores a partir do centro dos cantos, se ele está dentro de todo braço; senão, a regra anterior |
+| cruzamentos a menos de uma espessura | uma junção, se o centro fica dentro de toda parede que passa; senão, cada X sozinho |
 | faixas de altura sem sobreposição | sem junta |
 | arco com raio `< T` (offset degenerado) | parede inválida; aviso |
 
@@ -892,6 +959,52 @@ Achados:
 Por pedido do usuário não houve seeds extras, rodadas grandes nem laço de
 mutantes nesta entrega; o portão foi o `npm run check`.
 
+### Entrega 7 — setores e junções (26/10/2026)
+
+Pedido do usuário, com imagens, depois do quinto teste de uso: o Y simétrico com
+um entalhe em V, o Y com fresta, o λ, o X com uma ponta no cruzamento, três
+paredes se cruzando num ponto, um aglomerado em gravata-borboleta e um retângulo
+com diagonal até o canto. "Esses são alguns, mas não todos": achar o motivo e os
+casos ainda não vistos.
+
+Causas achadas:
+1. A regra da passagem (§7.4) supõe um par em linha. Sem ele, a passagem das
+   duas mais grossas deixava o terceiro ramo cruzando o canto dela: fresta ou V.
+2. A passagem em butt entalhava o terceiro ramo com a faixa cortada só pelos
+   cortes comuns, que passava do canto: fresta ao longo da face de longe.
+   → corpos camada por camada (`layerBodies`).
+3. Ramo do lado aberto de uma passagem dobrada (λ): `outside` começa o ramo
+   nas faces da passagem, com o acabamento dela entre os núcleos.
+4. Duas pontas do mesmo lado da passagem (K) se sobrepunham; 5+ pontas ficavam
+   quadradas e sobrepostas.
+5. A descoberta via cada par sozinho: três paredes num ponto viravam três X;
+   uma ponta num cruzamento, um T numa e sobreposta à outra.
+6. Cruzamentos a poucos centímetros (desenho sem encaixe) eram X separados, com
+   tocos de acabamento e contornos dentro do núcleo.
+7. Espessuras muito diferentes num Y: visto de P, o setor do braço grosso passa
+   de meia volta; o nó caía na passagem e o acabamento do ramo fino parava
+   antes do canto.
+
+→ §7.6 (setores, junções, centro dos cantos) e o adendo da §7.4.
+
+Verificação: uso real na aplicação, no navegador, com gestos de usuário e
+capturas ampliadas (`.playwright-mcp/j-19` a `j-64`). Ficaram limpos (faces que
+se encontram nos cantos, núcleo único, nada sobreposto nem aberto, também no
+3D): Y simétrico; o nó original (horizontal, vertical e diagonal a 30°); λ; X
+com ponta no cruzamento; três paredes num ponto; três a ~5 cm uma da outra sem
+encaixe; retângulo com diagonal da metade de baixo até o canto; K; 5 pontas; L
+agudo de 16°; Y de 25, 15 e drywall 10 cm; o aglomerado do anexo do usuário e os
+cantos da casa onde o anexo começa.
+
+**Não feito nesta entrega:** por instrução do usuário, nenhum teste nem
+typecheck foi rodado, e nenhum teste foi escrito. Pela leitura do código, três
+casos de `tests/elements/wall/nodes.test.ts` descrevem a regra anterior e devem
+falhar até serem refeitos à mão: "node with 3 ends and no pair in line" (o ramo
+agora pega o setor, não encosta como T), "five ends at one point" (agora une
+sem aviso) e "an end straddling a passage whose walls differ there" (agora une
+sem aviso, degrau embaixo, cantos em cima). As suítes de propriedade de nós não
+foram olhadas.
+
 ### Entrega 6 — butt camada por camada no L entre paredes retas
 
 Pedido do usuário no teste de uso de 25/10/2026 ("olha o que aconteceu com o
@@ -1009,7 +1122,7 @@ Achados:
 |---|---|---|
 | Camadas entre tipos diferentes; camadas fora do núcleo | Revit: cada camada tem prioridade (pela função, Estrutura 1 … Acabamento 2 = 5); as de prioridade maior se ligam primeiro e **atravessam** as de prioridade menor para achar a de mesma prioridade da outra parede; não atravessam prioridade igual ou maior; camadas do núcleo vão até o núcleo da outra parede passando por tudo fora dele; mesmo material limpa, material diferente deixa linha. ArchiCAD: "Intersection Priority" do material, empate pela "Junction Order" da parede (0–16). | **Adotar o modelo de prioridade** (entrega 4). O atual bate com ele no T (núcleo até o núcleo) e no L de mesmo tipo (camada *k* com *k*), e diverge em duas coisas: uma camada de prioridade alta fora do núcleo deve atravessar o acabamento da outra parede, e o L entre tipos diferentes deve casar camadas por prioridade, não por uma diagonal só. |
 | Alturas diferentes | Revit tem limitação conhecida com miter entre alturas diferentes; o contorno documentado pelos usuários é fatiar a parede alta na altura da baixa. hito fatia. | Confirma §7.5. |
-| Nó com 3+ paredes | Revit não documenta regra; a Autodesk desaconselha a ferramenta de junta com mais de 4 paredes. No ArchiCAD, usuários recorrem a remendos 2D. | Manter a regra do hito (§7.4). |
+| Nó com 3+ paredes | Revit não documenta regra; a Autodesk desaconselha a ferramenta de junta com mais de 4 paredes. No ArchiCAD, usuários recorrem a remendos 2D. | Manter a regra do hito (§7.4). *(2026-10-26)* Onde ela erra (Y, λ, K, 5+ pontas), setores (§7.6). |
 | Arco com reta | Revit faz miter; algoritmo não documentado. | Manter: cantos na circunferência exata (§5.2). |
 | Desfazer junta | Revit: "Disallow Join" por ponta, persiste mesmo se a parede for movida; exibição Clean / Don't Clean. | Confirma §2.3 (override por ponta). |
 

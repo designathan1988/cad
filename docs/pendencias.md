@@ -189,6 +189,12 @@ gestos de mão que desviam), corrigidos e vistos no navegador (120ad2e a 609d09c
   piso por contorno, parede no 3D com comprimento digitado, N e Shift+N, desfazer e refazer, tema no 3D,
   cota temporária digitada, copiar.
 
+Sexta rodada (2026-10-26, junções de paredes, Chrome visível pelo Playwright, 1920×1080), corrigido e visto
+no navegador (44527ab, 1439550): as junções de várias paredes num ponto (wall-joins-spec.md, entrega 7) e o
+encaixe (S): ele desligava, mas o rodapé não dizia isso ao desenhar e a escolha voltava a "sim" ao
+recarregar. Agora o rodapé diz "encaixes: sim/não" em parede, retângulo, piso, medir e modificar, e a
+escolha é guardada.
+
 Achados da quinta rodada ainda abertos:
 - Num cômodo muito pequeno (0,75 m) a etiqueta, empurrada para baixo da cota, fica sobre a parede.
 - A alça de girar pode ficar sobre o valor de uma cota temporária; o quadrado da alça de ponta cobre o
@@ -246,6 +252,17 @@ Achados da rodada anterior ainda abertos:
   de um nó de 3 ou 4 pontas. Ali o butt ainda é como T (a parede que passa vai inteira até a face
   externa da outra), porque as cadeias dos arcos (footprint.ts) e os nós (node.ts, `alone`) reconhecem
   a parede que encosta por ter cortes por camada.
+- Resolvido em 2026-10-26 (44527ab): junções de várias paredes num ponto por setores (wall-joins-spec.md,
+  §7.6 e entrega 7). Y simétrico, Y com fresta, λ, K, 5 pontas, X com ponta no cruzamento, três paredes
+  num ponto ou a poucos centímetros, ponta dentro de um L, Y de espessuras muito diferentes. Visto no
+  navegador com gestos e capturas, também no 3D.
+- Falta (entrega 7): refazer à mão três casos de `tests/elements/wall/nodes.test.ts` que descrevem a regra
+  anterior ("no pair in line", "five ends", "an end straddling a passage"); por leitura do código devem
+  falhar. Nenhum teste foi rodado nem escrito, por instrução do usuário. Faltam também casos à mão para
+  os setores e as junções, e olhar as suítes de propriedade de nós.
+- Falta: setores para arcos (os nós com trechos de arco seguem a regra da passagem) e para um braço que
+  passa pelo ponto com setor de mais de meia volta (aí a junção avisa `ComplexJoin` e fica a regra
+  anterior).
 - Overrides de junta (desligar, butt, miter, corte reto).
 - Mutação ≥ 90 %.
 
