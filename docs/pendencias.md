@@ -221,9 +221,20 @@ visto no navegador (c39ba66 a 30cdc98):
   botões do app para ☰ (visto com a emulação de toque do Chrome). A 375 px com toque não foi visto: a
   janela pequena do Chrome, coberta por outras, segura os cliques (be78138 desliga isso no Playwright).
 
-Ainda abertos:
-- Caixa de corte com alças (Revit Section Box, Vectorworks Clip Cube), corte vertical a partir de uma
-  linha na planta, elevações, ocultar/isolar temporário, raio-X, vistas salvas.
+- Vistas do 3D (4d226bc a 7f8a250), vistas no navegador com gestos e capturas:
+  - Ocultar (Shift+H) e isolar (Shift+I) por enquanto, na planta e no 3D: moldura na cor de destaque e
+    "Mostrar tudo"; as paredes que ficam se unem entre si (a oculta não deixa fenda na quina).
+  - Raio-X: paredes e pisos translúcidos, linhas por cima.
+  - Vistas salvas no projeto (arquivo versão 6): câmera do 3D ou enquadramento da planta, no navegador
+    do projeto (clique volta, × apaga) e na paleta.
+  - Caixa de corte com um disco em cada face para arrastar; o que ela corta é preenchido como o corte.
+  - Vista paralela (ortogonal) e elevações norte, sul, leste e oeste (paleta).
+  - Corte vertical por uma guia (menu do botão direito da guia e paleta): mantém o lado com mais do
+    modelo, preenche o corte, vista de frente e paralela; "outro lado" e "desligar" na paleta.
+
+Ainda abertos (vistas):
+- O corte vertical sai de uma guia, não de uma ferramenta própria de linha de corte com seta na planta.
+- Elevação e corte ainda não têm cotas, nível nem rótulo de vista (documentação, adendo 2).
 
 ## Esperando reteste no navegador
 
@@ -350,8 +361,8 @@ Ferramentas de edição (valem para todos os elementos)
 - Alças e cotas temporárias clicáveis em cada elemento (l.111): parcial, paredes e aberturas; o arco não tem cota nem alça.
 - Copiar e colar entre pavimentos na mesma posição (l.112): existe (Ctrl+C, trocar o pavimento, Ctrl+V).
 - Travar (l.113): falta.
-- Ocultar (l.113): parcial, por categoria no navegador.
-- Isolar (l.113): falta.
+- Ocultar (l.113): existe (por categoria no navegador; elementos por enquanto com Shift+H).
+- Isolar (l.113): existe (Shift+I, por enquanto).
 - Camadas com visibilidade e bloqueio (l.113, l.144): parcial, visibilidade por categoria; sem bloqueio.
 - Fases: existente, a demolir e novo (l.114, l.144): falta.
 - Painel de propriedades dos schemas, vários elementos ao mesmo tempo (l.115): existe.
@@ -364,8 +375,8 @@ Documentação
 - Etiquetas automáticas de nome e área do cômodo (l.117): existem.
 - Etiquetas automáticas do tipo da porta e da janela (l.117): falta.
 - Plantas de cada pavimento como vistas derivadas (l.118, l.146): parcial, existe a vista em planta; falta a planta como vista de documentação.
-- Cortes (l.118, l.146): falta.
-- Elevações (l.118, l.146): falta.
+- Cortes (l.118, l.146): parcial, corte vertical no 3D por uma guia, paralelo e preenchido; sem cotas nem rótulos.
+- Elevações (l.118, l.146): parcial, as quatro no 3D, paralelas; sem cotas nem rótulos.
 - Tabelas de quantitativos (portas, janelas, cômodos com áreas, paredes com comprimentos e áreas), exportáveis em CSV (l.119, l.147): falta.
 - Pranchas com carimbo, impressão e PDF (l.120, l.148): falta.
 
