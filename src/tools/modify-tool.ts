@@ -10,6 +10,10 @@
 // | rotate | centre             | start of the angle        | end of the angle   | degrees, counter-clockwise  |
 // | scale  | base point         | end of a reference length | its new end        | factor                      |
 // | mirror | axis's first point | axis's second point       |                    | the axis's angle, degrees   |
+// | offset | where the copy goes: as far off the selected wall's line as the pointer is | distance, pointer's side |
+//
+// Offset, as Revit's, takes no base: its one click is the distance across the selected wall's line
+// (`line`), and it makes a copy by default.
 //
 // Esc steps back one click; at the first, the app leaves the tool. A value typed before any point is
 // refused: it needs the base.
@@ -18,7 +22,10 @@ import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { distance, dot, normalize, type Point2, scale, sub, add } from '../core/vector';
 import { reflection, rotation, scaling, type Transform, translation } from './transform';
 
-export type ModifyKind = 'move' | 'copy' | 'rotate' | 'scale' | 'mirror';
+export type ModifyKind = 'move' | 'copy' | 'rotate' | 'scale' | 'mirror' | 'offset';
+
+/** The straight wall an offset is measured across. */
+export type OffsetLine = { readonly start: Point2; readonly end: Point2 };
 
 export type ModifyState =
   | { readonly step: 'base' }
@@ -44,8 +51,20 @@ const threePoints = (kind: ModifyKind) => kind === 'rotate' || kind === 'scale';
 
 const angleOf = (v: Point2) => Math.atan2(v.y, v.x);
 
+/** The unit normal of the line, and how far p is from it along that normal (signed). */
+function across(line: OffsetLine, p: Point2): { n: Point2; d: number } {
+  const u = normalize(sub(line.end, line.start));
+  const n = { x: -u.y, y: u.x };
+  return { n, d: dot(sub(p, line.start), n) };
+}
+
 /** What the tool would do with the pointer at `cursor` now; null while it has too few points. */
-export function previewTransform(kind: ModifyKind, state: ModifyState, cursor: Point2 | null): Transform | null {
+export function previewTransform(kind: ModifyKind, state: ModifyState, cursor: Point2 | null, line?: OffsetLine): Transform | null {
+  if (kind === 'offset') {
+    if (!cursor || !line) return null;
+    const { n, d } = across(line, cursor);
+    return Math.abs(d) >= MIN_WALL_LENGTH ? translation(scale(n, d)) : null;
+  }
   if (!cursor || state.step === 'base') return null;
   const { base } = state;
   if (state.step === 'second') {
@@ -64,7 +83,19 @@ export function previewTransform(kind: ModifyKind, state: ModifyState, cursor: P
   return null;
 }
 
-export function modifyTransition(kind: ModifyKind, state: ModifyState, event: ModifyEvent, cursor: Point2 | null): ModifyResult {
+export function modifyTransition(kind: ModifyKind, state: ModifyState, event: ModifyEvent, cursor: Point2 | null, line?: OffsetLine): ModifyResult {
+  if (kind === 'offset') {
+    if (event.kind === 'escape') return { state, leave: true };
+    if (!line) return { state, rejected: true };
+    if (event.kind === 'click') {
+      const t = previewTransform(kind, state, event.point, line);
+      return t ? { state, apply: t } : { state, rejected: true };
+    }
+    // Typed: that far, to the side the pointer is on (the wall's left, with no pointer).
+    if (!Number.isFinite(event.value) || event.value <= 0) return { state, rejected: true };
+    const side = cursor ? Math.sign(across(line, cursor).d) || 1 : 1;
+    return { state, apply: translation(scale(across(line, line.start).n, event.value * side)) };
+  }
   if (event.kind === 'escape') {
     if (state.step === 'third') return { state: { step: 'second', base: state.base } };
     if (state.step === 'second') return { state: MODIFY_START };

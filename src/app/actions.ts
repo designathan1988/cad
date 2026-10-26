@@ -78,9 +78,9 @@ export function appActions(app: App, open: Openers): Action[] {
     make('edit.delete', 'pal.delete', edit, () => app.deleteSelection(), { keys: 'Del', enabled: has }),
     make('edit.selectAll', 'pal.selectAll', edit, () => app.selectAllWalls(), { keys: 'Ctrl+A' }),
     make('edit.clearSelection', 'pal.clearSelection', edit, () => app.clearSelection(), { keys: 'Esc', enabled: has }),
-    ...(['move', 'copy', 'rotate', 'scale', 'mirror'] as const).map((k) =>
+    ...(['move', 'copy', 'rotate', 'scale', 'mirror', 'offset'] as const).map((k) =>
       make(`edit.${k}`, `pal.${k}`, edit, () => app.startModify(k), {
-        keys: { move: 'Shift+M', copy: 'Shift+C', rotate: 'Shift+R', scale: 'Shift+E', mirror: 'Shift+X' }[k],
+        keys: { move: 'Shift+M', copy: 'Shift+C', rotate: 'Shift+R', scale: 'Shift+E', mirror: 'Shift+X', offset: 'Shift+O' }[k],
         enabled: canTransform(doc, [...ui.selection]),
       }),
     ),

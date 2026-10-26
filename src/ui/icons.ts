@@ -67,6 +67,8 @@ const paths = {
   rotate: 'M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5',
   scale: 'M4 14v6h6M4 20l7-7M14 4h6v6M20 4l-7 7',
   mirror: 'M12 3v18M9 7l-5 10h5zM15 7l5 10h-5z',
+  // A wall and its parallel copy, the arrow across between them.
+  offset: 'M4 5h16M4 19h16M12 8v8M9 13l3 3 3-3',
 } as const;
 
 export type IconName = keyof typeof paths;

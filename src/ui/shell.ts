@@ -96,6 +96,7 @@ export function buildShell(root: HTMLElement) {
     rotate: editTool('rotate'),
     mirror: editTool('mirror'),
     scale: editTool('scale'),
+    offset: editTool('offset'),
   };
   // On walls under the pointer, without a selection first: divide one, make two meet at a corner.
   const toolSplit = editTool('split');
@@ -310,6 +311,7 @@ export function buildShell(root: HTMLElement) {
     tip(modifyTools.rotate, 'tool.rotateKey');
     tip(modifyTools.mirror, 'tool.mirrorKey');
     tip(modifyTools.scale, 'tool.scaleKey');
+    tip(modifyTools.offset, 'tool.offsetKey');
     tip(toolSplit, 'tool.splitKey');
     tip(toolCorner, 'tool.cornerKey');
     for (const s of soonButtons) {

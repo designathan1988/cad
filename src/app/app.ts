@@ -68,7 +68,7 @@ import { fitFactor, keepInView } from './keep-in-view';
 import type { ViewKey } from './view-keys';
 import { type TempDim, tempDims } from './temp-dims';
 import { cutAt, exploding, liftOf, readView3D, shownLevels, type View3D } from './view-3d';
-import { MODIFY_START, type ModifyEvent, type ModifyKind, type ModifyState, modifyTransition, previewTransform } from '../tools/modify-tool';
+import { MODIFY_START, type ModifyEvent, type ModifyKind, type ModifyState, modifyTransition, type OffsetLine, previewTransform } from '../tools/modify-tool';
 import { canTransform, copiesInSeries, copyToLevel, transformSelection } from '../tools/transform';
 import { changeReferenceLine, stretchEnd } from '../tools/edit';
 import { canMerge, cornerWalls, mergeWalls, splitWall } from '../tools/split';
@@ -124,7 +124,8 @@ export interface UiState {
   wallFlip: boolean;
   /** The Modify tool in use (Move, Copy, Rotate, Scale, Mirror): its points so far; `copy` keeps the originals. */
   /** `disjoin` (Move, U): the walls go alone, the walls joined to them keeping their ends. */
-  modify: { readonly kind: ModifyKind; readonly copy: boolean; readonly disjoin: boolean; readonly state: ModifyState } | null;
+  /** `line` (Offset): the selected straight wall the offset is measured across. */
+  modify: { readonly kind: ModifyKind; readonly copy: boolean; readonly disjoin: boolean; readonly state: ModifyState; readonly line?: OffsetLine } | null;
   /** The temporary dimension whose value is being typed. */
   dimEdit: string | null;
 }
@@ -289,7 +290,7 @@ export class App {
     const d = this.ui.drag;
     // The Modify tool's result as it would be with the pointer where it is, copies included.
     const m = this.ui.tool === 'modify' ? this.ui.modify : null;
-    const t = m ? previewTransform(m.kind, m.state, this.ui.snap?.point ?? this.ui.cursor) : null;
+    const t = m ? previewTransform(m.kind, m.state, this.ui.snap?.point ?? this.ui.cursor, m.line) : null;
     if (m && t) {
       let n = 0;
       const previewId = (prefix: string) => `${prefix}_preview${++n}`;
@@ -779,12 +780,24 @@ export class App {
       this.ui.info = t('hint.modifyNothing');
       return this.renderChrome();
     }
+    // Offset is measured across a straight wall of the selection: its first.
+    const straight = doc.walls.find((w) => this.ui.selection.has(w.id) && !w.bulge);
+    if (kind === 'offset' && !straight) {
+      this.ui.info = t('hint.offsetNoWall');
+      return this.renderChrome();
+    }
     const selection = new Set(this.ui.selection);
     this.setTool('select');
     this.ui.selection = selection;
     this.ui.tool = 'modify';
-    // Copy copies; a mirror makes a mirrored copy as Revit's does (C changes either).
-    this.ui.modify = { kind, copy: kind === 'copy' || kind === 'mirror', disjoin: false, state: MODIFY_START };
+    // Copy copies; a mirror makes a mirrored copy as Revit's does, and so does an offset (C changes them).
+    this.ui.modify = {
+      kind,
+      copy: kind === 'copy' || kind === 'mirror' || kind === 'offset',
+      disjoin: false,
+      state: MODIFY_START,
+      ...(kind === 'offset' && straight ? { line: { start: straight.start, end: straight.end } } : {}),
+    };
     this.modifyBefore = deriveGeometry(doc);
     this.refresh();
   }
@@ -809,7 +822,7 @@ export class App {
   modifyEvent(event: ModifyEvent): void {
     const m = this.ui.modify;
     if (!m) return;
-    const r = modifyTransition(m.kind, m.state, event, this.ui.snap?.point ?? this.ui.cursor);
+    const r = modifyTransition(m.kind, m.state, event, this.ui.snap?.point ?? this.ui.cursor, m.line);
     if (r.leave) return this.setTool('select');
     if (r.rejected) {
       if (event.kind === 'typed') this.ui.error = t('hint.badMeasure', { text: this.shell.measure.value });
@@ -835,7 +848,7 @@ export class App {
     // A copy moved by a step: typing "3x" or "/3" next makes a series of it (copySeries).
     const origin = { x: 0, y: 0 };
     const delta = r.apply.map(origin);
-    const moved = (m.kind === 'move' || m.kind === 'copy') && m.copy && distance(delta, origin) > 0;
+    const moved = (m.kind === 'move' || m.kind === 'copy' || m.kind === 'offset') && m.copy && distance(delta, origin) > 0;
     this.lastCopy = moved ? { before: doc, geometry, ids, delta, after: this.store.get(), selected: result.selection } : null;
     if (moved) {
       this.ui.info = t('hint.seriesOffer');
@@ -973,11 +986,21 @@ export class App {
    */
   private modifyMarks(): { base: Point2; to: Point2 | null; ref: Point2 | null; axis: { point: Point2; dir: Point2 } | null; text: string | null } | null {
     const m = this.ui.modify;
+    if (this.ui.tool === 'modify' && m?.kind === 'offset' && m.line) {
+      // From the wall's line, square to it, to the pointer: the distance the copy goes.
+      const to = this.ui.snap?.point ?? this.ui.cursor;
+      if (!to) return null;
+      const u = { x: m.line.end.x - m.line.start.x, y: m.line.end.y - m.line.start.y };
+      const len2 = u.x * u.x + u.y * u.y;
+      const along = ((to.x - m.line.start.x) * u.x + (to.y - m.line.start.y) * u.y) / len2;
+      const foot = { x: m.line.start.x + u.x * along, y: m.line.start.y + u.y * along };
+      return { base: foot, to, ref: null, axis: null, text: `${num(distance(foot, to))} m` };
+    }
     if (this.ui.tool !== 'modify' || !m || m.state.step === 'base') return null;
     const base = m.state.base;
     const to = this.ui.snap?.point ?? this.ui.cursor;
     const ref = m.state.step === 'third' ? m.state.ref : null;
-    const tr = previewTransform(m.kind, m.state, to);
+    const tr = previewTransform(m.kind, m.state, to, m.line);
     const deg = (v: Point2) => (Math.atan2(v.y, v.x) * 180) / Math.PI;
     let text: string | null = null;
     if (to) {
@@ -2260,8 +2283,9 @@ export class App {
       ? [
           keyHint('C', t(mod.copy ? 'key.copyOn' : 'key.copyOff')),
           ...(mod.kind === 'move' && !mod.copy ? [keyHint('U', t(mod.disjoin ? 'key.disjoinOn' : 'key.disjoinOff'))] : []),
-          ...(mod.state.step === 'base' && mod.kind !== 'move' && mod.kind !== 'copy' ? [keyHint('Enter', t('key.centre'))] : []),
-          keyHint('Shift', t('key.straight')),
+          // Offset has no centre and no angle: its distance is square to the wall.
+          ...(mod.state.step === 'base' && mod.kind !== 'move' && mod.kind !== 'copy' && mod.kind !== 'offset' ? [keyHint('Enter', t('key.centre'))] : []),
+          ...(mod.kind !== 'offset' ? [keyHint('Shift', t('key.straight'))] : []),
           snapKey,
           keyHint('Esc', t(mod.state.step === 'base' ? 'key.exit' : 'key.back')),
         ]

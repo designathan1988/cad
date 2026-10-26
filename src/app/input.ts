@@ -705,7 +705,7 @@ export function wireInput(app: App): void {
     }
     if (e.key === 'Enter' && ui.guide) return app.placeGuide();
     // Enter before the first point of a turn, a scale or a mirror: the selection's centre.
-    if (e.key === 'Enter' && ui.tool === 'modify' && ui.modify?.state.step === 'base') {
+    if (e.key === 'Enter' && ui.tool === 'modify' && ui.modify?.state.step === 'base' && ui.modify.kind !== 'offset') {
       const c = app.selectionCentre();
       if (c) return app.modifyEvent({ kind: 'click', point: c });
       return;
@@ -728,6 +728,7 @@ export function wireInput(app: App): void {
     if (e.shiftKey && key === 'r') return app.startModify('rotate');
     if (e.shiftKey && key === 'e') return app.startModify('scale');
     if (e.shiftKey && key === 'x') return app.startModify('mirror');
+    if (e.shiftKey && key === 'o') return app.startModify('offset');
     if (e.shiftKey && key === 's') return app.setTool('split');
     if (e.shiftKey && key === 't') return app.setTool('corner');
     if (e.shiftKey && key === 'j') return app.mergeSelection();
