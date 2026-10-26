@@ -16,6 +16,8 @@ import { type NoteFieldActions, noteFields } from '../elements/note/fields';
 import type { Note } from '../elements/note/schema';
 import { type DimensionFieldActions, dimensionFields } from '../elements/dimension/fields';
 import type { Dimension } from '../elements/dimension/schema';
+import { type GridFieldActions, gridFields } from '../elements/grid/fields';
+import type { Grid } from '../elements/grid/schema';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { StackedStep } from '../app/stacked';
 import type { ReferenceLine } from '../elements/wall/schema';
@@ -46,6 +48,8 @@ export interface PanelInput {
   readonly guides: readonly Guide[];
   /** The selected text notes. */
   readonly notes: readonly Note[];
+  /** The selected grid axes. */
+  readonly grids: readonly Grid[];
   /** The selected dimensions, and what each measures now (null: an end's element is gone). */
   readonly dimensions: readonly Dimension[];
   readonly dimensionLength: (d: Dimension) => number | null;
@@ -72,6 +76,7 @@ export interface PanelActions {
   readonly clearGuides: () => void;
   readonly updateNotes: NoteFieldActions['updateNotes'];
   readonly setDimensionDistance: DimensionFieldActions['setDimensionDistance'];
+  readonly renameGrid: GridFieldActions['renameGrid'];
   /** Moves the wall so its exterior face meets the face of the wall below it. */
   readonly alignBelow: (step: StackedStep) => void;
 }
@@ -86,7 +91,7 @@ function common<T>(walls: readonly DocWall[], get: (w: DocWall) => T): T | null 
 
 export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActions): void {
   const { doc, selected } = input;
-  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window' | 'room' | 'slab' | 'guide' | 'text' | 'dimension' | 'height', title: string) => {
+  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window' | 'room' | 'slab' | 'guide' | 'text' | 'dimension' | 'height' | 'hash', title: string) => {
     const h = el('div', { class: 'panel-head' });
     h.innerHTML = icon(iconName, 16);
     const close = el('button', { class: 'icon-btn', type: 'button', title: t('panel.close'), 'aria-label': t('panel.close') });
@@ -164,6 +169,12 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     nodes.push(head(kinds.size === 1 && kinds.has('window') ? 'window' : 'door', openingTitle(input.openings)));
     part(input.openings.length);
     nodes.push(...openingPanel(doc, input.placed, input.openings, input.openingWarnings, act.opening, input.levelRooms));
+  } else if (input.grids.length > 0) {
+    const n = input.grids.length;
+    nodes.push(head('hash', n === 1 ? t('grid.title', { name: input.grids[0]!.name }) : t('grid.titleMany', { n })));
+    part(n);
+    nodes.push(fieldsSection(t('panel.general'), true, gridFields(input.grids, act), input.grids));
+    nodes.push(el('div', { class: 'panel-hint' }, t('grid.held')));
   } else if (input.dimensions.length > 0) {
     const n = input.dimensions.length;
     nodes.push(head('dimension', n === 1 ? t('dim.title') : t('dim.titleMany', { n })));

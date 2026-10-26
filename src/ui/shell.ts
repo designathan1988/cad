@@ -7,7 +7,7 @@ import { icon, type IconName } from './icons';
 import type { MenuItem } from './menu';
 
 /** `modify`: Move, Copy, Rotate, Scale or Mirror on the selection (tools/modify-tool.ts), a button each. */
-export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'measure' | 'dimension' | 'modify' | 'split' | 'corner';
+export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'grid' | 'measure' | 'dimension' | 'modify' | 'split' | 'corner';
 export type ViewId = '3d' | 'plan';
 
 
@@ -71,11 +71,12 @@ export function buildShell(root: HTMLElement) {
   const toolWindow = iconButton('window', 'icon-btn tool');
   const toolFloor = iconButton('slab', 'icon-btn tool');
   const toolRoom = iconButton('room', 'icon-btn tool');
+  const toolGrid = iconButton('hash', 'icon-btn tool');
   // Every tool its own button and icon, one click away, in families parted by a line: building
   // (wall, floor), openings (door, window), spaces (room). A tool kept in another's submenu was not
   // found (the user's request: "cada uma das 4 deve ter o seu ícone").
   const sep = () => el('div', { class: 'group-sep' });
-  tools.append(toolSelect, sep(), toolWall, toolFloor, sep(), toolDoor, toolWindow, sep(), toolRoom);
+  tools.append(toolSelect, sep(), toolWall, toolFloor, sep(), toolDoor, toolWindow, sep(), toolRoom, sep(), toolGrid);
 
   // The tools that change or measure what is drawn, in the top bar beside undo and redo, as the Modify
   // tab of Revit's ribbon and the top tool bars of SketchUp and ArchiCAD (the user's request: "essas
@@ -311,7 +312,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, undo, redo, level, newFile, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, toolDimension, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, modifyTools, toolSplit, toolCorner, dims, browser, sidebar,
+    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolGrid, toolMeasure, toolDimension, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, modifyTools, toolSplit, toolCorner, dims, browser, sidebar,
     emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, editTools, moreTools, fitTop, syncMore, foldedTools, moreApp, foldedApp, fitFoot,
   };
 
@@ -339,6 +340,7 @@ export function buildShell(root: HTMLElement) {
     tip(toolWindow, 'tool.windowKey');
     tip(toolRoom, 'tool.roomKey');
     tip(toolFloor, 'tool.floorKey');
+    tip(toolGrid, 'tool.gridKey');
     tip(toolMeasure, 'tool.measureKey');
     tip(modifyTools.move, 'tool.moveKey');
     tip(modifyTools.copy, 'tool.copyKey');

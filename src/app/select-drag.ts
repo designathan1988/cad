@@ -23,6 +23,7 @@ import type { Opening } from '../elements/opening/schema';
 import type { Guide } from '../elements/guide/schema';
 import { type Note, noteBox, shownHeight } from '../elements/note/schema';
 import { offsetThrough, placeDimension } from '../elements/dimension/anchor';
+import { wallsOnGrids } from '../elements/grid/carry';
 import { setDimensionOffset } from '../elements/dimension/commands';
 import { ruleAt } from '../tools/opening-tool';
 import { aimAlong, aimAt } from './opening-ui';
@@ -40,6 +41,8 @@ export type Drag =
       readonly floors: ReadonlySet<string>;
       readonly guides: ReadonlySet<string>;
       readonly notes: ReadonlySet<string>;
+      /** Grid axes; the walls on them are among `ids`. */
+      readonly grids: ReadonlySet<string>;
     }
   | { readonly kind: 'grip'; readonly id: WallId; readonly end: WallEnd; readonly walls: readonly DocWall[] }
   /** `grab`: from the end to where the arrow was taken, kept all along so the end does not jump. */
@@ -126,7 +129,9 @@ export function selectGestures(app: App): SelectGestures {
       if (pending && !drag) {
         if (distance(screen, pending.screen) < THRESHOLD_PX) return;
         const doc = app.store.get();
-        const moving = doc.walls.filter((w) => ui.selection.has(w.id)).map((w) => w.id);
+        // The walls on a selected axis go with it (elements/grid/carry.ts).
+        const moving = [...doc.walls.filter((w) => ui.selection.has(w.id)).map((w) => w.id), ...wallsOnGrids(doc, [...ui.selection])];
+        const grids = new Set(doc.grids.filter((g) => ui.selection.has(g.id)).map((g) => g.id));
         const going = () => roomsGoingWith(doc, app.geometry, ui.selection);
         const rooms = new Set([...going(), ...doc.rooms.filter((r) => ui.selection.has(r.id)).map((r) => r.id)]);
         const floors = new Set(doc.floors.filter((f) => ui.selection.has(f.id) && f.source.kind === 'outline').map((f) => f.id));
@@ -143,8 +148,8 @@ export function selectGestures(app: App): SelectGestures {
           const f = placed.frame;
           const centre = add(f.start, scale(f.dir, (placed.end - placed.start) / 2));
           ui.drag = { kind: 'slide', id: sliding.id, grab: dot(sub(pending.at, centre), f.dir), walls: doc.walls, openings: doc.openings };
-        } else if (pending.kind === 'wall' && moving.length + rooms.size + floors.size + guides.size + notes.size > 0) {
-          ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, floors, guides, notes };
+        } else if (pending.kind === 'wall' && moving.length + rooms.size + floors.size + guides.size + notes.size + grids.size > 0) {
+          ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, floors, guides, notes, grids };
         }
         else if (pending.kind === 'grip') ui.drag = { kind: 'grip', id: pending.id, end: pending.end, walls: doc.walls };
         else if (pending.kind === 'stretch') {
@@ -242,12 +247,13 @@ export function selectGestures(app: App): SelectGestures {
         const floors = d.kind === 'move' ? moveFloors(before.floors, d.floors, dragTransform(d)) : before.floors;
         const guides = d.kind === 'move' ? moveGuides(before.guides, d) : before.guides;
         const notes = d.kind === 'move' ? moveNotes(before.notes, d) : before.notes;
+        const grids = d.kind === 'move' && d.grids.size > 0 && (d.delta.x !== 0 || d.delta.y !== 0) ? before.grids.map((g) => (d.grids.has(g.id) ? { ...g, start: add(g.start, d.delta), end: add(g.end, d.delta) } : g)) : before.grids;
         const walls = setWalls(d.walls);
         // One undo step for the walls and what went with them; a room, a floor, a guide or a note alone is a move too.
-        const moved = rooms.some((r, i) => r !== before.rooms[i]) || floors.some((f, i) => f !== before.floors[i]) || guides !== before.guides || notes !== before.notes;
+        const moved = rooms.some((r, i) => r !== before.rooms[i]) || floors.some((f, i) => f !== before.floors[i]) || guides !== before.guides || notes !== before.notes || grids !== before.grids;
         app.store.dispatch({ label: d.kind === 'move' ? 'cmd.move' : walls.label, apply: (x) => {
           const next = walls.apply(x);
-          return next === x && !moved ? x : { ...next, rooms, floors, guides, notes };
+          return next === x && !moved ? x : { ...next, rooms, floors, guides, notes, grids };
         } });
       } else if (d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'bulge') app.store.dispatch(setWalls(d.walls));
       else if (d?.kind === 'slide') {
@@ -338,6 +344,8 @@ function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): voi
       .filter((r) => r.enclosed)
       .map((r) => ({ id: r.room.id, outlines: [screen(r.outline, elevation(r.room.levelId), elevation(r.room.levelId), r.room.levelId)] })),
     ...[...g.floors.values()].map((f) => ({ id: f.floor.id, outlines: [screen(f.outline, f.bottom, f.top, f.floor.levelId)] })),
+    // An axis by its line.
+    ...app.shownGrids().map((g) => ({ id: g.id, outlines: [[app.plan.toScreen(g.start), app.plan.toScreen(g.end)]] })),
     // A dimension by its line.
     ...app.store
       .get()

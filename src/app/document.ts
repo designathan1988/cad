@@ -7,6 +7,7 @@ import type { Point2 } from '../core/vector';
 import type { Guide } from '../elements/guide/schema';
 import type { Note } from '../elements/note/schema';
 import type { Dimension } from '../elements/dimension/schema';
+import type { Grid } from '../elements/grid/schema';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { Floor, Room } from '../elements/room/schema';
 import type { HeightRule, ReferenceLine, Wall, WallType, WallTypeId } from '../elements/wall/schema';
@@ -40,7 +41,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 13;
+  readonly version: 14;
   readonly name: string;
   readonly levels: readonly Level[];
   readonly wallTypes: readonly WallType[];
@@ -62,6 +63,8 @@ export interface Doc {
   readonly notes: readonly Note[];
   /** Permanent dimensions, held by the walls, doors and windows they measure (elements/dimension). */
   readonly dimensions: readonly Dimension[];
+  /** Grid axes, the same on every level (elements/grid). */
+  readonly grids: readonly Grid[];
 }
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */
@@ -72,13 +75,13 @@ export interface WallDefaults {
   readonly top: HeightRule;
 }
 
-/** The ids of every element that can be selected: walls, openings, rooms, floors, guides, notes and dimensions. */
+/** The ids of every element that can be selected: walls, openings, rooms, floors, guides, notes, dimensions and grids. */
 export const elementIds = (doc: Doc): Set<string> =>
-  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.guides, ...doc.notes, ...doc.dimensions].map((e) => e.id));
+  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.guides, ...doc.notes, ...doc.dimensions, ...doc.grids].map((e) => e.id));
 
 export function newDocument(): Doc {
   return {
-    version: 13,
+    version: 14,
     name: '',
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
     wallTypes: [
@@ -121,6 +124,7 @@ export function newDocument(): Doc {
     points: [],
     notes: [],
     dimensions: [],
+    grids: [],
   };
 }
 

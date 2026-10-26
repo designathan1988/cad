@@ -327,7 +327,7 @@ Quarto 1); arco com cotas de corda e de raio, alça de curvatura e raio editado 
 Um item por linha, com a linha de origem. "Falta": não existe nada; "parcial": diz o que existe.
 
 Referências do projeto
-- Eixos de grade com nomes (1, 2, 3 e A, B, C), elementos presos a eles (l.80, l.132): falta.
+- Eixos de grade com nomes (1, 2, 3 e A, B, C), elementos presos a eles (l.80, l.132): existe (ferramenta Eixo, Shift+G, na barra lateral e na paleta: dois cliques; os de pé numerados, os deitados com letras, seguindo o último; bolha com o nome em cada ponta; iguais em todos os pavimentos; nome no painel; desenhar encaixa nos eixos e nos cruzamentos; mover o eixo (arrastar, setas, Mover/Girar/Espelhar) leva as paredes que estão sobre ele, em todos os pavimentos; DXF na camada S-GRID; arquivo versão 14; escondem com as guias). Testado no app: desenhar 1 e A, arrastar o eixo 1 com a parede, desfazer, selecionar pela bolha, apagar. Achado e corrigido: clicar na bolha sobre um canto pegava a parede (e Del a apagava). Falta: pilares presos aos cruzamentos (não há pilares ainda), eixo em arco.
 - Planos de referência, elementos presos a eles (l.80, l.132): falta.
 - Pavimentos (l.80): existem.
 

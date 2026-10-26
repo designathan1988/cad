@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { parseLength, parseLengthAngle, parseNumber, parsePoint } from '../core/measure';
 import { createStore, type Store } from '../core/store';
-import { distance, type Point2, scale } from '../core/vector';
+import { add, distance, type Point2, scale } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { addWalls, resetWallsToType, setWalls, updateWalls } from '../elements/wall/commands';
@@ -48,6 +48,8 @@ import { addNote, updateNotes } from '../elements/note/commands';
 import { addDimension, setDimensionDistance } from '../elements/dimension/commands';
 import { anchorAt, offsetThrough, placeDimension } from '../elements/dimension/anchor';
 import { DIM_PREFIX, type Dimension, isDimId } from '../elements/dimension/schema';
+import { addGrid, renameGrid } from '../elements/grid/commands';
+import { GRID_PREFIX, type Grid, isGridId, nextGridName } from '../elements/grid/schema';
 import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState, dimensionTransition } from '../tools/dimension-tool';
 import { LEVEL_MARK_HEIGHT, NOTE_HEIGHT, NOTE_PREFIX, type Note, elevationText, isNoteId } from '../elements/note/schema';
 import { geometryOf, keepRooms, moveFloors, moveRooms } from './carry';
@@ -136,6 +138,8 @@ export interface UiState {
   measure: MeasureState;
   /** The dimension tool's ends, before the dimension is made (dimension-tool.ts). */
   dimension: DimensionToolState;
+  /** The grid tool's first point, before the axis is made. */
+  gridFrom: Point2 | null;
   /** A guide being placed (guide-tool.ts): Alt over a wall or a guide in a drawing tool. */
   guide: GuideDraft | null;
   /** How the 3D view shows the levels: which, exploded, cut (view-3d.ts). */
@@ -229,6 +233,7 @@ export class App {
       floorDraft: [],
       measure: MEASURE_IDLE,
       dimension: DIMENSION_IDLE,
+      gridFrom: null,
       guide: null,
       view3d: readView3D(prefs.view3d),
       modify: null,
@@ -361,7 +366,7 @@ export class App {
     // Levels hidden now leave the selection, as a hidden category does.
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      if (!isGuideId(id) && !isNoteId(id) && !isDimId(id) && !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
+      if (!isGuideId(id) && !isNoteId(id) && !isDimId(id) && !isGridId(id) && !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
     }
     this.refresh();
   }
@@ -378,11 +383,13 @@ export class App {
       const previewId = (prefix: string) => `${prefix}_preview${++n}`;
       const shownDoc = transformSelection(doc, this.modifyBefore ?? this.geometry, [...this.ui.selection], t, m.copy, previewId, m.disjoin).doc;
       this.previewNotes = shownDoc.notes;
+      this.previewGrids = shownDoc.grids;
       // Doors and windows, and a room the walls would be moved past, as they will be when the move is made.
       this.geometry = keepRooms(doc, keepOpenings(doc, shownDoc)).geometry;
       return this.render();
     }
     this.previewNotes = null;
+    this.previewGrids = null;
     // While dragging, the walls as dragged; the rooms going with a move or a turn go in the preview too,
     // so they never show as open mid-drag.
     const shown =
@@ -761,6 +768,7 @@ export class App {
     this.ui.floorDraft = [];
     this.ui.measure = MEASURE_IDLE;
     this.ui.dimension = DIMENSION_IDLE;
+    this.ui.gridFrom = null;
     this.ui.guide = null;
     this.ui.modify = null;
     this.modifyBefore = null;
@@ -1491,6 +1499,52 @@ export class App {
     this.render();
   }
 
+  /** The grid tool: a click starts an axis, the next ends it (named on from the last of its kind). */
+  gridClick(p: Point2): void {
+    const from = this.ui.gridFrom;
+    if (!from) {
+      this.ui.gridFrom = p;
+      return this.render();
+    }
+    if (distance(from, p) < MIN_WALL_LENGTH) return;
+    const doc = this.store.get();
+    const name = nextGridName(doc.grids, from, p);
+    this.store.dispatch(addGrid({ id: newId(GRID_PREFIX), name, start: from, end: p }));
+    this.ui.gridFrom = null;
+    this.ui.info = t('hint.gridMade', { name });
+    this.render();
+  }
+
+  /** Esc in the grid tool: the axis begun is dropped; none begun, the tool is left. */
+  gridEscape(): void {
+    if (this.ui.gridFrom) {
+      this.ui.gridFrom = null;
+      return this.render();
+    }
+    this.setTool('select');
+  }
+
+  /** The axes as a move being dragged or the Modify tool takes them, and the one being drawn; plan only. */
+  private planGrids(): NonNullable<PlanOverlay['grids']> {
+    if (this.ui.view !== 'plan' || this.ui.hidden.has('guides')) return [];
+    const d = this.ui.drag;
+    const grids = this.previewGrids ?? this.store.get().grids;
+    const moved = d?.kind === 'move' && d.grids.size > 0 ? grids.map((g) => (d.grids.has(g.id) ? { ...g, start: add(g.start, d.delta), end: add(g.end, d.delta) } : g)) : grids;
+    const out = moved.map((g) => ({ ...g, selected: this.ui.selection.has(g.id) || this.ui.hover === g.id }));
+    const from = this.ui.tool === 'grid' ? this.ui.gridFrom : null;
+    const to = this.ui.snap?.point ?? this.ui.cursor;
+    if (from && to && distance(from, to) > 0) out.push({ id: '', name: nextGridName(this.store.get().grids, from, to), start: from, end: to, selected: true });
+    return out;
+  }
+
+  /** The axes as drawn now (planGrids, without the one being drawn): what picking and snapping see. */
+  shownGrids(): readonly Grid[] {
+    return this.planGrids().filter((g) => g.id !== '');
+  }
+
+  /** The axes as the Modify tool would leave them with the pointer where it is (refresh), or null. */
+  private previewGrids: readonly Grid[] | null = null;
+
   /** The dimension tool: a click or Esc (dimension-tool.ts). The third click makes the dimension. */
   dimensionEvent(event: DimensionToolEvent): void {
     const r = dimensionTransition(this.ui.dimension, event);
@@ -1739,7 +1793,7 @@ export class App {
    * Hiding again adds to what is hidden; with nothing selected, everything shows again (HR).
    */
   hideTemporarily(mode: 'hide' | 'isolate'): void {
-    const ids = [...this.ui.selection].filter((id) => !isGuideId(id) && !isNoteId(id) && !isDimId(id));
+    const ids = [...this.ui.selection].filter((id) => !isGuideId(id) && !isNoteId(id) && !isDimId(id) && !isGridId(id));
     if (ids.length === 0) {
       if (this.ui.temp) this.resetTemporary();
       else {
@@ -2147,7 +2201,7 @@ export class App {
       return this.renderChrome();
     }
     const marks = this.ui.openingTags ? openingMarks(doc.openings, markPrefix()) : undefined;
-    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²`, ...(marks ? { marks } : {}), notes: this.store.get().notes.map((n) => (n.elevation ? { ...n, text: elevationText((levelOf(this.store.get(), n.levelId)?.elevation ?? 0) + n.elevation.offset, (m) => num(m)) } : n)), dimensions: this.store.get().dimensions.flatMap((d) => (d.levelId === levelId ? (placeDimension(this.store.get(), this.geometry, d) ?? []) : [])), length: (m) => num(m) });
+    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²`, ...(marks ? { marks } : {}), notes: this.store.get().notes.map((n) => (n.elevation ? { ...n, text: elevationText((levelOf(this.store.get(), n.levelId)?.elevation ?? 0) + n.elevation.offset, (m) => num(m)) } : n)), dimensions: this.store.get().dimensions.flatMap((d) => (d.levelId === levelId ? (placeDimension(this.store.get(), this.geometry, d) ?? []) : [])), length: (m) => num(m), grids: this.store.get().grids });
     const level = doc.levels.find((l) => l.id === levelId);
     const file = `${this.fileBase()} - ${level ? safeFileName(name(level.name)) : ''}.dxf`;
     this.download(file, new Blob([toCp1252(text)], { type: 'application/dxf' }), 'application/dxf');
@@ -2241,7 +2295,7 @@ export class App {
   private selectionKinds(): number {
     const g = this.geometry;
     const ids = [...this.ui.selection];
-    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isNoteId) ? 1 : 0) + (ids.some(isDimId) ? 1 : 0);
+    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isNoteId) ? 1 : 0) + (ids.some(isDimId) ? 1 : 0) + (ids.some(isGridId) ? 1 : 0);
   }
 
   selectedWalls(): DocWall[] {
@@ -2401,10 +2455,11 @@ export class App {
         guides: this.levelGuides(),
         notes: this.levelNotes().map((n) => ({ ...n, selected: ui.selection.has(n.id) || ui.hover === n.id })),
         dimensions: this.planDimensions(),
+        grids: this.planGrids(),
         guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
         snap:
           // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
             ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
             : null,
         measure: guideDim
@@ -2558,6 +2613,7 @@ export class App {
         guides: doc.guides.filter((g) => ui.selection.has(g.id)),
         notes: doc.notes.filter((n) => ui.selection.has(n.id)).map((n) => (n.elevation ? { ...n, text: elevationText((levelOf(doc, n.levelId)?.elevation ?? 0) + n.elevation.offset, (m) => num(m)) } : n)),
         dimensions: doc.dimensions.filter((d) => ui.selection.has(d.id)),
+        grids: doc.grids.filter((g) => ui.selection.has(g.id)),
         dimensionLength: (d) => this.dimensionLength(d),
         stacked: stackedSteps(doc),
       },
@@ -2641,6 +2697,7 @@ export class App {
         clearGuides: () => this.clearGuides(),
         updateNotes: (ids, patch) => this.store.dispatch(updateNotes(ids, patch)),
         setDimensionDistance: (ids, distance) => this.store.dispatch(setDimensionDistance(ids, distance)),
+        renameGrid: (id, name) => this.store.dispatch(renameGrid(id, name)),
         // The wall moved across, with its joins kept as a move keeps them: the face then meets the one below.
         alignBelow: (step) => this.store.dispatch(setWalls(moveWalls(this.store.get(), [step.upperId], step.shift), 'cmd.alignBelow')),
       },
@@ -2860,6 +2917,11 @@ export class App {
     for (const id of [...this.ui.selection]) {
       // Guides and notes have no geometry: a guide goes only when guides are hidden, a note never.
       if (isNoteId(id) || isDimId(id)) continue;
+      if (isGridId(id) ? this.ui.hidden.has('guides') : false) {
+        this.ui.selection.delete(id);
+        continue;
+      }
+      if (isGridId(id)) continue;
       if (isGuideId(id) ? this.ui.hidden.has('guides') : !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) {
         this.ui.selection.delete(id);
       }
@@ -2970,6 +3032,7 @@ export class App {
     shell.toolWindow.setAttribute('aria-pressed', String(ui.tool === 'window'));
     shell.toolMeasure.setAttribute('aria-pressed', String(ui.tool === 'measure'));
     shell.toolDimension.setAttribute('aria-pressed', String(ui.tool === 'dimension'));
+    shell.toolGrid.setAttribute('aria-pressed', String(ui.tool === 'grid'));
     shell.toolSplit.setAttribute('aria-pressed', String(ui.tool === 'split'));
     shell.toolCorner.setAttribute('aria-pressed', String(ui.tool === 'corner'));
     // The Modify tools: the one in use pressed; dimmed while the selection holds nothing they take (a
@@ -3086,7 +3149,9 @@ export class App {
             ? this.measureHint()
             : ui.tool === 'dimension'
               ? t(ui.dimension.kind === 'idle' ? 'hint.dimensionStart' : ui.dimension.kind === 'from' ? 'hint.dimensionEnd' : 'hint.dimensionPlace')
-              : null;
+              : ui.tool === 'grid'
+                ? t(ui.gridFrom ? 'hint.gridEnd' : 'hint.gridStart')
+                : null;
     const guideHint = ui.guide
       ? t('hint.guide', {
           d: num(this.guideOffset() ?? 0),
@@ -3122,6 +3187,8 @@ export class App {
       ? [keyHint('Esc', t('key.exit'))]
       : ui.tool === 'dimension'
       ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.dimension.kind === 'idle' ? 'key.exit' : 'key.back'))]
+      : ui.tool === 'grid'
+      ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.gridFrom ? 'key.back' : 'key.exit'))]
       : ui.tool === 'measure'
       ? [keyHint('Shift', t('key.straight')), ...altGuide, snapKey, keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clear'))]
       : ui.tool === 'floor'

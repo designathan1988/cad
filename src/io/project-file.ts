@@ -13,6 +13,7 @@ import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import { type Floor, type Room, ROOM_USES } from '../elements/room/schema';
 import type { Note } from '../elements/note/schema';
 import type { Dimension } from '../elements/dimension/schema';
+import type { Grid } from '../elements/grid/schema';
 import type { WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
 
@@ -32,12 +33,13 @@ import type { DocWall } from '../app/document';
  * Version 11: text notes (`notes`, elements/note). Older files have none.
  * Version 12: permanent dimensions (`dimensions`, elements/dimension). Older files have none.
  * Version 13: level marks, notes with an `elevation` (elements/note). Older files have none.
+ * Version 14: grid axes (`grids`, elements/grid). Older files have none.
  */
-export const CURRENT_VERSION = 13;
+export const CURRENT_VERSION = 14;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes' | 'droppedDimensions'; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes' | 'droppedDimensions' | 'droppedGrids'; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -161,6 +163,10 @@ const isDimAnchor = (a: unknown): boolean =>
 export const isDimension = (d: unknown): d is Dimension =>
   isObject(d) && typeof d.id === 'string' && typeof d.levelId === 'string' && isDimAnchor(d.a) && isDimAnchor(d.b) && finite(d.offset);
 
+/** A grid axis: a name and two different points. */
+export const isGrid = (g: unknown): g is Grid =>
+  isObject(g) && typeof g.id === 'string' && typeof g.name === 'string' && g.name.trim() !== '' && isPoint(g.start) && isPoint(g.end) && JSON.stringify(g.start) !== JSON.stringify(g.end);
+
 /** A guide: a point and a unit direction (a zero one would be no line at all). */
 export const isGuide = (g: unknown): g is Guide =>
   isObject(g) &&
@@ -251,6 +257,7 @@ export function repairProject(raw: unknown): ReadResult {
       if (d === all.find((x) => !there(x))) fixes.push({ kind: 'droppedDimensions', count: all.filter((x) => !there(x)).length });
       return false;
     }),
+    grids: keep(raw.grids, isGrid, 'droppedGrids'),
     // A note on a level that is gone is on no plan: dropped, and said.
     notes: keep(raw.notes, isNote, 'droppedNotes').filter((n, _, all) => {
       if (levelIds.has(n.levelId)) return true;

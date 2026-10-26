@@ -6,6 +6,8 @@
 // and positions, never thicknesses or the sizes of doors and windows. A mirror swaps each wall's ends,
 // so its layers, and its doors' hinges, come out mirrored rather than turned over.
 
+import { GRID_PREFIX, type Grid, nextGridName } from '../elements/grid/schema';
+import { wallsOnGrids } from '../elements/grid/carry';
 import { roomsGoingWith } from '../app/carry';
 import type { Doc, DocWall } from '../app/document';
 import type { DerivedGeometry } from '../app/geometry';
@@ -156,7 +158,8 @@ export function transformSelection(
   newId: (prefix: string) => string,
   disjoin = false,
 ): TransformResult {
-  const set = new Set(ids);
+  // Taken in place, an axis takes the walls on it along; its copy is an axis alone.
+  const set = new Set(copy ? ids : [...ids, ...wallsOnGrids(doc, ids)]);
   const wallIds = doc.walls.filter((w) => set.has(w.id)).map((w) => w.id);
   const walls = new Set(wallIds);
   // Before the move carried one only with its wall: Move, Copy and the others did nothing to it.
@@ -172,6 +175,7 @@ export function transformSelection(
   // Notes keep reading upright: only their point goes (a turn, a mirror), their letters as they are.
   const notes = new Set(doc.notes.filter((x) => set.has(x.id)).map((x) => x.id));
   const dims = new Set(doc.dimensions.filter((x) => set.has(x.id)).map((x) => x.id));
+  const grids = new Set(doc.grids.filter((x) => set.has(x.id)).map((x) => x.id));
   const outline = (points: readonly Point2[]) => points.map(t.map);
   // A dimension's end held by a wall that goes (or a door or window on one) goes with it; mirrored, that
   // wall's ends trade places (edit.ts: swap), so the end is counted from the other one, the jamb the other.
@@ -201,6 +205,7 @@ export function transformSelection(
       floors: doc.floors.map((f) => (floors.has(f.id) && f.source.kind === 'outline' ? { ...f, source: { kind: 'outline', points: outline(f.source.points) } } : f)),
       guides: doc.guides.map((x) => (guides.has(x.id) ? { ...x, point: t.map(x.point), dir: mapDir(t, x.point, x.dir) } : x)),
       notes: doc.notes.map((x) => (notes.has(x.id) ? { ...x, at: t.map(x.at) } : x)),
+      grids: doc.grids.map((x) => (grids.has(x.id) ? { ...x, start: t.map(x.start), end: t.map(x.end) } : x)),
       dimensions: doc.dimensions.map((d) => {
         const a = swapped(dims.has(d.id) ? freePoint(d.a) : d.a);
         const b = swapped(dims.has(d.id) ? freePoint(d.b) : d.b);
@@ -235,6 +240,8 @@ export function transformSelection(
   for (const x of noteList) fresh(x.id, NOTE_PREFIX);
   const dimList = doc.dimensions.filter((x) => dims.has(x.id));
   for (const x of dimList) fresh(x.id, DIM_PREFIX);
+  const gridList = doc.grids.filter((x) => grids.has(x.id));
+  for (const x of gridList) fresh(x.id, GRID_PREFIX);
   const to = (id: string) => ids2.get(id) ?? id;
 
   const newWalls = doc.walls
@@ -266,6 +273,12 @@ export function transformSelection(
     floors: [...doc.floors, ...newFloors],
     guides: [...doc.guides, ...guideList.map((x) => ({ ...x, id: to(x.id), point: t.map(x.point), dir: mapDir(t, x.point, x.dir) }))],
     notes: [...doc.notes, ...noteList.map((x) => ({ ...x, id: to(x.id), at: t.map(x.at) }))],
+    // A copied axis is named on from the last of its kind, as a new one is.
+    grids: gridList.reduce<Grid[]>((all, x) => {
+      const start = t.map(x.start);
+      const end = t.map(x.end);
+      return [...all, { id: to(x.id), name: nextGridName(all, start, end), start, end }];
+    }, [...doc.grids]),
     // A copied dimension is held by the copies of what held it; an end on something not copied is
     // left where the copy of that point lands, free.
     dimensions: [
@@ -291,6 +304,7 @@ export function transformSelection(
     ...guideList.map((x) => to(x.id)),
     ...noteList.map((x) => to(x.id)),
     ...dimList.map((x) => to(x.id)),
+    ...gridList.map((x) => to(x.id)),
   ];
   return { doc: next, selection };
 }
@@ -305,7 +319,8 @@ export function canTransform(doc: Doc, ids: readonly string[]): boolean {
     doc.floors.some((f) => set.has(f.id) && f.source.kind === 'outline') ||
     doc.guides.some((x) => set.has(x.id)) ||
     doc.notes.some((x) => set.has(x.id)) ||
-    doc.dimensions.some((x) => set.has(x.id))
+    doc.dimensions.some((x) => set.has(x.id)) ||
+    doc.grids.some((x) => set.has(x.id))
   );
 }
 

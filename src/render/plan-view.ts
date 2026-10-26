@@ -53,6 +53,9 @@ export interface DimMark {
   readonly text?: string;
 }
 
+/** A grid bubble's radius (px), its centre this far past the axis's end. */
+export const GRID_BUBBLE_PX = 12;
+
 export interface PlanOverlay {
   readonly selected: ReadonlySet<WallId>;
   readonly hover: WallId | null;
@@ -69,6 +72,8 @@ export interface PlanOverlay {
    * the value. The one being made has no id.
    */
   readonly dimensions?: readonly { readonly id: string; readonly a: Point2; readonly b: Point2; readonly la: Point2; readonly lb: Point2; readonly text: string; readonly selected: boolean }[];
+  /** Grid axes: dash-dot lines with their name in a bubble at each end; the one being drawn has no id. */
+  readonly grids?: readonly { readonly id: string; readonly name: string; readonly start: Point2; readonly end: Point2; readonly selected: boolean }[];
   /** The guide being placed. */
   readonly guideDraft?: { readonly point: Point2; readonly dir: Point2 } | null;
   /**
@@ -444,6 +449,7 @@ export class PlanView {
     fill(drawn, color('--wall-sel-fill'));
     this.drawOpenings(g, o, { line: color('--wall-line'), sel: color('--wall-sel'), selFill: color('--wall-sel-fill'), warn: color('--warn'), canvas: color('--canvas') });
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
+    for (const g of o.grids ?? []) this.drawGridAxis(g, g.selected ? color('--wall-sel') : color('--text-2'), color('--canvas'));
     // Guides over the walls, thin: a guide laid on a wall's face is seen there.
     for (const g of o.guides ?? []) {
       const lit = o.selected.has(g.id) || o.hover === g.id;
@@ -754,6 +760,43 @@ export class PlanView {
     ctx.textBaseline = 'middle';
     // Too short for its value: the value stays, the line shows what it is of.
     ctx.fillText(d.text, 0, 0);
+    ctx.restore();
+  }
+
+  /** A grid axis: a dash-dot line between its bubbles, each a circle with its name, past its ends. */
+  private drawGridAxis(g: NonNullable<PlanOverlay['grids']>[number], colour: string, bg: string): void {
+    const ctx = this.ctx;
+    const a = this.toScreen(g.start);
+    const b = this.toScreen(g.end);
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len < 1) return;
+    const u = { x: (b.x - a.x) / len, y: (b.y - a.y) / len };
+    const r = GRID_BUBBLE_PX;
+    ctx.save();
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([14, 4, 2, 4]);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = this.font('600', '--fs-sm');
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const [p, s] of [
+      [a, -1],
+      [b, 1],
+    ] as const) {
+      const c = { x: p.x + u.x * r * s, y: p.y + u.y * r * s };
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = bg;
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = colour;
+      ctx.fillText(g.name, c.x, c.y + 0.5);
+    }
     ctx.restore();
   }
 

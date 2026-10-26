@@ -24,6 +24,7 @@ export const DXF_LAYERS = [
   { name: 'A-AREA-IDEN', colour: 7 }, // room names and areas
   { name: 'A-ANNO-TEXT', colour: 7 }, // text notes
   { name: 'A-ANNO-DIMS', colour: 3 }, // permanent dimensions
+  { name: 'S-GRID', colour: 1 }, // grid axes and their bubbles
 ] as const;
 type Layer = (typeof DXF_LAYERS)[number]['name'];
 
@@ -37,6 +38,8 @@ export interface DxfLabels {
   readonly notes?: readonly Note[];
   /** The level's permanent dimensions, placed (elements/dimension/anchor.ts: placeDimension). */
   readonly dimensions?: readonly { readonly a: Point2; readonly b: Point2; readonly la: Point2; readonly lb: Point2; readonly length: number }[];
+  /** The grid axes, on every level's plan. */
+  readonly grids?: readonly { readonly name: string; readonly start: Point2; readonly end: Point2 }[];
   /** A dimension's value, as the plan writes it. */
   readonly length?: (m: number) => string;
 }
@@ -45,6 +48,8 @@ export interface DxfLabels {
 const TEXT_H = 0.2;
 const MARK_H = 0.15;
 const DIM_H = 0.12;
+/** A grid bubble's radius (m). */
+const BUBBLE_R = 0.35;
 
 /** A text's angle (°) along a direction, kept upright: within ±90°. */
 function angleOf(ux: number, uy: number): number {
@@ -186,6 +191,22 @@ export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels):
     const t = 0.08;
     for (const p of [d.la, d.lb]) line('A-ANNO-DIMS', { x: p.x - (ux + nx) * t, y: p.y - (uy + ny) * t }, { x: p.x + (ux + nx) * t, y: p.y + (uy + ny) * t });
     text('A-ANNO-DIMS', { x: (d.la.x + d.lb.x) / 2 + nx * DIM_H, y: (d.la.y + d.lb.y) / 2 + ny * DIM_H }, DIM_H, (labels.length ?? ((m: number) => m.toFixed(2)))(d.length), angleOf(ux, uy));
+  }
+  // Grid axes: the line, and past each end a bubble (a 16-sided circle) with the name.
+  for (const g of labels.grids ?? []) {
+    const len = Math.hypot(g.end.x - g.start.x, g.end.y - g.start.y);
+    if (len === 0) continue;
+    const ux = (g.end.x - g.start.x) / len;
+    const uy = (g.end.y - g.start.y) / len;
+    line('S-GRID', g.start, g.end);
+    for (const [p, s] of [
+      [g.start, -1],
+      [g.end, 1],
+    ] as const) {
+      const c = { x: p.x + ux * BUBBLE_R * s, y: p.y + uy * BUBBLE_R * s };
+      polyline('S-GRID', Array.from({ length: 16 }, (_, i) => ({ x: c.x + BUBBLE_R * Math.cos((i * Math.PI) / 8), y: c.y + BUBBLE_R * Math.sin((i * Math.PI) / 8) })), true);
+      text('S-GRID', c, BUBBLE_R, g.name);
+    }
   }
   // Text notes: a TEXT a line, centred as the plan draws them (R12's TEXT has one line).
   for (const n of labels.notes ?? []) {
