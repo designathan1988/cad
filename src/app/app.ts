@@ -181,7 +181,7 @@ export class App {
       panelPeek: false,
       browserOpen: prefs.browserOpen ?? false,
       hidden: new Set(),
-      snaps: true,
+      snaps: prefs.snaps !== false,
       defaults: { wallTypeId: doc.wallTypes[0]!.id, referenceLine: 'centerline', baseOffset: 0, top: { kind: 'level', offset: 0 } },
       wall: IDLE,
       opening: OPENING_IDLE,
@@ -1093,6 +1093,8 @@ export class App {
 
   toggleSnaps(): void {
     this.ui.snaps = !this.ui.snaps;
+    // Kept, as the other view choices are: turned off, they came back on with every reload.
+    savePrefs({ snaps: this.ui.snaps });
     // Said, not only shown by the magnet's state: S is one key, easy to press by mistake, and drawing
     // then stops snapping with nothing else to tell why.
     this.toast(t(this.ui.snaps ? 'toast.snapsOn' : 'toast.snapsOff'));
@@ -2059,6 +2061,9 @@ export class App {
     shell.instr.classList.toggle('error', ui.error !== null);
     // Alt sets a guide in the tools that draw by points (input.ts), in plan.
     const altGuide = ui.view === 'plan' ? [keyHint('Alt', t('key.guide'))] : [];
+    // S says what it is now, wherever points snap: drawing, it was nowhere in the footer, and the snaps
+    // seemed impossible to turn off.
+    const snapKey = keyHint('S', t(ui.snaps ? 'key.snapsOn' : 'key.snapsOff'));
     const keys = ui.guide
       ? [keyHint('Enter', t('key.placeGuide')), keyHint('Esc', t('key.cancel'))]
       : ui.tool === 'split' || ui.tool === 'corner'
@@ -2069,16 +2074,17 @@ export class App {
           ...(mod.kind === 'move' && !mod.copy ? [keyHint('U', t(mod.disjoin ? 'key.disjoinOn' : 'key.disjoinOff'))] : []),
           ...(mod.state.step === 'base' && mod.kind !== 'move' && mod.kind !== 'copy' ? [keyHint('Enter', t('key.centre'))] : []),
           keyHint('Shift', t('key.straight')),
+          snapKey,
           keyHint('Esc', t(mod.state.step === 'base' ? 'key.exit' : 'key.back')),
         ]
       : placing || ui.tool === 'room'
       ? [keyHint('Esc', t('key.exit'))]
       : ui.tool === 'measure'
-      ? [keyHint('Shift', t('key.straight')), ...altGuide, keyHint('S', t('key.snapOff')), keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clear'))]
+      ? [keyHint('Shift', t('key.straight')), ...altGuide, snapKey, keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clear'))]
       : ui.tool === 'floor'
-      ? [keyHint('Enter', t('key.finish')), ...altGuide, keyHint('Esc', t('key.exit'))]
+      ? [keyHint('Enter', t('key.finish')), ...altGuide, snapKey, keyHint('Esc', t('key.exit'))]
       : drawing && w.kind === 'rect'
-      ? [keyHint('Q', t('key.rectOff')), keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')), keyHint('Esc', t('key.back'))]
+      ? [keyHint('Q', t('key.rectOff')), keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')), snapKey, keyHint('Esc', t('key.back'))]
       : drawing
       ? w.kind !== 'idle'
         ? [
@@ -2089,6 +2095,7 @@ export class App {
             keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')),
             keyHint('Shift', t('key.straight')),
             ...altGuide,
+            snapKey,
             keyHint('Esc', t('key.finish')),
           ]
         : [
@@ -2097,7 +2104,7 @@ export class App {
             keyHint('Q', t(rect ? 'key.rectOff' : 'key.rect')),
             keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')),
             ...altGuide,
-            keyHint('S', t('key.snapOff')),
+            snapKey,
             keyHint('Esc', t('key.exit')),
           ]
       : ui.selection.size > 0

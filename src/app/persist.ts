@@ -25,6 +25,8 @@ export interface Prefs {
   view3d?: View3D;
   /** Every wall's reference line shown in plan, not only the selected ones'. */
   refLines?: boolean;
+  /** Points snap (S): off, it stays off. */
+  snaps?: boolean;
 }
 
 function storage(): Storage | null {
