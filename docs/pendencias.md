@@ -155,16 +155,46 @@ anexo desenhado na Casa Jardim com gestos imprecisos), corrigidos e vistos no na
   sem seleção; barra superior dobra os botões da direita num menu (☰); apagar pavimento impossível mostra o
   motivo ao passar o mouse; atalhos mais largos; "Próxima porta/janela" com o texto certo; W, Q na paleta.
 
-Achados desta rodada ainda abertos:
-- Mover (Shift+M) leva as juntas com paredes não selecionadas: mover as paredes de um anexo estica a casa
-  (e as janelas medidas da parede ao lado vão junto). Falta a opção "Desunir" do Move do Revit (ou o Alt,
-  como no arraste).
-- No 3D, cômodo sem piso aparece preto (o chão em sombra): parece buraco.
-- "Explodir" ligado com um pavimento só à mostra não muda nada e continua pressionado.
-- Ferramenta Cômodo: nenhuma prévia do contorno sob o ponteiro antes do clique.
-- Paredes desenhadas no sentido horário põem o acabamento externo para dentro (convenção: externo à
-  direita); nada avisa. A passagem entre uma parede assim e a vizinha mostra a linha entre os acabamentos.
+Achados desta rodada ainda abertos (os cinco primeiros foram resolvidos na quinta rodada, abaixo):
+- A passagem entre uma parede desenhada no sentido horário e a vizinha mostra a linha entre os acabamentos.
 - Não verificado: a barra superior com emulação de toque (botões de 44 px).
+
+Quinta rodada (2026-10-25, Chrome visível pelo Playwright, 1920×1080 e 390×844; a Casa Jardim com
+gestos de mão que desviam), corrigidos e vistos no navegador (120ad2e a 609d09c):
+- Arrastar a divisória entre os quartos com a mão desviando 5 mm ao longo dela soltava a ponta da parede
+  externa e os dois quartos viravam um. Agora a ponta de uma parede movida ou girada que encosta no meio de
+  outra (T) desliza pela própria linha e fica nela (Alt ainda move sozinha).
+- Mover ou girar paredes mantém as linhas das paredes unidas, como no Revit: o canto com uma parede que
+  ficou vai para o cruzamento das linhas. Antes, o Mover com o ponto-base no meio de uma parede e o destino
+  11 px abaixo entortava o contorno inteiro da casa. (O teste de edit.ts que esperava o canto inclinado
+  passou a esperar o canto reto.)
+- Mover (Shift+M) ganhou "U desunir", o Desunir do Revit: as paredes vão sozinhas e as juntas se abrem.
+- Janelas e portas medidas da face de uma parede ao lado eram guardadas como distância da ponta da própria
+  parede: quando outra parede esticava essa ponta, a janela do Quarto 1 andava 0,5 m. Depois de qualquer
+  mudança nas paredes, cada uma mantém a folga até a face de onde é medida (keep-openings.ts). Uma porta
+  medida da divisória acompanha a divisória quando ela se move, em vez de ficar com a parede no vão.
+- Um cômodo cujo ponto ficou do outro lado de uma parede movida passava a dividir o espaço com o vizinho e o
+  resto ficava sem cômodo. Agora ele fica no que sobrou do seu espaço (ao vivo durante o arraste também).
+  A etiqueta com aviso longo demais mostra um aviso curto ("Mesmo espaço que 2") em vez de um número laranja.
+- Paredes sobrepostas ao longo de um trecho (copiar no mesmo lugar) dão aviso, e o painel diz com qual.
+- 3D: um chão sob o modelo, que some no fundo; cômodo sem piso mostra o chão, não um buraco preto.
+- Explodir com um pavimento só à vista fica apagado e diz por quê; a mensagem some quando a vista muda.
+- Ferramenta Cômodo: o espaço fechado sem cômodo sob o ponteiro aparece antes do clique, com a área.
+- Contorno fechado no sentido horário avisa que a face externa ficou para dentro e como inverter; o encaixe
+  de ângulo pega até 5° (uma parede à mão, 13 px fora do nível em 190 px, saía a 4°).
+- Apagar diz quantos elementos saíram e que Ctrl+Z traz de volta.
+- Etiquetas de cômodo não se afastam do cômodo ao fugir das cotas; etiquetas de parede saem de cima das de
+  cômodo; diálogos abrem presos no alto (o de tipos pulava ao ganhar uma camada).
+- Vistos funcionando: arrastar parede, alça de ponta, alça de girar, deslizar porta, Esc cancelando arraste,
+  piso por contorno, parede no 3D com comprimento digitado, N e Shift+N, desfazer e refazer, tema no 3D,
+  cota temporária digitada, copiar.
+
+Achados da quinta rodada ainda abertos:
+- Num cômodo muito pequeno (0,75 m) a etiqueta, empurrada para baixo da cota, fica sobre a parede.
+- A alça de girar pode ficar sobre o valor de uma cota temporária; o quadrado da alça de ponta cobre o
+  triângulo de aviso de uma abertura na junta.
+- Recarregar a página volta a planta ao enquadramento inicial (zoom e posição não são guardados).
+- Sem passar o mouse (toque), a ferramenta Cômodo não tem prévia: o toque cria direto.
 
 Achados da rodada anterior ainda abertos:
 - Modificar: porta ou janela sozinha não é levada (vai com a parede); cópia para outro pavimento;
