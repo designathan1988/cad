@@ -530,6 +530,7 @@ export function wireInput(app: App): void {
   for (const [mode, b] of Object.entries(shell.levelsShown)) b.addEventListener('click', () => app.setView3D({ levels: mode as LevelsShown }));
   shell.explode.addEventListener('click', () => app.toggleExplode());
   shell.cut.addEventListener('click', () => app.setView3D({ cut: !ui.view3d.cut }));
+  shell.tempReset.addEventListener('click', () => app.resetTemporary());
   shell.shortcuts.addEventListener('click', () => showHelp(app));
   shell.commands.addEventListener('click', () => palette());
   // The preview follows what is typed, before Enter: the wall preview is geometry, so refresh it.
@@ -744,6 +745,8 @@ export function wireInput(app: App): void {
     if (e.shiftKey && key === 's') return app.setTool('split');
     if (e.shiftKey && key === 't') return app.setTool('corner');
     if (e.shiftKey && key === 'j') return app.mergeSelection();
+    if (e.shiftKey && key === 'h') return app.hideTemporarily('hide');
+    if (e.shiftKey && key === 'i') return app.hideTemporarily('isolate');
     if (e.shiftKey) return;
     if (key === 'c' && ui.tool === 'modify') return app.toggleModifyCopy();
     if (key === 'u' && ui.tool === 'modify') return app.toggleModifyDisjoin();
@@ -830,6 +833,8 @@ function showHelp(app: App): void {
     ['Shift+S', t('pal.split')],
     ['Shift+T', t('pal.corner')],
     ['Shift+J', t('pal.merge')],
+    ['Shift+H', t('pal.tempHide')],
+    ['Shift+I', t('pal.tempIsolate')],
     [t('help.guideKey'), t('help.guide')],
     ['1 / 2', `${t('view.3d')} / ${t('view.plan')}`],
     ['Enter', t('help.enter')],

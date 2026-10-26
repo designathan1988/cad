@@ -409,6 +409,35 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
 export type Category = 'walls' | 'openings' | 'rooms' | 'floors' | 'guides';
 
 /** The geometry without the hidden categories; the same object when nothing is hidden. */
+/**
+ * Elements hidden or isolated for a while (Revit's Temporary Hide/Isolate, HH and HI): the document keeps
+ * them, only the views leave them out. Hidden: those elements go, and the doors and windows of a hidden
+ * wall with it. Isolated: only those stay, and the doors and windows of an isolated wall with it.
+ */
+export interface TemporaryView {
+  readonly mode: 'hide' | 'isolate';
+  readonly ids: ReadonlySet<string>;
+}
+
+/** Whether an element shows in a temporary view (its doors and windows go with a wall: applyTemporary). */
+export const shownFor = (temp: TemporaryView | null, id: string): boolean => !temp || (temp.mode === 'hide' ? !temp.ids.has(id) : temp.ids.has(id));
+
+export function applyTemporary(g: DerivedGeometry, temp: TemporaryView | null): DerivedGeometry {
+  if (!temp) return g;
+  const keep = (id: string) => shownFor(temp, id);
+  const solids = new Map([...g.solids].filter(([id]) => keep(id)));
+  const openings = new Map(
+    [...g.openings].filter(([id, o]) => (temp.mode === 'hide' ? keep(id) && solids.has(o.opening.wallId) : keep(id) || solids.has(o.opening.wallId))),
+  );
+  return {
+    ...g,
+    solids,
+    openings,
+    rooms: new Map([...g.rooms].filter(([id]) => keep(id))),
+    floors: new Map([...g.floors].filter(([id]) => keep(id))),
+  };
+}
+
 export function hideCategories(g: DerivedGeometry, hidden: ReadonlySet<Category>): DerivedGeometry {
   if (hidden.size === 0) return g;
   return {

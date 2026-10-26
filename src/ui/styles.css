@@ -592,6 +592,33 @@ button.project-name:hover {
 .empty-hint[hidden] {
   display: none;
 }
+/* Hidden or isolated for a while: the drawing framed in the accent, and a chip with the way back. */
+.viewport.temp-view::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: var(--line-2) solid var(--accent);
+  pointer-events: none;
+  z-index: 3;
+}
+.temp-chip {
+  position: absolute;
+  left: var(--sp-3);
+  bottom: var(--sp-3);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
+  border: var(--line) solid var(--accent);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  font-size: var(--fs-sm);
+  z-index: 4;
+}
+.temp-chip[hidden] {
+  display: none;
+}
 .toast {
   position: absolute;
   left: 50%;

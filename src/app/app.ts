@@ -60,7 +60,7 @@ const SNAP_OF = {
   parallel: 'snap.parallelOf',
   intersection: 'snap.intersectionOf',
 } as const;
-import { boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, openingOutline } from './geometry';
+import { applyTemporary, boundsOf, shownFor, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, openingOutline, type TemporaryView } from './geometry';
 import { renderBrowser } from '../ui/browser';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { stackedSteps } from './stacked';
@@ -99,6 +99,8 @@ export interface UiState {
   browserOpen: boolean;
   /** Categories hidden from view by the project browser (the document keeps them). */
   hidden: Set<Category>;
+  /** Elements hidden or isolated for a while (Shift+H, Shift+I): in the views only, never saved. */
+  temp: TemporaryView | null;
   snaps: boolean;
   defaults: WallDefaults;
   wall: WallToolState;
@@ -190,6 +192,7 @@ export class App {
       panelPeek: false,
       browserOpen: prefs.browserOpen ?? false,
       hidden: new Set(),
+      temp: null,
       snaps: prefs.snaps !== false,
       defaults: { wallTypeId: doc.wallTypes[0]!.id, referenceLine: 'centerline', baseOffset: 0, top: { kind: 'level', offset: 0 } },
       wall: IDLE,
@@ -1215,6 +1218,36 @@ export class App {
     this.refresh();
   }
 
+  /**
+   * Hides the selection for a while (Revit's HH), or isolates it (HI): the views leave out the rest.
+   * Hiding again adds to what is hidden; with nothing selected, everything shows again (HR).
+   */
+  hideTemporarily(mode: 'hide' | 'isolate'): void {
+    const ids = [...this.ui.selection].filter((id) => !isGuideId(id));
+    if (ids.length === 0) {
+      if (this.ui.temp) this.resetTemporary();
+      else {
+        this.ui.info = t('hint.tempNothing');
+        this.render();
+      }
+      return;
+    }
+    const was = this.ui.temp;
+    this.ui.temp = mode === 'hide' && was?.mode === 'hide' ? { mode, ids: new Set([...was.ids, ...ids]) } : { mode, ids: new Set(ids) };
+    // What went from view leaves the selection, as with a hidden category.
+    if (mode === 'hide') for (const id of ids) this.ui.selection.delete(id);
+    this.toast(t(mode === 'hide' ? 'toast.tempHidden' : 'toast.tempIsolated'));
+    this.refresh();
+  }
+
+  /** Everything hidden or isolated for a while shows again. */
+  resetTemporary(): void {
+    if (!this.ui.temp) return;
+    this.ui.temp = null;
+    this.toast(t('toast.tempReset'));
+    this.refresh();
+  }
+
   toggleSnaps(): void {
     this.ui.snaps = !this.ui.snaps;
     // Kept, as the other view choices are: turned off, they came back on with every reload.
@@ -1915,7 +1948,10 @@ export class App {
     const d = this.ui.drag;
     if (this.ui.tool !== 'select' || (d && d.kind !== 'slide' && d.kind !== 'move')) return [];
     const doc = this.store.get();
-    const shown = d?.kind === 'slide' ? { ...doc, openings: d.openings } : d?.kind === 'move' ? { ...doc, walls: d.walls } : doc;
+    const moved = d?.kind === 'slide' ? { ...doc, openings: d.openings } : d?.kind === 'move' ? { ...doc, walls: d.walls } : doc;
+    // Measured only to what shows: an isolated wall measured 2,55 m to a wall hidden for now.
+    const temp = this.ui.temp;
+    const shown = temp ? { ...moved, walls: moved.walls.filter((w) => shownFor(temp, w.id)), openings: moved.openings.filter((o) => shownFor(temp, o.id) || shownFor(temp, o.wallId)) } : moved;
     return tempDims(shown, this.geometry, this.ui.selection);
   }
 
@@ -2040,9 +2076,31 @@ export class App {
     return true;
   }
 
+  /**
+   * With walls hidden or isolated for a while, the walls that show joined among themselves only: kept
+   * cut for a hidden wall, their ends showed a slot where it stood (a dark strip down a corner in 3D).
+   * Rooms and floors stay as the whole document makes them. Computed again only when the walls change.
+   */
+  private joinedCache: { from: DerivedGeometry; temp: TemporaryView; g: DerivedGeometry } | null = null;
+  private joinedAsShown(shown: DerivedGeometry): DerivedGeometry {
+    const temp = this.ui.temp;
+    if (!temp || shown.solids.size === this.geometry.solids.size) return shown;
+    const c = this.joinedCache;
+    if (c && c.from === this.geometry && c.temp === temp) return c.g;
+    const doc = this.store.get();
+    const walls = [...shown.solids.values()].map((s) => s.wall);
+    const ids = new Set(walls.map((w) => w.id));
+    const own = deriveGeometry({ ...doc, walls, openings: doc.openings.filter((o) => ids.has(o.wallId) && shown.openings.has(o.id)) });
+    // Doors and windows being placed are not in the document: they stay as they were.
+    const openings = new Map([...own.openings, ...[...shown.openings].filter(([id]) => !own.openings.has(id) && !doc.openings.some((o) => o.id === id))]);
+    const g = { ...shown, solids: own.solids, openings };
+    this.joinedCache = { from: this.geometry, temp, g };
+    return g;
+  }
+
   /** In plan, only the current level's walls and openings; in 3D, the levels the view shows (view-3d.ts). */
   visibleGeometry(): DerivedGeometry {
-    const g = hideCategories(this.geometry, this.ui.hidden);
+    const g = hideCategories(this.joinedAsShown(applyTemporary(this.geometry, this.ui.temp)), this.ui.hidden);
     if (this.ui.view !== 'plan') {
       const doc = this.store.get();
       const shown = shownLevels(doc.levels, this.ui.levelId, this.ui.view3d.levels);
@@ -2194,6 +2252,10 @@ export class App {
     shell.level.value = ui.levelId;
     // Gone once the wall tool is on: "press W" no longer applies, and the footer says what to click.
     shell.emptyHint.hidden = doc.walls.length > 0 || ui.tool === 'wall';
+    // Hidden or isolated for a while: the drawing framed, and a way back, as Revit's cyan frame says.
+    shell.viewport.classList.toggle('temp-view', ui.temp !== null);
+    shell.tempChip.hidden = ui.temp === null;
+    if (ui.temp) shell.tempLabel.textContent = t(ui.temp.mode === 'hide' ? 'temp.hidden' : 'temp.isolated', { n: ui.temp.ids.size });
 
     // Footer: what to do now, the keys that work now, and the measure field.
     const drawing = ui.tool === 'wall';

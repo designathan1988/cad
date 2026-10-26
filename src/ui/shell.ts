@@ -138,6 +138,12 @@ export function buildShell(root: HTMLElement) {
   const dims = el('div', { class: 'temp-dims' });
   const emptyHint = el('div', { class: 'empty-hint' });
   const toast = el('div', { class: 'toast', role: 'status', 'aria-live': 'polite' });
+  // Hidden or isolated for a while (app.ts, hideTemporarily): what the view leaves out, and the way back.
+  const tempChip = el('div', { class: 'temp-chip', role: 'status' });
+  tempChip.hidden = true;
+  const tempLabel = el('span');
+  const tempReset = el('button', { type: 'button', class: 'btn' });
+  tempChip.append(tempLabel, tempReset);
   // The 3D view's own controls (view-3d.ts): which levels show, exploded, cut. In 3D only.
   const viewBar = el('div', { class: 'view-bar', role: 'toolbar' });
   viewBar.hidden = true;
@@ -154,7 +160,7 @@ export function buildShell(root: HTMLElement) {
   const explode = barButton(togglesBox, 'explode');
   const cut = barButton(togglesBox, 'cut');
   viewBar.append(levelsBox, togglesBox);
-  viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, viewBar, emptyHint, toast, browser);
+  viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, viewBar, emptyHint, tempChip, toast, browser);
 
   const panel = el('aside', { class: 'panel', 'aria-label': 'Properties' });
 
@@ -278,7 +284,7 @@ export function buildShell(root: HTMLElement) {
   const parts = {
     homeBtn, projectName, undo, redo, level, newFile, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
     panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, modifyTools, toolSplit, toolCorner, dims, browser, sidebar,
-    emptyHint, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, editTools, moreTools, fitTop, syncMore, foldedTools, moreApp, foldedApp, fitFoot,
+    emptyHint, tempChip, tempLabel, tempReset, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, editTools, moreTools, fitTop, syncMore, foldedTools, moreApp, foldedApp, fitFoot,
   };
 
   const relabel = () => {
@@ -344,6 +350,7 @@ export function buildShell(root: HTMLElement) {
     tip(moreApp, 'top.moreOptions');
     editTools.setAttribute('aria-label', t('aria.editTools'));
     emptyHint.textContent = t('empty.hint');
+    tempReset.textContent = t('temp.reset');
     tools.setAttribute('aria-label', t('aria.tools'));
     planCanvas.setAttribute('aria-label', t('view.plan'));
     glCanvas.setAttribute('aria-label', t('view.3d'));
