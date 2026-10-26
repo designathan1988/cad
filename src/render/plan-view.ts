@@ -2,6 +2,7 @@
 // The joined outline needs no boolean union: every piece is stroked first, then every piece is
 // filled over the strokes, so lines between joined pieces disappear and only the outside stays.
 
+import { postsOf } from '../elements/railing/schema';
 import type { Point2 } from '../core/vector';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { type DerivedGeometry, openingOutline } from '../app/geometry';
@@ -487,6 +488,23 @@ export class PlanView {
       ctx.lineWidth = lit ? 2 : 1;
       ctx.stroke();
     }
+    // Guardrails: their path, with a tick at each post.
+    ctx.save();
+    for (const r of g.railings.values()) {
+      const lit = o.selected.has(r.railing.id) || o.hover === r.railing.id;
+      ctx.strokeStyle = lit ? color('--wall-sel') : color('--wall-line');
+      ctx.lineWidth = lit ? 3 : 2;
+      const pts = r.railing.points.map((v) => this.toScreen(v));
+      ctx.beginPath();
+      pts.forEach((q, i) => (i === 0 ? ctx.moveTo(q.x, q.y) : ctx.lineTo(q.x, q.y)));
+      ctx.stroke();
+      ctx.fillStyle = ctx.strokeStyle;
+      for (const p of postsOf(r.railing)) {
+        const q = this.toScreen(p);
+        ctx.fillRect(q.x - 2.5, q.y - 2.5, 5, 5);
+      }
+    }
+    ctx.restore();
     // Stairs: each step and landing outlined, the walking line from the first step to the top, an arrow there.
     ctx.save();
     for (const s of g.stairs.values()) {

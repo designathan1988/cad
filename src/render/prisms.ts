@@ -170,3 +170,38 @@ export function roofGeometry(
   geo.computeVertexNormals();
   return geo;
 }
+
+/**
+ * A guardrail: posts from its foot to its top, a top rail and a mid rail, each a square bar of `size`.
+ * In three.js coordinates, its foot at height 0.
+ */
+export function railingGeometry(points: readonly Point2[], posts: readonly Point2[], height: number, size = 0.04): THREE.BufferGeometry {
+  const pos: number[] = [];
+  const v = (x: number, y: number, z: number) => new THREE.Vector3(x, z, -y);
+  const quad = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, d: THREE.Vector3) =>
+    pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z, a.x, a.y, a.z, c.x, c.y, c.z, d.x, d.y, d.z);
+  const h = size / 2;
+  // A bar from (a, za) to (b, zb), square across.
+  const bar = (a: Point2, za: number, b: Point2, zb: number) => {
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const n = len > 1e-9 ? { x: (-(b.y - a.y) / len) * h, y: ((b.x - a.x) / len) * h } : { x: h, y: 0 };
+    const corners = (p: Point2, z: number) => [v(p.x + n.x, p.y + n.y, z - h), v(p.x - n.x, p.y - n.y, z - h), v(p.x - n.x, p.y - n.y, z + h), v(p.x + n.x, p.y + n.y, z + h)];
+    const A = corners(a, za);
+    const B = corners(b, zb);
+    for (let i = 0; i < 4; i++) quad(A[i]!, B[i]!, B[(i + 1) % 4]!, A[(i + 1) % 4]!);
+  };
+  const post = (p: Point2) => {
+    const c = [v(p.x - h, p.y - h, 0), v(p.x + h, p.y - h, 0), v(p.x + h, p.y + h, 0), v(p.x - h, p.y + h, 0)];
+    const t = [v(p.x - h, p.y - h, height), v(p.x + h, p.y - h, height), v(p.x + h, p.y + h, height), v(p.x - h, p.y + h, height)];
+    for (let i = 0; i < 4; i++) quad(c[i]!, c[(i + 1) % 4]!, t[(i + 1) % 4]!, t[i]!);
+  };
+  for (const p of posts) post(p);
+  for (let i = 0; i + 1 < points.length; i++) {
+    bar(points[i]!, height, points[i + 1]!, height);
+    bar(points[i]!, height / 2, points[i + 1]!, height / 2);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.computeVertexNormals();
+  return geo;
+}

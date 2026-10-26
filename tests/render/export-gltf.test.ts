@@ -53,6 +53,7 @@ const naming: ExportNaming = {
   beam: (n) => `Viga ${n}`,
   roof: (n) => `Telhado ${n}`,
   stair: (n) => `Escada ${n}`,
+  railing: (n) => `Guarda-corpo ${n}`,
   material: (id) => ({ plaster: 'Reboco', brick: 'Tijolo' })[id] ?? id,
   glass: 'Vidro',
   leaf: 'Folha de porta',

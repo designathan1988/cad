@@ -12,7 +12,8 @@ import type { WallId } from '../elements/wall/schema';
 import { LAYER_TOKEN } from '../ui/swatch';
 import { blockPaint, wallMeshKey } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
-import { prism, roofGeometry, shownPrism, slabGeometry, stairGeometry, toThree } from './prisms';
+import { prism, railingGeometry, roofGeometry, shownPrism, slabGeometry, stairGeometry, toThree } from './prisms';
+import { postsOf } from '../elements/railing/schema';
 import { featureEdges } from '../elements/wall/geometry/edges';
 import { symbolLines } from '../elements/opening/symbol';
 import { boxCaps, type SectionBox, type SectionLine, sectionCaps, sectionLooks, type UprightPrism } from '../app/section-box';
@@ -584,6 +585,29 @@ export class Scene3D {
       this.scene.add(group);
       this.walls.set(id, { group, key });
       place(id, c.column.levelId);
+    }
+    // Guardrails: posts and rails (prisms.ts: railingGeometry).
+    for (const r of g.railings.values()) {
+      const id = r.railing.id;
+      seen.add(id);
+      const state = selected.has(id) ? 's' : 'n';
+      let rkey = this.shapeKeys.get(r);
+      if (rkey === undefined) this.shapeKeys.set(r, (rkey = JSON.stringify([r.railing, r.bottom])));
+      const key = state + rkey;
+      const old = this.walls.get(id);
+      if (old?.key === key) {
+        place(id, r.railing.levelId);
+        continue;
+      }
+      if (old) this.drop(old.group);
+      const group = new THREE.Group();
+      const mesh = new THREE.Mesh(railingGeometry(r.railing.points, postsOf(r.railing), r.railing.height), state === 's' ? this.materials.sideSel : this.materials.side);
+      mesh.position.y = r.bottom;
+      group.add(mesh);
+      group.userData.wallId = id;
+      this.scene.add(group);
+      this.walls.set(id, { group, key });
+      place(id, r.railing.levelId);
     }
     // Stairs: their steps and landings, and handrails (prisms.ts: stairGeometry).
     for (const s of g.stairs.values()) {

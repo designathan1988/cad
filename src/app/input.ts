@@ -196,7 +196,9 @@ export function wireInput(app: App): void {
                 ? (ui.roofDraft.at(-1) ?? null)
                 : ui.tool === 'stair'
                   ? ui.stairFrom
-                  : null;
+                  : ui.tool === 'railing'
+                    ? (ui.railingDraft.at(-1) ?? null)
+                    : null;
     const measuring = ui.tool === 'measure' || ui.tool === 'dimension';
     const modifyFrom = ui.tool === 'modify' && ui.modify && ui.modify.state.step !== 'base' ? ui.modify.state.base : null;
     const faces = measuring ? levelFaces() : [];
@@ -273,6 +275,11 @@ export function wireInput(app: App): void {
       .sort((a, b) => a.off - b.off)
       .slice(0, 1)
       .map((x) => x.id);
+    // A guardrail near its path.
+    const railingHit = [...g.railings.values()]
+      .filter((r) => r.railing.points.slice(1).some((q, i) => segmentDistance(p, r.railing.points[i]!, q) <= near))
+      .slice(-1)
+      .map((r) => r.railing.id);
     // A stair on any of its steps: before the walls and rooms it lies among.
     const stairHit = [...g.stairs.values()].filter((s) => s.parts.some((q) => insideRing(q.polygon, p))).slice(-1).map((s) => s.stair.id);
     // A column inside its section (or a few pixels off it): before the walls it stands in.
@@ -289,6 +296,7 @@ export function wireInput(app: App): void {
       ...bubbleHit,
       ...dimHit,
       ...columnHit,
+      ...railingHit,
       ...stairHit,
       // A text note over everything it is written on.
       ...app
@@ -373,7 +381,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'roof' || ui.tool === 'stair') {
+    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -513,6 +521,10 @@ export function wireInput(app: App): void {
       app.roofFinish();
       return true;
     }
+    if (ui.tool === 'railing' && ui.railingDraft.length > 0) {
+      app.railingFinish();
+      return true;
+    }
     if (ui.tool === 'measure' && ui.measure.kind !== 'idle') {
       app.measureEvent({ kind: 'escape' });
       return true;
@@ -616,6 +628,11 @@ export function wireInput(app: App): void {
     if (ui.tool === 'stair') {
       const at = aimAt3d(e);
       if (at) app.stairClick(snapped(e)?.point ?? at.p);
+      return;
+    }
+    if (ui.tool === 'railing') {
+      const at = aimAt3d(e);
+      if (at) app.railingClick(snapped(e)?.point ?? at.p, at.mpp);
       return;
     }
     if (ui.tool === 'room' || ui.tool === 'floor') {
@@ -738,6 +755,7 @@ export function wireInput(app: App): void {
   shell.toolBeam.addEventListener('click', () => app.setTool('beam'));
   shell.toolRoof.addEventListener('click', () => app.setTool('roof'));
   shell.toolStair.addEventListener('click', () => app.setTool('stair'));
+  shell.toolRailing.addEventListener('click', () => app.setTool('railing'));
   shell.toolSplit.addEventListener('click', () => app.setTool('split'));
   shell.toolCorner.addEventListener('click', () => app.setTool('corner'));
   for (const [kind, b] of Object.entries(shell.modifyTools)) b.addEventListener('click', () => app.startModify(kind as ModifyKind));
@@ -985,6 +1003,10 @@ export function wireInput(app: App): void {
       if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'grid') return app.gridEscape();
       if (ui.tool === 'column') return app.setTool('select');
+      if (ui.tool === 'railing') {
+        if (ui.railingDraft.length === 0) return app.setTool('select');
+        return app.railingFinish();
+      }
       if (ui.tool === 'stair') {
         if (!ui.stairFrom) return app.setTool('select');
         ui.stairFrom = null;
@@ -1016,6 +1038,13 @@ export function wireInput(app: App): void {
     }
     if (e.key === 'Enter' && ui.tool === 'wall') return app.wallEvent({ kind: 'enter' });
     if (e.key === 'Enter' && ui.tool === 'floor') return app.floorFinish();
+    // Enter ends what is being drawn by points: a roof's outline, a guardrail's path, a beam chain.
+    if (e.key === 'Enter' && ui.tool === 'roof' && ui.roofDraft.length > 0) return app.roofFinish();
+    if (e.key === 'Enter' && ui.tool === 'railing' && ui.railingDraft.length > 0) return app.railingFinish();
+    if (e.key === 'Enter' && ui.tool === 'beam' && ui.beamFrom) {
+      ui.beamFrom = null;
+      return app.render();
+    }
     // Enter places the opening where it is aimed, as a click there does.
     if (e.key === 'Enter' && app.openingKind() && ui.opening.kind === 'aiming') return app.openingEvent({ kind: 'click' });
     // Backspace while drawing a chain takes its last wall back and goes on from its start (ArchiCAD).
@@ -1064,6 +1093,7 @@ export function wireInput(app: App): void {
     if (key === 'b') return app.setTool('beam');
     if (key === 't') return app.setTool('roof');
     if (key === 'e') return app.setTool('stair');
+    if (key === 'g') return app.setTool('railing');
     if (key === 'v') return app.setTool('select');
     if (key === 'f') return app.frameSelection();
     // Choosing and moving elements without a mouse: N / Shift+N go through the level's elements;

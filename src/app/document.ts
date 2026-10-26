@@ -1,6 +1,7 @@
 // The project document: only what the user decided. Thickness, heights, joins and geometry are
 // always derived from it.
 
+import type { Railing } from '../elements/railing/schema';
 import type { Stair } from '../elements/stair/schema';
 import type { Roof } from '../elements/roof/schema';
 import type { Beam } from '../elements/beam/schema';
@@ -45,7 +46,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 19;
+  readonly version: 20;
   readonly name: string;
   readonly levels: readonly Level[];
   readonly wallTypes: readonly WallType[];
@@ -77,6 +78,8 @@ export interface Doc {
   readonly roofs: readonly Roof[];
   /** Stairs (elements/stair). */
   readonly stairs: readonly Stair[];
+  /** Guardrails (elements/railing). */
+  readonly railings: readonly Railing[];
 }
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */
@@ -87,13 +90,13 @@ export interface WallDefaults {
   readonly top: HeightRule;
 }
 
-/** The ids of every element that can be selected: walls, openings, rooms, floors, guides, notes, dimensions, grids, columns, beams, roofs and stairs. */
+/** The ids of every element that can be selected: walls, openings, rooms, floors, guides, notes, dimensions, grids, columns, beams, roofs, stairs and railings. */
 export const elementIds = (doc: Doc): Set<string> =>
-  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.guides, ...doc.notes, ...doc.dimensions, ...doc.grids, ...doc.columns, ...doc.beams, ...doc.roofs, ...doc.stairs].map((e) => e.id));
+  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.guides, ...doc.notes, ...doc.dimensions, ...doc.grids, ...doc.columns, ...doc.beams, ...doc.roofs, ...doc.stairs, ...doc.railings].map((e) => e.id));
 
 export function newDocument(): Doc {
   return {
-    version: 19,
+    version: 20,
     name: '',
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
     wallTypes: [
@@ -141,6 +144,7 @@ export function newDocument(): Doc {
     beams: [],
     roofs: [],
     stairs: [],
+    railings: [],
   };
 }
 

@@ -1,6 +1,7 @@
 // Document → derived wall geometry, through the join engine. Recomputed when the document changes,
 // never stored.
 
+import type { Railing } from '../elements/railing/schema';
 import { type StairSolid, stairSolid } from '../elements/stair/geometry';
 import { type RoofSolid, roofSolid } from '../elements/roof/geometry';
 import { type Beam, beamOutline } from '../elements/beam/schema';
@@ -69,6 +70,17 @@ export interface DerivedGeometry {
   readonly beams: ReadonlyMap<string, BeamSolid>;
   readonly roofs: ReadonlyMap<string, RoofSolid>;
   readonly stairs: ReadonlyMap<string, StairSolid>;
+  readonly railings: ReadonlyMap<string, RailingSolid>;
+}
+
+/** A guardrail as it stands: its foot's height. */
+export interface RailingSolid {
+  readonly railing: Railing;
+  readonly bottom: number;
+}
+
+export function deriveRailings(doc: Doc): Map<string, RailingSolid> {
+  return new Map(doc.railings.map((r) => [r.id, { railing: r, bottom: (doc.levels.find((l) => l.id === r.levelId)?.elevation ?? 0) + r.baseOffset }]));
 }
 
 /** Stairs from their level's floor, up its height unless they set their own (elements/stair/geometry.ts). */
@@ -229,7 +241,7 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     if (!found.has(levelId)) found.set(levelId, spacesOf(piecesByLevel.get(levelId) ?? []));
     return found.get(levelId)!;
   };
-  return { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors, spaces, columns: deriveColumns(doc), beams: deriveBeams(doc), roofs: deriveRoofs(doc), stairs: deriveStairs(doc) };
+  return { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors, spaces, columns: deriveColumns(doc), beams: deriveBeams(doc), roofs: deriveRoofs(doc), stairs: deriveStairs(doc), railings: deriveRailings(doc) };
 }
 
 /** A height range of a wall, and its plan pieces there: joined only with the walls standing over all of it. */
@@ -512,6 +524,7 @@ export function applyTemporary(g: DerivedGeometry, temp: TemporaryView | null): 
     beams: new Map([...g.beams].filter(([id]) => keep(id))),
     roofs: new Map([...g.roofs].filter(([id]) => keep(id))),
     stairs: new Map([...g.stairs].filter(([id]) => keep(id))),
+    railings: new Map([...g.railings].filter(([id]) => keep(id))),
   };
 }
 
@@ -528,5 +541,6 @@ export function hideCategories(g: DerivedGeometry, hidden: ReadonlySet<Category>
     beams: hidden.has('walls') ? new Map() : g.beams,
     roofs: hidden.has('walls') ? new Map() : g.roofs,
     stairs: hidden.has('floors') ? new Map() : g.stairs,
+    railings: hidden.has('floors') ? new Map() : g.railings,
   };
 }

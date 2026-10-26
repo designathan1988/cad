@@ -6,6 +6,7 @@
 // and positions, never thicknesses or the sizes of doors and windows. A mirror swaps each wall's ends,
 // so its layers, and its doors' hinges, come out mirrored rather than turned over.
 
+import { RAILING_PREFIX } from '../elements/railing/schema';
 import { STAIR_PREFIX, type Stair } from '../elements/stair/schema';
 import { ROOF_PREFIX, type Roof } from '../elements/roof/schema';
 import { BEAM_PREFIX, type Beam } from '../elements/beam/schema';
@@ -184,6 +185,7 @@ export function transformSelection(
   const beams = new Set(doc.beams.filter((x) => set.has(x.id)).map((x) => x.id));
   const roofs = new Set(doc.roofs.filter((x) => set.has(x.id)).map((x) => x.id));
   const stairs = new Set(doc.stairs.filter((x) => set.has(x.id)).map((x) => x.id));
+  const railings = new Set(doc.railings.filter((x) => set.has(x.id)).map((x) => x.id));
   // A stair turns with a turn; mirrored, it turns the other way.
   const stair = (s: Stair, id: string): Stair => {
     const at = t.map(s.at);
@@ -244,6 +246,7 @@ export function transformSelection(
       beams: doc.beams.map((x) => (beams.has(x.id) ? beam(x, x.id) : x)),
       roofs: doc.roofs.map((x) => (roofs.has(x.id) ? roof(x, x.id) : x)),
       stairs: doc.stairs.map((x) => (stairs.has(x.id) ? stair(x, x.id) : x)),
+      railings: doc.railings.map((x) => (railings.has(x.id) ? { ...x, points: x.points.map(t.map) } : x)),
       dimensions: doc.dimensions.map((d) => {
         const a = swapped(dims.has(d.id) ? freePoint(d.a) : d.a);
         const b = swapped(dims.has(d.id) ? freePoint(d.b) : d.b);
@@ -288,6 +291,8 @@ export function transformSelection(
   for (const x of roofList) fresh(x.id, ROOF_PREFIX);
   const stairList = doc.stairs.filter((x) => stairs.has(x.id));
   for (const x of stairList) fresh(x.id, STAIR_PREFIX);
+  const railingList = doc.railings.filter((x) => railings.has(x.id));
+  for (const x of railingList) fresh(x.id, RAILING_PREFIX);
   const to = (id: string) => ids2.get(id) ?? id;
 
   const newWalls = doc.walls
@@ -324,6 +329,7 @@ export function transformSelection(
     beams: [...doc.beams, ...beamList.map((x) => beam(x, to(x.id)))],
     roofs: [...doc.roofs, ...roofList.map((x) => roof(x, to(x.id)))],
     stairs: [...doc.stairs, ...stairList.map((x) => stair(x, to(x.id)))],
+    railings: [...doc.railings, ...railingList.map((x) => ({ ...x, id: to(x.id), points: x.points.map(t.map) }))],
     // A copied axis is named on from the last of its kind, as a new one is.
     grids: gridList.reduce<Grid[]>((all, x) => {
       const start = t.map(x.start);
@@ -360,6 +366,7 @@ export function transformSelection(
     ...beamList.map((x) => to(x.id)),
     ...roofList.map((x) => to(x.id)),
     ...stairList.map((x) => to(x.id)),
+    ...railingList.map((x) => to(x.id)),
   ];
   return { doc: next, selection };
 }
@@ -379,7 +386,8 @@ export function canTransform(doc: Doc, ids: readonly string[]): boolean {
     doc.columns.some((x) => set.has(x.id)) ||
     doc.beams.some((x) => set.has(x.id)) ||
     doc.roofs.some((x) => set.has(x.id)) ||
-    doc.stairs.some((x) => set.has(x.id))
+    doc.stairs.some((x) => set.has(x.id)) ||
+    doc.railings.some((x) => set.has(x.id))
   );
 }
 
@@ -397,7 +405,7 @@ export function copyToLevel(doc: Doc, g: DerivedGeometry, ids: readonly string[]
   let last = doc.rooms.filter((x) => x.levelId === levelId).reduce((n, x) => Math.max(n, Number.parseInt(x.number, 10) || 0), 0);
   const rooms = onLevel(r.doc.rooms, doc.rooms.length).map((x, i) => (i >= doc.rooms.length ? { ...x, number: String(++last) } : x));
   return {
-    doc: { ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length), rooms, floors: onLevel(r.doc.floors, doc.floors.length), guides: onLevel(r.doc.guides, doc.guides.length), notes: onLevel(r.doc.notes, doc.notes.length), dimensions: onLevel(r.doc.dimensions, doc.dimensions.length), columns: onLevel(r.doc.columns, doc.columns.length), beams: onLevel(r.doc.beams, doc.beams.length), roofs: onLevel(r.doc.roofs, doc.roofs.length), stairs: onLevel(r.doc.stairs, doc.stairs.length) },
+    doc: { ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length), rooms, floors: onLevel(r.doc.floors, doc.floors.length), guides: onLevel(r.doc.guides, doc.guides.length), notes: onLevel(r.doc.notes, doc.notes.length), dimensions: onLevel(r.doc.dimensions, doc.dimensions.length), columns: onLevel(r.doc.columns, doc.columns.length), beams: onLevel(r.doc.beams, doc.beams.length), roofs: onLevel(r.doc.roofs, doc.roofs.length), stairs: onLevel(r.doc.stairs, doc.stairs.length), railings: onLevel(r.doc.railings, doc.railings.length) },
     selection: r.selection,
   };
 }

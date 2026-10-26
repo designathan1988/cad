@@ -29,6 +29,7 @@ export const DXF_LAYERS = [
   { name: 'S-BEAM', colour: 8 }, // beams, above the cut
   { name: 'A-ROOF', colour: 6 }, // roofs: eaves and the faces' sides
   { name: 'A-FLOR-STRS', colour: 2 }, // stairs: steps, landings, walking line
+  { name: 'A-FLOR-HRAL', colour: 4 }, // guardrails: their path
 ] as const;
 type Layer = (typeof DXF_LAYERS)[number]['name'];
 
@@ -171,6 +172,8 @@ export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels):
     line('A-DOOR', leaf[0]!, leaf[1]!);
     arc('A-DOOR', leaf[0]!, swing[0]!, swing[swing.length - 1]!, pair);
   }
+  // Guardrails: their path.
+  for (const r of g.railings.values()) if (r.railing.levelId === levelId) polyline('A-FLOR-HRAL', r.railing.points, false);
   // Stairs: each step and landing, and the walking line.
   for (const s of g.stairs.values()) {
     if (s.stair.levelId !== levelId) continue;

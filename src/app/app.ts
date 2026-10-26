@@ -44,7 +44,9 @@ import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui
 import { snapLabel, type Snap } from '../tools/snap';
 import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, rectangle, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
-import { type Drag, dragTransform, hull, moveBeams, moveColumns, moveGuides, moveNotes, moveRoofs, moveStairs } from './select-drag';
+import { type Drag, dragTransform, hull, moveBeams, moveColumns, moveGuides, moveNotes, moveRailings, moveRoofs, moveStairs } from './select-drag';
+import { addRailing, updateRailings } from '../elements/railing/commands';
+import { isRailingId, RAILING_HEIGHT, RAILING_PREFIX } from '../elements/railing/schema';
 import { addStair, updateStairs } from '../elements/stair/commands';
 import { isStairId, STAIR_PREFIX, STAIR_TREAD, STAIR_WIDTH } from '../elements/stair/schema';
 import { addRoof, updateRoofs } from '../elements/roof/commands';
@@ -158,6 +160,8 @@ export interface UiState {
   roofDraft: Point2[];
   /** The stair tool's first point (the first step's front), before its direction is clicked. */
   stairFrom: Point2 | null;
+  /** Points of a guardrail's path being drawn. */
+  railingDraft: Point2[];
   /** A guide being placed (guide-tool.ts): Alt over a wall or a guide in a drawing tool. */
   guide: GuideDraft | null;
   /** How the 3D view shows the levels: which, exploded, cut (view-3d.ts). */
@@ -256,6 +260,7 @@ export class App {
       holeFor: null,
       roofDraft: [],
       stairFrom: null,
+      railingDraft: [],
       guide: null,
       view3d: readView3D(prefs.view3d),
       modify: null,
@@ -388,7 +393,7 @@ export class App {
     // Levels hidden now leave the selection, as a hidden category does.
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      if (!isGuideId(id) && !isNoteId(id) && !isDimId(id) && !isGridId(id) && !shown.solids.has(id) && !shown.columns.has(id) && !shown.beams.has(id) && !shown.roofs.has(id) && !shown.stairs.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
+      if (!isGuideId(id) && !isNoteId(id) && !isDimId(id) && !isGridId(id) && !shown.solids.has(id) && !shown.columns.has(id) && !shown.beams.has(id) && !shown.roofs.has(id) && !shown.stairs.has(id) && !shown.railings.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
     }
     this.refresh();
   }
@@ -425,6 +430,7 @@ export class App {
             beams: d.kind === 'move' ? moveBeams(doc.beams, d) : doc.beams,
             roofs: d.kind === 'move' ? moveRoofs(doc.roofs, d) : doc.roofs,
             stairs: d.kind === 'move' ? moveStairs(doc.stairs, d) : doc.stairs,
+            railings: d.kind === 'move' ? moveRailings(doc.railings, d) : doc.railings,
           }
         : d?.kind === 'slide'
           ? { ...doc, openings: d.openings }
@@ -831,6 +837,7 @@ export class App {
     this.ui.holeFor = null;
     this.ui.roofDraft = [];
     this.ui.stairFrom = null;
+    this.ui.railingDraft = [];
     this.ui.guide = null;
     this.ui.modify = null;
     this.modifyBefore = null;
@@ -1561,6 +1568,26 @@ export class App {
     this.render();
   }
 
+  /** The guardrail tool: a click adds a point of its path; Enter, Esc or a click on the last point ends it. */
+  railingClick(p: Point2, mpp: number): void {
+    const draft = this.ui.railingDraft;
+    if (draft.length >= 2 && distance(p, draft.at(-1)!) <= 10 * mpp) return this.railingFinish();
+    if (draft.length > 0 && distance(p, draft.at(-1)!) < MIN_WALL_LENGTH) return;
+    this.ui.railingDraft = [...draft, p];
+    this.render();
+  }
+
+  railingFinish(): void {
+    const points = this.ui.railingDraft;
+    this.ui.railingDraft = [];
+    if (points.length < 2) return this.render();
+    const last = this.store.get().railings.at(-1);
+    const id = newId(RAILING_PREFIX);
+    this.store.dispatch(addRailing({ id, levelId: this.ui.levelId, points, height: last?.height ?? RAILING_HEIGHT, baseOffset: 0 }));
+    this.ui.info = t('hint.railingMade');
+    this.render();
+  }
+
   /**
    * The stair tool: a click on where its first step's front is (its middle), the next on the way it
    * climbs. Straight, of the last stair's width and step; its kind and turn are in the panel.
@@ -2035,6 +2062,7 @@ export class App {
       beams: r.doc.beams.slice(c.doc.beams.length),
       roofs: r.doc.roofs.slice(c.doc.roofs.length),
       stairs: r.doc.stairs.slice(c.doc.stairs.length),
+      railings: r.doc.railings.slice(c.doc.railings.length),
     };
     const level = levelOf(this.store.get(), this.ui.levelId);
     // The rooms renumbered on from the level's rooms as they are now, not as they were at the copy.
@@ -2056,6 +2084,7 @@ export class App {
         beams: [...d.beams, ...added.beams],
         roofs: [...d.roofs, ...added.roofs],
         stairs: [...d.stairs, ...added.stairs],
+        railings: [...d.railings, ...added.railings],
       }),
     });
     this.ui.selection = new Set(r.selection);
@@ -2320,7 +2349,7 @@ export class App {
    */
   async exportGlb(): Promise<void> {
     const doc = this.store.get();
-    if (doc.walls.length === 0 && doc.floors.length === 0 && doc.columns.length === 0 && doc.beams.length === 0 && doc.roofs.length === 0 && doc.stairs.length === 0) {
+    if (doc.walls.length === 0 && doc.floors.length === 0 && doc.columns.length === 0 && doc.beams.length === 0 && doc.roofs.length === 0 && doc.stairs.length === 0 && doc.railings.length === 0) {
       this.ui.info = t('export.nothing');
       return this.renderChrome();
     }
@@ -2336,6 +2365,7 @@ export class App {
         beam: (n) => t('export.beam', { n }),
         roof: (n) => t('export.roof', { n }),
         stair: (n) => t('export.stair', { n }),
+        railing: (n) => t('export.railing', { n }),
         material: materialName,
         glass: t('export.glass'),
         leaf: t('export.leaf'),
@@ -2457,7 +2487,7 @@ export class App {
   private selectionKinds(): number {
     const g = this.geometry;
     const ids = [...this.ui.selection];
-    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isNoteId) ? 1 : 0) + (ids.some(isDimId) ? 1 : 0) + (ids.some(isGridId) ? 1 : 0) + (ids.some(isColumnId) ? 1 : 0) + (ids.some(isBeamId) ? 1 : 0) + (ids.some(isRoofId) ? 1 : 0) + (ids.some(isStairId) ? 1 : 0);
+    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isNoteId) ? 1 : 0) + (ids.some(isDimId) ? 1 : 0) + (ids.some(isGridId) ? 1 : 0) + (ids.some(isColumnId) ? 1 : 0) + (ids.some(isBeamId) ? 1 : 0) + (ids.some(isRoofId) ? 1 : 0) + (ids.some(isStairId) ? 1 : 0) + (ids.some(isRailingId) ? 1 : 0);
   }
 
   selectedWalls(): DocWall[] {
@@ -2621,7 +2651,7 @@ export class App {
         guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
         snap:
           // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
             ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
             : null,
         measure: guideDim
@@ -2686,7 +2716,9 @@ export class App {
                 ? [...ui.roofDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
                 : ui.tool === 'stair' && ui.stairFrom && (ui.snap?.point ?? ui.cursor)
                   ? [ui.stairFrom, (ui.snap?.point ?? ui.cursor)!]
-                  : null,
+                  : ui.tool === 'railing' && ui.railingDraft.length > 0
+                    ? [...ui.railingDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
+                    : null,
         draftCorners: ui.tool === 'floor' ? ui.floorDraft : [],
         openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
         // The opening being placed shows its distance as a dimension too (drawn only, not typed in: the
@@ -2751,7 +2783,9 @@ export class App {
                 ? [...ui.roofDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
                 : ui.tool === 'stair' && ui.stairFrom && (ui.snap?.point ?? ui.cursor)
                   ? [ui.stairFrom, (ui.snap?.point ?? ui.cursor)!]
-                  : null,
+                  : ui.tool === 'railing' && ui.railingDraft.length > 0
+                    ? [...ui.railingDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
+                    : null,
         box: ui.view3d.box,
         boxHot: this.boxHot,
         points: this.pointsShown(),
@@ -2800,6 +2834,7 @@ export class App {
         beams: doc.beams.filter((b) => ui.selection.has(b.id)),
         roofs: [...this.geometry.roofs.values()].filter((r) => ui.selection.has(r.roof.id)),
         stairs: [...this.geometry.stairs.values()].filter((s) => ui.selection.has(s.stair.id)),
+        railings: doc.railings.filter((r) => ui.selection.has(r.id)),
         dimensionLength: (d) => this.dimensionLength(d),
         stacked: stackedSteps(doc),
       },
@@ -2890,6 +2925,7 @@ export class App {
         updateBeams: (ids, patch) => this.store.dispatch(updateBeams(ids, patch)),
         updateRoofs: (ids, patch) => this.store.dispatch(updateRoofs(ids, patch)),
         updateStairs: (ids, patch) => this.store.dispatch(updateStairs(ids, patch)),
+        updateRailings: (ids, patch) => this.store.dispatch(updateRailings(ids, patch)),
         // The wall moved across, with its joins kept as a move keeps them: the face then meets the one below.
         alignBelow: (step) => this.store.dispatch(setWalls(moveWalls(this.store.get(), [step.upperId], step.shift), 'cmd.alignBelow')),
       },
@@ -3082,6 +3118,7 @@ export class App {
         beams: new Map([...g.beams].filter(([, b]) => shown.has(b.beam.levelId))),
         roofs: new Map([...g.roofs].filter(([, r]) => shown.has(r.roof.levelId))),
         stairs: new Map([...g.stairs].filter(([, s]) => shown.has(s.stair.levelId))),
+        railings: new Map([...g.railings].filter(([, r]) => shown.has(r.railing.levelId))),
       };
     }
     const solids = new Map([...g.solids].filter(([, s]) => s.wall.levelId === this.ui.levelId));
@@ -3093,7 +3130,8 @@ export class App {
     const beams = new Map([...g.beams].filter(([, b]) => b.beam.levelId === this.ui.levelId));
     const roofs = new Map([...g.roofs].filter(([, r]) => r.roof.levelId === this.ui.levelId));
     const stairs = new Map([...g.stairs].filter(([, s]) => s.stair.levelId === this.ui.levelId));
-    return { ...g, solids, openings, rooms, floors, columns, beams, roofs, stairs };
+    const railings = new Map([...g.railings].filter(([, r]) => r.railing.levelId === this.ui.levelId));
+    return { ...g, solids, openings, rooms, floors, columns, beams, roofs, stairs, railings };
   }
 
   toggleBrowser(open = !this.ui.browserOpen): void {
@@ -3122,8 +3160,8 @@ export class App {
         continue;
       }
       if (isGridId(id)) continue;
-      if (isColumnId(id) || isBeamId(id) || isRoofId(id) || isStairId(id)) {
-        if (!shown.columns.has(id) && !shown.beams.has(id) && !shown.roofs.has(id) && !shown.stairs.has(id)) this.ui.selection.delete(id);
+      if (isColumnId(id) || isBeamId(id) || isRoofId(id) || isStairId(id) || isRailingId(id)) {
+        if (!shown.columns.has(id) && !shown.beams.has(id) && !shown.roofs.has(id) && !shown.stairs.has(id) && !shown.railings.has(id)) this.ui.selection.delete(id);
         continue;
       }
       if (isGuideId(id) ? this.ui.hidden.has('guides') : !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) {
@@ -3241,6 +3279,7 @@ export class App {
     shell.toolBeam.setAttribute('aria-pressed', String(ui.tool === 'beam'));
     shell.toolRoof.setAttribute('aria-pressed', String(ui.tool === 'roof'));
     shell.toolStair.setAttribute('aria-pressed', String(ui.tool === 'stair'));
+    shell.toolRailing.setAttribute('aria-pressed', String(ui.tool === 'railing'));
     shell.toolSplit.setAttribute('aria-pressed', String(ui.tool === 'split'));
     shell.toolCorner.setAttribute('aria-pressed', String(ui.tool === 'corner'));
     // The Modify tools: the one in use pressed; dimmed while the selection holds nothing they take (a
@@ -3369,7 +3408,9 @@ export class App {
                       ? t(ui.roofDraft.length > 0 ? 'hint.roofNext' : 'hint.roofStart')
                       : ui.tool === 'stair'
                         ? t(ui.stairFrom ? 'hint.stairDirection' : 'hint.stairStart')
-                        : null;
+                        : ui.tool === 'railing'
+                          ? t(ui.railingDraft.length > 0 ? 'hint.railingNext' : 'hint.railingStart')
+                          : null;
     const guideHint = ui.guide
       ? t('hint.guide', {
           d: num(this.guideOffset() ?? 0),
@@ -3413,6 +3454,8 @@ export class App {
       ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
       : ui.tool === 'stair'
       ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.stairFrom ? 'key.back' : 'key.exit'))]
+      : ui.tool === 'railing'
+      ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.railingDraft.length > 0 ? 'key.finish' : 'key.exit'))]
       : ui.tool === 'roof'
       ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.roofDraft.length > 0 ? 'key.back' : 'key.exit'))]
       : ui.tool === 'measure'

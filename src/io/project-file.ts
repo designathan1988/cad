@@ -3,6 +3,7 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
+import type { Railing } from '../elements/railing/schema';
 import type { Stair } from '../elements/stair/schema';
 import type { Roof } from '../elements/roof/schema';
 import type { Beam } from '../elements/beam/schema';
@@ -43,12 +44,13 @@ import type { DocWall } from '../app/document';
  * Version 17: floors with holes, a slope, and ceilings (`holes`, `slope`, `kind`). Older floors have none.
  * Version 18: roofs (`roofs`, elements/roof). Older files have none.
  * Version 19: stairs (`stairs`, elements/stair). Older files have none.
+ * Version 20: guardrails (`railings`, elements/railing). Older files have none.
  */
-export const CURRENT_VERSION = 19;
+export const CURRENT_VERSION = 20;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes' | 'droppedDimensions' | 'droppedGrids' | 'droppedColumns' | 'droppedBeams' | 'droppedRoofs' | 'droppedStairs'; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes' | 'droppedDimensions' | 'droppedGrids' | 'droppedColumns' | 'droppedBeams' | 'droppedRoofs' | 'droppedStairs' | 'droppedRailings'; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -174,6 +176,18 @@ const isDimAnchor = (a: unknown): boolean =>
 /** A permanent dimension: two ends and the distance of its line. */
 export const isDimension = (d: unknown): d is Dimension =>
   isObject(d) && typeof d.id === 'string' && typeof d.levelId === 'string' && isDimAnchor(d.a) && isDimAnchor(d.b) && finite(d.offset);
+
+/** A guardrail: a path of two points or more, a height above zero. */
+export const isRailing = (r: unknown): r is Railing =>
+  isObject(r) &&
+  typeof r.id === 'string' &&
+  typeof r.levelId === 'string' &&
+  Array.isArray(r.points) &&
+  r.points.length >= 2 &&
+  r.points.every(isPoint) &&
+  finite(r.height) &&
+  r.height > 0 &&
+  finite(r.baseOffset);
 
 /** A stair: a kind, a point, an angle, a width and a step depth above zero. */
 export const isStair = (s: unknown): s is Stair =>
@@ -331,6 +345,12 @@ export function repairProject(raw: unknown): ReadResult {
       return false;
     }),
     grids: keep(raw.grids, isGrid, 'droppedGrids'),
+    // A guardrail on a level that is gone guards nothing: dropped, and said.
+    railings: keep(raw.railings, isRailing, 'droppedRailings').filter((r, _, all) => {
+      if (levelIds.has(r.levelId)) return true;
+      if (r === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedRailings', count: all.filter((x) => !levelIds.has(x.levelId)).length });
+      return false;
+    }),
     // A stair on a level that is gone climbs nowhere: dropped, and said.
     stairs: keep(raw.stairs, isStair, 'droppedStairs').filter((s, _, all) => {
       if (levelIds.has(s.levelId)) return true;
