@@ -367,7 +367,7 @@ Materiais e aparência
 Ferramentas de edição (valem para todos os elementos)
 - Selecionar por clique e por janela (l.107): existem.
 - Selecionar por cerca (l.107): falta.
-- Selecionar semelhantes (l.107): falta.
+- Selecionar semelhantes (l.107): existe (menu do botão direito de paredes, portas, janelas e pisos, barra flutuante e paleta): no pavimento mostrado, paredes do mesmo tipo, portas e janelas do mesmo tipo e tamanho, cômodos do mesmo uso (todos, para um sem uso), pisos da mesma espessura, guias; deixa de fora o que está oculto. Visto na casa: 22 paredes de Alvenaria 15 cm no Térreo.
 - Conjuntos de seleção salvos (l.107): falta.
 - Mover com valores digitados (l.108): existe (Shift+M, ponto-base e distância digitada; setas e cota temporária).
 - Girar com valores digitados (l.108): existe (Shift+R com ângulo digitado, e a alça de girar).

@@ -29,6 +29,7 @@ export type ContextId =
   | 'section'
   | 'walkHere'
   | 'addPoint'
+  | 'selectSimilar'
   | 'commands';
 
 /** `levelId`: the level shown, whose guides can be deleted at once. */
@@ -49,14 +50,17 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: str
   // A guide has no extent to frame.
   if (doc.guides.some((g) => g.id === id)) return [...modify, 'section', 'properties', ...guides, 'delete'];
   const common: ContextId[] = ['frameSelection', 'properties', 'delete'];
-  if (doc.walls.some((w) => w.id === id)) return [...modify, 'flipWall', 'editType', ...common];
+  // Select similar, Revit's Select All Instances, on the menu as there; where the six are full (a wall,
+  // a door), in the place of framing one element, which F does.
+  if (doc.walls.some((w) => w.id === id)) return [...modify, 'flipWall', 'editType', 'selectSimilar', 'properties', 'delete'];
   const opening = doc.openings.find((o) => o.id === id);
-  if (opening) return opening.kind === 'door' ? [...modify, 'flipHinge', 'flipSwing', ...common] : [...modify, 'centerOpening', ...common];
+  if (opening)
+    return opening.kind === 'door' ? [...modify, 'flipHinge', 'flipSwing', 'selectSimilar', 'properties', 'delete'] : [...modify, 'centerOpening', 'selectSimilar', ...common];
   if (doc.rooms.some((r) => r.id === id)) {
     const floored = doc.floors.some((f) => f.source.kind === 'room' && f.source.roomId === id);
     // Walking from inside a room, where the menu was opened (the most natural place to start), and a
     // point of interest there. Framing a room is F; the menu keeps to six.
     return [...modify, ...(floored ? [] : (['addFloor'] as const)), 'walkHere', 'addPoint', 'properties', 'delete'];
   }
-  return [...modify, ...common];
+  return [...modify, 'selectSimilar', ...common];
 }

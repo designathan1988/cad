@@ -30,16 +30,16 @@ const doc: Doc = {
 };
 
 describe('actions for the selection', () => {
-  it('a wall: move, flip, frame, properties, delete', () => {
-    expect(contextIds(doc, ['w'])).toEqual(['move', 'flipWall', 'editType', 'frameSelection', 'properties', 'delete']);
+  it('a wall: move, flip, its type, select similar (framing one is F), properties, delete', () => {
+    expect(contextIds(doc, ['w'])).toEqual(['move', 'flipWall', 'editType', 'selectSimilar', 'properties', 'delete']);
   });
 
-  it('a door: move (the Modify tools take it alone), flip hinge, flip swing, frame, properties, delete', () => {
-    expect(contextIds(doc, ['d'])).toEqual(['move', 'flipHinge', 'flipSwing', 'frameSelection', 'properties', 'delete']);
+  it('a door: move (the Modify tools take it alone), flip hinge, flip swing, select similar, properties, delete', () => {
+    expect(contextIds(doc, ['d'])).toEqual(['move', 'flipHinge', 'flipSwing', 'selectSimilar', 'properties', 'delete']);
   });
 
-  it('a window: move, centre on its wall, frame, properties, delete', () => {
-    expect(contextIds(doc, ['n'])).toEqual(['move', 'centerOpening', 'frameSelection', 'properties', 'delete']);
+  it('a window: move, centre on its wall, select similar, frame, properties, delete', () => {
+    expect(contextIds(doc, ['n'])).toEqual(['move', 'centerOpening', 'selectSimilar', 'frameSelection', 'properties', 'delete']);
   });
 
   it('a room without a floor offers one; with a floor, not; walking and a point of interest from where the menu was opened', () => {
@@ -48,8 +48,8 @@ describe('actions for the selection', () => {
     expect(contextIds(floored, ['r'])).toEqual(['move', 'walkHere', 'addPoint', 'properties', 'delete']);
   });
 
-  it('an outline floor: move, frame, properties, delete', () => {
-    expect(contextIds(doc, ['f'])).toEqual(['move', 'frameSelection', 'properties', 'delete']);
+  it('an outline floor: move, select similar, frame, properties, delete', () => {
+    expect(contextIds(doc, ['f'])).toEqual(['move', 'selectSimilar', 'frameSelection', 'properties', 'delete']);
   });
 
   it('several: distribute when they are openings of one wall, then frame, clear, delete', () => {

@@ -62,6 +62,7 @@ const SNAP_OF = {
   intersection: 'snap.intersectionOf',
 } as const;
 import { applyTemporary, boundsOf, shownFor, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, openingOutline, type TemporaryView } from './geometry';
+import { similarTo } from './select-similar';
 import { renderBrowser } from '../ui/browser';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { stackedSteps } from './stacked';
@@ -2668,6 +2669,28 @@ export class App {
   }
 
   /** Every wall of a type on the current level, with the select tool. */
+  /**
+   * Everything on the level shown like what is selected (select-similar.ts), what shows only: a hidden
+   * category or an element hidden for now is not taken.
+   */
+  selectSimilar(): void {
+    if (this.ui.selection.size === 0) return;
+    const doc = this.store.get();
+    const temp = this.ui.temp;
+    const hidden = this.ui.hidden;
+    const category = (id: string): Category | null =>
+      doc.walls.some((w) => w.id === id) ? 'walls' : doc.openings.some((o) => o.id === id) ? 'openings' : doc.rooms.some((r) => r.id === id) ? 'rooms' : doc.floors.some((f) => f.id === id) ? 'floors' : doc.guides.some((g) => g.id === id) ? 'guides' : null;
+    const ids = similarTo(doc, this.ui.selection, this.ui.levelId).filter((id) => {
+      const c = category(id);
+      return (c === null || !hidden.has(c)) && (!temp || shownFor(temp, id));
+    });
+    const added = ids.length - this.ui.selection.size;
+    this.setTool('select');
+    for (const id of ids) this.ui.selection.add(id);
+    this.toast(t('toast.similar', { n: ids.length, added }));
+    this.refresh();
+  }
+
   selectWallsOfType(typeId: string): void {
     this.setTool('select');
     if (!this.ui.hidden.has('walls')) {

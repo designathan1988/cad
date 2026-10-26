@@ -85,6 +85,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('edit.redo', 'pal.redo', edit, () => app.redo(), { keys: 'Ctrl+Shift+Z', enabled: store.canRedo() }),
     make('edit.delete', 'pal.delete', edit, () => app.deleteSelection(), { keys: 'Del', enabled: has }),
     make('edit.selectAll', 'pal.selectAll', edit, () => app.selectAllWalls(), { keys: 'Ctrl+A' }),
+    make('edit.selectSimilar', 'ctx.selectSimilar', edit, () => app.selectSimilar(), { enabled: has, keywords: 'select all instances semelhantes mesmo tipo same type' }),
     make('edit.clearSelection', 'pal.clearSelection', edit, () => app.clearSelection(), { keys: 'Esc', enabled: has }),
     ...(['move', 'copy', 'rotate', 'scale', 'mirror', 'offset'] as const).map((k) =>
       make(`edit.${k}`, `pal.${k}`, edit, () => app.startModify(k), {
