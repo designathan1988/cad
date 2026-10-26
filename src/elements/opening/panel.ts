@@ -6,7 +6,7 @@ import type { Doc } from '../../app/document';
 import type { OpeningSolid } from '../../app/geometry';
 import { el } from '../../ui/controls';
 import { fieldsSection } from '../../ui/fields';
-import { num, t, type MessageKey } from '../../ui/i18n';
+import { markPrefix, num, t, type MessageKey } from '../../ui/i18n';
 import { icon } from '../../ui/icons';
 import type { OpeningWarning } from './derive';
 import type { RoomSolid } from '../room/derive';
@@ -22,6 +22,7 @@ import {
   positionFields,
 } from './fields';
 import type { OpeningId, OpeningKind } from './schema';
+import { openingMarks } from './marks';
 
 export type { OpeningPanelActions, OpeningSize } from './fields';
 
@@ -37,7 +38,8 @@ export function openingPanel(
   const list = selected.map((s) => s.opening);
   const ids = list.map((o) => o.id);
   const one = selected.length === 1 ? selected[0]! : null;
-  const nodes: HTMLElement[] = [fieldsSection(t('panel.general'), true, openingFields(selected, act.update), selected)];
+  const marks = openingMarks(doc.openings, markPrefix());
+  const nodes: HTMLElement[] = [fieldsSection(t('panel.general'), true, openingFields(selected, act.update, marks), selected)];
   if (one) nodes.push(fieldsSection(t('panel.position'), true, positionFields(doc, one, placed, act), selected));
   // The group the selection is in: one member, or every selected opening in the same group.
   const groupIds = new Set(list.map((o) => (o.rule.kind === 'inGroup' ? o.rule.groupId : null)));

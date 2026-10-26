@@ -25,6 +25,8 @@ export interface Prefs {
   view3d?: View3D;
   /** Every wall's reference line shown in plan, not only the selected ones'. */
   refLines?: boolean;
+  /** Doors' and windows' type marks shown in plan (default on). */
+  openingTags?: boolean;
   /** Points snap (S): off, it stays off. */
   snaps?: boolean;
   /** Where the plan was looking (pixels per metre, world point at the centre): a reload framed it all again. */

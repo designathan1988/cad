@@ -31,6 +31,8 @@ export function crisp(a: Point2, b: Point2): [Point2, Point2] {
 
 /** Walls are drawn by layer when the thinnest one shown is at least this wide on screen (px). */
 export const LAYER_DETAIL_PX = 6;
+/** Below this on screen (px), an opening's type tag is left out: the tags would crowd one another. */
+const MIN_TAGGED_PX = 18;
 
 /**
  * Whether the plan shows layers: one decision for the whole view, from the thinnest wall shown, so it
@@ -85,6 +87,8 @@ export interface PlanOverlay {
   readonly anchor?: Point2 | null;
   /** Wall numbers at the middle of the walls selected or under the pointer, as snap labels name them. */
   readonly wallTags?: readonly { readonly at: Point2; readonly text: string }[];
+  /** Doors' and windows' type marks beside them (opening/marks.ts); `width` is the opening's (m). */
+  readonly openingTags?: readonly { readonly at: Point2; readonly text: string; readonly width: number }[];
   /**
    * Room name and area tags, at each room's point. `short` is shown when the name does not fit the room
    * on screen, `brief` when the area line (a warning) does not; `outline` is the room's, if closed.
@@ -441,6 +445,7 @@ export class PlanView {
     if (o.axisLine) this.drawLine(o.axisLine.point, o.axisLine.dir, color('--snap'), 1.4, [12, 4, 2, 4]);
     for (const r of o.refLines ?? []) this.drawRefLine(r, color('--ref-line'));
     if (o.ray) this.dashed(o.ray.start, o.ray.end, color('--snap'));
+    this.drawOpeningTags(o.openingTags ?? [], color);
     this.drawRoomTags(o.roomLabels, color, this.dimValueBoxes(o.dims ?? []), o.dims ?? []);
     if (o.draft && o.draft.length > 0) {
       ctx.save();
@@ -628,6 +633,35 @@ export class PlanView {
       });
       ctx.textAlign = 'start';
     }
+  }
+
+  /**
+   * The type marks of doors and windows, each in a small outlined tag beside its opening; left out while
+   * an opening is too small on screen to tell its tag from its neighbours'.
+   */
+  private drawOpeningTags(tags: NonNullable<PlanOverlay['openingTags']>, color: (name: string) => string): void {
+    const { ctx } = this;
+    const font = this.font('600', '--fs-xs');
+    ctx.save();
+    ctx.font = font;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 1;
+    for (const tag of tags) {
+      if (tag.width * this.scale < MIN_TAGGED_PX || tag.text === '') continue;
+      const p = this.toScreen(tag.at);
+      const w = this.textWidth(tag.text, font) + 8;
+      const h = 15;
+      ctx.fillStyle = color('--canvas');
+      ctx.strokeStyle = color('--text-3');
+      ctx.beginPath();
+      ctx.roundRect(p.x - w / 2, p.y - h / 2, w, h, h / 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = color('--text-2');
+      ctx.fillText(tag.text, p.x, p.y + 0.5);
+    }
+    ctx.restore();
   }
 
   /** A canvas font from the design tokens: weight, a size token, the family token. */

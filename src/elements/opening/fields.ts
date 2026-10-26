@@ -40,9 +40,19 @@ export interface OpeningPanelActions {
 
 export const kindName = (k: OpeningKind): string => t(k === 'door' ? 'panel.door' : 'panel.window');
 
-export function openingFields(selected: readonly OpeningSolid[], update: OpeningPanelActions['update']): Field<OpeningSolid>[] {
+/** `marks`: every opening's type mark (marks.ts), the same as on the plan and in the schedule. */
+export function openingFields(selected: readonly OpeningSolid[], update: OpeningPanelActions['update'], marks: ReadonlyMap<string, string> = new Map()): Field<OpeningSolid>[] {
   const ids = selected.map((s) => s.opening.id);
   return [
+    {
+      id: 'mark',
+      label: 'panel.mark',
+      kind: 'readout',
+      text: (xs) => {
+        const set = new Set(xs.map((x) => marks.get(x.opening.id) ?? ''));
+        return set.size === 1 ? [...set][0]! : t('panel.varies');
+      },
+    },
     {
       id: 'kind',
       label: 'panel.kind',

@@ -115,6 +115,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('settings.panel', 'pal.panel', settings, () => app.togglePanel()),
     make('settings.browser', 'pal.browser', settings, () => app.toggleBrowser()),
     make('settings.refLines', 'pal.refLines', settings, () => app.toggleRefLines()),
+    make('settings.openingTags', 'pal.openingTags', settings, () => app.toggleOpeningTags(), { keywords: 'etiquetas tags marks tipo type portas janelas doors windows' }),
     ...(['walls', 'openings', 'rooms', 'floors', 'guides'] as const).map((c) =>
       make(`layer.${c}`, ui.hidden.has(c) ? (`pal.show.${c}` as const) : (`pal.hide.${c}` as const), settings, () => app.toggleCategory(c)),
     ),

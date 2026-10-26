@@ -314,7 +314,7 @@ Quarto 1); arco com cotas de corda e de raio, alça de curvatura e raio editado 
   do painel perdia o foco a cada passo da seta e as setas seguintes moviam a parede selecionada; agora o
   painel redesenhado devolve o foco ao mesmo controle. Entre tipos diferentes o Esquadro usa o topo como T
   (sem camada por camada).
-- Mutação ≥ 90 %.
+- Mutação ≥ 90 % (spec §12.2): medida pela primeira vez em 2026-10-26 (Stryker 10.1.1, `npm run mutation`, 54 min): 76,71 % no total (85,24 % do que os testes cobrem); 3120 mortos, 549 sobreviventes, 414 sem cobertura. O portão de zero sobreviventes em convex.ts, cut-l.ts e cut-t.ts também não passa: 1, 22 e 3 (cut-x.ts não existe). Os 184 sem cobertura de seams.ts são de código testado fora de tests/elements/wall. Falta: matar os sobreviventes, começando pelos três arquivos do portão.
 
 ## Adendo 2: conjunto BIM (ref/chat.txt:74-152; etapas 16 a 33)
 
@@ -400,7 +400,7 @@ Documentação
 - Cotas de nível (l.117, l.145): falta.
 - Textos (l.117, l.145): falta.
 - Etiquetas automáticas de nome e área do cômodo (l.117): existem.
-- Etiquetas automáticas do tipo da porta e da janela (l.117): falta.
+- Etiquetas automáticas do tipo da porta e da janela (l.117): existe. Porta e janela não têm tipo, só medidas: o tipo é a medida, numerada da menor (P1, P2…, J1, J2…; D e W em inglês), a mesma marca na planta (etiqueta ao lado, a da porta do lado para onde ela não abre, a da janela do lado de fora), no painel (Marca), na tabela e no DXF. Liga e desliga em Camadas ("Etiquetas de portas e janelas") e na paleta. Visto na casa.
 - Plantas de cada pavimento como vistas derivadas (l.118, l.146): parcial, existe a vista em planta; falta a planta como vista de documentação.
 - Cortes (l.118, l.146): parcial, corte vertical no 3D por uma guia, paralelo e preenchido; sem cotas nem rótulos.
 - Elevações (l.118, l.146): parcial, as quatro no 3D, paralelas; sem cotas nem rótulos.

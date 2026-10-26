@@ -29,7 +29,11 @@ const doc: Doc = {
     { id: 'room_b', levelId: 'lvl_ground', seed: { x: 3, y: 1.5 }, name: 'Cômodo', number: '2' },
   ],
 };
-const dxf = planDxf(deriveGeometry(doc), 'lvl_ground', { room: (n, name) => `${n} · ${name}`, area: (a) => `${a.toFixed(2).replace('.', ',')} m²` });
+const marks = new Map([
+  ['opening_d', 'P1'],
+  ['opening_w', 'J1'],
+]);
+const dxf = planDxf(deriveGeometry(doc), 'lvl_ground', { room: (n, name) => `${n} · ${name}`, area: (a) => `${a.toFixed(2).replace('.', ',')} m²`, marks });
 
 /** The file as entities: each a type and its codes (a code met twice keeps its values in order). */
 function entities(text: string): { type: string; codes: Map<number, string[]> }[] {
@@ -91,8 +95,18 @@ describe('a level as DXF R12', () => {
     const outlines = all.filter((e) => e.type === 'POLYLINE');
     expect(outlines).toHaveLength(2);
     for (const o of outlines) expect(o.codes.get(70)).toEqual(['1']);
-    const texts = all.filter((e) => e.type === 'TEXT').map((e) => e.codes.get(1)![0]);
+    const texts = all.filter((e) => e.type === 'TEXT' && e.codes.get(8)![0] === 'A-AREA-IDEN').map((e) => e.codes.get(1)![0]);
     expect(texts).toEqual(['1 · Sala', '5,27 m²', '2 · Cômodo', '5,27 m²']);
+  });
+
+  it('the type marks of doors and windows on their own layers, off the side the door does not open to, outside the window', () => {
+    const tags = all.filter((e) => e.type === 'TEXT' && e.codes.get(8)![0] !== 'A-AREA-IDEN');
+    expect(tags.map((e) => [e.codes.get(8)![0], e.codes.get(1)![0]])).toEqual([
+      ['A-DOOR-IDEN', 'P1'],
+      ['A-GLAZ-IDEN', 'J1'],
+    ]);
+    // The window in the right wall (x = 4): its tag outside, past the face at 4.075.
+    expect(n(tags[1]!, 10)).toBeGreaterThan(4.075);
   });
 
   it('in code page 1252: Portuguese letters one byte each, a sign outside it "?"', () => {

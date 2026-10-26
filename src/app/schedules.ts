@@ -3,6 +3,7 @@
 
 import { add, scale } from '../core/vector';
 import { referenceLength } from '../elements/opening/derive';
+import { openingMarks } from '../elements/opening/marks';
 import { insideRing } from '../elements/room/derive';
 import type { RoomUse } from '../elements/room/schema';
 import { type Doc, levelOf, wallHeights, wallNumber } from './document';
@@ -39,6 +40,8 @@ export interface Naming {
   readonly outside: string;
   /** A room's use, as the interface says it. */
   readonly use: (use: RoomUse) => string;
+  /** The type marks' prefixes (marks.ts). */
+  readonly markPrefix: Readonly<Record<'door' | 'window', string>>;
 }
 
 const col = (key: string, unit: ColumnUnit): ScheduleColumn => ({ key: `schedule.col.${key}`, unit });
@@ -111,6 +114,7 @@ export function schedule(doc: Doc, g: DerivedGeometry, kind: ScheduleKind, namin
   const openingKind = kind === 'doors' ? 'door' : 'window';
   const columns = [
     col('number', 'text'),
+    col('mark', 'text'),
     col('level', 'text'),
     col('wall', 'text'),
     col('width', 'm'),
@@ -121,10 +125,12 @@ export function schedule(doc: Doc, g: DerivedGeometry, kind: ScheduleKind, namin
   ];
   const walls = new Map(doc.walls.map((w) => [w.id, w]));
   const hosted = doc.openings.filter((o) => o.kind === openingKind && walls.has(o.wallId)).map((o) => ({ o, levelId: walls.get(o.wallId)!.levelId }));
+  const marks = openingMarks(doc.openings, naming.markPrefix);
   const rows = byLevel(doc, hosted).map(({ o, levelId }, k) => {
     const n = wallNumber(doc, o.wallId);
     return [
       String(k + 1),
+      marks.get(o.id) ?? '',
       levelName(levelId),
       n === null ? '' : naming.wallTag(n),
       o.width,

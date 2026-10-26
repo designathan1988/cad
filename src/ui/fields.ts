@@ -101,6 +101,7 @@ const FIELD_ICONS: Readonly<Record<string, IconName>> = {
   area: 'room',
   perimeter: 'frame',
   use: 'tag',
+  mark: 'tag',
   volume: 'cube',
   source: 'room',
   offset: 'raise',

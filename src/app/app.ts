@@ -35,7 +35,7 @@ import { Scene3D } from '../render/scene-3d';
 import { Overlay3D, type Overlay3DState } from '../render/overlay-3d';
 import { toolCursor } from '../ui/cursors';
 import { ViewCube } from '../render/view-cube';
-import { defaultName, getLang, htmlLang, materialName, name, num, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
+import { defaultName, getLang, htmlLang, markPrefix, materialName, name, num, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
 import { icon } from '../ui/icons';
 import { renderPanel } from '../ui/panel';
 import { planDxf, toCp1252 } from '../io/export-dxf';
@@ -63,6 +63,7 @@ const SNAP_OF = {
 } as const;
 import { applyTemporary, boundsOf, shownFor, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, openingOutline, type TemporaryView } from './geometry';
 import { similarTo } from './select-similar';
+import { markPoint, openingMarks } from '../elements/opening/marks';
 import { renderBrowser } from '../ui/browser';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
 import { stackedSteps } from './stacked';
@@ -131,6 +132,8 @@ export interface UiState {
   view3d: View3D;
   /** Every wall's reference line shown in plan (the selected ones' always are). */
   refLines: boolean;
+  /** Doors' and windows' type marks in plan (marks.ts). */
+  openingTags: boolean;
   /** Space while drawing walls: their bodies go to the other side of the line drawn (Revit's flip). */
   wallFlip: boolean;
   /** The Modify tool in use (Move, Copy, Rotate, Scale, Mirror): its points so far; `copy` keeps the originals. */
@@ -219,6 +222,7 @@ export class App {
       view3d: readView3D(prefs.view3d),
       modify: null,
       refLines: prefs.refLines ?? false,
+      openingTags: prefs.openingTags ?? true,
       wallFlip: false,
       dimEdit: null,
     };
@@ -643,6 +647,25 @@ export class App {
   toggleWallFlip(): void {
     this.ui.wallFlip = !this.ui.wallFlip;
     this.refresh();
+  }
+
+  /** Doors' and windows' type marks in plan, on or off; kept with the preferences. */
+  toggleOpeningTags(): void {
+    this.ui.openingTags = !this.ui.openingTags;
+    savePrefs({ openingTags: this.ui.openingTags });
+    this.render();
+  }
+
+  /** The type marks of the openings shown, where their tags go (marks.ts), when shown at all. */
+  private openingTags(): { at: Point2; text: string; width: number }[] {
+    if (!this.ui.openingTags || this.ui.hidden.has('openings')) return [];
+    const marks = openingMarks(this.store.get().openings, markPrefix());
+    const g = this.visibleGeometry();
+    const rooms = [...g.rooms.values()].filter((r) => r.enclosed && r.room.levelId === this.ui.levelId);
+    const inRoom = (p: Point2) => rooms.some((r) => insideRing(r.outline, p));
+    return [...g.openings.values()].flatMap((o) =>
+      o.frame ? [{ at: markPoint(o.frame, o.opening, 0.25, inRoom), text: marks.get(o.opening.id) ?? '', width: o.opening.width }] : [],
+    );
   }
 
   /** Every wall's reference line in plan, or only the selected ones'; kept with the preferences. */
@@ -2003,7 +2026,8 @@ export class App {
       this.ui.info = t('export.nothingHere');
       return this.renderChrome();
     }
-    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²` });
+    const marks = this.ui.openingTags ? openingMarks(doc.openings, markPrefix()) : undefined;
+    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²`, ...(marks ? { marks } : {}) });
     const level = doc.levels.find((l) => l.id === levelId);
     const file = `${this.fileBase()} - ${level ? safeFileName(name(level.name)) : ''}.dxf`;
     this.download(file, new Blob([toCp1252(text)], { type: 'application/dxf' }), 'application/dxf');
@@ -2243,6 +2267,7 @@ export class App {
                 : null,
         axisLine: marks?.axis ?? null,
         refLines: this.refLines(),
+        openingTags: this.openingTags(),
         ray: marks?.ref ? { start: marks.base, end: marks.ref } : null,
         handles: this.handles(),
         anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
@@ -2713,7 +2738,7 @@ export class App {
     shell.sidebar.setAttribute('aria-pressed', String(ui.browserOpen));
     if (!ui.browserOpen) return;
     const doc = this.store.get();
-    const key = JSON.stringify([getLang(), ui.view, ui.levelId, [...ui.hidden], ui.refLines, doc.levels, doc.wallTypes.map((x) => [x.id, x.name]), doc.walls.map((w) => w.wallTypeId), doc.views.map((v) => [v.id, v.name])]);
+    const key = JSON.stringify([getLang(), ui.view, ui.levelId, [...ui.hidden], ui.refLines, ui.openingTags, doc.levels, doc.wallTypes.map((x) => [x.id, x.name]), doc.walls.map((w) => w.wallTypeId), doc.views.map((v) => [v.id, v.name])]);
     if (key === this.browserKey) return;
     this.browserKey = key;
     // Keep the focus on the same button across the rebuild.

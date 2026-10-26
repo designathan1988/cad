@@ -6,7 +6,9 @@
 
 import type { DerivedGeometry } from '../app/geometry';
 import type { Point2 } from '../core/vector';
+import { markPoint } from '../elements/opening/marks';
 import { symbolLines } from '../elements/opening/symbol';
+import { insideRing } from '../elements/room/derive';
 import { outerSides } from '../elements/wall/geometry/seams';
 
 /** The layers, with AutoCAD colour numbers: what each kind of line goes on. */
@@ -14,7 +16,9 @@ export const DXF_LAYERS = [
   { name: 'A-WALL', colour: 7 }, // wall faces
   { name: 'A-WALL-PATT', colour: 8 }, // lines between a wall's layers
   { name: 'A-DOOR', colour: 2 }, // door leaves and swings
+  { name: 'A-DOOR-IDEN', colour: 2 }, // door type marks
   { name: 'A-GLAZ', colour: 4 }, // window frame and glass lines
+  { name: 'A-GLAZ-IDEN', colour: 4 }, // window type marks
   { name: 'A-AREA', colour: 9 }, // room outlines
   { name: 'A-AREA-IDEN', colour: 7 }, // room names and areas
 ] as const;
@@ -24,10 +28,13 @@ type Layer = (typeof DXF_LAYERS)[number]['name'];
 export interface DxfLabels {
   readonly room: (number: string, name: string) => string;
   readonly area: (m2: number) => string;
+  /** Doors' and windows' type marks (opening/marks.ts), as the plan tags them. */
+  readonly marks?: ReadonlyMap<string, string>;
 }
 
-/** Text height of the room labels (m). */
+/** Text height of the room labels and of the type marks (m). */
 const TEXT_H = 0.2;
+const MARK_H = 0.15;
 
 export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels): string {
   const out: string[] = [];
@@ -120,9 +127,13 @@ export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels):
   for (const s of cut) for (const seam of s.seams) line('A-WALL-PATT', seam.a, seam.b);
   // Doors and windows of those walls: the window's three lines; the door's leaf and its swing, an arc.
   const walls = new Set(cut.map((s) => s.wall.id));
+  const rooms = [...g.rooms.values()].filter((r) => r.room.levelId === levelId && r.enclosed);
+  const inRoom = (p: Point2) => rooms.some((r) => insideRing(r.outline, p));
   for (const o of g.openings.values()) {
     if (!walls.has(o.opening.wallId) || !o.frame) continue;
     const lines = symbolLines(o, o.frame);
+    const mark = labels.marks?.get(o.opening.id);
+    if (mark) text(o.opening.kind === 'door' ? 'A-DOOR-IDEN' : 'A-GLAZ-IDEN', markPoint(o.frame, o.opening, 0.25, inRoom), MARK_H, mark);
     if (o.opening.kind === 'window') {
       for (const l of lines) line('A-GLAZ', l[0]!, l[1]!);
       continue;

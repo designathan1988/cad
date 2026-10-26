@@ -30,7 +30,13 @@ const doc: Doc = {
   ],
 };
 const g = deriveGeometry(doc);
-const naming: Naming = { name: (s) => s, wallTag: (n) => `Parede ${n}`, outside: 'exterior', use: (u) => (u === 'bedroom' ? 'Dormitório' : u) };
+const naming: Naming = {
+  name: (s) => s,
+  wallTag: (n) => `Parede ${n}`,
+  outside: 'exterior',
+  use: (u) => (u === 'bedroom' ? 'Dormitório' : u),
+  markPrefix: { door: 'P', window: 'J' },
+};
 const BOM = String.fromCharCode(0xfeff);
 
 describe('quantity schedules', () => {
@@ -61,15 +67,15 @@ describe('quantity schedules', () => {
     expect(r[7]).toBeCloseTo(5.2725 * 2.5, 9);
   });
 
-  it('doors and windows: their wall, size, area, and the rooms on each side (or the outside)', () => {
+  it('doors and windows: their type mark, wall, size, area, and the rooms on each side (or the outside)', () => {
     const doors = schedule(doc, g, 'doors', naming);
-    expect(doors.rows).toEqual([['1', 'Ground floor', 'Parede 5', 0.8, 2.1, expect.closeTo(1.68, 9), 'Sala / Quarto']]);
+    expect(doors.rows).toEqual([['1', 'P1', 'Ground floor', 'Parede 5', 0.8, 2.1, expect.closeTo(1.68, 9), 'Sala / Quarto']]);
     const windows = schedule(doc, g, 'windows', naming);
     // The right wall runs up from (4, 0): its left side, the first face, is the room; the outside to the right.
-    expect(windows.rows).toEqual([['1', 'Ground floor', 'Parede 2', 1.2, 1.0, 1.1, expect.closeTo(1.2, 9), 'Quarto / exterior']]);
+    expect(windows.rows).toEqual([['1', 'J1', 'Ground floor', 'Parede 2', 1.2, 1.0, 1.1, expect.closeTo(1.2, 9), 'Quarto / exterior']]);
     expect(windows.totals[0]).toBe(1);
     // Widths, heights and sills do not add up.
-    expect([windows.totals[3], windows.totals[4], windows.totals[5]]).toEqual([null, null, null]);
+    expect([windows.totals[4], windows.totals[5], windows.totals[6]]).toEqual([null, null, null]);
   });
 
   it('walls: length on the axis, height, gross area, the openings in it, net area; the totals', () => {

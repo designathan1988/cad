@@ -231,6 +231,12 @@ const en = {
   'key.flipSideOn': 'other side: on',
   'help.space': 'Drawing walls: puts their bodies on the other side of the line drawn',
   'layer.refLines': 'Reference lines',
+  'layer.openingTags': 'Door and window tags',
+  'pal.openingTags': 'Show or hide the door and window tags',
+  'mark.door': 'D',
+  'mark.window': 'W',
+  'panel.mark': 'Type mark',
+  'schedule.col.mark': 'Type mark',
   'pal.refLines': "Show or hide every wall's reference line",
   'key.undoSegment': 'take the last wall back',
   'help.backspace': 'Drawing walls: takes the last wall back, the chain going on from its start',
@@ -1042,6 +1048,12 @@ const pt: Record<MessageKey, string> = {
   'key.flipSideOn': 'lado invertido',
   'help.space': 'Desenhando paredes: põe o corpo do outro lado da linha desenhada',
   'layer.refLines': 'Linhas de referência',
+  'layer.openingTags': 'Etiquetas de portas e janelas',
+  'pal.openingTags': 'Mostrar ou ocultar as etiquetas de portas e janelas',
+  'mark.door': 'P',
+  'mark.window': 'J',
+  'panel.mark': 'Marca',
+  'schedule.col.mark': 'Marca',
   'pal.refLines': 'Mostrar ou ocultar a linha de referência de todas as paredes',
   'key.undoSegment': 'desfazer o último trecho',
   'help.backspace': 'Desenhando paredes: desfaz o último trecho e a cadeia segue do início dele',
@@ -1677,6 +1689,9 @@ export const name = (stored: string): string => {
 const BUILT_IN_MATERIALS = new Set(['plaster', 'brick', 'concrete', 'gypsum', 'insulation']);
 
 /** A layer's material: a built-in one in the language of the moment, the user's own as typed. */
+/** The type marks' prefixes (marks.ts): P and J in Portuguese, D and W in English. */
+export const markPrefix = (): { door: string; window: string } => ({ door: t('mark.door'), window: t('mark.window') });
+
 export const materialName = (id: string): string => (BUILT_IN_MATERIALS.has(id) ? t(`mat.${id}` as MessageKey) : id);
 
 /** Numbers as the language writes them: 4,50 in Portuguese, 4.50 in English. */
