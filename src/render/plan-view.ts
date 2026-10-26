@@ -454,9 +454,11 @@ export class PlanView {
     for (const r of o.refLines ?? []) this.drawRefLine(r, color('--ref-line'));
     if (o.ray) this.dashed(o.ray.start, o.ray.end, color('--snap'));
     this.drawNotes(o.notes ?? [], color);
-    for (const d of o.dimensions ?? []) this.drawPermanentDim(d, d.selected ? color('--wall-sel') : color('--text-2'), color('--canvas'));
     this.drawOpeningTags(o.openingTags ?? [], color);
-    this.drawRoomTags(o.roomLabels, color, this.dimValueBoxes(o.dims ?? []), o.dims ?? []);
+    const kept = o.dimensions ?? [];
+    this.drawRoomTags(o.roomLabels, color, [...this.dimValueBoxes(o.dims ?? []), ...kept.map((d) => this.keptDimValueBox(d))], o.dims ?? [], kept.map((d) => ({ a: this.toScreen(d.la), b: this.toScreen(d.lb) })));
+    // Dimensions over the room tags: a value under a room's name was lost.
+    for (const d of o.dimensions ?? []) this.drawPermanentDim(d, d.selected ? color('--wall-sel') : color('--text-2'), color('--canvas'));
     if (o.draft && o.draft.length > 0) {
       ctx.save();
       ctx.strokeStyle = color('--wall-sel');
@@ -601,12 +603,28 @@ export class PlanView {
     return sized.map((s, i) => ({ x: at[i]!.x - s.w / 2, y: at[i]!.y - s.h / 2, w: s.w, h: s.h }));
   }
 
+  /** Where a permanent dimension's value is on screen (drawPermanentDim), for the tags to keep off. */
+  private keptDimValueBox(d: NonNullable<PlanOverlay['dimensions']>[number]): { x: number; y: number; w: number; h: number } {
+    const a = this.toScreen(d.a);
+    const la = this.toScreen(d.la);
+    const lb = this.toScreen(d.lb);
+    const len = Math.hypot(lb.x - la.x, lb.y - la.y) || 1;
+    const off = Math.hypot(la.x - a.x, la.y - a.y);
+    const n = off > 0.5 ? { x: (la.x - a.x) / off, y: (la.y - a.y) / off } : { x: (lb.y - la.y) / len, y: -(lb.x - la.x) / len };
+    const mid = { x: (la.x + lb.x) / 2 + n.x * 9, y: (la.y + lb.y) / 2 + n.y * 9 };
+    const w = this.textWidth(d.text, this.font('500', '--fs-xs')) + 8;
+    // Upright or along a slope: the box that holds it either way.
+    const vertical = Math.abs(lb.y - la.y) > Math.abs(lb.x - la.x);
+    return vertical ? { x: mid.x - 9, y: mid.y - w / 2, w: 18, h: w } : { x: mid.x - w / 2, y: mid.y - 9, w, h: 18 };
+  }
+
   /** Room tags where room-tags.ts places them: with their room, shortened or left out when crowded. */
   private drawRoomTags(
     labels: PlanOverlay['roomLabels'],
     color: (name: string) => string,
     avoid: readonly { x: number; y: number; w: number; h: number }[] = [],
     dims: readonly DimMark[] = [],
+    keptLines: readonly { a: Point2; b: Point2 }[] = [],
   ): void {
     const { ctx } = this;
     const nameFont = this.font('600', '--fs-sm');
@@ -622,10 +640,13 @@ export class PlanView {
     const measure = (text: string) => this.textWidth(text, nameFont);
     // The dimensions are drawn over the tags: each tag steps aside from their lines (room-tags.ts),
     // not from the short extension lines at their ends, whose tips sent a tag far off.
-    const lines = dims.map((d) => {
-      const l = this.dimLine(d);
-      return { a: l.a, b: l.b };
-    });
+    const lines = [
+      ...dims.map((d) => {
+        const l = this.dimLine(d);
+        return { a: l.a, b: l.b };
+      }),
+      ...keptLines,
+    ];
     const tags = layoutRoomTags(inputs, measure, this.size, avoid, lines);
     this.labelBoxes = tags.map((tag) => tag.box);
     for (const tag of tags) {

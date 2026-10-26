@@ -395,7 +395,7 @@ export class App {
           }
         : d?.kind === 'slide'
           ? { ...doc, openings: d.openings }
-          : d && d.kind !== 'marquee'
+          : d && d.kind !== 'marquee' && d.kind !== 'dimLine'
             ? { ...doc, walls: d.walls }
             : doc;
     // Walls being dragged: doors and windows keep to their faces and a room they pass over keeps its
@@ -1497,8 +1497,10 @@ export class App {
     const doc = this.store.get();
     const g = this.geometry;
     const out: NonNullable<PlanOverlay['dimensions']>[number][] = [];
-    for (const d of doc.dimensions) {
-      if (d.levelId !== this.ui.levelId) continue;
+    const dragged = this.ui.drag?.kind === 'dimLine' ? this.ui.drag : null;
+    for (const dim of doc.dimensions) {
+      if (dim.levelId !== this.ui.levelId) continue;
+      const d = dragged?.id === dim.id ? { ...dim, offset: dragged.offset } : dim;
       const p = placeDimension(doc, g, d);
       if (p) out.push({ id: d.id, ...p, text: num(p.length), selected: this.ui.selection.has(d.id) || this.ui.hover === d.id });
     }
@@ -2739,7 +2741,7 @@ export class App {
    */
   handles(): Handles {
     const d = this.ui.drag;
-    if (this.ui.tool !== 'select' || this.ui.view !== 'plan' || d?.kind === 'move' || d?.kind === 'marquee') return handlesFor([], (p) => p);
+    if (this.ui.tool !== 'select' || this.ui.view !== 'plan' || d?.kind === 'move' || d?.kind === 'marquee' || d?.kind === 'dimLine') return handlesFor([], (p) => p);
     const walls = d ? d.walls : this.store.get().walls;
     const toScreen = (p: Point2) => this.plan.toScreen(p);
     const h = handlesFor(

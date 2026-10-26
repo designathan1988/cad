@@ -9,6 +9,15 @@ export const addDimension = (dim: Dimension): Command<Doc> => ({
   apply: (doc) => ({ ...doc, dimensions: [...doc.dimensions, dim] }),
 });
 
+/** A dimension's line set off by `offset` (m, to the left of a → b; negative, its right): dragged. */
+export const setDimensionOffset = (id: string, offset: number): Command<Doc> => ({
+  label: 'cmd.updateDimension',
+  apply: (doc) =>
+    !Number.isFinite(offset) || !doc.dimensions.some((d) => d.id === id && d.offset !== offset)
+      ? doc
+      : { ...doc, dimensions: doc.dimensions.map((d) => (d.id === id ? { ...d, offset } : d)) },
+});
+
 /** How far the dimensions' lines stand off what they measure (m), each on the side it is on. */
 export const setDimensionDistance = (ids: readonly string[], distance: number): Command<Doc> => ({
   label: 'cmd.updateDimension',

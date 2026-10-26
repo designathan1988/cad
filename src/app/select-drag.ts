@@ -22,7 +22,8 @@ import { updateOpening } from '../elements/opening/commands';
 import type { Opening } from '../elements/opening/schema';
 import type { Guide } from '../elements/guide/schema';
 import { type Note, noteBox, shownHeight } from '../elements/note/schema';
-import { placeDimension } from '../elements/dimension/anchor';
+import { offsetThrough, placeDimension } from '../elements/dimension/anchor';
+import { setDimensionOffset } from '../elements/dimension/commands';
 import { ruleAt } from '../tools/opening-tool';
 import { aimAlong, aimAt } from './opening-ui';
 
@@ -58,6 +59,8 @@ export type Drag =
    * far along the wall from its centre it was taken, so it does not jump to the pointer.
    */
   | { readonly kind: 'slide'; readonly id: string; readonly grab: number; readonly walls: readonly DocWall[]; readonly openings: readonly Opening[] }
+  /** A dimension's line dragged off what it measures: `offset` as it would be. */
+  | { readonly kind: 'dimLine'; readonly id: string; readonly offset: number }
   | { readonly kind: 'marquee'; readonly a: Point2; readonly b: Point2 };
 
 type Pending =
@@ -132,7 +135,10 @@ export function selectGestures(app: App): SelectGestures {
         const only = ui.selection.size === 1 ? [...ui.selection][0]! : null;
         const sliding = only !== null ? doc.openings.find((o) => o.id === only) : undefined;
         const placed = sliding ? app.geometry.openings.get(sliding.id) : undefined;
-        if (pending.kind === 'wall' && sliding && placed?.frame) {
+        const dim = only !== null ? doc.dimensions.find((x) => x.id === only) : undefined;
+        if (pending.kind === 'wall' && dim) {
+          ui.drag = { kind: 'dimLine', id: dim.id, offset: dim.offset };
+        } else if (pending.kind === 'wall' && sliding && placed?.frame) {
           // Taken where it was pressed: that point's distance along the wall from the opening's centre.
           const f = placed.frame;
           const centre = add(f.start, scale(f.dir, (placed.end - placed.start) / 2));
@@ -156,6 +162,15 @@ export function selectGestures(app: App): SelectGestures {
       if (!d) return;
       const doc = app.store.get();
       if (d.kind === 'marquee') ui.drag = { ...d, b: screen };
+      else if (d.kind === 'dimLine' && world) {
+        // Through the pointer, on the 5 cm grid with snaps on.
+        const dim = doc.dimensions.find((x) => x.id === d.id);
+        const at = dim && placeDimension(doc, app.geometry, dim);
+        if (at) {
+          const offset = offsetThrough(at.a, at.b, world);
+          ui.drag = { ...d, offset: ui.snaps ? Math.round(offset / GRID_STEP) * GRID_STEP : offset };
+        }
+      }
       else if (d.kind === 'move' && world) {
         let delta = sub(world, d.origin);
         if (shift) delta = Math.abs(delta.x) >= Math.abs(delta.y) ? vec(delta.x, 0) : vec(0, delta.y);
@@ -239,6 +254,7 @@ export function selectGestures(app: App): SelectGestures {
         const o = d.openings.find((x) => x.id === d.id);
         if (o) app.store.dispatch(updateOpening(o.id, { wallId: o.wallId, rule: o.rule, swing: o.swing }));
       }
+      else if (d?.kind === 'dimLine') app.store.dispatch(setDimensionOffset(d.id, d.offset));
       else if (d?.kind === 'marquee') selectByMarquee(app, d.a, d.b, shift);
       app.refresh();
       return clicked;
