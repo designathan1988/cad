@@ -256,10 +256,13 @@ Achados da rodada anterior ainda abertos:
   §7.6 e entrega 7). Y simétrico, Y com fresta, λ, K, 5 pontas, X com ponta no cruzamento, três paredes
   num ponto ou a poucos centímetros, ponta dentro de um L, Y de espessuras muito diferentes. Visto no
   navegador com gestos e capturas, também no 3D.
-- Falta (entrega 7): refazer à mão três casos de `tests/elements/wall/nodes.test.ts` que descrevem a regra
-  anterior ("no pair in line", "five ends", "an end straddling a passage"); por leitura do código devem
-  falhar. Nenhum teste foi rodado nem escrito, por instrução do usuário. Faltam também casos à mão para
-  os setores e as junções, e olhar as suítes de propriedade de nós.
+- Resolvido em 2026-10-26: os três casos de `tests/elements/wall/nodes.test.ts` que descreviam a regra
+  anterior foram refeitos à mão (falham no motor anterior); suíte inteira 673/673. Faltam casos à mão
+  para as junções (cruzamentos num ponto, a poucos centímetros, ponta num cruzamento, ponta dentro de um
+  L) e para o centro dos cantos com espessuras diferentes, e uma suíte de propriedade dos setores.
+- Resolvido em 2026-10-26: girar paredes juntas a outras que ficaram levava o canto ao cruzamento das
+  linhas (de 36a2489; o teste de transform.ts pegou). Agora só o Mover mantém as linhas das juntas; girar
+  leva os cantos junto. Não visto no navegador.
 - Falta: setores para arcos (os nós com trechos de arco seguem a regra da passagem) e para um braço que
   passa pelo ponto com setor de mais de meia volta (aí a junção avisa `ComplexJoin` e fica a regra
   anterior).

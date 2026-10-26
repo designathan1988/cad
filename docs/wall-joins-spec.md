@@ -996,14 +996,17 @@ encaixe; retângulo com diagonal da metade de baixo até o canto; K; 5 pontas; L
 agudo de 16°; Y de 25, 15 e drywall 10 cm; o aglomerado do anexo do usuário e os
 cantos da casa onde o anexo começa.
 
-**Não feito nesta entrega:** por instrução do usuário, nenhum teste nem
-typecheck foi rodado, e nenhum teste foi escrito. Pela leitura do código, três
-casos de `tests/elements/wall/nodes.test.ts` descrevem a regra anterior e devem
-falhar até serem refeitos à mão: "node with 3 ends and no pair in line" (o ramo
-agora pega o setor, não encosta como T), "five ends at one point" (agora une
-sem aviso) e "an end straddling a passage whose walls differ there" (agora une
-sem aviso, degrau embaixo, cantos em cima). As suítes de propriedade de nós não
-foram olhadas.
+**Testes (2026-10-26, depois, a pedido do usuário):** três casos de
+`tests/elements/wall/nodes.test.ts` descreviam a regra anterior e falharam como
+previsto. Foram refeitos à mão: "no pair in line" (os três cortes a partir do
+centro dos cantos, porque visto do nó o setor da parede de 30 cm a 160° passa de
+meia volta), "five ends" (cada braço cortado do nó aos cantos a 0,05/sen 36°) e
+"an end straddling a passage" (cantos em cima, degrau embaixo, área igual à
+união das três faixas, 2,2875). Controle: com o motor anterior, os três falham.
+Suíte inteira: 673 de 673. Ela também achou uma regressão de 36a2489 fora das
+juntas: girar paredes usava a regra de "manter as linhas das juntas" do Mover, e
+um canto ia parar no cruzamento das linhas, longe de tudo (corrigido em
+`edit.ts`, `keptDirection`). Typecheck não rodado.
 
 ### Entrega 6 — butt camada por camada no L entre paredes retas
 
