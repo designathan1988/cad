@@ -3,7 +3,7 @@
 
 import { COLLINEAR_ANGLE, MIN_WALL_LENGTH, MITER_LIMIT, POINT_TOLERANCE } from '../../../core/tolerance';
 import { add, cross, distance, dot, intersectLines, normalize, type Point2, scale, sub } from '../../../core/vector';
-import { endPoint, faceOffsets, offsetOf, stationOf, wallDirection, wallLength } from '../geometry/offset';
+import { endPoint, faceOffsets, intoBody, offsetOf, stationOf, wallDirection, wallLength, wallNormal } from '../geometry/offset';
 import type { EndRef, WallEnd } from '../schema';
 import type { WallShape } from '../geometry/shape';
 import { parentOf, SEGMENT_MARK } from '../geometry/arc';
@@ -39,20 +39,6 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
     return [cluster];
   });
 
-  const corners: Corner[] = [];
-  const nodes: JoinNode[] = [];
-  const free: EndRef[] = [];
-  for (const cluster of clusters) {
-    if (cluster.length === 1) free.push(cluster[0]!);
-    else if (cluster.length === 2) {
-      const ends = [cluster[0]!, cluster[1]!] as const;
-      corners.push({ ends, node: scale(add(at(ends[0]), at(ends[1])), 0.5) });
-    } else if (cluster.length <= 4) {
-      const sum = cluster.reduce((s, r) => add(s, at(r)), { x: 0, y: 0 });
-      nodes.push({ ends: cluster, point: scale(sum, 1 / cluster.length) });
-    } else warnings.push({ kind: 'complexJoin', walls: cluster.map((r) => r.wallId) });
-  }
-
   // An arc's segments meet one another at joints that are not ends of the wall: a wall end there is
   // inside the arc, not beside an end of it, so it abuts a segment (the T spreads to the next one).
   // Each joint is bounded by the plane the two segments share, radial: the bisector of their directions.
@@ -71,6 +57,33 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
       ...(after ? { end: normalize(add(d, wallDirection(after))) } : {}),
     };
   };
+
+  // Two ends that meet inside another wall's band, coming from either of its faces: not an L running
+  // on through that wall's body, but two Ts against it, one on each face (a wall continued across
+  // another, drawn to its axis from both sides). As an L they overlapped it, with no warning.
+  const across = (pair: readonly [EndRef, EndRef]): boolean =>
+    !internal(pair[0], pair[1]) &&
+    valid.some((host) => {
+      if (pair.some((r) => parentOf(r.wallId) === parentOf(host.id) || !insideBand(host, at(r), joint(host)))) return false;
+      const n = wallNormal(host);
+      const [a, b] = pair.map((r) => byId.get(r.wallId)!);
+      return !parallel(a!, host) && !parallel(b!, host) && dot(n, intoBody(a!, pair[0].end)) * dot(n, intoBody(b!, pair[1].end)) < 0;
+    });
+
+  const corners: Corner[] = [];
+  const nodes: JoinNode[] = [];
+  const free: EndRef[] = [];
+  for (const cluster of clusters) {
+    if (cluster.length === 1) free.push(cluster[0]!);
+    else if (cluster.length === 2) {
+      const ends = [cluster[0]!, cluster[1]!] as const;
+      if (across(ends)) free.push(...ends);
+      else corners.push({ ends, node: scale(add(at(ends[0]), at(ends[1])), 0.5) });
+    } else if (cluster.length <= 4) {
+      const sum = cluster.reduce((s, r) => add(s, at(r)), { x: 0, y: 0 });
+      nodes.push({ ends: cluster, point: scale(sum, 1 / cluster.length) });
+    } else warnings.push({ kind: 'complexJoin', walls: cluster.map((r) => r.wallId) });
+  }
 
   let abutments: { abutting: EndRef; hostId: string }[] = [];
   for (const ref of free) {

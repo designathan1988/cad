@@ -5,7 +5,7 @@
 // complexJoin and stays square, rather than draw something that overlaps.
 
 import { AREA_EPSILON, COLLINEAR_ANGLE } from '../../../core/tolerance';
-import { add, cross, dot, type Point2, scale, sub } from '../../../core/vector';
+import { add, cross, distance, dot, type Point2, scale, sub } from '../../../core/vector';
 import { area, clipHalfPlane, type ConvexPolygon, type HalfPlane, halfPlaneThrough } from '../geometry/convex';
 import { endPoint, faceOffsets, intoBody, offsetOf, strip, wallDirection, wallLength, wallNormal } from '../geometry/offset';
 import type { WallShape } from '../geometry/shape';
@@ -146,9 +146,10 @@ function alone(c: End, host: End, hostCut: EndCut, other: End, otherCut: EndCut)
 }
 
 /**
- * The abutting end against a passage in line whose two walls show the same layers and the very same
- * face lines on its side: cut by one, notch both. Everything it puts inside them stays within their
- * lengths.
+ * The abutting end against a passage in line whose two walls show the very same face lines on its
+ * side: cut by one, notch both. With other layers between those lines (a wall drawn the other way
+ * shows its exterior finish), each abutting layer is cut by the wall it meets. Everything it puts
+ * inside them stays within their lengths.
  */
 function matching(c: End, p: End, q: End, node: Point2): AbutmentResult | null {
   const up = intoBody(p.wall, p.ref.end);
@@ -166,16 +167,54 @@ function matching(c: End, p: End, q: End, node: Point2): AbutmentResult | null {
   for (let k = 0; k < sideP.length; k++) {
     const line = add(q.wall.start, scale(wallNormal(q.wall), sideQ[k]!.offset));
     const atNode = add(line, scale(wallDirection(q.wall), dot(sub(node, line), wallDirection(q.wall))));
-    if (sideP[k]!.fn !== sideQ[k]!.fn || Math.abs(offsetOf(p.wall, atNode) - sideP[k]!.offset) * zone > AREA_EPSILON) {
-      return null;
-    }
+    if (Math.abs(offsetOf(p.wall, atNode) - sideP[k]!.offset) * zone > AREA_EPSILON) return null;
   }
   const fromP = resolveAbutment(c.wall, c.ref.end, p.wall);
   const fromQ = resolveAbutment(c.wall, c.ref.end, q.wall);
-  const points = [...nearFacePoints(c, p.wall), ...fromP.deepest];
+  const points = [...nearFacePoints(c, p.wall), ...fromP.deepest, ...fromQ.deepest];
   const lengthTo = (w: End, u: Point2) => dot(sub(far(w), node), u);
   if (!points.every((x) => dot(sub(x, node), up) <= lengthTo(p, up) && dot(sub(x, node), uq) <= lengthTo(q, uq))) return null;
-  return { cut: fromP.cut, notches: [...fromP.notches, ...fromQ.notches], deepest: fromP.deepest };
+  if (sideP.every((l, k) => l.fn === sideQ[k]!.fn)) return { cut: fromP.cut, notches: [...fromP.notches, ...fromQ.notches], deepest: fromP.deepest };
+  // The same lines with other finishes on that side (one of the two drawn the other way round, its
+  // exterior finish there): each abutting layer stops where the passage wall it meets has it stop. A
+  // layer meeting only one of them takes that one's depth; one meeting both (the core, at least) must
+  // stop at the same line in both, or it would step at the node.
+  const zoneSide = (x: Point2) => dot(sub(x, node), up) * zone;
+  const layerCuts: (readonly HalfPlane[])[] = [];
+  const deepest: Point2[] = [];
+  for (let k = 0; k < c.wall.layers.length; k++) {
+    const ownP = fromP.deepest.slice(2 * k, 2 * k + 2);
+    const ownQ = fromQ.deepest.slice(2 * k, 2 * k + 2);
+    const band = [...layerFacePoints(c, p.wall, k), ...ownP, ...ownQ];
+    const fromWall = band.every((x) => zoneSide(x) >= -AREA_EPSILON)
+      ? fromP
+      : band.every((x) => zoneSide(x) <= AREA_EPSILON)
+        ? fromQ
+        : ownP.every((x, i) => distance(x, ownQ[i]!) * zone <= AREA_EPSILON)
+          ? fromP
+          : null;
+    if (!fromWall?.cut.layerCuts) return null;
+    layerCuts.push(fromWall.cut.layerCuts[k]!);
+    deepest.push(...fromWall.deepest.slice(2 * k, 2 * k + 2));
+  }
+  return {
+    cut: { extension: Math.max(fromP.cut.extension, fromQ.cut.extension), cuts: [], layerCuts },
+    notches: [...fromP.notches, ...fromQ.notches],
+    deepest,
+  };
+}
+
+/** Where the two sides of the abutting wall's layer k cross the host's near face. */
+function layerFacePoints(c: End, host: WallShape, k: number): Point2[] {
+  const { offset } = nearFace(c, host);
+  const n = wallNormal(host);
+  const d = wallDirection(c.wall);
+  const denom = dot(n, d);
+  if (denom === 0) return [];
+  return [c.wall.layerOffsets[k]!, c.wall.layerOffsets[k + 1]!].map((o) => {
+    const p = add(c.wall.start, scale(wallNormal(c.wall), o));
+    return add(p, scale(d, (offset - offsetOf(host, p)) / denom));
+  });
 }
 
 const far = (w: End): Point2 => endPoint(w.wall, w.ref.end === 'start' ? 'end' : 'start');

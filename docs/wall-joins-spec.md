@@ -247,6 +247,11 @@ de `WallId`, sempre.
 
 5. Agrupa EndJoins por aglomerado de pontos coincidentes (union-find com
    `POINT_TOLERANCE`) → nós. O nó é o ponto médio das pontas.
+   *(2026-10-25)* Duas pontas que se encontram dentro da banda de uma terceira
+   parede, longe das pontas dela, vindo cada uma de uma face dela (uma parede
+   continuada através de outra, desenhada até o eixo dos dois lados): não são
+   um L que atravessa o corpo da terceira, são dois **Abutments** contra ela,
+   um em cada face. Como L, as duas passavam por dentro dela sem aviso.
 6. **Encosto mútuo** — a ponta de *a* está na faixa de *b* **e** a de *b* na
    faixa de *a*: não são dois T, é um canto em que as pontas passaram uma da
    outra. Vira **um canto**, com o nó na **interseção das linhas de
@@ -455,7 +460,13 @@ ATSTART/ATEND, T é ATPATH + ATSTART); exporta-se como dois T.
      duas. "As mesmas linhas" quer dizer que a diferença só produziria lascas
      menores que `AREA_EPSILON`, que o motor já descarta, na zona do encontro.
      Diferença bit a bit de arredondamento numa passagem desenhada em qualquer
-     direção não pode virar aviso.
+     direção não pode virar aviso. *(2026-10-25)* As mesmas linhas com outras
+     funções entre elas (uma das duas desenhada no sentido contrário mostra ali
+     o acabamento externo) também servem: cada camada da ponta é cortada pela
+     parede da passagem que ela encontra; a que encontra as duas (o núcleo, ao
+     menos) precisa parar na mesma linha nas duas. Antes isso caía no aviso, e
+     continuar uma parede a partir de um canto já existente dava "paredes demais
+     num mesmo ponto".
 
    Fora disso a ponta fica com corte quadrado e aviso `ComplexJoin` (a parede
    que encosta e as duas da passagem). Desenhar algo que se sobrepõe seria pior.
