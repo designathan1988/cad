@@ -11,6 +11,7 @@ import type { WallId } from '../elements/wall/schema';
 import { LAYER_TOKEN } from '../ui/swatch';
 import { blockPaint, wallMeshKey } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
+import { featureEdges } from '../elements/wall/geometry/edges';
 
 const toThree = (p: Point2, z: number) => new THREE.Vector3(p.x, z, -p.y);
 
@@ -62,6 +63,13 @@ export class Scene3D {
   /** Where the cut goes through walls, filled as the plan fills them (not clipped itself). */
   private readonly caps = new THREE.Group();
   private readonly capMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  /**
+   * Thin lines where the surfaces turn (edges.ts), one set per level so each lifts with its level: walls
+   * of one colour read apart, and so does the step of a wall off the face of the wall below it.
+   */
+  private readonly edgeMaterial = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.55 });
+  private readonly edges = new Map<string, THREE.LineSegments>();
+  private edgesOf: DerivedGeometry['solids'] | null = null;
   private capsKey = '';
   private readonly sky = new THREE.HemisphereLight(undefined, undefined, 2.7);
   private readonly sun = new THREE.DirectionalLight(undefined, 1.5);
@@ -115,7 +123,14 @@ export class Scene3D {
     this.ground.position.y = -0.002;
     this.scene.add(this.ground);
     this.renderer.localClippingEnabled = true;
-    for (const m of [...Object.values(this.materials), ...this.layerMaterials.values()]) m.clippingPlanes = this.clip;
+    for (const m of [...Object.values(this.materials), ...this.layerMaterials.values()]) {
+      m.clippingPlanes = this.clip;
+      // The faces a little behind their depth, so the lines on their edges are not half hidden by them.
+      m.polygonOffset = true;
+      m.polygonOffsetFactor = 1;
+      m.polygonOffsetUnits = 1;
+    }
+    this.edgeMaterial.clippingPlanes = this.clip;
     this.scene.add(this.caps);
   }
 
@@ -162,6 +177,7 @@ export class Scene3D {
     m.leaf.color = c('--3d-leaf');
     m.invalid.color = c('--warn');
     this.capMaterial.color = c('--3d-cut');
+    this.edgeMaterial.color = c('--3d-edge');
     (this.ground.material as THREE.MeshBasicMaterial).color = c('--3d-ground');
     // Each layer token has its 3D twin (--layer-structure, --3d-layer-structure): the plan's darken in
     // the dark theme, and the walls in 3D turned a muddy brown under a bright floor.
@@ -274,6 +290,7 @@ export class Scene3D {
       const mesh = new THREE.Mesh(geo, state === 's' ? this.materials.sideSel : this.materials.floor);
       mesh.rotation.x = -Math.PI / 2;
       mesh.position.y = f.bottom;
+      mesh.add(this.outline(geo));
       group.add(mesh);
       group.userData.wallId = id;
       this.scene.add(group);
@@ -309,8 +326,45 @@ export class Scene3D {
         this.walls.delete(id);
       }
     }
+    this.syncEdges(g, lift);
     this.placeGround(g);
     this.invalidate();
+  }
+
+  /** The lines over the walls, again only when the walls changed; lifted with their levels. */
+  private syncEdges(g: DerivedGeometry, lift: (levelId: string) => number): void {
+    if (this.edgesOf !== g.solids) {
+      this.edgesOf = g.solids;
+      for (const l of this.edges.values()) {
+        this.scene.remove(l);
+        l.geometry.dispose();
+      }
+      this.edges.clear();
+      const faces = this.facesOf(g);
+      const byLevel = new Map<string, { prisms: WallSolid['blocks'][number][]; faces: PrismFaces[] }>();
+      for (const s of g.solids.values()) {
+        const mine = faces.get(s.wall.id) ?? [];
+        const level = byLevel.get(s.wall.levelId) ?? { prisms: [], faces: [] };
+        s.blocks.forEach((b, i) => {
+          if (!mine[i]) return;
+          level.prisms.push(b);
+          level.faces.push(mine[i]!);
+        });
+        byLevel.set(s.wall.levelId, level);
+      }
+      for (const [levelId, { prisms, faces: shown }] of byLevel) {
+        const pos: number[] = [];
+        for (const e of featureEdges(prisms, shown)) pos.push(e.a.x, e.a.z, -e.a.y, e.b.x, e.b.z, -e.b.y);
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        const lines = new THREE.LineSegments(geo, this.edgeMaterial);
+        // Never picked: a line's pick reaches a metre around it.
+        lines.raycast = () => {};
+        this.scene.add(lines);
+        this.edges.set(levelId, lines);
+      }
+    }
+    for (const [levelId, l] of this.edges) l.position.y = lift(levelId);
   }
 
   /** The ground centred under the walls and floors shown, GROUND_SPAN times as wide, just under the lowest of them. */
@@ -367,14 +421,22 @@ export class Scene3D {
     const poly = [at(f.start, mid - half), at(f.end, mid - half), at(f.end, mid + half), at(f.start, mid + half)];
     const m =
       state === 'p' ? this.materials.preview : state === 's' ? this.materials.topSel : state === 'i' ? this.materials.invalid : door ? this.materials.leaf : this.materials.glass;
-    group.add(new THREE.Mesh(prism(poly, o.bottom, o.top), [m, m]));
+    const geo = prism(poly, o.bottom, o.top);
+    group.add(new THREE.Mesh(geo, [m, m]), this.outline(geo));
     return group;
+  }
+
+  /** A floor's or an opening's edges, as the walls' lines (never picked). */
+  private outline(geo: THREE.BufferGeometry): THREE.LineSegments {
+    const lines = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 20), this.edgeMaterial);
+    lines.raycast = () => {};
+    return lines;
   }
 
   private drop(group: THREE.Group): void {
     this.scene.remove(group);
     group.traverse((o) => {
-      if (o instanceof THREE.Mesh) o.geometry.dispose();
+      if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) o.geometry.dispose();
     });
   }
 
@@ -474,6 +536,8 @@ export class Scene3D {
   dispose(): void {
     for (const w of this.walls.values()) this.drop(w.group);
     Object.values(this.materials).forEach((m) => m.dispose());
+    for (const l of this.edges.values()) l.geometry.dispose();
+    this.edgeMaterial.dispose();
     this.controls.dispose();
     this.renderer.dispose();
   }
