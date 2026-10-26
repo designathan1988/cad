@@ -38,6 +38,7 @@ export const columnKind: ElementKind<Column, ColumnSolid> = {
     finite(c.angle) &&
     (c.topOffset === undefined || finite(c.topOffset)),
   // From its level's floor to the level's top, plus its adjustment.
+  memo: 'level',
   derive: (doc, c) => {
     const level = doc.levels.find((l) => l.id === c.levelId) ?? { elevation: 0, height: 2.8 };
     const bottom = level.elevation;

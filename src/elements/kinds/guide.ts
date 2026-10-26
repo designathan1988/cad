@@ -30,6 +30,7 @@ export const guideKind: ElementKind<Guide, Guide> = {
     isPoint(g.dir) &&
     // A unit direction: a zero one would be no line at all.
     Math.abs(Math.hypot((g.dir as { x: number }).x, (g.dir as { y: number }).y) - 1) < 1e-6,
+  memo: 'element',
   derive: (_doc, g) => g,
   element: (g) => g,
   // Its point and one step along: the line it runs on (contract.ts: endless).

@@ -31,6 +31,7 @@ export const gridKind: ElementKind<Grid, Grid> = {
   exportColour: 'structure',
   valid: (g): g is Grid =>
     isObject(g) && typeof g.id === 'string' && typeof g.name === 'string' && g.name.trim() !== '' && isPoint(g.start) && isPoint(g.end) && JSON.stringify(g.start) !== JSON.stringify(g.end),
+  memo: 'element',
   derive: (_doc, g) => g,
   element: (g) => g,
   outlines: (g) => [[g.start, g.end]],

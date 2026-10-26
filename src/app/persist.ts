@@ -54,6 +54,43 @@ export function saveDocument(doc: Doc): void {
   }
 }
 
+/** The version waiting to be saved, and whether a save is asked for. */
+let pending: Doc | null = null;
+let asked = false;
+
+/** Saves what is waiting, now: when the page is hidden or closed, nothing is left behind. */
+export function flushSave(): void {
+  if (!pending) return;
+  const doc = pending;
+  pending = null;
+  saveDocument(doc);
+}
+
+/**
+ * The document saved when the browser is idle, the latest version only: a drag or the arrows held made
+ * a version at every step, each written whole as it came (docs/plano-de-escopo.md, phase 1: saving
+ * without holding the drawing up). Hiding or closing the page saves at once (wireSaving).
+ */
+export function scheduleSave(doc: Doc): void {
+  pending = doc;
+  if (asked) return;
+  asked = true;
+  const run = () => {
+    asked = false;
+    flushSave();
+  };
+  if ('requestIdleCallback' in window) window.requestIdleCallback(run, { timeout: 1000 });
+  else setTimeout(run, 200);
+}
+
+/** Saves what is waiting when the page is hidden or about to close. */
+export function wireSaving(): void {
+  window.addEventListener('pagehide', flushSave);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushSave();
+  });
+}
+
 /** The saved document, repaired if some elements are bad (they are dropped and reported in the console). */
 export function loadDocument(): Doc | null {
   const raw = storage()?.getItem(DOC_KEY);

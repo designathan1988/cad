@@ -126,6 +126,9 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   /** As built, from the document (and the walls and doors, for one held by them); null for one that is
    * nowhere (a door whose wall is gone). */
   readonly derive: (doc: Doc, e: E, g: BaseGeometry) => S | null;
+  /** What its derivation depends on, when that is all (registry.ts: kept from one derivation to the
+   * next while it is the same): the element itself, or the element and its level. Absent: derived each time. */
+  readonly memo?: 'element' | 'level';
   /** The walls, doors and windows holding it: deleting one deletes it; one missing from a file drops it. */
   readonly holders?: (e: E) => readonly string[];
   /** Taken by a Modify tool when what holds it may go too: in place (every one, null keeps it as it

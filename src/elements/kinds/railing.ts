@@ -34,6 +34,7 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
     finite(r.height) &&
     r.height > 0 &&
     finite(r.baseOffset),
+  memo: 'level',
   derive: (doc, r) => ({ railing: r, bottom: (doc.levels.find((l) => l.id === r.levelId)?.elevation ?? 0) + r.baseOffset }),
   element: (s) => s.railing,
   outlines: (s) => [s.railing.points],

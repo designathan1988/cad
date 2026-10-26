@@ -57,7 +57,7 @@ import { applyTemporary, boundsOf, type Category, deriveGeometry, type DerivedGe
 import { type Diagnostic, diagnose } from './diagnostics';
 import { renderDebugPanel } from '../ui/debug-panel';
 import { markPoint, openingMarks } from '../elements/opening/marks';
-import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
+import { loadDocument, loadPrefs, savePrefs, scheduleSave, wireSaving } from './persist';
 import type { ViewKey } from './view-keys';
 import { EYE_HEIGHT, EYE_MAX, EYE_MIN, obstaclesOf, type Walker } from './walk';
 import { type BoxFace, type SectionBox } from './section-box';
@@ -247,8 +247,9 @@ export class App {
       if (this.ui.view === '3d' && this.overlayState) this.overlay3d.draw(this.overlayState);
     };
     this.geometry = deriveGeometry(doc);
+    wireSaving();
     this.store.subscribe((d) => {
-      saveDocument(d);
+      scheduleSave(d);
       this.ui.info = null;
       // Only what no longer exists leaves the selection: editing a room or a floor keeps it selected.
       const live = elementIds(d);

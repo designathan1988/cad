@@ -24,7 +24,7 @@ import { appActions, type Openers } from './actions';
 import { contextEntries } from './context-menu';
 import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
-import { eachSolid } from '../elements/registry';
+import { eachSolid, kindsNear } from '../elements/registry';
 import type { PickOrder } from '../elements/contract';
 import { distance, normalize, sub } from '../core/vector';
 import { outerSides } from '../elements/wall/geometry/seams';
@@ -245,7 +245,9 @@ export function wireInput(app: App): void {
     const near = PICK_PX / app.plan.scale;
     // The registry's kinds under the point, by where they come among the rest (contract.ts: pick); of
     // one order, the one drawn last first. A handle (an axis's bubble, over the walls at a corner) first of all.
-    const solids = [...eachSolid(g.kinds)].reverse();
+    // Only those near the point (registry.ts: kindsNear, a spatial index of the whole derivation).
+    const nearby = kindsNear(app.geometry.kinds, p, near);
+    const solids = [...eachSolid(g.kinds)].filter((x) => nearby.has(x.id)).reverse();
     const grabbed = solids.filter((x) => x.kind.grab?.(x.solid, p, app.plan.scale)).slice(0, 1).map((x) => x.id);
     // Of those hit, the nearest first (a door's leaf over the next door's: contract.ts, distance).
     const kindHits = (order: PickOrder) =>

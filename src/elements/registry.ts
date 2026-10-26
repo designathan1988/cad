@@ -6,6 +6,7 @@ import type { Point2 } from '../core/vector';
 import type { Transform } from '../tools/transform';
 import type { DerivedGeometry } from '../app/geometry';
 import type { FloorSolid } from './room/derive';
+import { type Box, boxOf, RTree } from '../core/rtree';
 import type { AnyKind, BaseGeometry, KindKey } from './contract';
 import { beamKind } from './kinds/beam';
 import { columnKind } from './kinds/column';
@@ -45,9 +46,29 @@ export const withList = (doc: Doc, k: AnyKind, list: readonly unknown[]): Doc =>
 /** The derived forms of every kind's elements, by kind then id. */
 export type KindSolids = ReadonlyMap<KindKey, ReadonlyMap<string, unknown>>;
 
-/** `g`: the walls, doors and the rest already derived, which a dimension is placed from. */
+/** What was derived of an element, and the level it was derived on (contract.ts: memo). */
+const derived = new WeakMap<object, { readonly level: unknown; readonly s: unknown }>();
+
+/**
+ * `g`: the walls, doors and the rest already derived, which a dimension is placed from. The document is
+ * never changed in place: an element not changed is the same object, so what was derived of it holds
+ * while what it depends on (contract.ts: memo) is the same too, and only the rest is derived again.
+ */
 export function deriveKinds(doc: Doc, g: BaseGeometry): KindSolids {
-  return new Map(KINDS.map((k) => [k.key, new Map(listOf(doc, k).flatMap((e) => { const s = k.derive(doc, e, g); return s === null ? [] : [[e.id, s] as const]; }))]));
+  return new Map(
+    KINDS.map((k) => [
+      k.key,
+      new Map(
+        listOf(doc, k).flatMap((e) => {
+          const level = k.memo === 'level' ? doc.levels.find((l) => l.id === e.levelId) : null;
+          const kept = k.memo ? derived.get(e) : undefined;
+          const s = kept && kept.level === level ? kept.s : k.derive(doc, e, g);
+          if (k.memo && kept?.s !== s) derived.set(e, { level, s });
+          return s === null ? [] : [[e.id, s] as const];
+        }),
+      ),
+    ]),
+  );
 }
 
 /** The derived forms, keeping only those `keep` says. */
@@ -65,6 +86,33 @@ export function* eachSolid(solids: KindSolids): Generator<{ kind: AnyKind; solid
 
 /** The floors as built, by id (kinds/floor.ts). */
 export const floorsOf = (g: { readonly kinds: KindSolids }): ReadonlyMap<string, FloorSolid> => (g.kinds.get('floors') ?? new Map()) as ReadonlyMap<string, FloorSolid>;
+
+/** The spatial index of a derivation's elements (core/rtree.ts), built once per derivation. Those whose
+ * reach depends on the view's scale (a text's letters, an axis's bubbles) or has no end (a guide) are
+ * always asked. */
+const indexes = new WeakMap<KindSolids, { tree: RTree; ids: string[]; always: string[] }>();
+
+/** The ids of the elements whose box comes within `near` of p: what a click there can take. */
+export function kindsNear(solids: KindSolids, p: Point2, near: number): Set<string> {
+  let index = indexes.get(solids);
+  if (!index) {
+    const boxes: Box[] = [];
+    const ids: string[] = [];
+    const always: string[] = [];
+    for (const x of eachSolid(solids)) {
+      const k = x.kind;
+      const box = k.endless || k.grab || k.layer === 'over' ? null : boxOf(k.extent ? k.extent(x.solid) : k.outlines(x.solid).flat());
+      if (box) {
+        boxes.push(box);
+        ids.push(x.id);
+      } else always.push(x.id);
+    }
+    index = { tree: new RTree(boxes), ids, always };
+    indexes.set(solids, index);
+  }
+  const found = index.tree.search({ minX: p.x - near, minY: p.y - near, maxX: p.x + near, maxY: p.y + near });
+  return new Set([...found.map((i) => index.ids[i]!), ...index.always]);
+}
 
 /** The derived forms of one kind. */
 export const solidsOf = <S>(solids: KindSolids, k: AnyKind): S[] => [...((solids.get(k.key) ?? new Map()) as Map<string, S>).values()];

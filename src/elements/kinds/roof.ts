@@ -36,6 +36,7 @@ export const roofKind: ElementKind<Roof, RoofSolid> = {
     finite(r.baseOffset) &&
     (r.parapet === undefined || finite(r.parapet)),
   // On its level's top.
+  memo: 'level',
   derive: (doc, r) => {
     const level = doc.levels.find((l) => l.id === r.levelId) ?? { elevation: 0, height: 2.8 };
     return roofSolid(r, level.elevation + level.height);

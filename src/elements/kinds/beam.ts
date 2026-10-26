@@ -39,6 +39,7 @@ export const beamKind: ElementKind<Beam, BeamSolid> = {
     b.depth > 0 &&
     (b.topOffset === undefined || finite(b.topOffset)),
   // Hanging from its level's top (plus its adjustment), its depth down.
+  memo: 'level',
   derive: (doc, b) => {
     const level = doc.levels.find((l) => l.id === b.levelId) ?? { elevation: 0, height: 2.8 };
     const top = level.elevation + level.height + (b.topOffset ?? 0);
