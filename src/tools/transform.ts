@@ -12,7 +12,9 @@ import type { DerivedGeometry } from '../app/geometry';
 import { add, dot, normalize, type Point2, scale, sub } from '../core/vector';
 import { GROUP_PREFIX, type GroupSpacing, type Opening, type OpeningGroup, OPENING_PREFIX, type PositionRule } from '../elements/opening/schema';
 import { GUIDE_PREFIX } from '../elements/guide/schema';
+import { aimAt } from '../app/opening-ui';
 import { transformWalls } from './edit';
+import { ruleAt } from './opening-tool';
 
 export interface Transform {
   /** Where a point goes. */
@@ -91,6 +93,26 @@ function mapOpening(o: Opening, t: Transform, ids: (id: string) => string): Open
   };
 }
 
+/** Metres per pixel the aim of a lone opening is taken at: 6 cm of reach off a wall's faces. */
+const LONE_MPP = 0.01;
+
+/**
+ * Where a door or window selected without its wall goes: its middle taken by `t`, onto the wall of its
+ * level found there (its own or another), as a drag puts it. Onto another wall, a door opens to the
+ * side its middle lands on, as when it is placed. Null when no wall is there.
+ */
+function placeLone(doc: Doc, g: DerivedGeometry, o: Opening, t: Transform): Pick<Opening, 'wallId' | 'rule' | 'swing'> | null {
+  const placed = g.openings.get(o.id);
+  const f = placed?.frame;
+  const host = doc.walls.find((w) => w.id === o.wallId);
+  if (!placed || !f || !host) return null;
+  const middle = add(f.start, scale(f.dir, (placed.end - placed.start) / 2));
+  const aim = aimAt(doc, g, host.levelId, t.map(middle), LONE_MPP, o.id);
+  if (!aim) return null;
+  const swing = aim.wallId !== o.wallId ? aim.side : t.mirror ? (o.swing === 'left' ? 'right' : 'left') : o.swing;
+  return { wallId: aim.wallId, rule: ruleAt(aim, o.width), swing };
+}
+
 function mapSpacing(s: GroupSpacing, t: Transform): GroupSpacing {
   if (s.kind === 'equal') return s;
   const anchor = t.mirror && s.anchor !== 'centered' ? otherEnd(s.anchor) : s.anchor;
@@ -117,9 +139,10 @@ export interface TransformResult {
 
 /**
  * The selection `ids` taken by `t`, in place or copied. `g` is the geometry before (which rooms all of
- * whose walls go); `newId` names the copies. Openings selected without their wall stay where they are:
- * a door goes with its wall. `disjoin`, in place: the walls go alone, the walls joined to them keeping
- * their ends, as Revit's Move with Disjoin (and a drag with Alt) does.
+ * whose walls go); `newId` names the copies. A door or window selected without its wall goes onto the
+ * wall where its middle is taken (placeLone), and stays where it was (its copy is not made) when no
+ * wall is there. `disjoin`, in place: the walls go alone, the walls joined to them keeping their ends,
+ * as Revit's Move with Disjoin (and a drag with Alt) does.
  */
 export function transformSelection(
   doc: Doc,
@@ -133,6 +156,13 @@ export function transformSelection(
   const set = new Set(ids);
   const wallIds = doc.walls.filter((w) => set.has(w.id)).map((w) => w.id);
   const walls = new Set(wallIds);
+  // Before the move carried one only with its wall: Move, Copy and the others did nothing to it.
+  const lone = new Map(
+    doc.openings.filter((o) => set.has(o.id) && !walls.has(o.wallId)).flatMap((o) => {
+      const at = placeLone(doc, g, o, t);
+      return at ? [[o.id, at] as const] : [];
+    }),
+  );
   const rooms = new Set([...roomsGoingWith(doc, g, walls), ...doc.rooms.filter((r) => set.has(r.id)).map((r) => r.id)]);
   const floors = new Set(doc.floors.filter((f) => set.has(f.id) && f.source.kind === 'outline').map((f) => f.id));
   const guides = new Set(doc.guides.filter((x) => set.has(x.id)).map((x) => x.id));
@@ -149,7 +179,7 @@ export function transformSelection(
       ...doc,
       // A move keeps the joins' lines (edit.ts); a turn, a scale or a mirror takes the corners along.
       walls: disjoin ? doc.walls.map((w) => (walls.has(w.id) ? alone(w) : w)) : transformWalls(doc, wallIds, t.map, t.mirror, !t.mirror && t.factor === 1),
-      openings: doc.openings.map((o) => (walls.has(o.wallId) ? mapOpening(o, t, same) : o)),
+      openings: doc.openings.map((o) => (walls.has(o.wallId) ? mapOpening(o, t, same) : lone.has(o.id) ? { ...o, ...lone.get(o.id)! } : o)),
       openingGroups: doc.openingGroups.map((x) => (walls.has(x.wallId) ? mapGroup(x, t, same, () => true) : x)),
       rooms: doc.rooms.map((r) => (rooms.has(r.id) ? { ...r, seed: t.map(r.seed) } : r)),
       floors: doc.floors.map((f) => (floors.has(f.id) && f.source.kind === 'outline' ? { ...f, source: { kind: 'outline', points: outline(f.source.points) } } : f)),
@@ -169,6 +199,7 @@ export function transformSelection(
   for (const id of wallIds) fresh(id, 'wall');
   const openings = doc.openings.filter((o) => walls.has(o.wallId));
   for (const o of openings) fresh(o.id, OPENING_PREFIX);
+  const loneCopies = doc.openings.filter((o) => lone.has(o.id)).map((o) => ({ ...o, ...lone.get(o.id)!, id: fresh(o.id, OPENING_PREFIX) }));
   const groups = doc.openingGroups.filter((x) => walls.has(x.wallId));
   for (const x of groups) fresh(x.id, GROUP_PREFIX);
   const roomList = doc.rooms.filter((r) => rooms.has(r.id));
@@ -202,7 +233,7 @@ export function transformSelection(
   const next: Doc = {
     ...doc,
     walls: [...doc.walls, ...newWalls],
-    openings: [...doc.openings, ...openings.map((o) => mapOpening(o, t, to))],
+    openings: [...doc.openings, ...openings.map((o) => mapOpening(o, t, to)), ...loneCopies],
     openingGroups: [...doc.openingGroups, ...groups.map((x) => mapGroup(x, t, to, (w) => walls.has(w)))],
     rooms: [...doc.rooms, ...newRooms],
     floors: [...doc.floors, ...newFloors],
@@ -210,6 +241,7 @@ export function transformSelection(
   };
   const selection = [
     ...newWalls.map((w) => w.id),
+    ...loneCopies.map((o) => o.id),
     ...doc.rooms.filter((r) => set.has(r.id)).map((r) => to(r.id)),
     ...doc.floors.filter((f) => floors.has(f.id)).map((f) => to(f.id)),
     ...guideList.map((x) => to(x.id)),
@@ -217,11 +249,12 @@ export function transformSelection(
   return { doc: next, selection };
 }
 
-/** Whether the selection holds anything these tools take: a wall, a room, an outline floor or a guide. */
+/** Whether the selection holds anything these tools take: a wall, a door or window, a room, an outline floor or a guide. */
 export function canTransform(doc: Doc, ids: readonly string[]): boolean {
   const set = new Set(ids);
   return (
     doc.walls.some((w) => set.has(w.id)) ||
+    doc.openings.some((o) => set.has(o.id)) ||
     doc.rooms.some((r) => set.has(r.id)) ||
     doc.floors.some((f) => set.has(f.id) && f.source.kind === 'outline') ||
     doc.guides.some((x) => set.has(x.id))

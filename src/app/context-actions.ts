@@ -34,7 +34,7 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: str
   const merge = selection.length === 2 && walls.length === 2 && canMerge(doc, walls[0]!, walls[1]!) ? (['merge'] as const) : [];
   const guides = levelId !== undefined && doc.guides.some((g) => g.levelId === levelId) ? (['clearGuides'] as const) : [];
   if (selection.length === 0) return ['drawWall', 'frameAll', ...guides, 'commands'];
-  // Move first, for what the Modify tools take (walls, rooms, outline floors, guides); the five of them
+  // Move first, for what the Modify tools take (walls, doors and windows, rooms, outline floors, guides); the five of them
   // are in the tool bar, as Revit's Modify panel, so this menu keeps to six.
   const modify: ContextId[] = canTransform(doc, selection) ? ['move'] : [];
   if (selection.length > 1) {
@@ -48,7 +48,7 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: str
   const common: ContextId[] = ['frameSelection', 'properties', 'delete'];
   if (doc.walls.some((w) => w.id === id)) return [...modify, 'flipWall', 'editType', ...common];
   const opening = doc.openings.find((o) => o.id === id);
-  if (opening) return opening.kind === 'door' ? ['flipHinge', 'flipSwing', ...common] : ['centerOpening', ...common];
+  if (opening) return opening.kind === 'door' ? [...modify, 'flipHinge', 'flipSwing', ...common] : [...modify, 'centerOpening', ...common];
   if (doc.rooms.some((r) => r.id === id)) {
     const floored = doc.floors.some((f) => f.source.kind === 'room' && f.source.roomId === id);
     return [...modify, ...(floored ? [] : (['addFloor'] as const)), ...common];
