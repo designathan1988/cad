@@ -95,10 +95,43 @@ describe('copies', () => {
 });
 
 describe('what these tools take', () => {
-  it('walls, rooms, outline floors and guides; not a door alone, nor a room floor alone', () => {
+  it('walls, doors and windows, rooms, outline floors and guides; not a room floor alone', () => {
     expect(canTransform(doc, ['b'])).toBe(true);
     expect(canTransform(doc, ['room'])).toBe(true);
-    expect(canTransform(doc, ['opening_d'])).toBe(false);
+    expect(canTransform(doc, ['opening_d'])).toBe(true);
     expect(canTransform(doc, ['floor'])).toBe(false);
+  });
+});
+
+describe('a door selected without its wall', () => {
+  // The door on b is 0.9 m wide (default), its middle at x = 1 + 0.45 = 1.45 on b (y = 0).
+  it('moved 1 m along its wall: it slides on b, the walls stay', () => {
+    const r = transformSelection(doc, g, ['opening_d'], translation({ x: 1, y: 0 }), false, newId);
+    const d = r.doc.openings[0]!;
+    expect(d.wallId).toBe('b');
+    expect(g.openings.get('opening_d')!.start).toBeCloseTo(1, 9);
+    expect(deriveGeometry(r.doc).openings.get('opening_d')!.start).toBeCloseTo(2, 9);
+    expect(find(r.doc, 'b')).toEqual(find(doc, 'b'));
+    expect(r.selection).toEqual(['opening_d']);
+  });
+
+  it('moved onto the right wall: it goes onto r, opening to the side its middle landed on', () => {
+    // Middle (1.45, 0) to (4.03, 1.5): on r (x = 4), a hair inside the box from its axis.
+    const r = transformSelection(doc, g, ['opening_d'], translation({ x: 2.58, y: 1.5 }), false, newId);
+    const d = r.doc.openings[0]!;
+    expect(d.wallId).toBe('r');
+    const placed = deriveGeometry(r.doc).openings.get('opening_d')!;
+    expect((placed.start + placed.end) / 2).toBeCloseTo(1.5, 9);
+  });
+
+  it('copied 1 m along: a new door on b, the first one where it was; with no wall there, no copy', () => {
+    const r = transformSelection(doc, g, ['opening_d'], translation({ x: 1, y: 0 }), true, newId);
+    expect(r.doc.openings).toHaveLength(2);
+    const copy = r.doc.openings[1]!;
+    expect(r.selection).toEqual([copy.id]);
+    expect(copy.wallId).toBe('b');
+    expect(deriveGeometry(r.doc).openings.get(copy.id)!.start).toBeCloseTo(2, 9);
+    const nowhere = transformSelection(doc, g, ['opening_d'], translation({ x: 0, y: 1.5 }), true, newId);
+    expect(nowhere.doc.openings).toHaveLength(1);
   });
 });

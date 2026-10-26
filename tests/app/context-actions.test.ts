@@ -34,12 +34,12 @@ describe('actions for the selection', () => {
     expect(contextIds(doc, ['w'])).toEqual(['move', 'flipWall', 'editType', 'frameSelection', 'properties', 'delete']);
   });
 
-  it('a door: flip hinge, flip swing, frame, properties, delete', () => {
-    expect(contextIds(doc, ['d'])).toEqual(['flipHinge', 'flipSwing', 'frameSelection', 'properties', 'delete']);
+  it('a door: move (the Modify tools take it alone), flip hinge, flip swing, frame, properties, delete', () => {
+    expect(contextIds(doc, ['d'])).toEqual(['move', 'flipHinge', 'flipSwing', 'frameSelection', 'properties', 'delete']);
   });
 
-  it('a window: centre on its wall, frame, properties, delete', () => {
-    expect(contextIds(doc, ['n'])).toEqual(['centerOpening', 'frameSelection', 'properties', 'delete']);
+  it('a window: move, centre on its wall, frame, properties, delete', () => {
+    expect(contextIds(doc, ['n'])).toEqual(['move', 'centerOpening', 'frameSelection', 'properties', 'delete']);
   });
 
   it('a room without a floor offers one; with a floor, not', () => {
@@ -53,8 +53,8 @@ describe('actions for the selection', () => {
   });
 
   it('several: distribute when they are openings of one wall, then frame, clear, delete', () => {
-    expect(contextIds(doc, ['d', 'n'])).toEqual(['distribute', 'frameSelection', 'clearSelection', 'delete']);
-    expect(contextIds(doc, ['d', 'm'])).toEqual(['frameSelection', 'clearSelection', 'delete']);
+    expect(contextIds(doc, ['d', 'n'])).toEqual(['move', 'distribute', 'frameSelection', 'clearSelection', 'delete']);
+    expect(contextIds(doc, ['d', 'm'])).toEqual(['move', 'frameSelection', 'clearSelection', 'delete']);
     expect(contextIds(doc, ['w', 'v'])).toEqual(['move', 'frameSelection', 'clearSelection', 'delete']);
   });
 
