@@ -40,6 +40,9 @@
   --sep-h: 20px;
   --cube: 60px;
   --cube-wrap: 92px;
+  /* The walking stick (walk.ts): its ring and its knob. */
+  --stick: 120px;
+  --stick-knob: 48px;
   --cube-depth: 300px;
   --dim-field-w: 72px;
   --measure-w: 160px;
@@ -624,8 +627,8 @@ button.project-name:hover {
   position: absolute;
   left: var(--sp-5);
   bottom: var(--sp-5);
-  width: 120px;
-  height: 120px;
+  width: var(--stick);
+  height: var(--stick);
   border-radius: 50%;
   border: var(--line-2) solid var(--border-strong);
   background: color-mix(in srgb, var(--bg) 70%, transparent);
@@ -639,9 +642,9 @@ button.project-name:hover {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 48px;
-  height: 48px;
-  margin: -24px 0 0 -24px;
+  width: var(--stick-knob);
+  height: var(--stick-knob);
+  margin: calc(var(--stick-knob) / -2) 0 0 calc(var(--stick-knob) / -2);
   border-radius: 50%;
   background: var(--accent);
   pointer-events: none;
