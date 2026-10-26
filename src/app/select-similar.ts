@@ -6,21 +6,14 @@
 import { similarKinds } from '../elements/registry';
 import type { Doc } from './document';
 
-const SIZE = 1e-6;
-
 /** The ids to select: what is selected and everything like it on the level, in the document's order. */
 export function similarTo(doc: Doc, selected: ReadonlySet<string>, levelId: string): string[] {
   const walls = doc.walls.filter((w) => selected.has(w.id));
-  const openings = doc.openings.filter((o) => selected.has(o.id));
-  const onLevel = new Map(doc.walls.map((w) => [w.id, w.levelId]));
-  const same = (a: number, b: number) => Math.abs(a - b) <= SIZE;
   const out = new Set(selected);
   for (const w of doc.walls) if (w.levelId === levelId && walls.some((x) => x.wallTypeId === w.wallTypeId)) out.add(w.id);
-  for (const o of doc.openings) {
-    if (onLevel.get(o.wallId) !== levelId) continue;
-    if (openings.some((x) => x.kind === o.kind && same(x.width, o.width) && same(x.height, o.height) && same(x.sill, o.sill))) out.add(o.id);
-  }
-  // Columns and beams of the same section, texts of the same letter height (the registry's kinds that tell their own likeness).
+  // The registry's kinds by their own likeness (contract.ts: similar): doors and windows of the same kind
+  // and size, rooms of the same use, floors of the same thickness, columns and beams of the same section,
+  // texts of the same letter height, guides all.
   for (const id of similarKinds(doc, selected, levelId)) out.add(id);
   return [...out];
 }

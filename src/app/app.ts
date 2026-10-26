@@ -396,7 +396,7 @@ export class App {
     // Levels hidden now leave the selection, as a hidden category does.
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      if (!shown.solids.has(id) && !hasSolid(shown.kinds, id) && !shown.openings.has(id)) this.ui.selection.delete(id);
+      if (!shown.solids.has(id) && !hasSolid(shown.kinds, id)) this.ui.selection.delete(id);
     }
     this.refresh();
   }
@@ -1873,7 +1873,7 @@ export class App {
   stepSelection(dir: 1 | -1): void {
     this.setTool('select');
     const g = this.visibleGeometry();
-    const order = [...g.solids.keys(), ...g.openings.keys(), ...[...eachSolid(g.kinds)].map((x) => x.id)];
+    const order = [...g.solids.keys(), ...[...eachSolid(g.kinds)].map((x) => x.id)];
     const next = stepSelection(order, [...this.ui.selection], dir);
     if (!next) return;
     this.ui.selection = new Set([next]);
@@ -2407,7 +2407,7 @@ export class App {
   private selectionKinds(): number {
     const g = this.geometry;
     const ids = [...this.ui.selection];
-    return [g.solids, g.openings].filter((m) => ids.some((id) => m.has(id))).length + new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
+    return (ids.some((id) => g.solids.has(id)) ? 1 : 0) + new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
   }
 
   selectedWalls(): DocWall[] {
@@ -3060,7 +3060,7 @@ export class App {
         if (!hasSolid(shown.kinds, id)) this.ui.selection.delete(id);
         continue;
       }
-      if (!shown.solids.has(id) && !shown.openings.has(id)) {
+      if (!shown.solids.has(id)) {
         this.ui.selection.delete(id);
       }
     }
@@ -3078,7 +3078,7 @@ export class App {
     const temp = this.ui.temp;
     const hidden = this.ui.hidden;
     const category = (id: string): Category | null =>
-      doc.walls.some((w) => w.id === id) ? 'walls' : doc.openings.some((o) => o.id === id) ? 'openings' : (kindOfId(id)?.category ?? null);
+      doc.walls.some((w) => w.id === id) ? 'walls' : (kindOfId(id)?.category ?? null);
     const ids = similarTo(doc, this.ui.selection, this.ui.levelId).filter((id) => {
       const c = category(id);
       return (c === null || !hidden.has(c)) && (!temp || shownFor(temp, id));

@@ -15,7 +15,7 @@ import type { MessageKey } from '../ui/i18n';
 import type { IconName } from '../ui/icons';
 
 /** The document's lists the registry's kinds keep. */
-export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms';
+export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings';
 
 /** The derived geometry before the registry's kinds: what a kind held by walls and doors reads. */
 export type BaseGeometry = Omit<DerivedGeometry, 'kinds'>;
@@ -94,6 +94,12 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   readonly category: Category | null;
   /** On every level (it has no level of its own): a grid axis. Not pasted onto another level. */
   readonly everyLevel?: true;
+  /** Placed, moved, copied and deleted with its wall by the wall system (a door, a window: their rules
+   * and groups): the registry's moving, copying and deleting leave it to the walls. */
+  readonly walled?: true;
+  /** Its level, for one whose element has none of its own (a door: its wall's). */
+  readonly levelOf?: (s: S) => string;
+  readonly levelIn?: (e: E, doc: Doc) => string | null;
   /** Drawn in plan under the walls (a floor), over the walls, the doors and the other kinds (a guide, a
    * text), or over the room tags too (`top`: a dimension, whose value under a room's name was lost). */
   readonly layer?: 'under' | 'over' | 'top';
@@ -117,8 +123,9 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   readonly exportColour: 'structure' | 'floor' | 'roof';
   /** A valid one, read from a file. */
   readonly valid: (x: unknown) => x is E;
-  /** As built, from the document (and the walls and doors, for one held by them). */
-  readonly derive: (doc: Doc, e: E, g: BaseGeometry) => S;
+  /** As built, from the document (and the walls and doors, for one held by them); null for one that is
+   * nowhere (a door whose wall is gone). */
+  readonly derive: (doc: Doc, e: E, g: BaseGeometry) => S | null;
   /** The walls, doors and windows holding it: deleting one deletes it; one missing from a file drops it. */
   readonly holders?: (e: E) => readonly string[];
   /** Taken by a Modify tool when what holds it may go too: in place (every one, null keeps it as it
@@ -142,6 +149,10 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   readonly outlines: (s: S, scale?: number) => readonly (readonly Point2[])[];
   /** Under the point p, within `near` (m), at `scale` px a metre. */
   readonly hit: (s: S, p: Point2, near: number, scale: number) => boolean;
+  /** How far p is from it (0 inside): of those hit, the nearest is taken first. */
+  readonly distance?: (s: S, p: Point2) => number;
+  /** All it shows in plan, for framing (a door with its swing); its outlines when not given. */
+  readonly extent?: (s: S) => readonly Point2[];
   /** A handle taken before everything else under the point (an axis's bubble). */
   readonly grab?: (s: S, p: Point2, scale: number) => boolean;
   readonly pick: PickOrder;

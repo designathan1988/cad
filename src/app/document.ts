@@ -93,7 +93,7 @@ export interface WallDefaults {
 
 /** The ids of every element that can be selected: walls, openings, rooms, floors and the registry's (elements/registry.ts). */
 export const elementIds = (doc: Doc): Set<string> =>
-  new Set([...doc.walls, ...doc.openings, ...KINDS.flatMap((k) => listOf(doc, k))].map((e) => e.id));
+  new Set([...doc.walls, ...KINDS.flatMap((k) => listOf(doc, k))].map((e) => e.id));
 
 export function newDocument(): Doc {
   return {

@@ -195,7 +195,8 @@ export function repairProject(raw: unknown): ReadResult {
     // checked by their kind; one on a level that is gone stands nowhere, one held by a wall or an opening
     // that is not there (a dimension) holds to nothing: dropped, and said.
     ...(Object.fromEntries(
-      KINDS.map((k) => {
+      // Doors and windows are read above, with their rules and groups.
+      KINDS.filter((k) => !k.walled).map((k) => {
         const fix = kindFix(k);
         const all = keep(raw[k.key], k.valid, fix) as { readonly levelId: string }[];
         // An axis is on every level: none is gone with one.
@@ -205,7 +206,7 @@ export function repairProject(raw: unknown): ReadResult {
         if (gone > 0) fixes.push({ kind: fix, count: gone });
         return [k.key, all.filter(there)];
       }),
-    ) as unknown as Pick<Doc, KindKey>),
+    ) as unknown as Pick<Doc, Exclude<KindKey, 'openings'>>),
   };
   return { ok: true, doc: regroupOffJoints(doc, raw.version), fixes };
 }

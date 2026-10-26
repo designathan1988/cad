@@ -388,20 +388,14 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
       }
     }
   }
-  for (const o of g.openings.values()) {
-    if (ids && !ids.has(o.opening.id)) continue;
-    for (const v of [...openingOutline(o), ...symbolLines(o, o.frame).flat()]) {
-      minX = Math.min(minX, v.x);
-      minY = Math.min(minY, v.y);
-      maxX = Math.max(maxX, v.x);
-      maxY = Math.max(maxY, v.y);
-    }
-  }
   // Rooms and floors: their outlines.
   const outlines = [
     ...[...g.rooms.values()].filter((r) => !ids || ids.has(r.room.id)).map((r) => r.outline),
     // A guide has no ends: its point only.
-    ...[...eachSolid(g.kinds)].filter((x) => !ids || ids.has(x.id)).flatMap((x) => (x.kind.endless ? [x.kind.outlines(x.solid)[0]!.slice(0, 1)] : x.kind.outlines(x.solid))),
+    // A guide has no ends: its point only. A door with its swing (contract.ts: extent).
+    ...[...eachSolid(g.kinds)]
+      .filter((x) => !ids || ids.has(x.id))
+      .flatMap((x) => (x.kind.endless ? [x.kind.outlines(x.solid)[0]!.slice(0, 1)] : x.kind.extent ? [x.kind.extent(x.solid)] : x.kind.outlines(x.solid))),
   ];
   for (const v of outlines.flat()) {
     minX = Math.min(minX, v.x);
@@ -441,7 +435,12 @@ export function applyTemporary(g: DerivedGeometry, temp: TemporaryView | null): 
     solids,
     openings,
     rooms: new Map([...g.rooms].filter(([id]) => keep(id))),
-    kinds: filterKinds(g.kinds, (k, x) => keep(k.element(x).id)),
+    // One held by a wall (a door) goes with it hidden, and stays with it isolated.
+    kinds: filterKinds(g.kinds, (k, x) => {
+      const e = k.element(x) as { readonly id: string };
+      const held = k.holders?.(e) ?? [];
+      return temp.mode === 'hide' ? keep(e.id) && held.every(keep) : keep(e.id) || held.some(keep);
+    }),
   };
 }
 

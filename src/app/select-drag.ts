@@ -17,7 +17,7 @@ import { moveRooms, roomsGoingWith } from './carry';
 import { GRID_STEP, type Snap } from '../tools/snap';
 import type { App } from './app';
 import type { DocWall } from './document';
-import { insidePolygon, openingOutline } from './geometry';
+import { insidePolygon } from './geometry';
 import { updateOpening } from '../elements/opening/commands';
 import type { Opening } from '../elements/opening/schema';
 import { offsetThrough, placeDimension } from '../elements/dimension/anchor';
@@ -316,10 +316,6 @@ function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): voi
   };
   const items: Pickable[] = [
     ...[...g.solids.values()].map((s) => ({ id: s.wall.id, outlines: s.pieces.map((p) => screen(p.polygon, s.bottom, s.top, s.wall.levelId)) })),
-    ...[...g.openings.values()].map((o) => ({
-      id: o.opening.id,
-      outlines: [screen(openingOutline(o), o.bottom, o.top, g.solids.get(o.opening.wallId)?.wall.levelId ?? '')],
-    })),
     // The registry's kinds by their outlines (a text's box as drawn at this scale, an axis's line).
     // Texts, axes and guides are in plan only: not in a window drawn in 3D. A guide has no ends: drawn
     // far past the window, only a crossing selection, which it runs through, takes it.

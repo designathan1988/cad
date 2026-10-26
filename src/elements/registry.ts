@@ -14,13 +14,14 @@ import { floorKind } from './kinds/floor';
 import { gridKind } from './kinds/grid';
 import { guideKind } from './kinds/guide';
 import { noteKind } from './kinds/note';
+import { openingKind } from './kinds/opening';
 import { railingKind } from './kinds/railing';
 import { roomKind } from './kinds/room';
 import { roofKind } from './kinds/roof';
 import { stairKind } from './kinds/stair';
 
 /** Drawn in this order (later over earlier); the panel shows the first with a selected element. */
-export const KINDS: readonly AnyKind[] = [stairKind, railingKind, columnKind, roofKind, floorKind, roomKind, gridKind, beamKind, guideKind, noteKind, dimensionKind];
+export const KINDS: readonly AnyKind[] = [openingKind, stairKind, railingKind, columnKind, roofKind, floorKind, roomKind, gridKind, beamKind, guideKind, noteKind, dimensionKind];
 
 export const kindOfKey = (key: KindKey): AnyKind => KINDS.find((k) => k.key === key)!;
 
@@ -32,7 +33,10 @@ export const listOf = (doc: Doc, k: AnyKind): readonly { readonly id: string; re
   doc[k.key] as readonly { readonly id: string; readonly levelId: string }[];
 
 /** The level a derived element is on; null for one on every level. */
-export const levelOfSolid = (k: AnyKind, s: unknown): string | null => (k.everyLevel ? null : (k.element(s) as { levelId: string }).levelId);
+export const levelOfSolid = (k: AnyKind, s: unknown): string | null => (k.everyLevel ? null : k.levelOf ? k.levelOf(s) : (k.element(s) as { levelId: string }).levelId);
+
+/** The level of an element of the document (a door's, its wall's); null for one on every level. */
+export const levelOfElement = (k: AnyKind, e: { readonly levelId?: string }, doc: Doc): string | null => (k.everyLevel ? null : k.levelIn ? k.levelIn(e, doc) : (e.levelId ?? null));
 
 /** The document with a kind's list replaced. */
 export const withList = (doc: Doc, k: AnyKind, list: readonly unknown[]): Doc => ({ ...doc, [k.key]: list }) as Doc;
@@ -42,7 +46,7 @@ export type KindSolids = ReadonlyMap<KindKey, ReadonlyMap<string, unknown>>;
 
 /** `g`: the walls, doors and the rest already derived, which a dimension is placed from. */
 export function deriveKinds(doc: Doc, g: BaseGeometry): KindSolids {
-  return new Map(KINDS.map((k) => [k.key, new Map(listOf(doc, k).map((e) => [e.id, k.derive(doc, e, g)]))]));
+  return new Map(KINDS.map((k) => [k.key, new Map(listOf(doc, k).flatMap((e) => { const s = k.derive(doc, e, g); return s === null ? [] : [[e.id, s] as const]; }))]));
 }
 
 /** The derived forms, keeping only those `keep` says. */
@@ -75,6 +79,8 @@ export function moveKinds(doc: Doc, ids: ReadonlySet<string>, d: { readonly x: n
   if (ids.size === 0 || (d.x === 0 && d.y === 0)) return doc;
   let next = doc;
   for (const k of KINDS) {
+    // A door or window goes with its wall (contract.ts: walled).
+    if (k.walled) continue;
     const list = listOf(doc, k);
     if (!list.some((e) => ids.has(e.id))) continue;
     next = withList(next, k, list.map((e) => (ids.has(e.id) ? k.moved(e, d) : e)));
@@ -103,6 +109,7 @@ const goesWith = (k: AnyKind, e: { readonly id: string }, ids: ReadonlySet<strin
 export function dropKinds(doc: Doc, ids: ReadonlySet<string>, g: DerivedGeometry): Doc {
   let next = doc;
   for (const k of KINDS) {
+    if (k.walled) continue;
     const list = listOf(doc, k);
     const released = (e: { readonly id: string }) => {
       const f = k.follows?.(e);
@@ -125,6 +132,7 @@ export interface KindTransform {
 export function mapKinds(doc: Doc, ids: ReadonlySet<string>, t: Transform, c: KindTransform): Doc {
   let next = doc;
   for (const k of KINDS) {
+    if (k.walled) continue;
     const list = listOf(doc, k);
     const { transformed } = k;
     if (transformed) {
@@ -146,6 +154,7 @@ export function copyKinds(
   // What each kind copies: the selected, those going along (a room with all its walls), and those
   // following what is copied (a room's floor its room).
   const taken = KINDS.map((k) => {
+    if (k.walled) return [];
     const following = (e: { readonly id: string }) => {
       const f = k.follows?.(e);
       return f !== null && f !== undefined && (c.going(f) || ids.has(f));
@@ -178,7 +187,7 @@ export function copyKinds(
 export function kindsOnLevel(after: Doc, before: Doc, levelId: string): Doc {
   let next = after;
   for (const k of KINDS) {
-    if (k.everyLevel) continue;
+    if (k.everyLevel || k.walled) continue;
     const n = listOf(before, k).length;
     next = withList(next, k, listOf(after, k).map((e, i) => (i >= n ? { ...e, levelId } : e)));
   }
@@ -189,8 +198,8 @@ export function kindsOnLevel(after: Doc, before: Doc, levelId: string): Doc {
 export function appendKinds(onto: Doc, after: Doc, before: Doc): Doc {
   let next = onto;
   for (const k of KINDS) {
-    // An axis is on every level already: pasting it would lay a second one over it.
-    if (k.everyLevel) continue;
+    // An axis is on every level already: pasting it would lay a second one over it. A door goes with its wall.
+    if (k.everyLevel || k.walled) continue;
     const extra = listOf(after, k).slice(listOf(before, k).length);
     if (extra.length > 0) next = withList(next, k, [...listOf(onto, k), ...extra]);
   }
@@ -207,7 +216,7 @@ export function similarKinds(doc: Doc, selected: ReadonlySet<string>, levelId: s
     if (!k.similar) return [];
     const list = listOf(doc, k);
     const picked = list.filter((e) => selected.has(e.id));
-    return list.filter((e) => e.levelId === levelId && picked.some((x) => k.similar!(x, e))).map((e) => e.id);
+    return list.filter((e) => levelOfElement(k, e, doc) === levelId && picked.some((x) => k.similar!(x, e))).map((e) => e.id);
   });
 }
 

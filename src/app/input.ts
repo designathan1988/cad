@@ -6,7 +6,7 @@ import type { Point2 } from '../core/vector';
 import { snap } from '../tools/snap';
 import { t } from '../ui/i18n';
 import { el } from '../ui/controls';
-import { openingAt, wallAt } from './geometry';
+import { wallAt } from './geometry';
 import { aimAt, OPENING_PREVIEW_ID } from './opening-ui';
 import { viewKey } from './view-keys';
 import type { App } from './app';
@@ -251,14 +251,20 @@ export function wireInput(app: App): void {
     // one order, the one drawn last first. A handle (an axis's bubble, over the walls at a corner) first of all.
     const solids = [...eachSolid(g.kinds)].reverse();
     const grabbed = solids.filter((x) => x.kind.grab?.(x.solid, p, app.plan.scale)).slice(0, 1).map((x) => x.id);
-    const kindHits = (order: PickOrder) => solids.filter((x) => x.kind.pick === order && x.kind.hit(x.solid, p, near, app.plan.scale)).map((x) => x.id);
+    // Of those hit, the nearest first (a door's leaf over the next door's: contract.ts, distance).
+    const kindHits = (order: PickOrder) =>
+      solids
+        .filter((x) => x.kind.pick === order && x.kind.hit(x.solid, p, near, app.plan.scale))
+        .map((x) => ({ id: x.id, d: x.kind.distance?.(x.solid, p) ?? 0 }))
+        .sort((a, b) => a.d - b.d)
+        .map((x) => x.id);
     return [
       ...grabbed,
       // A dimension by its line or its value, before what it measures.
       ...kindHits('first'),
-      // A text over everything it is written on (the last kind drawn, so the first here).
+      // A text over everything it is written on (the last kind drawn, so the first here); a door or a
+      // window before the wall that hosts it.
       ...kindHits('beforeWalls'),
-      openingAt(g, p, near),
       wallAt(g, p, undefined, near),
       // A guide where the pointer is on it (before the room it runs across), beams, and an axis after
       // the walls on it: a click on a wall over an axis takes the wall.
