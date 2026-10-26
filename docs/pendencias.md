@@ -302,6 +302,10 @@ Quarto 1); arco com cotas de corda e de raio, alça de curvatura e raio editado 
   leva os cantos junto. Visto no navegador: caixa girada 90° com o ângulo digitado mantém a forma e a
   parede que ficou acompanha o canto; arrastar uma parede com 6 px de desvio ainda mantém as vizinhas
   retas.
+- Resolvido em 2026-10-26: duas (ou mais) paredes terminando no mesmo ponto de uma parede reta, do mesmo
+  lado, viravam um L só entre elas: a ponta do V atravessava a parede e saía pelo outro lado. Agora a
+  parede passa inteira e elas se encontram entre si na face dela. Visto na aplicação, desenhado com
+  gestos e apagado depois.
 - Falta: setores para arcos (os nós com trechos de arco seguem a regra da passagem) e para uma parede que
   passa pelo ponto com setor de mais de meia volta (aí a junção avisa `ComplexJoin` e fica a regra
   anterior; a ponta com setor de mais de meia volta já é exata).

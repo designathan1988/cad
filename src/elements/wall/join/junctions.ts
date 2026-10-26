@@ -111,6 +111,31 @@ export function gatherJunctions(
     const corners: Corner[] = 'node' in host ? [host] : [];
     const nodes: JoinNode[] = 'node' in host ? [] : [host];
     junctions.push({ point: entry.point, passing: [], ends: entry.ends, absorbs: { corners, nodes, crossings: [], abutments: entry.abutments } });
+    used.add(host);
+  }
+
+  // Ends meeting at one point inside another wall that goes on there (two walls coming to one point of
+  // a wall from one side): left as their own L, its tip ran through that wall and out of its far face.
+  // That wall passes whole; the ends meet one another outside its face.
+  for (const x of [...graph.corners, ...graph.nodes]) {
+    if (used.has(x) || !x.ends.every((r) => straight(r.wallId))) continue;
+    const point = 'node' in x ? x.node : x.point;
+    const mine = new Set(x.ends.map((r) => r.wallId));
+    const wall = [...byId.values()].find((w) => straight(w.id) && !mine.has(w.id) && wellInside(w, point) && awayFromEnds(w, point));
+    if (!wall) continue;
+    used.add(x);
+    const abutments = graph.abutments.filter((a) => !takenAbutments.has(a) && a.hostId === wall.id && x.ends.some((r) => r.wallId === a.abutting.wallId && r.end === a.abutting.end));
+    abutments.forEach((a) => takenAbutments.add(a));
+    const corners: Corner[] = 'node' in x ? [x] : [];
+    const nodes: JoinNode[] = 'node' in x ? [] : [x];
+    junctions.push({ point, passing: [wall.id], ends: x.ends, absorbs: { corners, nodes, crossings: [], abutments }, onWall: true });
   }
   return junctions;
+}
+
+/** Along the wall, clear of its two ends by its thickness: where it goes on both ways. */
+function awayFromEnds(w: WallShape, p: Point2): boolean {
+  const d = wallDirection(w);
+  const s = dot(sub(p, w.start), d);
+  return s > w.thickness && s < dot(sub(w.end, w.start), d) - w.thickness;
 }

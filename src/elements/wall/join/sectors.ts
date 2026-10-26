@@ -99,26 +99,50 @@ export function resolveSectors(arms: readonly SectorArm[], point: Point2): Secto
   if (arms.length < 3) return null;
   const g = gapsOf(arms);
   if (g === null) return null;
-  let wide = widestTakingIn(arms, point, g, true);
-  if (wide === null) {
-    const split = splitSectors(arms, point, g);
-    if (split) return split;
-    wide = widestTakingIn(arms, point, g, false);
-    if (wide === null) return null;
+  const first = widestTakingIn(arms, point, g, true);
+  if (first !== null) return goingThrough(arms, point, first);
+  const split = splitSectors(arms, point, g);
+  if (split) return split;
+  const wide = widestTakingIn(arms, point, g, false);
+  if (wide !== null) return goingThrough(arms, point, wide);
+  // No split fits and no band takes in a corner: a wall passing the point with the other ends all on
+  // one side of it (two walls ending at one point of a wall, from the same side), its arm's sector more
+  // than a half-turn. It goes through whole and they meet one another outside its face. Thickest first.
+  const passing = [...new Set(arms.flatMap((a) => (a.through !== undefined ? [a.through] : [])))]
+    .map((id) => arms.flatMap((a, k) => (a.through === id ? [k] : [])))
+    .filter((ks) => ks.length === 2)
+    .sort((x, y) => arms[y[0]!]!.wall.thickness - arms[x[0]!]!.wall.thickness);
+  for (const ks of passing) {
+    const r = goingThrough(arms, point, ks);
+    if (r) return r;
   }
+  return null;
+}
 
+/**
+ * The arms with `wide` (a passing wall's two arms, or one end) keeping its band; the rest split among
+ * themselves, kept out of it. A junction of ends on a wall (junctions.ts, `onWall`) is this from the start.
+ */
+export function goingThrough(arms: readonly SectorArm[], point: Point2, wide: readonly number[]): Sectors | null {
   const w = arms[wide[0]!]!.wall;
   const restAt = arms.flatMap((_, k) => (wide.includes(k) ? [] : [k]));
   const rest = restAt.map((k) => arms[k]!);
   const extension = extensionOf(arms);
   const square = (a: SectorArm): EndCut => ({ extension, cuts: [halfPlaneThrough(point, intoBody(a.wall, a.end))] });
   // What is left: one wall crossing it whole, one end squared at the point, or sectors again.
+  // Two ends of two walls left: the L they make, split on their own two gaps (inner corner, outer).
+  const pair = (): Sectors | null => {
+    const g2 = gapsOf(rest);
+    return g2 ? splitSectors(rest, point, g2) : null;
+  };
   const restSectors: Sectors | null =
     rest.length === 2 && rest[0]!.through !== undefined && rest[0]!.through === rest[1]!.through
       ? { cuts: rest.map((): EndCut => ({ extension, cuts: [] })), notches: [] }
       : rest.length === 1
         ? { cuts: [square(rest[0]!)], notches: [] }
-        : resolveSectors(rest, point);
+        : rest.length === 2
+          ? pair()
+          : resolveSectors(rest, point);
   if (restSectors === null) return null;
   const n = wallNormal(w);
   const [o0, o1] = faceOffsets(w);

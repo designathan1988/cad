@@ -9,7 +9,7 @@ import { type AbutmentResult, resolveAbutment } from '../join/cut-t';
 import { deriveJoins, goesThrough } from '../join/discover';
 import { onLine } from '../join/junctions';
 import { resolveNode } from '../join/node';
-import { resolveSectors, type SectorArm } from '../join/sectors';
+import { goingThrough, resolveSectors, type SectorArm } from '../join/sectors';
 import type { EndCut, JoinWarning, Notch } from '../join/types';
 import type { EndRef, Wall, WallId, WallType, WallTypeId } from '../schema';
 import { type ArcChain, arcOf, expandArc, inSector, parentOf, sectorOf } from './arc';
@@ -97,7 +97,8 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
       ]),
       ...j.ends.map((r) => ({ wall: byId.get(r.wallId)!, end: r.end, reach: wallLength(byId.get(r.wallId)!) })),
     ];
-    const sectors = resolveSectors(arms, j.point);
+    // Ends on a wall that goes on: it passes whole, its two arms the first two (junctions.ts).
+    const sectors = j.onWall ? goingThrough(arms, j.point, [0, 1]) : resolveSectors(arms, j.point);
     if (!sectors) {
       report({ kind: 'complexJoin', walls: [...j.passing, ...j.ends.map((r) => r.wallId)] });
       continue;

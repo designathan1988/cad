@@ -80,6 +80,8 @@ export interface Junction {
     readonly crossings: readonly Crossing[];
     readonly abutments: readonly Abutment[];
   };
+  /** Ends meeting at a point of one wall that goes on through it: that wall stays whole. */
+  readonly onWall?: boolean;
 }
 
 export interface JoinGraph {
