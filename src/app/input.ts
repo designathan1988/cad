@@ -500,7 +500,7 @@ export function wireInput(app: App): void {
   });
   shell.snapBtn.addEventListener('click', () => app.toggleSnaps());
   for (const [mode, b] of Object.entries(shell.levelsShown)) b.addEventListener('click', () => app.setView3D({ levels: mode as LevelsShown }));
-  shell.explode.addEventListener('click', () => app.setView3D({ explode: !ui.view3d.explode }));
+  shell.explode.addEventListener('click', () => app.toggleExplode());
   shell.cut.addEventListener('click', () => app.setView3D({ cut: !ui.view3d.cut }));
   shell.shortcuts.addEventListener('click', () => showHelp(app));
   shell.commands.addEventListener('click', () => palette());

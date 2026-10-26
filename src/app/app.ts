@@ -67,7 +67,7 @@ import { readProject, writeProject } from '../io/project-file';
 import { fitFactor, keepInView } from './keep-in-view';
 import type { ViewKey } from './view-keys';
 import { type TempDim, tempDims } from './temp-dims';
-import { cutAt, liftOf, readView3D, shownLevels, type View3D } from './view-3d';
+import { cutAt, exploding, liftOf, readView3D, shownLevels, type View3D } from './view-3d';
 import { MODIFY_START, type ModifyEvent, type ModifyKind, type ModifyState, modifyTransition, previewTransform } from '../tools/modify-tool';
 import { canTransform, transformSelection } from '../tools/transform';
 import { changeReferenceLine, stretchEnd } from '../tools/edit';
@@ -238,7 +238,19 @@ export class App {
 
   /** How far up a level is drawn in 3D: exploded, each level above the one below; else not at all. */
   lift(levelId: string): number {
-    return this.ui.view === '3d' ? liftOf(this.store.get().levels, levelId, this.ui.view3d.explode) : 0;
+    const levels = this.store.get().levels;
+    return this.ui.view === '3d' ? liftOf(levels, levelId, exploding(levels, this.ui.levelId, this.ui.view3d)) : 0;
+  }
+
+  /** Explode on or off; with one level shown, said why it does nothing instead. */
+  toggleExplode(): void {
+    const doc = this.store.get();
+    if (shownLevels(doc.levels, this.ui.levelId, this.ui.view3d.levels).size < 2) {
+      if (this.ui.view !== '3d') this.setView('3d');
+      this.ui.info = t(doc.levels.length < 2 ? 'hint.explodeOneLevel' : 'hint.explodeOneShown');
+      return this.renderChrome();
+    }
+    this.setView3D({ explode: !this.ui.view3d.explode });
   }
 
   /** How the 3D view shows the levels; kept with the preferences, as the view is. */
@@ -246,6 +258,8 @@ export class App {
     // From the plan (the palette), the 3D view it is about is shown.
     if (this.ui.view !== '3d') this.setView('3d');
     this.ui.view3d = { ...this.ui.view3d, ...patch };
+    // A word on the view as it was (Explode with one level shown) no longer holds.
+    this.ui.info = null;
     savePrefs({ view3d: this.ui.view3d });
     // Levels hidden now leave the selection, as a hidden category does.
     const shown = this.visibleGeometry();
@@ -1917,7 +1931,11 @@ export class App {
     // The 3D view's own controls, in 3D only.
     shell.viewBar.hidden = ui.view !== '3d';
     for (const [mode, b] of Object.entries(shell.levelsShown)) b.setAttribute('aria-pressed', String(ui.view3d.levels === mode));
-    shell.explode.setAttribute('aria-pressed', String(ui.view3d.explode));
+    // Pressed only while it spreads something: with one level shown it is off, and says why when clicked.
+    const spread = exploding(doc.levels, ui.levelId, ui.view3d);
+    const alone = shownLevels(doc.levels, ui.levelId, ui.view3d.levels).size < 2;
+    shell.explode.setAttribute('aria-pressed', String(spread));
+    shell.explode.setAttribute('aria-disabled', String(alone));
     shell.cut.setAttribute('aria-pressed', String(ui.view3d.cut));
     const levelKey = JSON.stringify([getLang(), doc.levels.map((l) => [l.id, l.name, l.elevation])]);
     if (shell.level.dataset.key !== levelKey) {

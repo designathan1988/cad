@@ -28,6 +28,13 @@ export function shownLevels(levels: readonly Level[], current: string, mode: Lev
   return new Set(levels.filter((l) => l.elevation <= here.elevation).map((l) => l.id));
 }
 
+/**
+ * Whether the levels are drawn spread apart: asked to, with two or more of them shown. One level alone
+ * has nothing to spread from: it only rose off the ground, and the pressed button seemed to do nothing.
+ */
+export const exploding = (levels: readonly Level[], current: string, view: View3D): boolean =>
+  view.explode && shownLevels(levels, current, view.levels).size > 1;
+
 /** How far up a level is drawn: exploded, the gap once for each level below it; else not at all. */
 export function liftOf(levels: readonly Level[], id: string, explode: boolean): number {
   if (!explode) return 0;
@@ -39,7 +46,7 @@ export function liftOf(levels: readonly Level[], id: string, explode: boolean): 
 export function cutAt(levels: readonly Level[], current: string, view: View3D): number | null {
   const here = levels.find((l) => l.id === current);
   if (!view.cut || !here) return null;
-  return here.elevation + cutHeightOf(here) + liftOf(levels, here.id, view.explode);
+  return here.elevation + cutHeightOf(here) + liftOf(levels, here.id, exploding(levels, current, view));
 }
 
 /** A stored view, or the default for what is missing or not one of the choices. */

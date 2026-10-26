@@ -71,7 +71,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('view.levelsAll', 'pal.levelsAll', views, () => app.setView3D({ levels: 'all' }), { enabled: ui.view3d.levels !== 'all' }),
     make('view.levelsBelow', 'pal.levelsBelow', views, () => app.setView3D({ levels: 'below' }), { enabled: ui.view3d.levels !== 'below' }),
     make('view.levelsCurrent', 'pal.levelsCurrent', views, () => app.setView3D({ levels: 'current' }), { enabled: ui.view3d.levels !== 'current' }),
-    make('view.explode', 'pal.explode', views, () => app.setView3D({ explode: !ui.view3d.explode })),
+    make('view.explode', 'pal.explode', views, () => app.toggleExplode()),
     make('view.cut', 'pal.cut', views, () => app.setView3D({ cut: !ui.view3d.cut })),
     make('edit.undo', 'pal.undo', edit, () => app.undo(), { keys: 'Ctrl+Z', enabled: store.canUndo() }),
     make('edit.redo', 'pal.redo', edit, () => app.redo(), { keys: 'Ctrl+Shift+Z', enabled: store.canRedo() }),

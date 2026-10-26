@@ -568,6 +568,10 @@ button.project-name:hover {
 .view-bar[hidden] {
   display: none;
 }
+/* Explode with one level shown: dimmed, still clickable (it says why it does nothing). */
+.view-bar button[aria-disabled='true'] {
+  opacity: 0.45;
+}
 .empty-hint {
   position: absolute;
   left: 50%;
