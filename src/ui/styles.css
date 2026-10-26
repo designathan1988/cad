@@ -52,6 +52,7 @@
   --dialog-w: 420px;
   --dialog-w-lg: 560px;
   --dialog-w-xl: 860px;
+  --dialog-top: min(10vh, 96px);
   --types-list-w: 220px;
   --tour-w: 320px;
   --browser-w: 260px;
@@ -909,7 +910,10 @@ button.project-name:hover {
   inset: 0;
   background: var(--scrim);
   display: grid;
-  place-items: center;
+  /* Its top kept still near the window's top, not centred: centred, a dialog that grows (a layer or a
+     level added) moved up by half of it, and the button just pressed slid from under the pointer. */
+  place-items: start center;
+  padding-top: var(--dialog-top);
   z-index: 20;
 }
 .dialog-back[hidden] {
@@ -918,7 +922,7 @@ button.project-name:hover {
 .dialog {
   width: min(var(--dialog-w), calc(100vw - 2 * var(--sp-4)));
   /* A long list (the shortcuts) scrolls inside on short screens instead of leaving the window. */
-  max-height: calc(100vh - 2 * var(--sp-4));
+  max-height: calc(100vh - var(--dialog-top) - var(--sp-4));
   overflow-y: auto;
   border-radius: var(--radius-lg);
   background: var(--bg);

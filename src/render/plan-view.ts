@@ -401,9 +401,10 @@ export class PlanView {
       ctx.strokeRect(Math.round(s.x) - 3.5, Math.round(s.y) - 3.5, 7, 7);
       ctx.restore();
     }
-    // A wall's tag keeps off the dimensions' values (the tester's R03: "3,00" covered "Parede 49"):
-    // moved down past the one it would meet, or up if that runs off the canvas.
-    const values = this.dimValueBoxes(o.dims ?? []);
+    // A wall's tag keeps off the dimensions' values (the tester's R03: "3,00" covered "Parede 49") and
+    // the room tags ("Parede 13" over a room whose point a copied wall had covered): moved down past the
+    // one it would meet, or up if that runs off the canvas.
+    const values = [...this.dimValueBoxes(o.dims ?? []), ...this.labelBoxes];
     for (const tag of o.wallTags ?? []) {
       const font = this.font('600', '--fs-xs');
       const tw = this.textWidth(tag.text, font) + 8;
@@ -519,14 +520,11 @@ export class PlanView {
       return { x: p.x, y: p.y, width, name: l.name, short: l.short, area: l.area, warn: l.warn };
     });
     const measure = (text: string) => this.textWidth(text, nameFont);
-    // The dimensions are drawn over the tags: each tag steps aside from their lines (room-tags.ts).
-    const lines = dims.flatMap((d) => {
+    // The dimensions are drawn over the tags: each tag steps aside from their lines (room-tags.ts),
+    // not from the short extension lines at their ends, whose tips sent a tag far off.
+    const lines = dims.map((d) => {
       const l = this.dimLine(d);
-      return [
-        { a: l.a, b: l.b },
-        { a: l.fromA, b: l.a },
-        { a: l.fromB, b: l.b },
-      ];
+      return { a: l.a, b: l.b };
     });
     const tags = layoutRoomTags(inputs, measure, this.size, avoid, lines);
     this.labelBoxes = tags.map((tag) => tag.box);

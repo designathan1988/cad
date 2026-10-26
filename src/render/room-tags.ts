@@ -88,12 +88,18 @@ export function layoutRoomTags(
       b.x >= 0 && b.y >= 0 && b.x + b.w <= view.w && b.y + b.h <= view.h && !lines.some((s) => crosses(b, s)) && !avoid.some((a) => meets(b, a)) && !placed.some((p) => meets(b, p.box));
     if (lines.some((s) => crosses(box, s))) {
       const from = box;
-      for (let d = STEP; d <= w + 2 * STEP; d += STEP) {
+      // Never far from its room: across by up to half its width (one side always clears a line through
+      // it by that much), up or down by up to its height. Pushed further, a tag left its room.
+      for (let d = STEP; d <= w / 2 + 2 * STEP; d += STEP) {
         const next = [
           { ...from, x: from.x - d },
           { ...from, x: from.x + d },
-          { ...from, y: from.y - d },
-          { ...from, y: from.y + d },
+          ...(d <= h + 2 * STEP
+            ? [
+                { ...from, y: from.y - d },
+                { ...from, y: from.y + d },
+              ]
+            : []),
         ].find(free);
         if (next) {
           box = next;
