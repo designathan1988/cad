@@ -18,6 +18,8 @@ const toThree = (p: Point2, z: number) => new THREE.Vector3(p.x, z, -p.y);
 /** The ground's size: this many times the model's extent, at least GROUND_MIN (m) across. */
 const GROUND_SPAN = 4;
 const GROUND_MIN = 60;
+/** How much of a wall shows in x-ray. */
+const XRAY_OPACITY = 0.28;
 
 /** Opaque in its middle, fading to nothing at its edge: the ground runs off into the background. */
 function groundFade(): THREE.Texture {
@@ -159,6 +161,23 @@ export class Scene3D {
         this.caps.add(mesh);
       }
     }
+    this.invalidate();
+  }
+
+  /**
+   * X-ray (view-3d.ts): the walls and floors faint, writing no depth, so what is behind them shows; the
+   * lines stay solid, so the shapes still read. Glass and leaves keep their own look.
+   */
+  setXray(on: boolean): void {
+    const faint = [this.materials.side, this.materials.top, this.materials.floor, this.materials.sideSel, this.materials.topSel, ...this.layerMaterials.values()];
+    if (faint[0]!.transparent === on && (on ? faint[0]!.opacity === XRAY_OPACITY : true)) return;
+    for (const m of faint) {
+      m.transparent = on;
+      m.opacity = on ? XRAY_OPACITY : 1;
+      m.depthWrite = !on;
+      m.needsUpdate = true;
+    }
+    this.edgeMaterial.opacity = on ? 0.9 : 0.55;
     this.invalidate();
   }
 

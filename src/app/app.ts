@@ -1789,6 +1789,7 @@ export class App {
       });
     } else {
       const shown = this.visibleGeometry();
+      this.scene.setXray(ui.view3d.xray);
       this.scene.sync(shown, ui.selection, preview, (id) => this.lift(id));
       // Cut at the level's cut height: where it goes through the level's walls, their plan pieces.
       const doc = this.store.get();
@@ -2240,6 +2241,7 @@ export class App {
     const spread = exploding(doc.levels, ui.levelId, ui.view3d);
     const alone = shownLevels(doc.levels, ui.levelId, ui.view3d.levels).size < 2;
     shell.explode.setAttribute('aria-pressed', String(spread));
+    shell.xray.setAttribute('aria-pressed', String(ui.view3d.xray));
     shell.explode.setAttribute('aria-disabled', String(alone));
     shell.cut.setAttribute('aria-pressed', String(ui.view3d.cut));
     const levelKey = JSON.stringify([getLang(), doc.levels.map((l) => [l.id, l.name, l.elevation])]);

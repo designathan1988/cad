@@ -530,6 +530,7 @@ export function wireInput(app: App): void {
   for (const [mode, b] of Object.entries(shell.levelsShown)) b.addEventListener('click', () => app.setView3D({ levels: mode as LevelsShown }));
   shell.explode.addEventListener('click', () => app.toggleExplode());
   shell.cut.addEventListener('click', () => app.setView3D({ cut: !ui.view3d.cut }));
+  shell.xray.addEventListener('click', () => app.setView3D({ xray: !ui.view3d.xray }));
   shell.tempReset.addEventListener('click', () => app.resetTemporary());
   shell.shortcuts.addEventListener('click', () => showHelp(app));
   shell.commands.addEventListener('click', () => palette());

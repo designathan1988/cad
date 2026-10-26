@@ -1,6 +1,7 @@
 // How the 3D view shows the levels, as in Revit's 3D views and ArchiCAD's 3D window filters: all of
 // them, the one being edited and those below it, or that one only; spread apart (exploded) so each
-// one's rooms are seen from above; cut at the edited level's cut height (the plan's), a plan in 3D.
+// one's rooms are seen from above; cut at the edited level's cut height (the plan's), a plan in 3D;
+// seen through (x-ray, as Revit's and SketchUp's), the walls and floors faint and every line on top.
 // Interface state, kept with the preferences: outside the document and its undo, as the camera is.
 
 import { cutHeightOf, type Level } from './document';
@@ -11,9 +12,10 @@ export interface View3D {
   readonly levels: LevelsShown;
   readonly explode: boolean;
   readonly cut: boolean;
+  readonly xray: boolean;
 }
 
-export const VIEW_3D_DEFAULT: View3D = { levels: 'all', explode: false, cut: false };
+export const VIEW_3D_DEFAULT: View3D = { levels: 'all', explode: false, cut: false, xray: false };
 
 /** Between two exploded levels, beyond their own height (m). */
 export const EXPLODE_GAP = 2.5;
@@ -56,5 +58,6 @@ export function readView3D(raw: unknown): View3D {
     levels: o.levels === 'below' || o.levels === 'current' ? o.levels : 'all',
     explode: o.explode === true,
     cut: o.cut === true,
+    xray: o.xray === true,
   };
 }

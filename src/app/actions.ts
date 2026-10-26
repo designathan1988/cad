@@ -73,6 +73,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('view.levelsCurrent', 'pal.levelsCurrent', views, () => app.setView3D({ levels: 'current' }), { enabled: ui.view3d.levels !== 'current' }),
     make('view.explode', 'pal.explode', views, () => app.toggleExplode()),
     make('view.cut', 'pal.cut', views, () => app.setView3D({ cut: !ui.view3d.cut })),
+    make('view.xray', 'pal.xray', views, () => app.setView3D({ xray: !ui.view3d.xray })),
     make('edit.undo', 'pal.undo', edit, () => app.undo(), { keys: 'Ctrl+Z', enabled: store.canUndo() }),
     make('edit.redo', 'pal.redo', edit, () => app.redo(), { keys: 'Ctrl+Shift+Z', enabled: store.canRedo() }),
     make('edit.delete', 'pal.delete', edit, () => app.deleteSelection(), { keys: 'Del', enabled: has }),

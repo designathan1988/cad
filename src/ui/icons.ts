@@ -48,6 +48,8 @@ const paths = {
   levelsOne: 'M3 12l9-4 9 4-9 4z',
   explode: 'M3 6l9-3 9 3-9 3zM3 18l9-3 9 3-9 3zM12 10v4M10 12l2 2 2-2',
   cut: 'M5 9h14v11H5zM2 12h20M5 9l3-5h8l3 5',
+  // A box seen through: its hidden edges drawn too.
+  xray: 'M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8M4 16l8-4 8 4M12 4v8',
   move: 'M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3',
   width: 'M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4',
   split: 'M3 12h7M14 12h7M12 4v16M9 7l3-3 3 3M9 17l3 3 3-3',
