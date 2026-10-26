@@ -58,6 +58,7 @@
   --dialog-w-lg: 560px;
   --dialog-w-xl: 980px;
   --schedule-h: 60vh;
+  --debug-w: 440px;
   --dialog-w-xl: 860px;
   --dialog-top: min(10vh, 96px);
   --types-list-w: 220px;
@@ -1948,4 +1949,95 @@ textarea.text-field {
 }
 .dialog .actions .spacer {
   flex: 1;
+}
+
+/* Diagnostics (F7, debug-panel.ts): over the drawing's left side, under the top bar; scrolls inside. */
+.debug-panel {
+  position: fixed;
+  top: calc(var(--topbar-h, var(--control-h)) + var(--sp-4));
+  left: calc(var(--rail-w, var(--control-h)) + var(--sp-3));
+  width: min(var(--debug-w), calc(100vw - 2 * var(--sp-4)));
+  max-height: calc(100vh - 2 * var(--sp-4) - var(--control-h) * 2);
+  overflow-y: auto;
+  z-index: 15;
+  background: var(--bg);
+  border: var(--line) solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  font-size: var(--fs-sm);
+}
+.debug-panel[hidden] {
+  display: none;
+}
+.debug-hint {
+  flex: 1;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  padding: 0 var(--sp-2);
+}
+.debug-section {
+  padding: var(--sp-2) var(--sp-3);
+  border-top: var(--line) solid var(--border);
+}
+.debug-section h3 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-sm);
+}
+.debug-section p {
+  margin: 0 0 var(--sp-1);
+  color: var(--text-2);
+}
+.debug-list {
+  display: grid;
+  gap: var(--sp-1);
+}
+.debug-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 var(--sp-2);
+  align-items: baseline;
+  padding: var(--sp-1) var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.debug-row:hover {
+  background: var(--field);
+}
+.debug-dot {
+  width: var(--sp-2);
+  height: var(--sp-2);
+  border-radius: 50%;
+  background: var(--text-3);
+}
+.debug-row.error .debug-dot {
+  background: var(--error);
+}
+.debug-row.warn .debug-dot {
+  background: var(--warn);
+}
+.debug-ids {
+  grid-column: 2;
+  color: var(--text-2);
+}
+.debug-ok {
+  color: var(--text-3);
+}
+.debug-mono,
+.debug-error {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-2);
+}
+.debug-error {
+  color: var(--error);
 }

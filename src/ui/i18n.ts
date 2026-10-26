@@ -231,6 +231,22 @@ const en = {
   'key.flipSideOn': 'other side: on',
   'help.space': 'Drawing walls: puts their bodies on the other side of the line drawn',
   'layer.refLines': 'Reference lines',
+  'debug.title': 'Diagnostics',
+  'debug.hint': 'F7 opens and closes this panel',
+  'debug.summary': 'Model',
+  'debug.counts': '{walls} walls, {openings} doors and windows, {rooms} rooms, {floors} floors, {levels} levels; file version {version}',
+  'debug.render': 'Last drawing: {ms} ms ({view})',
+  'debug.problems': 'Problems ({n})',
+  'debug.none': 'None found.',
+  'debug.errors': 'Console errors ({n})',
+  'debug.noErrors': 'None.',
+  'debug.clear': 'Clear',
+  'debug.selection': 'Selection',
+  'debug.noSelection': 'Nothing selected.',
+  'debug.kind.piecesOverlap': 'Pieces of two walls lie over each other',
+  'debug.kind.wallEmpty': 'A wall with nothing left to draw',
+  'debug.kind.wallSliver': 'A wall with sliver pieces',
+  'debug.pal': 'Diagnostics panel',
   'layer.openingTags': 'Door and window tags',
   'pal.openingTags': 'Show or hide the door and window tags',
   'mark.door': 'D',
@@ -1048,6 +1064,22 @@ const pt: Record<MessageKey, string> = {
   'key.flipSideOn': 'lado invertido',
   'help.space': 'Desenhando paredes: põe o corpo do outro lado da linha desenhada',
   'layer.refLines': 'Linhas de referência',
+  'debug.title': 'Diagnóstico',
+  'debug.hint': 'F7 abre e fecha este painel',
+  'debug.summary': 'Modelo',
+  'debug.counts': '{walls} paredes, {openings} portas e janelas, {rooms} cômodos, {floors} pisos, {levels} pavimentos; arquivo versão {version}',
+  'debug.render': 'Último desenho: {ms} ms ({view})',
+  'debug.problems': 'Problemas ({n})',
+  'debug.none': 'Nenhum encontrado.',
+  'debug.errors': 'Erros do console ({n})',
+  'debug.noErrors': 'Nenhum.',
+  'debug.clear': 'Limpar',
+  'debug.selection': 'Seleção',
+  'debug.noSelection': 'Nada selecionado.',
+  'debug.kind.piecesOverlap': 'Peças de duas paredes uma sobre a outra',
+  'debug.kind.wallEmpty': 'Parede sem nada para desenhar',
+  'debug.kind.wallSliver': 'Parede com lascas (peças minúsculas)',
+  'debug.pal': 'Painel de diagnóstico',
   'layer.openingTags': 'Etiquetas de portas e janelas',
   'pal.openingTags': 'Mostrar ou ocultar as etiquetas de portas e janelas',
   'mark.door': 'P',
@@ -1655,6 +1687,9 @@ export const htmlLang = (l: Lang): string => (l === 'pt' ? 'pt-BR' : 'en');
 /** The message in both languages, for finding it by either name (the command palette). */
 export const tBoth = (key: MessageKey, vars: Readonly<Record<string, string | number>> = {}): string =>
   [en[key], pt[key]].map((text) => text.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? ''))).join(' ');
+
+/** Whether a key is a message (a warning kind read from the engine, say). */
+export const hasMessage = (key: string): key is MessageKey => key in en;
 
 export function t(key: MessageKey, vars: Readonly<Record<string, string | number>> = {}): string {
   const text = lang === 'pt' ? pt[key] : en[key];

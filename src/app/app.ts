@@ -63,6 +63,8 @@ const SNAP_OF = {
 } as const;
 import { applyTemporary, boundsOf, shownFor, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, openingOutline, type TemporaryView } from './geometry';
 import { similarTo } from './select-similar';
+import { type Diagnostic, diagnose } from './diagnostics';
+import { renderDebugPanel } from '../ui/debug-panel';
 import { markPoint, openingMarks } from '../elements/opening/marks';
 import { renderBrowser } from '../ui/browser';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
@@ -1850,7 +1852,9 @@ export class App {
   covered(): Insets {
     const vp = this.shell.viewport.getBoundingClientRect();
     const b = this.shell.browser.hidden ? null : this.shell.browser.getBoundingClientRect();
-    const left = b && b.width > 0 ? b.right - vp.left : 0;
+    // The diagnostics panel (F7) lies over the drawing's left side too: what it frames shows beside it.
+    const d = this.debugOpen ? this.debugBox.getBoundingClientRect() : null;
+    const left = Math.max(b && b.width > 0 ? b.right - vp.left : 0, d && d.width > 0 ? d.right - vp.left : 0);
     if (this.shell.panel.hidden) return { right: 0, bottom: 0, left };
     const p = this.shell.panel.getBoundingClientRect();
     if (p.width === 0 || p.height === 0) return { right: 0, bottom: 0, left };
@@ -2137,17 +2141,63 @@ export class App {
   private readonly perf = new URLSearchParams(location.search).has('perf');
   private marks: [string, number][] = [];
   private mark(name: string): void {
-    if (this.perf) this.marks.push([name, performance.now()]);
+    this.marks.push([name, performance.now()]);
   }
+  /** The last render's phases (ms), for the diagnostics panel (F7); logged too with ?perf. */
+  lastFrame: { total: number; steps: [string, number][] } | null = null;
 
   render(): void {
     this.keepPlanView();
-    if (!this.perf) return this.renderFrame();
     this.marks = [['start', performance.now()]];
     this.renderFrame();
     this.mark('end');
-    const steps = this.marks.slice(1).map(([name, at], i) => `${name} ${(at - this.marks[i]![1]).toFixed(1)}`);
-    console.info(`[cad2 perf] ${this.ui.view} ${(this.marks.at(-1)![1] - this.marks[0]![1]).toFixed(1)} ms: ${steps.join(', ')}`);
+    const steps = this.marks.slice(1).map(([name, at], i): [string, number] => [name, at - this.marks[i]![1]]);
+    this.lastFrame = { total: this.marks.at(-1)![1] - this.marks[0]![1], steps };
+    if (this.perf) console.info(`[cad2 perf] ${this.ui.view} ${this.lastFrame.total.toFixed(1)} ms: ${steps.map(([n, ms]) => `${n} ${ms.toFixed(1)}`).join(', ')}`);
+    if (this.debugOpen) renderDebugPanel(this, this.debugBox);
+  }
+
+  // ---- diagnostics (F7) --------------------------------------------------------------------------
+
+  /** The diagnostics panel is open (ui/debug-panel.ts). */
+  debugOpen = false;
+  readonly debugBox: HTMLElement = (() => {
+    const box = document.createElement('aside');
+    box.className = 'debug-panel';
+    box.hidden = true;
+    box.setAttribute('aria-label', 'Diagnostics');
+    document.body.append(box);
+    return box;
+  })();
+  private diagnosed: { g: DerivedGeometry; list: Diagnostic[] } | null = null;
+
+  /** What is wrong with the model (diagnostics.ts), once per geometry. */
+  diagnostics(): Diagnostic[] {
+    if (this.diagnosed?.g !== this.geometry) this.diagnosed = { g: this.geometry, list: diagnose(this.geometry) };
+    return this.diagnosed.list;
+  }
+
+  toggleDebug(open = !this.debugOpen): void {
+    this.debugOpen = open;
+    this.debugBox.hidden = !open;
+    if (open) renderDebugPanel(this, this.debugBox);
+  }
+
+  /** The elements of a problem selected and framed, on their level. */
+  showElements(ids: readonly string[]): void {
+    const doc = this.store.get();
+    const levelOfId = (id: string) =>
+      doc.walls.find((w) => w.id === id)?.levelId ??
+      doc.walls.find((w) => w.id === doc.openings.find((o) => o.id === id)?.wallId)?.levelId ??
+      doc.rooms.find((r) => r.id === id)?.levelId ??
+      doc.floors.find((x) => x.id === id)?.levelId;
+    const level = ids.map(levelOfId).find((l) => l !== undefined);
+    if (level && level !== this.ui.levelId) this.setLevel(level);
+    this.setTool('select');
+    this.ui.selection.clear();
+    for (const id of ids) this.ui.selection.add(id);
+    this.frameSelection();
+    this.refresh();
   }
 
   /** Where the pointer is over the drawing (client pixels), set by the input layer; null off it. */

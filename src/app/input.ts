@@ -18,6 +18,7 @@ import { showLevels } from '../ui/levels-dialog';
 import { showTourDialog } from '../ui/tour-dialog';
 import { showPointsDialog } from '../ui/points-dialog';
 import { showSchedulesDialog } from '../ui/schedules-dialog';
+import { watchErrors } from './error-log';
 import { showWallTypes } from '../ui/types-dialog';
 import { showPalette } from '../ui/palette';
 import { offerTour, startTour } from '../ui/tour';
@@ -50,6 +51,7 @@ export function wireInput(app: App): void {
   app.openTour = () => showTourDialog(app);
   app.openPoints = () => showPointsDialog(app);
   app.openSchedules = () => showSchedulesDialog(app);
+  watchErrors(() => app.debugOpen && app.toggleDebug(true));
   app.openWallTypes = (typeId) => showWallTypes(app, typeId);
   shell.sidebar.addEventListener('click', () => app.toggleBrowser());
   offerTour(app);
@@ -696,6 +698,11 @@ export function wireInput(app: App): void {
     const ctrl = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
     shift = e.shiftKey;
+    // The diagnostics panel, from anywhere but a dialog's field.
+    if (e.key === 'F7') {
+      e.preventDefault();
+      return app.toggleDebug();
+    }
     // A tour playing: the arrows go from stop to stop, Space pauses, Esc stops; the rest waits.
     if (app.tour && !ctrl) {
       if (key === 'arrowright' || key === 'arrowleft') {
