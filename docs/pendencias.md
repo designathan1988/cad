@@ -140,7 +140,33 @@ Terceira rodada (mesmo dia, Chrome visível, projeto "Casa Jardim" montado com g
   ferramenta em uso está nele; no celular as ferramentas vão para a segunda linha, ao lado do pavimento
   e das vistas. O tour ganhou a parada "Editar".
 
+Quarta rodada (2026-10-25, Chrome visível pelo Playwright, 1920×1080, 1280, 1024, 768 e 390 px; um
+anexo desenhado na Casa Jardim com gestos imprecisos), corrigidos e vistos no navegador (95fc9aa, d774353):
+- Parede continuada a partir de um canto existente, em linha com uma das paredes mas no sentido contrário:
+  "Paredes demais num mesmo ponto" e a parede de topo sobreposta às duas; agora T limpo (spec §7.4).
+- Duas paredes desenhadas até o eixo de uma terceira, uma de cada lado: viravam um L atravessando o corpo
+  dela, sem aviso; agora dois T (spec §6).
+- Medir: a fita pegava a linha entre reboco e núcleo (4,38 m num quarto de 4,35 m) e o eixo da parede do
+  outro lado (4,43 m); agora o contorno das paredes e o pé perpendicular mais perto.
+- Dividir: clique no vazio alinhado com a ponta de uma parede ia para ela ("perto demais da ponta").
+- Dividir, Canto e Unir dizem no rodapé o que fizeram; etiquetas de cômodo saem de baixo das linhas das
+  cotas temporárias; rodapé esconde primeiro as teclas para a dica caber (1280 px); no 3D diz como girar;
+  A e Q dizem o que fazem agora; botão do painel em tela estreita mostra o que está na tela e abre o painel
+  sem seleção; barra superior dobra os botões da direita num menu (☰); apagar pavimento impossível mostra o
+  motivo ao passar o mouse; atalhos mais largos; "Próxima porta/janela" com o texto certo; W, Q na paleta.
+
 Achados desta rodada ainda abertos:
+- Mover (Shift+M) leva as juntas com paredes não selecionadas: mover as paredes de um anexo estica a casa
+  (e as janelas medidas da parede ao lado vão junto). Falta a opção "Desunir" do Move do Revit (ou o Alt,
+  como no arraste).
+- No 3D, cômodo sem piso aparece preto (o chão em sombra): parece buraco.
+- "Explodir" ligado com um pavimento só à mostra não muda nada e continua pressionado.
+- Ferramenta Cômodo: nenhuma prévia do contorno sob o ponteiro antes do clique.
+- Paredes desenhadas no sentido horário põem o acabamento externo para dentro (convenção: externo à
+  direita); nada avisa. A passagem entre uma parede assim e a vizinha mostra a linha entre os acabamentos.
+- Não verificado: a barra superior com emulação de toque (botões de 44 px).
+
+Achados da rodada anterior ainda abertos:
 - Modificar: porta ou janela sozinha não é levada (vai com a parede); cópia para outro pavimento;
   matriz (várias cópias em série) e deslocamento paralelo (offset) ainda não.
 - Paredes empilhadas com faces desalinhadas (ex.: 20 cm sob 15 cm, ambas no eixo) deixam um degrau
