@@ -108,6 +108,12 @@ export class Scene3D {
   private readonly sun = new THREE.DirectionalLight(undefined, 1.5);
   private readonly fill = new THREE.DirectionalLight(undefined, 0.6);
   private covered = { right: 0, bottom: 0, left: 0 };
+  /**
+   * How far the view's centre is shifted (px), set when the view is framed from what the panels
+   * covered then. A panel shown or hidden later leaves it: shifting it then moved the whole model on
+   * screen, with no camera move, each time a selection brought the panel in.
+   */
+  private shift = { x: 0, y: 0 };
   private offsetDirty = false;
   private readonly grid: THREE.GridHelper;
   /**
@@ -509,9 +515,8 @@ export class Scene3D {
       this.renderer.setSize(w, h, false);
       this.persp.aspect = w / h;
       Object.assign(this.ortho, { left: -this.orthoHalf * (w / h), right: this.orthoHalf * (w / h), top: this.orthoHalf, bottom: -this.orthoHalf });
-      // A panel over the right or bottom edge: shift the view so its centre is the visible part's.
-      const { right, bottom, left } = this.covered;
-      if (right > 0 || bottom > 0 || left > 0) this.camera.setViewOffset(w, h, (right - left) / 2, bottom / 2, w, h);
+      // Framed beside a panel: the view's centre is the part it left visible (see shift).
+      if (this.shift.x !== 0 || this.shift.y !== 0) this.camera.setViewOffset(w, h, this.shift.x, this.shift.y, w, h);
       else this.camera.clearViewOffset();
       this.camera.updateProjectionMatrix();
       this.offsetDirty = false;
@@ -795,6 +800,9 @@ export class Scene3D {
     const visW = Math.max(w - this.covered.right - this.covered.left, w * 0.3);
     const visH = Math.max(h - this.covered.bottom, h * 0.3);
     this.controls.target.copy(center);
+    // Centred in what the panels leave visible now.
+    this.shift = { x: (this.covered.right - this.covered.left) / 2, y: this.covered.bottom / 2 };
+    this.offsetDirty = true;
     if (this.orthoOn) {
       // As tall as the model needs, from far enough that nothing is behind the camera.
       this.orthoHalf = ((radius * 1.05) / Math.min(1, visW / visH)) * (h / visH);

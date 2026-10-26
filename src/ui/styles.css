@@ -262,6 +262,8 @@ textarea {
   display: flex;
   align-items: center;
   gap: var(--sp-1);
+  min-width: 0;
+  flex: 0 1 auto;
 }
 /* The views keep their whole name: shared out equally, "Caminhar" (the longest) was cut at its end. */
 .top .segmented button {
@@ -2112,6 +2114,9 @@ textarea.text-field {
   min-width: 0;
 }
 .saved-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--title-text-2);
   font-size: var(--fs-sm);
   white-space: nowrap;
@@ -2139,6 +2144,9 @@ textarea.text-field {
   gap: var(--sp-2);
   width: var(--search-w);
   max-width: 40vw;
+  /* It gives way before it covers the project's name in the middle (a window under 1000 px). */
+  min-width: 0;
+  flex: 0 1 auto;
   height: calc(var(--control-h) - var(--sp-1));
   padding: 0 var(--sp-2);
   border: var(--line) solid var(--title-border);

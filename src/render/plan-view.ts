@@ -168,8 +168,22 @@ export class PlanView {
     this.ctx = ctx;
   }
 
+  /** The canvas size the centre was last kept for (see size). */
+  private seen = { w: 0, h: 0 };
+
+  /**
+   * The canvas size. When it changes (the panel opened or closed beside the drawing, the window
+   * resized) the drawing keeps its top left corner where it was: keeping its centre slid everything
+   * by half the panel's width, a jump the user saw on every panel shown or hidden.
+   */
   private get size() {
-    return { w: this.canvas.clientWidth, h: this.canvas.clientHeight };
+    const w = this.canvas.clientWidth;
+    const h = this.canvas.clientHeight;
+    if (w > 0 && h > 0 && (w !== this.seen.w || h !== this.seen.h)) {
+      if (this.seen.w > 0 && this.seen.h > 0) this.center = { x: this.center.x + (w - this.seen.w) / (2 * this.scale), y: this.center.y - (h - this.seen.h) / (2 * this.scale) };
+      this.seen = { w, h };
+    }
+    return { w, h };
   }
 
   toScreen(p: Point2): Point2 {
