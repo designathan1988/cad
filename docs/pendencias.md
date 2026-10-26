@@ -403,13 +403,13 @@ Entrega final do adendo 2 (l.152)
 
 ## Adendo do passeio virtual (ref/chat.txt:154-192; etapas 13 a 15)
 
-- Modo caminhar: entrar e sair por botão e atalho, clicando onde começar, na planta ou no 3D (l.160, l.187): falta.
-- Andar com WASD ou setas, olhar com o mouse, correr com Shift (l.161): falta.
-- Joystick na tela e arrastar para olhar, no celular e no tablet (l.161, l.187): falta.
-- Altura dos olhos ajustável, padrão 1,60 m (l.162): falta.
-- Colisão: paredes bloqueiam, vãos de porta deixam passar (l.163, l.181): falta.
-- Trocar de pavimento por seletor ou atalho, no mesmo ponto (l.164, l.187): falta.
-- Esc sai e volta à câmera anterior (l.165): falta.
+- Modo caminhar: entrar e sair por botão e atalho (3), clicando onde começar, na planta ou no 3D (l.160, l.187): existe (botão Caminhar, tecla 3, "Caminhar daqui" no menu do botão direito e no cômodo).
+- Andar com WASD ou setas, olhar com o mouse, correr com Shift (l.161): existe (olhar arrastando).
+- Joystick na tela e arrastar para olhar, no celular e no tablet (l.161, l.187): existe; testado com o mouse, não com toque de verdade.
+- Altura dos olhos ajustável, padrão 1,60 m (l.162): existe (+ e −, de 0,80 a 2,20 m, guardada).
+- Colisão: paredes bloqueiam, vãos de porta deixam passar (l.163, l.181): existe (na altura do joelho: o peitoril da janela bloqueia; desliza ao longo da parede; as portas aparecem abertas).
+- Trocar de pavimento por seletor ou atalho, no mesmo ponto (l.164, l.187): existe (PageUp e PageDown).
+- Esc sai e volta à câmera anterior (l.165): existe.
 - Máquina de estado do modo caminhar com tabela escrita (l.180): falta.
 - Tour guiado: paradas com nome e legenda; reordenar, editar e apagar (l.169, l.188): falta. O tour de 4 passos da interface (l.240) existe e é outra coisa.
 - Pontos de interesse numerados com cartão de título e texto (l.170, l.188): falta.
@@ -427,7 +427,7 @@ Entrega final do adendo 2 (l.152)
 ## Adendo 3: interface (ref/chat.txt:194-257)
 
 Inventário linha a linha feito antes: 44 de 47 itens existem no código. Abertos:
-- Modo caminhar na interface (l.203): parcial, existe o botão "Caminhar", desligado; depende do modo caminhar acima.
+- Modo caminhar na interface (l.203): existe.
 - Alvos de 44 px no toque (l.244): conferidos só pelos tokens; não testado com toque de verdade.
 - **Tudo operável pelo teclado (l.242): parcial.** O fluxo só com teclado da sessão de teste achou
   4 faltas (K1 a K4): Novo projeto, porta e janela sem ponteiro, piso de cômodo sem clique, zoom e
