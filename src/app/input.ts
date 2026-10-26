@@ -192,7 +192,9 @@ export function wireInput(app: App): void {
             ? ui.gridFrom
             : ui.tool === 'beam'
               ? ui.beamFrom
-              : null;
+              : ui.tool === 'roof'
+                ? (ui.roofDraft.at(-1) ?? null)
+                : null;
     const measuring = ui.tool === 'measure' || ui.tool === 'dimension';
     const modifyFrom = ui.tool === 'modify' && ui.modify && ui.modify.state.step !== 'base' ? ui.modify.state.base : null;
     const faces = measuring ? levelFaces() : [];
@@ -307,6 +309,8 @@ export function wireInput(app: App): void {
       ...gridHit,
       ...[...g.rooms.values()].filter((r) => r.enclosed && insideRing(r.outline, p)).map((r) => r.room.id),
       ...[...g.floors.values()].filter((f) => f.outline.length >= 3 && insideRing(f.outline, p)).map((f) => f.floor.id),
+      // A roof last: it lies over everything; its overhang, outside the walls, is where it is taken first.
+      ...[...g.roofs.values()].filter((r) => insideRing(r.outline, p)).map((r) => r.roof.id),
     ].filter((id): id is string => id !== null);
   };
   const planPick = (p: Point2): string | null => planHits(p)[0] ?? null;
@@ -364,7 +368,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam') {
+    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'roof') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -500,6 +504,10 @@ export function wireInput(app: App): void {
       app.render();
       return true;
     }
+    if (ui.tool === 'roof' && ui.roofDraft.length > 0) {
+      app.roofFinish();
+      return true;
+    }
     if (ui.tool === 'measure' && ui.measure.kind !== 'idle') {
       app.measureEvent({ kind: 'escape' });
       return true;
@@ -593,6 +601,11 @@ export function wireInput(app: App): void {
     if (ui.tool === 'beam') {
       const at = aimAt3d(e);
       if (at) app.beamClick(snapped(e)?.point ?? at.p);
+      return;
+    }
+    if (ui.tool === 'roof') {
+      const at = worldAt(e);
+      if (at) app.roofClick(snapped(e)?.point ?? at.p, at.mpp);
       return;
     }
     if (ui.tool === 'room' || ui.tool === 'floor') {
@@ -713,6 +726,7 @@ export function wireInput(app: App): void {
   shell.toolGrid.addEventListener('click', () => app.setTool('grid'));
   shell.toolColumn.addEventListener('click', () => app.setTool('column'));
   shell.toolBeam.addEventListener('click', () => app.setTool('beam'));
+  shell.toolRoof.addEventListener('click', () => app.setTool('roof'));
   shell.toolSplit.addEventListener('click', () => app.setTool('split'));
   shell.toolCorner.addEventListener('click', () => app.setTool('corner'));
   for (const [kind, b] of Object.entries(shell.modifyTools)) b.addEventListener('click', () => app.startModify(kind as ModifyKind));
@@ -960,6 +974,11 @@ export function wireInput(app: App): void {
       if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'grid') return app.gridEscape();
       if (ui.tool === 'column') return app.setTool('select');
+      if (ui.tool === 'roof') {
+        if (ui.roofDraft.length === 0) return app.setTool('select');
+        ui.roofDraft = [];
+        return app.render();
+      }
       if (ui.tool === 'beam') {
         if (!ui.beamFrom) return app.setTool('select');
         ui.beamFrom = null;
@@ -1027,6 +1046,7 @@ export function wireInput(app: App): void {
     if (key === 'm') return app.setTool('measure');
     if (key === 'p') return app.setTool('column');
     if (key === 'b') return app.setTool('beam');
+    if (key === 't') return app.setTool('roof');
     if (key === 'v') return app.setTool('select');
     if (key === 'f') return app.frameSelection();
     // Choosing and moving elements without a mouse: N / Shift+N go through the level's elements;

@@ -14,7 +14,7 @@ import type { DerivedGeometry } from '../app/geometry';
 import { add, scale } from '../core/vector';
 import { visibleFaces } from '../elements/wall/geometry/faces';
 import type { LayerFunction } from '../elements/wall/schema';
-import { prism, shownPrism, slabGeometry } from './prisms';
+import { prism, roofGeometry, shownPrism, slabGeometry } from './prisms';
 
 /** How the nodes and materials are named: as the interface says it. */
 export interface ExportNaming {
@@ -25,22 +25,25 @@ export interface ExportNaming {
   readonly floor: (n: number) => string;
   readonly column: (n: number) => string;
   readonly beam: (n: number) => string;
+  readonly roof: (n: number) => string;
   /** A layer's material by its id (plaster, brick): what a renderer assigns its own materials by. */
   readonly material: (materialId: string) => string;
   readonly glass: string;
   readonly leaf: string;
   readonly floorMaterial: string;
   readonly columnMaterial: string;
+  readonly roofMaterial: string;
 }
 
 /** Plain colours for the materials, as a viewer shows them lit: not the interface's, which follow its theme. */
-const COLOUR: Readonly<Record<LayerFunction | 'floor' | 'leaf' | 'glass', number>> = {
+const COLOUR: Readonly<Record<LayerFunction | 'floor' | 'leaf' | 'glass' | 'roof', number>> = {
   structure: 0xc9b8a3,
   substrate: 0xd8cfc2,
   thermal: 0xe5d68c,
   finish1: 0xece8e0,
   finish2: 0xece8e0,
   floor: 0xd6d0c6,
+  roof: 0xa8634a,
   leaf: 0x8a5a3c,
   glass: 0x9cc3dd,
 };
@@ -148,6 +151,13 @@ export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): 
     mesh.name = naming.column(++columns);
     mesh.userData = { cad2Id: c.column.id, kind: 'column', level: levelName(c.column.levelId), width: c.column.width, depth: c.column.depth };
     levelGroup(c.column.levelId).add(mesh);
+  }
+  let roofs = 0;
+  for (const r of g.roofs.values()) {
+    const mesh = new THREE.Mesh(roofGeometry(r.faces, r.gables, r.parapets, r.roof.thickness), material('roof', naming.roofMaterial));
+    mesh.name = naming.roof(++roofs);
+    mesh.userData = { cad2Id: r.roof.id, kind: 'roof', level: levelName(r.roof.levelId), roofKind: r.roof.kind };
+    levelGroup(r.roof.levelId).add(mesh);
   }
   let beams = 0;
   for (const b of g.beams.values()) {

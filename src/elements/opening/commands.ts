@@ -85,6 +85,7 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
     const grids = doc.grids.filter((x) => !drop.has(x.id));
     const columns = doc.columns.filter((x) => !drop.has(x.id));
     const beams = doc.beams.filter((x) => !drop.has(x.id));
+    const roofs = doc.roofs.filter((x) => !drop.has(x.id));
     // A dimension goes with what holds either of its ends, as Revit's does.
     const held = (id: string | null) => id !== null && (drop.has(id) || gone.has(id));
     const dimensions = doc.dimensions.filter((d) => !drop.has(d.id) && !held(anchorElement(d.a)) && !held(anchorElement(d.b)));
@@ -98,7 +99,8 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
       dimensions.length === doc.dimensions.length &&
       grids.length === doc.grids.length &&
       columns.length === doc.columns.length &&
-      beams.length === doc.beams.length
+      beams.length === doc.beams.length &&
+      roofs.length === doc.roofs.length
     ) {
       return doc;
     }
@@ -117,7 +119,7 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
           ? { ...o, rule: { kind: 'fromStart' as const, distance: placed.get(o.id)!.start } }
           : o,
       );
-    return settleGroups(doc, { ...doc, walls, openings, rooms, floors, guides, notes, dimensions, grids, columns, beams });
+    return settleGroups(doc, { ...doc, walls, openings, rooms, floors, guides, notes, dimensions, grids, columns, beams, roofs });
   },
 });
 

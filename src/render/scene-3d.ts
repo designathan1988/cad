@@ -12,7 +12,7 @@ import type { WallId } from '../elements/wall/schema';
 import { LAYER_TOKEN } from '../ui/swatch';
 import { blockPaint, wallMeshKey } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
-import { prism, shownPrism, slabGeometry, toThree } from './prisms';
+import { prism, roofGeometry, shownPrism, slabGeometry, toThree } from './prisms';
 import { featureEdges } from '../elements/wall/geometry/edges';
 import { symbolLines } from '../elements/opening/symbol';
 import { boxCaps, type SectionBox, type SectionLine, sectionCaps, sectionLooks, type UprightPrism } from '../app/section-box';
@@ -69,6 +69,7 @@ export class Scene3D {
     side: new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide }),
     top: new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide }),
     floor: new THREE.MeshStandardMaterial({ roughness: 0.95, side: THREE.DoubleSide }),
+    roof: new THREE.MeshStandardMaterial({ roughness: 0.85, side: THREE.DoubleSide }),
     sideSel: new THREE.MeshStandardMaterial({ roughness: 0.8, side: THREE.DoubleSide }),
     topSel: new THREE.MeshStandardMaterial({ roughness: 0.8, side: THREE.DoubleSide }),
     preview: new THREE.MeshStandardMaterial({ roughness: 0.8, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
@@ -429,6 +430,7 @@ export class Scene3D {
     m.side.color = c('--3d-side');
     m.top.color = c('--3d-top');
     m.floor.color = c('--3d-floor');
+    m.roof.color = c('--3d-roof');
     m.sideSel.color = c('--3d-side-sel');
     m.topSel.color = c('--accent');
     m.preview.color = c('--3d-preview');
@@ -582,6 +584,30 @@ export class Scene3D {
       this.scene.add(group);
       this.walls.set(id, { group, key });
       place(id, c.column.levelId);
+    }
+    // Roofs: their faces as slabs, gables and parapets (prisms.ts: roofGeometry).
+    for (const r of g.roofs.values()) {
+      const id = r.roof.id;
+      seen.add(id);
+      const state = selected.has(id) ? 's' : 'n';
+      let rkey = this.shapeKeys.get(r);
+      if (rkey === undefined) this.shapeKeys.set(r, (rkey = JSON.stringify([r.roof, r.base])));
+      const key = state + rkey;
+      const old = this.walls.get(id);
+      if (old?.key === key) {
+        place(id, r.roof.levelId);
+        continue;
+      }
+      if (old) this.drop(old.group);
+      const group = new THREE.Group();
+      const geo = roofGeometry(r.faces, r.gables, r.parapets, r.roof.thickness);
+      const mesh = new THREE.Mesh(geo, state === 's' ? this.materials.sideSel : this.materials.roof);
+      mesh.add(this.outline(geo));
+      group.add(mesh);
+      group.userData.wallId = id;
+      this.scene.add(group);
+      this.walls.set(id, { group, key });
+      place(id, r.roof.levelId);
     }
     // Beams: their outline extruded from bottom to top.
     for (const b of g.beams.values()) {

@@ -1,6 +1,7 @@
 // The project document: only what the user decided. Thickness, heights, joins and geometry are
 // always derived from it.
 
+import type { Roof } from '../elements/roof/schema';
 import type { Beam } from '../elements/beam/schema';
 import type { Column } from '../elements/column/schema';
 import type { PointOfInterest } from './points';
@@ -43,7 +44,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 17;
+  readonly version: 18;
   readonly name: string;
   readonly levels: readonly Level[];
   readonly wallTypes: readonly WallType[];
@@ -71,6 +72,8 @@ export interface Doc {
   readonly columns: readonly Column[];
   /** Beams (elements/beam). */
   readonly beams: readonly Beam[];
+  /** Roofs (elements/roof). */
+  readonly roofs: readonly Roof[];
 }
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */
@@ -81,13 +84,13 @@ export interface WallDefaults {
   readonly top: HeightRule;
 }
 
-/** The ids of every element that can be selected: walls, openings, rooms, floors, guides, notes, dimensions, grids, columns and beams. */
+/** The ids of every element that can be selected: walls, openings, rooms, floors, guides, notes, dimensions, grids, columns, beams and roofs. */
 export const elementIds = (doc: Doc): Set<string> =>
-  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.guides, ...doc.notes, ...doc.dimensions, ...doc.grids, ...doc.columns, ...doc.beams].map((e) => e.id));
+  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.guides, ...doc.notes, ...doc.dimensions, ...doc.grids, ...doc.columns, ...doc.beams, ...doc.roofs].map((e) => e.id));
 
 export function newDocument(): Doc {
   return {
-    version: 17,
+    version: 18,
     name: '',
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
     wallTypes: [
@@ -133,6 +136,7 @@ export function newDocument(): Doc {
     grids: [],
     columns: [],
     beams: [],
+    roofs: [],
   };
 }
 

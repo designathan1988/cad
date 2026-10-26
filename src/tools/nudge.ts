@@ -48,6 +48,7 @@ export function nudge(doc: Doc, g: DerivedGeometry, ids: readonly string[], step
   const grids = next.grids.map((x) => (set.has(x.id) ? { ...x, start: moved(x.start), end: moved(x.end) } : x));
   const columns = next.columns.map((x) => (set.has(x.id) ? { ...x, at: moved(x.at) } : x));
   const beams = next.beams.map((x) => (set.has(x.id) ? { ...x, start: moved(x.start), end: moved(x.end) } : x));
+  const roofs = next.roofs.map((x) => (set.has(x.id) ? { ...x, outline: x.outline.map(moved) } : x));
   // A dimension's free ends go; an end held by a wall or an opening stays with it.
   const free = (a: DimAnchor): DimAnchor => (a.kind === 'point' ? { kind: 'point', at: moved(a.at) } : a);
   const dimensions = next.dimensions.map((d) => (set.has(d.id) && (d.a.kind === 'point' || d.b.kind === 'point') ? { ...d, a: free(d.a), b: free(d.b) } : d));
@@ -61,8 +62,9 @@ export function nudge(doc: Doc, g: DerivedGeometry, ids: readonly string[], step
     dimensions.some((d, i) => d !== next.dimensions[i]) ||
     grids.some((x, i) => x !== next.grids[i]) ||
     columns.some((x, i) => x !== next.columns[i]) ||
-    beams.some((x, i) => x !== next.beams[i]);
-  return changed ? { ...next, openings, rooms, floors, guides, notes, dimensions, grids, columns, beams } : doc;
+    beams.some((x, i) => x !== next.beams[i]) ||
+    roofs.some((x, i) => x !== next.roofs[i]);
+  return changed ? { ...next, openings, rooms, floors, guides, notes, dimensions, grids, columns, beams, roofs } : doc;
 }
 
 /** The rule moved `along` metres toward the wall's end; one without a distance is measured from the start. */

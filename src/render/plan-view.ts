@@ -487,6 +487,36 @@ export class PlanView {
       ctx.lineWidth = lit ? 2 : 1;
       ctx.stroke();
     }
+    // Roofs above the cut: the eaves dashed, the ridges and hips (the faces' sides) thin; lit when selected.
+    ctx.save();
+    for (const r of g.roofs.values()) {
+      const lit = o.selected.has(r.roof.id) || o.hover === r.roof.id;
+      const eaves = r.outline.map((v) => this.toScreen(v));
+      ctx.beginPath();
+      eaves.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      ctx.closePath();
+      if (lit) {
+        ctx.fillStyle = color('--accent-soft');
+        ctx.globalAlpha = 0.5;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      ctx.setLineDash([8, 4]);
+      ctx.strokeStyle = lit ? color('--wall-sel') : color('--text-2');
+      ctx.lineWidth = lit ? 2 : 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineWidth = 1;
+      for (const f of r.faces) {
+        if (r.faces.length < 2) break;
+        const pts = f.polygon.map((v) => this.toScreen(v));
+        ctx.beginPath();
+        pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
     // Beams above the cut: their outline dashed, as hidden lines are; lit when selected or under the pointer.
     ctx.save();
     ctx.setLineDash([6, 4]);

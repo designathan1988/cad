@@ -88,6 +88,7 @@
   --3d-side: #d6d0c6;
   --3d-top: #b4aea6;
   --3d-floor: #c9c5bd;
+  --3d-roof: #a8634a;
   --3d-side-sel: #9db6e8;
   --3d-preview: #7ea0e6;
   /* What a cut through the walls shows of them, as the plan's poché. */
@@ -154,6 +155,7 @@
   --3d-side: #d6d0c6;
   --3d-top: #b4aea6;
   --3d-floor: #c9c5bd;
+  --3d-roof: #a8634a;
   --3d-side-sel: #9db6e8;
   --3d-preview: #7ea0e6;
   --3d-glass: #9cc7e6;

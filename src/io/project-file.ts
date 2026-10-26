@@ -3,6 +3,7 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
+import type { Roof } from '../elements/roof/schema';
 import type { Beam } from '../elements/beam/schema';
 import type { Column } from '../elements/column/schema';
 import { type Doc, type Level, ownValuesOnly } from '../app/document';
@@ -39,12 +40,13 @@ import type { DocWall } from '../app/document';
  * Version 15: columns (`columns`, elements/column). Older files have none.
  * Version 16: beams (`beams`, elements/beam). Older files have none.
  * Version 17: floors with holes, a slope, and ceilings (`holes`, `slope`, `kind`). Older floors have none.
+ * Version 18: roofs (`roofs`, elements/roof). Older files have none.
  */
-export const CURRENT_VERSION = 17;
+export const CURRENT_VERSION = 18;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes' | 'droppedDimensions' | 'droppedGrids' | 'droppedColumns' | 'droppedBeams'; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes' | 'droppedDimensions' | 'droppedGrids' | 'droppedColumns' | 'droppedBeams' | 'droppedRoofs'; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -171,6 +173,23 @@ const isDimAnchor = (a: unknown): boolean =>
 export const isDimension = (d: unknown): d is Dimension =>
   isObject(d) && typeof d.id === 'string' && typeof d.levelId === 'string' && isDimAnchor(d.a) && isDimAnchor(d.b) && finite(d.offset);
 
+/** A roof: an outline of three points or more, a side for each, a thickness above zero. */
+export const isRoof = (r: unknown): r is Roof =>
+  isObject(r) &&
+  typeof r.id === 'string' &&
+  typeof r.levelId === 'string' &&
+  Array.isArray(r.outline) &&
+  r.outline.length >= 3 &&
+  r.outline.every(isPoint) &&
+  Array.isArray(r.edges) &&
+  r.edges.length === r.outline.length &&
+  r.edges.every((e) => isObject(e) && (e.grade === null || finite(e.grade)) && finite(e.overhang)) &&
+  (r.kind === 'flat' || r.kind === 'shed' || r.kind === 'gable' || r.kind === 'hip') &&
+  finite(r.thickness) &&
+  r.thickness > 0 &&
+  finite(r.baseOffset) &&
+  (r.parapet === undefined || finite(r.parapet));
+
 /** A beam: two different points, a section above zero. */
 export const isBeam = (b: unknown): b is Beam =>
   isObject(b) &&
@@ -293,6 +312,12 @@ export function repairProject(raw: unknown): ReadResult {
       return false;
     }),
     grids: keep(raw.grids, isGrid, 'droppedGrids'),
+    // A roof on a level that is gone covers nothing: dropped, and said.
+    roofs: keep(raw.roofs, isRoof, 'droppedRoofs').filter((r, _, all) => {
+      if (levelIds.has(r.levelId)) return true;
+      if (r === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedRoofs', count: all.filter((x) => !levelIds.has(x.levelId)).length });
+      return false;
+    }),
     // A beam on a level that is gone spans nothing: dropped, and said.
     beams: keep(raw.beams, isBeam, 'droppedBeams').filter((b, _, all) => {
       if (levelIds.has(b.levelId)) return true;

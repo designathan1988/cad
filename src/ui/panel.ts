@@ -1,6 +1,8 @@
 // Properties panel, built from what is selected: each element's sections come from its fields
 // (elements/*/fields.ts, rendered by fields.ts). It only reads state and sends changes.
 
+import { type RoofFieldActions, roofFields } from '../elements/roof/fields';
+import type { RoofSolid } from '../elements/roof/geometry';
 import { type BeamFieldActions, beamFields } from '../elements/beam/fields';
 import type { Beam } from '../elements/beam/schema';
 import { type ColumnFieldActions, columnFields } from '../elements/column/fields';
@@ -58,6 +60,8 @@ export interface PanelInput {
   readonly columns: readonly Column[];
   /** The selected beams. */
   readonly beams: readonly Beam[];
+  /** The selected roofs, as built. */
+  readonly roofs: readonly RoofSolid[];
   /** The selected dimensions, and what each measures now (null: an end's element is gone). */
   readonly dimensions: readonly Dimension[];
   readonly dimensionLength: (d: Dimension) => number | null;
@@ -87,6 +91,7 @@ export interface PanelActions {
   readonly renameGrid: GridFieldActions['renameGrid'];
   readonly updateColumns: ColumnFieldActions['updateColumns'];
   readonly updateBeams: BeamFieldActions['updateBeams'];
+  readonly updateRoofs: RoofFieldActions['updateRoofs'];
   /** Moves the wall so its exterior face meets the face of the wall below it. */
   readonly alignBelow: (step: StackedStep) => void;
 }
@@ -101,7 +106,7 @@ function common<T>(walls: readonly DocWall[], get: (w: DocWall) => T): T | null 
 
 export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActions): void {
   const { doc, selected } = input;
-  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window' | 'room' | 'slab' | 'guide' | 'text' | 'dimension' | 'height' | 'hash' | 'column' | 'beam', title: string) => {
+  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window' | 'room' | 'slab' | 'guide' | 'text' | 'dimension' | 'height' | 'hash' | 'column' | 'beam' | 'roof', title: string) => {
     const h = el('div', { class: 'panel-head' });
     h.innerHTML = icon(iconName, 16);
     const close = el('button', { class: 'icon-btn', type: 'button', title: t('panel.close'), 'aria-label': t('panel.close') });
@@ -187,6 +192,11 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     nodes.push(head(kinds.size === 1 && kinds.has('window') ? 'window' : 'door', openingTitle(input.openings)));
     part(input.openings.length);
     nodes.push(...openingPanel(doc, input.placed, input.openings, input.openingWarnings, act.opening, input.levelRooms));
+  } else if (input.roofs.length > 0) {
+    const n = input.roofs.length;
+    nodes.push(head('roof', n === 1 ? t('roof.title') : t('roof.titleMany', { n })));
+    part(n);
+    nodes.push(fieldsSection(t('panel.general'), true, roofFields(input.roofs, act), input.roofs));
   } else if (input.beams.length > 0) {
     const n = input.beams.length;
     nodes.push(head('beam', n === 1 ? t('beam.title') : t('beam.titleMany', { n })));

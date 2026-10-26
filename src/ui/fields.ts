@@ -11,6 +11,8 @@ import { icon, type IconName } from './icons';
 interface Common<T> {
   readonly id: string;
   readonly label: MessageKey;
+  /** What the label's {placeholders} say ("Side {n}"). */
+  readonly labelVars?: Readonly<Record<string, string | number>>;
   /** Drawn before the label, to tell the fields apart at a glance; by default the one FIELD_ICONS gives its id. */
   readonly icon?: IconName;
   /** The label over the control, both across the panel: a segmented control with words needs the width. */
@@ -117,7 +119,7 @@ const FIELD_ICONS: Readonly<Record<string, IconName>> = {
 /** The label of a row: its icon, then its words. */
 function labelled<T>(field: Field<T>): string | { text: string; icon: IconName } {
   const ic = field.icon ?? FIELD_ICONS[field.id];
-  return ic ? { text: t(field.label), icon: ic } : t(field.label);
+  return ic ? { text: t(field.label, field.labelVars), icon: ic } : t(field.label, field.labelVars);
 }
 
 /** A section of rows for the selection, from the fields. */
@@ -129,7 +131,7 @@ export function fieldsSection<T>(title: string, open: boolean, fields: readonly 
   const rows = states.map(({ field, value }) => {
     if (field.kind === 'note') return el('div', {}, el('div', { class: 'panel-note' }, String(value)));
     if (field.kind === 'action') {
-      const b = el('button', { type: 'button', class: 'icon-btn text-btn wide-btn' }, t(field.label));
+      const b = el('button', { type: 'button', class: 'icon-btn text-btn wide-btn' }, t(field.label, field.labelVars));
       b.disabled = value === 'disabled';
       b.addEventListener('click', field.run);
       return el('div', {}, b);
@@ -147,7 +149,7 @@ export function fieldsSection<T>(title: string, open: boolean, fields: readonly 
     if (field.ownWords) note = field.ownWords.note;
     // The note is the field's description; the way back says which field it puts back.
     control.querySelector('input, select, button')?.setAttribute('aria-describedby', noteId);
-    const what = t(field.label);
+    const what = t(field.label, field.labelVars);
     const resetText = t(field.ownWords?.reset ?? 'panel.resetToTypeOf', { field: what });
     const back = el('button', {
       type: 'button',
@@ -177,7 +179,7 @@ function controlFor<T>(field: Field<T>, value: number | string | null, items: re
     case 'segmented':
       return segmented(field.options, value as string | null, field.set, field.labelled ?? field.options.every((o) => !o.icon));
     case 'search':
-      return searchSelect(field.options, value as string | null, field.set, t(field.label));
+      return searchSelect(field.options, value as string | null, field.set, t(field.label, field.labelVars));
     case 'readout':
     case 'note':
     case 'action':

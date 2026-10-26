@@ -44,7 +44,10 @@ import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui
 import { snapLabel, type Snap } from '../tools/snap';
 import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, rectangle, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
-import { type Drag, dragTransform, hull, moveBeams, moveColumns, moveGuides, moveNotes } from './select-drag';
+import { type Drag, dragTransform, hull, moveBeams, moveColumns, moveGuides, moveNotes, moveRoofs } from './select-drag';
+import { addRoof, updateRoofs } from '../elements/roof/commands';
+import { isConvex } from '../elements/roof/geometry';
+import { edgesFor, isRoofId, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, ROOF_PREFIX, ROOF_THICKNESS, type RoofKind } from '../elements/roof/schema';
 import { addBeam, updateBeams } from '../elements/beam/commands';
 import { BEAM_DEPTH, BEAM_PREFIX, BEAM_WIDTH, isBeamId } from '../elements/beam/schema';
 import { addColumn, updateColumns } from '../elements/column/commands';
@@ -149,6 +152,8 @@ export interface UiState {
   beamFrom: Point2 | null;
   /** The floor the floor tool's outline goes through as a hole (startFloorHole), or null for a new floor. */
   holeFor: string | null;
+  /** Corners of a roof's outline being drawn. */
+  roofDraft: Point2[];
   /** A guide being placed (guide-tool.ts): Alt over a wall or a guide in a drawing tool. */
   guide: GuideDraft | null;
   /** How the 3D view shows the levels: which, exploded, cut (view-3d.ts). */
@@ -245,6 +250,7 @@ export class App {
       gridFrom: null,
       beamFrom: null,
       holeFor: null,
+      roofDraft: [],
       guide: null,
       view3d: readView3D(prefs.view3d),
       modify: null,
@@ -377,7 +383,7 @@ export class App {
     // Levels hidden now leave the selection, as a hidden category does.
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      if (!isGuideId(id) && !isNoteId(id) && !isDimId(id) && !isGridId(id) && !shown.solids.has(id) && !shown.columns.has(id) && !shown.beams.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
+      if (!isGuideId(id) && !isNoteId(id) && !isDimId(id) && !isGridId(id) && !shown.solids.has(id) && !shown.columns.has(id) && !shown.beams.has(id) && !shown.roofs.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
     }
     this.refresh();
   }
@@ -412,6 +418,7 @@ export class App {
             floors: d.kind === 'move' ? moveFloors(doc.floors, d.floors, dragTransform(d)) : doc.floors,
             columns: d.kind === 'move' ? moveColumns(doc.columns, d) : doc.columns,
             beams: d.kind === 'move' ? moveBeams(doc.beams, d) : doc.beams,
+            roofs: d.kind === 'move' ? moveRoofs(doc.roofs, d) : doc.roofs,
           }
         : d?.kind === 'slide'
           ? { ...doc, openings: d.openings }
@@ -816,6 +823,7 @@ export class App {
     this.ui.gridFrom = null;
     this.ui.beamFrom = null;
     this.ui.holeFor = null;
+    this.ui.roofDraft = [];
     this.ui.guide = null;
     this.ui.modify = null;
     this.modifyBefore = null;
@@ -1546,6 +1554,34 @@ export class App {
     this.render();
   }
 
+  /**
+   * The roof tool: a click adds a corner of its outline; on the first corner again (10 px), or Enter, the
+   * roof is made: four slopes on a convex outline, flat with a parapet otherwise.
+   */
+  roofClick(p: Point2, mpp: number): void {
+    const draft = this.ui.roofDraft;
+    if (draft.length >= 3 && distance(p, draft[0]!) <= 10 * mpp) return this.roofFinish();
+    this.ui.roofDraft = [...draft, p];
+    this.render();
+  }
+
+  roofFinish(): void {
+    const raw = this.ui.roofDraft;
+    this.ui.roofDraft = [];
+    if (raw.length < 3) return this.render();
+    // Counter-clockwise, so side i runs from corner i to corner i + 1 as roof/geometry.ts reads them.
+    const outline = signedArea(raw) < 0 ? [...raw].reverse() : raw;
+    const kind: RoofKind = isConvex(outline) ? 'hip' : 'flat';
+    const id = newId(ROOF_PREFIX);
+    this.store.dispatch(
+      addRoof({ id, levelId: this.ui.levelId, outline, edges: edgesFor(kind, outline, ROOF_GRADE, ROOF_OVERHANG), kind, thickness: ROOF_THICKNESS, baseOffset: 0, ...(kind === 'flat' ? { parapet: ROOF_PARAPET } : {}) }),
+    );
+    this.setTool('select');
+    this.ui.selection = new Set([id]);
+    this.ui.info = t(kind === 'hip' ? 'hint.roofMade' : 'hint.roofFlat');
+    this.refresh();
+  }
+
   /** The beam tool: a click starts a beam, the next ends it (the section of the last one made); Esc drops it. */
   beamClick(p: Point2): void {
     const from = this.ui.beamFrom;
@@ -1959,6 +1995,7 @@ export class App {
       dimensions: r.doc.dimensions.slice(c.doc.dimensions.length),
       columns: r.doc.columns.slice(c.doc.columns.length),
       beams: r.doc.beams.slice(c.doc.beams.length),
+      roofs: r.doc.roofs.slice(c.doc.roofs.length),
     };
     const level = levelOf(this.store.get(), this.ui.levelId);
     // The rooms renumbered on from the level's rooms as they are now, not as they were at the copy.
@@ -1978,6 +2015,7 @@ export class App {
         dimensions: [...d.dimensions, ...added.dimensions],
         columns: [...d.columns, ...added.columns],
         beams: [...d.beams, ...added.beams],
+        roofs: [...d.roofs, ...added.roofs],
       }),
     });
     this.ui.selection = new Set(r.selection);
@@ -2242,7 +2280,7 @@ export class App {
    */
   async exportGlb(): Promise<void> {
     const doc = this.store.get();
-    if (doc.walls.length === 0 && doc.floors.length === 0 && doc.columns.length === 0 && doc.beams.length === 0) {
+    if (doc.walls.length === 0 && doc.floors.length === 0 && doc.columns.length === 0 && doc.beams.length === 0 && doc.roofs.length === 0) {
       this.ui.info = t('export.nothing');
       return this.renderChrome();
     }
@@ -2256,11 +2294,13 @@ export class App {
         floor: (n) => t('export.floor', { n }),
         column: (n) => t('export.column', { n }),
         beam: (n) => t('export.beam', { n }),
+        roof: (n) => t('export.roof', { n }),
         material: materialName,
         glass: t('export.glass'),
         leaf: t('export.leaf'),
         floorMaterial: t('floor.title'),
         columnMaterial: t('column.title'),
+        roofMaterial: t('roof.title'),
       });
       const bytes = await toGlb(scene);
       scene.traverse((o) => (o as { geometry?: { dispose(): void } }).geometry?.dispose());
@@ -2376,7 +2416,7 @@ export class App {
   private selectionKinds(): number {
     const g = this.geometry;
     const ids = [...this.ui.selection];
-    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isNoteId) ? 1 : 0) + (ids.some(isDimId) ? 1 : 0) + (ids.some(isGridId) ? 1 : 0) + (ids.some(isColumnId) ? 1 : 0) + (ids.some(isBeamId) ? 1 : 0);
+    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isNoteId) ? 1 : 0) + (ids.some(isDimId) ? 1 : 0) + (ids.some(isGridId) ? 1 : 0) + (ids.some(isColumnId) ? 1 : 0) + (ids.some(isBeamId) ? 1 : 0) + (ids.some(isRoofId) ? 1 : 0);
   }
 
   selectedWalls(): DocWall[] {
@@ -2540,7 +2580,7 @@ export class App {
         guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
         snap:
           // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'roof' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
             ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
             : null,
         measure: guideDim
@@ -2601,7 +2641,9 @@ export class App {
             ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
             : ui.tool === 'beam' && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
               ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
-              : null,
+              : ui.tool === 'roof' && ui.roofDraft.length > 0
+                ? [...ui.roofDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
+                : null,
         draftCorners: ui.tool === 'floor' ? ui.floorDraft : [],
         openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
         // The opening being placed shows its distance as a dimension too (drawn only, not typed in: the
@@ -2662,7 +2704,9 @@ export class App {
             ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
             : ui.tool === 'beam' && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
               ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
-              : null,
+              : ui.tool === 'roof' && ui.roofDraft.length > 0
+                ? [...ui.roofDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
+                : null,
         box: ui.view3d.box,
         boxHot: this.boxHot,
         points: this.pointsShown(),
@@ -2709,6 +2753,7 @@ export class App {
         grids: doc.grids.filter((g) => ui.selection.has(g.id)),
         columns: doc.columns.filter((c) => ui.selection.has(c.id)),
         beams: doc.beams.filter((b) => ui.selection.has(b.id)),
+        roofs: [...this.geometry.roofs.values()].filter((r) => ui.selection.has(r.roof.id)),
         dimensionLength: (d) => this.dimensionLength(d),
         stacked: stackedSteps(doc),
       },
@@ -2797,6 +2842,7 @@ export class App {
         renameGrid: (id, name) => this.store.dispatch(renameGrid(id, name)),
         updateColumns: (ids, patch) => this.store.dispatch(updateColumns(ids, patch)),
         updateBeams: (ids, patch) => this.store.dispatch(updateBeams(ids, patch)),
+        updateRoofs: (ids, patch) => this.store.dispatch(updateRoofs(ids, patch)),
         // The wall moved across, with its joins kept as a move keeps them: the face then meets the one below.
         alignBelow: (step) => this.store.dispatch(setWalls(moveWalls(this.store.get(), [step.upperId], step.shift), 'cmd.alignBelow')),
       },
@@ -2987,6 +3033,7 @@ export class App {
         floors: new Map([...g.floors].filter(([, f]) => shown.has(f.floor.levelId))),
         columns: new Map([...g.columns].filter(([, c]) => shown.has(c.column.levelId))),
         beams: new Map([...g.beams].filter(([, b]) => shown.has(b.beam.levelId))),
+        roofs: new Map([...g.roofs].filter(([, r]) => shown.has(r.roof.levelId))),
       };
     }
     const solids = new Map([...g.solids].filter(([, s]) => s.wall.levelId === this.ui.levelId));
@@ -2996,7 +3043,8 @@ export class App {
     const floors = new Map([...g.floors].filter(([, f]) => f.floor.levelId === this.ui.levelId));
     const columns = new Map([...g.columns].filter(([, c]) => c.column.levelId === this.ui.levelId));
     const beams = new Map([...g.beams].filter(([, b]) => b.beam.levelId === this.ui.levelId));
-    return { ...g, solids, openings, rooms, floors, columns, beams };
+    const roofs = new Map([...g.roofs].filter(([, r]) => r.roof.levelId === this.ui.levelId));
+    return { ...g, solids, openings, rooms, floors, columns, beams, roofs };
   }
 
   toggleBrowser(open = !this.ui.browserOpen): void {
@@ -3025,8 +3073,8 @@ export class App {
         continue;
       }
       if (isGridId(id)) continue;
-      if (isColumnId(id) || isBeamId(id)) {
-        if (!shown.columns.has(id) && !shown.beams.has(id)) this.ui.selection.delete(id);
+      if (isColumnId(id) || isBeamId(id) || isRoofId(id)) {
+        if (!shown.columns.has(id) && !shown.beams.has(id) && !shown.roofs.has(id)) this.ui.selection.delete(id);
         continue;
       }
       if (isGuideId(id) ? this.ui.hidden.has('guides') : !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) {
@@ -3142,6 +3190,7 @@ export class App {
     shell.toolGrid.setAttribute('aria-pressed', String(ui.tool === 'grid'));
     shell.toolColumn.setAttribute('aria-pressed', String(ui.tool === 'column'));
     shell.toolBeam.setAttribute('aria-pressed', String(ui.tool === 'beam'));
+    shell.toolRoof.setAttribute('aria-pressed', String(ui.tool === 'roof'));
     shell.toolSplit.setAttribute('aria-pressed', String(ui.tool === 'split'));
     shell.toolCorner.setAttribute('aria-pressed', String(ui.tool === 'corner'));
     // The Modify tools: the one in use pressed; dimmed while the selection holds nothing they take (a
@@ -3266,7 +3315,9 @@ export class App {
                   ? t('hint.columnPlace')
                   : ui.tool === 'beam'
                     ? t(ui.beamFrom ? 'hint.beamEnd' : 'hint.beamStart')
-                    : null;
+                    : ui.tool === 'roof'
+                      ? t(ui.roofDraft.length > 0 ? 'hint.roofNext' : 'hint.roofStart')
+                      : null;
     const guideHint = ui.guide
       ? t('hint.guide', {
           d: num(this.guideOffset() ?? 0),
@@ -3308,6 +3359,8 @@ export class App {
       ? [snapKey, keyHint('Esc', t('key.exit'))]
       : ui.tool === 'beam'
       ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
+      : ui.tool === 'roof'
+      ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.roofDraft.length > 0 ? 'key.back' : 'key.exit'))]
       : ui.tool === 'measure'
       ? [keyHint('Shift', t('key.straight')), ...altGuide, snapKey, keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clear'))]
       : ui.tool === 'floor'
