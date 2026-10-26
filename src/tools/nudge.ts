@@ -41,13 +41,11 @@ export function nudge(doc: Doc, g: DerivedGeometry, ids: readonly string[], step
     if (Math.abs(along) < 1e-12) return o;
     return { ...o, rule: slid(o.rule, along, p.start) };
   });
-  const rooms = next.rooms.map((r) => (set.has(r.id) && !carried.has(r.id) ? { ...r, seed: moved(r.seed) } : r));
-  const changed =
-    next !== doc ||
-    openings.some((o, i) => o !== next.openings[i]) ||
-    rooms.some((r, i) => r !== next.rooms[i]);
-  // The registry's elements (columns, beams, roofs, stairs, guardrails, texts, axes, guides, outline floors, a dimension's free ends) by their own move.
-  return moveKinds(changed ? { ...next, openings, rooms } : doc, set, step);
+  const changed = next !== doc || openings.some((o, i) => o !== next.openings[i]);
+  // The registry's elements (rooms, columns, beams, roofs, stairs, guardrails, texts, axes, guides,
+  // outline floors, a dimension's free ends) by their own move; a room gone with its walls not again.
+  const own = new Set([...set].filter((id) => !carried.has(id)));
+  return moveKinds(changed ? { ...next, openings } : doc, own, step);
 }
 
 /** The rule moved `along` metres toward the wall's end; one without a distance is measured from the start. */

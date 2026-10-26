@@ -15,7 +15,7 @@ import type { MessageKey } from '../ui/i18n';
 import type { IconName } from '../ui/icons';
 
 /** The document's lists the registry's kinds keep. */
-export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors';
+export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms';
 
 /** The derived geometry before the registry's kinds: what a kind held by walls and doors reads. */
 export type BaseGeometry = Omit<DerivedGeometry, 'kinds'>;
@@ -108,6 +108,8 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   readonly title?: (items: readonly S[]) => { readonly icon: IconName; readonly text: string };
   /** A line under its fields in the panel. */
   readonly hint?: MessageKey;
+  /** A problem with what is selected, said under its fields (a room not closed in). */
+  readonly warning?: (items: readonly S[], doc: Doc) => string | null;
   /** The file reader's word for the ones it dropped ({count}). */
   readonly dropped: MessageKey;
   /** A node's name in the GLB ({n}) and its material's name. */

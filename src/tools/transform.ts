@@ -182,9 +182,9 @@ export function transformSelection(
       walls: disjoin ? doc.walls.map((w) => (walls.has(w.id) ? alone(w) : w)) : transformWalls(doc, wallIds, t.map, t.mirror, !t.mirror && t.factor === 1),
       openings: doc.openings.map((o) => (walls.has(o.wallId) ? mapOpening(o, t, same) : lone.has(o.id) ? { ...o, ...lone.get(o.id)! } : o)),
       openingGroups: doc.openingGroups.map((x) => (walls.has(x.wallId) ? mapGroup(x, t, same, () => true) : x)),
-      rooms: doc.rooms.map((r) => (rooms.has(r.id) ? { ...r, seed: t.map(r.seed) } : r)),
     };
-    // The registry's elements by their own mapping; a dimension with what holds it, a floor with its room.
+    // The registry's elements by their own mapping; a room going with its walls, a dimension with what
+    // holds it, a floor with its room.
     return { doc: mapKinds(next, set, t, { going, doc, geometry: g }), selection: [...ids] };
   }
 
@@ -202,8 +202,6 @@ export function transformSelection(
   const loneCopies = doc.openings.filter((o) => lone.has(o.id)).map((o) => ({ ...o, ...lone.get(o.id)!, id: fresh(o.id, OPENING_PREFIX) }));
   const groups = doc.openingGroups.filter((x) => walls.has(x.wallId));
   for (const x of groups) fresh(x.id, GROUP_PREFIX);
-  const roomList = doc.rooms.filter((r) => rooms.has(r.id));
-  for (const r of roomList) fresh(r.id, 'room');
   const to = (id: string) => ids2.get(id) ?? id;
 
   const newWalls = doc.walls
@@ -213,28 +211,18 @@ export function transformSelection(
       const end = t.map(w.end);
       return { ...w, id: to(w.id), ...(t.mirror ? { start: end, end: start } : { start, end }) };
     });
-  // Numbered on from the level's last, as a new room is.
-  const numbers = new Map<string, number>();
-  const nextNumber = (levelId: string) => {
-    const last = numbers.get(levelId) ?? doc.rooms.filter((r) => r.levelId === levelId).reduce((n, r) => Math.max(n, Number.parseInt(r.number, 10) || 0), 0);
-    numbers.set(levelId, last + 1);
-    return String(last + 1);
-  };
-  const newRooms = roomList.map((r) => ({ ...r, id: to(r.id), seed: t.map(r.seed), number: nextNumber(r.levelId) }));
   const next: Doc = {
     ...doc,
     walls: [...doc.walls, ...newWalls],
     openings: [...doc.openings, ...openings.map((o) => mapOpening(o, t, to)), ...loneCopies],
     openingGroups: [...doc.openingGroups, ...groups.map((x) => mapGroup(x, t, to, (w) => walls.has(w)))],
-    rooms: [...doc.rooms, ...newRooms],
   };
   const selection = [
     ...newWalls.map((w) => w.id),
     ...loneCopies.map((o) => o.id),
-    ...doc.rooms.filter((r) => set.has(r.id)).map((r) => to(r.id)),
   ];
-  // The registry's elements, copied by their own mapping; a dimension held by the copies of what held it,
-  // a room's floor with the copy of its room.
+  // The registry's elements, copied by their own mapping: a room going with its walls (numbered on from
+  // its level's last), a dimension held by the copies of what held it, a room's floor with its room's copy.
   const kinds = copyKinds(next, set, t, fresh, { going, to, doc, geometry: g });
   return { doc: kinds.doc, selection: [...selection, ...kinds.added] };
 }
@@ -245,7 +233,6 @@ export function canTransform(doc: Doc, ids: readonly string[]): boolean {
   return (
     doc.walls.some((w) => set.has(w.id)) ||
     doc.openings.some((o) => set.has(o.id)) ||
-    doc.rooms.some((r) => set.has(r.id)) ||
     hasKinds(doc, set)
   );
 }
@@ -262,10 +249,12 @@ export function copyToLevel(doc: Doc, g: DerivedGeometry, ids: readonly string[]
   const taken = ids.filter((id) => !doc.openings.some((o) => o.id === id && !walls.has(o.wallId)) && !kindOfId(id)?.everyLevel);
   const r = transformSelection(doc, g, taken, translation({ x: 0, y: 0 }), true, newId);
   const onLevel = <T extends { readonly levelId: string }>(list: readonly T[], before: number): T[] => list.map((x, i) => (i >= before ? { ...x, levelId } : x));
+  const placed = kindsOnLevel({ ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length) }, doc, levelId);
+  // The rooms numbered on from that level's last.
   let last = doc.rooms.filter((x) => x.levelId === levelId).reduce((n, x) => Math.max(n, Number.parseInt(x.number, 10) || 0), 0);
-  const rooms = onLevel(r.doc.rooms, doc.rooms.length).map((x, i) => (i >= doc.rooms.length ? { ...x, number: String(++last) } : x));
+  const rooms = placed.rooms.map((x, i) => (i >= doc.rooms.length ? { ...x, number: String(++last) } : x));
   return {
-    doc: kindsOnLevel({ ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length), rooms }, doc, levelId),
+    doc: { ...placed, rooms },
     selection: r.selection,
   };
 }

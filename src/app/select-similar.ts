@@ -12,7 +12,6 @@ const SIZE = 1e-6;
 export function similarTo(doc: Doc, selected: ReadonlySet<string>, levelId: string): string[] {
   const walls = doc.walls.filter((w) => selected.has(w.id));
   const openings = doc.openings.filter((o) => selected.has(o.id));
-  const rooms = doc.rooms.filter((r) => selected.has(r.id));
   const onLevel = new Map(doc.walls.map((w) => [w.id, w.levelId]));
   const same = (a: number, b: number) => Math.abs(a - b) <= SIZE;
   const out = new Set(selected);
@@ -21,7 +20,6 @@ export function similarTo(doc: Doc, selected: ReadonlySet<string>, levelId: stri
     if (onLevel.get(o.wallId) !== levelId) continue;
     if (openings.some((x) => x.kind === o.kind && same(x.width, o.width) && same(x.height, o.height) && same(x.sill, o.sill))) out.add(o.id);
   }
-  for (const r of doc.rooms) if (r.levelId === levelId && rooms.some((x) => x.use === undefined || x.use === r.use)) out.add(r.id);
   // Columns and beams of the same section, texts of the same letter height (the registry's kinds that tell their own likeness).
   for (const id of similarKinds(doc, selected, levelId)) out.add(id);
   return [...out];

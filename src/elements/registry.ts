@@ -15,11 +15,12 @@ import { gridKind } from './kinds/grid';
 import { guideKind } from './kinds/guide';
 import { noteKind } from './kinds/note';
 import { railingKind } from './kinds/railing';
+import { roomKind } from './kinds/room';
 import { roofKind } from './kinds/roof';
 import { stairKind } from './kinds/stair';
 
 /** Drawn in this order (later over earlier); the panel shows the first with a selected element. */
-export const KINDS: readonly AnyKind[] = [stairKind, railingKind, columnKind, roofKind, floorKind, gridKind, beamKind, guideKind, noteKind, dimensionKind];
+export const KINDS: readonly AnyKind[] = [stairKind, railingKind, columnKind, roofKind, floorKind, roomKind, gridKind, beamKind, guideKind, noteKind, dimensionKind];
 
 export const kindOfKey = (key: KindKey): AnyKind => KINDS.find((k) => k.key === key)!;
 
@@ -142,29 +143,34 @@ export function copyKinds(
   fresh: (id: string, prefix: string) => string,
   c: KindTransform & { readonly to: (id: string) => string },
 ): { doc: Doc; added: string[] } {
-  let next = doc;
-  const added: string[] = [];
-  for (const k of KINDS) {
-    const list = listOf(doc, k);
-    // The selected, and those following what is copied (a room's floor its room): copied with it.
+  // What each kind copies: the selected, those going along (a room with all its walls), and those
+  // following what is copied (a room's floor its room).
+  const taken = KINDS.map((k) => {
     const following = (e: { readonly id: string }) => {
       const f = k.follows?.(e);
-      return f !== null && f !== undefined && c.going(f);
+      return f !== null && f !== undefined && (c.going(f) || ids.has(f));
     };
-    const taken = list.filter((e) => ids.has(e.id) || following(e));
-    if (taken.length === 0) continue;
-    // One after another: a copy named on from the copies before it.
-    const all = taken.reduce<unknown[]>((so, e) => {
-      const id = fresh(e.id, k.prefix);
+    return listOf(doc, k).filter((e) => ids.has(e.id) || c.going(e.id) || following(e));
+  });
+  // Every copy's id first, so one copy can refer to another's (a floor to its room's copy).
+  const fresher = new Map(taken.flatMap((list, i) => list.map((e) => [e.id, fresh(e.id, KINDS[i]!.prefix)] as const)));
+  const to = (id: string) => fresher.get(id) ?? c.to(id);
+  let next = doc;
+  const added: string[] = [];
+  KINDS.forEach((k, i) => {
+    const list = listOf(doc, k);
+    if (taken[i]!.length === 0) return;
+    const all = taken[i]!.reduce<unknown[]>((so, e) => {
+      const id = fresher.get(e.id)!;
       // One held by others: held by their copies, or left out (contract.ts: transformed).
-      const copy = k.transformed ? k.transformed(e, { ...c, t, id, selected: ids.has(e.id), copy: true }) : k.mapped(e, t, id);
+      const copy = k.transformed ? k.transformed(e, { ...c, to, t, id, selected: ids.has(e.id), copy: true }) : k.mapped(e, t, id);
       if (copy === null) return so;
-      // The copies of the selected are selected; those that only followed are not.
+      // The copies of the selected are selected; those that only went along are not.
       if (ids.has(e.id)) added.push(id);
       return [...so, k.copied ? k.copied(so, copy) : copy];
     }, [...list]);
     next = withList(next, k, all);
-  }
+  });
   return { doc: next, added };
 }
 

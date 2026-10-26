@@ -263,7 +263,6 @@ export function wireInput(app: App): void {
       // A guide where the pointer is on it (before the room it runs across), beams, and an axis after
       // the walls on it: a click on a wall over an axis takes the wall.
       ...kindHits('afterWalls'),
-      ...[...g.rooms.values()].filter((r) => r.enclosed && insideRing(r.outline, p)).map((r) => r.room.id),
       // Last, what lies over everything (a roof: its overhang, outside the walls, is where it is taken first).
       ...kindHits('last'),
     ].filter((id): id is string => id !== null);

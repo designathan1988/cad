@@ -129,9 +129,10 @@ export function selectGestures(app: App): SelectGestures {
         // The walls on a selected axis go with it (elements/grid/carry.ts).
         const moving = [...doc.walls.filter((w) => ui.selection.has(w.id)).map((w) => w.id), ...wallsOnGrids(doc, [...ui.selection])];
         const carried = new Set(wallsOnGrids(doc, [...ui.selection]));
-        const kinds = kindIds(doc, [...ui.selection, ...carried]);
         const going = () => roomsGoingWith(doc, app.geometry, ui.selection);
         const rooms = new Set([...going(), ...doc.rooms.filter((r) => ui.selection.has(r.id)).map((r) => r.id)]);
+        // The rooms go as a drag takes them (a turn too: `rooms`), not again as the registry's.
+        const kinds = new Set([...kindIds(doc, [...ui.selection, ...carried])].filter((id) => !rooms.has(id)));
         const only = ui.selection.size === 1 ? [...ui.selection][0]! : null;
         const sliding = only !== null ? doc.openings.find((o) => o.id === only) : undefined;
         const placed = sliding ? app.geometry.openings.get(sliding.id) : undefined;
@@ -307,7 +308,6 @@ export function marqueePick(items: readonly Pickable[], a: Point2, b: Point2): s
 /** Walls, openings, rooms and floors of what is shown, as screen outlines (hulls in 3D). */
 function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): void {
   const g = app.visibleGeometry();
-  const elevation = (levelId: string) => app.store.get().levels.find((l) => l.id === levelId)?.elevation ?? 0;
   // Each at its level's height in the view (lifted when exploded).
   const screen = (poly: readonly Point2[], bottom: number, top: number, levelId: string) => {
     const pts = app.outlineOnScreen(poly, bottom, top, app.lift(levelId));
@@ -320,9 +320,6 @@ function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): voi
       id: o.opening.id,
       outlines: [screen(openingOutline(o), o.bottom, o.top, g.solids.get(o.opening.wallId)?.wall.levelId ?? '')],
     })),
-    ...[...g.rooms.values()]
-      .filter((r) => r.enclosed)
-      .map((r) => ({ id: r.room.id, outlines: [screen(r.outline, elevation(r.room.levelId), elevation(r.room.levelId), r.room.levelId)] })),
     // The registry's kinds by their outlines (a text's box as drawn at this scale, an axis's line).
     // Texts, axes and guides are in plan only: not in a window drawn in 3D. A guide has no ends: drawn
     // far past the window, only a crossing selection, which it runs through, takes it.

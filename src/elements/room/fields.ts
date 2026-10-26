@@ -20,7 +20,10 @@ export interface RoomFieldActions {
 
 const one = <T>(xs: readonly T[]) => xs.length === 1;
 
-export function roomFields(rooms: readonly RoomSolid[], act: RoomFieldActions): Field<RoomSolid>[] {
+/** A room's own actions (the panel's room actions have the floor's too). */
+export type RoomOwnActions = Pick<RoomFieldActions, 'updateRoom' | 'updateRooms' | 'levelHeight'>;
+
+export function roomFields(rooms: readonly RoomSolid[], act: RoomOwnActions): Field<RoomSolid>[] {
   const id = rooms[0]?.room.id;
   const ids = rooms.map((r) => r.room.id);
   const height = (r: RoomSolid) => r.room.height ?? act.levelHeight(r.room.levelId);

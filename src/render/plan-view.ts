@@ -310,12 +310,6 @@ export class PlanView {
     const shownLit = (id: string) => o.selected.has(id) || o.hover === id;
     // Floors (contract.ts: under) and rooms lie under the walls.
     for (const x of kinds) if (x.kind.layer === 'under') x.kind.plan(paint, x.solid, shownLit(x.id));
-    for (const r of g.rooms.values()) {
-      if (!r.enclosed || !(o.selected.has(r.room.id) || o.hover === r.room.id)) continue;
-      trace(r.outline);
-      ctx.fillStyle = color('--accent-soft');
-      ctx.fill();
-    }
     // The room the room tool would make: the space under the pointer, dashed, as a room not yet there.
     if (o.roomSpace && o.roomSpace.length >= 3) {
       trace(o.roomSpace);

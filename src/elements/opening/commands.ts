@@ -78,11 +78,9 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
     const drop = new Set(ids);
     const walls = doc.walls.filter((w) => !drop.has(w.id));
     const gone = new Set(doc.openings.filter((o) => drop.has(o.id) || drop.has(o.wallId)).map((o) => o.id));
-    const rooms = doc.rooms.filter((r) => !drop.has(r.id));
     if (
       walls.length === doc.walls.length &&
       gone.size === 0 &&
-      rooms.length === doc.rooms.length &&
       !hasKinds(doc, drop)
     ) {
       return doc;
@@ -97,7 +95,7 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
       );
     // A dimension goes with what holds either of its ends, as Revit's does; a floor following a deleted
     // room keeps the outline it had, so it does not move (registry.ts: dropKinds).
-    return settleGroups(doc, { ...dropKinds(doc, new Set([...drop, ...gone]), deriveGeometry(doc)), walls, openings, rooms });
+    return settleGroups(doc, { ...dropKinds(doc, new Set([...drop, ...gone]), deriveGeometry(doc)), walls, openings });
   },
 });
 

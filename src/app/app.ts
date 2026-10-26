@@ -113,7 +113,7 @@ import { doorFlips, type Handles, handlesFor, ROTATE_OFFSET } from './handles';
 import { placeBarY } from '../ui/bar-place';
 import { newId } from '../core/id';
 import { addFloor, addFloorHole, addRoom, clearFloorHoles, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
-import { insideRing, signedArea, type RoomSolid } from '../elements/room/derive';
+import { insideRing, signedArea } from '../elements/room/derive';
 import { FLOOR_DEFAULTS } from '../elements/room/schema';
 
 export interface UiState {
@@ -396,7 +396,7 @@ export class App {
     // Levels hidden now leave the selection, as a hidden category does.
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      if (!shown.solids.has(id) && !hasSolid(shown.kinds, id) && !shown.openings.has(id) && !shown.rooms.has(id)) this.ui.selection.delete(id);
+      if (!shown.solids.has(id) && !hasSolid(shown.kinds, id) && !shown.openings.has(id)) this.ui.selection.delete(id);
     }
     this.refresh();
   }
@@ -485,10 +485,6 @@ export class App {
     const p = this.geometry.openings.get(OPENING_PREVIEW_ID);
     const k = p?.warnings.find((w) => w === 'openingOverlap' || w === 'openingOutside');
     return k ? t('hint.openingRefused', { reason: afterColon(t(`warn.${k}`)) }) : null;
-  }
-
-  selectedRooms(): RoomSolid[] {
-    return [...this.ui.selection].flatMap((id) => this.geometry.rooms.get(id) ?? []);
   }
 
   /** The smallest space the level's walls close in around p, when no room is in it: where the room tool would make one. */
@@ -1877,7 +1873,7 @@ export class App {
   stepSelection(dir: 1 | -1): void {
     this.setTool('select');
     const g = this.visibleGeometry();
-    const order = [...g.solids.keys(), ...g.openings.keys(), ...g.rooms.keys(), ...[...eachSolid(g.kinds)].map((x) => x.id)];
+    const order = [...g.solids.keys(), ...g.openings.keys(), ...[...eachSolid(g.kinds)].map((x) => x.id)];
     const next = stepSelection(order, [...this.ui.selection], dir);
     if (!next) return;
     this.ui.selection = new Set([next]);
@@ -2411,7 +2407,7 @@ export class App {
   private selectionKinds(): number {
     const g = this.geometry;
     const ids = [...this.ui.selection];
-    return [g.solids, g.openings, g.rooms].filter((m) => ids.some((id) => m.has(id))).length + new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
+    return [g.solids, g.openings].filter((m) => ids.some((id) => m.has(id))).length + new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
   }
 
   selectedWalls(): DocWall[] {
@@ -2475,7 +2471,6 @@ export class App {
     const levelOfId = (id: string) =>
       doc.walls.find((w) => w.id === id)?.levelId ??
       doc.walls.find((w) => w.id === doc.openings.find((o) => o.id === id)?.wallId)?.levelId ??
-      doc.rooms.find((r) => r.id === id)?.levelId ??
       KINDS.flatMap((k) => listOf(doc, k)).find((x) => x.id === id)?.levelId;
     const level = ids.map(levelOfId).find((l) => l !== undefined);
     if (level && level !== this.ui.levelId) this.setLevel(level);
@@ -2741,7 +2736,6 @@ export class App {
         defaults: ui.defaults,
         warnings: this.geometry.warnings,
         openings: this.selectedWalls().length === 0 ? this.selectedOpenings() : [],
-        rooms: this.selectedRooms(),
         levelRooms: [...this.geometry.rooms.values()].filter((r) => r.room.levelId === ui.levelId),
         placed: this.geometry.openings,
         openingWarnings: this.geometry.openingWarnings,
@@ -3066,7 +3060,7 @@ export class App {
         if (!hasSolid(shown.kinds, id)) this.ui.selection.delete(id);
         continue;
       }
-      if (!shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id)) {
+      if (!shown.solids.has(id) && !shown.openings.has(id)) {
         this.ui.selection.delete(id);
       }
     }
@@ -3084,7 +3078,7 @@ export class App {
     const temp = this.ui.temp;
     const hidden = this.ui.hidden;
     const category = (id: string): Category | null =>
-      doc.walls.some((w) => w.id === id) ? 'walls' : doc.openings.some((o) => o.id === id) ? 'openings' : doc.rooms.some((r) => r.id === id) ? 'rooms' : (kindOfId(id)?.category ?? null);
+      doc.walls.some((w) => w.id === id) ? 'walls' : doc.openings.some((o) => o.id === id) ? 'openings' : (kindOfId(id)?.category ?? null);
     const ids = similarTo(doc, this.ui.selection, this.ui.levelId).filter((id) => {
       const c = category(id);
       return (c === null || !hidden.has(c)) && (!temp || shownFor(temp, id));
@@ -3511,13 +3505,7 @@ export class App {
           const up = this.lift(this.geometry.solids.get(opening.opening.wallId)?.wall.levelId ?? '');
           for (const v of openingOutline(opening)) [opening.bottom, opening.top].forEach((z) => project(v, z + up));
         }
-        // Rooms at their level's floor, floors at both their faces.
-        const room = this.geometry.rooms.get(id);
-        if (room) {
-          const z = (this.store.get().levels.find((l) => l.id === room.room.levelId)?.elevation ?? 0) + this.lift(room.room.levelId);
-          for (const v of room.outline) project(v, z);
-        }
-        // The registry's with a height (a floor): their outlines at both faces.
+        // The registry's with a height (a room at its level's floor, a floor): their outlines at both faces.
         const k = kindOfId(id);
         const s = k?.span ? this.geometry.kinds.get(k.key)?.get(id) : undefined;
         if (k?.span && s !== undefined) {

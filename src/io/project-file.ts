@@ -11,7 +11,6 @@ import { isPointOfInterest } from '../app/points';
 import { deriveGeometry } from '../app/geometry';
 import { distributeOpenings } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
-import { type Room, ROOM_USES } from '../elements/room/schema';
 import type { WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
 
@@ -43,7 +42,7 @@ export const CURRENT_VERSION = 20;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedGroups' | 'droppedViews' | 'droppedPoints' | KindFix; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' |  'droppedGroups' | 'droppedViews' | 'droppedPoints' | KindFix; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
 
 /** The fix for a registry kind's dropped elements: droppedColumns, droppedBeams and so on. */
@@ -127,16 +126,6 @@ export const isOpening = (o: unknown): o is Opening =>
   (o.swing === 'left' || o.swing === 'right') &&
   isRule(o.rule);
 
-export const isRoom = (r: unknown): r is Room =>
-  isObject(r) &&
-  typeof r.id === 'string' &&
-  typeof r.levelId === 'string' &&
-  isPoint(r.seed) &&
-  typeof r.name === 'string' &&
-  typeof r.number === 'string' &&
-  (r.use === undefined || (ROOM_USES as readonly unknown[]).includes(r.use)) &&
-  (r.height === undefined || (finite(r.height) && r.height > 0));
-
 export function writeProject(doc: Doc): string {
   return JSON.stringify({ ...doc, version: CURRENT_VERSION }, null, 2);
 }
@@ -190,7 +179,6 @@ export function repairProject(raw: unknown): ReadResult {
     walls: migrated,
     openings,
     openingGroups: keep(raw.openingGroups, isOpeningGroup, 'droppedGroups'),
-    rooms: keep(raw.rooms, isRoom, 'droppedRooms'),
     // A view of a level that is gone shows nothing: dropped, and said.
     views: keep(raw.views, isSavedView, 'droppedViews').filter((v, _, all) => {
       if (levelIds.has(v.levelId)) return true;
@@ -203,7 +191,7 @@ export function repairProject(raw: unknown): ReadResult {
       if (p === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedPoints', count: all.filter((x) => !levelIds.has(x.levelId)).length });
       return false;
     }),
-    // The registry's elements (columns, beams, roofs, stairs, guardrails, texts, axes, guides, dimensions, floors):
+    // The registry's elements (columns, beams, roofs, stairs, guardrails, texts, axes, guides, dimensions, floors, rooms):
     // checked by their kind; one on a level that is gone stands nowhere, one held by a wall or an opening
     // that is not there (a dimension) holds to nothing: dropped, and said.
     ...(Object.fromEntries(
