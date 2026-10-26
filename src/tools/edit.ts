@@ -60,6 +60,8 @@ function follow(walls: readonly DocWall[], moved: ReadonlyMap<WallId, Ends>, map
       let corner: Point2 | null = null;
       for (const [id, next] of moved) {
         const before = walls.find((x) => x.id === id)!;
+        // Joins are within a level: a wall below with its end under a moved one's stays.
+        if (before.levelId !== w.levelId) continue;
         const end = distance(p, before.start) <= POINT_TOLERANCE ? before.start : distance(p, before.end) <= POINT_TOLERANCE ? before.end : null;
         if (!end) continue;
         const mapped = map(end);
@@ -73,7 +75,7 @@ function follow(walls: readonly DocWall[], moved: ReadonlyMap<WallId, Ends>, map
       if (corner) return corner;
       for (const [id, next] of moved) {
         const before = walls.find((x) => x.id === id)!;
-        if (!onBody(p, before.start, before.end)) continue;
+        if (before.levelId !== w.levelId || !onBody(p, before.start, before.end)) continue;
         const hit = intersectLines(other, sub(p, other), next.start, sub(next.end, next.start));
         if (hit) return hit;
       }
@@ -111,7 +113,7 @@ export function transformWalls(doc: Doc, ids: readonly WallId[], map: (p: Point2
     // A moved end at a corner with a wall left behind: where its new line meets that wall's line.
     const corner = (p: Point2, mapped: Point2): Point2 | null => {
       for (const o of doc.walls) {
-        if (set.has(o.id) || o.bulge) continue;
+        if (set.has(o.id) || o.bulge || o.levelId !== w.levelId) continue;
         const far = distance(o.start, p) <= POINT_TOLERANCE ? o.end : distance(o.end, p) <= POINT_TOLERANCE ? o.start : null;
         if (!far || onLine(mapped, far, p)) continue;
         const hit = meet(next.start, sub(next.end, next.start), far, sub(p, far));
@@ -172,6 +174,8 @@ export function stretchEnd(doc: Doc, id: WallId, end: WallEnd, to: Point2): DocW
   const old = end === 'start' ? w.start : w.end;
   return doc.walls.map((x) => {
     if (x.id === id) return { ...x, ...next };
+    // A wall of another level with an end under this one is not joined to it: it stays.
+    if (x.levelId !== w.levelId) return x;
     const s = distance(x.start, old) <= POINT_TOLERANCE ? to : x.start;
     const e = distance(x.end, old) <= POINT_TOLERANCE ? to : x.end;
     return s === x.start && e === x.end ? x : { ...x, start: s, end: e };
