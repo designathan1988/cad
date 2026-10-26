@@ -596,6 +596,14 @@ export function wireInput(app: App): void {
       e.preventDefault();
       return app.redo();
     }
+    if (ctrl && key === 'c' && !e.shiftKey && ui.selection.size > 0) {
+      e.preventDefault();
+      return app.copySelection();
+    }
+    if (ctrl && key === 'v') {
+      e.preventDefault();
+      return app.paste();
+    }
     if (ctrl && key === 'a') {
       e.preventDefault();
       return app.selectAllWalls();

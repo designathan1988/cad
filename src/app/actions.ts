@@ -84,6 +84,8 @@ export function appActions(app: App, open: Openers): Action[] {
         enabled: canTransform(doc, [...ui.selection]),
       }),
     ),
+    make('edit.copyClip', 'pal.copyClip', edit, () => app.copySelection(), { keys: 'Ctrl+C', enabled: canTransform(doc, [...ui.selection]) }),
+    make('edit.paste', 'pal.paste', edit, () => app.paste(), { keys: 'Ctrl+V' }),
     make('edit.split', 'pal.split', edit, () => app.setTool('split'), { keys: 'Shift+S' }),
     make('edit.corner', 'pal.corner', edit, () => app.setTool('corner'), { keys: 'Shift+T' }),
     make('edit.merge', 'pal.merge', edit, () => app.mergeSelection(), { keys: 'Shift+J', enabled: app.canMergeSelection() }),

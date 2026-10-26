@@ -69,7 +69,7 @@ import type { ViewKey } from './view-keys';
 import { type TempDim, tempDims } from './temp-dims';
 import { cutAt, exploding, liftOf, readView3D, shownLevels, type View3D } from './view-3d';
 import { MODIFY_START, type ModifyEvent, type ModifyKind, type ModifyState, modifyTransition, previewTransform } from '../tools/modify-tool';
-import { canTransform, transformSelection } from '../tools/transform';
+import { canTransform, copyToLevel, transformSelection } from '../tools/transform';
 import { changeReferenceLine, stretchEnd } from '../tools/edit';
 import { canMerge, cornerWalls, mergeWalls, splitWall } from '../tools/split';
 import { contextEntries } from './context-menu';
@@ -1147,6 +1147,67 @@ export class App {
     savePrefs({ levelId: id });
     this.ui.selection.clear();
     this.ui.guide = null;
+    // A message about the level left ("already on this level") would be read as about this one.
+    this.ui.info = null;
+    this.ui.error = null;
+    this.refresh();
+  }
+
+  /** What Ctrl+C took: the project as it was then, and the elements, for Ctrl+V on another level. */
+  private clipboard: { readonly doc: Doc; readonly geometry: DerivedGeometry; readonly ids: readonly string[]; readonly levelId: string } | null = null;
+
+  /** Ctrl+C: the selection kept for Ctrl+V, which pastes it on another level in the same place. */
+  copySelection(): void {
+    const ids = [...this.ui.selection];
+    if (!canTransform(this.store.get(), ids)) {
+      this.ui.info = t('hint.copyNothing');
+      return this.renderChrome();
+    }
+    this.clipboard = { doc: this.store.get(), geometry: this.geometry, ids, levelId: this.ui.levelId };
+    this.toast(t(ids.length === 1 ? 'toast.copiedOne' : 'toast.copied', { n: ids.length }));
+  }
+
+  /**
+   * Ctrl+V: what Ctrl+C took, on the level shown, in the same place (copyToLevel), as one undo step.
+   * On the level it came from it would lie over itself: said, with the Copy tool to put it beside.
+   */
+  paste(): void {
+    const c = this.clipboard;
+    if (!c) {
+      this.ui.info = t('hint.pasteNothing');
+      return this.renderChrome();
+    }
+    if (c.levelId === this.ui.levelId) {
+      this.ui.info = t('hint.pasteSameLevel');
+      return this.renderChrome();
+    }
+    const r = copyToLevel(c.doc, c.geometry, c.ids, this.ui.levelId, newId);
+    const added = {
+      walls: r.doc.walls.slice(c.doc.walls.length),
+      openings: r.doc.openings.slice(c.doc.openings.length),
+      openingGroups: r.doc.openingGroups.slice(c.doc.openingGroups.length),
+      rooms: r.doc.rooms.slice(c.doc.rooms.length),
+      floors: r.doc.floors.slice(c.doc.floors.length),
+      guides: r.doc.guides.slice(c.doc.guides.length),
+    };
+    const level = levelOf(this.store.get(), this.ui.levelId);
+    // The rooms renumbered on from the level's rooms as they are now, not as they were at the copy.
+    let last = this.store.get().rooms.filter((x) => x.levelId === this.ui.levelId).reduce((n, x) => Math.max(n, Number.parseInt(x.number, 10) || 0), 0);
+    const rooms = added.rooms.map((x) => ({ ...x, number: String(++last) }));
+    this.store.dispatch({
+      label: 'cmd.paste',
+      apply: (d) => ({
+        ...d,
+        walls: [...d.walls, ...added.walls],
+        openings: [...d.openings, ...added.openings],
+        openingGroups: [...d.openingGroups, ...added.openingGroups],
+        rooms: [...d.rooms, ...rooms],
+        floors: [...d.floors, ...added.floors],
+        guides: [...d.guides, ...added.guides],
+      }),
+    });
+    this.ui.selection = new Set(r.selection);
+    this.toast(t(r.selection.length === 1 ? 'toast.pastedOne' : 'toast.pasted', { n: r.selection.length, level: name(level?.name ?? '') }));
     this.refresh();
   }
 

@@ -260,3 +260,22 @@ export function canTransform(doc: Doc, ids: readonly string[]): boolean {
     doc.guides.some((x) => set.has(x.id))
   );
 }
+
+/**
+ * The selection `ids` copied onto the level `levelId`, in place, as Revit's Paste Aligned to Selected
+ * Levels: the walls with their doors, windows and groups, the rooms all of whose walls go, outline
+ * floors and guides, each under a new id on that level (the rooms numbered on from that level's last).
+ * Doors and windows selected without their wall are left out: their wall is not there.
+ */
+export function copyToLevel(doc: Doc, g: DerivedGeometry, ids: readonly string[], levelId: string, newId: (prefix: string) => string): TransformResult {
+  const walls = new Set(doc.walls.filter((w) => ids.includes(w.id)).map((w) => w.id));
+  const taken = ids.filter((id) => !doc.openings.some((o) => o.id === id && !walls.has(o.wallId)));
+  const r = transformSelection(doc, g, taken, translation({ x: 0, y: 0 }), true, newId);
+  const onLevel = <T extends { readonly levelId: string }>(list: readonly T[], before: number): T[] => list.map((x, i) => (i >= before ? { ...x, levelId } : x));
+  let last = doc.rooms.filter((x) => x.levelId === levelId).reduce((n, x) => Math.max(n, Number.parseInt(x.number, 10) || 0), 0);
+  const rooms = onLevel(r.doc.rooms, doc.rooms.length).map((x, i) => (i >= doc.rooms.length ? { ...x, number: String(++last) } : x));
+  return {
+    doc: { ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length), rooms, floors: onLevel(r.doc.floors, doc.floors.length), guides: onLevel(r.doc.guides, doc.guides.length) },
+    selection: r.selection,
+  };
+}
