@@ -7,12 +7,14 @@ import { add, distance, dot, intersectLines, type Point2, scale, sub } from '../
 import { resolveCorner } from '../join/cut-l';
 import { type AbutmentResult, resolveAbutment } from '../join/cut-t';
 import { deriveJoins } from '../join/discover';
+import { onLine } from '../join/junctions';
 import { resolveNode } from '../join/node';
+import { resolveSectors, type SectorArm } from '../join/sectors';
 import type { EndCut, JoinWarning, Notch } from '../join/types';
 import type { EndRef, Wall, WallId, WallType, WallTypeId } from '../schema';
 import { type ArcChain, arcOf, expandArc, inSector, parentOf, sectorOf } from './arc';
 import { area, clipHalfPlane, clipOut, type ConvexPolygon, type HalfPlane, halfPlaneThrough, overlapArea, toCounterClockwise } from './convex';
-import { endPoint, faceOffsets, intoBody, offsetOf, stationOf as stationAlong, strip, wallDirection, wallNormal } from './offset';
+import { endPoint, faceOffsets, intoBody, offsetOf, stationOf as stationAlong, strip, wallDirection, wallLength, wallNormal } from './offset';
 import { shapeOf, type WallShape } from './shape';
 
 export interface Piece {
@@ -68,7 +70,33 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     if (!chain || parentOf(other.wallId) === parentOf(r.wallId)) return undefined;
     return chain.segments.reduce((sum, s) => sum + distance(s.start, s.end), 0);
   };
-  for (const { ends: [ra, rb], node } of graph.corners) {
+  // Junctions first (§7.6): each stands for the joins it absorbs, when its sectors are exact; else
+  // those joins stay, with a warning.
+  const absorbed = new Set<object>();
+  const junctionSplits: { wallId: WallId; point: Point2; before: EndCut; after: EndCut }[] = [];
+  for (const j of graph.junctions) {
+    const passing = j.passing.map((id) => byId.get(id)!);
+    // A wall passing the point is split where the point falls on its line.
+    const at = passing.map((w) => onLine(w, j.point));
+    const arms: SectorArm[] = [
+      ...passing.flatMap((w, k) => [
+        { wall: { ...w, end: at[k]! }, end: 'end' as const, reach: distance(w.start, at[k]!) },
+        { wall: { ...w, start: at[k]! }, end: 'start' as const, reach: distance(at[k]!, w.end) },
+      ]),
+      ...j.ends.map((r) => ({ wall: byId.get(r.wallId)!, end: r.end, reach: wallLength(byId.get(r.wallId)!) })),
+    ];
+    const cuts = resolveSectors(arms, j.point);
+    if (!cuts) {
+      report({ kind: 'complexJoin', walls: [...j.passing, ...j.ends.map((r) => r.wallId)] });
+      continue;
+    }
+    for (const x of [...j.absorbs.corners, ...j.absorbs.nodes, ...j.absorbs.crossings, ...j.absorbs.abutments]) absorbed.add(x);
+    passing.forEach((w, k) => junctionSplits.push({ wallId: w.id, point: at[k]!, before: cuts[2 * k]!, after: cuts[2 * k + 1]! }));
+    j.ends.forEach((r, k) => endCuts.set(keyOf(r), cuts[2 * passing.length + k]!));
+  }
+  for (const corner of graph.corners) {
+    if (absorbed.has(corner)) continue;
+    const { ends: [ra, rb], node } = corner;
     const reachA = arcReach(ra, rb);
     const reachB = arcReach(rb, ra);
     // Two straight walls butt layer by layer; with an arc's segment, the T butt its chain relies on.
@@ -115,7 +143,9 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
       splits.set(other.wallId, [...(splits.get(other.wallId) ?? []), spill.split]);
     }
   }
-  for (const { ends, point } of graph.nodes) {
+  for (const node of graph.nodes) {
+    if (absorbed.has(node)) continue;
+    const { ends, point } = node;
     const result = resolveNode(byId, ends, point);
     for (const [ref, cut] of result.endCuts) endCuts.set(keyOf(ref), cut);
     // A notch an arc's end segment takes in a node (against the outside of an L) is taken by every
@@ -127,7 +157,9 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   // still reach past the host's face take their own (carryArcStem).
   // A straight wall against an arc wider than one segment: split near its end by the segments' wedges
   // (spreadOverArc), each part with that segment's T.
-  for (const { abutting, hostId } of graph.abutments) {
+  for (const abutment of graph.abutments) {
+    if (absorbed.has(abutment)) continue;
+    const { abutting, hostId } = abutment;
     const stemChain = chains.get(parentOf(abutting.wallId));
     // The end segment's notches stop at the joint with the segment before it, a radial plane.
     const back = stemChain ? wedge(stemChain, abutting.wallId).filter((_, k) => k === (abutting.end === 'end' ? 0 : 1)) : undefined;
@@ -173,9 +205,23 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
       ],
     ]),
   );
-  for (const { throughId, cutId, point } of [...graph.crossings].sort((x, y) =>
-    stationAlong(byId.get(x.cutId)!, x.point) - stationAlong(byId.get(y.cutId)!, y.point),
-  )) {
+  // Crossings and junctions split walls; each wall's splits are taken in order along it.
+  const along = [
+    ...graph.crossings.filter((c) => !absorbed.has(c)).map((c) => ({ wallId: c.cutId, point: c.point, crossing: c, junction: null })),
+    ...junctionSplits.map((s) => ({ wallId: s.wallId, point: s.point, crossing: null, junction: s })),
+  ].sort((x, y) => stationAlong(byId.get(x.wallId)!, x.point) - stationAlong(byId.get(y.wallId)!, y.point));
+  for (const split of along) {
+    if (split.junction) {
+      // A wall passing a junction: split at the point, each side with its sector's cut.
+      const list = spans.get(split.wallId)!;
+      const last = list.pop()!;
+      list.push(
+        { shape: { ...last.shape, end: split.point }, atStart: last.atStart, atEnd: split.junction.before },
+        { shape: { ...last.shape, start: split.point }, atStart: split.junction.after, atEnd: last.atEnd },
+      );
+      continue;
+    }
+    const { throughId, cutId, point } = split.crossing!;
     if (isArc(throughId) && isArc(cutId)) {
       report({ kind: 'arcJoinUnsupported', walls: [throughId, cutId] });
       continue;

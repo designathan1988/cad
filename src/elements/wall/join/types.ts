@@ -53,16 +53,40 @@ export interface Crossing {
   readonly point: Point2;
 }
 
-/** Three or four ends at one point (§7.4). Five or more warn complexJoin instead. */
+/** Three or more ends at one point (§7.4, §7.6). */
 export interface JoinNode {
   readonly ends: readonly EndRef[];
   readonly point: Point2;
+}
+
+export interface Abutment {
+  readonly abutting: EndRef;
+  readonly hostId: WallId;
+}
+
+/**
+ * Walls passing one point together with others (two crossings there, an end on a crossing, an end
+ * inside an L's corner): every wall passing it is two arms, one each way ('before' from its start to
+ * the point, 'after' from the point to its end), every end one arm, each taking its sector
+ * (sectors.ts). `absorbs`: the joins it stands for, set aside when it is made.
+ */
+export interface Junction {
+  readonly point: Point2;
+  readonly passing: readonly WallId[];
+  readonly ends: readonly EndRef[];
+  readonly absorbs: {
+    readonly corners: readonly Corner[];
+    readonly nodes: readonly JoinNode[];
+    readonly crossings: readonly Crossing[];
+    readonly abutments: readonly Abutment[];
+  };
 }
 
 export interface JoinGraph {
   readonly corners: readonly Corner[];
   readonly nodes: readonly JoinNode[];
   readonly crossings: readonly Crossing[];
-  readonly abutments: readonly { readonly abutting: EndRef; readonly hostId: WallId }[];
+  readonly abutments: readonly Abutment[];
+  readonly junctions: readonly Junction[];
   readonly warnings: readonly JoinWarning[];
 }

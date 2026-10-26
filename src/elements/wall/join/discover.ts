@@ -8,6 +8,7 @@ import type { EndRef, WallEnd } from '../schema';
 import type { WallShape } from '../geometry/shape';
 import { parentOf, SEGMENT_MARK } from '../geometry/arc';
 import type { Corner, Crossing, JoinGraph, JoinWarning, JoinNode } from './types';
+import { gatherJunctions } from './junctions';
 
 const ENDS: readonly WallEnd[] = ['start', 'end'];
 
@@ -79,10 +80,11 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
       const ends = [cluster[0]!, cluster[1]!] as const;
       if (across(ends)) free.push(...ends);
       else corners.push({ ends, node: scale(add(at(ends[0]), at(ends[1])), 0.5) });
-    } else if (cluster.length <= 4) {
+    } else {
+      // Five or more go to the node too: its sectors (sectors.ts) take any number of arms.
       const sum = cluster.reduce((s, r) => add(s, at(r)), { x: 0, y: 0 });
       nodes.push({ ends: cluster, point: scale(sum, 1 / cluster.length) });
-    } else warnings.push({ kind: 'complexJoin', walls: cluster.map((r) => r.wallId) });
+    }
   }
 
   let abutments: { abutting: EndRef; hostId: string }[] = [];
@@ -155,7 +157,9 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
   for (const [a, b] of lyingOver(valid)) {
     if (!warnings.some((w) => w.kind === 'wallsOverlap' && w.walls.includes(a.id) && w.walls.includes(b.id))) warnings.push({ kind: 'wallsOverlap', walls: [a.id, b.id] });
   }
-  return { corners, nodes, abutments, crossings, warnings };
+  // Several of those at one point (crossings, an end on one or inside a corner): one junction (§7.6).
+  const junctions = gatherJunctions(byId, { corners, nodes, crossings, abutments }, (w, p) => insideBand(w, p, joint(w)));
+  return { corners, nodes, abutments, crossings, junctions, warnings };
 }
 
 /**

@@ -1,12 +1,13 @@
-// Three or four ends at one point (§7.4, hito's rule). The pair closest to in line, within 10°, is
-// the passage and joins as an L; without such a pair, the two thickest cores do. Every other end
-// abuts the passage as a T, but only where that is exact: against one passage wall it fits in alone,
-// or against both when they show the same faces and layers on its side. Otherwise it warns
-// complexJoin and stays square, rather than draw something that overlaps.
+// Three or more ends at one point (§7.4, hito's rule, and §7.6). The pair closest to in line, within
+// 10°, is the passage and joins as an L, and every other end abuts it as a T, where that is exact:
+// against one passage wall it fits in alone, or against both when they show the same faces and layers
+// on its side. With no pair in line, more than four ends, an end the passage cannot take, or two ends
+// on one side of it (they would overlap each other), every arm takes its sector (sectors.ts). Only
+// where neither is exact does it warn complexJoin and stay square.
 
 import { AREA_EPSILON, COLLINEAR_ANGLE } from '../../../core/tolerance';
 import { add, cross, distance, dot, type Point2, scale, sub } from '../../../core/vector';
-import { area, clipHalfPlane, type ConvexPolygon, type HalfPlane, halfPlaneThrough } from '../geometry/convex';
+import { clipHalfPlane, type ConvexPolygon, type HalfPlane, halfPlaneThrough, overlapArea } from '../geometry/convex';
 import { endPoint, faceOffsets, intoBody, offsetOf, strip, wallDirection, wallLength, wallNormal } from '../geometry/offset';
 import type { WallShape } from '../geometry/shape';
 import type { EndRef, WallEnd, WallId } from '../schema';
@@ -14,6 +15,7 @@ import { parentOf } from '../geometry/arc';
 import { resolveCorner } from './cut-l';
 import { type AbutmentResult, resolveAbutment } from './cut-t';
 import { goesThrough } from './discover';
+import { resolveSectors } from './sectors';
 import type { EndCut, JoinWarning, Notch } from './types';
 
 /** How far from in line two ends may be and still form the passage (degrees, §7.4). */
@@ -36,7 +38,23 @@ export function resolveNode(walls: ReadonlyMap<WallId, WallShape>, refs: readonl
   const ends: End[] = refs
     .map((ref) => ({ ref, wall: walls.get(ref.wallId)! }))
     .sort((x, y) => (x.wall.id < y.wall.id ? -1 : x.wall.id > y.wall.id ? 1 : x.ref.end < y.ref.end ? -1 : 1));
-  const [i, j] = passageOf(ends);
+  // Arcs' segments keep the passage rule: the segments next to an end one reach into the node too.
+  const straight = ends.every((e) => parentOf(e.wall.id) === e.wall.id);
+  const sectors = (): NodeResult | null => {
+    if (!straight) return null;
+    const cuts = resolveSectors(
+      ends.map((e) => ({ wall: e.wall, end: e.ref.end, reach: wallLength(e.wall) })),
+      point,
+    );
+    return cuts ? { endCuts: cuts.map((cut, k) => [ends[k]!.ref, cut] as const), notches: [], warnings: [] } : null;
+  };
+  const inLine = inLinePair(ends);
+  if (inLine === null || ends.length > 4) {
+    const s = sectors();
+    if (s) return s;
+    if (ends.length > 4) return { endCuts: [], notches: [], warnings: [{ kind: 'complexJoin', walls: ends.map((e) => e.wall.id) }] };
+  }
+  const [i, j] = inLine ?? thickestPair(ends);
   const [p, q] = [ends[i]!, ends[j]!];
   const others = ends.filter((_, k) => k !== i && k !== j);
 
@@ -49,16 +67,23 @@ export function resolveNode(walls: ReadonlyMap<WallId, WallShape>, refs: readonl
   notches.push(...corner.notches);
   if (corner.warning) warnings.push(corner.warning);
 
+  // An end that fits only against the corner's outside starts on the passage's faces, the passage's
+  // finish left between the cores: a passage bent a few degrees with the third wall on its open side
+  // (a λ) showed that finish across the third wall's end. The sectors join the cores there.
+  let onFaces = false;
   for (const c of others) {
     // An arc's end segment from outside the corner: the T against one wall (alone) fits that segment,
     // but the arc's next segments, short and still in the corner, cut through the wall's finish; the
     // corner's outer faces bound all of them (footprint.ts gives the notches to every segment).
     const arcEnd = parentOf(c.wall.id) !== c.wall.id;
-    const fit =
+    let fit =
       (corner.a && corner.b && arcEnd && outside(c, p, corner.a, q, corner.b)) ||
       (corner.a && corner.b && (alone(c, p, corner.a, q, corner.b) ?? alone(c, q, corner.b, p, corner.a))) ||
-      (corner.a && corner.b && matching(c, p, q, point)) ||
-      (corner.a && corner.b && outside(c, p, corner.a, q, corner.b));
+      (corner.a && corner.b && matching(c, p, q, point));
+    if (!fit && corner.a && corner.b) {
+      fit = outside(c, p, corner.a, q, corner.b);
+      if (fit) onFaces = true;
+    }
     if (fit) {
       endCuts.push([c.ref, fit.cut]);
       notches.push(...fit.notches);
@@ -66,11 +91,20 @@ export function resolveNode(walls: ReadonlyMap<WallId, WallShape>, refs: readonl
       warnings.push({ kind: 'complexJoin', walls: [c.wall.id, p.wall.id, q.wall.id] });
     }
   }
+  // An end the passage could not take or took only on its faces, or two ends abutting it from one side,
+  // which would overlap each other where they both reach the passage: the sectors, where they are exact.
+  const up = intoBody(p.wall, p.ref.end);
+  const sides = others.map((c) => Math.sign(cross(up, intoBody(c.wall, c.ref.end))));
+  const oneSide = others.length === 2 && sides[0] !== 0 && sides[0] === sides[1];
+  if (warnings.some((w) => w.kind === 'complexJoin') || oneSide || onFaces) {
+    const s = sectors();
+    if (s) return s;
+  }
   return { endCuts, notches, warnings };
 }
 
-/** The pair closest to in line within PASSAGE_ANGLE, else the two thickest cores (lower id on a tie). */
-function passageOf(ends: readonly End[]): [number, number] {
+/** The pair closest to in line within PASSAGE_ANGLE, or null. */
+function inLinePair(ends: readonly End[]): [number, number] | null {
   let best: [number, number] | null = null;
   let bestGap = PASSAGE_ANGLE;
   for (let i = 0; i < ends.length; i++) {
@@ -82,11 +116,38 @@ function passageOf(ends: readonly End[]): [number, number] {
       }
     }
   }
-  if (best) return best;
+  return best;
+}
+
+/** The two thickest cores (lower id on a tie), when no pair is in line and the sectors are not exact. */
+function thickestPair(ends: readonly End[]): [number, number] {
   const order = ends.map((_, k) => k).sort((x, y) => (goesThrough(ends[x]!.wall, ends[y]!.wall) ? -1 : 1));
   const [x, y] = [order[0]!, order[1]!];
   return x < y ? [x, y] : [y, x];
 }
+
+/**
+ * A passage wall as this node cuts it, layer by layer: a butt cuts each layer on its own line
+ * (layerCuts), so the wall's band cut by its common cuts alone reached metres past the corner. As one
+ * body, a third wall against the corner's outside lost all of that, along the far face's line.
+ */
+function layerBodies(w: End, cut: EndCut): ConvexPolygon[] {
+  return w.wall.layers.flatMap((_, k) => {
+    let poly: ConvexPolygon = strip(w.wall, w.ref.end === 'start' ? cut.extension : 0, w.ref.end === 'end' ? cut.extension : 0, [
+      w.wall.layerOffsets[k]!,
+      w.wall.layerOffsets[k + 1]!,
+    ]);
+    for (const plane of [...cut.cuts, ...(cut.layerCuts?.[k] ?? [])]) if (poly.length > 0) poly = clipHalfPlane(poly, plane);
+    return poly.length > 0 ? [poly] : [];
+  });
+}
+
+/** A convex counter-clockwise polygon as the half-planes of its sides. */
+const regionOf = (poly: ConvexPolygon): HalfPlane[] =>
+  poly.map((a, k) => {
+    const b = poly[(k + 1) % poly.length]!;
+    return halfPlaneThrough(a, { x: -(b.y - a.y), y: b.x - a.x });
+  });
 
 /** The host's face toward the abutting wall, and the half-plane beyond it on the abutting side. */
 function nearFace(c: End, host: WallShape): { offset: number; beyond: HalfPlane } {
@@ -130,18 +191,9 @@ function alone(c: End, host: End, hostCut: EndCut, other: End, otherCut: EndCut)
     return null;
   }
   // The rest of the abutting wall, past the host's face, against the other passage wall as far as
-  // this node trims it (its other end can only trim it more).
-  let mine: ConvexPolygon = clipHalfPlane(strip(c.wall, 0, 0), nearFace(c, host.wall).beyond);
-  const ext = otherCut.extension;
-  let theirs: ConvexPolygon = strip(other.wall, other.ref.end === 'start' ? ext : 0, other.ref.end === 'end' ? ext : 0);
-  for (const plane of otherCut.cuts) theirs = clipHalfPlane(theirs, plane);
-  for (let k = 0; k < theirs.length && mine.length > 0; k++) {
-    const a = theirs[k]!;
-    const b = theirs[(k + 1) % theirs.length]!;
-    // theirs is counter-clockwise: its inside is on the left of each edge.
-    mine = clipHalfPlane(mine, halfPlaneThrough(a, { x: -(b.y - a.y), y: b.x - a.x }));
-  }
-  if (mine.length > 0 && area(mine) >= AREA_EPSILON) return null;
+  // this node trims it, layer by layer (its other end can only trim it more).
+  const mine: ConvexPolygon = clipHalfPlane(strip(c.wall, 0, 0), nearFace(c, host.wall).beyond);
+  if (mine.length > 0 && layerBodies(other, otherCut).some((theirs) => overlapArea(mine, theirs) >= AREA_EPSILON)) return null;
   return result;
 }
 
@@ -235,21 +287,10 @@ function outside(c: End, p: End, pCut: EndCut, q: End, qCut: EndCut): AbutmentRe
   if (angleBetween(up, uq) > 180 - COLLINEAR_ANGLE || Math.abs(turn) < 1e-9) return null;
   const inside = Math.sign(cross(up, dc)) === Math.sign(turn) && Math.sign(cross(dc, uq)) === Math.sign(turn);
   if (inside) return null;
-  const body = (w: End, cut: EndCut): HalfPlane[] => {
-    let poly: ConvexPolygon = strip(w.wall, w.ref.end === 'start' ? cut.extension : 0, w.ref.end === 'end' ? cut.extension : 0);
-    for (const plane of cut.cuts) poly = clipHalfPlane(poly, plane);
-    return poly.map((a, k) => {
-      const b = poly[(k + 1) % poly.length]!;
-      return halfPlaneThrough(a, { x: -(b.y - a.y), y: b.x - a.x });
-    });
-  };
   const all: [number, number] = [0, c.wall.layers.length - 1];
   return {
     cut: { extension: 0, cuts: [] },
-    notches: [
-      { wallId: c.wall.id, region: body(p, pCut), layers: all },
-      { wallId: c.wall.id, region: body(q, qCut), layers: all },
-    ],
+    notches: [...layerBodies(p, pCut), ...layerBodies(q, qCut)].map((body) => ({ wallId: c.wall.id, region: regionOf(body), layers: all })),
     deepest: [],
   };
 }
