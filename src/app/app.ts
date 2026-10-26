@@ -45,7 +45,7 @@ import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, rectangle, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, dragTransform, hull, moveGuides, moveNotes } from './select-drag';
 import { addNote, updateNotes } from '../elements/note/commands';
-import { NOTE_HEIGHT, NOTE_PREFIX, type Note } from '../elements/note/schema';
+import { NOTE_HEIGHT, NOTE_PREFIX, type Note, isNoteId } from '../elements/note/schema';
 import { geometryOf, keepRooms, moveFloors, moveRooms } from './carry';
 import { keepOpenings } from './keep-openings';
 import { stepSelection } from './keyboard-select';
@@ -354,7 +354,7 @@ export class App {
     // Levels hidden now leave the selection, as a hidden category does.
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      if (!isGuideId(id) && !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
+      if (!isGuideId(id) && !isNoteId(id) && !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
     }
     this.refresh();
   }
@@ -370,10 +370,12 @@ export class App {
       let n = 0;
       const previewId = (prefix: string) => `${prefix}_preview${++n}`;
       const shownDoc = transformSelection(doc, this.modifyBefore ?? this.geometry, [...this.ui.selection], t, m.copy, previewId, m.disjoin).doc;
+      this.previewNotes = shownDoc.notes;
       // Doors and windows, and a room the walls would be moved past, as they will be when the move is made.
       this.geometry = keepRooms(doc, keepOpenings(doc, shownDoc)).geometry;
       return this.render();
     }
+    this.previewNotes = null;
     // While dragging, the walls as dragged; the rooms going with a move or a turn go in the preview too,
     // so they never show as open mid-drag.
     const shown =
@@ -1134,11 +1136,14 @@ export class App {
     return this.shownGuides().filter((g) => g.levelId === this.ui.levelId);
   }
 
-  /** The notes of the level shown, as a move being dragged takes them; plan only. */
+  /** The notes as the Modify tool would leave them with the pointer where it is (refresh), or null. */
+  private previewNotes: readonly Note[] | null = null;
+
+  /** The notes of the level shown, as a move being dragged or the Modify tool takes them; plan only. */
   levelNotes(): Note[] {
     if (this.ui.view !== 'plan') return [];
     const d = this.ui.drag;
-    const notes = this.store.get().notes;
+    const notes = this.previewNotes ?? this.store.get().notes;
     return (d?.kind === 'move' ? moveNotes(notes, d) : notes).filter((n) => n.levelId === this.ui.levelId);
   }
 
@@ -1653,7 +1658,7 @@ export class App {
    * Hiding again adds to what is hidden; with nothing selected, everything shows again (HR).
    */
   hideTemporarily(mode: 'hide' | 'isolate'): void {
-    const ids = [...this.ui.selection].filter((id) => !isGuideId(id));
+    const ids = [...this.ui.selection].filter((id) => !isGuideId(id) && !isNoteId(id));
     if (ids.length === 0) {
       if (this.ui.temp) this.resetTemporary();
       else {
@@ -2149,11 +2154,11 @@ export class App {
     return [...this.geometry.solids.values()].filter((s) => s.wall.levelId === below).flatMap((s) => s.pieces.map((p) => [...p.polygon]));
   }
 
-  /** How many kinds of element (walls, doors and windows, rooms, floors) the selection holds. */
+  /** How many kinds of element (walls, doors and windows, rooms, floors, guides, notes) the selection holds. */
   private selectionKinds(): number {
     const g = this.geometry;
     const ids = [...this.ui.selection];
-    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0);
+    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isNoteId) ? 1 : 0);
   }
 
   selectedWalls(): DocWall[] {
@@ -2766,7 +2771,8 @@ export class App {
     else this.ui.hidden.add(c);
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      // Guides have no geometry: they go only when guides are hidden.
+      // Guides and notes have no geometry: a guide goes only when guides are hidden, a note never.
+      if (isNoteId(id)) continue;
       if (isGuideId(id) ? this.ui.hidden.has('guides') : !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) {
         this.ui.selection.delete(id);
       }

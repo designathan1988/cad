@@ -28,7 +28,7 @@ import { arrowStep } from '../tools/nudge';
 import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
 import { GUIDE_PX, guideBaseAt } from '../tools/guide-tool';
-import { noteBox } from '../elements/note/schema';
+import { noteBox, shownHeight } from '../elements/note/schema';
 import type { LevelsShown } from './view-3d';
 import type { ModifyKind } from '../tools/modify-tool';
 import { cross, sub } from '../core/vector';
@@ -234,7 +234,7 @@ export function wireInput(app: App): void {
       ...app
         .levelNotes()
         .filter((n) => {
-          const b = noteBox(n);
+          const b = noteBox(n, shownHeight(n, app.plan.scale));
           return p.x >= b.x0 - near && p.x <= b.x1 + near && p.y >= b.y0 - near && p.y <= b.y1 + near;
         })
         .slice(-1)
@@ -704,9 +704,13 @@ export function wireInput(app: App): void {
     const target = e.target as HTMLElement;
     // A dialog open: its keys are its own, wherever the focus is (it fell to the page once, and typed
     // text became the app's shortcuts).
-    if (target.closest('input, select, textarea') || target.closest('.dialog-back') || !shell.helpBack.hidden) return;
     const ctrl = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
+    // The level list keeps the focus once a level is chosen in it: its arrows go on changing the level,
+    // but Ctrl+V (paste on the level just chosen), Ctrl+Z, Del and Esc are the drawing's.
+    const levelList = target === shell.level && (ctrl || key === 'delete' || key === 'escape');
+    if (levelList) shell.level.blur();
+    else if (target.closest('input, select, textarea') || target.closest('.dialog-back') || !shell.helpBack.hidden) return;
     shift = e.shiftKey;
     // The diagnostics panel, from anywhere but a dialog's field.
     if (e.key === 'F7') {

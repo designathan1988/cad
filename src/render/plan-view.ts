@@ -9,7 +9,7 @@ import { layoutRoomTags } from './room-tags';
 import type { Handles } from '../app/handles';
 import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
-import { type Note, noteBox } from '../elements/note/schema';
+import { type Note, noteBox, shownHeight } from '../elements/note/schema';
 import { LAYER_TOKEN } from '../ui/swatch';
 import { separateLabels } from '../app/dim-labels';
 
@@ -674,7 +674,7 @@ export class PlanView {
     const ctx = this.ctx;
     const family = getComputedStyle(this.canvas).getPropertyValue('--font').trim() || 'sans-serif';
     for (const n of notes) {
-      const px = n.height * this.scale;
+      const px = shownHeight(n, this.scale) * this.scale;
       const lines = n.text.split('\n');
       const c = this.toScreen(n.at);
       ctx.save();
@@ -685,7 +685,7 @@ export class PlanView {
       const step = px * 1.3;
       lines.forEach((l, i) => ctx.fillText(l, c.x, c.y + (i - (lines.length - 1) / 2) * step));
       if (n.selected) {
-        const b = noteBox(n);
+        const b = noteBox(n, shownHeight(n, this.scale));
         const p0 = this.toScreen({ x: b.x0, y: b.y1 });
         const p1 = this.toScreen({ x: b.x1, y: b.y0 });
         ctx.strokeStyle = color('--wall-sel');

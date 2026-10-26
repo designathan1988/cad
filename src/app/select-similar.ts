@@ -1,7 +1,7 @@
 // Select similar (ref/chat.txt:107), as Revit's "Select All Instances": from what is selected, every
 // element on the level shown that is like one of them. Walls of the same type; doors and windows of the
 // same kind and size; rooms of the same use (all rooms, for one without a use); floors of the same
-// thickness; guides, all of them. Pure.
+// thickness; notes of the same letter height; guides, all of them. Pure.
 
 import type { Doc } from './document';
 
@@ -14,6 +14,7 @@ export function similarTo(doc: Doc, selected: ReadonlySet<string>, levelId: stri
   const rooms = doc.rooms.filter((r) => selected.has(r.id));
   const floors = doc.floors.filter((f) => selected.has(f.id));
   const guides = doc.guides.some((g) => selected.has(g.id));
+  const notes = doc.notes.filter((n) => selected.has(n.id));
   const onLevel = new Map(doc.walls.map((w) => [w.id, w.levelId]));
   const same = (a: number, b: number) => Math.abs(a - b) <= SIZE;
   const out = new Set(selected);
@@ -24,6 +25,7 @@ export function similarTo(doc: Doc, selected: ReadonlySet<string>, levelId: stri
   }
   for (const r of doc.rooms) if (r.levelId === levelId && rooms.some((x) => x.use === undefined || x.use === r.use)) out.add(r.id);
   for (const f of doc.floors) if (f.levelId === levelId && floors.some((x) => same(x.thickness, f.thickness))) out.add(f.id);
+  for (const n of doc.notes) if (n.levelId === levelId && notes.some((x) => same(x.height, n.height))) out.add(n.id);
   if (guides) for (const g of doc.guides) if (g.levelId === levelId) out.add(g.id);
   return [...out];
 }

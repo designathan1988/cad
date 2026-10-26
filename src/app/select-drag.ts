@@ -21,7 +21,7 @@ import { insidePolygon, openingOutline } from './geometry';
 import { updateOpening } from '../elements/opening/commands';
 import type { Opening } from '../elements/opening/schema';
 import type { Guide } from '../elements/guide/schema';
-import { type Note, noteBox } from '../elements/note/schema';
+import { type Note, noteBox, shownHeight } from '../elements/note/schema';
 import { ruleAt } from '../tools/opening-tool';
 import { aimAlong, aimAt } from './opening-ui';
 
@@ -323,7 +323,7 @@ function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): voi
     ...[...g.floors.values()].map((f) => ({ id: f.floor.id, outlines: [screen(f.outline, f.bottom, f.top, f.floor.levelId)] })),
     // A note by its box.
     ...app.levelNotes().map((n) => {
-      const b = noteBox(n);
+      const b = noteBox(n, shownHeight(n, app.plan.scale));
       return { id: n.id, outlines: [[vec(b.x0, b.y0), vec(b.x1, b.y0), vec(b.x1, b.y1), vec(b.x0, b.y1)].map((p) => app.plan.toScreen(p))] };
     }),
     // A guide has no ends: only a crossing selection, which it runs through, takes it.
