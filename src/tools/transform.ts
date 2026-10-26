@@ -147,7 +147,7 @@ export function transformSelection(
     };
     const next: Doc = {
       ...doc,
-      // A move or a turn keeps the joins' lines (edit.ts); a scale or a mirror takes the corners along.
+      // A move keeps the joins' lines (edit.ts); a turn, a scale or a mirror takes the corners along.
       walls: disjoin ? doc.walls.map((w) => (walls.has(w.id) ? alone(w) : w)) : transformWalls(doc, wallIds, t.map, t.mirror, !t.mirror && t.factor === 1),
       openings: doc.openings.map((o) => (walls.has(o.wallId) ? mapOpening(o, t, same) : o)),
       openingGroups: doc.openingGroups.map((x) => (walls.has(x.wallId) ? mapGroup(x, t, same, () => true) : x)),

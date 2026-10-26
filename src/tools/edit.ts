@@ -1,5 +1,5 @@
 // Editing walls while keeping their joins (pure). Ends that met a moved end follow it, so corners
-// stay closed (along their own lines, in a move or a turn); ends that abutted a moved wall's body
+// stay closed (along their own lines in a move); ends that abutted a moved wall's body
 // slide along their own wall to stay on it, so Ts stay joined, and so do a moved wall's own ends on
 // another's body. Nothing here touches geometry beyond the reference lines: the join engine redoes the rest.
 
@@ -35,6 +35,18 @@ function meet(p: Point2, u: Point2, q: Point2, v: Point2): Point2 | null {
 const onLine = (q: Point2, a: Point2, b: Point2): boolean => Math.abs(cross(normalize(sub(b, a)), sub(q, a))) <= POINT_TOLERANCE;
 
 /**
+ * Whether a wall taken from `was` to `now` kept its direction (a move): only then do its corners keep
+ * the joins' lines. Turned, its new line meets a left-behind wall's line anywhere: a box turned a
+ * quarter about the origin, with a wall joined at its corner (4, 0) left behind along x, had that
+ * corner go to (0, 0), and the box's bottom wall shrank to nothing.
+ */
+function keptDirection(was: Ends, now: Ends): boolean {
+  const u = normalize(sub(was.end, was.start));
+  const v = normalize(sub(now.end, now.start));
+  return Math.abs(cross(u, v)) <= 1e-9 && dot(u, v) > 0;
+}
+
+/**
  * New positions for every wall after the walls in `moved` take their new ends. The others keep
  * their joins: an end at a moved wall's old end goes where `map` takes that end, or, with `lines`,
  * along its own line to the moved wall's new line (its direction kept); an end on a moved wall's body
@@ -51,7 +63,10 @@ function follow(walls: readonly DocWall[], moved: ReadonlyMap<WallId, Ends>, map
         const end = distance(p, before.start) <= POINT_TOLERANCE ? before.start : distance(p, before.end) <= POINT_TOLERANCE ? before.end : null;
         if (!end) continue;
         const mapped = map(end);
-        const hit = lines && !w.bulge && !before.bulge && !onLine(mapped, other, p) ? meet(other, sub(p, other), next.start, sub(next.end, next.start)) : null;
+        const hit =
+          lines && keptDirection(before, next) && !w.bulge && !before.bulge && !onLine(mapped, other, p)
+            ? meet(other, sub(p, other), next.start, sub(next.end, next.start))
+            : null;
         if (hit) return hit;
         corner ??= mapped;
       }
@@ -74,10 +89,11 @@ function follow(walls: readonly DocWall[], moved: ReadonlyMap<WallId, Ends>, map
  * Every wall after those in `ids` are taken by `map` (a move, a turn, a scale or a mirror), the others
  * keeping their joins. `swap`: the moved walls' ends trade places, as a mirror needs so each wall keeps
  * its layers on the mirrored side (a mirror turns a wall's left into its right). `rigid` (a move or a
- * turn): the joins keep their lines, as Revit's do. A corner with a wall left behind goes where the two
- * lines meet now, that wall keeping its direction, and a moved wall's end on another's body stays on
- * it (keepOnHosts). Taken by the pointer as it was, a hand that drifted 1 cm along the wall tilted the
- * walls at its corners, and the whole outline of a house came out askew.
+ * turn): a moved wall's end on another's body stays on it (keepOnHosts), and the joins of a wall that
+ * kept its direction keep their lines, as Revit's do: a corner with a wall left behind goes where the
+ * two lines meet now, that wall keeping its direction. Taken by the pointer as it was, a hand that
+ * drifted 1 cm along the wall tilted the walls at its corners, and the whole outline of a house came
+ * out askew. A turned wall takes its corners along (keptDirection).
  */
 export function transformWalls(doc: Doc, ids: readonly WallId[], map: (p: Point2) => Point2, swap = false, rigid = false): DocWall[] {
   const set = new Set(ids);
@@ -91,7 +107,7 @@ export function transformWalls(doc: Doc, ids: readonly WallId[], map: (p: Point2
   if (!rigid) return follow(doc.walls, moved, map, false);
   for (const w of doc.walls) {
     const next = moved.get(w.id);
-    if (!next || w.bulge) continue;
+    if (!next || w.bulge || !keptDirection(w, next)) continue;
     // A moved end at a corner with a wall left behind: where its new line meets that wall's line.
     const corner = (p: Point2, mapped: Point2): Point2 | null => {
       for (const o of doc.walls) {
