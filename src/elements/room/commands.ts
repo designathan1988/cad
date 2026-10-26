@@ -44,12 +44,12 @@ export const updateRooms = (ids: readonly RoomId[], patch: RoomPatch): Command<D
 });
 
 export const addFloor = (floor: Floor): Command<Doc> => ({
-  label: 'cmd.addFloor',
+  label: floor.kind === 'ceiling' ? 'cmd.addCeiling' : 'cmd.addFloor',
   apply: (doc) => ({ ...doc, floors: [...doc.floors, floor] }),
 });
 
 /** Thickness and offset. A thickness of zero or less changes nothing. */
-export const updateFloor = (id: FloorId, patch: Partial<Pick<Floor, 'thickness' | 'offset'>>): Command<Doc> => ({
+export const updateFloor = (id: FloorId, patch: Partial<Pick<Floor, 'thickness' | 'offset' | 'slope'>>): Command<Doc> => ({
   label: 'cmd.updateFloor',
   apply: (doc) => {
     if (patch.thickness !== undefined && !(patch.thickness > 0)) return doc;
@@ -64,4 +64,29 @@ export const updateFloor = (id: FloorId, patch: Partial<Pick<Floor, 'thickness' 
     });
     return changed ? { ...doc, floors } : doc;
   },
+});
+
+/** A hole through a floor: an outline of three points or more. */
+export const addFloorHole = (id: FloorId, points: readonly { x: number; y: number }[]): Command<Doc> => ({
+  label: 'cmd.addFloorHole',
+  apply: (doc) =>
+    points.length < 3 || !doc.floors.some((f) => f.id === id)
+      ? doc
+      : { ...doc, floors: doc.floors.map((f) => (f.id === id ? { ...f, holes: [...(f.holes ?? []), points.map((p) => ({ x: p.x, y: p.y }))] } : f)) },
+});
+
+/** The floors without their holes. */
+export const clearFloorHoles = (ids: readonly FloorId[]): Command<Doc> => ({
+  label: 'cmd.clearFloorHoles',
+  apply: (doc) =>
+    !doc.floors.some((f) => ids.includes(f.id) && (f.holes?.length ?? 0) > 0)
+      ? doc
+      : {
+          ...doc,
+          floors: doc.floors.map((f) => {
+            if (!ids.includes(f.id) || !f.holes) return f;
+            const { holes: _gone, ...rest } = f;
+            return rest;
+          }),
+        },
 });

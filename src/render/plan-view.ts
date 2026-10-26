@@ -298,17 +298,43 @@ export class PlanView {
       ctx.fillStyle = color('--underlay');
       ctx.fill('nonzero');
     }
-    // Floors and rooms lie under the walls.
+    // Floors and rooms lie under the walls; a floor's holes are left out of it, crossed as voids are
+    // drawn. A ceiling is above the cut: only its outline, dotted.
     for (const f of g.floors.values()) {
       if (f.outline.length < 3) continue;
       const sel = o.selected.has(f.floor.id) || o.hover === f.floor.id;
+      const ceiling = f.floor.kind === 'ceiling';
       trace(f.outline);
-      ctx.fillStyle = sel ? color('--accent-soft') : color('--floor-fill');
-      ctx.fill();
+      for (const h of f.holes) {
+        h.forEach((v, i) => {
+          const s = this.toScreen(v);
+          if (i === 0) ctx.moveTo(s.x, s.y);
+          else ctx.lineTo(s.x, s.y);
+        });
+        ctx.closePath();
+      }
+      if (!ceiling || sel) {
+        ctx.fillStyle = sel ? color('--accent-soft') : color('--floor-fill');
+        ctx.fill('evenodd');
+      }
       ctx.save();
-      ctx.setLineDash([5, 4]);
+      ctx.setLineDash(ceiling ? [2, 3] : [5, 4]);
       ctx.strokeStyle = sel ? color('--wall-sel') : color('--text-3');
       ctx.lineWidth = 1;
+      ctx.stroke();
+      // Each hole crossed corner to corner.
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      for (const h of f.holes) {
+        if (h.length < 3) continue;
+        const pts = h.map((v) => this.toScreen(v));
+        ctx.moveTo(pts[0]!.x, pts[0]!.y);
+        ctx.lineTo(pts[Math.floor(pts.length / 2)]!.x, pts[Math.floor(pts.length / 2)]!.y);
+        if (pts.length >= 4) {
+          ctx.moveTo(pts[1]!.x, pts[1]!.y);
+          ctx.lineTo(pts[Math.floor(pts.length / 2) + 1]!.x, pts[Math.floor(pts.length / 2) + 1]!.y);
+        }
+      }
       ctx.stroke();
       ctx.restore();
     }

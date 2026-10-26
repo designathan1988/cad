@@ -34,8 +34,17 @@ export interface Floor {
   readonly source: FloorSource;
   /** Slab thickness below its top (m). */
   readonly thickness: number;
-  /** Top of the slab above the level (m). */
+  /** Top of the slab above the level (m); with a slope, of its lowest corner. */
   readonly offset: number;
+  /** Openings through it (a stair's, a shaft's): outlines inside it. */
+  readonly holes?: readonly (readonly Point2[])[];
+  /** A slab that rises `grade` % toward the plan direction `dir` (radians), from its lowest corner. */
+  readonly slope?: { readonly grade: number; readonly dir: number };
+  /** A ceiling: hung under the level above, drawn dotted in plan (it is above the cut). */
+  readonly kind?: 'ceiling';
 }
+
+/** A new ceiling's thickness (m): a plaster board. */
+export const CEILING_THICKNESS = 0.02;
 
 export const FLOOR_DEFAULTS = { thickness: 0.15, offset: 0 } as const;

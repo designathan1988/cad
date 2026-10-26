@@ -49,7 +49,11 @@ export function roomsGoingWith(doc: Doc, before: DerivedGeometry, moved: Readonl
 
 /** The outline floors in `ids` with their points moved by `transform`; a room's floor follows its room. */
 export const moveFloors = (floors: readonly Floor[], ids: ReadonlySet<string>, transform: (p: Point2) => Point2): Floor[] =>
-  floors.map((f) => (ids.has(f.id) && f.source.kind === 'outline' ? { ...f, source: { kind: 'outline', points: f.source.points.map(transform) } } : f));
+  floors.map((f) =>
+    ids.has(f.id) && f.source.kind === 'outline'
+      ? { ...f, source: { kind: 'outline', points: f.source.points.map(transform) }, ...(f.holes ? { holes: f.holes.map((h) => h.map(transform)) } : {}) }
+      : f,
+  );
 
 /** The rooms with the points of those in `going` moved by `transform`. */
 export const moveRooms = (rooms: readonly Room[], going: ReadonlySet<string>, transform: (p: Point2) => Point2): Room[] =>

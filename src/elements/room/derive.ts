@@ -29,6 +29,10 @@ export interface FloorSolid {
   readonly area: number;
   readonly bottom: number;
   readonly top: number;
+  /** Its holes' outlines, wound against its outline. */
+  readonly holes: readonly (readonly Point2[])[];
+  /** A sloped slab: a point p is `k · (p·u − base)` above `top`. */
+  readonly rise?: { readonly u: Point2; readonly base: number; readonly k: number };
 }
 
 export interface RoomWarning {
@@ -210,7 +214,20 @@ export function deriveFloors(
     const raw = floor.source.kind === 'room' ? (rooms.get(floor.source.roomId)?.outline ?? []) : floor.source.points;
     const outline = signedArea(raw) < 0 ? [...raw].reverse() : [...raw];
     const top = elevation(floor.levelId) + floor.offset;
-    out.set(floor.id, { floor, outline, area: Math.abs(signedArea(outline)), bottom: top - floor.thickness, top });
+    // Holes the other way round from the outline, as a shape with holes is traced.
+    const holes = (floor.holes ?? []).filter((h) => h.length >= 3).map((h) => (signedArea(h) > 0 ? [...h].reverse() : [...h]));
+    const area = Math.abs(signedArea(outline)) - holes.reduce((s, h) => s + Math.abs(signedArea(h)), 0);
+    // Rising from its lowest corner: how far up each point of it is.
+    let rise: FloorSolid['rise'];
+    if (floor.slope && floor.slope.grade !== 0 && outline.length >= 3) {
+      const u = { x: Math.cos(floor.slope.dir), y: Math.sin(floor.slope.dir) };
+      const base = Math.min(...outline.map((p) => p.x * u.x + p.y * u.y));
+      rise = { u, base, k: floor.slope.grade / 100 };
+    }
+    out.set(floor.id, { floor, outline, holes, area: Math.max(0, area), bottom: top - floor.thickness, top, ...(rise ? { rise } : {}) });
   }
   return out;
 }
+
+/** How far above its `top` a sloped floor is at p (0 for a flat one). */
+export const riseAt = (f: FloorSolid, p: Point2): number => (f.rise ? f.rise.k * (p.x * f.rise.u.x + p.y * f.rise.u.y - f.rise.base) : 0);

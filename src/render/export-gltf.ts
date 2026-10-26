@@ -5,6 +5,7 @@
 // layers (plaster, brick), coloured by the kind of layer.
 // Metres, y up, as glTF wants (three.js's axes, prisms.ts).
 
+import { riseAt } from '../elements/room/derive';
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import type { Doc } from '../app/document';
@@ -13,7 +14,7 @@ import type { DerivedGeometry } from '../app/geometry';
 import { add, scale } from '../core/vector';
 import { visibleFaces } from '../elements/wall/geometry/faces';
 import type { LayerFunction } from '../elements/wall/schema';
-import { prism, shownPrism } from './prisms';
+import { prism, shownPrism, slabGeometry } from './prisms';
 
 /** How the nodes and materials are named: as the interface says it. */
 export interface ExportNaming {
@@ -127,8 +128,7 @@ export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): 
   let floors = 0;
   for (const fl of g.floors.values()) {
     if (fl.outline.length < 3) continue;
-    const shape = new THREE.Shape(fl.outline.map((p) => new THREE.Vector2(p.x, p.y)));
-    const geo = new THREE.ExtrudeGeometry(shape, { depth: fl.top - fl.bottom, bevelEnabled: false });
+    const geo = slabGeometry(fl.outline, fl.holes, fl.top - fl.bottom, fl.rise ? (p) => riseAt(fl, p) : undefined);
     // The shape lies in x–y; turned −90° about x it lies in three.js x–(−z), extruded upward. Turned in
     // the geometry itself, as every other mesh here: no node carries a transform to get wrong.
     geo.rotateX(-Math.PI / 2);

@@ -38,8 +38,9 @@ import type { DocWall } from '../app/document';
  * Version 14: grid axes (`grids`, elements/grid). Older files have none.
  * Version 15: columns (`columns`, elements/column). Older files have none.
  * Version 16: beams (`beams`, elements/beam). Older files have none.
+ * Version 17: floors with holes, a slope, and ceilings (`holes`, `slope`, `kind`). Older floors have none.
  */
-export const CURRENT_VERSION = 16;
+export const CURRENT_VERSION = 17;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
@@ -142,7 +143,10 @@ export const isFloor = (f: unknown): f is Floor =>
   finite(f.offset) &&
   isObject(f.source) &&
   ((f.source.kind === 'room' && typeof f.source.roomId === 'string') ||
-    (f.source.kind === 'outline' && Array.isArray(f.source.points) && f.source.points.length >= 3 && f.source.points.every(isPoint)));
+    (f.source.kind === 'outline' && Array.isArray(f.source.points) && f.source.points.length >= 3 && f.source.points.every(isPoint))) &&
+  (f.holes === undefined || (Array.isArray(f.holes) && f.holes.every((h) => Array.isArray(h) && h.length >= 3 && h.every(isPoint)))) &&
+  (f.slope === undefined || (isObject(f.slope) && finite(f.slope.grade) && finite(f.slope.dir))) &&
+  (f.kind === undefined || f.kind === 'ceiling');
 
 /** A text note: a point, some text, letters taller than nothing. */
 export const isNote = (n: unknown): n is Note =>

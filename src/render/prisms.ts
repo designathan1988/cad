@@ -63,3 +63,21 @@ function prism(poly: readonly Point2[], bottom: number, top: number): THREE.Buff
   g.computeVertexNormals();
   return g;
 }
+
+/**
+ * A floor slab with its holes, extruded from its bottom by its thickness, and tilted by its slope: in
+ * the shape's own x–y (plan) with the height along z, before the caller turns it −90° about x.
+ */
+export function slabGeometry(outline: readonly Point2[], holes: readonly (readonly Point2[])[], thickness: number, rise?: (p: Point2) => number): THREE.BufferGeometry {
+  const shape = new THREE.Shape(outline.map((p) => new THREE.Vector2(p.x, p.y)));
+  for (const h of holes) shape.holes.push(new THREE.Path(h.map((p) => new THREE.Vector2(p.x, p.y))));
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
+  if (rise) {
+    // Every point up by the slope at its place in plan: the slab keeps its thickness, upright.
+    const pos = geo.getAttribute('position');
+    for (let i = 0; i < pos.count; i++) pos.setZ(i, pos.getZ(i) + rise({ x: pos.getX(i), y: pos.getY(i) }));
+    pos.needsUpdate = true;
+    geo.computeVertexNormals();
+  }
+  return geo;
+}

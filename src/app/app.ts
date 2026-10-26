@@ -1,6 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import { CEILING_THICKNESS } from '../elements/room/schema';
 import * as THREE from 'three';
 import { parseLength, parseLengthAngle, parseNumber, parsePoint } from '../core/measure';
 import { createStore, type Store } from '../core/store';
@@ -101,7 +102,7 @@ import { referenceLength } from '../elements/opening/derive';
 import { doorFlips, type Handles, handlesFor, ROTATE_OFFSET } from './handles';
 import { placeBarY } from '../ui/bar-place';
 import { newId } from '../core/id';
-import { addFloor, addRoom, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
+import { addFloor, addFloorHole, addRoom, clearFloorHoles, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
 import { insideRing, signedArea, type FloorSolid, type RoomSolid } from '../elements/room/derive';
 import { FLOOR_DEFAULTS } from '../elements/room/schema';
 
@@ -146,6 +147,8 @@ export interface UiState {
   gridFrom: Point2 | null;
   /** The beam tool's first point, before the beam is made. */
   beamFrom: Point2 | null;
+  /** The floor the floor tool's outline goes through as a hole (startFloorHole), or null for a new floor. */
+  holeFor: string | null;
   /** A guide being placed (guide-tool.ts): Alt over a wall or a guide in a drawing tool. */
   guide: GuideDraft | null;
   /** How the 3D view shows the levels: which, exploded, cut (view-3d.ts). */
@@ -241,6 +244,7 @@ export class App {
       dimension: DIMENSION_IDLE,
       gridFrom: null,
       beamFrom: null,
+      holeFor: null,
       guide: null,
       view3d: readView3D(prefs.view3d),
       modify: null,
@@ -514,11 +518,11 @@ export class App {
    */
   floorClick(p: Point2, mpp: number, typed = false, corner = p): void {
     const draft = this.ui.floorDraft;
-    if (draft.length === 0 && !typed) {
+    if (draft.length === 0 && !typed && !this.ui.holeFor) {
       const room = [...this.visibleGeometry().rooms.values()].find((r) => r.enclosed && insideRing(r.outline, p));
       if (room) {
-        const has = this.store.get().floors.find((f) => f.source.kind === 'room' && f.source.roomId === room.room.id);
-        if (has) {
+        const has = this.store.get().floors.find((f) => f.kind !== 'ceiling' && f.source.kind === 'room' && f.source.roomId === room.room.id);
+        if (has && !this.ui.holeFor) {
           this.ui.selection = new Set([has.id]);
           this.ui.error = null;
           this.ui.info = t('hint.floorExists');
@@ -537,10 +541,31 @@ export class App {
     this.render();
   }
 
+  /** Draws a hole in a floor: the floor tool, its outline then going through that floor. */
+  startFloorHole(floorId: string): void {
+    this.setTool('floor');
+    this.ui.holeFor = floorId;
+    this.ui.info = t('hint.holeStart');
+    this.render();
+  }
+
+  /** A ceiling following a room's outline, at the room's ceiling height (its own, or its level's). */
+  addCeilingToRoom(roomId: string): void {
+    const doc = this.store.get();
+    const room = doc.rooms.find((r) => r.id === roomId);
+    if (!room || doc.floors.some((f) => f.kind === 'ceiling' && f.source.kind === 'room' && f.source.roomId === roomId)) return;
+    const height = room.height ?? levelOf(doc, room.levelId)?.height ?? 2.8;
+    const id = newId('floor');
+    this.store.dispatch(addFloor({ id, levelId: room.levelId, source: { kind: 'room', roomId }, thickness: CEILING_THICKNESS, offset: height + CEILING_THICKNESS, kind: 'ceiling' }));
+    this.ui.selection = new Set([id]);
+    this.ui.info = t('hint.ceilingAdded', { room: name(room.name) });
+    this.refresh();
+  }
+
   /** A floor following a room's outline; said and selected at once, so it is seen without another click. */
   addFloorToRoom(roomId: string): void {
     const room = this.store.get().rooms.find((r) => r.id === roomId);
-    if (!room || this.store.get().floors.some((f) => f.source.kind === 'room' && f.source.roomId === roomId)) return;
+    if (!room || this.store.get().floors.some((f) => f.kind !== 'ceiling' && f.source.kind === 'room' && f.source.roomId === roomId)) return;
     const id = newId('floor');
     this.store.dispatch(addFloor({ id, levelId: room.levelId, source: { kind: 'room', roomId }, ...FLOOR_DEFAULTS }));
     this.ui.selection = new Set([id]);
@@ -561,6 +586,17 @@ export class App {
     this.ui.floorDraft = [];
     this.ui.snap = null;
     if (points.length < 3) return this.render();
+    // Drawing a hole: the outline goes through the floor it was started from, which stays selected.
+    const hole = this.ui.holeFor;
+    if (hole) {
+      this.ui.holeFor = null;
+      this.store.dispatch(addFloorHole(hole, points));
+      this.ui.selection = new Set([hole]);
+      this.ui.info = t('hint.holeAdded');
+      this.setTool('select');
+      this.ui.selection = new Set([hole]);
+      return this.refresh();
+    }
     const id = newId('floor');
     this.store.dispatch(addFloor({ id, levelId: this.ui.levelId, source: { kind: 'outline', points }, ...FLOOR_DEFAULTS }));
     this.ui.selection = new Set([id]);
@@ -779,6 +815,7 @@ export class App {
     this.ui.dimension = DIMENSION_IDLE;
     this.ui.gridFrom = null;
     this.ui.beamFrom = null;
+    this.ui.holeFor = null;
     this.ui.guide = null;
     this.ui.modify = null;
     this.modifyBefore = null;
@@ -2725,6 +2762,8 @@ export class App {
           updateRoom: (id, patch) => this.store.dispatch(updateRoom(id, patch)),
           updateRooms: (ids, patch) => this.store.dispatch(updateRooms(ids, patch)),
           levelHeight: (levelId) => levelOf(this.store.get(), levelId)?.height ?? 0,
+          startFloorHole: (id) => this.startFloorHole(id),
+          clearFloorHoles: (ids) => this.store.dispatch(clearFloorHoles(ids)),
           updateFloor: (ids, patch) => {
             const doc = this.store.get();
             const next = ids.reduce((d, id) => updateFloor(id, patch).apply(d), doc);
@@ -3214,7 +3253,9 @@ export class App {
           ? t(ui.tapToConfirm ? 'hint.roomTapAgain' : 'hint.roomHere', { area: num(Math.abs(signedArea(ui.roomSpace))) })
           : t('hint.roomPlace')
         : ui.tool === 'floor'
-          ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
+          ? ui.holeFor
+            ? t('hint.holeStart')
+            : t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
           : ui.tool === 'measure'
             ? this.measureHint()
             : ui.tool === 'dimension'

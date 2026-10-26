@@ -18,6 +18,7 @@ export type ContextId =
   | 'flipSwing'
   | 'centerOpening'
   | 'addFloor'
+  | 'addCeiling'
   | 'distribute'
   | 'frameSelection'
   | 'properties'
@@ -59,10 +60,11 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: str
   if (opening)
     return opening.kind === 'door' ? [...modify, 'flipHinge', 'flipSwing', 'selectSimilar', 'properties', 'delete'] : [...modify, 'centerOpening', 'selectSimilar', ...common];
   if (doc.rooms.some((r) => r.id === id)) {
-    const floored = doc.floors.some((f) => f.source.kind === 'room' && f.source.roomId === id);
+    const floored = doc.floors.some((f) => f.kind !== 'ceiling' && f.source.kind === 'room' && f.source.roomId === id);
+    const ceiled = doc.floors.some((f) => f.kind === 'ceiling' && f.source.kind === 'room' && f.source.roomId === id);
     // Walking from inside a room, where the menu was opened (the most natural place to start), and a
     // point of interest there. Framing a room is F; the menu keeps to six.
-    return [...modify, ...(floored ? [] : (['addFloor'] as const)), 'walkHere', 'addPoint', 'properties', 'delete'];
+    return [...modify, ...(floored ? [] : (['addFloor'] as const)), ...(ceiled ? [] : (['addCeiling'] as const)), 'walkHere', 'addPoint', 'properties', 'delete'];
   }
   return [...modify, 'selectSimilar', ...common];
 }

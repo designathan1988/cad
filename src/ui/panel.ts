@@ -166,7 +166,15 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     };
     nodes.push(...roomPanel(input.rooms, act.room, tag));
   } else if (input.floors.length > 0) {
-    nodes.push(head('slab', input.floors.length === 1 ? t('floor.title') : t('floor.titleMany', { n: input.floors.length })));
+    const ceilings = input.floors.every((f) => f.floor.kind === 'ceiling');
+    nodes.push(
+      head(
+        'slab',
+        ceilings
+          ? input.floors.length === 1 ? t('ceiling.title') : t('ceiling.titleMany', { n: input.floors.length })
+          : input.floors.length === 1 ? t('floor.title') : t('floor.titleMany', { n: input.floors.length }),
+      ),
+    );
     part(input.floors.length);
     // Shown as the room's own tag and footer show it: a default name in the interface's language.
     const roomName = (id: string) => {

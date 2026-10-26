@@ -338,9 +338,9 @@ Construção
 - Vigas (l.86, l.134): existe (ferramenta Viga, B, na barra lateral e na paleta: cliques em cadeia, Esc termina; pendurada no topo do pavimento, largura, altura e ajuste do topo no painel; na planta tracejada, acima do corte; 3D; GLB; DXF na camada S-BEAM; mover, copiar, girar, setas; vai com o eixo em que está; arquivo versão 16). Testado no app: desenhar, prévia, painel, 3D, apagar. Achado e corrigido: sem prévia da viga entre o primeiro clique e o ponteiro. Falta: viga que recorta laje e parede, viga inclinada ou em arco.
 - Lajes e pisos por contorno ou pelo interior de paredes fechadas (l.87, l.135): parcial, existe piso por contorno e por cômodo.
 - **Lajes e pisos com camadas** (l.87, l.135): falta. O editor de camadas do 17 deve servir a eles.
-- Lajes e pisos com inclinação opcional (l.87): falta.
-- Lajes e pisos com furos (l.87, l.135): falta.
-- Forros por cômodo ou por contorno, com altura (l.88, l.135): falta.
+- Lajes e pisos com inclinação opcional (l.87): existe (no painel do piso: inclinação em % e a direção para onde sobe; a laje inclina inteira, mantendo a espessura; 3D e GLB). Testado no app: 10 % no piso externo, desfeito.
+- Lajes e pisos com furos (l.87, l.135): existe ("Desenhar um furo…" no painel do piso: contorno clicado, fechado no primeiro ponto; área desconta o furo; furo cruzado na planta e vazado no 3D e GLB; "Tirar os furos"; o furo vai com o piso de contorno quando é movido; arquivo versão 17). Testado no app: furo no piso externo (5,43 → 4,17 m²), planta e 3D, desfeito.
+- Forros por cômodo ou por contorno, com altura (l.88, l.135): parcial. "Adicionar forro" no menu do botão direito do cômodo: placa de 2 cm na altura do cômodo (ou do pavimento), pontilhado na planta (acima do corte), 3D; espessura e altura no painel. Testado no app em Quarto 1, desfeito. Falta: forro por contorno desenhado (hoje só por cômodo).
 - Telhados por contorno, com inclinação e beiral por lado: uma água, duas águas, quatro águas, mansarda, plano com platibanda (l.89, l.136): falta.
 - Telhado por extrusão de perfil, abóbada (l.89): falta.
 - Escadas retas, em L, em U e em caracol, degraus pela altura entre pavimentos, patamares (l.90, l.137): falta.

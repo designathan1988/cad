@@ -213,7 +213,13 @@ export function transformSelection(
       openings: doc.openings.map((o) => (walls.has(o.wallId) ? mapOpening(o, t, same) : lone.has(o.id) ? { ...o, ...lone.get(o.id)! } : o)),
       openingGroups: doc.openingGroups.map((x) => (walls.has(x.wallId) ? mapGroup(x, t, same, () => true) : x)),
       rooms: doc.rooms.map((r) => (rooms.has(r.id) ? { ...r, seed: t.map(r.seed) } : r)),
-      floors: doc.floors.map((f) => (floors.has(f.id) && f.source.kind === 'outline' ? { ...f, source: { kind: 'outline', points: outline(f.source.points) } } : f)),
+      floors: doc.floors.map((f) =>
+        floors.has(f.id) && f.source.kind === 'outline'
+          ? { ...f, source: { kind: 'outline', points: outline(f.source.points) }, ...(f.holes ? { holes: f.holes.map(outline) } : {}) }
+          : f.source.kind === 'room' && rooms.has(f.source.roomId) && f.holes
+            ? { ...f, holes: f.holes.map(outline) }
+            : f,
+      ),
       guides: doc.guides.map((x) => (guides.has(x.id) ? { ...x, point: t.map(x.point), dir: mapDir(t, x.point, x.dir) } : x)),
       notes: doc.notes.map((x) => (notes.has(x.id) ? { ...x, at: t.map(x.at) } : x)),
       grids: doc.grids.map((x) => (grids.has(x.id) ? { ...x, start: t.map(x.start), end: t.map(x.end) } : x)),
@@ -280,6 +286,7 @@ export function transformSelection(
     ...f,
     id: to(f.id),
     source: f.source.kind === 'room' ? { kind: 'room' as const, roomId: to(f.source.roomId) } : { kind: 'outline' as const, points: outline(f.source.points) },
+    ...(f.holes ? { holes: f.holes.map(outline) } : {}),
   }));
   const next: Doc = {
     ...doc,

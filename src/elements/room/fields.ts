@@ -12,7 +12,10 @@ export interface RoomFieldActions {
   readonly updateRooms: (ids: readonly RoomId[], patch: RoomPatch) => void;
   /** A level's height: a room's ceiling when it has none of its own. */
   readonly levelHeight: (levelId: string) => number;
-  readonly updateFloor: (ids: readonly FloorId[], patch: Partial<Pick<Floor, 'thickness' | 'offset'>>) => void;
+  readonly updateFloor: (ids: readonly FloorId[], patch: Partial<Pick<Floor, 'thickness' | 'offset' | 'slope'>>) => void;
+  /** Draws a hole in the one floor selected (the floor tool, for its outline). */
+  readonly startFloorHole?: (id: FloorId) => void;
+  readonly clearFloorHoles?: (ids: readonly FloorId[]) => void;
 }
 
 const one = <T>(xs: readonly T[]) => xs.length === 1;
@@ -66,5 +69,32 @@ export function floorFields(floors: readonly FloorSolid[], roomName: (id: RoomId
       },
     },
     { id: 'area', label: 'room.area', kind: 'readout', text: (fs) => `${num(fs.reduce((s, f) => s + f.area, 0))} m²` },
+    // A ramp, a terrace falling to its drain: the grade and the way it rises.
+    {
+      id: 'grade',
+      label: 'floor.grade',
+      icon: 'raise',
+      kind: 'number',
+      unit: '%',
+      get: (f) => f.floor.slope?.grade ?? 0,
+      set: (v) => act.updateFloor(ids, { slope: { grade: v, dir: floors[0]?.floor.slope?.dir ?? 0 } }),
+    },
+    {
+      id: 'gradeDir',
+      label: 'floor.gradeDir',
+      icon: 'rotate',
+      kind: 'number',
+      unit: '°',
+      when: (fs) => fs.every((f) => (f.floor.slope?.grade ?? 0) !== 0),
+      get: (f) => Math.round((((f.floor.slope?.dir ?? 0) * 180) / Math.PI) * 100) / 100,
+      set: (v) => act.updateFloor(ids, { slope: { grade: floors[0]?.floor.slope?.grade ?? 0, dir: (v * Math.PI) / 180 } }),
+    },
+    { id: 'holes', label: 'floor.holes', kind: 'readout', when: (fs) => fs.some((f) => f.holes.length > 0), text: (fs) => String(fs.reduce((s, f) => s + f.holes.length, 0)) },
+    ...(act.startFloorHole && floors.length === 1
+      ? [{ id: 'addHole', label: 'floor.addHole', kind: 'action', run: () => act.startFloorHole!(ids[0]!) } as const]
+      : []),
+    ...(act.clearFloorHoles
+      ? [{ id: 'clearHoles', label: 'floor.clearHoles', kind: 'action', when: (fs: readonly FloorSolid[]) => fs.some((f) => f.holes.length > 0), run: () => act.clearFloorHoles!(ids) } as const]
+      : []),
   ];
 }

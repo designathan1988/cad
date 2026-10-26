@@ -2,6 +2,7 @@
 // renders only when something changed. World (x, y, height) maps to three.js (x, height, −y).
 // Each convex piece is a prism; pieces are disjoint by construction, so no 3D boolean exists.
 
+import { riseAt } from '../elements/room/derive';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Point2 } from '../core/vector';
@@ -11,7 +12,7 @@ import type { WallId } from '../elements/wall/schema';
 import { LAYER_TOKEN } from '../ui/swatch';
 import { blockPaint, wallMeshKey } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
-import { prism, shownPrism, toThree } from './prisms';
+import { prism, shownPrism, slabGeometry, toThree } from './prisms';
 import { featureEdges } from '../elements/wall/geometry/edges';
 import { symbolLines } from '../elements/opening/symbol';
 import { boxCaps, type SectionBox, type SectionLine, sectionCaps, sectionLooks, type UprightPrism } from '../app/section-box';
@@ -535,7 +536,7 @@ export class Scene3D {
       seen.add(id);
       const state = selected.has(id) ? 's' : 'n';
       let fkey = this.shapeKeys.get(f);
-      if (fkey === undefined) this.shapeKeys.set(f, (fkey = JSON.stringify([f.outline, f.bottom, f.top])));
+      if (fkey === undefined) this.shapeKeys.set(f, (fkey = JSON.stringify([f.outline, f.holes, f.rise, f.floor.kind, f.bottom, f.top])));
       const key = state + fkey;
       const old = this.walls.get(id);
       if (old?.key === key) {
@@ -544,8 +545,7 @@ export class Scene3D {
       }
       if (old) this.drop(old.group);
       const group = new THREE.Group();
-      const shape = new THREE.Shape(f.outline.map((p) => new THREE.Vector2(p.x, p.y)));
-      const geo = new THREE.ExtrudeGeometry(shape, { depth: f.top - f.bottom, bevelEnabled: false });
+      const geo = slabGeometry(f.outline, f.holes, f.top - f.bottom, f.rise ? (p) => riseAt(f, p) : undefined);
       // The shape lies in x–y; turned −90° about x it lies in three.js x–(−z), extruded upward.
       const mesh = new THREE.Mesh(geo, state === 's' ? this.materials.sideSel : this.materials.floor);
       mesh.rotation.x = -Math.PI / 2;
