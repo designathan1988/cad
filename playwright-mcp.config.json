@@ -1,0 +1,14 @@
+{
+  "browser": {
+    "browserName": "chromium",
+    "launchOptions": {
+      "channel": "chrome",
+      "args": [
+        "--disable-features=CalculateNativeWinOcclusion",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-renderer-backgrounding",
+        "--disable-background-timer-throttling"
+      ]
+    }
+  }
+}

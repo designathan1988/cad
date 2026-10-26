@@ -10,7 +10,9 @@
         "--viewport-size",
         "1920x1080",
         "--caps",
-        "vision"
+        "vision",
+        "--config",
+        "playwright-mcp.config.json"
       ],
       "env": {}
     }
