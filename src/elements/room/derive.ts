@@ -150,6 +150,9 @@ export function middleOfRest(ring: readonly Point2[], taken: readonly (readonly 
   return labelPoint(parts.reduce((a, b) => (Math.abs(signedArea(b)) > Math.abs(signedArea(a)) ? b : a)));
 }
 
+/** The spaces walls close in on a level (the holes of its pieces' union), counter-clockwise: where a room can go. */
+export const spacesOf = (pieces: readonly (readonly Point2[])[]): Point2[][] => holesOf(pieces).map((h) => (signedArea(h) < 0 ? [...h].reverse() : h));
+
 /** Holes of the union of a level's wall pieces, memoised on the pieces themselves. */
 function holesOf(pieces: readonly (readonly Point2[])[]): Point2[][] {
   if (pieces.length === 0) return [];

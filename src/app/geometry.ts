@@ -17,7 +17,7 @@ import { shapeOf } from '../elements/wall/geometry/shape';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { WallId, WallLayer, WallType } from '../elements/wall/schema';
 import { layerSeams, type Seam } from '../elements/wall/geometry/seams';
-import { deriveFloors, deriveRooms, type FloorSolid, type RoomSolid, type RoomWarning } from '../elements/room/derive';
+import { deriveFloors, deriveRooms, type FloorSolid, type RoomSolid, type RoomWarning, spacesOf } from '../elements/room/derive';
 import type { FloorId, RoomId } from '../elements/room/schema';
 import type { Point2 as P } from '../core/vector';
 import { CUT_HEIGHT, cutHeightOf, type Doc, type DocWall, levelOf, wallHeights } from './document';
@@ -58,6 +58,8 @@ export interface DerivedGeometry {
   readonly openingWarnings: readonly OpeningWarning[];
   readonly rooms: ReadonlyMap<RoomId, RoomSolid>;
   readonly roomWarnings: readonly RoomWarning[];
+  /** A level's spaces, the ones its walls close in (room/derive.ts): where the room tool can put a room. Found when asked. */
+  readonly spaces: (levelId: string) => readonly (readonly P[])[];
   readonly floors: ReadonlyMap<FloorId, FloorSolid>;
 }
 
@@ -134,7 +136,12 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
   }
   const roomResult = deriveRooms(doc.rooms, piecesByLevel);
   const floors = deriveFloors(doc.floors, roomResult.solids, (id) => doc.levels.find((l) => l.id === id)?.elevation ?? 0);
-  return { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors };
+  const found = new Map<string, P[][]>();
+  const spaces = (levelId: string): P[][] => {
+    if (!found.has(levelId)) found.set(levelId, spacesOf(piecesByLevel.get(levelId) ?? []));
+    return found.get(levelId)!;
+  };
+  return { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors, spaces };
 }
 
 /** A height range of a wall, and its plan pieces there: joined only with the walls standing over all of it. */

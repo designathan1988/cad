@@ -53,6 +53,8 @@ export interface DimMark {
 export interface PlanOverlay {
   readonly selected: ReadonlySet<WallId>;
   readonly hover: WallId | null;
+  /** The space with no room under the pointer, with the room tool: the room a click makes there. */
+  readonly roomSpace?: readonly Point2[] | null;
   /** Walls being drawn (ids present in the geometry), shown as a translucent preview. */
   readonly preview: ReadonlySet<WallId>;
   /** The level's guides: lines without ends, dashed across the whole plan (selected and hovered as elements). */
@@ -254,6 +256,20 @@ export class PlanView {
       trace(r.outline);
       ctx.fillStyle = color('--accent-soft');
       ctx.fill();
+    }
+    // The room the room tool would make: the space under the pointer, dashed, as a room not yet there.
+    if (o.roomSpace && o.roomSpace.length >= 3) {
+      trace(o.roomSpace);
+      ctx.fillStyle = color('--accent-soft');
+      ctx.globalAlpha = 0.6;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.save();
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = color('--wall-sel');
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
     }
     // Square corners stay sharp (miter ratio 1.41); a piece's 45° miter corner (ratio 2.61) is
     // bevelled, or its stroke would poke a spike out of the joined outline.

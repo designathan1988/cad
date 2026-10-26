@@ -78,7 +78,7 @@ import { type Handles, handlesFor, ROTATE_OFFSET } from './handles';
 import { placeBarY } from '../ui/bar-place';
 import { newId } from '../core/id';
 import { addFloor, addRoom, updateFloor, updateRoom } from '../elements/room/commands';
-import { insideRing, type FloorSolid, type RoomSolid } from '../elements/room/derive';
+import { insideRing, signedArea, type FloorSolid, type RoomSolid } from '../elements/room/derive';
 import { FLOOR_DEFAULTS } from '../elements/room/schema';
 
 export interface UiState {
@@ -86,6 +86,8 @@ export interface UiState {
   tool: ToolId;
   selection: Set<WallId>;
   hover: WallId | null;
+  /** With the room tool: the space with no room under the pointer, where a click makes one. */
+  roomSpace: readonly Point2[] | null;
   levelId: string;
   theme: 'light' | 'dark';
   panelOpen: boolean;
@@ -172,6 +174,7 @@ export class App {
       tool: 'select',
       selection: new Set(),
       hover: null,
+      roomSpace: null,
       levelId: startLevel(doc, prefs.levelId),
       theme: prefs.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
       panelOpen: prefs.panelOpen ?? true,
@@ -358,6 +361,14 @@ export class App {
 
   selectedFloors(): FloorSolid[] {
     return [...this.ui.selection].flatMap((id) => this.geometry.floors.get(id) ?? []);
+  }
+
+  /** The smallest space the level's walls close in around p, when no room is in it: where the room tool would make one. */
+  roomSpaceAt(p: Point2): readonly Point2[] | null {
+    const g = this.visibleGeometry();
+    if ([...g.rooms.values()].some((r) => r.enclosed && insideRing(r.outline, p))) return null;
+    const around = g.spaces(this.ui.levelId).filter((s) => insideRing(s, p));
+    return around.sort((a, b) => Math.abs(signedArea(a)) - Math.abs(signedArea(b)))[0] ?? null;
   }
 
   /** The room tool: a click inside closed walls makes a room there, unless one is there already. */
@@ -1462,6 +1473,7 @@ export class App {
       this.plan.draw(this.visibleGeometry(), {
         selected: ui.selection,
         hover: ui.hover,
+        roomSpace: ui.tool === 'room' ? ui.roomSpace : null,
         preview,
         guides: this.levelGuides(),
         guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
@@ -2006,7 +2018,9 @@ export class App {
         : ui.tool === 'corner'
         ? t(ui.selection.size === 0 ? 'hint.corner1' : 'hint.corner2')
         : ui.tool === 'room'
-        ? t('hint.roomPlace')
+        ? ui.roomSpace
+          ? t('hint.roomHere', { area: num(Math.abs(signedArea(ui.roomSpace))) })
+          : t('hint.roomPlace')
         : ui.tool === 'floor'
           ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
           : ui.tool === 'measure'

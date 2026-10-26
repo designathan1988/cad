@@ -282,6 +282,8 @@ export function wireInput(app: App): void {
       // as if the click would take it).
       const g = app.visibleGeometry();
       ui.hover = at && ui.view === 'plan' ? ([...g.rooms.values()].find((r) => r.enclosed && insideRing(r.outline, at.p))?.room.id ?? null) : null;
+      // Over closed walls with no room yet, the room a click makes there, before the click.
+      ui.roomSpace = ui.tool === 'room' && at && ui.view === 'plan' && ui.hover === null ? app.roomSpaceAt(at.p) : null;
       return app.render();
     }
     if (app.openingKind()) {
