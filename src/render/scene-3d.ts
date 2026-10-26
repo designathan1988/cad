@@ -39,7 +39,18 @@ function groundFade(): THREE.Texture {
 
 export class Scene3D {
   readonly renderer: THREE.WebGLRenderer;
-  readonly camera = new THREE.PerspectiveCamera(40, 1, 0.05, 2000);
+  private readonly persp = new THREE.PerspectiveCamera(40, 1, 0.05, 2000);
+  /**
+   * Orthographic, as elevations and sections are drawn (Revit's parallel views): no perspective, sizes
+   * true at any depth. `orthoHalf`: half the view's height in metres at zoom 1.
+   */
+  private readonly ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.05, 4000);
+  private orthoOn = false;
+  private orthoHalf = 5;
+  /** The camera in use: the perspective one, or the orthographic one (setOrtho). */
+  get camera(): THREE.PerspectiveCamera | THREE.OrthographicCamera {
+    return this.orthoOn ? this.ortho : this.persp;
+  }
   readonly controls: OrbitControls;
   private readonly scene = new THREE.Scene();
   private readonly walls = new Map<WallId, { group: THREE.Group; key: string }>();
@@ -107,8 +118,8 @@ export class Scene3D {
   constructor(readonly canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(window.devicePixelRatio || 1);
-    this.camera.position.set(-6, 9, 12);
-    this.controls = new OrbitControls(this.camera, canvas);
+    this.persp.position.set(-6, 9, 12);
+    this.controls = new OrbitControls(this.persp, canvas);
     // Wheel zooms at the cursor, middle button pans, Shift + middle (or right) rotates. Left is ours.
     this.controls.zoomToCursor = true;
     this.controls.enableDamping = false;
@@ -272,6 +283,35 @@ export class Scene3D {
     this.capClip.push(...this.boxPlanes);
   }
 
+  /**
+   * Orthographic or perspective, the view kept as seen: the same direction and target, and the model
+   * the same size in the middle of the view.
+   */
+  setOrtho(on: boolean): void {
+    if (on === this.orthoOn) return;
+    const from = this.camera;
+    const to = on ? this.ortho : this.persp;
+    const target = this.controls.target;
+    const dist = from.position.distanceTo(target);
+    const tan = Math.tan((this.persp.fov * Math.PI) / 360);
+    if (on) {
+      this.orthoHalf = dist * tan;
+      this.ortho.zoom = 1;
+      to.position.copy(from.position);
+    } else {
+      // Back at the distance where the perspective shows what the parallel view showed.
+      const d = this.orthoHalf / this.ortho.zoom / tan;
+      to.position.copy(target).add(from.position.clone().sub(target).setLength(d));
+    }
+    to.quaternion.copy(from.quaternion);
+    to.up.copy(from.up);
+    this.orthoOn = on;
+    this.controls.object = to;
+    this.controls.update();
+    this.offsetDirty = true;
+    this.invalidate();
+  }
+
   /** Colours of the theme, read from the design tokens: `token('--3d-side')` and so on. */
   setTheme(dark: boolean, token: (name: string) => string): void {
     const c = (name: string) => new THREE.Color(token(name));
@@ -334,7 +374,8 @@ export class Scene3D {
     const resized = size.x !== w || size.y !== h || this.offsetDirty;
     if (resized) {
       this.renderer.setSize(w, h, false);
-      this.camera.aspect = w / h;
+      this.persp.aspect = w / h;
+      Object.assign(this.ortho, { left: -this.orthoHalf * (w / h), right: this.orthoHalf * (w / h), top: this.orthoHalf, bottom: -this.orthoHalf });
       // A panel over the right or bottom edge: shift the view so its centre is the visible part's.
       const { right, bottom, left } = this.covered;
       if (right > 0 || bottom > 0 || left > 0) this.camera.setViewOffset(w, h, (right - left) / 2, bottom / 2, w, h);
@@ -592,9 +633,10 @@ export class Scene3D {
 
   /** Metres per screen pixel at a world point, for snapping. */
   metresPerPixel(p: Point2, z: number): number {
-    const d = this.camera.position.distanceTo(toThree(p, z));
     const h = this.canvas.clientHeight || 1;
-    return (2 * d * Math.tan((this.camera.fov * Math.PI) / 360)) / h;
+    if (this.orthoOn) return (2 * this.orthoHalf) / this.ortho.zoom / h;
+    const d = this.persp.position.distanceTo(toThree(p, z));
+    return (2 * d * Math.tan((this.persp.fov * Math.PI) / 360)) / h;
   }
 
   /** How much a panel covers at the right and bottom edges of the canvas (screen pixels). */
@@ -615,9 +657,17 @@ export class Scene3D {
     const h = this.canvas.clientHeight || 1;
     const visW = Math.max(w - this.covered.right - this.covered.left, w * 0.3);
     const visH = Math.max(h - this.covered.bottom, h * 0.3);
-    const fit = (radius / Math.sin((this.camera.fov * Math.PI) / 360) / Math.min(1, visW / visH)) * (h / visH);
     this.controls.target.copy(center);
-    this.camera.position.copy(center).add(dir.clone().normalize().multiplyScalar(fit * 1.05));
+    if (this.orthoOn) {
+      // As tall as the model needs, from far enough that nothing is behind the camera.
+      this.orthoHalf = ((radius * 1.05) / Math.min(1, visW / visH)) * (h / visH);
+      this.ortho.zoom = 1;
+      this.offsetDirty = true;
+      this.camera.position.copy(center).add(dir.clone().normalize().multiplyScalar(radius * 4 + 20));
+    } else {
+      const fit = (radius / Math.sin((this.persp.fov * Math.PI) / 360) / Math.min(1, visW / visH)) * (h / visH);
+      this.camera.position.copy(center).add(dir.clone().normalize().multiplyScalar(fit * 1.05));
+    }
     this.camera.up.set(0, 1, 0);
     this.controls.update();
     this.invalidate();
@@ -639,6 +689,12 @@ export class Scene3D {
   }
 
   zoomBy(zoom: number): void {
+    if (this.orthoOn) {
+      this.ortho.zoom = Math.min(Math.max(this.ortho.zoom * zoom, 0.02), 200);
+      this.ortho.updateProjectionMatrix();
+      this.controls.update();
+      return this.invalidate();
+    }
     const offset = this.camera.position.clone().sub(this.controls.target);
     const d = Math.min(Math.max(offset.length() / zoom, this.controls.minDistance), this.controls.maxDistance);
     this.camera.position.copy(this.controls.target).add(offset.setLength(d));

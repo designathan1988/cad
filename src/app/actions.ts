@@ -75,6 +75,8 @@ export function appActions(app: App, open: Openers): Action[] {
     make('view.cut', 'pal.cut', views, () => app.setView3D({ cut: !ui.view3d.cut })),
     make('view.xray', 'pal.xray', views, () => app.setView3D({ xray: !ui.view3d.xray })),
     make('view.box', 'pal.box', views, () => app.toggleBox()),
+    make('view.ortho', 'pal.ortho', views, () => app.setView3D({ ortho: !ui.view3d.ortho })),
+    ...(['north', 'south', 'east', 'west'] as const).map((side) => make(`view.elevation.${side}`, `pal.elevation.${side}`, views, () => app.elevation(side))),
     make('edit.undo', 'pal.undo', edit, () => app.undo(), { keys: 'Ctrl+Z', enabled: store.canUndo() }),
     make('edit.redo', 'pal.redo', edit, () => app.redo(), { keys: 'Ctrl+Shift+Z', enabled: store.canRedo() }),
     make('edit.delete', 'pal.delete', edit, () => app.deleteSelection(), { keys: 'Del', enabled: has }),

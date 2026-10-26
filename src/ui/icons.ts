@@ -50,6 +50,8 @@ const paths = {
   cut: 'M5 9h14v11H5zM2 12h20M5 9l3-5h8l3 5',
   // A box seen through: its hidden edges drawn too.
   xray: 'M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8M4 16l8-4 8 4M12 4v8',
+  // Parallel lines that never meet: the orthographic view.
+  ortho: 'M4 6h16M4 12h16M4 18h16M8 3v18M16 3v18',
   // A box drawn dashed, a handle on its face.
   box: 'M4 6h12v12H4zM16 6l4-2v12l-4 2M4 6l4-2h12M18 12h3',
   move: 'M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3',

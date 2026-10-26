@@ -16,9 +16,11 @@ export interface View3D {
   readonly xray: boolean;
   /** The section box: only what is inside it shows; null when off (section-box.ts). */
   readonly box: SectionBox | null;
+  /** Parallel (orthographic) instead of in perspective: elevations and sections. */
+  readonly ortho: boolean;
 }
 
-export const VIEW_3D_DEFAULT: View3D = { levels: 'all', explode: false, cut: false, xray: false, box: null };
+export const VIEW_3D_DEFAULT: View3D = { levels: 'all', explode: false, cut: false, xray: false, box: null, ortho: false };
 
 /** Between two exploded levels, beyond their own height (m). */
 export const EXPLODE_GAP = 2.5;
@@ -63,5 +65,6 @@ export function readView3D(raw: unknown): View3D {
     cut: o.cut === true,
     xray: o.xray === true,
     box: readBox(o.box),
+    ortho: o.ortho === true,
   };
 }

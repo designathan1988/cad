@@ -1572,6 +1572,21 @@ export class App {
     this.render();
   }
 
+  /**
+   * An elevation (Revit's North, South, East and West): the model seen square from that side, parallel.
+   * North is up the plan (+y).
+   */
+  elevation(side: 'north' | 'south' | 'east' | 'west'): void {
+    this.setView('3d');
+    this.setView3D({ ortho: true });
+    this.scene.setOrtho(true);
+    const dir = { north: new THREE.Vector3(0, 0, -1), south: new THREE.Vector3(0, 0, 1), east: new THREE.Vector3(1, 0, 0), west: new THREE.Vector3(-1, 0, 0) }[side];
+    this.scene.setCovered(this.covered());
+    this.framed['3d'] = true;
+    this.scene.frame(boundsOf(this.visibleGeometry()), this.height(), dir);
+    this.render();
+  }
+
   frameSelection(): void {
     const box = boundsOf(this.geometry, this.ui.selection);
     // Nothing selected, or nothing with an extent (a guide has no ends): the whole drawing.
@@ -1895,6 +1910,7 @@ export class App {
       const shown = this.visibleGeometry();
       this.scene.setXray(ui.view3d.xray);
       this.scene.setBox(ui.view3d.box);
+      this.scene.setOrtho(ui.view3d.ortho);
       this.scene.sync(shown, ui.selection, preview, (id) => this.lift(id));
       // Cut at the level's cut height: where it goes through the level's walls, their plan pieces.
       const doc = this.store.get();
@@ -2350,6 +2366,7 @@ export class App {
     shell.explode.setAttribute('aria-pressed', String(spread));
     shell.xray.setAttribute('aria-pressed', String(ui.view3d.xray));
     shell.box.setAttribute('aria-pressed', String(ui.view3d.box !== null));
+    shell.ortho.setAttribute('aria-pressed', String(ui.view3d.ortho));
     shell.explode.setAttribute('aria-disabled', String(alone));
     shell.cut.setAttribute('aria-pressed', String(ui.view3d.cut));
     const levelKey = JSON.stringify([getLang(), doc.levels.map((l) => [l.id, l.name, l.elevation])]);

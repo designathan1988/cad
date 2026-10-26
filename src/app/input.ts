@@ -561,6 +561,7 @@ export function wireInput(app: App): void {
   shell.cut.addEventListener('click', () => app.setView3D({ cut: !ui.view3d.cut }));
   shell.xray.addEventListener('click', () => app.setView3D({ xray: !ui.view3d.xray }));
   shell.box.addEventListener('click', () => app.toggleBox());
+  shell.ortho.addEventListener('click', () => app.setView3D({ ortho: !ui.view3d.ortho }));
   shell.tempReset.addEventListener('click', () => app.resetTemporary());
   shell.shortcuts.addEventListener('click', () => showHelp(app));
   shell.commands.addEventListener('click', () => palette());
