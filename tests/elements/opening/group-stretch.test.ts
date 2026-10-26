@@ -128,8 +128,9 @@ describe('a group distributed beside a joint', () => {
     // Read as the current version (the groups are as in 4).
     expect(read.doc.version).toBe(CURRENT_VERSION);
     expect(read.doc.openingGroups[0]!.between).toBeUndefined();
-    const equal = setGroupSpacing('g', { kind: 'equal' }).apply(read.doc);
-    expect(equal.openingGroups[0]!.between).toEqual([null, 'c']);
+    // Read, its ids are typed (io/typed-ids.ts): the group is group_g, the crossing wall wall_c.
+    const equal = setGroupSpacing('group_g', { kind: 'equal' }).apply(read.doc);
+    expect(equal.openingGroups[0]!.between).toEqual([null, 'wall_c']);
     expect(clean(equal)).toBe(true);
   });
 
@@ -156,9 +157,10 @@ describe('a group distributed beside a joint', () => {
     if (!read.ok) throw new Error(read.error);
     expect(clean(read.doc)).toBe(true);
     // y's middle is on the X's (3.00): it goes with z, to the right; x, alone on the left, stays at 1.05.
-    expect(read.doc.openingGroups.map((g) => [g.members, g.between])).toEqual([[['y', 'z'], ['c', null]]]);
-    near(startOf(read.doc, 'x'), 1.05);
-    near(startOf(read.doc, 'y'), 3.1 + 1.7 / 3);
+    // Ids typed on reading (io/typed-ids.ts).
+    expect(read.doc.openingGroups.map((g) => [g.members, g.between])).toEqual([[['opening_y', 'opening_z'], ['wall_c', null]]]);
+    near(startOf(read.doc, 'opening_x'), 1.05);
+    near(startOf(read.doc, 'opening_y'), 3.1 + 1.7 / 3);
   });
 
   it('openings on both sides of the X: no joint outside them, so the whole wall, as before', () => {
