@@ -44,18 +44,19 @@ import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui
 import { snapLabel, type Snap } from '../tools/snap';
 import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, rectangle, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
-import { type Drag, dragTransform, hull, moveBeams, moveColumns, moveGuides, moveNotes, moveRailings, moveRoofs, moveStairs } from './select-drag';
-import { addRailing, updateRailings } from '../elements/railing/commands';
-import { isRailingId, RAILING_HEIGHT, RAILING_PREFIX } from '../elements/railing/schema';
-import { addStair, updateStairs } from '../elements/stair/commands';
-import { isStairId, STAIR_PREFIX, STAIR_TREAD, STAIR_WIDTH } from '../elements/stair/schema';
-import { addRoof, updateRoofs } from '../elements/roof/commands';
+import { type Drag, dragTransform, hull, moveGuides, moveNotes } from './select-drag';
+import { anyKinds, appendKinds, filterKinds, hasSolid, KINDS, kindLists, kindOfId, kindOfKey, moveKinds } from '../elements/registry';
+import { addRailing } from '../elements/railing/commands';
+import { RAILING_HEIGHT, RAILING_PREFIX } from '../elements/railing/schema';
+import { addStair } from '../elements/stair/commands';
+import { STAIR_PREFIX, STAIR_TREAD, STAIR_WIDTH } from '../elements/stair/schema';
+import { addRoof } from '../elements/roof/commands';
 import { isConvex } from '../elements/roof/geometry';
-import { edgesFor, isRoofId, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, ROOF_PREFIX, ROOF_THICKNESS, type RoofKind } from '../elements/roof/schema';
-import { addBeam, updateBeams } from '../elements/beam/commands';
-import { BEAM_DEPTH, BEAM_PREFIX, BEAM_WIDTH, isBeamId } from '../elements/beam/schema';
-import { addColumn, updateColumns } from '../elements/column/commands';
-import { COLUMN_PREFIX, COLUMN_SIZE, isColumnId } from '../elements/column/schema';
+import { edgesFor, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, ROOF_PREFIX, ROOF_THICKNESS, type RoofKind } from '../elements/roof/schema';
+import { addBeam } from '../elements/beam/commands';
+import { BEAM_DEPTH, BEAM_PREFIX, BEAM_WIDTH } from '../elements/beam/schema';
+import { addColumn } from '../elements/column/commands';
+import { COLUMN_PREFIX, COLUMN_SIZE } from '../elements/column/schema';
 import { addNote, updateNotes } from '../elements/note/commands';
 import { addDimension, setDimensionDistance } from '../elements/dimension/commands';
 import { anchorAt, offsetThrough, placeDimension } from '../elements/dimension/anchor';
@@ -393,7 +394,7 @@ export class App {
     // Levels hidden now leave the selection, as a hidden category does.
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      if (!isGuideId(id) && !isNoteId(id) && !isDimId(id) && !isGridId(id) && !shown.solids.has(id) && !shown.columns.has(id) && !shown.beams.has(id) && !shown.roofs.has(id) && !shown.stairs.has(id) && !shown.railings.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
+      if (!isGuideId(id) && !isNoteId(id) && !isDimId(id) && !isGridId(id) && !shown.solids.has(id) && !hasSolid(shown.kinds, id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
     }
     this.refresh();
   }
@@ -426,11 +427,7 @@ export class App {
             walls: d.walls,
             rooms: moveRooms(doc.rooms, d.rooms, dragTransform(d)),
             floors: d.kind === 'move' ? moveFloors(doc.floors, d.floors, dragTransform(d)) : doc.floors,
-            columns: d.kind === 'move' ? moveColumns(doc.columns, d) : doc.columns,
-            beams: d.kind === 'move' ? moveBeams(doc.beams, d) : doc.beams,
-            roofs: d.kind === 'move' ? moveRoofs(doc.roofs, d) : doc.roofs,
-            stairs: d.kind === 'move' ? moveStairs(doc.stairs, d) : doc.stairs,
-            railings: d.kind === 'move' ? moveRailings(doc.railings, d) : doc.railings,
+            ...(d.kind === 'move' ? kindLists(moveKinds(doc, d.kinds, d.delta)) : {}),
           }
         : d?.kind === 'slide'
           ? { ...doc, openings: d.openings }
@@ -2058,11 +2055,6 @@ export class App {
       guides: r.doc.guides.slice(c.doc.guides.length),
       notes: r.doc.notes.slice(c.doc.notes.length),
       dimensions: r.doc.dimensions.slice(c.doc.dimensions.length),
-      columns: r.doc.columns.slice(c.doc.columns.length),
-      beams: r.doc.beams.slice(c.doc.beams.length),
-      roofs: r.doc.roofs.slice(c.doc.roofs.length),
-      stairs: r.doc.stairs.slice(c.doc.stairs.length),
-      railings: r.doc.railings.slice(c.doc.railings.length),
     };
     const level = levelOf(this.store.get(), this.ui.levelId);
     // The rooms renumbered on from the level's rooms as they are now, not as they were at the copy.
@@ -2070,8 +2062,9 @@ export class App {
     const rooms = added.rooms.map((x) => ({ ...x, number: String(++last) }));
     this.store.dispatch({
       label: 'cmd.paste',
+      // The registry's elements (columns, beams, roofs, stairs, guardrails) the copy added, too.
       apply: (d) => ({
-        ...d,
+        ...appendKinds(d, r.doc, c.doc),
         walls: [...d.walls, ...added.walls],
         openings: [...d.openings, ...added.openings],
         openingGroups: [...d.openingGroups, ...added.openingGroups],
@@ -2080,11 +2073,6 @@ export class App {
         guides: [...d.guides, ...added.guides],
         notes: [...d.notes, ...added.notes],
         dimensions: [...d.dimensions, ...added.dimensions],
-        columns: [...d.columns, ...added.columns],
-        beams: [...d.beams, ...added.beams],
-        roofs: [...d.roofs, ...added.roofs],
-        stairs: [...d.stairs, ...added.stairs],
-        railings: [...d.railings, ...added.railings],
       }),
     });
     this.ui.selection = new Set(r.selection);
@@ -2349,7 +2337,7 @@ export class App {
    */
   async exportGlb(): Promise<void> {
     const doc = this.store.get();
-    if (doc.walls.length === 0 && doc.floors.length === 0 && doc.columns.length === 0 && doc.beams.length === 0 && doc.roofs.length === 0 && doc.stairs.length === 0 && doc.railings.length === 0) {
+    if (doc.walls.length === 0 && doc.floors.length === 0 && !anyKinds(doc)) {
       this.ui.info = t('export.nothing');
       return this.renderChrome();
     }
@@ -2361,17 +2349,12 @@ export class App {
         door: (n) => t('export.door', { n }),
         window: (n) => t('export.window', { n }),
         floor: (n) => t('export.floor', { n }),
-        column: (n) => t('export.column', { n }),
-        beam: (n) => t('export.beam', { n }),
-        roof: (n) => t('export.roof', { n }),
-        stair: (n) => t('export.stair', { n }),
-        railing: (n) => t('export.railing', { n }),
+        kindName: (key, n) => t(kindOfKey(key).exportName, { n }),
+        kindMaterial: (key) => t(kindOfKey(key).one),
         material: materialName,
         glass: t('export.glass'),
         leaf: t('export.leaf'),
         floorMaterial: t('floor.title'),
-        columnMaterial: t('column.title'),
-        roofMaterial: t('roof.title'),
       });
       const bytes = await toGlb(scene);
       scene.traverse((o) => (o as { geometry?: { dispose(): void } }).geometry?.dispose());
@@ -2487,7 +2470,7 @@ export class App {
   private selectionKinds(): number {
     const g = this.geometry;
     const ids = [...this.ui.selection];
-    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isNoteId) ? 1 : 0) + (ids.some(isDimId) ? 1 : 0) + (ids.some(isGridId) ? 1 : 0) + (ids.some(isColumnId) ? 1 : 0) + (ids.some(isBeamId) ? 1 : 0) + (ids.some(isRoofId) ? 1 : 0) + (ids.some(isStairId) ? 1 : 0) + (ids.some(isRailingId) ? 1 : 0);
+    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isNoteId) ? 1 : 0) + (ids.some(isDimId) ? 1 : 0) + (ids.some(isGridId) ? 1 : 0) + new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
   }
 
   selectedWalls(): DocWall[] {
@@ -2830,11 +2813,14 @@ export class App {
         notes: doc.notes.filter((n) => ui.selection.has(n.id)).map((n) => (n.elevation ? { ...n, text: elevationText((levelOf(doc, n.levelId)?.elevation ?? 0) + n.elevation.offset, (m) => num(m)) } : n)),
         dimensions: doc.dimensions.filter((d) => ui.selection.has(d.id)),
         grids: doc.grids.filter((g) => ui.selection.has(g.id)),
-        columns: doc.columns.filter((c) => ui.selection.has(c.id)),
-        beams: doc.beams.filter((b) => ui.selection.has(b.id)),
-        roofs: [...this.geometry.roofs.values()].filter((r) => ui.selection.has(r.roof.id)),
-        stairs: [...this.geometry.stairs.values()].filter((s) => ui.selection.has(s.stair.id)),
-        railings: doc.railings.filter((r) => ui.selection.has(r.id)),
+        // The first registry kind with a selected element, and those of its elements, as derived.
+        kind: (() => {
+          for (const k of KINDS) {
+            const items = [...(this.geometry.kinds.get(k.key) ?? new Map()).entries()].filter(([id]) => ui.selection.has(id)).map(([, x]) => x);
+            if (items.length > 0) return { kind: k, items };
+          }
+          return null;
+        })(),
         dimensionLength: (d) => this.dimensionLength(d),
         stacked: stackedSteps(doc),
       },
@@ -2921,11 +2907,7 @@ export class App {
         updateNotes: (ids, patch) => this.store.dispatch(updateNotes(ids, patch)),
         setDimensionDistance: (ids, distance) => this.store.dispatch(setDimensionDistance(ids, distance)),
         renameGrid: (id, name) => this.store.dispatch(renameGrid(id, name)),
-        updateColumns: (ids, patch) => this.store.dispatch(updateColumns(ids, patch)),
-        updateBeams: (ids, patch) => this.store.dispatch(updateBeams(ids, patch)),
-        updateRoofs: (ids, patch) => this.store.dispatch(updateRoofs(ids, patch)),
-        updateStairs: (ids, patch) => this.store.dispatch(updateStairs(ids, patch)),
-        updateRailings: (ids, patch) => this.store.dispatch(updateRailings(ids, patch)),
+        dispatch: (c) => this.store.dispatch(c),
         // The wall moved across, with its joins kept as a move keeps them: the face then meets the one below.
         alignBelow: (step) => this.store.dispatch(setWalls(moveWalls(this.store.get(), [step.upperId], step.shift), 'cmd.alignBelow')),
       },
@@ -3114,11 +3096,7 @@ export class App {
         openings: new Map([...g.openings].filter(([, o]) => solids.has(o.opening.wallId))),
         rooms: new Map([...g.rooms].filter(([, r]) => shown.has(r.room.levelId))),
         floors: new Map([...g.floors].filter(([, f]) => shown.has(f.floor.levelId))),
-        columns: new Map([...g.columns].filter(([, c]) => shown.has(c.column.levelId))),
-        beams: new Map([...g.beams].filter(([, b]) => shown.has(b.beam.levelId))),
-        roofs: new Map([...g.roofs].filter(([, r]) => shown.has(r.roof.levelId))),
-        stairs: new Map([...g.stairs].filter(([, s]) => shown.has(s.stair.levelId))),
-        railings: new Map([...g.railings].filter(([, r]) => shown.has(r.railing.levelId))),
+        kinds: filterKinds(g.kinds, (k, x) => shown.has(k.element(x).levelId)),
       };
     }
     const solids = new Map([...g.solids].filter(([, s]) => s.wall.levelId === this.ui.levelId));
@@ -3126,12 +3104,8 @@ export class App {
     const openings = new Map([...g.openings].filter(([, o]) => levelWalls.has(o.opening.wallId)));
     const rooms = new Map([...g.rooms].filter(([, r]) => r.room.levelId === this.ui.levelId));
     const floors = new Map([...g.floors].filter(([, f]) => f.floor.levelId === this.ui.levelId));
-    const columns = new Map([...g.columns].filter(([, c]) => c.column.levelId === this.ui.levelId));
-    const beams = new Map([...g.beams].filter(([, b]) => b.beam.levelId === this.ui.levelId));
-    const roofs = new Map([...g.roofs].filter(([, r]) => r.roof.levelId === this.ui.levelId));
-    const stairs = new Map([...g.stairs].filter(([, s]) => s.stair.levelId === this.ui.levelId));
-    const railings = new Map([...g.railings].filter(([, r]) => r.railing.levelId === this.ui.levelId));
-    return { ...g, solids, openings, rooms, floors, columns, beams, roofs, stairs, railings };
+    const kinds = filterKinds(g.kinds, (k, x) => k.element(x).levelId === this.ui.levelId);
+    return { ...g, solids, openings, rooms, floors, kinds };
   }
 
   toggleBrowser(open = !this.ui.browserOpen): void {
@@ -3160,8 +3134,8 @@ export class App {
         continue;
       }
       if (isGridId(id)) continue;
-      if (isColumnId(id) || isBeamId(id) || isRoofId(id) || isStairId(id) || isRailingId(id)) {
-        if (!shown.columns.has(id) && !shown.beams.has(id) && !shown.roofs.has(id) && !shown.stairs.has(id) && !shown.railings.has(id)) this.ui.selection.delete(id);
+      if (kindOfId(id)) {
+        if (!hasSolid(shown.kinds, id)) this.ui.selection.delete(id);
         continue;
       }
       if (isGuideId(id) ? this.ui.hidden.has('guides') : !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) {
@@ -3320,7 +3294,8 @@ export class App {
     if (!doc.levels.some((l) => l.id === ui.levelId)) ui.levelId = doc.levels[0]!.id;
     shell.level.value = ui.levelId;
     // Gone once the wall tool is on: "press W" no longer applies, and the footer says what to click.
-    shell.emptyHint.hidden = doc.walls.length > 0 || ui.tool === 'wall';
+    // Only on an empty project: a column, a roof or a note drawn first is under it otherwise.
+    shell.emptyHint.hidden = doc.walls.length > 0 || elementIds(doc).size > 0 || ui.tool === 'wall';
     // Hidden or isolated for a while: the drawing framed, and a way back, as Revit's cyan frame says.
     shell.viewport.classList.toggle('temp-view', ui.temp !== null);
     shell.tempChip.hidden = ui.temp === null;

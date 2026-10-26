@@ -3,6 +3,7 @@
 // same kind and size; rooms of the same use (all rooms, for one without a use); floors of the same
 // thickness; notes of the same letter height; guides, all of them. Pure.
 
+import { similarKinds } from '../elements/registry';
 import type { Doc } from './document';
 
 const SIZE = 1e-6;
@@ -15,8 +16,6 @@ export function similarTo(doc: Doc, selected: ReadonlySet<string>, levelId: stri
   const floors = doc.floors.filter((f) => selected.has(f.id));
   const guides = doc.guides.some((g) => selected.has(g.id));
   const notes = doc.notes.filter((n) => selected.has(n.id));
-  const columns = doc.columns.filter((c) => selected.has(c.id));
-  const beams = doc.beams.filter((b) => selected.has(b.id));
   const onLevel = new Map(doc.walls.map((w) => [w.id, w.levelId]));
   const same = (a: number, b: number) => Math.abs(a - b) <= SIZE;
   const out = new Set(selected);
@@ -27,8 +26,8 @@ export function similarTo(doc: Doc, selected: ReadonlySet<string>, levelId: stri
   }
   for (const r of doc.rooms) if (r.levelId === levelId && rooms.some((x) => x.use === undefined || x.use === r.use)) out.add(r.id);
   for (const f of doc.floors) if (f.levelId === levelId && floors.some((x) => same(x.thickness, f.thickness))) out.add(f.id);
-  for (const b of doc.beams) if (b.levelId === levelId && beams.some((x) => same(x.width, b.width) && same(x.depth, b.depth))) out.add(b.id);
-  for (const c of doc.columns) if (c.levelId === levelId && columns.some((x) => same(x.width, c.width) && same(x.depth, c.depth))) out.add(c.id);
+  // Columns and beams of the same section (the registry's kinds that tell their own likeness).
+  for (const id of similarKinds(doc, selected, levelId)) out.add(id);
   for (const n of doc.notes) if (n.levelId === levelId && notes.some((x) => same(x.height, n.height))) out.add(n.id);
   if (guides) for (const g of doc.guides) if (g.levelId === levelId) out.add(g.id);
   return [...out];

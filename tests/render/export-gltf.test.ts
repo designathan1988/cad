@@ -49,17 +49,12 @@ const naming: ExportNaming = {
   door: (n) => `Porta ${n}`,
   window: (n) => `Janela ${n}`,
   floor: (n) => `Piso ${n}`,
-  column: (n) => `Pilar ${n}`,
-  beam: (n) => `Viga ${n}`,
-  roof: (n) => `Telhado ${n}`,
-  stair: (n) => `Escada ${n}`,
-  railing: (n) => `Guarda-corpo ${n}`,
+  kindName: (key, n) => `${key} ${n}`,
+  kindMaterial: (key) => key,
   material: (id) => ({ plaster: 'Reboco', brick: 'Tijolo' })[id] ?? id,
   glass: 'Vidro',
   leaf: 'Folha de porta',
   floorMaterial: 'Piso',
-  columnMaterial: 'Pilar',
-  roofMaterial: 'Telhado',
 };
 
 interface Gltf {

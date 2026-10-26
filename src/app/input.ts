@@ -30,6 +30,8 @@ import type { WallId } from '../elements/wall/schema';
 import { GUIDE_PX, guideBaseAt } from '../tools/guide-tool';
 import { noteBox, shownHeight } from '../elements/note/schema';
 import { placeDimension, segmentDistance } from '../elements/dimension/anchor';
+import { eachSolid } from '../elements/registry';
+import type { PickOrder } from '../elements/contract';
 import { GRID_BUBBLE_PX } from '../render/plan-view';
 import type { LevelsShown } from './view-3d';
 import type { ModifyKind } from '../tools/modify-tool';
@@ -275,29 +277,17 @@ export function wireInput(app: App): void {
       .sort((a, b) => a.off - b.off)
       .slice(0, 1)
       .map((x) => x.id);
-    // A guardrail near its path.
-    const railingHit = [...g.railings.values()]
-      .filter((r) => r.railing.points.slice(1).some((q, i) => segmentDistance(p, r.railing.points[i]!, q) <= near))
-      .slice(-1)
-      .map((r) => r.railing.id);
-    // A stair on any of its steps: before the walls and rooms it lies among.
-    const stairHit = [...g.stairs.values()].filter((s) => s.parts.some((q) => insideRing(q.polygon, p))).slice(-1).map((s) => s.stair.id);
-    // A column inside its section (or a few pixels off it): before the walls it stands in.
-    const columnHit = [...g.columns.values()]
-      .filter((c) => insideRing(c.outline, p) || c.outline.some((v, i) => segmentDistance(p, v, c.outline[(i + 1) % c.outline.length]!) <= near))
-      .slice(-1)
-      .map((c) => c.column.id);
-    // A beam by its outline, after the walls under it (it is above them, in plan a click aims lower first).
-    const beamHit = [...g.beams.values()]
-      .filter((b) => insideRing(b.outline, p) || segmentDistance(p, b.beam.start, b.beam.end) <= near)
-      .slice(-1)
-      .map((b) => b.beam.id);
+    // The registry's kinds under the point, by where they come among the rest (contract.ts: pick); of
+    // one order, the one drawn last first.
+    const kindHits = (order: PickOrder) =>
+      [...eachSolid(g.kinds)]
+        .filter((x) => x.kind.pick === order && x.kind.hit(x.solid, p, near))
+        .reverse()
+        .map((x) => x.id);
     return [
       ...bubbleHit,
       ...dimHit,
-      ...columnHit,
-      ...railingHit,
-      ...stairHit,
+      ...kindHits('beforeWalls'),
       // A text note over everything it is written on.
       ...app
         .levelNotes()
@@ -317,13 +307,13 @@ export function wireInput(app: App): void {
         .sort((a, b) => a.off - b.off)
         .slice(0, 1)
         .map((x) => x.id),
-      ...beamHit,
+      ...kindHits('afterWalls'),
       // An axis after the walls on it: a click on a wall over an axis takes the wall.
       ...gridHit,
       ...[...g.rooms.values()].filter((r) => r.enclosed && insideRing(r.outline, p)).map((r) => r.room.id),
       ...[...g.floors.values()].filter((f) => f.outline.length >= 3 && insideRing(f.outline, p)).map((f) => f.floor.id),
-      // A roof last: it lies over everything; its overhang, outside the walls, is where it is taken first.
-      ...[...g.roofs.values()].filter((r) => insideRing(r.outline, p)).map((r) => r.roof.id),
+      // Last, what lies over everything (a roof: its overhang, outside the walls, is where it is taken first).
+      ...kindHits('last'),
     ].filter((id): id is string => id !== null);
   };
   const planPick = (p: Point2): string | null => planHits(p)[0] ?? null;

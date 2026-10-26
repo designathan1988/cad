@@ -7,6 +7,7 @@
 import type { DerivedGeometry } from '../app/geometry';
 import type { Point2 } from '../core/vector';
 import type { Note } from '../elements/note/schema';
+import { eachSolid, KINDS } from '../elements/registry';
 import { markPoint } from '../elements/opening/marks';
 import { symbolLines } from '../elements/opening/symbol';
 import { insideRing } from '../elements/room/derive';
@@ -25,13 +26,10 @@ export const DXF_LAYERS = [
   { name: 'A-ANNO-TEXT', colour: 7 }, // text notes
   { name: 'A-ANNO-DIMS', colour: 3 }, // permanent dimensions
   { name: 'S-GRID', colour: 1 }, // grid axes and their bubbles
-  { name: 'S-COLS', colour: 7 }, // columns
-  { name: 'S-BEAM', colour: 8 }, // beams, above the cut
-  { name: 'A-ROOF', colour: 6 }, // roofs: eaves and the faces' sides
-  { name: 'A-FLOR-STRS', colour: 2 }, // stairs: steps, landings, walking line
-  { name: 'A-FLOR-HRAL', colour: 4 }, // guardrails: their path
+  // The registry's kinds bring their own (elements/contract.ts: dxfLayers).
+  ...KINDS.flatMap((k) => k.dxfLayers ?? []),
 ] as const;
-type Layer = (typeof DXF_LAYERS)[number]['name'];
+type Layer = string;
 
 /** What the room labels say, as the plan says it. */
 export interface DxfLabels {
@@ -172,24 +170,8 @@ export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels):
     line('A-DOOR', leaf[0]!, leaf[1]!);
     arc('A-DOOR', leaf[0]!, swing[0]!, swing[swing.length - 1]!, pair);
   }
-  // Guardrails: their path.
-  for (const r of g.railings.values()) if (r.railing.levelId === levelId) polyline('A-FLOR-HRAL', r.railing.points, false);
-  // Stairs: each step and landing, and the walking line.
-  for (const s of g.stairs.values()) {
-    if (s.stair.levelId !== levelId) continue;
-    for (const p of s.parts) polyline('A-FLOR-STRS', p.polygon, true);
-    if (s.walk.length >= 2) polyline('A-FLOR-STRS', s.walk, false);
-  }
-  // Roofs: the eaves and, for a sloped one, each face's outline (ridges, hips, valleys).
-  for (const r of g.roofs.values()) {
-    if (r.roof.levelId !== levelId) continue;
-    polyline('A-ROOF', r.outline, true);
-    if (r.faces.length > 1) for (const f of r.faces) polyline('A-ROOF', f.polygon, true);
-  }
-  // Beams: their outline, closed (above the cut: a reader shows the layer dashed if it likes).
-  for (const b of g.beams.values()) if (b.beam.levelId === levelId) polyline('S-BEAM', b.outline, true);
-  // Columns: their section, closed.
-  for (const c of g.columns.values()) if (c.column.levelId === levelId) polyline('S-COLS', c.outline, true);
+  // The registry's kinds on this level, each writing itself.
+  for (const x of eachSolid(g.kinds)) if (x.levelId === levelId) x.kind.dxf?.(x.solid, { line, polyline });
   // Rooms: the outline, and the name and area at the plan's label point.
   for (const r of g.rooms.values()) {
     if (r.room.levelId !== levelId || !r.enclosed) continue;

@@ -14,8 +14,9 @@ import type { DerivedGeometry } from '../app/geometry';
 import { add, scale } from '../core/vector';
 import { visibleFaces } from '../elements/wall/geometry/faces';
 import type { LayerFunction } from '../elements/wall/schema';
-import { prism, railingGeometry, roofGeometry, shownPrism, slabGeometry, stairGeometry } from './prisms';
-import { postsOf } from '../elements/railing/schema';
+import { prism, shownPrism, slabGeometry } from './prisms';
+import { eachSolid } from '../elements/registry';
+import type { KindKey } from '../elements/contract';
 
 /** How the nodes and materials are named: as the interface says it. */
 export interface ExportNaming {
@@ -24,18 +25,14 @@ export interface ExportNaming {
   readonly door: (n: number) => string;
   readonly window: (n: number) => string;
   readonly floor: (n: number) => string;
-  readonly column: (n: number) => string;
-  readonly beam: (n: number) => string;
-  readonly roof: (n: number) => string;
-  readonly stair: (n: number) => string;
-  readonly railing: (n: number) => string;
+  /** A registry kind's node (elements/registry.ts), numbered within its kind, and its material. */
+  readonly kindName: (key: KindKey, n: number) => string;
+  readonly kindMaterial: (key: KindKey) => string;
   /** A layer's material by its id (plaster, brick): what a renderer assigns its own materials by. */
   readonly material: (materialId: string) => string;
   readonly glass: string;
   readonly leaf: string;
   readonly floorMaterial: string;
-  readonly columnMaterial: string;
-  readonly roofMaterial: string;
 }
 
 /** Plain colours for the materials, as a viewer shows them lit: not the interface's, which follow its theme. */
@@ -144,51 +141,19 @@ export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): 
     mesh.userData = { cad2Id: fl.floor.id, kind: 'floor', level: levelName(fl.floor.levelId), thickness: fl.top - fl.bottom };
     levelGroup(fl.floor.levelId).add(mesh);
   }
-  // Columns: their section extruded from bottom to top, in the structure's colour.
-  let columns = 0;
-  for (const c of g.columns.values()) {
-    const geo = new THREE.ExtrudeGeometry(new THREE.Shape(c.outline.map((p) => new THREE.Vector2(p.x, p.y))), { depth: c.top - c.bottom, bevelEnabled: false });
-    geo.rotateX(-Math.PI / 2);
-    geo.translate(0, c.bottom, 0);
-    const mesh = new THREE.Mesh(geo, material('structure', naming.columnMaterial));
-    mesh.name = naming.column(++columns);
-    mesh.userData = { cad2Id: c.column.id, kind: 'column', level: levelName(c.column.levelId), width: c.column.width, depth: c.column.depth };
-    levelGroup(c.column.levelId).add(mesh);
-  }
-  let railings = 0;
-  for (const r of g.railings.values()) {
-    const geo = railingGeometry(r.railing.points, postsOf(r.railing), r.railing.height);
-    geo.translate(0, r.bottom, 0);
-    const mesh = new THREE.Mesh(geo, material('structure', naming.columnMaterial));
-    mesh.name = naming.railing(++railings);
-    mesh.userData = { cad2Id: r.railing.id, kind: 'railing', level: levelName(r.railing.levelId), height: r.railing.height };
-    levelGroup(r.railing.levelId).add(mesh);
-  }
-  let stairs = 0;
-  for (const s of g.stairs.values()) {
-    const geo = stairGeometry(s.parts, s.rails, s.riser, s.stair.kind !== 'spiral');
-    geo.translate(0, s.bottom, 0);
-    const mesh = new THREE.Mesh(geo, material('floor', naming.floorMaterial));
-    mesh.name = naming.stair(++stairs);
-    mesh.userData = { cad2Id: s.stair.id, kind: 'stair', level: levelName(s.stair.levelId), risers: s.risers, riser: s.riser, tread: s.stair.tread };
-    levelGroup(s.stair.levelId).add(mesh);
-  }
-  let roofs = 0;
-  for (const r of g.roofs.values()) {
-    const mesh = new THREE.Mesh(roofGeometry(r.faces, r.gables, r.parapets, r.roof.thickness), material('roof', naming.roofMaterial));
-    mesh.name = naming.roof(++roofs);
-    mesh.userData = { cad2Id: r.roof.id, kind: 'roof', level: levelName(r.roof.levelId), roofKind: r.roof.kind };
-    levelGroup(r.roof.levelId).add(mesh);
-  }
-  let beams = 0;
-  for (const b of g.beams.values()) {
-    const geo = new THREE.ExtrudeGeometry(new THREE.Shape(b.outline.map((p) => new THREE.Vector2(p.x, p.y))), { depth: b.top - b.bottom, bevelEnabled: false });
-    geo.rotateX(-Math.PI / 2);
-    geo.translate(0, b.bottom, 0);
-    const mesh = new THREE.Mesh(geo, material('structure', naming.columnMaterial));
-    mesh.name = naming.beam(++beams);
-    mesh.userData = { cad2Id: b.beam.id, kind: 'beam', level: levelName(b.beam.levelId), width: b.beam.width, depth: b.beam.depth };
-    levelGroup(b.beam.levelId).add(mesh);
+  // The registry's kinds (elements/registry.ts): each its solid, named and numbered as the interface
+  // calls it, its own data on the node for a renderer or a viewer to read.
+  const counts = new Map<string, number>();
+  for (const x of eachSolid(g.kinds)) {
+    const made = x.kind.solid?.(x.solid);
+    if (!made) continue;
+    made.geometry.translate(0, made.y, 0);
+    const n = (counts.get(x.kind.key) ?? 0) + 1;
+    counts.set(x.kind.key, n);
+    const mesh = new THREE.Mesh(made.geometry, material(x.kind.exportColour, naming.kindMaterial(x.kind.key)));
+    mesh.name = naming.kindName(x.kind.key, n);
+    mesh.userData = { cad2Id: x.id, kind: x.kind.prefix, level: levelName(x.levelId), params: x.kind.element(x.solid) };
+    levelGroup(x.levelId).add(mesh);
   }
   return scene;
 }

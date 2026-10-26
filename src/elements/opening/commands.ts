@@ -3,6 +3,7 @@
 // to keep their openings where they were. The one exception is a distributed group: losing a member
 // spreads the others out again, which is what the group is for.
 
+import { dropKinds, hasKinds } from '../registry';
 import { anchorElement } from '../dimension/schema';
 import { type Doc, wallHeights } from '../../app/document';
 import type { Command } from '../../core/store';
@@ -83,11 +84,6 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
     const guides = doc.guides.filter((g) => !drop.has(g.id));
     const notes = doc.notes.filter((n) => !drop.has(n.id));
     const grids = doc.grids.filter((x) => !drop.has(x.id));
-    const columns = doc.columns.filter((x) => !drop.has(x.id));
-    const beams = doc.beams.filter((x) => !drop.has(x.id));
-    const roofs = doc.roofs.filter((x) => !drop.has(x.id));
-    const stairs = doc.stairs.filter((x) => !drop.has(x.id));
-    const railings = doc.railings.filter((x) => !drop.has(x.id));
     // A dimension goes with what holds either of its ends, as Revit's does.
     const held = (id: string | null) => id !== null && (drop.has(id) || gone.has(id));
     const dimensions = doc.dimensions.filter((d) => !drop.has(d.id) && !held(anchorElement(d.a)) && !held(anchorElement(d.b)));
@@ -100,11 +96,7 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
       notes.length === doc.notes.length &&
       dimensions.length === doc.dimensions.length &&
       grids.length === doc.grids.length &&
-      columns.length === doc.columns.length &&
-      beams.length === doc.beams.length &&
-      roofs.length === doc.roofs.length &&
-      stairs.length === doc.stairs.length &&
-      railings.length === doc.railings.length
+      !hasKinds(doc, drop)
     ) {
       return doc;
     }
@@ -123,7 +115,7 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
           ? { ...o, rule: { kind: 'fromStart' as const, distance: placed.get(o.id)!.start } }
           : o,
       );
-    return settleGroups(doc, { ...doc, walls, openings, rooms, floors, guides, notes, dimensions, grids, columns, beams, roofs, stairs, railings });
+    return settleGroups(doc, { ...dropKinds(doc, drop), walls, openings, rooms, floors, guides, notes, dimensions, grids });
   },
 });
 

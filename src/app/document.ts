@@ -1,6 +1,7 @@
 // The project document: only what the user decided. Thickness, heights, joins and geometry are
 // always derived from it.
 
+import { KINDS, listOf } from '../elements/registry';
 import type { Railing } from '../elements/railing/schema';
 import type { Stair } from '../elements/stair/schema';
 import type { Roof } from '../elements/roof/schema';
@@ -90,9 +91,9 @@ export interface WallDefaults {
   readonly top: HeightRule;
 }
 
-/** The ids of every element that can be selected: walls, openings, rooms, floors, guides, notes, dimensions, grids, columns, beams, roofs, stairs and railings. */
+/** The ids of every element that can be selected: walls, openings, rooms, floors, guides, notes, dimensions, grids and the registry's (elements/registry.ts). */
 export const elementIds = (doc: Doc): Set<string> =>
-  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.guides, ...doc.notes, ...doc.dimensions, ...doc.grids, ...doc.columns, ...doc.beams, ...doc.roofs, ...doc.stairs, ...doc.railings].map((e) => e.id));
+  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.guides, ...doc.notes, ...doc.dimensions, ...doc.grids, ...KINDS.flatMap((k) => listOf(doc, k))].map((e) => e.id));
 
 export function newDocument(): Doc {
   return {

@@ -12,8 +12,9 @@ import type { WallId } from '../elements/wall/schema';
 import { LAYER_TOKEN } from '../ui/swatch';
 import { blockPaint, wallMeshKey } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
-import { prism, railingGeometry, roofGeometry, shownPrism, slabGeometry, stairGeometry, toThree } from './prisms';
-import { postsOf } from '../elements/railing/schema';
+import { prism, shownPrism, slabGeometry, toThree } from './prisms';
+import { eachSolid } from '../elements/registry';
+import type { KindSolid } from '../elements/contract';
 import { featureEdges } from '../elements/wall/geometry/edges';
 import { symbolLines } from '../elements/opening/symbol';
 import { boxCaps, type SectionBox, type SectionLine, sectionCaps, sectionLooks, type UprightPrism } from '../app/section-box';
@@ -560,129 +561,32 @@ export class Scene3D {
       this.walls.set(id, { group, key });
       place(id, f.floor.levelId);
     }
-    // Columns: their section extruded from bottom to top, as the floors are.
-    for (const c of g.columns.values()) {
-      const id = c.column.id;
-      seen.add(id);
-      const state = selected.has(id) ? 's' : 'n';
-      let ckey = this.shapeKeys.get(c);
-      if (ckey === undefined) this.shapeKeys.set(c, (ckey = JSON.stringify([c.outline, c.bottom, c.top])));
-      const key = state + ckey;
-      const old = this.walls.get(id);
+    // The registry's kinds (elements/registry.ts): each gives its solid; rebuilt only when it changed.
+    for (const x of eachSolid(g.kinds)) {
+      seen.add(x.id);
+      const state = selected.has(x.id) ? 's' : 'n';
+      let k = this.shapeKeys.get(x.solid as object);
+      // What it derives (its level's heights too), not only the element: raising the level rebuilds it.
+      if (k === undefined) this.shapeKeys.set(x.solid as object, (k = JSON.stringify(x.solid)));
+      const key = state + k;
+      const old = this.walls.get(x.id);
       if (old?.key === key) {
-        place(id, c.column.levelId);
+        place(x.id, x.levelId);
         continue;
       }
       if (old) this.drop(old.group);
+      const made = x.kind.solid?.(x.solid);
+      if (!made) continue;
       const group = new THREE.Group();
-      const geo = new THREE.ExtrudeGeometry(new THREE.Shape(c.outline.map((p) => new THREE.Vector2(p.x, p.y))), { depth: c.top - c.bottom, bevelEnabled: false });
-      const mesh = new THREE.Mesh(geo, state === 's' ? this.materials.sideSel : this.materials.side);
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.position.y = c.bottom;
-      mesh.add(this.outline(geo));
+      const material = state === 's' ? this.materials.sideSel : this.materials[made.material as KindSolid['material']];
+      const mesh = new THREE.Mesh(made.geometry, material);
+      mesh.position.y = made.y;
+      if (made.edges) mesh.add(this.outline(made.geometry));
       group.add(mesh);
-      group.userData.wallId = id;
+      group.userData.wallId = x.id;
       this.scene.add(group);
-      this.walls.set(id, { group, key });
-      place(id, c.column.levelId);
-    }
-    // Guardrails: posts and rails (prisms.ts: railingGeometry).
-    for (const r of g.railings.values()) {
-      const id = r.railing.id;
-      seen.add(id);
-      const state = selected.has(id) ? 's' : 'n';
-      let rkey = this.shapeKeys.get(r);
-      if (rkey === undefined) this.shapeKeys.set(r, (rkey = JSON.stringify([r.railing, r.bottom])));
-      const key = state + rkey;
-      const old = this.walls.get(id);
-      if (old?.key === key) {
-        place(id, r.railing.levelId);
-        continue;
-      }
-      if (old) this.drop(old.group);
-      const group = new THREE.Group();
-      const mesh = new THREE.Mesh(railingGeometry(r.railing.points, postsOf(r.railing), r.railing.height), state === 's' ? this.materials.sideSel : this.materials.side);
-      mesh.position.y = r.bottom;
-      group.add(mesh);
-      group.userData.wallId = id;
-      this.scene.add(group);
-      this.walls.set(id, { group, key });
-      place(id, r.railing.levelId);
-    }
-    // Stairs: their steps and landings, and handrails (prisms.ts: stairGeometry).
-    for (const s of g.stairs.values()) {
-      const id = s.stair.id;
-      seen.add(id);
-      const state = selected.has(id) ? 's' : 'n';
-      let skey = this.shapeKeys.get(s);
-      if (skey === undefined) this.shapeKeys.set(s, (skey = JSON.stringify([s.stair, s.bottom, s.height])));
-      const key = state + skey;
-      const old = this.walls.get(id);
-      if (old?.key === key) {
-        place(id, s.stair.levelId);
-        continue;
-      }
-      if (old) this.drop(old.group);
-      const group = new THREE.Group();
-      const geo = stairGeometry(s.parts, s.rails, s.riser, s.stair.kind !== 'spiral');
-      const mesh = new THREE.Mesh(geo, state === 's' ? this.materials.sideSel : this.materials.floor);
-      mesh.position.y = s.bottom;
-      mesh.add(this.outline(geo));
-      group.add(mesh);
-      group.userData.wallId = id;
-      this.scene.add(group);
-      this.walls.set(id, { group, key });
-      place(id, s.stair.levelId);
-    }
-    // Roofs: their faces as slabs, gables and parapets (prisms.ts: roofGeometry).
-    for (const r of g.roofs.values()) {
-      const id = r.roof.id;
-      seen.add(id);
-      const state = selected.has(id) ? 's' : 'n';
-      let rkey = this.shapeKeys.get(r);
-      if (rkey === undefined) this.shapeKeys.set(r, (rkey = JSON.stringify([r.roof, r.base])));
-      const key = state + rkey;
-      const old = this.walls.get(id);
-      if (old?.key === key) {
-        place(id, r.roof.levelId);
-        continue;
-      }
-      if (old) this.drop(old.group);
-      const group = new THREE.Group();
-      const geo = roofGeometry(r.faces, r.gables, r.parapets, r.roof.thickness);
-      const mesh = new THREE.Mesh(geo, state === 's' ? this.materials.sideSel : this.materials.roof);
-      mesh.add(this.outline(geo));
-      group.add(mesh);
-      group.userData.wallId = id;
-      this.scene.add(group);
-      this.walls.set(id, { group, key });
-      place(id, r.roof.levelId);
-    }
-    // Beams: their outline extruded from bottom to top.
-    for (const b of g.beams.values()) {
-      const id = b.beam.id;
-      seen.add(id);
-      const state = selected.has(id) ? 's' : 'n';
-      let bkey = this.shapeKeys.get(b);
-      if (bkey === undefined) this.shapeKeys.set(b, (bkey = JSON.stringify([b.outline, b.bottom, b.top])));
-      const key = state + bkey;
-      const old = this.walls.get(id);
-      if (old?.key === key) {
-        place(id, b.beam.levelId);
-        continue;
-      }
-      if (old) this.drop(old.group);
-      const group = new THREE.Group();
-      const geo = new THREE.ExtrudeGeometry(new THREE.Shape(b.outline.map((p) => new THREE.Vector2(p.x, p.y))), { depth: b.top - b.bottom, bevelEnabled: false });
-      const mesh = new THREE.Mesh(geo, state === 's' ? this.materials.sideSel : this.materials.side);
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.position.y = b.bottom;
-      mesh.add(this.outline(geo));
-      group.add(mesh);
-      group.userData.wallId = id;
-      this.scene.add(group);
-      this.walls.set(id, { group, key });
-      place(id, b.beam.levelId);
+      this.walls.set(x.id, { group, key });
+      place(x.id, x.levelId);
     }
     const faces = this.facesOf(g);
     for (const s of g.solids.values()) {

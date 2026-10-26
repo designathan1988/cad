@@ -1,16 +1,6 @@
 // Properties panel, built from what is selected: each element's sections come from its fields
 // (elements/*/fields.ts, rendered by fields.ts). It only reads state and sends changes.
 
-import { type RailingFieldActions, railingFields } from '../elements/railing/fields';
-import type { Railing } from '../elements/railing/schema';
-import { type StairFieldActions, stairFields } from '../elements/stair/fields';
-import type { StairSolid } from '../elements/stair/geometry';
-import { type RoofFieldActions, roofFields } from '../elements/roof/fields';
-import type { RoofSolid } from '../elements/roof/geometry';
-import { type BeamFieldActions, beamFields } from '../elements/beam/fields';
-import type { Beam } from '../elements/beam/schema';
-import { type ColumnFieldActions, columnFields } from '../elements/column/fields';
-import type { Column } from '../elements/column/schema';
 import type { EndJoin } from '../elements/wall/schema';
 import { type Doc, type DocWall, type WallDefaults, wallNumber } from '../app/document';
 import type { OpeningSolid } from '../app/geometry';
@@ -34,7 +24,9 @@ import type { ReferenceLine } from '../elements/wall/schema';
 import { el } from './controls';
 import { fieldsSection } from './fields';
 import { name, num, t, type MessageKey } from './i18n';
-import { icon } from './icons';
+import { icon, type IconName } from './icons';
+import type { AnyKind } from '../elements/contract';
+import type { Command } from '../core/store';
 
 export interface PanelInput {
   readonly doc: Doc;
@@ -60,16 +52,8 @@ export interface PanelInput {
   readonly notes: readonly Note[];
   /** The selected grid axes. */
   readonly grids: readonly Grid[];
-  /** The selected columns. */
-  readonly columns: readonly Column[];
-  /** The selected beams. */
-  readonly beams: readonly Beam[];
-  /** The selected roofs, as built. */
-  readonly roofs: readonly RoofSolid[];
-  /** The selected stairs, as laid out. */
-  readonly stairs: readonly StairSolid[];
-  /** The selected guardrails. */
-  readonly railings: readonly Railing[];
+  /** The first registry kind with a selected element (elements/registry.ts), and those, as derived. */
+  readonly kind: { readonly kind: AnyKind; readonly items: readonly unknown[] } | null;
   /** The selected dimensions, and what each measures now (null: an end's element is gone). */
   readonly dimensions: readonly Dimension[];
   readonly dimensionLength: (d: Dimension) => number | null;
@@ -97,11 +81,8 @@ export interface PanelActions {
   readonly updateNotes: NoteFieldActions['updateNotes'];
   readonly setDimensionDistance: DimensionFieldActions['setDimensionDistance'];
   readonly renameGrid: GridFieldActions['renameGrid'];
-  readonly updateColumns: ColumnFieldActions['updateColumns'];
-  readonly updateBeams: BeamFieldActions['updateBeams'];
-  readonly updateRoofs: RoofFieldActions['updateRoofs'];
-  readonly updateStairs: StairFieldActions['updateStairs'];
-  readonly updateRailings: RailingFieldActions['updateRailings'];
+  /** A command on the document: what a registry kind's fields send. */
+  readonly dispatch: (c: Command<Doc>) => void;
   /** Moves the wall so its exterior face meets the face of the wall below it. */
   readonly alignBelow: (step: StackedStep) => void;
 }
@@ -116,7 +97,7 @@ function common<T>(walls: readonly DocWall[], get: (w: DocWall) => T): T | null 
 
 export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActions): void {
   const { doc, selected } = input;
-  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window' | 'room' | 'slab' | 'guide' | 'text' | 'dimension' | 'height' | 'hash' | 'column' | 'beam' | 'roof' | 'stair' | 'railing', title: string) => {
+  const head = (iconName: IconName, title: string) => {
     const h = el('div', { class: 'panel-head' });
     h.innerHTML = icon(iconName, 16);
     const close = el('button', { class: 'icon-btn', type: 'button', title: t('panel.close'), 'aria-label': t('panel.close') });
@@ -202,31 +183,13 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     nodes.push(head(kinds.size === 1 && kinds.has('window') ? 'window' : 'door', openingTitle(input.openings)));
     part(input.openings.length);
     nodes.push(...openingPanel(doc, input.placed, input.openings, input.openingWarnings, act.opening, input.levelRooms));
-  } else if (input.railings.length > 0) {
-    const n = input.railings.length;
-    nodes.push(head('railing', n === 1 ? t('railing.title') : t('railing.titleMany', { n })));
+  } else if (input.kind) {
+    // A registry kind: its own icon, title and fields (elements/contract.ts).
+    const { kind, items } = input.kind;
+    const n = items.length;
+    nodes.push(head(kind.icon, n === 1 ? t(kind.one) : t(kind.many, { n })));
     part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, railingFields(input.railings, act), input.railings));
-  } else if (input.stairs.length > 0) {
-    const n = input.stairs.length;
-    nodes.push(head('stair', n === 1 ? t('stair.title') : t('stair.titleMany', { n })));
-    part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, stairFields(input.stairs, act), input.stairs));
-  } else if (input.roofs.length > 0) {
-    const n = input.roofs.length;
-    nodes.push(head('roof', n === 1 ? t('roof.title') : t('roof.titleMany', { n })));
-    part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, roofFields(input.roofs, act), input.roofs));
-  } else if (input.beams.length > 0) {
-    const n = input.beams.length;
-    nodes.push(head('beam', n === 1 ? t('beam.title') : t('beam.titleMany', { n })));
-    part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, beamFields(input.beams, act), input.beams));
-  } else if (input.columns.length > 0) {
-    const n = input.columns.length;
-    nodes.push(head('column', n === 1 ? t('column.title') : t('column.titleMany', { n })));
-    part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, columnFields(input.columns, act), input.columns));
+    nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, act.dispatch), items));
   } else if (input.grids.length > 0) {
     const n = input.grids.length;
     nodes.push(head('hash', n === 1 ? t('grid.title', { name: input.grids[0]!.name }) : t('grid.titleMany', { n })));

@@ -3,12 +3,9 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
-import type { Railing } from '../elements/railing/schema';
-import type { Stair } from '../elements/stair/schema';
-import type { Roof } from '../elements/roof/schema';
-import type { Beam } from '../elements/beam/schema';
-import type { Column } from '../elements/column/schema';
 import { type Doc, type Level, ownValuesOnly } from '../app/document';
+import type { AnyKind, KindKey } from '../elements/contract';
+import { KINDS } from '../elements/registry';
 import type { Guide } from '../elements/guide/schema';
 import { isSavedView } from '../app/saved-views';
 import { isPointOfInterest } from '../app/points';
@@ -50,8 +47,12 @@ export const CURRENT_VERSION = 20;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes' | 'droppedDimensions' | 'droppedGrids' | 'droppedColumns' | 'droppedBeams' | 'droppedRoofs' | 'droppedStairs' | 'droppedRailings'; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes' | 'droppedDimensions' | 'droppedGrids' | KindFix; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
+
+/** The fix for a registry kind's dropped elements: droppedColumns, droppedBeams and so on. */
+type KindFix = `dropped${Capitalize<KindKey>}`;
+const kindFix = (k: AnyKind): KindFix => `dropped${k.key[0]!.toUpperCase()}${k.key.slice(1)}` as KindFix;
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
 
@@ -177,79 +178,6 @@ const isDimAnchor = (a: unknown): boolean =>
 export const isDimension = (d: unknown): d is Dimension =>
   isObject(d) && typeof d.id === 'string' && typeof d.levelId === 'string' && isDimAnchor(d.a) && isDimAnchor(d.b) && finite(d.offset);
 
-/** A guardrail: a path of two points or more, a height above zero. */
-export const isRailing = (r: unknown): r is Railing =>
-  isObject(r) &&
-  typeof r.id === 'string' &&
-  typeof r.levelId === 'string' &&
-  Array.isArray(r.points) &&
-  r.points.length >= 2 &&
-  r.points.every(isPoint) &&
-  finite(r.height) &&
-  r.height > 0 &&
-  finite(r.baseOffset);
-
-/** A stair: a kind, a point, an angle, a width and a step depth above zero. */
-export const isStair = (s: unknown): s is Stair =>
-  isObject(s) &&
-  typeof s.id === 'string' &&
-  typeof s.levelId === 'string' &&
-  (s.kind === 'straight' || s.kind === 'l' || s.kind === 'u' || s.kind === 'spiral' || s.kind === 'ramp') &&
-  (s.grade === undefined || (finite(s.grade) && s.grade > 0)) &&
-  isPoint(s.at) &&
-  finite(s.angle) &&
-  finite(s.width) &&
-  s.width > 0 &&
-  finite(s.tread) &&
-  s.tread > 0 &&
-  (s.turn === 'left' || s.turn === 'right') &&
-  (s.height === undefined || (finite(s.height) && s.height > 0)) &&
-  (s.railing === undefined || typeof s.railing === 'boolean');
-
-/** A roof: an outline of three points or more, a side for each, a thickness above zero. */
-export const isRoof = (r: unknown): r is Roof =>
-  isObject(r) &&
-  typeof r.id === 'string' &&
-  typeof r.levelId === 'string' &&
-  Array.isArray(r.outline) &&
-  r.outline.length >= 3 &&
-  r.outline.every(isPoint) &&
-  Array.isArray(r.edges) &&
-  r.edges.length === r.outline.length &&
-  r.edges.every((e) => isObject(e) && (e.grade === null || finite(e.grade)) && finite(e.overhang)) &&
-  (r.kind === 'flat' || r.kind === 'shed' || r.kind === 'gable' || r.kind === 'hip') &&
-  finite(r.thickness) &&
-  r.thickness > 0 &&
-  finite(r.baseOffset) &&
-  (r.parapet === undefined || finite(r.parapet));
-
-/** A beam: two different points, a section above zero. */
-export const isBeam = (b: unknown): b is Beam =>
-  isObject(b) &&
-  typeof b.id === 'string' &&
-  typeof b.levelId === 'string' &&
-  isPoint(b.start) &&
-  isPoint(b.end) &&
-  JSON.stringify(b.start) !== JSON.stringify(b.end) &&
-  finite(b.width) &&
-  b.width > 0 &&
-  finite(b.depth) &&
-  b.depth > 0 &&
-  (b.topOffset === undefined || finite(b.topOffset));
-
-/** A column: a point, a section above zero, an angle. */
-export const isColumn = (c: unknown): c is Column =>
-  isObject(c) &&
-  typeof c.id === 'string' &&
-  typeof c.levelId === 'string' &&
-  isPoint(c.at) &&
-  finite(c.width) &&
-  c.width > 0 &&
-  finite(c.depth) &&
-  c.depth > 0 &&
-  finite(c.angle) &&
-  (c.topOffset === undefined || finite(c.topOffset));
-
 /** A grid axis: a name and two different points. */
 export const isGrid = (g: unknown): g is Grid =>
   isObject(g) && typeof g.id === 'string' && typeof g.name === 'string' && g.name.trim() !== '' && isPoint(g.start) && isPoint(g.end) && JSON.stringify(g.start) !== JSON.stringify(g.end);
@@ -345,36 +273,17 @@ export function repairProject(raw: unknown): ReadResult {
       return false;
     }),
     grids: keep(raw.grids, isGrid, 'droppedGrids'),
-    // A guardrail on a level that is gone guards nothing: dropped, and said.
-    railings: keep(raw.railings, isRailing, 'droppedRailings').filter((r, _, all) => {
-      if (levelIds.has(r.levelId)) return true;
-      if (r === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedRailings', count: all.filter((x) => !levelIds.has(x.levelId)).length });
-      return false;
-    }),
-    // A stair on a level that is gone climbs nowhere: dropped, and said.
-    stairs: keep(raw.stairs, isStair, 'droppedStairs').filter((s, _, all) => {
-      if (levelIds.has(s.levelId)) return true;
-      if (s === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedStairs', count: all.filter((x) => !levelIds.has(x.levelId)).length });
-      return false;
-    }),
-    // A roof on a level that is gone covers nothing: dropped, and said.
-    roofs: keep(raw.roofs, isRoof, 'droppedRoofs').filter((r, _, all) => {
-      if (levelIds.has(r.levelId)) return true;
-      if (r === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedRoofs', count: all.filter((x) => !levelIds.has(x.levelId)).length });
-      return false;
-    }),
-    // A beam on a level that is gone spans nothing: dropped, and said.
-    beams: keep(raw.beams, isBeam, 'droppedBeams').filter((b, _, all) => {
-      if (levelIds.has(b.levelId)) return true;
-      if (b === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedBeams', count: all.filter((x) => !levelIds.has(x.levelId)).length });
-      return false;
-    }),
-    // A column on a level that is gone stands nowhere: dropped, and said.
-    columns: keep(raw.columns, isColumn, 'droppedColumns').filter((c, _, all) => {
-      if (levelIds.has(c.levelId)) return true;
-      if (c === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedColumns', count: all.filter((x) => !levelIds.has(x.levelId)).length });
-      return false;
-    }),
+    // The registry's elements (columns, beams, roofs, stairs, guardrails): checked by their kind; one
+    // on a level that is gone stands nowhere: dropped, and said.
+    ...(Object.fromEntries(
+      KINDS.map((k) => {
+        const fix = kindFix(k);
+        const all = keep(raw[k.key], k.valid, fix) as { readonly levelId: string }[];
+        const gone = all.filter((x) => !levelIds.has(x.levelId)).length;
+        if (gone > 0) fixes.push({ kind: fix, count: gone });
+        return [k.key, all.filter((x) => levelIds.has(x.levelId))];
+      }),
+    ) as unknown as Pick<Doc, KindKey>),
     // A note on a level that is gone is on no plan: dropped, and said.
     notes: keep(raw.notes, isNote, 'droppedNotes').filter((n, _, all) => {
       if (levelIds.has(n.levelId)) return true;

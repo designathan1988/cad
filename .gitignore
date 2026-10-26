@@ -6,3 +6,4 @@ dist/
 # Mutation testing (stryker.config.json)
 .stryker-tmp/
 reports/
+backups/

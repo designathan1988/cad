@@ -3,6 +3,7 @@
 
 import type { Doc } from '../../app/document';
 import { distance } from '../../core/vector';
+import { kindsOnLine } from '../registry';
 import { type Grid, onGrid } from './schema';
 
 /** Whether a point is on the axis's line (1 mm): a column's centre. */
@@ -21,8 +22,7 @@ export function wallsOnGrids(doc: Doc, ids: readonly string[]): string[] {
   if (taken.length === 0) return [];
   const on = (g: Grid) => [
     ...onGrid(g, doc.walls).map((w) => w.id),
-    ...onGrid(g, doc.beams).map((b) => b.id),
-    ...doc.columns.filter((c) => onLine(g, c.at)).map((c) => c.id),
+    ...kindsOnLine(doc, (p) => onLine(g, p)),
   ];
   return [...new Set(taken.flatMap(on))].filter((id) => !set.has(id));
 }

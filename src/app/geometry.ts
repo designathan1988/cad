@@ -1,12 +1,8 @@
 // Document → derived wall geometry, through the join engine. Recomputed when the document changes,
 // never stored.
 
-import type { Railing } from '../elements/railing/schema';
-import { type StairSolid, stairSolid } from '../elements/stair/geometry';
-import { type RoofSolid, roofSolid } from '../elements/roof/geometry';
-import { type Beam, beamOutline } from '../elements/beam/schema';
-import { type Column, columnOutline } from '../elements/column/schema';
 import { add, type Point2, scale } from '../core/vector';
+import { deriveKinds, eachSolid, filterKinds, type KindSolids } from '../elements/registry';
 import { deriveOpenings, hostsOf, type OpeningWarning, type PlacedOpening } from '../elements/opening/derive';
 import type { Opening, OpeningId } from '../elements/opening/schema';
 import { swingRegion, symbolLines } from '../elements/opening/symbol';
@@ -66,79 +62,8 @@ export interface DerivedGeometry {
   /** A level's spaces, the ones its walls close in (room/derive.ts): where the room tool can put a room. Found when asked. */
   readonly spaces: (levelId: string) => readonly (readonly P[])[];
   readonly floors: ReadonlyMap<FloorId, FloorSolid>;
-  readonly columns: ReadonlyMap<string, ColumnSolid>;
-  readonly beams: ReadonlyMap<string, BeamSolid>;
-  readonly roofs: ReadonlyMap<string, RoofSolid>;
-  readonly stairs: ReadonlyMap<string, StairSolid>;
-  readonly railings: ReadonlyMap<string, RailingSolid>;
-}
-
-/** A guardrail as it stands: its foot's height. */
-export interface RailingSolid {
-  readonly railing: Railing;
-  readonly bottom: number;
-}
-
-export function deriveRailings(doc: Doc): Map<string, RailingSolid> {
-  return new Map(doc.railings.map((r) => [r.id, { railing: r, bottom: (doc.levels.find((l) => l.id === r.levelId)?.elevation ?? 0) + r.baseOffset }]));
-}
-
-/** Stairs from their level's floor, up its height unless they set their own (elements/stair/geometry.ts). */
-export function deriveStairs(doc: Doc): Map<string, StairSolid> {
-  return new Map(
-    doc.stairs.map((s) => {
-      const level = doc.levels.find((l) => l.id === s.levelId) ?? { elevation: 0, height: 2.8 };
-      return [s.id, stairSolid(s, level.height, level.elevation)];
-    }),
-  );
-}
-
-/** Roofs on their level's top (elements/roof/geometry.ts). */
-export function deriveRoofs(doc: Doc): Map<string, RoofSolid> {
-  return new Map(
-    doc.roofs.map((r) => {
-      const level = doc.levels.find((l) => l.id === r.levelId) ?? { elevation: 0, height: 2.8 };
-      return [r.id, roofSolid(r, level.elevation + level.height)];
-    }),
-  );
-}
-
-/** A beam as it hangs: its outline in plan, its bottom and top. */
-export interface BeamSolid {
-  readonly beam: Beam;
-  readonly outline: readonly P[];
-  readonly bottom: number;
-  readonly top: number;
-}
-
-/** Beams hanging from their level's top (plus their adjustment), their depth down. */
-export function deriveBeams(doc: Doc): Map<string, BeamSolid> {
-  return new Map(
-    doc.beams.map((b) => {
-      const level = doc.levels.find((l) => l.id === b.levelId) ?? { elevation: 0, height: 2.8 };
-      const top = level.elevation + level.height + (b.topOffset ?? 0);
-      return [b.id, { beam: b, outline: beamOutline(b), bottom: top - b.depth, top }];
-    }),
-  );
-}
-
-/** A column as it stands: its section in plan, its bottom and top. */
-export interface ColumnSolid {
-  readonly column: Column;
-  readonly outline: readonly P[];
-  readonly bottom: number;
-  readonly top: number;
-}
-
-/** Columns from their level's floor to its top (plus their adjustment). */
-export function deriveColumns(doc: Doc): Map<string, ColumnSolid> {
-  return new Map(
-    doc.columns.map((c) => {
-      const level = doc.levels.find((l) => l.id === c.levelId) ?? { elevation: 0, height: 2.8 };
-      const bottom = level.elevation;
-      return [c.id, { column: c, outline: columnOutline(c), bottom, top: Math.max(bottom + 0.01, level.elevation + level.height + (c.topOffset ?? 0)) }];
-    }),
-  );
+  /** The registry's kinds (elements/registry.ts), derived: by kind, then id. */
+  readonly kinds: KindSolids;
 }
 
 /**
@@ -241,7 +166,7 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     if (!found.has(levelId)) found.set(levelId, spacesOf(piecesByLevel.get(levelId) ?? []));
     return found.get(levelId)!;
   };
-  return { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors, spaces, columns: deriveColumns(doc), beams: deriveBeams(doc), roofs: deriveRoofs(doc), stairs: deriveStairs(doc), railings: deriveRailings(doc) };
+  return { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors, spaces, kinds: deriveKinds(doc) };
 }
 
 /** A height range of a wall, and its plan pieces there: joined only with the walls standing over all of it. */
@@ -476,10 +401,7 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
   const outlines = [
     ...[...g.rooms.values()].filter((r) => !ids || ids.has(r.room.id)).map((r) => r.outline),
     ...[...g.floors.values()].filter((f) => !ids || ids.has(f.floor.id)).map((f) => f.outline),
-    ...[...g.columns.values()].filter((c) => !ids || ids.has(c.column.id)).map((c) => c.outline),
-    ...[...g.beams.values()].filter((b) => !ids || ids.has(b.beam.id)).map((b) => b.outline),
-    ...[...g.roofs.values()].filter((r) => !ids || ids.has(r.roof.id)).map((r) => r.outline),
-    ...[...g.stairs.values()].filter((s) => !ids || ids.has(s.stair.id)).flatMap((s) => s.parts.map((p) => p.polygon)),
+    ...[...eachSolid(g.kinds)].filter((x) => !ids || ids.has(x.id)).flatMap((x) => x.kind.outlines(x.solid)),
   ];
   for (const v of outlines.flat()) {
     minX = Math.min(minX, v.x);
@@ -520,11 +442,7 @@ export function applyTemporary(g: DerivedGeometry, temp: TemporaryView | null): 
     openings,
     rooms: new Map([...g.rooms].filter(([id]) => keep(id))),
     floors: new Map([...g.floors].filter(([id]) => keep(id))),
-    columns: new Map([...g.columns].filter(([id]) => keep(id))),
-    beams: new Map([...g.beams].filter(([id]) => keep(id))),
-    roofs: new Map([...g.roofs].filter(([id]) => keep(id))),
-    stairs: new Map([...g.stairs].filter(([id]) => keep(id))),
-    railings: new Map([...g.railings].filter(([id]) => keep(id))),
+    kinds: filterKinds(g.kinds, (k, x) => keep(k.element(x).id)),
   };
 }
 
@@ -536,11 +454,7 @@ export function hideCategories(g: DerivedGeometry, hidden: ReadonlySet<Category>
     openings: hidden.has('openings') ? new Map() : g.openings,
     rooms: hidden.has('rooms') ? new Map() : g.rooms,
     floors: hidden.has('floors') ? new Map() : g.floors,
-    // Columns are structure, as walls are: hidden with them.
-    columns: hidden.has('walls') ? new Map() : g.columns,
-    beams: hidden.has('walls') ? new Map() : g.beams,
-    roofs: hidden.has('walls') ? new Map() : g.roofs,
-    stairs: hidden.has('floors') ? new Map() : g.stairs,
-    railings: hidden.has('floors') ? new Map() : g.railings,
+    // Each kind with its category (structure with the walls, stairs and guardrails with the floors).
+    kinds: filterKinds(g.kinds, (k) => !hidden.has(k.category)),
   };
 }
