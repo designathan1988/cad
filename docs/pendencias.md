@@ -404,7 +404,7 @@ Documentação
 - Plantas de cada pavimento como vistas derivadas (l.118, l.146): parcial, existe a vista em planta; falta a planta como vista de documentação.
 - Cortes (l.118, l.146): parcial, corte vertical no 3D por uma guia, paralelo e preenchido; sem cotas nem rótulos.
 - Elevações (l.118, l.146): parcial, as quatro no 3D, paralelas; sem cotas nem rótulos.
-- Tabelas de quantitativos (portas, janelas, cômodos com áreas, paredes com comprimentos e áreas), exportáveis em CSV (l.119, l.147): falta.
+- Tabelas de quantitativos (portas, janelas, cômodos com áreas, paredes com comprimentos e áreas), exportáveis em CSV (l.119, l.147): existe ("Tabelas de quantitativos…" no navegador do projeto e na paleta). Portas e janelas com parede, medidas, área e os cômodos de cada lado (ou exterior); cômodos com área e perímetro; paredes com comprimento no eixo, altura, área bruta, aberturas e área líquida; totais. CSV com ; e vírgula em português, , e ponto em inglês, UTF-8 com BOM. Lido do modelo, nada guardado. Visto no navegador nas quatro abas e o CSV aberto e conferido.
 - Pranchas com carimbo, impressão e PDF (l.120, l.148): falta.
 
 Importar e exportar

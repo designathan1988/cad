@@ -3,13 +3,16 @@
 // bodies exactly once, and near the node exactly the spec's L (arcCorner).
 
 import fc from 'fast-check';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { LayerFunction, WallEnd } from '../../../src/elements/wall/schema';
 import { geometry, layer, testWall, type TestWall as Wall } from './fixtures';
 import { arcBody, arcCorner, circleOf, cornerReach, coverage, distanceToSegments, faceRadii, intoOf, segmentsOf, tBeyond, tFill, touchesArcElsewhere } from './oracle-arc';
 import { inside, rectOf, shoelace } from './oracle';
 
 const seed = Number(process.env.FUZZ_SEED ?? 20261024);
+// As joins.property.test.ts: a run takes as long as it takes, more under a busy machine (a mutation run
+// beside it) than the 5 s a plain test gets.
+vi.setConfig({ testTimeout: 600_000 });
 const SPEC_POINT_TOL = 1e-3;
 const num = (min: number, max: number) => fc.double({ min, max, noNaN: true, noDefaultInfinity: true });
 const fns = fc.constantFrom<LayerFunction>('structure', 'finish1', 'finish2', 'thermal');

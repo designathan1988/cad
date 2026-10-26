@@ -69,6 +69,7 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
       item(t('views.save'), () => app.saveCurrentView(), { lead: icon('plus', 16) }),
       item(t('gtour.edit'), () => app.openTour(), {}),
       item(t('poi.dialogOpen'), () => app.openPoints(), { lead: icon('pin', 16) }),
+      item(t('schedule.open'), () => app.openSchedules(), { lead: icon('table', 16) }),
       ...(doc.views.length > 0 ? [item(t('gtour.play'), () => app.playTour(), { lead: icon('play', 16) })] : []),
     ),
     section(

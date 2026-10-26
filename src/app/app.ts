@@ -1934,15 +1934,23 @@ export class App {
 
   saveFile(): void {
     const doc = this.store.get();
-    const blob = new Blob([writeProject(doc)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
     // Named after the project, without what a file name cannot hold: every save was "project.json".
-    a.download = `${(doc.name || t('app.untitled')).replace(/[\\/:*?"<>|]+/g, '-')}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    this.download(`${(doc.name || t('app.untitled')).replace(/[\\/:*?"<>|]+/g, '-')}.json`, writeProject(doc), 'application/json');
     this.toast(t('toast.saved'));
   }
+
+  /** A file given to the browser to save: the project, a schedule's CSV, an export. */
+  download(file: string, content: string | Blob, type: string): void {
+    const blob = content instanceof Blob ? content : new Blob([content], { type });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = file;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  /** Opens the quantity schedules; set by the input layer. */
+  openSchedules: () => void = () => {};
 
   /**
    * The view by keyboard (view-keys.ts): in plan, zoom about the middle of the free part and move by

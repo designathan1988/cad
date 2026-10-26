@@ -17,6 +17,7 @@ import { EDIT_LEVELS } from './app';
 import { showLevels } from '../ui/levels-dialog';
 import { showTourDialog } from '../ui/tour-dialog';
 import { showPointsDialog } from '../ui/points-dialog';
+import { showSchedulesDialog } from '../ui/schedules-dialog';
 import { showWallTypes } from '../ui/types-dialog';
 import { showPalette } from '../ui/palette';
 import { offerTour, startTour } from '../ui/tour';
@@ -48,6 +49,7 @@ export function wireInput(app: App): void {
   app.openLevels = () => showLevels(app);
   app.openTour = () => showTourDialog(app);
   app.openPoints = () => showPointsDialog(app);
+  app.openSchedules = () => showSchedulesDialog(app);
   app.openWallTypes = (typeId) => showWallTypes(app, typeId);
   shell.sidebar.addEventListener('click', () => app.toggleBrowser());
   offerTour(app);

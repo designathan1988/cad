@@ -56,6 +56,8 @@
   --palette-max-h: 360px;
   --dialog-w: 420px;
   --dialog-w-lg: 560px;
+  --dialog-w-xl: 980px;
+  --schedule-h: 60vh;
   --dialog-w-xl: 860px;
   --dialog-top: min(10vh, 96px);
   --types-list-w: 220px;
@@ -1695,6 +1697,62 @@ button.project-name:hover {
 /* Levels dialog */
 .dialog-wide {
   width: min(var(--dialog-w-lg), calc(100vw - 2 * var(--sp-4)));
+}
+/* Quantity schedules: tabs, a table that scrolls inside (sideways on a phone), the totals kept in view. */
+.dialog-xl {
+  width: min(var(--dialog-w-xl), calc(100vw - 2 * var(--sp-4)));
+}
+.schedule-tabs {
+  padding: var(--sp-3) var(--sp-4) 0;
+}
+/* The side panel's segmented buttons share its width and break their words to fit; here each tab takes
+   its own width, whole words in bold when chosen. */
+.schedule-tabs .segmented button {
+  flex: none;
+  padding: 0 var(--sp-3);
+  overflow: visible;
+}
+.schedule-tabs .segmented button .label {
+  display: inline;
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+.schedule-scroll {
+  max-height: var(--schedule-h);
+  overflow: auto;
+  margin: var(--sp-3) var(--sp-4);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius);
+}
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+.schedule-table th,
+.schedule-table td {
+  padding: var(--sp-1) var(--sp-2);
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: var(--line) solid var(--border);
+}
+.schedule-table .num {
+  text-align: right;
+}
+.schedule-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-2);
+  color: var(--text-2);
+  font-weight: 600;
+}
+.schedule-table tfoot td {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-2);
+  font-weight: 600;
+  border-bottom: 0;
 }
 /* Wall types: the list of types, and the chosen one's fields and layers beside it. */
 .types-dialog {

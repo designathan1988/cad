@@ -2,3 +2,7 @@ node_modules/
 # Reference material from the previous attempt, kept outside version control.
 ref/
 dist/
+
+# Mutation testing (stryker.config.json)
+.stryker-tmp/
+reports/
