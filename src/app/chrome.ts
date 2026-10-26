@@ -1,0 +1,450 @@
+// The interface around the views: the tool bar, the level list, the footer's hints and keys, the float bar, the browser drawer. Functions over the app (app.ts delegates).
+
+import * as THREE from 'three';
+import { type Point2 } from '../core/vector';
+import { ruleBase } from '../tools/opening-tool';
+import { reading } from '../tools/measure-tool';
+import { OPENING_PREVIEW_ID, ruleText } from './opening-ui';
+import { getLang, name, num, t, type MessageKey } from '../ui/i18n';
+import { icon } from '../ui/icons';
+import { keyHint } from '../ui/shell';
+import { kindOfId, levelOfSolid } from '../elements/registry';
+import { elementIds, wallNumber } from './document';
+import { boundsOf, openingOutline } from './geometry';
+import { renderBrowser } from '../ui/browser';
+import { exploding, shownLevels } from './view-3d';
+import { canTransform } from '../tools/transform';
+import { contextEntries } from './context-menu';
+import { placeBarY } from '../ui/bar-place';
+import { signedArea } from '../elements/room/derive';
+import type { App } from './app';
+import { EDIT_LEVELS } from './app';
+
+export function renderBrowserDrawer(app: App): void {
+  const { ui, shell } = app;
+  shell.browser.hidden = !ui.browserOpen;
+  shell.sidebar.setAttribute('aria-pressed', String(ui.browserOpen));
+  if (!ui.browserOpen) return;
+  const doc = app.store.get();
+  const key = JSON.stringify([getLang(), ui.view, ui.levelId, [...ui.hidden], ui.refLines, ui.openingTags, doc.levels, doc.wallTypes.map((x) => [x.id, x.name]), doc.walls.map((w) => w.wallTypeId), doc.views.map((v) => [v.id, v.name])]);
+  if (key === app.browserKey) return;
+  app.browserKey = key;
+  // Keep the focus on the same button across the rebuild.
+  const focused = document.activeElement instanceof HTMLElement && shell.browser.contains(document.activeElement) ? [...shell.browser.querySelectorAll('button')].indexOf(document.activeElement as HTMLButtonElement) : -1;
+  renderBrowser(app, shell.browser, () => app.openLevels(), () => app.openWallTypes());
+  if (focused >= 0) shell.browser.querySelectorAll('button')[focused]?.focus();
+}
+
+export function renderChrome(app: App): void {
+  const { ui, shell, store } = app;
+  const doc = store.get();
+  shell.panelToggle.setAttribute('aria-pressed', String(!shell.panel.hidden));
+  const projectName = doc.name || t('app.untitled');
+  // Another name, another width: the top bar's edit tools fitted again.
+  if (shell.projectName.textContent !== projectName) {
+    shell.projectName.textContent = projectName;
+    shell.fitTop();
+  }
+  document.title = `${projectName} · cad2`;
+  shell.undo.disabled = !store.canUndo();
+  shell.redo.disabled = !store.canRedo();
+  shell.view3d.setAttribute('aria-pressed', String(ui.view === '3d'));
+  shell.viewPlan.setAttribute('aria-pressed', String(ui.view === 'plan'));
+  shell.viewWalk.setAttribute('aria-pressed', String(app.walker !== null));
+  shell.walkStick.hidden = app.walker === null;
+  app.placePointCard();
+  // The tour's bar: the stop's name and caption, where it is in the tour, and its buttons.
+  const stop = app.tour ? app.store.get().views[app.tour.index] : undefined;
+  shell.tourBar.hidden = !stop;
+  if (stop && app.tour) {
+    shell.tourTitle.textContent = `${app.tour.index + 1}/${app.store.get().views.length} · ${name(stop.name)}`;
+    shell.tourCaption.textContent = stop.caption ?? '';
+    shell.tourCaption.hidden = !stop.caption;
+    shell.tourPlay.innerHTML = icon(app.tour.playing ? 'pause' : 'play', 18);
+    shell.tourPlay.setAttribute('aria-label', t(app.tour.playing ? 'gtour.pause' : 'gtour.resume'));
+    shell.tourPlay.title = t(app.tour.playing ? 'gtour.pause' : 'gtour.resume');
+  }
+  shell.toolSelect.setAttribute('aria-pressed', String(ui.tool === 'select'));
+  shell.toolWall.setAttribute('aria-pressed', String(ui.tool === 'wall'));
+  shell.toolRoom.setAttribute('aria-pressed', String(ui.tool === 'room'));
+  shell.toolFloor.setAttribute('aria-pressed', String(ui.tool === 'floor'));
+  shell.toolDoor.setAttribute('aria-pressed', String(ui.tool === 'door'));
+  shell.toolWindow.setAttribute('aria-pressed', String(ui.tool === 'window'));
+  shell.toolMeasure.setAttribute('aria-pressed', String(ui.tool === 'measure'));
+  shell.toolDimension.setAttribute('aria-pressed', String(ui.tool === 'dimension'));
+  shell.toolGrid.setAttribute('aria-pressed', String(ui.tool === 'grid'));
+  shell.toolColumn.setAttribute('aria-pressed', String(ui.tool === 'column'));
+  shell.toolBeam.setAttribute('aria-pressed', String(ui.tool === 'beam'));
+  shell.toolRoof.setAttribute('aria-pressed', String(ui.tool === 'roof'));
+  shell.toolStair.setAttribute('aria-pressed', String(ui.tool === 'stair'));
+  shell.toolRailing.setAttribute('aria-pressed', String(ui.tool === 'railing'));
+  shell.toolSplit.setAttribute('aria-pressed', String(ui.tool === 'split'));
+  shell.toolCorner.setAttribute('aria-pressed', String(ui.tool === 'corner'));
+  // The Modify tools: the one in use pressed; dimmed while the selection holds nothing they take (a
+  // click then says what to select).
+  const transformable = canTransform(doc, [...ui.selection]);
+  for (const [kind, b] of Object.entries(shell.modifyTools)) {
+    b.setAttribute('aria-pressed', String(ui.tool === 'modify' && ui.modify?.kind === kind));
+    b.setAttribute('aria-disabled', String(!transformable));
+  }
+  shell.syncMore();
+  shell.lang.textContent = getLang().toUpperCase();
+  // Rewritten only when it changes: replacing the icon under the pointer between press and release
+  // would cancel the click.
+  const themeIcon = ui.theme === 'dark' ? 'sun' : 'moon';
+  if (shell.theme.dataset.icon !== themeIcon) {
+    shell.theme.innerHTML = icon(themeIcon);
+    shell.theme.dataset.icon = themeIcon;
+  }
+  shell.snapBtn.setAttribute('aria-pressed', String(ui.snaps));
+  // The 3D view's own controls, in 3D only.
+  shell.viewBar.hidden = ui.view !== '3d';
+  for (const [mode, b] of Object.entries(shell.levelsShown)) b.setAttribute('aria-pressed', String(ui.view3d.levels === mode));
+  // Pressed only while it spreads something: with one level shown it is off, and says why when clicked.
+  const spread = exploding(doc.levels, ui.levelId, ui.view3d);
+  const alone = shownLevels(doc.levels, ui.levelId, ui.view3d.levels).size < 2;
+  shell.explode.setAttribute('aria-pressed', String(spread));
+  shell.xray.setAttribute('aria-pressed', String(ui.view3d.xray));
+  shell.box.setAttribute('aria-pressed', String(ui.view3d.box !== null));
+  shell.ortho.setAttribute('aria-pressed', String(ui.view3d.ortho));
+  shell.explode.setAttribute('aria-disabled', String(alone));
+  shell.cut.setAttribute('aria-pressed', String(ui.view3d.cut));
+  const levelKey = JSON.stringify([getLang(), doc.levels.map((l) => [l.id, l.name, l.elevation])]);
+  if (shell.level.dataset.key !== levelKey) {
+    const sorted = [...doc.levels].sort((a, b) => b.elevation - a.elevation);
+    shell.level.replaceChildren(...sorted.map((l) => new Option(name(l.name), l.id)), new Option(t('levels.edit'), EDIT_LEVELS));
+    shell.level.dataset.key = levelKey;
+  }
+  if (!doc.levels.some((l) => l.id === ui.levelId)) ui.levelId = doc.levels[0]!.id;
+  shell.level.value = ui.levelId;
+  // Gone once the wall tool is on: "press W" no longer applies, and the footer says what to click.
+  // Only on an empty project: a column, a roof or a note drawn first is under it otherwise.
+  shell.emptyHint.hidden = doc.walls.length > 0 || elementIds(doc).size > 0 || ui.tool === 'wall';
+  // Hidden or isolated for a while: the drawing framed, and a way back, as Revit's cyan frame says.
+  shell.viewport.classList.toggle('temp-view', ui.temp !== null);
+  shell.tempChip.hidden = ui.temp === null;
+  if (ui.temp) shell.tempLabel.textContent = t(ui.temp.mode === 'hide' ? 'temp.hidden' : 'temp.isolated', { n: ui.temp.ids.size });
+
+  // Footer: what to do now, the keys that work now, and the measure field.
+  const drawing = ui.tool === 'wall';
+  const w = ui.wall;
+  const arc = w.kind !== 'rect' && w.arc === true;
+  const rect = w.kind === 'rect' || (w.kind === 'idle' && w.rect === true);
+  const d = ui.drag;
+  const hintKey: MessageKey = drawing
+    ? w.kind === 'rect'
+      ? 'hint.rectEnd'
+      : w.kind === 'bend'
+      ? 'hint.arcBend'
+      : w.kind === 'idle'
+        ? rect
+          ? 'hint.rectStart'
+          : arc
+          ? 'hint.arcStart'
+          : 'hint.wallStart'
+        : arc
+          ? 'hint.arcEnd'
+          : w.count >= 2
+            ? 'hint.wallNextClose'
+            : 'hint.wallNext'
+    : d?.kind === 'slide'
+      ? 'hint.sliding'
+      : d?.kind === 'move'
+      ? 'hint.moving'
+      : d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'rotate'
+      ? 'hint.handle'
+      : d?.kind === 'bulge'
+        ? 'hint.bending'
+      : d?.kind === 'marquee'
+        ? d.b.x < d.a.x
+          ? 'hint.marqueeCrossing'
+          : 'hint.marqueeWindow'
+        : ui.selection.size > 1
+          ? // Of several kinds, the panel edits one of them (panel.ts): "edit them together" was not so.
+            app.selectionKinds() > 1
+            ? 'hint.selectedMixed'
+            : 'hint.selectedMany'
+          : ui.selection.size === 1
+            ? // "click a dimension" only where there is one: a room or a floor has none.
+              ui.view === 'plan' && app.currentDims().length > 0
+              ? 'hint.selected'
+              : 'hint.selected3d'
+            : 'hint.select';
+  const placing = app.openingKind();
+  const aiming = placing !== null && ui.opening.kind === 'aiming';
+  const openingHint = placing
+    ? ui.opening.kind === 'aiming'
+      ? app.previewProblem() ??
+        t(app.geometry.openings.get(OPENING_PREVIEW_ID)?.warnings.includes('openingSwingClash') ? 'hint.openingAimClash' : 'hint.openingAim', {
+          rule: ruleText(ui.opening.rule, ruleBase(ui.opening.aim, ui.opening.rule)),
+        })
+      : t('hint.openingPlace', { kind: t(placing === 'door' ? 'panel.door' : 'panel.window').toLowerCase() })
+    : null;
+  const toolHint =
+    ui.tool === 'split'
+      ? t('hint.split')
+      : ui.tool === 'corner'
+      ? t(ui.selection.size === 0 ? 'hint.corner1' : 'hint.corner2')
+      : ui.tool === 'room'
+      ? ui.roomSpace
+        ? t(ui.tapToConfirm ? 'hint.roomTapAgain' : 'hint.roomHere', { area: num(Math.abs(signedArea(ui.roomSpace))) })
+        : t('hint.roomPlace')
+      : ui.tool === 'floor'
+        ? ui.holeFor
+          ? t('hint.holeStart')
+          : t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
+        : ui.tool === 'measure'
+          ? app.measureHint()
+          : ui.tool === 'dimension'
+            ? t(ui.dimension.kind === 'idle' ? 'hint.dimensionStart' : ui.dimension.kind === 'from' ? 'hint.dimensionEnd' : 'hint.dimensionPlace')
+            : ui.tool === 'grid'
+              ? t(ui.gridFrom ? 'hint.gridEnd' : 'hint.gridStart')
+              : ui.tool === 'column'
+                ? t('hint.columnPlace')
+                : ui.tool === 'beam'
+                  ? t(ui.beamFrom ? 'hint.beamEnd' : 'hint.beamStart')
+                  : ui.tool === 'roof'
+                    ? t(ui.roofDraft.length > 0 ? 'hint.roofNext' : 'hint.roofStart')
+                    : ui.tool === 'stair'
+                      ? t(ui.stairFrom ? 'hint.stairDirection' : 'hint.stairStart')
+                      : ui.tool === 'railing'
+                        ? t(ui.railingDraft.length > 0 ? 'hint.railingNext' : 'hint.railingStart')
+                        : null;
+  const guideHint = ui.guide
+    ? t('hint.guide', {
+        d: num(app.guideOffset() ?? 0),
+        base: ui.guide.base.wallId ? t('guide.fromWall', { n: wallNumber(app.store.get(), ui.guide.base.wallId) ?? '' }) : t('guide.fromGuide'),
+      })
+    : null;
+  const mod = ui.tool === 'modify' ? ui.modify : null;
+  const modifyHint = mod ? t(`hint.modify.${mod.kind === 'copy' ? 'move' : mod.kind}.${mod.state.step}` as MessageKey) : null;
+  shell.instr.textContent = app.walker ? t('hint.walk', { h: num(app.eyeHeight) }) : (ui.error ?? guideHint ?? modifyHint ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size }));
+  shell.instr.classList.toggle('error', ui.error !== null);
+  // Alt sets a guide in the tools that draw by points (input.ts), in plan.
+  const altGuide = ui.view === 'plan' ? [keyHint('Alt', t('key.guide'))] : [];
+  // S says what it is now, wherever points snap: drawing, it was nowhere in the footer, and the snaps
+  // seemed impossible to turn off.
+  const snapKey = keyHint('S', t(ui.snaps ? 'key.snapsOn' : 'key.snapsOff'));
+  const keys = app.walker
+    ? [keyHint('W A S D', t('key.walk')), keyHint('Shift', t('key.run')), keyHint('+ −', t('key.eye')), keyHint('PgUp PgDn', t('key.walkLevel')), keyHint('Esc', t('key.exit'))]
+    : ui.guide
+    ? [keyHint('Enter', t('key.placeGuide')), keyHint('Esc', t('key.cancel'))]
+    : ui.tool === 'split' || ui.tool === 'corner'
+    ? [keyHint('Esc', t('key.exit'))]
+    : mod
+    ? [
+        keyHint('C', t(mod.copy ? 'key.copyOn' : 'key.copyOff')),
+        ...(mod.kind === 'move' && !mod.copy ? [keyHint('U', t(mod.disjoin ? 'key.disjoinOn' : 'key.disjoinOff'))] : []),
+        // Offset has no centre and no angle: its distance is square to the wall.
+        ...(mod.state.step === 'base' && mod.kind !== 'move' && mod.kind !== 'copy' && mod.kind !== 'offset' ? [keyHint('Enter', t('key.centre'))] : []),
+        ...(mod.kind !== 'offset' ? [keyHint('Shift', t('key.straight'))] : []),
+        snapKey,
+        keyHint('Esc', t(mod.state.step === 'base' ? 'key.exit' : 'key.back')),
+      ]
+    : placing || ui.tool === 'room'
+    ? [keyHint('Esc', t('key.exit'))]
+    : ui.tool === 'dimension'
+    ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.dimension.kind === 'idle' ? 'key.exit' : 'key.back'))]
+    : ui.tool === 'grid'
+    ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.gridFrom ? 'key.back' : 'key.exit'))]
+    : ui.tool === 'column'
+    ? [snapKey, keyHint('Esc', t('key.exit'))]
+    : ui.tool === 'beam'
+    ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
+    : ui.tool === 'stair'
+    ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.stairFrom ? 'key.back' : 'key.exit'))]
+    : ui.tool === 'railing'
+    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.railingDraft.length > 0 ? 'key.finish' : 'key.exit'))]
+    : ui.tool === 'roof'
+    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.roofDraft.length > 0 ? 'key.back' : 'key.exit'))]
+    : ui.tool === 'measure'
+    ? [keyHint('Shift', t('key.straight')), ...altGuide, snapKey, keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clear'))]
+    : ui.tool === 'floor'
+    ? [keyHint('Enter', t('key.finish')), ...altGuide, snapKey, keyHint('Esc', t('key.exit'))]
+    : drawing && w.kind === 'rect'
+    ? [keyHint('Q', t('key.rectOff')), keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')), snapKey, keyHint('Esc', t('key.back'))]
+    : drawing
+    ? w.kind !== 'idle'
+      ? [
+          keyHint('Enter', t('key.finish')),
+          ...(w.kind === 'drawing' && w.count > 0 ? [keyHint('⌫', t('key.undoSegment'))] : []),
+          // What the key does now: with the arc on, it goes back to straight walls.
+          keyHint('A', t(arc || w.kind === 'bend' ? 'key.arcOff' : 'key.arc')),
+          keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')),
+          keyHint('Shift', t('key.straight')),
+          ...altGuide,
+          snapKey,
+          keyHint('Esc', t('key.finish')),
+        ]
+      : [
+          // Each key says what it does now: with the rectangle on, Q went on saying "rectangle".
+          keyHint('A', t(arc ? 'key.arcOff' : 'key.arc')),
+          keyHint('Q', t(rect ? 'key.rectOff' : 'key.rect')),
+          keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')),
+          ...altGuide,
+          snapKey,
+          keyHint('Esc', t('key.exit')),
+        ]
+    : ui.selection.size > 0
+      ? [
+          keyHint('Shift', t('key.addRemove')),
+          // Said before the drag, where it is decided: during it was too late to be found.
+          ...(app.selectedWalls().length > 0 ? [keyHint('Alt', t('key.dragAlone'))] : []),
+          ...(app.selectedDoor() ? [keyHint(t('key.spaceKey'), t('key.flipSwing')), keyHint('H', t('key.flipHinge'))] : []),
+          keyHint('Del', t('key.delete')),
+          keyHint('F', t('key.frame')),
+          keyHint('Esc', t('key.clear')),
+        ]
+      : ui.view === '3d'
+        ? // In 3D a left drag selects by window, as in plan: how to turn the view was nowhere on screen.
+          [keyHint(t('key.rightDrag'), t('key.orbit')), keyHint(t('key.middleDrag'), t('key.pan')), keyHint('Ctrl K', t('key.commands')), keyHint('?', t('key.shortcuts'))]
+        : [keyHint('Ctrl K', t('key.commands')), keyHint('Ctrl A', t('key.selectAll')), keyHint('?', t('key.shortcuts'))];
+  shell.keys.replaceChildren(...keys);
+  const lengthMode = drawing && w.kind === 'drawing';
+  // Where a point is asked for: the wall's start, a floor's corners, a room's point.
+  const pointMode = (drawing && w.kind === 'idle') || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || (lengthMode && shell.measure.value.includes(';'));
+  const distanceMode = ui.guide !== null || (mod !== null && (mod.kind === 'move' || mod.kind === 'copy')) || aiming || (ui.selection.size === 1 && app.selectedOpenings().length === 1);
+  const angleMode = mod !== null && (mod.kind === 'rotate' || mod.kind === 'mirror');
+  const factorMode = mod !== null && mod.kind === 'scale';
+  const withAngle = lengthMode && shell.measure.value.includes('<');
+  const sidesMode = drawing && w.kind === 'rect';
+  shell.measureLabel.textContent = t(
+    sidesMode
+      ? 'foot.sides'
+      : angleMode
+      ? 'foot.angle'
+      : factorMode
+      ? 'foot.factor'
+      : ui.guide
+      ? 'foot.distance'
+      : drawing && w.kind === 'bend'
+      ? 'foot.radius'
+      : withAngle
+        ? 'foot.lengthAngle'
+        : pointMode
+          ? 'foot.point'
+          : lengthMode
+            ? 'foot.length'
+            : distanceMode
+              ? 'foot.distance'
+              : 'foot.measure',
+  );
+  // "Measure: Distance", but never "Measure: Measure".
+  const what = shell.measureLabel.textContent ?? '';
+  shell.measure.setAttribute('aria-label', what === t('foot.measure') ? what : `${t('foot.measure')}: ${what}`);
+  shell.measure.placeholder = t(sidesMode ? 'foot.sidesHint' : angleMode ? 'foot.angleHint' : factorMode ? 'foot.factorHint' : ui.guide ? 'foot.distanceHint' : pointMode && !lengthMode ? 'foot.pointHint' : lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
+  shell.toolWall.classList.toggle('arc-mode', drawing && arc);
+  shell.toolWall.classList.toggle('rect-mode', drawing && rect);
+  shell.coords.textContent = ui.cursor ? `x ${num(ui.cursor.x)} m  y ${num(ui.cursor.y)} m` : '';
+  shell.fitFoot();
+  app.placeFloatBar();
+}
+
+/** The footer for the measure tool: what to click, or what the tape read. */
+export function measureHint(app: App): string {
+  const m = app.ui.measure;
+  if (m.kind === 'idle') return t('hint.measureStart');
+  if (m.kind === 'from') return t('hint.measureEnd');
+  const r = reading(m.a, m.b);
+  return t('hint.measured', { d: num(r.length), dx: num(Math.abs(r.dx)), dy: num(Math.abs(r.dy)), a: num(r.angle, 1) });
+}
+
+export function placeFloatBar(app: App): void {
+  const bar = app.shell.floatBar;
+  const entries = app.ui.selection.size > 0 ? contextEntries(app, () => app.openCommands()) : [];
+  const key = `${getLang()}|${entries.map((e) => e.id).join(',')}`;
+  if (key !== app.floatKey) {
+    app.floatKey = key;
+    bar.replaceChildren(
+      ...entries.map((e) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'icon-btn';
+        b.innerHTML = icon(e.icon);
+        b.title = e.keys ? `${e.label} (${e.keys})` : e.label;
+        b.setAttribute('aria-label', b.title);
+        // The buttons outlive the selection they were made for (they are rebuilt only when the set of
+        // actions changes): the action is looked up at the click, for what is selected then. Kept from
+        // when the bar was built, "Centre" centred the window selected before.
+        b.addEventListener('click', () => contextEntries(app, () => app.openCommands()).find((x) => x.id === e.id)?.run());
+        return b;
+      }),
+    );
+  }
+  const box = app.ui.tool === 'select' && !app.ui.drag ? boundsOf(app.geometry, app.ui.selection) : null;
+  bar.hidden = box === null;
+  if (box === null) return;
+  const vp = app.shell.viewport.getBoundingClientRect();
+  let x: number;
+  let yTop: number;
+  let yBottom: number;
+  if (app.ui.view === 'plan') {
+    const a = app.plan.toScreen({ x: box.min.x, y: box.max.y });
+    const b = app.plan.toScreen({ x: box.max.x, y: box.min.y });
+    x = (a.x + b.x) / 2;
+    yTop = a.y;
+    yBottom = b.y;
+  } else {
+    // The selection's screen box: every vertex of its pieces, at the bottom and at the top.
+    const xs: number[] = [];
+    const ys: number[] = [];
+    const project = (v: Point2, z: number) => {
+      const p = new THREE.Vector3(v.x, z, -v.y).project(app.scene.camera);
+      // Behind the camera a point projects mirrored: leave it out.
+      if (p.z > 1) return;
+      xs.push(((p.x + 1) / 2) * vp.width);
+      ys.push(((1 - p.y) / 2) * vp.height);
+    };
+    for (const id of app.ui.selection) {
+      // Each at its level's height in the view (lifted when exploded).
+      const opening = app.geometry.openings.get(id);
+      if (opening) {
+        const up = app.lift(app.geometry.solids.get(opening.opening.wallId)?.wall.levelId ?? '');
+        for (const v of openingOutline(opening)) [opening.bottom, opening.top].forEach((z) => project(v, z + up));
+      }
+      // The registry's with a height (a room at its level's floor, a floor): their outlines at both faces.
+      const k = kindOfId(id);
+      const s = k?.span ? app.geometry.kinds.get(k.key)?.get(id) : undefined;
+      if (k?.span && s !== undefined) {
+        const { bottom, top } = k.span(s);
+        const up = app.lift(levelOfSolid(k, s) ?? app.ui.levelId);
+        for (const v of k.outlines(s).flat()) [bottom, top].forEach((z) => project(v, z + up));
+      }
+      const solid = app.geometry.solids.get(id);
+      if (!solid) continue;
+      const up = app.lift(solid.wall.levelId);
+      for (const piece of solid.pieces) {
+        for (const v of piece.polygon) {
+          for (const z of [solid.bottom, solid.top]) project(v, z + up);
+        }
+      }
+    }
+    // Nothing of the selection in front of the camera: no bar, rather than one at a stale place.
+    if (xs.length === 0) {
+      bar.hidden = true;
+      return;
+    }
+    x = (Math.min(...xs) + Math.max(...xs)) / 2;
+    yTop = Math.min(...ys);
+    yBottom = Math.max(...ys);
+  }
+  const w = bar.offsetWidth || 104;
+  const h = bar.offsetHeight || 36;
+  // Never under the panel where it lies over the drawing (the sheet on a phone, the drawer on a tablet).
+  const panel = app.shell.panel.hidden ? null : app.shell.panel.getBoundingClientRect();
+  const covered = panel && panel.top > vp.top + 8 && panel.top < vp.bottom ? panel.top - vp.top : vp.height;
+  const right = panel && panel.left > vp.left && panel.left < vp.right && panel.top <= vp.top + 8 ? panel.left - vp.left : vp.width;
+  const left = Math.min(Math.max(8, x - w / 2), right - w - 8);
+  // Never over a temporary dimension's value, a room's tag or a handle of the selection (bar-place.ts):
+  // on a phone after F it sat on the handle at an arc's end (the tester's R04).
+  const h0 = app.handles();
+  const grip = (p: Point2) => ({ top: p.y - 12, bottom: p.y + 12, left: p.x - 12, right: p.x + 12 });
+  const boxes = [
+    ...[...h0.squares, ...h0.arrows, ...(h0.bulge ? [h0.bulge] : []), ...(h0.rotate ? [h0.rotate] : [])].map((x) => grip(x.at)),
+    ...[...app.shell.dims.children].map((c) => c.getBoundingClientRect()).map((r) => ({ top: r.top - vp.top, bottom: r.bottom - vp.top, left: r.left - vp.left, right: r.right - vp.left })),
+    ...(app.ui.view === 'plan' ? app.plan.labelBoxes.map((b) => ({ top: b.y, bottom: b.y + b.h, left: b.x, right: b.x + b.w })) : []),
+  ];
+  const y = placeBarY({ left, w, h }, { top: yTop, bottom: yBottom }, boxes, { h: covered });
+  bar.style.left = `${left}px`;
+  bar.style.top = `${Math.min(Math.max(8, y), covered - h - 8)}px`;
+}
