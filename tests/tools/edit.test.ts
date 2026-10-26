@@ -125,3 +125,26 @@ describe('rotate and stretch along', () => {
     expect(at(walls, 'w1').start).toEqual(vec(10, 0));
   });
 });
+
+describe('walls of another level are not joined', () => {
+  // The room's right wall on the ground floor, and one of the upper level standing on it: same ends.
+  const upper = { ...wall('u', [8, 0], [8, 6]), levelId: 'lvl_up' };
+  const twoLevels = () => {
+    const d = room();
+    return { ...d, levels: [...d.levels, { id: 'lvl_up', name: 'Upper', elevation: 2.8, height: 2.8 }], walls: [...d.walls, upper] };
+  };
+
+  it('moving the upper wall leaves the walls below where they are', () => {
+    const ws = moveWalls(twoLevels(), ['u'], vec(0.5, 0));
+    expect(byId(ws, 'u').start).toEqual(vec(8.5, 0));
+    expect(byId(ws, 'w1')).toEqual(byId(twoLevels().walls, 'w1'));
+    expect(byId(ws, 'w0')).toEqual(byId(twoLevels().walls, 'w0'));
+  });
+
+  it('dragging its end leaves the corner below where it is', () => {
+    const ws = stretchEnd(twoLevels(), 'u', 'start', vec(8, -1));
+    expect(byId(ws, 'u').start).toEqual(vec(8, -1));
+    expect(byId(ws, 'w0').end).toEqual(vec(8, 0));
+    expect(byId(ws, 'w1').start).toEqual(vec(8, 0));
+  });
+});
