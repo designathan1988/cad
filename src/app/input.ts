@@ -8,12 +8,10 @@ import { t } from '../ui/i18n';
 import { el } from '../ui/controls';
 import { wallAt } from './geometry';
 import { aimAt, OPENING_PREVIEW_ID } from './opening-ui';
-import { viewKey } from './view-keys';
 import type { App } from './app';
 import { levelOf } from './document';
 import { selectGestures } from './select-drag';
 import { insideRing } from '../elements/room/derive';
-import { EDIT_LEVELS } from './app';
 import { showLevels } from '../ui/levels-dialog';
 import { showTourDialog } from '../ui/tour-dialog';
 import { showPointsDialog } from '../ui/points-dialog';
@@ -24,16 +22,14 @@ import { showPalette } from '../ui/palette';
 import { offerTour, startTour } from '../ui/tour';
 import { appActions, type Openers } from './actions';
 import { contextEntries } from './context-menu';
-import { arrowStep } from '../tools/nudge';
 import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
-import { guideBaseAt } from '../tools/guide-tool';
 import { eachSolid } from '../elements/registry';
 import type { PickOrder } from '../elements/contract';
-import type { LevelsShown } from './view-3d';
-import type { ModifyKind } from '../tools/modify-tool';
 import { distance, normalize, sub } from '../core/vector';
 import { outerSides } from '../elements/wall/geometry/seams';
+import { wireKeys } from './input-keys';
+import { wireButtons } from './input-buttons';
 
 /** How near (screen pixels) the pointer must come to a wall, a door or a window to take it. */
 const PICK_PX = 6;
@@ -633,18 +629,7 @@ export function wireInput(app: App): void {
   );
 
   // Top bar, tools, floating bar, footer.
-  shell.undo.addEventListener('click', () => app.undo());
-  shell.redo.addEventListener('click', () => app.redo());
-  shell.homeBtn.addEventListener('click', () => app.frameAll());
-  shell.view3d.addEventListener('click', () => app.setView('3d'));
-  shell.viewWalk.addEventListener('click', () => app.toggleWalk());
-  shell.tourPrev.addEventListener('click', () => app.tourStep(-1));
-  shell.tourNext.addEventListener('click', () => app.tourStep(1));
-  shell.tourPlay.addEventListener('click', () => app.tourPause());
-  shell.tourStop.addEventListener('click', () => app.stopTour());
-  shell.pointClose.addEventListener('click', () => app.showPoint(null));
-  shell.pointEdit.addEventListener('click', () => app.openPoints());
-  // The walking stick: pushed up walks forward, sideways steps aside, as far as it is pushed.
+  wireButtons(app, palette);
   const stickAt = (e: PointerEvent) => {
     const r = shell.walkStick.getBoundingClientRect();
     const radius = r.width / 2;
@@ -669,63 +654,6 @@ export function wireInput(app: App): void {
   };
   shell.walkStick.addEventListener('pointerup', stickOff);
   shell.walkStick.addEventListener('pointercancel', stickOff);
-  shell.viewPlan.addEventListener('click', () => app.setView('plan'));
-  shell.level.addEventListener('change', () => {
-    if (shell.level.value === EDIT_LEVELS) {
-      shell.level.value = ui.levelId;
-      return showLevels(app);
-    }
-    app.setLevel(shell.level.value);
-  });
-  shell.lang.addEventListener('click', () => app.setLanguage(app.otherLanguage()));
-  shell.theme.addEventListener('click', () => app.toggleTheme());
-  shell.save.addEventListener('click', () => app.saveFile());
-  shell.open.addEventListener('click', () => shell.fileInput.click());
-  shell.newFile.addEventListener('click', () => app.newProject());
-  shell.projectName.addEventListener('click', () => renameInPlace(app));
-  shell.fileInput.addEventListener('change', () => {
-    const file = shell.fileInput.files?.[0];
-    shell.fileInput.value = '';
-    if (file) void app.openFile(file);
-  });
-  shell.panelToggle.addEventListener('click', () => app.togglePanel());
-  shell.toolSelect.addEventListener('click', () => app.setTool('select'));
-  shell.toolWall.addEventListener('click', () => app.setTool('wall'));
-  shell.toolDoor.addEventListener('click', () => app.setTool('door'));
-  shell.toolWindow.addEventListener('click', () => app.setTool('window'));
-  shell.toolRoom.addEventListener('click', () => app.setTool('room'));
-  shell.toolFloor.addEventListener('click', () => app.setTool('floor'));
-  shell.toolMeasure.addEventListener('click', () => app.setTool('measure'));
-  shell.toolDimension.addEventListener('click', () => app.setTool('dimension'));
-  shell.toolGrid.addEventListener('click', () => app.setTool('grid'));
-  shell.toolColumn.addEventListener('click', () => app.setTool('column'));
-  shell.toolBeam.addEventListener('click', () => app.setTool('beam'));
-  shell.toolRoof.addEventListener('click', () => app.setTool('roof'));
-  shell.toolStair.addEventListener('click', () => app.setTool('stair'));
-  shell.toolRailing.addEventListener('click', () => app.setTool('railing'));
-  shell.toolSplit.addEventListener('click', () => app.setTool('split'));
-  shell.toolCorner.addEventListener('click', () => app.setTool('corner'));
-  for (const [kind, b] of Object.entries(shell.modifyTools)) b.addEventListener('click', () => app.startModify(kind as ModifyKind));
-  // The edit tools the top bar had no room for, under its More button.
-  shell.moreTools.addEventListener('click', () => {
-    const r = shell.moreTools.getBoundingClientRect();
-    showMenu(shell.foldedTools(), { x: r.left, y: r.bottom + 4 }, t('top.moreTools'));
-  });
-  // The right side's buttons it had no room for (language, theme, files), under its menu.
-  shell.moreApp.addEventListener('click', () => {
-    const r = shell.moreApp.getBoundingClientRect();
-    showMenu(shell.foldedApp(), { x: r.right, y: r.bottom + 4 }, t('top.moreOptions'));
-  });
-  shell.snapBtn.addEventListener('click', () => app.toggleSnaps());
-  for (const [mode, b] of Object.entries(shell.levelsShown)) b.addEventListener('click', () => app.setView3D({ levels: mode as LevelsShown }));
-  shell.explode.addEventListener('click', () => app.toggleExplode());
-  shell.cut.addEventListener('click', () => app.setView3D({ cut: !ui.view3d.cut }));
-  shell.xray.addEventListener('click', () => app.setView3D({ xray: !ui.view3d.xray }));
-  shell.box.addEventListener('click', () => app.toggleBox());
-  shell.ortho.addEventListener('click', () => app.setView3D({ ortho: !ui.view3d.ortho }));
-  shell.tempReset.addEventListener('click', () => app.resetTemporary());
-  shell.shortcuts.addEventListener('click', () => showHelp(app));
-  shell.commands.addEventListener('click', () => palette());
   // The preview follows what is typed, before Enter: the wall preview is geometry, so refresh it.
   shell.measure.addEventListener('input', () => app.refresh());
   shell.measure.addEventListener('keydown', (e) => {
@@ -777,7 +705,6 @@ export function wireInput(app: App): void {
   });
 
   // Walking (walk.ts): the keys held move the walker each frame; let go, it stops.
-  const WALK_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift']);
   window.addEventListener('keyup', (e) => {
     if (app.walker) app.walkKeys.delete(e.key.toLowerCase());
     if (e.key !== 'Alt') return;
@@ -790,275 +717,21 @@ export function wireInput(app: App): void {
     if (held && altMoved && shell.measure.value.trim() === '') app.placeGuide();
   });
 
-  window.addEventListener('keydown', (e) => {
-    const target = e.target as HTMLElement;
-    // A dialog open: its keys are its own, wherever the focus is (it fell to the page once, and typed
-    // text became the app's shortcuts).
-    const ctrl = e.ctrlKey || e.metaKey;
-    const key = e.key.toLowerCase();
-    // The level list keeps the focus once a level is chosen in it: its arrows go on changing the level,
-    // but Ctrl+V (paste on the level just chosen), Ctrl+Z, Del and Esc are the drawing's.
-    const levelList = target === shell.level && (ctrl || key === 'delete' || key === 'escape');
-    // Alt from the measure field (it has just left it): a guide, as anywhere in the drawing.
-    const measureAlt = target === shell.measure && e.key === 'Alt';
-    if (levelList) shell.level.blur();
-    else if (!measureAlt && (target.closest('input, select, textarea') || target.closest('.dialog-back') || !shell.helpBack.hidden)) return;
-    shift = e.shiftKey;
-    // The diagnostics panel, from anywhere but a dialog's field.
-    if (e.key === 'F7') {
-      e.preventDefault();
-      return app.toggleDebug();
-    }
-    // A tour playing: the arrows go from stop to stop, Space pauses, Esc stops; the rest waits.
-    if (app.tour && !ctrl) {
-      if (key === 'arrowright' || key === 'arrowleft') {
-        e.preventDefault();
-        return app.tourStep(key === 'arrowright' ? 1 : -1);
-      }
-      if (key === ' ') {
-        e.preventDefault();
-        return app.tourPause();
-      }
-      if (key === 'escape') return app.stopTour();
-      return;
-    }
-    if (app.walker && !ctrl) {
-      if (WALK_KEYS.has(key)) {
-        e.preventDefault();
-        app.walkKeys.add(key);
-        return;
-      }
-      if (key === 'escape' || key === '3') return app.exitWalk();
-      if (key === '+' || key === '=' || key === '-') {
-        e.preventDefault();
-        return app.walkEye(key === '-' ? -0.1 : 0.1);
-      }
-      if (key === 'pageup' || key === 'pagedown') {
-        e.preventDefault();
-        return app.walkLevel(key === 'pageup' ? 1 : -1);
-      }
-      // Everything else waits: walking is not editing.
-      return;
-    }
-    if (ctrl && key === 'z') {
-      e.preventDefault();
-      return e.shiftKey ? app.redo() : app.undo();
-    }
-    if (ctrl && key === 'o') {
-      e.preventDefault();
-      return shell.fileInput.click();
-    }
-    if (ctrl && key === 's') {
-      e.preventDefault();
-      return app.saveFile();
-    }
-    if (ctrl && key === 'y') {
-      e.preventDefault();
-      return app.redo();
-    }
-    if (ctrl && key === 'c' && !e.shiftKey && ui.selection.size > 0) {
-      e.preventDefault();
-      return app.copySelection();
-    }
-    if (ctrl && key === 'v') {
-      e.preventDefault();
-      return app.paste();
-    }
-    if (ctrl && key === 'a') {
-      e.preventDefault();
-      return app.selectAllWalls();
-    }
-    if (ctrl && key === 'k') {
-      e.preventDefault();
-      return palette();
-    }
-    // The view by keyboard (view-keys.ts): + and − zoom, Shift+arrows move or turn it (the tester's K4).
-    const typingNow = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'modify' || app.openingKind() !== null;
-    const view = viewKey(e.key, { shift: e.shiftKey, ctrl, alt: e.altKey, typing: typingNow });
-    if (view) {
-      e.preventDefault();
-      return app.keyView(view);
-    }
-    // Alt is the drawing's (a guide, a wall dragged alone): the browser's menu must not take the keys
-    // typed after it is let go.
-    if (e.key === 'Alt') e.preventDefault();
-    if (e.key === 'Alt' && guideTools()) {
-      // Kept from the browser, whose menu would take the keys typed next.
-      e.preventDefault();
-      if (e.repeat) return;
-      if (ui.guide) return app.placeGuide();
-      const at = app.pointer && ui.cursor;
-      const base = at ? guideBaseAt(app.store.get(), ui.levelId, at, 1 / app.plan.scale, { walls: !ui.hidden.has('walls'), guides: !ui.hidden.has('guides') }) : null;
-      if (!base || !at) {
-        ui.info = t('hint.guideNoBase');
-        return app.render();
-      }
-      altAt = app.pointer;
-      altMoved = false;
-      return app.startGuide(base, at);
-    }
-    // A distance for the guide being set, Alt held or not.
-    if (ui.guide && /^[\d.,]$/.test(e.key) && !ctrl) {
-      e.preventDefault();
-      shell.measure.focus();
-      shell.measure.value = e.key;
-      return app.refresh();
-    }
-    // Arrows, with or without Alt, before Alt shortcuts are left to the browser.
-    const step = !ctrl && !e.shiftKey && ui.selection.size > 0 && ui.view === 'plan' ? arrowStep(e.key, e.altKey) : null;
-    if (step) {
-      e.preventDefault();
-      return app.nudgeSelection(step);
-    }
-    // Esc cancels a drag whatever is held: with Alt (a wall dragged alone) it never got below, and
-    // letting go of the button then kept the move.
-    if (e.key === 'Escape' && gestures.cancel()) {
-      downAt = null;
-      return showMarquee();
-    }
-    if (ctrl || e.altKey) return;
-    // Typing a number goes straight to the measure field, as in Revit and SketchUp, while a measure is
-    // being asked for: drawing a wall or aiming an opening. A selection is edited by clicking its
-    // temporary dimensions or in the panel, so 1 and 2 keep switching the view.
-    // In the door and window tools a digit is always a measure, aimed or not: it never switches the view
-    // (the tester's K2: "1" turned to 3D).
-    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'modify' || app.openingKind() !== null;
-    // Right after a copy, its series is typed there: "3x", "/3".
-    if (/^[\d/]$/.test(e.key) && ui.tool === 'select' && app.seriesReady()) {
-      e.preventDefault();
-      shell.measure.focus();
-      shell.measure.value = e.key;
-      return app.refresh();
-    }
-    if (/^[\d.,-]$/.test(e.key) && typing) {
-      e.preventDefault();
-      shell.measure.focus();
-      shell.measure.value = e.key;
-      // Set from here, the value fires no input event: refresh the preview for it as typing does.
-      return app.refresh();
-    }
-    if (e.key === 'Escape') {
-      // An error about something typed is over, and so is what was typed.
-      if (ui.error !== null) {
-        ui.error = null;
-        shell.measure.value = '';
-      }
-      if (ui.guide) return app.cancelGuide();
-      if (ui.tool === 'modify') return app.modifyEvent({ kind: 'escape' });
-      if (gestures.cancel()) {
-        downAt = null;
-        return showMarquee();
-      }
-      if (app.openingKind()) return app.setTool('select');
-      if (ui.tool === 'floor' && ui.floorDraft.length > 0) {
-        ui.floorDraft = [];
-        return app.render();
-      }
-      if (ui.tool === 'room' || ui.tool === 'floor') return app.setTool('select');
-      if (ui.tool === 'measure') return ui.measure.kind !== 'idle' ? app.measureEvent({ kind: 'escape' }) : app.setTool('select');
-      if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
-      if (ui.tool === 'grid') return app.gridEscape();
-      if (ui.tool === 'column') return app.setTool('select');
-      if (ui.tool === 'railing') {
-        if (ui.railingDraft.length === 0) return app.setTool('select');
-        return app.railingFinish();
-      }
-      if (ui.tool === 'stair') {
-        if (!ui.stairFrom) return app.setTool('select');
-        ui.stairFrom = null;
-        return app.render();
-      }
-      if (ui.tool === 'roof') {
-        if (ui.roofDraft.length === 0) return app.setTool('select');
-        ui.roofDraft = [];
-        return app.render();
-      }
-      if (ui.tool === 'beam') {
-        if (!ui.beamFrom) return app.setTool('select');
-        ui.beamFrom = null;
-        return app.render();
-      }
-      if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? app.wallEvent({ kind: 'escape' }) : app.setTool('select');
-      if (ui.tool === 'split') return app.setTool('select');
-      // The Corner tool lets go of its first wall first (below), then of itself.
-      if (ui.tool === 'corner' && ui.selection.size === 0) return app.setTool('select');
-      ui.selection.clear();
-      return app.refresh();
-    }
-    if (e.key === 'Enter' && ui.guide) return app.placeGuide();
-    // Enter before the first point of a turn, a scale or a mirror: the selection's centre.
-    if (e.key === 'Enter' && ui.tool === 'modify' && ui.modify?.state.step === 'base' && ui.modify.kind !== 'offset') {
-      const c = app.selectionCentre();
-      if (c) return app.modifyEvent({ kind: 'click', point: c });
-      return;
-    }
-    if (e.key === 'Enter' && ui.tool === 'wall') return app.wallEvent({ kind: 'enter' });
-    if (e.key === 'Enter' && ui.tool === 'floor') return app.floorFinish();
-    // Enter ends what is being drawn by points: a roof's outline, a guardrail's path, a beam chain.
-    if (e.key === 'Enter' && ui.tool === 'roof' && ui.roofDraft.length > 0) return app.roofFinish();
-    if (e.key === 'Enter' && ui.tool === 'railing' && ui.railingDraft.length > 0) return app.railingFinish();
-    if (e.key === 'Enter' && ui.tool === 'beam' && ui.beamFrom) {
-      ui.beamFrom = null;
-      return app.render();
-    }
-    // Enter places the opening where it is aimed, as a click there does.
-    if (e.key === 'Enter' && app.openingKind() && ui.opening.kind === 'aiming') return app.openingEvent({ kind: 'click' });
-    // Backspace while drawing a chain takes its last wall back and goes on from its start (ArchiCAD).
-    if (e.key === 'Backspace' && app.undoChainStep()) return;
-    if (e.key === 'Delete' || e.key === 'Backspace') return app.deleteSelection();
-    if (e.key === 'Home') return app.frameAll();
-    if (e.key === '?') return showHelp(app);
-    if (e.shiftKey && key === 'l') return app.setLanguage(app.otherLanguage());
-    if (e.shiftKey && key === 'w') return app.setTool('window');
-    if (e.shiftKey && key === 'n') return app.stepSelection(-1);
-    // The Modify tools, on the selection (Revit's MV, CO, RO, SC, MM; SketchUp's M, Q, S).
-    if (e.shiftKey && key === 'm') return app.startModify('move');
-    if (e.shiftKey && key === 'c') return app.startModify('copy');
-    if (e.shiftKey && key === 'r') return app.startModify('rotate');
-    if (e.shiftKey && key === 'e') return app.startModify('scale');
-    if (e.shiftKey && key === 'x') return app.startModify('mirror');
-    if (e.shiftKey && key === 'o') return app.startModify('offset');
-    if (e.shiftKey && key === 's') return app.setTool('split');
-    if (e.shiftKey && key === 't') return app.setTool('corner');
-    if (e.shiftKey && key === 'd') return app.setTool('dimension');
-    if (e.shiftKey && key === 'g') return app.setTool('grid');
-    if (e.shiftKey && key === 'j') return app.mergeSelection();
-    if (e.shiftKey && key === 'h') return app.hideTemporarily('hide');
-    if (e.shiftKey && key === 'i') return app.hideTemporarily('isolate');
-    if (e.shiftKey) return;
-    if (key === 'c' && ui.tool === 'modify') return app.toggleModifyCopy();
-    if (key === 'u' && ui.tool === 'modify') return app.toggleModifyDisjoin();
-    if (key === 'w') return app.setTool('wall');
-    if (key === 'a' && ui.tool === 'wall') return app.wallEvent({ kind: 'arc' });
-    // Q: rectangles of four walls, two corners (Revit's and ArchiCAD's rectangle).
-    if (key === 'q' && ui.tool === 'wall') return app.wallEvent({ kind: 'rect' });
-    // Space while drawing walls: the body to the other side of the line (Revit's flip).
-    if (e.key === ' ' && ui.tool === 'wall') {
-      e.preventDefault();
-      return app.toggleWallFlip();
-    }
-    // A selected door, flipped from the keyboard: Space sends the leaf to the other side, as in Revit,
-    // H the hinge to the other jamb.
-    if (e.key === ' ' && ui.tool === 'select' && app.flipDoor('swing')) return e.preventDefault();
-    if (key === 'h' && ui.tool === 'select' && app.flipDoor('hinge')) return;
-    if (key === 'd') return app.setTool('door');
-    if (key === 'r') return app.setTool('room');
-    if (key === 'l') return app.setTool('floor');
-    if (key === 'm') return app.setTool('measure');
-    if (key === 'p') return app.setTool('column');
-    if (key === 'b') return app.setTool('beam');
-    if (key === 't') return app.setTool('roof');
-    if (key === 'e') return app.setTool('stair');
-    if (key === 'g') return app.setTool('railing');
-    if (key === 'v') return app.setTool('select');
-    if (key === 'f') return app.frameSelection();
-    // Choosing and moving elements without a mouse: N / Shift+N go through the level's elements;
-    // the arrows move the selection by 5 cm (the snap grid), 1 cm with Alt (tools/nudge.ts).
-    if (key === 'n') return app.stepSelection(e.shiftKey ? -1 : 1);
-    if (key === 's') return app.toggleSnaps();
-    if (key === '1') return app.setView('3d');
-    if (key === '3') return app.enterWalk();
-    if (key === '2') return app.setView('plan');
+  wireKeys(app, {
+    get shift() { return shift; },
+    set shift(v) { shift = v; },
+    get altAt() { return altAt; },
+    set altAt(v) { altAt = v; },
+    get altMoved() { return altMoved; },
+    set altMoved(v) { altMoved = v; },
+    get again() { return again; },
+    set again(v) { again = v; },
+    get downAt() { return downAt; },
+    set downAt(v) { downAt = v; },
+    gestures,
+    guideTools,
+    palette,
+    showMarquee,
   });
 }
 
@@ -1066,7 +739,7 @@ export function wireInput(app: App): void {
  * The project's name, typed where it is shown: Enter or leaving the field keeps it, Esc puts the old one
  * back. It names the saved file and the browser tab (the name could not be changed at all before).
  */
-function renameInPlace(app: App): void {
+export function renameInPlace(app: App): void {
   const button = app.shell.projectName;
   const input = el('input', { type: 'text', class: 'project-name-input', autocomplete: 'off', spellcheck: 'false', 'aria-label': t('top.rename') });
   input.value = app.store.get().name;
@@ -1096,7 +769,7 @@ function renameInPlace(app: App): void {
   input.addEventListener('blur', () => finish(true));
 }
 
-function showHelp(app: App): void {
+export function showHelp(app: App): void {
   const back = app.shell.helpBack;
   // The same names as the palette, buttons and menus (ref/chat.txt:200): read from the same messages.
   const rows: [string, string][] = [
