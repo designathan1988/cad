@@ -197,6 +197,16 @@ export class PlanView {
     this.center = fit.center;
   }
 
+  /** Points of interest (app/points.ts): a numbered disc each, over the drawing; the open one filled. */
+  drawPoints(points: readonly { readonly n: number; readonly at: Point2; readonly open: boolean }[]): void {
+    const { ctx } = this;
+    const css = getComputedStyle(document.documentElement);
+    const accent = css.getPropertyValue('--accent').trim();
+    const bg = css.getPropertyValue('--bg').trim();
+    const font = css.getPropertyValue('--font').trim() || 'sans-serif';
+    for (const p of points) drawPointDisc(ctx, this.toScreen(p.at), p.n, p.open, accent, bg, font);
+  }
+
   draw(g: DerivedGeometry, o: PlanOverlay): void {
     const { canvas, ctx } = this;
     const dpr = window.devicePixelRatio || 1;
@@ -948,3 +958,22 @@ interface Box {
 
 const overlaps = (a: Box, b: Box): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
+
+/** A point of interest's disc: its number in it, the accent ring; filled when its card is open. */
+export const POINT_DISC_R = 11;
+export function drawPointDisc(ctx: CanvasRenderingContext2D, at: Point2, n: number, open: boolean, accent: string, bg: string, font: string): void {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(at.x, at.y, POINT_DISC_R, 0, Math.PI * 2);
+  ctx.fillStyle = open ? accent : bg;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = accent;
+  ctx.stroke();
+  ctx.fillStyle = open ? bg : accent;
+  ctx.font = `700 12px ${font}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(n), at.x, at.y + 0.5);
+  ctx.restore();
+}

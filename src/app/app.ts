@@ -68,6 +68,8 @@ import { readProject, writeProject } from '../io/project-file';
 import { fitFactor, keepInView } from './keep-in-view';
 import type { ViewKey } from './view-keys';
 import { deleteView, nextViewName, type SavedView, saveView } from './saved-views';
+import { addPoint, POINT_HEIGHT } from './points';
+import { POINT_DISC_R } from '../render/plan-view';
 import { EYE_HEIGHT, EYE_MAX, EYE_MIN, MAX_PITCH, moveWithCollision, obstaclesOf, startPoint, stepFor, type Walker } from './walk';
 import { BOX_FACES, type BoxFace, boxAround, faceCenter, faceNormal, type SectionBox, sectionLooks } from './section-box';
 import { BOX_HANDLE_HIT } from '../render/overlay-3d';
@@ -232,6 +234,8 @@ export class App {
     this.scene.onChange = () => {
       this.cube.update(this.scene.camera);
       this.placeFloatBar();
+      // An open point's card follows its disc as the camera moves (orbit, flights, framing).
+      if (this.ui.view === '3d') this.placePointCard();
       if (this.ui.view === '3d' && this.overlayState) this.overlay3d.draw(this.overlayState);
     };
     this.geometry = deriveGeometry(doc);
@@ -895,6 +899,72 @@ export class App {
     if (tour.playing) this.tourTimer = window.setTimeout(() => this.tourStep(1), this.tourSeconds * 1000 + (v.kind === '3d' ? FLY : 0));
     this.renderChrome();
   }
+
+  /** The point of interest whose card is open, or null. */
+  openPointId: string | null = null;
+
+  /** A point of interest where the menu was opened (or the middle of the view), its card open to edit. */
+  addPointHere(at?: Point2): void {
+    const doc = this.store.get();
+    const p = at ?? this.plan.center;
+    const id = newId('poi');
+    this.store.dispatch(addPoint({ id, levelId: this.ui.levelId, point: { x: p.x, y: p.y }, title: t('poi.defaultTitle', { n: doc.points.length + 1 }) }));
+    this.openPointId = id;
+    this.openPoints();
+  }
+
+  /** The points of the level shown (all levels in 3D), numbered as in the document, where they are drawn. */
+  pointsShown(): { id: string; n: number; at: Point2; z: number; open: boolean }[] {
+    const doc = this.store.get();
+    const shown3d = this.ui.view === '3d' ? shownLevels(doc.levels, this.ui.levelId, this.ui.view3d.levels) : null;
+    return doc.points.flatMap((p, k) => {
+      if (shown3d ? !shown3d.has(p.levelId) : p.levelId !== this.ui.levelId) return [];
+      const level = doc.levels.find((l) => l.id === p.levelId);
+      const z = (level?.elevation ?? 0) + this.lift(p.levelId) + POINT_HEIGHT;
+      return [{ id: p.id, n: k + 1, at: p.point, z, open: p.id === this.openPointId }];
+    });
+  }
+
+  /** The point of interest whose disc is at a screen point (client coordinates), or null. */
+  pointAt(clientX: number, clientY: number): string | null {
+    const r = this.shell.viewport.getBoundingClientRect();
+    for (const p of this.pointsShown()) {
+      const s = this.ui.view === 'plan' ? this.plan.toScreen(p.at) : this.projectAt(p.at, p.z);
+      if (!s) continue;
+      const sx = this.ui.view === 'plan' ? s.x : s.x + r.left;
+      const sy = this.ui.view === 'plan' ? s.y : s.y + r.top;
+      const cx = this.ui.view === 'plan' ? clientX - r.left : clientX;
+      const cy = this.ui.view === 'plan' ? clientY - r.top : clientY;
+      if (Math.hypot(sx - cx, sy - cy) <= POINT_DISC_R + 3) return p.id;
+    }
+    return null;
+  }
+
+  /** A point's card opened (or closed with null). */
+  showPoint(id: string | null): void {
+    this.openPointId = id;
+    this.render();
+  }
+
+  /** The open point's card: its title and text, beside its disc; hidden when none is open or it is off screen. */
+  private placePointCard(): void {
+    const { shell } = this;
+    const doc = this.store.get();
+    const k = doc.points.findIndex((p) => p.id === this.openPointId);
+    const p = doc.points[k];
+    const shown = p ? this.pointsShown().find((x) => x.id === p.id) : undefined;
+    const s = shown ? (this.ui.view === 'plan' ? this.plan.toScreen(shown.at) : this.projectAt(shown.at, shown.z)) : null;
+    shell.pointCard.hidden = !p || !s;
+    if (!p || !s) return;
+    shell.pointTitle.textContent = `${k + 1} · ${p.title}`;
+    shell.pointText.textContent = p.text ?? '';
+    shell.pointText.hidden = !p.text;
+    shell.pointCard.style.left = `${Math.round(s.x + POINT_DISC_R + 8)}px`;
+    shell.pointCard.style.top = `${Math.round(s.y - POINT_DISC_R)}px`;
+  }
+
+  /** Opens the points dialog; set by the input layer. */
+  openPoints: () => void = () => {};
 
   /** Walking through the model (walk.ts), or null. Interface state: never saved. */
   walker: Walker | null = null;
@@ -2139,6 +2209,7 @@ export class App {
         ],
         underlay: this.underlay(),
       });
+      this.plan.drawPoints(this.pointsShown());
     } else {
       const shown = this.visibleGeometry();
       this.scene.setXray(ui.view3d.xray);
@@ -2184,6 +2255,7 @@ export class App {
         draft: ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])] : null,
         box: ui.view3d.box,
         boxHot: this.boxHot,
+        points: this.pointsShown(),
       };
       this.overlay3d.draw(this.overlayState);
     }
@@ -2586,6 +2658,7 @@ export class App {
     shell.viewPlan.setAttribute('aria-pressed', String(ui.view === 'plan'));
     shell.viewWalk.setAttribute('aria-pressed', String(this.walker !== null));
     shell.walkStick.hidden = this.walker === null;
+    this.placePointCard();
     // The tour's bar: the stop's name and caption, where it is in the tour, and its buttons.
     const stop = this.tour ? this.store.get().views[this.tour.index] : undefined;
     shell.tourBar.hidden = !stop;

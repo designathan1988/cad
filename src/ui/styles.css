@@ -43,6 +43,8 @@
   /* The walking stick (walk.ts): its ring and its knob. */
   --stick: 120px;
   --stick-knob: 48px;
+  /* A point of interest's card. */
+  --point-card-w: 280px;
   --cube-depth: 300px;
   --dim-field-w: 72px;
   --measure-w: 160px;
@@ -199,7 +201,8 @@ body {
 }
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
@@ -689,6 +692,47 @@ button.project-name:hover {
   padding: 0 var(--sp-4);
   color: var(--text-2);
   font-size: var(--fs-sm);
+}
+/* A point of interest's card, beside its disc. */
+.point-card {
+  position: absolute;
+  width: min(var(--point-card-w), calc(100% - 2 * var(--sp-4)));
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: var(--line) solid var(--accent);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  z-index: 6;
+}
+.point-card[hidden] {
+  display: none;
+}
+.point-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.point-title {
+  flex: 1 1 auto;
+  font-weight: 600;
+}
+.point-text {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  white-space: pre-wrap;
+}
+.point-text[hidden] {
+  display: none;
+}
+.points-rows {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 2fr) auto var(--control-h);
+  gap: var(--sp-2);
+  align-items: center;
+  padding: var(--sp-3) var(--sp-4);
 }
 .tour-seconds {
   display: flex;
@@ -1833,6 +1877,11 @@ button.project-name:hover {
   border-radius: var(--radius);
   background: var(--field);
   min-width: 0;
+}
+textarea.text-field {
+  height: auto;
+  padding: var(--sp-1) var(--sp-2);
+  resize: vertical;
 }
 .text-field:focus {
   border-color: var(--accent);

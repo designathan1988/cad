@@ -6,6 +6,7 @@
 import { type Doc, type Level, ownValuesOnly } from '../app/document';
 import type { Guide } from '../elements/guide/schema';
 import { isSavedView } from '../app/saved-views';
+import { isPointOfInterest } from '../app/points';
 import { deriveGeometry } from '../app/geometry';
 import { distributeOpenings } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
@@ -23,12 +24,13 @@ import type { DocWall } from '../app/document';
  * Version 5: guides (construction lines of a level's plan). Older files have none.
  * Version 6: saved views (saved-views.ts). Older files have none.
  * Version 7: a wall's join choice at each end (`joins`, schema.ts EndJoin). Older walls have none: automatic.
+ * Version 8: points of interest (points.ts). Older files have none.
  */
-export const CURRENT_VERSION = 7;
+export const CURRENT_VERSION = 8;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews'; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints'; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -193,6 +195,12 @@ export function repairProject(raw: unknown): ReadResult {
     views: keep(raw.views, isSavedView, 'droppedViews').filter((v, _, all) => {
       if (levelIds.has(v.levelId)) return true;
       if (v === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedViews', count: all.filter((x) => !levelIds.has(x.levelId)).length });
+      return false;
+    }),
+    // A point on a level that is gone is nowhere: dropped, and said.
+    points: keep(raw.points, isPointOfInterest, 'droppedPoints').filter((p, _, all) => {
+      if (levelIds.has(p.levelId)) return true;
+      if (p === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedPoints', count: all.filter((x) => !levelIds.has(x.levelId)).length });
       return false;
     }),
   };

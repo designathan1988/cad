@@ -8,6 +8,8 @@ const paths = {
   chevronRight: 'm9 6 6 6-6 6',
   chevronLeft: 'm15 6-6 6 6 6',
   play: 'M8 5v14l11-7z',
+  // A map pin: a point of interest.
+  pin: 'M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
   pause: 'M8 5v14M16 5v14',
   cube: 'M21 16V8l-9-5-9 5v8l9 5zM3.3 7.5 12 12l8.7-4.5M12 22V12',
   map: 'M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15',

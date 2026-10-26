@@ -20,8 +20,12 @@ export function openProjectDialog(app: App, render: (close: () => void) => HTMLE
   let stale = false;
   const typing = () => {
     const a = document.activeElement;
-    return a instanceof HTMLInputElement && a.type === 'text' && back.contains(a);
+    return ((a instanceof HTMLInputElement && a.type === 'text') || a instanceof HTMLTextAreaElement) && back.contains(a);
   };
+  // Between a field's blur and the next one's focus the focus is nowhere (the page): drawn again then,
+  // the field Tab was moving to was replaced and the focus fell to the page, so what was typed next went
+  // to the app's shortcuts (a point's text turned on the door tool). Drawn when the focus has landed.
+  const between = () => document.activeElement === null || document.activeElement === document.body;
   const focusKey = (key: string | undefined) => {
     const find = (k: string | null | undefined) => (k ? back.querySelector<HTMLElement>(`[data-focus="${k}"]`) : null);
     const usable = (x: HTMLElement | null) => (x && !(x as HTMLButtonElement).disabled ? x : null);
@@ -36,12 +40,24 @@ export function openProjectDialog(app: App, render: (close: () => void) => HTMLE
   };
   const unsubscribe = app.store.subscribe(() => {
     if (typing()) stale = true;
-    else redraw();
+    else if (between()) {
+      // Once the focus has landed (on the next field, or nowhere at all): drawn then, keeping it.
+      stale = true;
+      setTimeout(() => {
+        if (open && stale && !typing()) redraw();
+      }, 0);
+    } else redraw();
   });
   const onFocusOut = () =>
-    // After the focus has moved on: the field left, the dialog catches up, focus where it went.
+    // After the focus has moved on: the field left, the dialog catches up, focus where it went. A
+    // microtask runs before Tab's focus has landed: then it waits for a task, as above.
     queueMicrotask(() => {
-      if (stale && !typing()) redraw();
+      if (!stale || typing()) return;
+      if (between())
+        setTimeout(() => {
+          if (open && stale && !typing()) redraw();
+        }, 0);
+      else redraw();
     });
   const onKey = (e: KeyboardEvent) => {
     const ctrl = e.ctrlKey || e.metaKey;

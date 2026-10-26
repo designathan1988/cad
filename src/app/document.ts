@@ -1,6 +1,7 @@
 // The project document: only what the user decided. Thickness, heights, joins and geometry are
 // always derived from it.
 
+import type { PointOfInterest } from './points';
 import type { SavedView } from './saved-views';
 import type { Point2 } from '../core/vector';
 import type { Guide } from '../elements/guide/schema';
@@ -37,7 +38,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 7;
+  readonly version: 8;
   readonly name: string;
   readonly levels: readonly Level[];
   readonly wallTypes: readonly WallType[];
@@ -53,6 +54,8 @@ export interface Doc {
   readonly guides: readonly Guide[];
   /** Views saved under a name: a 3D camera, or a plan's level and framing (saved-views.ts). */
   readonly views: readonly SavedView[];
+  /** Numbered places with a title and a text, opened as a card (points.ts). */
+  readonly points: readonly PointOfInterest[];
 }
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */
@@ -69,7 +72,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 7,
+    version: 8,
     name: '',
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
     wallTypes: [
@@ -109,6 +112,7 @@ export function newDocument(): Doc {
     floors: [],
     guides: [],
     views: [],
+    points: [],
   };
 }
 

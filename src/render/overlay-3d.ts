@@ -5,6 +5,7 @@
 
 import type { Point2 } from '../core/vector';
 import { BOX_FACES, type BoxFace, boxEdges, faceCenter, type SectionBox } from '../app/section-box';
+import { drawPointDisc } from './plan-view';
 
 export interface Overlay3DState {
   /** World point (plan) to screen, at a height above the project zero; null behind the camera. */
@@ -21,6 +22,8 @@ export interface Overlay3DState {
   /** The section box, drawn with a handle at the middle of each face; `boxHot`: the one under the pointer or dragged. */
   readonly box: SectionBox | null;
   readonly boxHot: BoxFace | null;
+  /** Points of interest: where each one's disc stands (plan point and height). */
+  readonly points: readonly { readonly n: number; readonly at: Point2; readonly z: number; readonly open: boolean }[];
 }
 
 /** A box handle's radius on screen (px); a press this near takes it (BOX_HANDLE_HIT). */
@@ -61,6 +64,10 @@ export class Overlay3D {
       ctx.restore();
     };
     if (s.box) this.drawBox(s.box, s.boxHot, s.project, color('--accent'), color('--bg'));
+    for (const p of s.points) {
+      const q = s.project(p.at, p.z);
+      if (q) drawPointDisc(ctx, q, p.n, p.open, color('--accent'), color('--bg'), color('--font') || 'sans-serif');
+    }
     if (s.draft && s.draft.length > 1) {
       for (let i = 1; i < s.draft.length; i++) line(at(s.draft[i - 1]!), at(s.draft[i]!), color('--wall-sel'), 1.5, [6, 4]);
     }

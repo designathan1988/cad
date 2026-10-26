@@ -159,6 +159,15 @@ export function buildShell(root: HTMLElement) {
   const tourNext = tourButton('chevronRight');
   const tourStop = tourButton('close');
   tourBar.append(tourPrev, tourText, tourPlay, tourNext, tourStop);
+  // A point of interest's card (app.ts, placePointCard): its title, its text, edit and close.
+  const pointCard = el('div', { class: 'point-card', role: 'dialog' });
+  pointCard.hidden = true;
+  const pointTitle = el('div', { class: 'point-title' });
+  const pointText = el('div', { class: 'point-text' });
+  const pointEdit = el('button', { type: 'button', class: 'btn' });
+  const pointClose = el('button', { type: 'button', class: 'icon-btn' });
+  pointClose.innerHTML = icon('close', 16);
+  pointCard.append(el('div', { class: 'point-head' }, pointTitle, pointClose), pointText, pointEdit);
   // Hidden or isolated for a while (app.ts, hideTemporarily): what the view leaves out, and the way back.
   const tempChip = el('div', { class: 'temp-chip', role: 'status' });
   tempChip.hidden = true;
@@ -184,7 +193,7 @@ export function buildShell(root: HTMLElement) {
   const box = barButton(togglesBox, 'box');
   const ortho = barButton(togglesBox, 'ortho');
   viewBar.append(levelsBox, togglesBox);
-  viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, viewBar, emptyHint, tempChip, walkStick, tourBar, toast, browser);
+  viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, viewBar, emptyHint, tempChip, walkStick, tourBar, pointCard, toast, browser);
 
   const panel = el('aside', { class: 'panel', 'aria-label': 'Properties' });
 
@@ -308,7 +317,7 @@ export function buildShell(root: HTMLElement) {
   const parts = {
     homeBtn, projectName, undo, redo, level, newFile, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
     panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, modifyTools, toolSplit, toolCorner, dims, browser, sidebar,
-    emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, editTools, moreTools, fitTop, syncMore, foldedTools, moreApp, foldedApp, fitFoot,
+    emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, editTools, moreTools, fitTop, syncMore, foldedTools, moreApp, foldedApp, fitFoot,
   };
 
   const relabel = () => {
@@ -383,6 +392,8 @@ export function buildShell(root: HTMLElement) {
     tip(tourPrev, 'gtour.prev');
     tip(tourNext, 'gtour.next');
     tip(tourStop, 'gtour.stop');
+    pointEdit.textContent = t('poi.edit');
+    tip(pointClose, 'poi.close');
     tools.setAttribute('aria-label', t('aria.tools'));
     planCanvas.setAttribute('aria-label', t('view.plan'));
     glCanvas.setAttribute('aria-label', t('view.3d'));

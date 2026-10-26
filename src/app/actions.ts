@@ -128,6 +128,8 @@ export function appActions(app: App, open: Openers): Action[] {
       })),
     make('view.save', 'views.save', views, () => app.saveCurrentView()),
     make('view.tourEdit', 'gtour.edit', views, () => app.openTour()),
+    make('view.points', 'poi.dialogOpen', views, () => app.openPoints()),
+    make('view.addPoint', 'pal.addPoint', views, () => app.addPointHere()),
     make('view.tourPlay', 'gtour.play', views, () => app.playTour(), { enabled: doc.views.length > 0 }),
     ...doc.views.map((v) => ({
       id: `view.go.${v.id}`,

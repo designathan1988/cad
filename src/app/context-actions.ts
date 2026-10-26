@@ -28,6 +28,7 @@ export type ContextId =
   | 'clearGuides'
   | 'section'
   | 'walkHere'
+  | 'addPoint'
   | 'commands';
 
 /** `levelId`: the level shown, whose guides can be deleted at once. */
@@ -35,7 +36,7 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: str
   const walls = selection.filter((id) => doc.walls.some((w) => w.id === id));
   const merge = selection.length === 2 && walls.length === 2 && canMerge(doc, walls[0]!, walls[1]!) ? (['merge'] as const) : [];
   const guides = levelId !== undefined && doc.guides.some((g) => g.levelId === levelId) ? (['clearGuides'] as const) : [];
-  if (selection.length === 0) return ['drawWall', 'walkHere', 'frameAll', ...guides, 'commands'];
+  if (selection.length === 0) return ['drawWall', 'walkHere', 'addPoint', 'frameAll', ...guides, 'commands'];
   // Move first, for what the Modify tools take (walls, doors and windows, rooms, outline floors, guides); the five of them
   // are in the tool bar, as Revit's Modify panel, so this menu keeps to six.
   const modify: ContextId[] = canTransform(doc, selection) ? ['move'] : [];
@@ -53,8 +54,9 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: str
   if (opening) return opening.kind === 'door' ? [...modify, 'flipHinge', 'flipSwing', ...common] : [...modify, 'centerOpening', ...common];
   if (doc.rooms.some((r) => r.id === id)) {
     const floored = doc.floors.some((f) => f.source.kind === 'room' && f.source.roomId === id);
-    // Walking from inside a room, where the menu was opened (the most natural place to start).
-    return [...modify, ...(floored ? [] : (['addFloor'] as const)), 'walkHere', ...common];
+    // Walking from inside a room, where the menu was opened (the most natural place to start), and a
+    // point of interest there. Framing a room is F; the menu keeps to six.
+    return [...modify, ...(floored ? [] : (['addFloor'] as const)), 'walkHere', 'addPoint', 'properties', 'delete'];
   }
   return [...modify, ...common];
 }

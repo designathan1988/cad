@@ -16,6 +16,7 @@ import { insideRing } from '../elements/room/derive';
 import { EDIT_LEVELS } from './app';
 import { showLevels } from '../ui/levels-dialog';
 import { showTourDialog } from '../ui/tour-dialog';
+import { showPointsDialog } from '../ui/points-dialog';
 import { showWallTypes } from '../ui/types-dialog';
 import { showPalette } from '../ui/palette';
 import { offerTour, startTour } from '../ui/tour';
@@ -46,6 +47,7 @@ export function wireInput(app: App): void {
   app.openCommands = palette;
   app.openLevels = () => showLevels(app);
   app.openTour = () => showTourDialog(app);
+  app.openPoints = () => showPointsDialog(app);
   app.openWallTypes = (typeId) => showWallTypes(app, typeId);
   shell.sidebar.addEventListener('click', () => app.toggleBrowser());
   offerTour(app);
@@ -342,6 +344,11 @@ export function wireInput(app: App): void {
   /** While walking, a drag turns the view (walk.ts). */
   let looking: { x: number; y: number } | null = null;
   const onDown = (e: PointerEvent) => {
+    // A point of interest's disc: its card opens (or closes), whatever the tool, walking too.
+    if (e.button === 0 && (ui.tool === 'select' || app.walker)) {
+      const poi = app.pointAt(e.clientX, e.clientY);
+      if (poi) return app.showPoint(app.openPointId === poi ? null : poi);
+    }
     if (app.walker) {
       if (e.button === 0) {
         looking = { x: e.clientX, y: e.clientY };
@@ -545,6 +552,8 @@ export function wireInput(app: App): void {
   shell.tourNext.addEventListener('click', () => app.tourStep(1));
   shell.tourPlay.addEventListener('click', () => app.tourPause());
   shell.tourStop.addEventListener('click', () => app.stopTour());
+  shell.pointClose.addEventListener('click', () => app.showPoint(null));
+  shell.pointEdit.addEventListener('click', () => app.openPoints());
   // The walking stick: pushed up walks forward, sideways steps aside, as far as it is pushed.
   const stickAt = (e: PointerEvent) => {
     const r = shell.walkStick.getBoundingClientRect();
@@ -679,7 +688,9 @@ export function wireInput(app: App): void {
 
   window.addEventListener('keydown', (e) => {
     const target = e.target as HTMLElement;
-    if (target.closest('input, select, textarea') || target.closest('.dialog-back')) return;
+    // A dialog open: its keys are its own, wherever the focus is (it fell to the page once, and typed
+    // text became the app's shortcuts).
+    if (target.closest('input, select, textarea') || target.closest('.dialog-back') || !shell.helpBack.hidden) return;
     const ctrl = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
     shift = e.shiftKey;
