@@ -8,6 +8,7 @@ import { openingMarks } from '../elements/opening/marks';
 import { savePrefs } from './persist';
 import { readProject, writeProject } from '../io/project-file';
 import type { App } from './app';
+import { importAsProject, newStoredProject } from './projects';
 import { safeFileName } from './app';
 
 /** The project's name, as one undo step; an empty name is "Untitled project" again. */
@@ -94,6 +95,11 @@ export function exportDxf(app: App): void {
  * lost (Ctrl+Z gives the previous project back), so it asks nothing.
  */
 export function newProject(app: App): void {
+  // Kept in the browser's database: another project, the open one staying in the list (projects.ts).
+  if (app.db) {
+    void newStoredProject(app, app.db);
+    return;
+  }
   app.ui.error = null;
   app.ui.selection.clear();
   app.ui.drag = null;
@@ -121,12 +127,18 @@ export async function openFile(app: App, file: File): Promise<void> {
   savePrefs({ levelId: app.ui.levelId });
   // A project saved without a name is called by its file's: "casa.json" opens as "casa".
   const opened = r.doc.name ? r.doc : { ...r.doc, name: file.name.replace(/\.json$/i, '') };
+  // Elements left out; ids only given their kind's prefix (typed-ids.ts) were kept, and are not counted.
+  const fixed = r.fixes.filter((f) => f.kind !== 'typedIds').reduce((s, f) => s + f.count, 0);
+  if (app.db) {
+    // A new project of the list: the open one stays there (projects.ts).
+    await importAsProject(app, app.db, opened);
+    app.toast(fixed > 1 ? t('toast.importedFixed', { n: fixed }) : fixed === 1 ? t('toast.importedFixedOne') : t('toast.imported'));
+    return;
+  }
   // One undo step, like any other change: opening by mistake never loses the project that was open.
   app.store.dispatch({ label: 'cmd.openProject', apply: () => opened });
   app.framed.plan = false;
   app.framed['3d'] = false;
   app.frameAll();
-  // Elements left out; ids only given their kind's prefix (typed-ids.ts) were kept, and are not counted.
-  const fixed = r.fixes.filter((f) => f.kind !== 'typedIds').reduce((s, f) => s + f.count, 0);
   app.toast(fixed > 1 ? t('toast.openedFixed', { n: fixed }) : fixed === 1 ? t('toast.openedFixedOne') : t('toast.openedUndo'));
 }

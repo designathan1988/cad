@@ -19,6 +19,7 @@ import { showSchedulesDialog } from '../ui/schedules-dialog';
 import { watchErrors } from './error-log';
 import { showWallTypes } from '../ui/types-dialog';
 import { showPalette } from '../ui/palette';
+import { showProjectsDialog } from '../ui/projects-dialog';
 import { offerTour, startTour } from '../ui/tour';
 import { appActions, type Openers } from './actions';
 import { contextEntries } from './context-menu';
@@ -42,7 +43,9 @@ export function wireInput(app: App): void {
     wallTypes: () => showWallTypes(app),
     tour: () => startTour(app),
     openFile: () => shell.fileInput.click(),
+    projects: () => showProjectsDialog(app),
   };
+  app.openProjects = () => showProjectsDialog(app);
   const palette = () => showPalette(appActions(app, openers));
   app.openCommands = palette;
   app.openLevels = () => showLevels(app);

@@ -732,6 +732,33 @@ button.project-name:hover {
 .point-text[hidden] {
   display: none;
 }
+.projects-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+}
+.projects-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) auto var(--control-h) var(--control-h);
+  gap: var(--sp-2);
+  align-items: center;
+}
+.projects-row.current .text-field {
+  border-color: var(--accent);
+}
+.projects-info {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+.projects-open {
+  font-size: var(--fs-sm);
+  color: var(--accent);
+  padding: 0 var(--sp-2);
+}
+.text-btn.danger {
+  color: var(--warn);
+}
 .points-rows {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) minmax(0, 2fr) auto var(--control-h);

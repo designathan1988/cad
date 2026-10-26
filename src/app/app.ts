@@ -40,7 +40,7 @@ import { type Grid } from '../elements/grid/schema';
 import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState } from '../tools/dimension-tool';
 import { geometryOf, keepRooms, moveRooms } from './carry';
 import { keepOpenings } from './keep-openings';
-import { type Doc, type DocWall, elementIds, levelOf, newDocument, startLevel, type WallDefaults } from './document';
+import { type Doc, type DocWall, elementIds, levelOf, startLevel, type WallDefaults } from './document';
 
 /** The snap labels that name their wall. */
 export const SNAP_OF = {
@@ -57,7 +57,8 @@ import { applyTemporary, boundsOf, type Category, deriveGeometry, type DerivedGe
 import { type Diagnostic, diagnose } from './diagnostics';
 import { renderDebugPanel } from '../ui/debug-panel';
 import { markPoint, openingMarks } from '../elements/opening/marks';
-import { loadDocument, loadPrefs, savePrefs, scheduleSave, wireSaving } from './persist';
+import { loadPrefs, savePrefs, scheduleSave, wireSaving } from './persist';
+import type { Boot } from './boot';
 import type { ViewKey } from './view-keys';
 import { EYE_HEIGHT, EYE_MAX, EYE_MIN, obstaclesOf, type Walker } from './walk';
 import { type BoxFace, type SectionBox } from './section-box';
@@ -166,13 +167,19 @@ export class App {
   panelKey = '';
   private toastTimer = 0;
 
-  constructor(root: HTMLElement) {
+  /** The browser's database and the open project's id there (boot.ts); null without a database. */
+  db: IDBDatabase | null;
+  projectId: string | null;
+
+  constructor(root: HTMLElement, boot: Boot) {
+    this.db = boot.db;
+    this.projectId = boot.projectId;
     const prefs = loadPrefs();
     setLang(prefs.lang ?? (navigator.language.toLowerCase().startsWith('pt') ? 'pt' : 'en'));
     document.documentElement.lang = htmlLang(getLang());
     // Every change to the walls, however it is made, keeps the doors and windows to what they are
     // measured from (keep-openings.ts), and the rooms it moves the walls past in their space.
-    const store = createStore(loadDocument() ?? newDocument());
+    const store = createStore(boot.doc);
     this.store = {
       ...store,
       dispatch: (c) =>
@@ -699,6 +706,8 @@ export class App {
 
   /** Opens the points dialog; set by the input layer. */
   openPoints: () => void = () => {};
+  /** Opens the projects kept in the browser; set by the input layer. */
+  openProjects: () => void = () => {};
 
   /** Walking through the model (walk.ts), or null. Interface state: never saved. */
   walker: Walker | null = null;

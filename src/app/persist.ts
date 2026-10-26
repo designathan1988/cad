@@ -6,6 +6,7 @@ import type { Lang } from '../ui/i18n';
 import { readProject, repairProject } from '../io/project-file';
 import type { Doc } from './document';
 import type { View3D } from './view-3d';
+import { saveProject } from '../io/project-db';
 
 const DOC_KEY = 'cad2.document.v1';
 const PREFS_KEY = 'cad2.prefs.v1';
@@ -35,6 +36,8 @@ export interface Prefs {
   eyeHeight?: number;
   /** A tour's stop, playing by itself (s). */
   tourSeconds?: number;
+  /** The project open last, of those kept in the browser (io/project-db.ts). */
+  projectId?: string;
 }
 
 function storage(): Storage | null {
@@ -58,12 +61,32 @@ export function saveDocument(doc: Doc): void {
 let pending: Doc | null = null;
 let asked = false;
 
-/** Saves what is waiting, now: when the page is hidden or closed, nothing is left behind. */
-export function flushSave(): void {
-  if (!pending) return;
+/** Where the project is saved: its record in the browser's database (io/project-db.ts), or, without
+ * one, the single document of before. */
+let target: { readonly db: IDBDatabase; readonly id: string } | null = null;
+
+/** The project saved from now on, in the database. */
+export function saveTo(db: IDBDatabase, id: string): void {
+  target = { db, id };
+}
+
+/** The project being saved in the database, if any. */
+export const savedAs = (): { readonly db: IDBDatabase; readonly id: string } | null => target;
+
+/** Saves what is waiting, now: when the page is hidden or closed, nothing is left behind. Resolved when written. */
+export function flushSave(): Promise<void> {
+  if (!pending) return Promise.resolve();
   const doc = pending;
   pending = null;
-  saveDocument(doc);
+  if (!target) {
+    saveDocument(doc);
+    return Promise.resolve();
+  }
+  // Element by element (only what changed); a failure is said, and the document kept the old way too.
+  return saveProject(target.db, target.id, doc).catch((e: unknown) => {
+    console.warn('Could not save the project in the browser database; kept in local storage instead.', e);
+    saveDocument(doc);
+  });
 }
 
 /**
@@ -77,7 +100,7 @@ export function scheduleSave(doc: Doc): void {
   asked = true;
   const run = () => {
     asked = false;
-    flushSave();
+    void flushSave();
   };
   if ('requestIdleCallback' in window) window.requestIdleCallback(run, { timeout: 1000 });
   else setTimeout(run, 200);
@@ -85,9 +108,9 @@ export function scheduleSave(doc: Doc): void {
 
 /** Saves what is waiting when the page is hidden or about to close. */
 export function wireSaving(): void {
-  window.addEventListener('pagehide', flushSave);
+  window.addEventListener('pagehide', () => void flushSave());
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flushSave();
+    if (document.visibilityState === 'hidden') void flushSave();
   });
 }
 

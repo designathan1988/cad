@@ -25,6 +25,7 @@ export interface Openers {
   readonly wallTypes: () => void;
   readonly tour: () => void;
   readonly openFile: () => void;
+  readonly projects: () => void;
 }
 
 export function appActions(app: App, open: Openers): Action[] {
@@ -111,6 +112,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('view.tempReset', 'pal.tempReset', views, () => app.resetTemporary(), { enabled: ui.temp !== null }),
     make('edit.next', 'pal.stepSelection', edit, () => app.stepSelection(1), { keys: 'N' }),
     make('edit.previous', 'pal.stepBack', edit, () => app.stepSelection(-1), { keys: 'Shift+N' }),
+    make('file.projects', 'pal.projects', file, open.projects, { keywords: 'projetos projects lista list abrir open biblioteca library' }),
     make('file.new', 'pal.new', file, () => app.newProject()),
     make('file.open', 'pal.open', file, open.openFile, { keys: 'Ctrl+O' }),
     make('file.save', 'pal.save', file, () => app.saveFile(), { keys: 'Ctrl+S' }),
