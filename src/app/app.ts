@@ -44,6 +44,7 @@ import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, rectangle, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, dragTransform, hull, moveGuides } from './select-drag';
 import { geometryOf, keepRooms, moveFloors, moveRooms } from './carry';
+import { keepOpenings } from './keep-openings';
 import { stepSelection } from './keyboard-select';
 import { nudge } from '../tools/nudge';
 import { type Doc, type DocWall, elementIds, levelOf, newDocument, startLevel, type WallDefaults, wallNumber, wallOverrides } from './document';
@@ -118,7 +119,8 @@ export interface UiState {
   /** Space while drawing walls: their bodies go to the other side of the line drawn (Revit's flip). */
   wallFlip: boolean;
   /** The Modify tool in use (Move, Copy, Rotate, Scale, Mirror): its points so far; `copy` keeps the originals. */
-  modify: { readonly kind: ModifyKind; readonly copy: boolean; readonly state: ModifyState } | null;
+  /** `disjoin` (Move, U): the walls go alone, the walls joined to them keeping their ends. */
+  modify: { readonly kind: ModifyKind; readonly copy: boolean; readonly disjoin: boolean; readonly state: ModifyState } | null;
   /** The temporary dimension whose value is being typed. */
   dimEdit: string | null;
 }
@@ -150,7 +152,8 @@ export class App {
     const prefs = loadPrefs();
     setLang(prefs.lang ?? (navigator.language.toLowerCase().startsWith('pt') ? 'pt' : 'en'));
     document.documentElement.lang = htmlLang(getLang());
-    // Every change to the walls, however it is made, keeps the rooms it moves them past in their space.
+    // Every change to the walls, however it is made, keeps the doors and windows to what they are
+    // measured from (keep-openings.ts), and the rooms it moves the walls past in their space.
     const store = createStore(loadDocument() ?? newDocument());
     this.store = {
       ...store,
@@ -159,7 +162,7 @@ export class App {
           label: c.label,
           apply: (before) => {
             const next = c.apply(before);
-            return next === before || next.walls === before.walls ? next : keepRooms(before, next).doc;
+            return next === before || next.walls === before.walls ? next : keepRooms(before, keepOpenings(before, next)).doc;
           },
         }),
     };
@@ -262,9 +265,9 @@ export class App {
     if (m && t) {
       let n = 0;
       const previewId = (prefix: string) => `${prefix}_preview${++n}`;
-      const shownDoc = transformSelection(doc, this.modifyBefore ?? this.geometry, [...this.ui.selection], t, m.copy, previewId).doc;
-      // A room the walls would be moved past keeps its space, as it will when the move is made.
-      this.geometry = keepRooms(doc, shownDoc).geometry;
+      const shownDoc = transformSelection(doc, this.modifyBefore ?? this.geometry, [...this.ui.selection], t, m.copy, previewId, m.disjoin).doc;
+      // Doors and windows, and a room the walls would be moved past, as they will be when the move is made.
+      this.geometry = keepRooms(doc, keepOpenings(doc, shownDoc)).geometry;
       return this.render();
     }
     // While dragging, the walls as dragged; the rooms going with a move or a turn go in the preview too,
@@ -282,12 +285,13 @@ export class App {
           : d && d.kind !== 'marquee'
             ? { ...doc, walls: d.walls }
             : doc;
-    // Walls being dragged: a room they pass over keeps its space, as it will when they are dropped.
+    // Walls being dragged: doors and windows keep to their faces and a room they pass over keeps its
+    // space, as they will when the walls are dropped.
     const drawing = this.previewWall();
     const placing = this.previewOpening();
     this.geometry =
       shown.walls !== doc.walls
-        ? keepRooms(doc, shown).geometry
+        ? keepRooms(doc, keepOpenings(doc, shown)).geometry
         : drawing.length === 0 && placing.length === 0
           ? geometryOf(shown)
           : deriveGeometry(shown, drawing, placing);
@@ -720,7 +724,7 @@ export class App {
     this.ui.selection = selection;
     this.ui.tool = 'modify';
     // Copy copies; a mirror makes a mirrored copy as Revit's does (C changes either).
-    this.ui.modify = { kind, copy: kind === 'copy' || kind === 'mirror', state: MODIFY_START };
+    this.ui.modify = { kind, copy: kind === 'copy' || kind === 'mirror', disjoin: false, state: MODIFY_START };
     this.modifyBefore = deriveGeometry(doc);
     this.refresh();
   }
@@ -730,6 +734,14 @@ export class App {
     const m = this.ui.modify;
     if (!m) return;
     this.ui.modify = { ...m, copy: !m.copy };
+    this.refresh();
+  }
+
+  /** U in Move: the walls alone, leaving their joins (Revit's Disjoin), or with them. */
+  toggleModifyDisjoin(): void {
+    const m = this.ui.modify;
+    if (!m || m.kind !== 'move') return;
+    this.ui.modify = { ...m, disjoin: !m.disjoin };
     this.refresh();
   }
 
@@ -750,7 +762,7 @@ export class App {
       return this.refresh();
     }
     const doc = this.store.get();
-    const result = transformSelection(doc, this.modifyBefore ?? deriveGeometry(doc), [...this.ui.selection], r.apply, m.copy, newId);
+    const result = transformSelection(doc, this.modifyBefore ?? deriveGeometry(doc), [...this.ui.selection], r.apply, m.copy, newId, m.disjoin);
     const label = m.kind === 'move' && m.copy ? 'cmd.copy' : (`cmd.${m.kind}` as MessageKey);
     this.ui.tool = 'select';
     this.ui.modify = null;
@@ -2001,6 +2013,7 @@ export class App {
       : mod
       ? [
           keyHint('C', t(mod.copy ? 'key.copyOn' : 'key.copyOff')),
+          ...(mod.kind === 'move' && !mod.copy ? [keyHint('U', t(mod.disjoin ? 'key.disjoinOn' : 'key.disjoinOff'))] : []),
           ...(mod.state.step === 'base' && mod.kind !== 'move' && mod.kind !== 'copy' ? [keyHint('Enter', t('key.centre'))] : []),
           keyHint('Shift', t('key.straight')),
           keyHint('Esc', t(mod.state.step === 'base' ? 'key.exit' : 'key.back')),

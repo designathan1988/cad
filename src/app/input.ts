@@ -702,6 +702,7 @@ export function wireInput(app: App): void {
     if (e.shiftKey && key === 'j') return app.mergeSelection();
     if (e.shiftKey) return;
     if (key === 'c' && ui.tool === 'modify') return app.toggleModifyCopy();
+    if (key === 'u' && ui.tool === 'modify') return app.toggleModifyDisjoin();
     if (key === 'w') return app.setTool('wall');
     if (key === 'a' && ui.tool === 'wall') return app.wallEvent({ kind: 'arc' });
     // Q: rectangles of four walls, two corners (Revit's and ArchiCAD's rectangle).
@@ -790,6 +791,7 @@ function showHelp(app: App): void {
     [t('key.spaceKey'), t('help.space')],
     [t('help.rightClickKey'), t('help.rightClick')],
     [t('help.dragAloneKey'), t('help.dragAlone')],
+    ['U', t('help.disjoin')],
     ['Del', t('pal.delete')],
     ['F', t('pal.frameSelection')],
     ['Home', t('pal.frameAll')],

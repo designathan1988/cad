@@ -50,7 +50,19 @@ describe('moving walls', () => {
     // w2 is now y = 7; the divider runs along x = 4, so its top end goes to (4, 7), not (4.5, 7).
     expect(byId(ws, 'd').end).toEqual(vec(4, 7));
     expect(byId(ws, 'd').start).toEqual(vec(4, 0));
-    expect(byId(ws, 'w1').end).toEqual(vec(8.5, 7));
+  });
+
+  it('moved up and a little across, the top wall keeps its corners square: w1 and w3 keep their lines', () => {
+    const ws = moveWalls(room(), ['w2'], vec(0.5, 1));
+    const at = (p: { x: number; y: number }, x: number, y: number) => {
+      expect(p.x).toBeCloseTo(x, 9);
+      expect(p.y).toBeCloseTo(y, 9);
+    };
+    // The side walls stay at x = 8 and x = 0 and stretch to y = 7; w2 runs between them, from (8, 7) to (0, 7).
+    at(byId(ws, 'w1').end, 8, 7);
+    at(byId(ws, 'w3').start, 0, 7);
+    at(byId(ws, 'w2').start, 8, 7);
+    at(byId(ws, 'w2').end, 0, 7);
   });
 
   it('moving the whole room moves everything once, nothing stretched twice', () => {

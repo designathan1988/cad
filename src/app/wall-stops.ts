@@ -14,8 +14,20 @@ const MIN_SINE = 0.1;
 /** How far past the host's face an end may stop and still be taken as touching it (m). */
 const TOUCH = 0.01;
 
+/** A stop and whose face it is: the wall meeting the host, and which of its two faces (0, 1). */
+export interface Stop {
+  readonly at: number;
+  readonly wallId: string;
+  readonly face: number;
+}
+
 /** The stations (sorted, strictly inside the wall) where the faces of the walls meeting it cross its reference line. */
 export function wallStops(doc: Doc, wallId: string): number[] {
+  return wallStopsOf(doc, wallId).map((s) => s.at);
+}
+
+/** The stops of a wall with the faces they are (sorted by station). */
+export function wallStopsOf(doc: Doc, wallId: string): Stop[] {
   const host = doc.walls.find((w) => w.id === wallId);
   if (!host || host.bulge) return [];
   const types = new Map(doc.wallTypes.map((x) => [x.id, x]));
@@ -25,7 +37,7 @@ export function wallStops(doc: Doc, wallId: string): number[] {
   const d = wallDirection(hostShape);
   const n = wallNormal(hostShape);
   const [h0, h1] = faceOffsets(hostShape);
-  const stops: number[] = [];
+  const stops: Stop[] = [];
   for (const w of doc.walls) {
     if (w.id === host.id || w.levelId !== host.levelId || w.bulge) continue;
     const shape = shapeOf(w, types.get(w.wallTypeId));
@@ -52,12 +64,12 @@ export function wallStops(doc: Doc, wallId: string): number[] {
     const hi = Math.max(...runs) + TOUCH / Math.abs(sine);
     if (hi < 0 || lo > lw) continue;
     const nw = wallNormal(shape);
-    for (const o of faceOffsets(shape)) {
+    faceOffsets(shape).forEach((o, face) => {
       const s = along(add(w.start, scale(nw, o)));
-      if (s > 0 && s < length) stops.push(s);
-    }
+      if (s > 0 && s < length) stops.push({ at: s, wallId: w.id, face });
+    });
   }
-  return stops.sort((a, b) => a - b);
+  return stops.sort((a, b) => a.at - b.at);
 }
 
 /** The nearest stop at or before a station (0, the wall's start, when none). */

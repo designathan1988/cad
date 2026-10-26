@@ -2,12 +2,12 @@
 // SketchUp's Move, Rotate and Scale do. What goes: the selected walls with their doors, windows and
 // distributed groups; the rooms all of whose walls go, and the selected ones; the selected outline
 // floors (a room's floor follows its room) and guides. In place, the walls joined to the selection keep
-// their joins (edit.ts); copied, the copies stand apart and the originals stay. A scale changes lengths
+// their joins (edit.ts), unless disjoined; copied, the copies stand apart and the originals stay. A scale changes lengths
 // and positions, never thicknesses or the sizes of doors and windows. A mirror swaps each wall's ends,
 // so its layers, and its doors' hinges, come out mirrored rather than turned over.
 
 import { roomsGoingWith } from '../app/carry';
-import type { Doc } from '../app/document';
+import type { Doc, DocWall } from '../app/document';
 import type { DerivedGeometry } from '../app/geometry';
 import { add, dot, normalize, type Point2, scale, sub } from '../core/vector';
 import { GROUP_PREFIX, type GroupSpacing, type Opening, type OpeningGroup, OPENING_PREFIX, type PositionRule } from '../elements/opening/schema';
@@ -118,9 +118,18 @@ export interface TransformResult {
 /**
  * The selection `ids` taken by `t`, in place or copied. `g` is the geometry before (which rooms all of
  * whose walls go); `newId` names the copies. Openings selected without their wall stay where they are:
- * a door goes with its wall.
+ * a door goes with its wall. `disjoin`, in place: the walls go alone, the walls joined to them keeping
+ * their ends, as Revit's Move with Disjoin (and a drag with Alt) does.
  */
-export function transformSelection(doc: Doc, g: DerivedGeometry, ids: readonly string[], t: Transform, copy: boolean, newId: (prefix: string) => string): TransformResult {
+export function transformSelection(
+  doc: Doc,
+  g: DerivedGeometry,
+  ids: readonly string[],
+  t: Transform,
+  copy: boolean,
+  newId: (prefix: string) => string,
+  disjoin = false,
+): TransformResult {
   const set = new Set(ids);
   const wallIds = doc.walls.filter((w) => set.has(w.id)).map((w) => w.id);
   const walls = new Set(wallIds);
@@ -131,9 +140,15 @@ export function transformSelection(doc: Doc, g: DerivedGeometry, ids: readonly s
 
   if (!copy) {
     const same = (id: string) => id;
+    const alone = (w: DocWall): DocWall => {
+      const start = t.map(w.start);
+      const end = t.map(w.end);
+      return { ...w, ...(t.mirror ? { start: end, end: start } : { start, end }) };
+    };
     const next: Doc = {
       ...doc,
-      walls: transformWalls(doc, wallIds, t.map, t.mirror),
+      // A move or a turn keeps the joins' lines (edit.ts); a scale or a mirror takes the corners along.
+      walls: disjoin ? doc.walls.map((w) => (walls.has(w.id) ? alone(w) : w)) : transformWalls(doc, wallIds, t.map, t.mirror, !t.mirror && t.factor === 1),
       openings: doc.openings.map((o) => (walls.has(o.wallId) ? mapOpening(o, t, same) : o)),
       openingGroups: doc.openingGroups.map((x) => (walls.has(x.wallId) ? mapGroup(x, t, same, () => true) : x)),
       rooms: doc.rooms.map((r) => (rooms.has(r.id) ? { ...r, seed: t.map(r.seed) } : r)),

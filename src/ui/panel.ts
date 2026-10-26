@@ -103,8 +103,13 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     if (mine.length > 0) {
       const box = el('div', { class: 'warn-list', role: 'status' });
       box.innerHTML = icon('warning', 16);
-      // One line per kind: the same problem at two joints reads once.
-      box.append(el('div', {}, ...[...new Set(mine.map((w) => w.kind))].map((k) => el('div', {}, t(`warn.${k}` as MessageKey)))));
+      // One line per kind: the same problem at two joints reads once. An overlap names the walls it is
+      // with: "Walls overlap" alone left the user to find, among walls drawn one over the other, which.
+      const others = [...new Set(mine.filter((w) => w.kind === 'wallsOverlap').flatMap((w) => w.walls.filter((id) => !ids.has(id))))];
+      const numbers = others.flatMap((id) => wallNumber(doc, id) ?? []).sort((a, b) => a - b);
+      const line = (k: JoinWarning['kind']) =>
+        k === 'wallsOverlap' && numbers.length > 0 ? t('warn.wallsOverlapWith', { walls: numbers.join(', ') }) : t(`warn.${k}` as MessageKey);
+      box.append(el('div', {}, ...[...new Set(mine.map((w) => w.kind))].map((k) => el('div', {}, line(k)))));
       nodes.push(box);
     }
   } else if (input.rooms.length > 0) {

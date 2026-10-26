@@ -152,17 +152,43 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
     }
     return true;
   });
+  for (const [a, b] of lyingOver(valid)) {
+    if (!warnings.some((w) => w.kind === 'wallsOverlap' && w.walls.includes(a.id) && w.walls.includes(b.id))) warnings.push({ kind: 'wallsOverlap', walls: [a.id, b.id] });
+  }
   return { corners, nodes, abutments, crossings, warnings };
 }
 
 /**
- * Pairs whose reference lines cross inside both walls, with no end of either inside the other's
- * band (that would be a T or a corner). The through wall is chosen by goesThrough.
+ * Pairs of straight walls lying over one another along a stretch: parallel, their bodies overlapping
+ * across and along. A wall drawn twice, or copied in place, has its ends in the same corners as the
+ * other's: none of the checks on ends saw it, and the plan showed one wall where there were two.
  */
+function lyingOver(walls: readonly WallShape[]): [WallShape, WallShape][] {
+  const out: [WallShape, WallShape][] = [];
+  const straight = walls.filter((w) => parentOf(w.id) === w.id);
+  straight.forEach((a, i) => {
+    const [a0, a1] = faceOffsets(a);
+    const len = wallLength(a);
+    for (const b of straight.slice(i + 1)) {
+      if (!parallel(a, b)) continue;
+      const same = dot(wallDirection(a), wallDirection(b)) > 0;
+      const [b0, b1] = faceOffsets(b);
+      const off = offsetOf(a, b.start);
+      const [lo, hi] = same ? [off + b0, off + b1] : [off - b1, off - b0];
+      if (Math.min(a1, hi) - Math.max(a0, lo) <= POINT_TOLERANCE) continue;
+      const s = [stationOf(a, b.start), stationOf(a, b.end)];
+      if (Math.min(len, Math.max(...s)) - Math.max(0, Math.min(...s)) > POINT_TOLERANCE) out.push([a, b]);
+    }
+  });
+  return out;
+}
+
 /**
- * `joint`: a segment's ends that are joints of its own arc. Those are not wall ends: one inside the
- * other wall's band does not make it a T or a corner, and a crossing on one is still a crossing (found
- * once, on the first of the two segments).
+ * Pairs whose reference lines cross inside both walls, with no end of either inside the other's
+ * band (that would be a T or a corner). The through wall is chosen by goesThrough. `joint`: a
+ * segment's ends that are joints of its own arc. Those are not wall ends: one inside the other wall's
+ * band does not make it a T or a corner, and a crossing on one is still a crossing (found once, on
+ * the first of the two segments).
  */
 function findCrossings(walls: readonly WallShape[], joint: (w: WallShape) => Joints): Crossing[] {
   const crossings: Crossing[] = [];

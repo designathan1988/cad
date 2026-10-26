@@ -1,7 +1,7 @@
 // Editing walls while keeping their joins (pure). Ends that met a moved end follow it, so corners
-// stay closed; ends that abutted a moved wall's body slide along their own wall to stay on it, so Ts
-// stay joined, and so do a moved wall's own ends on another's body. Nothing here touches geometry
-// beyond the reference lines: the join engine redoes the rest.
+// stay closed (along their own lines, in a move or a turn); ends that abutted a moved wall's body
+// slide along their own wall to stay on it, so Ts stay joined, and so do a moved wall's own ends on
+// another's body. Nothing here touches geometry beyond the reference lines: the join engine redoes the rest.
 
 import type { Doc, DocWall } from '../app/document';
 import { POINT_TOLERANCE } from '../core/tolerance';
@@ -22,21 +22,40 @@ function onBody(p: Point2, a: Point2, b: Point2): boolean {
   return t > POINT_TOLERANCE && t < len - POINT_TOLERANCE && Math.abs(cross(u, sub(p, a))) <= POINT_TOLERANCE;
 }
 
+/** Sines below this: two lines too near parallel for a corner to go where they meet. */
+const NEAR_PARALLEL = 0.05;
+
+/** Where the line through p along u meets the line through q along v; null when they are about parallel. */
+function meet(p: Point2, u: Point2, q: Point2, v: Point2): Point2 | null {
+  if (Math.abs(cross(normalize(u), normalize(v))) < NEAR_PARALLEL) return null;
+  return intersectLines(p, u, q, v);
+}
+
+/** Whether q is on the line through a and b: a corner taken there tilts nothing, and stays exact. */
+const onLine = (q: Point2, a: Point2, b: Point2): boolean => Math.abs(cross(normalize(sub(b, a)), sub(q, a))) <= POINT_TOLERANCE;
+
 /**
  * New positions for every wall after the walls in `moved` take their new ends. The others keep
- * their joins: an end at a moved wall's old end goes where `map` takes that end; an end on a moved
- * wall's body slides along its own line to the moved wall's new line.
+ * their joins: an end at a moved wall's old end goes where `map` takes that end, or, with `lines`,
+ * along its own line to the moved wall's new line (its direction kept); an end on a moved wall's body
+ * slides along its own line to the moved wall's new line.
  */
-function follow(walls: readonly DocWall[], moved: ReadonlyMap<WallId, Ends>, map: (p: Point2) => Point2): DocWall[] {
+function follow(walls: readonly DocWall[], moved: ReadonlyMap<WallId, Ends>, map: (p: Point2) => Point2, lines: boolean): DocWall[] {
   return walls.map((w) => {
     const target = moved.get(w.id);
     if (target) return { ...w, ...target };
     const fix = (p: Point2, other: Point2): Point2 => {
-      for (const [id] of moved) {
+      let corner: Point2 | null = null;
+      for (const [id, next] of moved) {
         const before = walls.find((x) => x.id === id)!;
-        if (distance(p, before.start) <= POINT_TOLERANCE) return map(before.start);
-        if (distance(p, before.end) <= POINT_TOLERANCE) return map(before.end);
+        const end = distance(p, before.start) <= POINT_TOLERANCE ? before.start : distance(p, before.end) <= POINT_TOLERANCE ? before.end : null;
+        if (!end) continue;
+        const mapped = map(end);
+        const hit = lines && !w.bulge && !before.bulge && !onLine(mapped, other, p) ? meet(other, sub(p, other), next.start, sub(next.end, next.start)) : null;
+        if (hit) return hit;
+        corner ??= mapped;
       }
+      if (corner) return corner;
       for (const [id, next] of moved) {
         const before = walls.find((x) => x.id === id)!;
         if (!onBody(p, before.start, before.end)) continue;
@@ -54,9 +73,13 @@ function follow(walls: readonly DocWall[], moved: ReadonlyMap<WallId, Ends>, map
 /**
  * Every wall after those in `ids` are taken by `map` (a move, a turn, a scale or a mirror), the others
  * keeping their joins. `swap`: the moved walls' ends trade places, as a mirror needs so each wall keeps
- * its layers on the mirrored side (a mirror turns a wall's left into its right).
+ * its layers on the mirrored side (a mirror turns a wall's left into its right). `rigid` (a move or a
+ * turn): the joins keep their lines, as Revit's do. A corner with a wall left behind goes where the two
+ * lines meet now, that wall keeping its direction, and a moved wall's end on another's body stays on
+ * it (keepOnHosts). Taken by the pointer as it was, a hand that drifted 1 cm along the wall tilted the
+ * walls at its corners, and the whole outline of a house came out askew.
  */
-export function transformWalls(doc: Doc, ids: readonly WallId[], map: (p: Point2) => Point2, swap = false): DocWall[] {
+export function transformWalls(doc: Doc, ids: readonly WallId[], map: (p: Point2) => Point2, swap = false, rigid = false): DocWall[] {
   const set = new Set(ids);
   const moved = new Map<WallId, Ends>();
   for (const w of doc.walls) {
@@ -65,11 +88,30 @@ export function transformWalls(doc: Doc, ids: readonly WallId[], map: (p: Point2
     const end = map(w.end);
     moved.set(w.id, swap ? { start: end, end: start } : { start, end });
   }
-  return follow(doc.walls, moved, map);
+  if (!rigid) return follow(doc.walls, moved, map, false);
+  for (const w of doc.walls) {
+    const next = moved.get(w.id);
+    if (!next || w.bulge) continue;
+    // A moved end at a corner with a wall left behind: where its new line meets that wall's line.
+    const corner = (p: Point2, mapped: Point2): Point2 | null => {
+      for (const o of doc.walls) {
+        if (set.has(o.id) || o.bulge) continue;
+        const far = distance(o.start, p) <= POINT_TOLERANCE ? o.end : distance(o.end, p) <= POINT_TOLERANCE ? o.start : null;
+        if (!far || onLine(mapped, far, p)) continue;
+        const hit = meet(next.start, sub(next.end, next.start), far, sub(p, far));
+        if (hit) return hit;
+      }
+      return null;
+    };
+    const start = corner(w.start, next.start);
+    const end = corner(w.end, next.end);
+    if (start || end) moved.set(w.id, { start: start ?? next.start, end: end ?? next.end });
+  }
+  return keepOnHosts(doc, ids, follow(doc.walls, moved, map, true));
 }
 
 /**
- * A drag keeps the Ts of the moved walls too: an end of one that met another wall's body (within its
+ * A move or a turn keeps the Ts of the moved walls too: an end of one that met another wall's body (within its
  * thickness, away from its ends) slides along its own wall's new line to stay as far from that wall's
  * line as it was, while that is still along that wall. Moved free, a partition between two walls taken
  * with a hand that drifted 5 mm along it came off one of them, and the two rooms it divided became
@@ -103,7 +145,7 @@ function keepOnHosts(doc: Doc, ids: readonly WallId[], walls: readonly DocWall[]
 }
 
 export function moveWalls(doc: Doc, ids: readonly WallId[], delta: Point2): DocWall[] {
-  return keepOnHosts(doc, ids, transformWalls(doc, ids, (p) => add(p, delta)));
+  return transformWalls(doc, ids, (p) => add(p, delta), false, true);
 }
 
 export function stretchEnd(doc: Doc, id: WallId, end: WallEnd, to: Point2): DocWall[] {
@@ -129,7 +171,7 @@ export function rotateWalls(doc: Doc, ids: readonly WallId[], pivot: Point2, ang
     const d = sub(p, pivot);
     return add(pivot, { x: d.x * c - d.y * s, y: d.x * s + d.y * c });
   };
-  return keepOnHosts(doc, [...set], transformWalls(doc, [...set], turn));
+  return transformWalls(doc, [...set], turn, false, true);
 }
 
 /**
