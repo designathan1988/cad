@@ -12,6 +12,7 @@ import type { DerivedGeometry } from '../app/geometry';
 import { add, dot, normalize, type Point2, scale, sub } from '../core/vector';
 import { GROUP_PREFIX, type GroupSpacing, type Opening, type OpeningGroup, OPENING_PREFIX, type PositionRule } from '../elements/opening/schema';
 import { GUIDE_PREFIX } from '../elements/guide/schema';
+import { NOTE_PREFIX } from '../elements/note/schema';
 import { aimAt } from '../app/opening-ui';
 import { transformWalls } from './edit';
 import { ruleAt } from './opening-tool';
@@ -166,6 +167,8 @@ export function transformSelection(
   const rooms = new Set([...roomsGoingWith(doc, g, walls), ...doc.rooms.filter((r) => set.has(r.id)).map((r) => r.id)]);
   const floors = new Set(doc.floors.filter((f) => set.has(f.id) && f.source.kind === 'outline').map((f) => f.id));
   const guides = new Set(doc.guides.filter((x) => set.has(x.id)).map((x) => x.id));
+  // Notes keep reading upright: only their point goes (a turn, a mirror), their letters as they are.
+  const notes = new Set(doc.notes.filter((x) => set.has(x.id)).map((x) => x.id));
   const outline = (points: readonly Point2[]) => points.map(t.map);
 
   if (!copy) {
@@ -184,6 +187,7 @@ export function transformSelection(
       rooms: doc.rooms.map((r) => (rooms.has(r.id) ? { ...r, seed: t.map(r.seed) } : r)),
       floors: doc.floors.map((f) => (floors.has(f.id) && f.source.kind === 'outline' ? { ...f, source: { kind: 'outline', points: outline(f.source.points) } } : f)),
       guides: doc.guides.map((x) => (guides.has(x.id) ? { ...x, point: t.map(x.point), dir: mapDir(t, x.point, x.dir) } : x)),
+      notes: doc.notes.map((x) => (notes.has(x.id) ? { ...x, at: t.map(x.at) } : x)),
     };
     return { doc: next, selection: [...ids] };
   }
@@ -208,6 +212,8 @@ export function transformSelection(
   for (const f of floorList) fresh(f.id, 'floor');
   const guideList = doc.guides.filter((x) => guides.has(x.id));
   for (const x of guideList) fresh(x.id, GUIDE_PREFIX);
+  const noteList = doc.notes.filter((x) => notes.has(x.id));
+  for (const x of noteList) fresh(x.id, NOTE_PREFIX);
   const to = (id: string) => ids2.get(id) ?? id;
 
   const newWalls = doc.walls
@@ -238,6 +244,7 @@ export function transformSelection(
     rooms: [...doc.rooms, ...newRooms],
     floors: [...doc.floors, ...newFloors],
     guides: [...doc.guides, ...guideList.map((x) => ({ ...x, id: to(x.id), point: t.map(x.point), dir: mapDir(t, x.point, x.dir) }))],
+    notes: [...doc.notes, ...noteList.map((x) => ({ ...x, id: to(x.id), at: t.map(x.at) }))],
   };
   const selection = [
     ...newWalls.map((w) => w.id),
@@ -245,6 +252,7 @@ export function transformSelection(
     ...doc.rooms.filter((r) => set.has(r.id)).map((r) => to(r.id)),
     ...doc.floors.filter((f) => floors.has(f.id)).map((f) => to(f.id)),
     ...guideList.map((x) => to(x.id)),
+    ...noteList.map((x) => to(x.id)),
   ];
   return { doc: next, selection };
 }
@@ -257,7 +265,8 @@ export function canTransform(doc: Doc, ids: readonly string[]): boolean {
     doc.openings.some((o) => set.has(o.id)) ||
     doc.rooms.some((r) => set.has(r.id)) ||
     doc.floors.some((f) => set.has(f.id) && f.source.kind === 'outline') ||
-    doc.guides.some((x) => set.has(x.id))
+    doc.guides.some((x) => set.has(x.id)) ||
+    doc.notes.some((x) => set.has(x.id))
   );
 }
 
@@ -275,7 +284,7 @@ export function copyToLevel(doc: Doc, g: DerivedGeometry, ids: readonly string[]
   let last = doc.rooms.filter((x) => x.levelId === levelId).reduce((n, x) => Math.max(n, Number.parseInt(x.number, 10) || 0), 0);
   const rooms = onLevel(r.doc.rooms, doc.rooms.length).map((x, i) => (i >= doc.rooms.length ? { ...x, number: String(++last) } : x));
   return {
-    doc: { ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length), rooms, floors: onLevel(r.doc.floors, doc.floors.length), guides: onLevel(r.doc.guides, doc.guides.length) },
+    doc: { ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length), rooms, floors: onLevel(r.doc.floors, doc.floors.length), guides: onLevel(r.doc.guides, doc.guides.length), notes: onLevel(r.doc.notes, doc.notes.length) },
     selection: r.selection,
   };
 }

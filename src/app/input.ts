@@ -28,6 +28,7 @@ import { arrowStep } from '../tools/nudge';
 import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
 import { GUIDE_PX, guideBaseAt } from '../tools/guide-tool';
+import { noteBox } from '../elements/note/schema';
 import type { LevelsShown } from './view-3d';
 import type { ModifyKind } from '../tools/modify-tool';
 import { cross, sub } from '../core/vector';
@@ -229,6 +230,15 @@ export function wireInput(app: App): void {
     // door's leaf, was the only way before.
     const near = PICK_PX / app.plan.scale;
     return [
+      // A text note over everything it is written on.
+      ...app
+        .levelNotes()
+        .filter((n) => {
+          const b = noteBox(n);
+          return p.x >= b.x0 - near && p.x <= b.x1 + near && p.y >= b.y0 - near && p.y <= b.y1 + near;
+        })
+        .slice(-1)
+        .map((n) => n.id),
       openingAt(g, p, near),
       wallAt(g, p, undefined, near),
       // A guide where the pointer is on it: before the room it runs across.

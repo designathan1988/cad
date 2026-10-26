@@ -6,6 +6,7 @@
 
 import type { DerivedGeometry } from '../app/geometry';
 import type { Point2 } from '../core/vector';
+import type { Note } from '../elements/note/schema';
 import { markPoint } from '../elements/opening/marks';
 import { symbolLines } from '../elements/opening/symbol';
 import { insideRing } from '../elements/room/derive';
@@ -21,6 +22,7 @@ export const DXF_LAYERS = [
   { name: 'A-GLAZ-IDEN', colour: 4 }, // window type marks
   { name: 'A-AREA', colour: 9 }, // room outlines
   { name: 'A-AREA-IDEN', colour: 7 }, // room names and areas
+  { name: 'A-ANNO-TEXT', colour: 7 }, // text notes
 ] as const;
 type Layer = (typeof DXF_LAYERS)[number]['name'];
 
@@ -30,6 +32,8 @@ export interface DxfLabels {
   readonly area: (m2: number) => string;
   /** Doors' and windows' type marks (opening/marks.ts), as the plan tags them. */
   readonly marks?: ReadonlyMap<string, string>;
+  /** The level's text notes (elements/note). */
+  readonly notes?: readonly Note[];
 }
 
 /** Text height of the room labels and of the type marks (m). */
@@ -149,6 +153,12 @@ export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels):
     polyline('A-AREA', r.outline, true);
     text('A-AREA-IDEN', { x: r.label.x, y: r.label.y + TEXT_H * 0.7 }, TEXT_H, labels.room(r.room.number, r.room.name));
     text('A-AREA-IDEN', { x: r.label.x, y: r.label.y - TEXT_H * 0.7 }, TEXT_H * 0.8, labels.area(r.area));
+  }
+  // Text notes: a TEXT a line, centred as the plan draws them (R12's TEXT has one line).
+  for (const n of labels.notes ?? []) {
+    if (n.levelId !== levelId) continue;
+    const lines = n.text.split('\n');
+    lines.forEach((l, i) => text('A-ANNO-TEXT', { x: n.at.x, y: n.at.y - (i - (lines.length - 1) / 2) * n.height * 1.3 }, n.height, l));
   }
   pair(0, 'ENDSEC');
   pair(0, 'EOF');

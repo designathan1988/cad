@@ -136,6 +136,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('view.points', 'poi.dialogOpen', views, () => app.openPoints()),
     make('view.schedules', 'schedule.open', views, () => app.openSchedules(), { keywords: 'schedule quantitativos tabela CSV portas janelas cômodos paredes áreas' }),
     make('view.addPoint', 'pal.addPoint', views, () => app.addPointHere()),
+    make('edit.addNote', 'ctx.addNote', edit, () => app.addNoteHere(), { keywords: 'texto text nota note anotação annotation' }),
     make('view.tourPlay', 'gtour.play', views, () => app.playTour(), { enabled: doc.views.length > 0 }),
     ...doc.views.map((v) => ({
       id: `view.go.${v.id}`,

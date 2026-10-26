@@ -80,12 +80,14 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
     const rooms = doc.rooms.filter((r) => !drop.has(r.id));
     const floorsLeft = doc.floors.filter((f) => !drop.has(f.id));
     const guides = doc.guides.filter((g) => !drop.has(g.id));
+    const notes = doc.notes.filter((n) => !drop.has(n.id));
     if (
       walls.length === doc.walls.length &&
       gone.size === 0 &&
       rooms.length === doc.rooms.length &&
       floorsLeft.length === doc.floors.length &&
-      guides.length === doc.guides.length
+      guides.length === doc.guides.length &&
+      notes.length === doc.notes.length
     ) {
       return doc;
     }
@@ -104,7 +106,7 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
           ? { ...o, rule: { kind: 'fromStart' as const, distance: placed.get(o.id)!.start } }
           : o,
       );
-    return settleGroups(doc, { ...doc, walls, openings, rooms, floors, guides });
+    return settleGroups(doc, { ...doc, walls, openings, rooms, floors, guides, notes });
   },
 });
 

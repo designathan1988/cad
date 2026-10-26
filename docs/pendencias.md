@@ -404,7 +404,7 @@ Ferramentas de edição (valem para todos os elementos)
 Documentação
 - Cotas permanentes associadas aos elementos (l.117, l.145): falta.
 - Cotas de nível (l.117, l.145): falta.
-- Textos (l.117, l.145): falta.
+- Textos (l.117, l.145): existe ("Adicionar texto aqui" no menu do botão direito no vazio, e na paleta; texto e altura da letra em metros no painel; desenhado na escala da planta; clique e janela selecionam; arrastar, setas, Mover/Copiar/Girar/Espelhar levam só o ponto, as letras ficam de pé; apagar, desfazer; arquivo versão 11; DXF na camada A-ANNO-TEXT). Testado no app: criar, digitar, altura, arrastar, recarregar, janela, apagar e desfazer. Não testado no app: girar/copiar/setas, colar em outro pavimento e o DXF com texto. Sem várias linhas no campo (o campo é de uma linha).
 - Etiquetas automáticas de nome e área do cômodo (l.117): existem.
 - Etiquetas automáticas do tipo da porta e da janela (l.117): existe. Porta e janela não têm tipo, só medidas: o tipo é a medida, numerada da menor (P1, P2…, J1, J2…; D e W em inglês), a mesma marca na planta (etiqueta ao lado, a da porta do lado para onde ela não abre, a da janela do lado de fora), no painel (Marca), na tabela e no DXF. Liga e desliga em Camadas ("Etiquetas de portas e janelas") e na paleta. Visto na casa.
 - Plantas de cada pavimento como vistas derivadas (l.118, l.146): parcial, existe a vista em planta; falta a planta como vista de documentação.

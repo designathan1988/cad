@@ -5,6 +5,7 @@ import type { PointOfInterest } from './points';
 import type { SavedView } from './saved-views';
 import type { Point2 } from '../core/vector';
 import type { Guide } from '../elements/guide/schema';
+import type { Note } from '../elements/note/schema';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { Floor, Room } from '../elements/room/schema';
 import type { HeightRule, ReferenceLine, Wall, WallType, WallTypeId } from '../elements/wall/schema';
@@ -38,7 +39,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 10;
+  readonly version: 11;
   readonly name: string;
   readonly levels: readonly Level[];
   readonly wallTypes: readonly WallType[];
@@ -56,6 +57,8 @@ export interface Doc {
   readonly views: readonly SavedView[];
   /** Numbered places with a title and a text, opened as a card (points.ts). */
   readonly points: readonly PointOfInterest[];
+  /** Text notes on the levels' plans (elements/note). */
+  readonly notes: readonly Note[];
 }
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */
@@ -66,13 +69,13 @@ export interface WallDefaults {
   readonly top: HeightRule;
 }
 
-/** The ids of every element that can be selected: walls, openings, rooms, floors and guides. */
+/** The ids of every element that can be selected: walls, openings, rooms, floors, guides and notes. */
 export const elementIds = (doc: Doc): Set<string> =>
-  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.guides].map((e) => e.id));
+  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.guides, ...doc.notes].map((e) => e.id));
 
 export function newDocument(): Doc {
   return {
-    version: 10,
+    version: 11,
     name: '',
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
     wallTypes: [
@@ -113,6 +116,7 @@ export function newDocument(): Doc {
     guides: [],
     views: [],
     points: [],
+    notes: [],
   };
 }
 

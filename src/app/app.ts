@@ -43,7 +43,9 @@ import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui
 import { snapLabel, type Snap } from '../tools/snap';
 import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, rectangle, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
-import { type Drag, dragTransform, hull, moveGuides } from './select-drag';
+import { type Drag, dragTransform, hull, moveGuides, moveNotes } from './select-drag';
+import { addNote, updateNotes } from '../elements/note/commands';
+import { NOTE_HEIGHT, NOTE_PREFIX, type Note } from '../elements/note/schema';
 import { geometryOf, keepRooms, moveFloors, moveRooms } from './carry';
 import { keepOpenings } from './keep-openings';
 import { stepSelection } from './keyboard-select';
@@ -1132,6 +1134,30 @@ export class App {
     return this.shownGuides().filter((g) => g.levelId === this.ui.levelId);
   }
 
+  /** The notes of the level shown, as a move being dragged takes them; plan only. */
+  levelNotes(): Note[] {
+    if (this.ui.view !== 'plan') return [];
+    const d = this.ui.drag;
+    const notes = this.store.get().notes;
+    return (d?.kind === 'move' ? moveNotes(notes, d) : notes).filter((n) => n.levelId === this.ui.levelId);
+  }
+
+  /** A text note where the menu was opened (or the middle of the view), selected, its text ready to type in the panel. */
+  addNoteHere(at?: Point2): void {
+    const p = at ?? this.plan.center;
+    const id = newId(NOTE_PREFIX);
+    this.store.dispatch(addNote({ id, levelId: this.ui.levelId, at: { x: p.x, y: p.y }, text: t('note.default'), height: NOTE_HEIGHT }));
+    if (this.ui.view !== 'plan') this.setView('plan');
+    this.setTool('select');
+    this.ui.selection = new Set([id]);
+    this.showProperties();
+    this.refresh();
+    // Its text selected in the panel: typing replaces the placeholder.
+    const field = [...this.shell.panel.querySelectorAll<HTMLInputElement>('input[type="text"]')][0];
+    field?.focus();
+    field?.select();
+  }
+
   /** Starts a guide off a wall's face or a guide, at the distance the pointer at p sets (guide-tool.ts). */
   startGuide(base: GuideBase, p: Point2): void {
     this.ui.guide = draftAt(base, p, this.ui.snaps);
@@ -1715,6 +1741,7 @@ export class App {
       rooms: r.doc.rooms.slice(c.doc.rooms.length),
       floors: r.doc.floors.slice(c.doc.floors.length),
       guides: r.doc.guides.slice(c.doc.guides.length),
+      notes: r.doc.notes.slice(c.doc.notes.length),
     };
     const level = levelOf(this.store.get(), this.ui.levelId);
     // The rooms renumbered on from the level's rooms as they are now, not as they were at the copy.
@@ -1730,6 +1757,7 @@ export class App {
         rooms: [...d.rooms, ...rooms],
         floors: [...d.floors, ...added.floors],
         guides: [...d.guides, ...added.guides],
+        notes: [...d.notes, ...added.notes],
       }),
     });
     this.ui.selection = new Set(r.selection);
@@ -2031,7 +2059,7 @@ export class App {
       return this.renderChrome();
     }
     const marks = this.ui.openingTags ? openingMarks(doc.openings, markPrefix()) : undefined;
-    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²`, ...(marks ? { marks } : {}) });
+    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²`, ...(marks ? { marks } : {}), notes: this.store.get().notes });
     const level = doc.levels.find((l) => l.id === levelId);
     const file = `${this.fileBase()} - ${level ? safeFileName(name(level.name)) : ''}.dxf`;
     this.download(file, new Blob([toCp1252(text)], { type: 'application/dxf' }), 'application/dxf');
@@ -2283,6 +2311,7 @@ export class App {
         roomSpace: ui.tool === 'room' ? ui.roomSpace : null,
         preview,
         guides: this.levelGuides(),
+        notes: this.levelNotes().map((n) => ({ ...n, selected: ui.selection.has(n.id) || ui.hover === n.id })),
         guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
         snap:
           // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
@@ -2438,6 +2467,7 @@ export class App {
         openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing] } : null,
         total: ui.selection.size,
         guides: doc.guides.filter((g) => ui.selection.has(g.id)),
+        notes: doc.notes.filter((n) => ui.selection.has(n.id)),
         stacked: stackedSteps(doc),
       },
       {
@@ -2518,6 +2548,7 @@ export class App {
           this.refresh();
         },
         clearGuides: () => this.clearGuides(),
+        updateNotes: (ids, patch) => this.store.dispatch(updateNotes(ids, patch)),
         // The wall moved across, with its joins kept as a move keeps them: the face then meets the one below.
         alignBelow: (step) => this.store.dispatch(setWalls(moveWalls(this.store.get(), [step.upperId], step.shift), 'cmd.alignBelow')),
       },

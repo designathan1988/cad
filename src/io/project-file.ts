@@ -11,6 +11,7 @@ import { deriveGeometry } from '../app/geometry';
 import { distributeOpenings } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import { type Floor, type Room, ROOM_USES } from '../elements/room/schema';
+import type { Note } from '../elements/note/schema';
 import type { WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
 
@@ -27,12 +28,13 @@ import type { DocWall } from '../app/document';
  * Version 8: points of interest (points.ts). Older files have none.
  * Version 9: a wall end can be squared off ('square' in `joins`).
  * Version 10: a room's use and its own ceiling height (`use`, `height`). Older rooms have neither.
+ * Version 11: text notes (`notes`, elements/note). Older files have none.
  */
-export const CURRENT_VERSION = 10;
+export const CURRENT_VERSION = 11;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints'; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes'; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -133,6 +135,10 @@ export const isFloor = (f: unknown): f is Floor =>
   ((f.source.kind === 'room' && typeof f.source.roomId === 'string') ||
     (f.source.kind === 'outline' && Array.isArray(f.source.points) && f.source.points.length >= 3 && f.source.points.every(isPoint)));
 
+/** A text note: a point, some text, letters taller than nothing. */
+export const isNote = (n: unknown): n is Note =>
+  isObject(n) && typeof n.id === 'string' && typeof n.levelId === 'string' && isPoint(n.at) && typeof n.text === 'string' && n.text.trim() !== '' && finite(n.height) && n.height > 0;
+
 /** A guide: a point and a unit direction (a zero one would be no line at all). */
 export const isGuide = (g: unknown): g is Guide =>
   isObject(g) &&
@@ -210,6 +216,12 @@ export function repairProject(raw: unknown): ReadResult {
     points: keep(raw.points, isPointOfInterest, 'droppedPoints').filter((p, _, all) => {
       if (levelIds.has(p.levelId)) return true;
       if (p === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedPoints', count: all.filter((x) => !levelIds.has(x.levelId)).length });
+      return false;
+    }),
+    // A note on a level that is gone is on no plan: dropped, and said.
+    notes: keep(raw.notes, isNote, 'droppedNotes').filter((n, _, all) => {
+      if (levelIds.has(n.levelId)) return true;
+      if (n === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedNotes', count: all.filter((x) => !levelIds.has(x.levelId)).length });
       return false;
     }),
   };

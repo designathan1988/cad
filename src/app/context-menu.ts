@@ -45,6 +45,7 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
   walkHere: { icon: 'walk', keys: '3' },
   addPoint: { icon: 'pin' },
   selectSimilar: { icon: 'pointer' },
+  addNote: { icon: 'text' },
   commands: { icon: 'command', keys: 'Ctrl+K' },
 };
 
@@ -84,6 +85,10 @@ export function contextEntries(app: App, openCommands: () => void): ContextEntry
       return () => app.enterWalk(at ?? undefined);
     })(),
     selectSimilar: () => app.selectSimilar(),
+    addNote: (() => {
+      const at = app.contextPoint;
+      return () => app.addNoteHere(at ?? undefined);
+    })(),
     commands: openCommands,
   };
   return contextIds(app.store.get(), ids, app.ui.levelId).map((id) => ({

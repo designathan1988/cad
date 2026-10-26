@@ -41,13 +41,15 @@ export function nudge(doc: Doc, g: DerivedGeometry, ids: readonly string[], step
   const rooms = next.rooms.map((r) => (set.has(r.id) && !carried.has(r.id) ? { ...r, seed: moved(r.seed) } : r));
   const floors = moveFloors(next.floors, set, moved);
   const guides = next.guides.map((g) => (set.has(g.id) ? { ...g, point: moved(g.point) } : g));
+  const notes = next.notes.map((n) => (set.has(n.id) ? { ...n, at: moved(n.at) } : n));
   const changed =
     next !== doc ||
     openings.some((o, i) => o !== next.openings[i]) ||
     rooms.some((r, i) => r !== next.rooms[i]) ||
     floors.some((f, i) => f !== next.floors[i]) ||
-    guides.some((g, i) => g !== next.guides[i]);
-  return changed ? { ...next, openings, rooms, floors, guides } : doc;
+    guides.some((g, i) => g !== next.guides[i]) ||
+    notes.some((n, i) => n !== next.notes[i]);
+  return changed ? { ...next, openings, rooms, floors, guides, notes } : doc;
 }
 
 /** The rule moved `along` metres toward the wall's end; one without a distance is measured from the start. */

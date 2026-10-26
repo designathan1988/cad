@@ -30,6 +30,7 @@ export type ContextId =
   | 'walkHere'
   | 'addPoint'
   | 'selectSimilar'
+  | 'addNote'
   | 'commands';
 
 /** `levelId`: the level shown, whose guides can be deleted at once. */
@@ -37,7 +38,7 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: str
   const walls = selection.filter((id) => doc.walls.some((w) => w.id === id));
   const merge = selection.length === 2 && walls.length === 2 && canMerge(doc, walls[0]!, walls[1]!) ? (['merge'] as const) : [];
   const guides = levelId !== undefined && doc.guides.some((g) => g.levelId === levelId) ? (['clearGuides'] as const) : [];
-  if (selection.length === 0) return ['drawWall', 'walkHere', 'addPoint', 'frameAll', ...guides, 'commands'];
+  if (selection.length === 0) return ['drawWall', 'addNote', 'walkHere', 'addPoint', 'frameAll', ...guides, 'commands'];
   // Move first, for what the Modify tools take (walls, doors and windows, rooms, outline floors, guides); the five of them
   // are in the tool bar, as Revit's Modify panel, so this menu keeps to six.
   const modify: ContextId[] = canTransform(doc, selection) ? ['move'] : [];

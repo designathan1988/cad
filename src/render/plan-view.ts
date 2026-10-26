@@ -9,6 +9,7 @@ import { layoutRoomTags } from './room-tags';
 import type { Handles } from '../app/handles';
 import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
+import { type Note, noteBox } from '../elements/note/schema';
 import { LAYER_TOKEN } from '../ui/swatch';
 import { separateLabels } from '../app/dim-labels';
 
@@ -61,6 +62,8 @@ export interface PlanOverlay {
   readonly preview: ReadonlySet<WallId>;
   /** The level's guides: lines without ends, dashed across the whole plan (selected and hovered as elements). */
   readonly guides?: readonly { readonly id: string; readonly point: Point2; readonly dir: Point2 }[];
+  /** The level's text notes, as tall as their letters at the plan's scale. */
+  readonly notes?: readonly (Note & { readonly selected: boolean })[];
   /** The guide being placed. */
   readonly guideDraft?: { readonly point: Point2; readonly dir: Point2 } | null;
   /**
@@ -445,6 +448,7 @@ export class PlanView {
     if (o.axisLine) this.drawLine(o.axisLine.point, o.axisLine.dir, color('--snap'), 1.4, [12, 4, 2, 4]);
     for (const r of o.refLines ?? []) this.drawRefLine(r, color('--ref-line'));
     if (o.ray) this.dashed(o.ray.start, o.ray.end, color('--snap'));
+    this.drawNotes(o.notes ?? [], color);
     this.drawOpeningTags(o.openingTags ?? [], color);
     this.drawRoomTags(o.roomLabels, color, this.dimValueBoxes(o.dims ?? []), o.dims ?? []);
     if (o.draft && o.draft.length > 0) {
@@ -665,6 +669,34 @@ export class PlanView {
   }
 
   /** A canvas font from the design tokens: weight, a size token, the family token. */
+  /** Text notes: their letters as tall as they are at this scale, a line each; a selected one boxed. */
+  private drawNotes(notes: NonNullable<PlanOverlay['notes']>, color: (v: string) => string): void {
+    const ctx = this.ctx;
+    const family = getComputedStyle(this.canvas).getPropertyValue('--font').trim() || 'sans-serif';
+    for (const n of notes) {
+      const px = n.height * this.scale;
+      const lines = n.text.split('\n');
+      const c = this.toScreen(n.at);
+      ctx.save();
+      ctx.fillStyle = n.selected ? color('--wall-sel') : color('--text');
+      ctx.font = `${Math.max(2, px)}px ${family}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const step = px * 1.3;
+      lines.forEach((l, i) => ctx.fillText(l, c.x, c.y + (i - (lines.length - 1) / 2) * step));
+      if (n.selected) {
+        const b = noteBox(n);
+        const p0 = this.toScreen({ x: b.x0, y: b.y1 });
+        const p1 = this.toScreen({ x: b.x1, y: b.y0 });
+        ctx.strokeStyle = color('--wall-sel');
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        ctx.strokeRect(p0.x - 2, p0.y - 2, p1.x - p0.x + 4, p1.y - p0.y + 4);
+      }
+      ctx.restore();
+    }
+  }
+
   private font(weight: string, size: string): string {
     const css = getComputedStyle(document.documentElement);
     return `${weight} ${css.getPropertyValue(size).trim()} ${css.getPropertyValue('--font').trim()}`;

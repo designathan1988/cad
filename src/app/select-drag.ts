@@ -21,6 +21,7 @@ import { insidePolygon, openingOutline } from './geometry';
 import { updateOpening } from '../elements/opening/commands';
 import type { Opening } from '../elements/opening/schema';
 import type { Guide } from '../elements/guide/schema';
+import { type Note, noteBox } from '../elements/note/schema';
 import { ruleAt } from '../tools/opening-tool';
 import { aimAlong, aimAt } from './opening-ui';
 
@@ -36,6 +37,7 @@ export type Drag =
       readonly rooms: ReadonlySet<string>;
       readonly floors: ReadonlySet<string>;
       readonly guides: ReadonlySet<string>;
+      readonly notes: ReadonlySet<string>;
     }
   | { readonly kind: 'grip'; readonly id: WallId; readonly end: WallEnd; readonly walls: readonly DocWall[] }
   /** `grab`: from the end to where the arrow was taken, kept all along so the end does not jump. */
@@ -125,6 +127,7 @@ export function selectGestures(app: App): SelectGestures {
         const rooms = new Set([...going(), ...doc.rooms.filter((r) => ui.selection.has(r.id)).map((r) => r.id)]);
         const floors = new Set(doc.floors.filter((f) => ui.selection.has(f.id) && f.source.kind === 'outline').map((f) => f.id));
         const guides = new Set(doc.guides.filter((g) => ui.selection.has(g.id)).map((g) => g.id));
+        const notes = new Set(doc.notes.filter((n) => ui.selection.has(n.id)).map((n) => n.id));
         const only = ui.selection.size === 1 ? [...ui.selection][0]! : null;
         const sliding = only !== null ? doc.openings.find((o) => o.id === only) : undefined;
         const placed = sliding ? app.geometry.openings.get(sliding.id) : undefined;
@@ -133,8 +136,8 @@ export function selectGestures(app: App): SelectGestures {
           const f = placed.frame;
           const centre = add(f.start, scale(f.dir, (placed.end - placed.start) / 2));
           ui.drag = { kind: 'slide', id: sliding.id, grab: dot(sub(pending.at, centre), f.dir), walls: doc.walls, openings: doc.openings };
-        } else if (pending.kind === 'wall' && moving.length + rooms.size + floors.size + guides.size > 0) {
-          ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, floors, guides };
+        } else if (pending.kind === 'wall' && moving.length + rooms.size + floors.size + guides.size + notes.size > 0) {
+          ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, floors, guides, notes };
         }
         else if (pending.kind === 'grip') ui.drag = { kind: 'grip', id: pending.id, end: pending.end, walls: doc.walls };
         else if (pending.kind === 'stretch') {
@@ -222,12 +225,13 @@ export function selectGestures(app: App): SelectGestures {
         const rooms = moveRooms(before.rooms, d.rooms, dragTransform(d));
         const floors = d.kind === 'move' ? moveFloors(before.floors, d.floors, dragTransform(d)) : before.floors;
         const guides = d.kind === 'move' ? moveGuides(before.guides, d) : before.guides;
+        const notes = d.kind === 'move' ? moveNotes(before.notes, d) : before.notes;
         const walls = setWalls(d.walls);
-        // One undo step for the walls and what went with them; a room, a floor or a guide alone is a move too.
-        const moved = rooms.some((r, i) => r !== before.rooms[i]) || floors.some((f, i) => f !== before.floors[i]) || guides !== before.guides;
+        // One undo step for the walls and what went with them; a room, a floor, a guide or a note alone is a move too.
+        const moved = rooms.some((r, i) => r !== before.rooms[i]) || floors.some((f, i) => f !== before.floors[i]) || guides !== before.guides || notes !== before.notes;
         app.store.dispatch({ label: d.kind === 'move' ? 'cmd.move' : walls.label, apply: (x) => {
           const next = walls.apply(x);
-          return next === x && !moved ? x : { ...next, rooms, floors, guides };
+          return next === x && !moved ? x : { ...next, rooms, floors, guides, notes };
         } });
       } else if (d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'bulge') app.store.dispatch(setWalls(d.walls));
       else if (d?.kind === 'slide') {
@@ -260,6 +264,12 @@ export interface Pickable {
 export function moveGuides(guides: readonly Guide[], d: Extract<Drag, { kind: 'move' }>): readonly Guide[] {
   if (d.guides.size === 0 || (d.delta.x === 0 && d.delta.y === 0)) return guides;
   return guides.map((g) => (d.guides.has(g.id) ? { ...g, point: add(g.point, d.delta) } : g));
+}
+
+/** The notes as a move takes them: the same list when it takes none, or does not move. */
+export function moveNotes(notes: readonly Note[], d: Extract<Drag, { kind: 'move' }>): readonly Note[] {
+  if (d.notes.size === 0 || (d.delta.x === 0 && d.delta.y === 0)) return notes;
+  return notes.map((n) => (d.notes.has(n.id) ? { ...n, at: add(n.at, d.delta) } : n));
 }
 
 /** Where a move or a turn takes a point, as it stands now. */
@@ -311,6 +321,11 @@ function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): voi
       .filter((r) => r.enclosed)
       .map((r) => ({ id: r.room.id, outlines: [screen(r.outline, elevation(r.room.levelId), elevation(r.room.levelId), r.room.levelId)] })),
     ...[...g.floors.values()].map((f) => ({ id: f.floor.id, outlines: [screen(f.outline, f.bottom, f.top, f.floor.levelId)] })),
+    // A note by its box.
+    ...app.levelNotes().map((n) => {
+      const b = noteBox(n);
+      return { id: n.id, outlines: [[vec(b.x0, b.y0), vec(b.x1, b.y0), vec(b.x1, b.y1), vec(b.x0, b.y1)].map((p) => app.plan.toScreen(p))] };
+    }),
     // A guide has no ends: only a crossing selection, which it runs through, takes it.
     ...app.levelGuides().map((x) => {
       const a = app.plan.toScreen(x.point);

@@ -12,6 +12,8 @@ import { floorPanel, roomPanel, type RoomPanelActions } from '../elements/room/p
 import { nextWallFields, wallFields } from '../elements/wall/fields';
 import { guideFields } from '../elements/guide/fields';
 import type { Guide } from '../elements/guide/schema';
+import { type NoteFieldActions, noteFields } from '../elements/note/fields';
+import type { Note } from '../elements/note/schema';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { StackedStep } from '../app/stacked';
 import type { ReferenceLine } from '../elements/wall/schema';
@@ -40,6 +42,8 @@ export interface PanelInput {
   readonly total: number;
   /** The selected guides. */
   readonly guides: readonly Guide[];
+  /** The selected text notes. */
+  readonly notes: readonly Note[];
   /** Walls whose exterior face does not meet the face of the wall they stand on (app/stacked.ts). */
   readonly stacked: readonly StackedStep[];
 }
@@ -61,6 +65,7 @@ export interface PanelActions {
   readonly updateOpeningDefaults: (kind: OpeningKind, patch: Partial<OpeningSize>) => void;
   /** Deletes every guide of the level shown. */
   readonly clearGuides: () => void;
+  readonly updateNotes: NoteFieldActions['updateNotes'];
   /** Moves the wall so its exterior face meets the face of the wall below it. */
   readonly alignBelow: (step: StackedStep) => void;
 }
@@ -75,7 +80,7 @@ function common<T>(walls: readonly DocWall[], get: (w: DocWall) => T): T | null 
 
 export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActions): void {
   const { doc, selected } = input;
-  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window' | 'room' | 'slab' | 'guide', title: string) => {
+  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window' | 'room' | 'slab' | 'guide' | 'text', title: string) => {
     const h = el('div', { class: 'panel-head' });
     h.innerHTML = icon(iconName, 16);
     const close = el('button', { class: 'icon-btn', type: 'button', title: t('panel.close'), 'aria-label': t('panel.close') });
@@ -153,6 +158,11 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     nodes.push(head(kinds.size === 1 && kinds.has('window') ? 'window' : 'door', openingTitle(input.openings)));
     part(input.openings.length);
     nodes.push(...openingPanel(doc, input.placed, input.openings, input.openingWarnings, act.opening, input.levelRooms));
+  } else if (input.notes.length > 0) {
+    const n = input.notes.length;
+    nodes.push(head('text', n === 1 ? t('note.title') : t('note.titleMany', { n })));
+    part(n);
+    nodes.push(fieldsSection(t('panel.general'), true, noteFields(input.notes, act), input.notes));
   } else if (input.guides.length > 0) {
     const n = input.guides.length;
     nodes.push(head('guide', n === 1 ? t('guide.title') : t('guide.titleMany', { n })));
