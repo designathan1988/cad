@@ -286,7 +286,10 @@ Quarto 1); arco com cotas de corda e de raio, alça de curvatura e raio editado 
 - Falta: setores para arcos (os nós com trechos de arco seguem a regra da passagem) e para um braço que
   passa pelo ponto com setor de mais de meia volta (aí a junção avisa `ComplexJoin` e fica a regra
   anterior).
-- Overrides de junta (desligar, butt, miter, corte reto).
+- Resolvido em 2026-10-26 (3f06e1a): junta escolhida por ponta da parede, no painel (Mais opções): Chanfro,
+  Topo: esta passa / esta para, Desunida (o Disallow Join do Revit); a ponta é nomeada por onde está
+  (cima, baixo, esquerda, direita). Arquivo versão 7. Chanfro e topo valem para o L de duas paredes
+  retas; em nó de 3+ pontas e com arco só Desunida tem efeito. Falta: corte reto nas duas (Square off).
 - Mutação ≥ 90 %.
 
 ## Adendo 2: conjunto BIM (ref/chat.txt:74-152; etapas 16 a 33)
