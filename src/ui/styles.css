@@ -638,6 +638,64 @@ button.project-name:hover {
 .walk-stick[hidden] {
   display: none;
 }
+/* The tour playing: a bar at the bottom middle of the drawing, the stop's name over its caption. */
+.tour-bar {
+  position: absolute;
+  left: 50%;
+  bottom: var(--sp-5);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  max-width: min(var(--dialog-w-lg), calc(100% - 2 * var(--sp-4)));
+  padding: var(--sp-2);
+  border: var(--line) solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  z-index: 5;
+}
+.tour-bar[hidden] {
+  display: none;
+}
+.tour-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 var(--sp-2);
+}
+.tour-title {
+  font-weight: 600;
+}
+.tour-caption {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.tour-caption[hidden] {
+  display: none;
+}
+.tour-rows {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 2fr) var(--control-h) var(--control-h) var(--control-h);
+  gap: var(--sp-2);
+  align-items: center;
+  padding: var(--sp-3) var(--sp-4);
+}
+.tour-index {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.tour-hint,
+.tour-empty {
+  padding: 0 var(--sp-4);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.tour-seconds {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+}
 .walk-knob {
   position: absolute;
   left: 50%;

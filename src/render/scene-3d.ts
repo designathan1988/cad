@@ -348,6 +348,32 @@ export class Scene3D {
     this.doorsOpen = open;
   }
 
+  private flight = 0;
+  /**
+   * The camera flown to a position and target over `ms` (a tour's stop, tour-dialog.ts), easing in and
+   * out; a new flight takes over from where the last one was.
+   */
+  flyTo(position: readonly [number, number, number], target: readonly [number, number, number], ms: number): void {
+    cancelAnimationFrame(this.flight);
+    this.setOrtho(false);
+    const p0 = this.persp.position.clone();
+    const t0 = this.controls.target.clone();
+    const p1 = new THREE.Vector3(...position);
+    const t1 = new THREE.Vector3(...target);
+    const start = performance.now();
+    const step = (now: number) => {
+      const k = Math.min(1, (now - start) / ms);
+      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      this.persp.position.lerpVectors(p0, p1, e);
+      this.controls.target.lerpVectors(t0, t1, e);
+      this.persp.up.set(0, 1, 0);
+      this.controls.update();
+      this.invalidate();
+      if (k < 1) this.flight = requestAnimationFrame(step);
+    };
+    this.flight = requestAnimationFrame(step);
+  }
+
   /** The camera as it was before walking, given back when the walk ends. */
   private beforeWalk: { position: THREE.Vector3; target: THREE.Vector3; ortho: boolean } | null = null;
 

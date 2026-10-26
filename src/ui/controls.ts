@@ -63,7 +63,8 @@ export function row(label: string | { text: string; icon: IconName }, control: H
  * restores. Dragging on the row's label scrubs the value in 1 cm steps. `value` null shows "various".
  */
 /** `digits`: decimals shown; a layer's thickness needs 3 (0,015 m of plaster), most values 2. */
-export function numberField(value: number | null, onCommit: (v: number) => void, min = -Infinity, digits = 2): HTMLElement {
+/** `unit`: what the value is in, shown after it; metres unless said (a tour's seconds). */
+export function numberField(value: number | null, onCommit: (v: number) => void, min = -Infinity, digits = 2, unit = 'm'): HTMLElement {
   const box = el('div', { class: 'num-field' });
   const input = el('input', { type: 'text', inputmode: 'decimal', autocomplete: 'off', spellcheck: 'false' });
   // The value the field stands for: after a commit, the new one, written as every field writes it
@@ -124,7 +125,7 @@ export function numberField(value: number | null, onCommit: (v: number) => void,
   });
   input.addEventListener('blur', () => commit());
   input.addEventListener('input', clear);
-  box.append(input, el('span', { class: 'unit' }, 'm'), error);
+  box.append(input, el('span', { class: 'unit' }, unit), error);
   return box;
 }
 

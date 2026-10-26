@@ -824,6 +824,78 @@ export class App {
 
   /** Where the right-click menu was opened (plan point), while its entries are made (input.ts). */
   contextPoint: Point2 | null = null;
+  /** The guided tour being played (tour-dialog.ts): which stop, and whether it goes on by itself. */
+  tour: { index: number; playing: boolean } | null = null;
+  private tourTimer = 0;
+  /** How long each stop of the tour lasts when it plays by itself (s), kept with the preferences. */
+  tourSeconds = (() => {
+    const s = loadPrefs().tourSeconds;
+    return typeof s === 'number' && s >= 1 ? s : 5;
+  })();
+
+  setTourSeconds(s: number): void {
+    this.tourSeconds = Math.max(1, Math.round(s));
+    savePrefs({ tourSeconds: this.tourSeconds });
+  }
+
+  /** The tour from a stop (the first by default), going on by itself. */
+  playTour(from = 0): void {
+    const views = this.store.get().views;
+    if (views.length === 0) {
+      this.ui.info = t('gtour.none');
+      return this.renderChrome();
+    }
+    this.exitWalk();
+    this.tour = { index: Math.max(0, Math.min(from, views.length - 1)), playing: true };
+    this.showStop();
+  }
+
+  /** The next (+1) or the previous (−1) stop; past the last, the tour ends; it keeps playing or paused. */
+  tourStep(step: 1 | -1): void {
+    const tour = this.tour;
+    if (!tour) return;
+    const n = this.store.get().views.length;
+    const index = tour.index + step;
+    if (index >= n) return this.stopTour();
+    this.tour = { ...tour, index: Math.max(0, index) };
+    this.showStop();
+  }
+
+  tourPause(): void {
+    const tour = this.tour;
+    if (!tour) return;
+    this.tour = { ...tour, playing: !tour.playing };
+    clearTimeout(this.tourTimer);
+    if (this.tour.playing) this.tourTimer = window.setTimeout(() => this.tourStep(1), this.tourSeconds * 1000);
+    this.renderChrome();
+  }
+
+  stopTour(): void {
+    if (!this.tour) return;
+    this.tour = null;
+    clearTimeout(this.tourTimer);
+    this.renderChrome();
+  }
+
+  /** The stop the tour is at: flown to in 3D, gone to in plan; the next one after its time. */
+  private showStop(): void {
+    const tour = this.tour;
+    const v = tour ? this.store.get().views[tour.index] : undefined;
+    if (!tour || !v) return this.stopTour();
+    clearTimeout(this.tourTimer);
+    const FLY = 1200;
+    if (v.kind === '3d') {
+      if (v.levelId !== this.ui.levelId) this.setLevel(v.levelId);
+      this.ui.view3d = readView3D(v.view3d);
+      this.setView('3d');
+      this.framed['3d'] = true;
+      this.scene.flyTo(v.position, v.target, FLY);
+      this.refresh();
+    } else this.goToView(v.id);
+    if (tour.playing) this.tourTimer = window.setTimeout(() => this.tourStep(1), this.tourSeconds * 1000 + (v.kind === '3d' ? FLY : 0));
+    this.renderChrome();
+  }
+
   /** Walking through the model (walk.ts), or null. Interface state: never saved. */
   walker: Walker | null = null;
   /** The walker's eyes above the floor (m), kept with the preferences. */
@@ -2463,6 +2535,8 @@ export class App {
   }
 
   private browserKey = '';
+  /** Opens the views and tour dialog; set by the input layer too. */
+  openTour: () => void = () => {};
   /** Opens the levels dialog; set by the input layer, which owns the dialogs. */
   openLevels: () => void = () => {};
   /** Opens the wall types dialog, on a type if given; set by the input layer too. */
@@ -2512,6 +2586,17 @@ export class App {
     shell.viewPlan.setAttribute('aria-pressed', String(ui.view === 'plan'));
     shell.viewWalk.setAttribute('aria-pressed', String(this.walker !== null));
     shell.walkStick.hidden = this.walker === null;
+    // The tour's bar: the stop's name and caption, where it is in the tour, and its buttons.
+    const stop = this.tour ? this.store.get().views[this.tour.index] : undefined;
+    shell.tourBar.hidden = !stop;
+    if (stop && this.tour) {
+      shell.tourTitle.textContent = `${this.tour.index + 1}/${this.store.get().views.length} · ${name(stop.name)}`;
+      shell.tourCaption.textContent = stop.caption ?? '';
+      shell.tourCaption.hidden = !stop.caption;
+      shell.tourPlay.innerHTML = icon(this.tour.playing ? 'pause' : 'play', 18);
+      shell.tourPlay.setAttribute('aria-label', t(this.tour.playing ? 'gtour.pause' : 'gtour.resume'));
+      shell.tourPlay.title = t(this.tour.playing ? 'gtour.pause' : 'gtour.resume');
+    }
     shell.toolSelect.setAttribute('aria-pressed', String(ui.tool === 'select'));
     shell.toolWall.setAttribute('aria-pressed', String(ui.tool === 'wall'));
     shell.toolRoom.setAttribute('aria-pressed', String(ui.tool === 'room'));

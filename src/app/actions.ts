@@ -127,6 +127,8 @@ export function appActions(app: App, open: Openers): Action[] {
         run: () => app.setLevel(l.id),
       })),
     make('view.save', 'views.save', views, () => app.saveCurrentView()),
+    make('view.tourEdit', 'gtour.edit', views, () => app.openTour()),
+    make('view.tourPlay', 'gtour.play', views, () => app.playTour(), { enabled: doc.views.length > 0 }),
     ...doc.views.map((v) => ({
       id: `view.go.${v.id}`,
       label: t('pal.goView', { name: name(v.name) }),

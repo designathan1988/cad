@@ -13,6 +13,8 @@ export type SavedView =
       readonly name: string;
       readonly kind: '3d';
       readonly levelId: string;
+      /** What the tour says at this stop (tour.ts); none when absent. */
+      readonly caption?: string;
       /** Camera position and the point it looks at, in three.js coordinates (y up). */
       readonly position: readonly [number, number, number];
       readonly target: readonly [number, number, number];
@@ -23,6 +25,7 @@ export type SavedView =
       readonly name: string;
       readonly kind: 'plan';
       readonly levelId: string;
+      readonly caption?: string;
       /** Pixels per metre, and the plan point in the middle. */
       readonly scale: number;
       readonly center: Point2;
@@ -44,6 +47,37 @@ export const deleteView = (id: string): Command<Doc> => ({
   apply: (doc) => (doc.views.some((v) => v.id === id) ? { ...doc, views: doc.views.filter((v) => v.id !== id) } : doc),
 });
 
+/** A view's name or caption changed; an empty caption is none. */
+export const updateView = (id: string, patch: { readonly name?: string; readonly caption?: string }): Command<Doc> => ({
+  label: 'cmd.updateView',
+  apply: (doc) => {
+    let changed = false;
+    const views = doc.views.map((v) => {
+      if (v.id !== id) return v;
+      const name = patch.name !== undefined && patch.name.trim() !== '' ? patch.name.trim() : v.name;
+      const caption = patch.caption !== undefined ? patch.caption.trim() : (v.caption ?? '');
+      if (name === v.name && caption === (v.caption ?? '')) return v;
+      changed = true;
+      const { caption: _c, ...rest } = v;
+      return (caption === '' ? { ...rest, name } : { ...rest, name, caption }) as SavedView;
+    });
+    return changed ? { ...doc, views } : doc;
+  },
+});
+
+/** A view one place earlier (−1) or later (+1) in the list: the tour's order. */
+export const moveView = (id: string, step: -1 | 1): Command<Doc> => ({
+  label: 'cmd.moveView',
+  apply: (doc) => {
+    const i = doc.views.findIndex((v) => v.id === id);
+    const j = i + step;
+    if (i < 0 || j < 0 || j >= doc.views.length) return doc;
+    const views = [...doc.views];
+    [views[i], views[j]] = [views[j]!, views[i]!];
+    return { ...doc, views };
+  },
+});
+
 const finite = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
 const triple = (a: unknown): boolean => Array.isArray(a) && a.length === 3 && a.every(finite);
 
@@ -52,6 +86,7 @@ export function isSavedView(v: unknown): v is SavedView {
   if (typeof v !== 'object' || v === null) return false;
   const o = v as Record<string, unknown>;
   if (typeof o.id !== 'string' || typeof o.name !== 'string' || typeof o.levelId !== 'string') return false;
+  if (o.caption !== undefined && typeof o.caption !== 'string') return false;
   if (o.kind === '3d') {
     const w = o.view3d as Record<string, unknown> | undefined;
     return (

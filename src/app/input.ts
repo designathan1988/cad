@@ -15,6 +15,7 @@ import { selectGestures } from './select-drag';
 import { insideRing } from '../elements/room/derive';
 import { EDIT_LEVELS } from './app';
 import { showLevels } from '../ui/levels-dialog';
+import { showTourDialog } from '../ui/tour-dialog';
 import { showWallTypes } from '../ui/types-dialog';
 import { showPalette } from '../ui/palette';
 import { offerTour, startTour } from '../ui/tour';
@@ -44,6 +45,7 @@ export function wireInput(app: App): void {
   const palette = () => showPalette(appActions(app, openers));
   app.openCommands = palette;
   app.openLevels = () => showLevels(app);
+  app.openTour = () => showTourDialog(app);
   app.openWallTypes = (typeId) => showWallTypes(app, typeId);
   shell.sidebar.addEventListener('click', () => app.toggleBrowser());
   offerTour(app);
@@ -539,6 +541,10 @@ export function wireInput(app: App): void {
   shell.homeBtn.addEventListener('click', () => app.frameAll());
   shell.view3d.addEventListener('click', () => app.setView('3d'));
   shell.viewWalk.addEventListener('click', () => app.toggleWalk());
+  shell.tourPrev.addEventListener('click', () => app.tourStep(-1));
+  shell.tourNext.addEventListener('click', () => app.tourStep(1));
+  shell.tourPlay.addEventListener('click', () => app.tourPause());
+  shell.tourStop.addEventListener('click', () => app.stopTour());
   // The walking stick: pushed up walks forward, sideways steps aside, as far as it is pushed.
   const stickAt = (e: PointerEvent) => {
     const r = shell.walkStick.getBoundingClientRect();
@@ -677,6 +683,19 @@ export function wireInput(app: App): void {
     const ctrl = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
     shift = e.shiftKey;
+    // A tour playing: the arrows go from stop to stop, Space pauses, Esc stops; the rest waits.
+    if (app.tour && !ctrl) {
+      if (key === 'arrowright' || key === 'arrowleft') {
+        e.preventDefault();
+        return app.tourStep(key === 'arrowright' ? 1 : -1);
+      }
+      if (key === ' ') {
+        e.preventDefault();
+        return app.tourPause();
+      }
+      if (key === 'escape') return app.stopTour();
+      return;
+    }
     if (app.walker && !ctrl) {
       if (WALK_KEYS.has(key)) {
         e.preventDefault();

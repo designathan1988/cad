@@ -67,6 +67,8 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
       // Saved views: a click goes back to one; × deletes it (one undo step).
       ...doc.views.map((v) => savedItem(name(v.name), v.kind, () => app.goToView(v.id), () => app.deleteSavedView(v.id))),
       item(t('views.save'), () => app.saveCurrentView(), { lead: icon('plus', 16) }),
+      item(t('gtour.edit'), () => app.openTour(), {}),
+      ...(doc.views.length > 0 ? [item(t('gtour.play'), () => app.playTour(), { lead: icon('play', 16) })] : []),
     ),
     section(
       t('browser.layers'),

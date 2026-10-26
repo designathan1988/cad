@@ -31,6 +31,8 @@ export interface Prefs {
   planView?: { scale: number; center: { x: number; y: number } };
   /** Walking: the eyes' height above the floor (m). */
   eyeHeight?: number;
+  /** A tour's stop, playing by itself (s). */
+  tourSeconds?: number;
 }
 
 function storage(): Storage | null {
