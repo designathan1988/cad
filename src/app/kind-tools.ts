@@ -1,9 +1,10 @@
 // The tools that place the registry's kinds (elements/registry.ts): guardrails, stairs, roofs, beams, columns, grid axes, dimensions, texts and level marks. Functions over the app (app.ts delegates).
 
+import { lengthNum } from '../ui/units';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { type PlanOverlay } from '../render/plan-view';
-import { num, t } from '../ui/i18n';
+import { t } from '../ui/i18n';
 import { solidsOf } from '../elements/registry';
 import { gridKind } from '../elements/kinds/grid';
 import { addRailing } from '../elements/railing/commands';
@@ -234,5 +235,5 @@ export function dimensionDraft(app: App): (NonNullable<PlanOverlay['dimensionDra
   const b = s.kind === 'placing' ? s.b : at;
   const offset = s.kind === 'placing' ? offsetThrough(a, b, at) : 0;
   const p = placeDimension(app.store.get(), app.geometry, { id: '', levelId: '', a: { kind: 'point', at: a }, b: { kind: 'point', at: b }, offset });
-  return p ? { ...p, text: num(p.length) } : null;
+  return p ? { ...p, text: lengthNum(p.length) } : null;
 }

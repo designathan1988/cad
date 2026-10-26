@@ -1,5 +1,6 @@
 // The fields stairs show in the panel (ui/fields.ts builds the rows).
 
+import { lengthText } from '../../ui/units';
 import type { Field } from '../../ui/fields';
 import { num, t } from '../../ui/i18n';
 import type { StairPatch } from './commands';
@@ -55,7 +56,7 @@ export function stairFields(stairs: readonly StairSolid[], act: StairFieldAction
       label: 'stair.runs',
       kind: 'readout',
       when: (items) => items.every((s) => s.stair.kind === 'ramp'),
-      text: same((s) => t('stair.runsText', { n: s.risers, h: num(s.riser * 100, 1), l: num(Math.hypot(s.walk.at(-1)!.x - s.walk[0]!.x, s.walk.at(-1)!.y - s.walk[0]!.y)) })),
+      text: same((s) => t('stair.runsText', { n: s.risers, h: num(s.riser * 100, 1), l: lengthText(Math.hypot(s.walk.at(-1)!.x - s.walk[0]!.x, s.walk.at(-1)!.y - s.walk[0]!.y)) })),
     },
     {
       id: 'turn',

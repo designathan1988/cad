@@ -1,7 +1,8 @@
 // Walking through the model at eye height: in and out, looking, the keys, the level, bumping into walls. Functions over the app (app.ts delegates).
 
+import { lengthText } from '../ui/units';
 import { type Point2 } from '../core/vector';
-import { num, t } from '../ui/i18n';
+import { t } from '../ui/i18n';
 import { savePrefs } from './persist';
 import { EYE_MAX, EYE_MIN, MAX_PITCH, moveWithCollision, obstaclesOf, startPoint, stepFor } from './walk';
 import type { App } from './app';
@@ -29,7 +30,7 @@ export function enterWalk(app: App, at?: Point2): void {
   app.walkLast = performance.now();
   cancelAnimationFrame(app.walkFrame);
   app.walkFrame = requestAnimationFrame((now) => app.walkTick(now));
-  app.toast(t('toast.walk', { h: num(app.eyeHeight) }));
+  app.toast(t('toast.walk', { h: lengthText(app.eyeHeight) }));
   app.render();
 }
 

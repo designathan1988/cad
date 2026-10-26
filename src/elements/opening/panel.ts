@@ -2,11 +2,12 @@
 // their fields (fields.ts). It only reads state and sends changes; each change is one command, so
 // one undo step.
 
+import { lengthNum, lengthText } from '../../ui/units';
 import type { Doc } from '../../app/document';
 import type { OpeningSolid } from '../../app/geometry';
 import { el } from '../../ui/controls';
 import { fieldsSection } from '../../ui/fields';
-import { markPrefix, num, t, type MessageKey } from '../../ui/i18n';
+import { markPrefix, t, type MessageKey } from '../../ui/i18n';
 import { icon } from '../../ui/icons';
 import type { OpeningWarning } from './derive';
 import type { RoomSolid } from '../room/derive';
@@ -61,7 +62,7 @@ export function openingPanel(
 export function openingTitle(selected: readonly OpeningSolid[]): string {
   if (selected.length !== 1) return t('panel.openings', { n: selected.length });
   const o = selected[0]!.opening;
-  return t('panel.openingSize', { kind: kindName(o.kind), w: num(o.width), h: num(o.height) });
+  return t('panel.openingSize', { kind: kindName(o.kind), w: lengthNum(o.width), h: lengthText(o.height) });
 }
 
 export function nextOpeningPanel(kind: OpeningKind, size: OpeningSize, set: (patch: Partial<OpeningSize>) => void): HTMLElement[] {

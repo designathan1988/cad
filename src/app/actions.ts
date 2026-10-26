@@ -24,6 +24,7 @@ export interface Openers {
   readonly levels: () => void;
   readonly wallTypes: () => void;
   readonly materials: () => void;
+  readonly units: () => void;
   readonly tour: () => void;
   readonly openFile: () => void;
   readonly projects: () => void;
@@ -160,6 +161,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('level.edit', 'levels.edit', levels, open.levels),
     make('type.edit', 'types.edit', edit, open.wallTypes, { keywords: tBoth('types.title') }),
     make('material.edit', 'mats.edit', edit, open.materials, { keywords: tBoth('mats.title') }),
+    make('units.edit', 'units.edit', edit, open.units, { keywords: `${tBoth('units.title')} ${tBoth('units.cm')} ${tBoth('units.mm')}` }),
     make('help.shortcuts', 'pal.shortcuts', help, open.help, { keys: '?' }),
     make('help.tour', 'pal.tour', help, open.tour),
   ];

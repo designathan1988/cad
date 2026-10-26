@@ -1,8 +1,8 @@
 // The fields beams show in the panel (ui/fields.ts builds the rows).
 
+import { lengthText } from '../../ui/units';
 import { distance } from '../../core/vector';
 import type { Field } from '../../ui/fields';
-import { num } from '../../ui/i18n';
 import type { BeamPatch } from './commands';
 import type { Beam } from './schema';
 
@@ -19,7 +19,7 @@ export function beamFields(beams: readonly Beam[], act: BeamFieldActions): Field
       kind: 'readout',
       text: (items) => {
         const l = items.map((b) => distance(b.start, b.end));
-        return l.every((x) => Math.abs(x - l[0]!) < 1e-9) ? `${num(l[0]!)} m` : '—';
+        return l.every((x) => Math.abs(x - l[0]!) < 1e-9) ? `${lengthText(l[0]!)}` : '—';
       },
     },
     { id: 'width', label: 'beam.width', kind: 'number', min: 0.05, get: (b) => b.width, set: (v) => act.updateBeams(ids, { width: v }) },

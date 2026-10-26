@@ -2,6 +2,7 @@
 // general (kind and size), position (rule and its reference), the door's leaf, the group the
 // selection is in, and arranging several. Also the size of the next opening the tool places.
 
+import { lengthNum, lengthText } from '../../ui/units';
 import { type Doc, wallNumber } from '../../app/document';
 import { stopAfter, stopBefore, wallStops } from '../../app/wall-stops';
 import { referenceLength } from './derive';
@@ -9,7 +10,7 @@ import type { RoomSolid } from '../room/derive';
 import { openingSides } from './sides';
 import type { OpeningSolid } from '../../app/geometry';
 import type { Field } from '../../ui/fields';
-import { name, num, t, type MessageKey } from '../../ui/i18n';
+import { name, t, type MessageKey } from '../../ui/i18n';
 import { alignCandidates, alignFits, referenceCandidates } from './commands';
 import {
   type AlignEdge,
@@ -85,7 +86,7 @@ export function positionFields(doc: Doc, one: OpeningSolid, placed: ReadonlyMap<
   const refs = referenceCandidates(doc, o.id);
   const aligns = alignCandidates(doc, o.id);
   // Named by kind and where it starts on its wall: short enough for the field, and unique.
-  const label = (r: Opening) => `${kindName(r.kind)} · ${num(placed.get(r.id)?.start ?? 0)} m`;
+  const label = (r: Opening) => `${kindName(r.kind)} · ${lengthText(placed.get(r.id)?.start ?? 0)}`;
   // One to align with is on another wall, maybe on another level: say which, so it can be found.
   const levelOf = (wallId: string) => doc.walls.find((w) => w.id === wallId)?.levelId;
   const alignLabel = (r: Opening) => {
@@ -170,7 +171,7 @@ export function positionFields(doc: Doc, one: OpeningSolid, placed: ReadonlyMap<
       get: (x) => (hasDistance(x.opening.rule) ? x.opening.rule.distance - baseOf(x) : 0),
       set: (v) => hasDistance(rule) && act.update([o.id], { rule: { ...rule, distance: baseOf(one) + v } }),
     },
-    { id: 'jambs', label: 'panel.jambs', kind: 'readout', text: (xs) => `${num(xs[0]!.start)} – ${num(xs[0]!.end)} m` },
+    { id: 'jambs', label: 'panel.jambs', kind: 'readout', text: (xs) => `${lengthNum(xs[0]!.start)} – ${lengthText(xs[0]!.end)}` },
     // In the middle of its room's stretch of wall: between the faces of the walls beside it (the
     // wall's ends when none), measured from the start from then on.
     {
@@ -307,7 +308,7 @@ export function arrangeFields(doc: Doc, list: readonly Opening[], placed: Readon
   const [first, ...others] = list;
   const ids = list.map((o) => o.id);
   return [
-    { id: 'hint', label: 'panel.arrange', kind: 'note', text: () => t('panel.arrangeHint', { ref: `${kindName(first!.kind)} · ${num(placed.get(first!.id)?.start ?? 0)} m` }) },
+    { id: 'hint', label: 'panel.arrange', kind: 'note', text: () => t('panel.arrangeHint', { ref: `${kindName(first!.kind)} · ${lengthText(placed.get(first!.id)?.start ?? 0)}` }) },
     { id: 'distribute', label: 'panel.distribute', kind: 'action', enabled: (os) => os.every((o) => o.wallId === first!.wallId), run: () => act.distribute(ids, { kind: 'equal' }) },
     {
       id: 'alignPosition',

@@ -1,10 +1,11 @@
 // The fields walls show in the panel, in three sections (ui/fields.ts builds the rows). Base offset
 // and top are the wall's own or its type's (app/document.ts): an own one is marked, with the way back.
 
+import { lengthText } from '../../ui/units';
 import { type Doc, type DocWall, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop } from '../../app/document';
 import { distance } from '../../core/vector';
 import type { Field } from '../../ui/fields';
-import { name, num, t, type MessageKey } from '../../ui/i18n';
+import { name, t, type MessageKey } from '../../ui/i18n';
 import { layerSwatch } from '../../ui/swatch';
 import { referenceLength } from '../opening/derive';
 import { arcOf } from './geometry/arc';
@@ -134,7 +135,7 @@ export function wallFields(
           sameText(
             ws.map((w) => {
               const h = wallHeights(doc, w);
-              return `${num(h.top - h.bottom)} m`;
+              return `${lengthText(h.top - h.bottom)}`;
             }),
           ),
       },
@@ -153,9 +154,9 @@ export function wallFields(
       },
     ],
     more: [
-      { id: 'thickness', label: 'panel.thickness', kind: 'readout', text: (ws) => sameText(ws.map((w) => `${num(thickness(doc, w), 3)} m`)) },
-      { id: 'length', label: 'panel.length', kind: 'readout', when: one, text: (ws) => `${num(referenceLength(ws[0]!))} m` },
-      { id: 'chord', label: 'panel.chord', kind: 'readout', when: (ws) => one(ws) && !!ws[0]!.bulge, text: (ws) => `${num(distance(ws[0]!.start, ws[0]!.end))} m` },
+      { id: 'thickness', label: 'panel.thickness', kind: 'readout', text: (ws) => sameText(ws.map((w) => `${lengthText(thickness(doc, w), 3)}`)) },
+      { id: 'length', label: 'panel.length', kind: 'readout', when: one, text: (ws) => `${lengthText(referenceLength(ws[0]!))}` },
+      { id: 'chord', label: 'panel.chord', kind: 'readout', when: (ws) => one(ws) && !!ws[0]!.bulge, text: (ws) => `${lengthText(distance(ws[0]!.start, ws[0]!.end))}` },
       {
         id: 'radius',
         label: 'panel.radius',

@@ -1,5 +1,6 @@
 // The Modify tools (move, copy, rotate, mirror, scale, offset) and splitting, cornering and merging walls. Functions over the app (app.ts delegates).
 
+import { lengthText, typingExamples } from '../ui/units';
 import { distance, type Point2, scale } from '../core/vector';
 import { setWalls } from '../elements/wall/commands';
 import { num, t, type MessageKey } from '../ui/i18n';
@@ -63,7 +64,7 @@ export function modifyEvent(app: App, event: ModifyEvent): void {
   const r = modifyTransition(m.kind, m.state, event, app.ui.snap?.point ?? app.ui.cursor, m.line);
   if (r.leave) return app.setTool('select');
   if (r.rejected) {
-    if (event.kind === 'typed') app.ui.error = t('hint.badMeasure', { text: app.shell.measure.value });
+    if (event.kind === 'typed') app.ui.error = t('hint.badMeasure', { ...typingExamples(), text: app.shell.measure.value });
     return app.renderChrome();
   }
   app.ui.error = null;
@@ -127,7 +128,7 @@ export function copySeries(app: App, n: number, divide: boolean): boolean {
   app.lastCopy = { ...c, after: app.store.get(), selected: last };
   app.ui.selection = new Set(last);
   app.ui.error = null;
-  app.ui.info = t('hint.seriesDone', { n, d: num(Math.hypot(step.x, step.y)) });
+  app.ui.info = t('hint.seriesDone', { n, d: lengthText(Math.hypot(step.x, step.y)) });
   app.refresh();
   return true;
 }
@@ -222,7 +223,7 @@ export function modifyMarks(app: App): { base: Point2; to: Point2 | null; ref: P
     const len2 = u.x * u.x + u.y * u.y;
     const along = ((to.x - m.line.start.x) * u.x + (to.y - m.line.start.y) * u.y) / len2;
     const foot = { x: m.line.start.x + u.x * along, y: m.line.start.y + u.y * along };
-    return { base: foot, to, ref: null, axis: null, text: `${num(distance(foot, to))} m` };
+    return { base: foot, to, ref: null, axis: null, text: `${lengthText(distance(foot, to))}` };
   }
   if (app.ui.tool !== 'modify' || !m || m.state.step === 'base') return null;
   const base = m.state.base;
@@ -232,10 +233,10 @@ export function modifyMarks(app: App): { base: Point2; to: Point2 | null; ref: P
   const deg = (v: Point2) => (Math.atan2(v.y, v.x) * 180) / Math.PI;
   let text: string | null = null;
   if (to) {
-    if (m.kind === 'move' || m.kind === 'copy') text = `${num(distance(base, to))} m`;
+    if (m.kind === 'move' || m.kind === 'copy') text = `${lengthText(distance(base, to))}`;
     else if (m.kind === 'rotate' && ref) text = `${num(((((deg({ x: to.x - base.x, y: to.y - base.y }) - deg({ x: ref.x - base.x, y: ref.y - base.y })) % 360) + 540) % 360) - 180, 1)}°`;
     else if (m.kind === 'scale' && ref) text = tr ? `× ${num(tr.factor, 3)}` : null;
-    else if (m.kind === 'scale' || m.kind === 'rotate') text = `${num(distance(base, to))} m`;
+    else if (m.kind === 'scale' || m.kind === 'rotate') text = `${lengthText(distance(base, to))}`;
     else if (m.kind === 'mirror') text = `${num((deg({ x: to.x - base.x, y: to.y - base.y }) + 360) % 180, 1)}°`;
   }
   const len = to ? distance(base, to) : 0;

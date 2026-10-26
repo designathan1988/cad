@@ -1,7 +1,8 @@
 // The fields rooms and floors show in the panel (ui/fields.ts builds the rows).
 
+import { areaText, lengthText, volumeText } from '../../ui/units';
 import type { Field } from '../../ui/fields';
-import { name, num, t } from '../../ui/i18n';
+import { name, t } from '../../ui/i18n';
 import type { RoomPatch } from './commands';
 import type { FloorSolid, RoomSolid } from './derive';
 import { type Floor, type FloorId, ROOM_USES, type RoomId, type RoomUse } from './schema';
@@ -50,10 +51,10 @@ export function roomFields(rooms: readonly RoomSolid[], act: RoomOwnActions): Fi
       ownWords: { reset: 'room.heightBack', note: 'room.heightOwn' },
     },
     // Several rooms: their total area.
-    { id: 'area', label: 'room.area', kind: 'readout', text: (rs) => (rs.every((r) => r.enclosed) ? `${num(rs.reduce((s, r) => s + r.area, 0))} m²` : '—') },
-    { id: 'perimeter', label: 'room.perimeter', kind: 'readout', when: one, text: (rs) => (rs[0]!.enclosed ? `${num(rs[0]!.perimeter)} m` : '—') },
+    { id: 'area', label: 'room.area', kind: 'readout', text: (rs) => (rs.every((r) => r.enclosed) ? areaText(rs.reduce((s, r) => s + r.area, 0)) : '—') },
+    { id: 'perimeter', label: 'room.perimeter', kind: 'readout', when: one, text: (rs) => (rs[0]!.enclosed ? `${lengthText(rs[0]!.perimeter)}` : '—') },
     // Floor area times ceiling height: the air a room holds (a schedule's column too).
-    { id: 'volume', label: 'room.volume', kind: 'readout', text: (rs) => (rs.every((r) => r.enclosed) ? `${num(rs.reduce((s, r) => s + r.area * height(r), 0))} m³` : '—') },
+    { id: 'volume', label: 'room.volume', kind: 'readout', text: (rs) => (rs.every((r) => r.enclosed) ? volumeText(rs.reduce((s, r) => s + r.area * height(r), 0)) : '—') },
   ];
 }
 
@@ -74,7 +75,7 @@ export function floorFields(floors: readonly FloorSolid[], roomName: (id: RoomId
         return sources.size === 1 ? [...sources][0]! : t('panel.varies');
       },
     },
-    { id: 'area', label: 'room.area', kind: 'readout', text: (fs) => `${num(fs.reduce((s, f) => s + f.area, 0))} m²` },
+    { id: 'area', label: 'room.area', kind: 'readout', text: (fs) => areaText(fs.reduce((s, f) => s + f.area, 0)) },
     // A ramp, a terrace falling to its drain: the grade and the way it rises.
     {
       id: 'grade',

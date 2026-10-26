@@ -1,6 +1,7 @@
 // The project document: only what the user decided. Thickness, heights, joins and geometry are
 // always derived from it.
 
+import { DEFAULT_UNITS, type Units } from '../ui/units';
 import { BUILT_IN_MATERIALS, type Material } from '../elements/material/schema';
 import { KINDS, listOf } from '../elements/registry';
 import type { Railing } from '../elements/railing/schema';
@@ -48,8 +49,10 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 21;
+  readonly version: 22;
   readonly name: string;
+  /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
+  readonly units: Units;
   readonly levels: readonly Level[];
   /** What the wall layers are made of: colour, finish and cut pattern (elements/material). */
   readonly materials: readonly Material[];
@@ -100,8 +103,9 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 21,
+    version: 22,
     name: '',
+    units: DEFAULT_UNITS,
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
     materials: [...BUILT_IN_MATERIALS],
     wallTypes: [

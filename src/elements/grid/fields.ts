@@ -1,8 +1,8 @@
 // The fields grid axes show in the panel (ui/fields.ts builds the rows).
 
+import { lengthText } from '../../ui/units';
 import { distance } from '../../core/vector';
 import type { Field } from '../../ui/fields';
-import { num } from '../../ui/i18n';
 import type { Grid } from './schema';
 
 export interface GridFieldActions {
@@ -20,7 +20,7 @@ export function gridFields(grids: readonly Grid[], act: GridFieldActions): Field
       kind: 'readout',
       text: (items) => {
         const l = items.map((g) => distance(g.start, g.end));
-        return l.every((x) => Math.abs(x - l[0]!) < 1e-9) ? `${num(l[0]!)} m` : '—';
+        return l.every((x) => Math.abs(x - l[0]!) < 1e-9) ? `${lengthText(l[0]!)}` : '—';
       },
     },
   ];

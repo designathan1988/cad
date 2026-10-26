@@ -1,6 +1,7 @@
 // Quantity schedules (app/schedules.ts): doors, windows, rooms and walls as tables, with their totals,
 // each saved as CSV for a spreadsheet. Read from the model: nothing here changes it.
 
+import { lengthNum, lengthUnit, unitScale } from './units';
 import type { App } from '../app/app';
 import type { RoomUse } from '../elements/room/schema';
 import { type Cell, schedule, SCHEDULE_KINDS, type ScheduleColumn, type ScheduleKind, toCsv } from '../app/schedules';
@@ -14,12 +15,13 @@ export function showSchedulesDialog(app: App, first: ScheduleKind = 'rooms'): vo
   const shown = (v: Cell, c: ScheduleColumn): string => {
     if (v === null) return '—';
     if (typeof v === 'string') return v;
-    return c.unit === 'text' || c.unit === 'count' ? String(v) : num(v);
+    return c.unit === 'text' || c.unit === 'count' ? String(v) : c.unit === 'm' ? lengthNum(v) : num(v);
   };
   let dialog: { redraw: () => void } | null = null;
   const render = (close: () => void): HTMLElement => {
     const s = schedule(app.store.get(), app.geometry, kind, naming);
-    const headers = s.columns.map((c) => t(c.key as MessageKey));
+    // A length column says the project's unit in its name: "Perímetro (cm)".
+    const headers = s.columns.map((c) => t(c.key as MessageKey, { u: lengthUnit() }));
     const tabs = segmented(
       SCHEDULE_KINDS.map((k) => ({ value: k, label: t(`schedule.kind.${k}`) })),
       kind,
@@ -47,7 +49,7 @@ export function showSchedulesDialog(app: App, first: ScheduleKind = 'rooms'): vo
     csv.disabled = s.rows.length === 0;
     csv.addEventListener('click', () => {
       const file = `${app.fileBase()} - ${t(`schedule.kind.${kind}`)}.csv`;
-      app.download(file, toCsv(s, headers, t('schedule.total'), getLang()), 'text/csv;charset=utf-8');
+      app.download(file, toCsv(s, headers, t('schedule.total'), getLang(), unitScale()), 'text/csv;charset=utf-8');
       app.toast(t('schedule.saved', { file }));
     });
     const closeBtn = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));

@@ -1,7 +1,8 @@
 // Reusable controls, one place for all panels: number field with unit, segmented choice, select,
 // collapsible section. They only read values and report changes.
 
-import { parseLength } from '../core/measure';
+import { lengthNum, lengthText, lengthUnit } from './units';
+import { parseLength, parseNumber } from '../core/measure';
 import { icon, type IconName } from './icons';
 import { num, t } from './i18n';
 import { searchEntries } from './search';
@@ -70,7 +71,10 @@ export function numberField(value: number | null, onCommit: (v: number) => void,
   // The value the field stands for: after a commit, the new one, written as every field writes it
   // (a dialog that is not rebuilt still shows "2,50", and leaving the field does not commit again).
   let current = value;
-  const shown = () => (current === null ? '' : num(current, digits));
+  // A length ('m') is shown and typed in the project's unit (units.ts), metres inside; any other number
+  // (degrees, seconds, a finish from 0 to 1) as it is, read without units.
+  const isLength = unit === 'm';
+  const shown = () => (current === null ? '' : isLength ? lengthNum(current, digits) : num(current, digits));
   input.value = shown();
   input.placeholder = value === null ? t('panel.varies') : '';
   // What is wrong with a refused value, said under the field and announced: the least value it takes,
@@ -97,18 +101,18 @@ export function numberField(value: number | null, onCommit: (v: number) => void,
       clear();
       return true;
     }
-    const r = parseLength(input.value);
+    const r = isLength ? parseLength(input.value) : parseNumber(input.value);
     if (!r.ok) {
       refuse(t('field.notMeasure'));
       return false;
     }
     // Said in the field's own unit: a measure in metres, a plain number (a finish from 0 to 1) bare.
     if (r.value < min) {
-      refuse(unit === 'm' ? t('field.atLeast', { v: num(min, digits) }) : t('field.atLeastPlain', { v: num(min, digits) }));
+      refuse(isLength ? t('field.atLeast', { v: lengthText(min, digits) }) : t('field.atLeastPlain', { v: num(min, digits) }));
       return false;
     }
     if (r.value > max) {
-      refuse(unit === 'm' ? t('field.atMost', { v: num(max, digits) }) : t('field.atMostPlain', { v: num(max, digits) }));
+      refuse(isLength ? t('field.atMost', { v: lengthText(max, digits) }) : t('field.atMostPlain', { v: num(max, digits) }));
       return false;
     }
     clear();
@@ -130,12 +134,12 @@ export function numberField(value: number | null, onCommit: (v: number) => void,
   });
   input.addEventListener('blur', () => commit());
   input.addEventListener('input', clear);
-  box.append(input, el('span', { class: 'unit' }, unit), error);
+  box.append(input, el('span', { class: 'unit' }, isLength ? lengthUnit() : unit), error);
   return box;
 }
 
 /** Makes a label scrub a number: horizontal drag, 1 cm per pixel, one change on release. */
-export function scrub(label: HTMLElement, get: () => number | null, onCommit: (v: number) => void, min = -Infinity): void {
+export function scrub(label: HTMLElement, get: () => number | null, onCommit: (v: number) => void, min = -Infinity, unit = 'm'): void {
   label.classList.add('scrub');
   label.addEventListener('pointerdown', (e) => {
     const start = get();
@@ -148,7 +152,7 @@ export function scrub(label: HTMLElement, get: () => number | null, onCommit: (v
     label.setPointerCapture(e.pointerId);
     const move = (ev: PointerEvent) => {
       v = Math.max(min, Math.round((start + (ev.clientX - x0) * 0.01) * 100) / 100);
-      if (input) input.value = num(v);
+      if (input) input.value = unit === 'm' ? lengthNum(v) : num(v);
     };
     const up = () => {
       label.removeEventListener('pointermove', move);

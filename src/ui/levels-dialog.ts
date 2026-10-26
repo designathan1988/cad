@@ -1,13 +1,14 @@
 // The levels dialog: create, rename, elevation, floor-to-floor height and the plan's cut height. Every
 // change is one command.
 
+import { lengthText } from './units';
 import type { App } from '../app/app';
 import { cutHeightOf } from '../app/document';
 import { newId } from '../core/id';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../elements/level/commands';
 import { el, numberField } from './controls';
 import { openProjectDialog } from './dialog';
-import { defaultName, name, num, t } from './i18n';
+import { defaultName, name, t } from './i18n';
 import { icon } from './icons';
 
 export function showLevels(app: App): void {
@@ -77,7 +78,7 @@ export function showLevels(app: App): void {
       const over = overlaps.find((o) => o.levelId === l.id);
       if (over) {
         const above = doc.levels.find((x) => x.id === over.aboveId)!;
-        const warn = el('div', { class: 'levels-warn', role: 'status' }, t('levels.overlap', { d: num(over.by), above: name(above.name) }));
+        const warn = el('div', { class: 'levels-warn', role: 'status' }, t('levels.overlap', { d: lengthText(over.by), above: name(above.name) }));
         warn.insertAdjacentHTML('afterbegin', icon('warning', 14));
         rows.append(warn);
       }

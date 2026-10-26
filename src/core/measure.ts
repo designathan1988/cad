@@ -1,9 +1,16 @@
 // Typed measures: "4,5", "450cm", "4500 mm", "1,5+0,3", "4.5<90". Metres inside. A small parser,
-// never eval: numbers with comma or point, an optional unit per term, + − × ÷ and parentheses.
+// never eval: numbers with comma or point, an optional unit per term, + − × ÷ and parentheses. A number
+// typed without a unit is in the project's length unit (setBareUnit; metres until it is set).
 
 export type Parsed<T> = { ok: true; value: T } | { ok: false };
 
 const UNITS: Readonly<Record<string, number>> = { mm: 0.001, cm: 0.01, m: 1 };
+
+/** Metres per unit of a number typed without one: 1 for metres, 0.01 for centimetres, 0.001 for millimetres. */
+let bare = 1;
+export const setBareUnit = (metresPerUnit: number): void => {
+  bare = metresPerUnit;
+};
 
 /** A length in metres, or { ok: false } when the text is not a valid expression. */
 export function parseLength(text: string): Parsed<number> {
@@ -102,7 +109,7 @@ class Parser {
     if (!withUnit) return n;
     this.skip();
     const u = /^(mm|cm|m)(?![a-z])/i.exec(this.s.slice(this.i));
-    if (!u) return n;
+    if (!u) return n * bare;
     this.i += u[0].length;
     return n * UNITS[u[1]!.toLowerCase()]!;
   }

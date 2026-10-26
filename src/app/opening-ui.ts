@@ -1,6 +1,7 @@
 // What the door and window tool needs from the screen: the wall under the cursor as an Aim, and the
 // dimension guide of the opening being placed. Read-only over the document and its geometry.
 
+import { lengthText } from '../ui/units';
 import { add, dot, type Point2, scale, sub } from '../core/vector';
 import { hasDistance, type PositionRule } from '../elements/opening/schema';
 import { referenceLength } from '../elements/opening/derive';
@@ -8,7 +9,7 @@ import { arcOf } from '../elements/wall/geometry/arc';
 import { faceOffsets, wallDirection, wallNormal } from '../elements/wall/geometry/offset';
 import { shapeOf } from '../elements/wall/geometry/shape';
 import { type Aim, ruleBase } from '../tools/opening-tool';
-import { num, t, type MessageKey } from '../ui/i18n';
+import { t, type MessageKey } from '../ui/i18n';
 import type { Doc } from './document';
 import type { DerivedGeometry } from './geometry';
 import { wallStops } from './wall-stops';
@@ -79,8 +80,8 @@ export function aimAlong(doc: Doc, g: DerivedGeometry, wallId: string, station: 
  */
 export const ruleText = (rule: PositionRule, base = 0): string =>
   base > 0 && (rule.kind === 'fromStart' || rule.kind === 'fromEnd')
-    ? t('ruleShort.fromFace', { d: num(rule.distance - base) })
-    : t(`ruleShort.${rule.kind}` as MessageKey, hasDistance(rule) ? { d: num(rule.distance) } : {});
+    ? t('ruleShort.fromFace', { d: lengthText(rule.distance - base) })
+    : t(`ruleShort.${rule.kind}` as MessageKey, hasDistance(rule) ? { d: lengthText(rule.distance) } : {});
 
 /**
  * The dimension of the opening being placed, drawn as the temporary dimensions are (extension lines and
@@ -117,6 +118,6 @@ export function ruleGuide(
   const at = (s: number) => add(f.start, scale(f.dir, s - o.start));
   const a = at(span[0]);
   const b = at(span[1]);
-  const text = `${num(Math.abs(span[1] - span[0]))} m`;
+  const text = `${lengthText(Math.abs(span[1] - span[0]))}`;
   return { dim: { a, b, side, clear, text }, measure: { at: scale(add(a, b), 0.5), text, normal: side, clear } };
 }

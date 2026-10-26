@@ -1,7 +1,8 @@
 // The fields permanent dimensions show in the panel (ui/fields.ts builds the rows).
 
+import { lengthText } from '../../ui/units';
 import type { Field } from '../../ui/fields';
-import { num, t } from '../../ui/i18n';
+import { t } from '../../ui/i18n';
 import type { Dimension } from './schema';
 
 export interface DimensionFieldActions {
@@ -20,7 +21,7 @@ export function dimensionFields(dims: readonly Dimension[], length: (d: Dimensio
         const values = items.map(length);
         const first = values[0];
         if (values.some((v) => v === null)) return t('dim.lost');
-        return values.every((v) => v !== null && Math.abs(v - first!) < 1e-9) ? `${num(first!)} m` : t('dim.varies');
+        return values.every((v) => v !== null && Math.abs(v - first!) < 1e-9) ? `${lengthText(first!)}` : t('dim.varies');
       },
     },
     { id: 'distance', label: 'dim.distance', kind: 'number', min: 0, get: (d) => Math.abs(d.offset), set: (v) => act.setDimensionDistance(ids, v) },

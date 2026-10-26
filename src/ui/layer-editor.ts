@@ -3,12 +3,13 @@
 // use it now and floor and slab types can later (ref/chat.txt:87, 135). It only reads the layers and
 // reports the next list; the stack operations are in elements/layers/stack.ts.
 
+import { lengthText } from './units';
 import { addLayer, moveLayer, removeLayer, setLayer } from '../elements/layers/stack';
 import { coreLayersOf } from '../elements/wall/geometry/shape';
 import { LAYER_PRIORITY, type LayerFunction } from '../elements/wall/schema';
 import { el, numberField, select } from './controls';
 import { type Material, materialIn } from '../elements/material/schema';
-import { materialLabel, num, t, type MessageKey } from './i18n';
+import { materialLabel, t, type MessageKey } from './i18n';
 import { icon, type IconName } from './icons';
 import { layerBands } from './swatch';
 
@@ -131,7 +132,7 @@ export function layerEditor<L extends EditableLayer>(layers: readonly L[], mater
     el('h3', {}, t('types.layers')),
     preview,
     grid,
-    el('div', { class: 'layer-foot' }, add, el('span', { class: 'layer-total', role: 'status' }, t('types.total', { t: num(total, 3) }))),
+    el('div', { class: 'layer-foot' }, add, el('span', { class: 'layer-total', role: 'status' }, t('types.total', { t: lengthText(total, 3) }))),
   );
   return box;
 }

@@ -174,8 +174,9 @@ function totalsOf(columns: readonly ScheduleColumn[], rows: readonly (readonly C
 /**
  * The schedule as CSV, for a spreadsheet: Portuguese with ";" and a decimal comma, as a spreadsheet set
  * to Portuguese reads it; English with "," and a point. A UTF-8 mark first, or accents come garbled.
+ * Lengths in the project's unit (`metresPerUnit`: 0.01 for centimetres), to the millimetre.
  */
-export function toCsv(s: Schedule, headers: readonly string[], totalLabel: string, lang: 'pt' | 'en'): string {
+export function toCsv(s: Schedule, headers: readonly string[], totalLabel: string, lang: 'pt' | 'en', metresPerUnit = 1): string {
   const sep = lang === 'pt' ? ';' : ',';
   const number = (v: number, digits: number) => {
     const text = (Math.abs(v) < 0.5 * 10 ** -digits ? 0 : v).toFixed(digits);
@@ -183,7 +184,9 @@ export function toCsv(s: Schedule, headers: readonly string[], totalLabel: strin
   };
   const cell = (v: Cell, unit: ColumnUnit) => {
     if (v === null) return '';
-    if (typeof v === 'number') return unit === 'count' || unit === 'text' ? String(v) : number(v, unit === 'm' ? 3 : 2);
+    // A length to the millimetre in any unit: 3 decimals in metres, 1 in centimetres, none in millimetres.
+    if (typeof v === 'number' && unit === 'm') return number(v / metresPerUnit, Math.max(0, 3 - Math.round(-Math.log10(metresPerUnit))));
+    if (typeof v === 'number') return unit === 'count' || unit === 'text' ? String(v) : number(v, 2);
     return /[";,\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
   };
   const line = (cells: readonly Cell[]) => cells.map((v, i) => cell(v, s.columns[i]!.unit)).join(sep);

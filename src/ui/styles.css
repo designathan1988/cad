@@ -1864,6 +1864,9 @@ button.project-name:hover {
   background: var(--field);
   cursor: pointer;
 }
+.units-body {
+  padding: var(--sp-3) var(--sp-4);
+}
 .mat-note {
   margin: var(--sp-3) 0 0;
   color: var(--text-2);

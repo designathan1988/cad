@@ -1,5 +1,6 @@
 // The interface around the views: the tool bar, the level list, the footer's hints and keys, the float bar, the browser drawer. Functions over the app (app.ts delegates).
 
+import { lengthText, typingExamples } from '../ui/units';
 import * as THREE from 'three';
 import { type Point2 } from '../core/vector';
 import { ruleBase } from '../tools/opening-tool';
@@ -26,7 +27,8 @@ export function renderBrowserDrawer(app: App): void {
   shell.sidebar.setAttribute('aria-pressed', String(ui.browserOpen));
   if (!ui.browserOpen) return;
   const doc = app.store.get();
-  const key = JSON.stringify([getLang(), ui.view, ui.levelId, [...ui.hidden], ui.refLines, ui.openingTags, doc.levels, doc.wallTypes.map((x) => [x.id, x.name]), doc.walls.map((w) => w.wallTypeId), doc.views.map((v) => [v.id, v.name])]);
+  // What the drawer shows: also the units (its Units item) and the materials (the types' thumbnails).
+  const key = JSON.stringify([getLang(), ui.view, ui.levelId, [...ui.hidden], ui.refLines, ui.openingTags, doc.levels, doc.wallTypes.map((x) => [x.id, x.name]), doc.walls.map((w) => w.wallTypeId), doc.views.map((v) => [v.id, v.name]), doc.units, doc.materials]);
   if (key === app.browserKey) return;
   app.browserKey = key;
   // Keep the focus on the same button across the rebuild.
@@ -212,13 +214,13 @@ export function renderChrome(app: App): void {
                         : null;
   const guideHint = ui.guide
     ? t('hint.guide', {
-        d: num(app.guideOffset() ?? 0),
+        d: lengthText(app.guideOffset() ?? 0),
         base: ui.guide.base.wallId ? t('guide.fromWall', { n: wallNumber(app.store.get(), ui.guide.base.wallId) ?? '' }) : t('guide.fromGuide'),
       })
     : null;
   const mod = ui.tool === 'modify' ? ui.modify : null;
   const modifyHint = mod ? t(`hint.modify.${mod.kind === 'copy' ? 'move' : mod.kind}.${mod.state.step}` as MessageKey) : null;
-  shell.instr.textContent = app.walker ? t('hint.walk', { h: num(app.eyeHeight) }) : (ui.error ?? guideHint ?? modifyHint ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size }));
+  shell.instr.textContent = app.walker ? t('hint.walk', { h: lengthText(app.eyeHeight) }) : (ui.error ?? guideHint ?? modifyHint ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size }));
   shell.instr.classList.toggle('error', ui.error !== null);
   // Alt sets a guide in the tools that draw by points (input.ts), in plan.
   const altGuide = ui.view === 'plan' ? [keyHint('Alt', t('key.guide'))] : [];
@@ -332,10 +334,10 @@ export function renderChrome(app: App): void {
   // "Measure: Distance", but never "Measure: Measure".
   const what = shell.measureLabel.textContent ?? '';
   shell.measure.setAttribute('aria-label', what === t('foot.measure') ? what : `${t('foot.measure')}: ${what}`);
-  shell.measure.placeholder = t(sidesMode ? 'foot.sidesHint' : angleMode ? 'foot.angleHint' : factorMode ? 'foot.factorHint' : ui.guide ? 'foot.distanceHint' : pointMode && !lengthMode ? 'foot.pointHint' : lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint');
+  shell.measure.placeholder = t(sidesMode ? 'foot.sidesHint' : angleMode ? 'foot.angleHint' : factorMode ? 'foot.factorHint' : ui.guide ? 'foot.distanceHint' : pointMode && !lengthMode ? 'foot.pointHint' : lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint', typingExamples());
   shell.toolWall.classList.toggle('arc-mode', drawing && arc);
   shell.toolWall.classList.toggle('rect-mode', drawing && rect);
-  shell.coords.textContent = ui.cursor ? `x ${num(ui.cursor.x)} m  y ${num(ui.cursor.y)} m` : '';
+  shell.coords.textContent = ui.cursor ? `x ${lengthText(ui.cursor.x)}  y ${lengthText(ui.cursor.y)}` : '';
   shell.fitFoot();
   app.placeFloatBar();
 }
@@ -346,7 +348,7 @@ export function measureHint(app: App): string {
   if (m.kind === 'idle') return t('hint.measureStart');
   if (m.kind === 'from') return t('hint.measureEnd');
   const r = reading(m.a, m.b);
-  return t('hint.measured', { d: num(r.length), dx: num(Math.abs(r.dx)), dy: num(Math.abs(r.dy)), a: num(r.angle, 1) });
+  return t('hint.measured', { d: lengthText(r.length), dx: lengthText(Math.abs(r.dx)), dy: lengthText(Math.abs(r.dy)), a: num(r.angle, 1) });
 }
 
 export function placeFloatBar(app: App): void {

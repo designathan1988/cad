@@ -1,5 +1,6 @@
 // The wall tool: the wall being drawn and its tags, the measures typed, a chain closing a loop. Functions over the app (app.ts delegates).
 
+import { lengthText, typingExamples } from '../ui/units';
 import { parseLength, parseLengthAngle, parseNumber, parsePoint } from '../core/measure';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
@@ -59,7 +60,7 @@ export function turnMeasure(app: App): { at: Point2; text: string } | null {
   const d = app.ui.drag;
   if (d?.kind === 'stretch' || d?.kind === 'grip') {
     const w = d.walls.find((x) => x.id === d.id);
-    return w ? { at: { x: (w.start.x + w.end.x) / 2, y: (w.start.y + w.end.y) / 2 }, text: `${num(referenceLength(w))} m` } : null;
+    return w ? { at: { x: (w.start.x + w.end.x) / 2, y: (w.start.y + w.end.y) / 2 }, text: `${lengthText(referenceLength(w))}` } : null;
   }
   if (d?.kind === 'bulge') {
     // The arc's radius and length at its middle, as while drawing one; straight again, its length.
@@ -67,7 +68,7 @@ export function turnMeasure(app: App): { at: Point2; text: string } | null {
     if (!w) return null;
     const arc = arcOf({ start: w.start, end: w.end, bulge: w.bulge ?? 0 });
     const at = arcMiddle(w.start, w.end, w.bulge ?? 0);
-    return arc ? { at, text: `R ${num(arc.radius)} m · ${num(referenceLength(w))} m` } : { at, text: `${num(referenceLength(w))} m` };
+    return arc ? { at, text: `R ${lengthText(arc.radius)} · ${lengthText(referenceLength(w))}` } : { at, text: `${lengthText(referenceLength(w))}` };
   }
   if (d?.kind !== 'rotate') return null;
   const deg = (d.angle * 180) / Math.PI;
@@ -85,7 +86,7 @@ export function bendMeasure(app: App): { at: Point2; text: string; normal: Point
   const out = { x: Math.cos(mid), y: Math.sin(mid) };
   const at = { x: arc.center.x + out.x * arc.radius, y: arc.center.y + out.y * arc.radius };
   const length = arc.radius * Math.abs(arc.sweep);
-  return { at, text: `R ${num(arc.radius)} m · ${num(length)} m`, normal: out, clear: 0.2 };
+  return { at, text: `R ${lengthText(arc.radius)} · ${lengthText(length)}`, normal: out, clear: 0.2 };
 }
 
 /** The rectangle's opposite corner: its typed sides ("w;d", toward the cursor) when typed, else the cursor. */
@@ -188,7 +189,7 @@ export function submitMeasure(app: App, text: string): boolean {
     // A distance for Move and Copy (units allowed); degrees or a factor for the others.
     const v = mod.kind === 'move' || mod.kind === 'copy' ? parseLength(text) : parseNumber(text);
     if (!v.ok) {
-      app.ui.error = t('hint.badMeasure', { text });
+      app.ui.error = t('hint.badMeasure', { ...typingExamples(), text });
       app.renderChrome();
       return false;
     }
@@ -198,7 +199,7 @@ export function submitMeasure(app: App, text: string): boolean {
   if (app.ui.guide) {
     const d = parseLength(text);
     if (!d.ok || d.value < 0) {
-      app.ui.error = t('hint.badMeasure', { text });
+      app.ui.error = t('hint.badMeasure', { ...typingExamples(), text });
       app.renderChrome();
       return false;
     }
@@ -209,7 +210,7 @@ export function submitMeasure(app: App, text: string): boolean {
   if (app.ui.tool === 'wall' && app.ui.wall.kind === 'bend') {
     const radius = parseLength(text);
     if (!radius.ok || radius.value <= 0) {
-      app.ui.error = t('hint.badMeasure', { text });
+      app.ui.error = t('hint.badMeasure', { ...typingExamples(), text });
       app.renderChrome();
       return false;
     }
@@ -221,7 +222,7 @@ export function submitMeasure(app: App, text: string): boolean {
   if (app.ui.tool === 'wall' && app.ui.wall.kind === 'rect') {
     const sides = parsePoint(text);
     if (!sides.ok) {
-      app.ui.error = t('hint.badMeasure', { text });
+      app.ui.error = t('hint.badMeasure', { ...typingExamples(), text });
       app.renderChrome();
       return false;
     }
@@ -249,7 +250,7 @@ export function submitMeasure(app: App, text: string): boolean {
   }
   const r = parseLengthAngle(text);
   if (!r.ok || r.value.length < MIN_WALL_LENGTH) {
-    app.ui.error = t('hint.badMeasure', { text });
+    app.ui.error = t('hint.badMeasure', { ...typingExamples(), text });
     app.renderChrome();
     return false;
   }

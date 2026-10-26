@@ -1,6 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import { lengthNum, setUnits } from '../ui/units';
 import * as viewing from './view-ui';
 import * as selecting from './selection-ui';
 import * as walls from './wall-ui';
@@ -30,7 +31,7 @@ import { type Insets, type PlanOverlay, PlanView } from '../render/plan-view';
 import { Scene3D } from '../render/scene-3d';
 import { Overlay3D, type Overlay3DState } from '../render/overlay-3d';
 import { ViewCube } from '../render/view-cube';
-import { getLang, htmlLang, markPrefix, num, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
+import { getLang, htmlLang, markPrefix, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
 import { buildShell, type Shell, type ToolId, type ViewId } from '../ui/shell';
 import { type Snap } from '../tools/snap';
 import { IDLE, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
@@ -1283,6 +1284,8 @@ export class App {
   lastFrame: { total: number; steps: [string, number][] } | null = null;
 
   render(): void {
+    // Lengths written and typed in the open project's units, from the first thing drawn.
+    setUnits(this.store.get().units);
     this.keepPlanView();
     this.marks = [['start', performance.now()]];
     this.renderFrame();
@@ -1387,7 +1390,7 @@ export class App {
     const h = handlesFor(
       walls.filter((w) => this.ui.selection.has(w.id)),
       toScreen,
-      this.plan.dimValueBoxes(this.currentDims().map((x) => ({ ...x, text: num(x.value) }))),
+      this.plan.dimValueBoxes(this.currentDims().map((x) => ({ ...x, text: lengthNum(x.value) }))),
     );
     // One door selected, standing still: its flip controls, on the side its leaf sweeps (the side
     // `swing` names is the one its temporary dimension keeps off, opening-ui.ts).
@@ -1509,6 +1512,7 @@ export class App {
   /** Opens the wall types dialog, on a type if given; set by the input layer too. */
   openWallTypes: (typeId?: string) => void = () => {};
   openMaterials: () => void = () => {};
+  openUnits: () => void = () => {};
 
   renderBrowserDrawer(): void {
     return chrome.renderBrowserDrawer(this);

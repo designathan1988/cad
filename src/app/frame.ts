@@ -1,5 +1,6 @@
 // One frame of the views: the plan's overlay (selection, previews, snaps, tags, temporary dimensions and their value fields) or the 3D's, and the panel. Functions over the app (app.ts delegates).
 
+import { areaText, lengthNum, lengthText, typingExamples } from '../ui/units';
 import { parseLength } from '../core/measure';
 import { distance } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
@@ -86,7 +87,7 @@ export function renderFrame(app: App): void {
   const rc = ui.tool === 'wall' && w.kind === 'rect' ? app.rectCorner() : null;
   const rectMeasure =
     rc && w.kind === 'rect'
-      ? { at: { x: (w.start.x + rc.x) / 2, y: (w.start.y + rc.y) / 2 }, text: `${num(Math.abs(rc.x - w.start.x))} × ${num(Math.abs(rc.y - w.start.y))} m`, clear: 0 }
+      ? { at: { x: (w.start.x + rc.x) / 2, y: (w.start.y + rc.y) / 2 }, text: `${lengthNum(Math.abs(rc.x - w.start.x))} × ${lengthText(Math.abs(rc.y - w.start.y))}`, clear: 0 }
       : null;
   const guideDim = ui.guide && guideOff !== null ? guideMeasure(ui.guide, guideOff) : null;
   if (plan) {
@@ -104,19 +105,19 @@ export function renderFrame(app: App): void {
           ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
           : null,
       measure: guideDim
-        ? { at: { x: (guideDim.a.x + guideDim.b.x) / 2, y: (guideDim.a.y + guideDim.b.y) / 2 }, text: `${num(guideOff!)} m`, normal: ui.guide!.base.dir, clear: 0 }
+        ? { at: { x: (guideDim.a.x + guideDim.b.x) / 2, y: (guideDim.a.y + guideDim.b.y) / 2 }, text: `${lengthText(guideOff!)}`, normal: ui.guide!.base.dir, clear: 0 }
         : rectMeasure
           ? rectMeasure
         : marks?.to && marks.text
           ? { at: { x: (marks.base.x + marks.to.x) / 2, y: (marks.base.y + marks.to.y) / 2 }, text: marks.text, clear: 0 }
         : end && along && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
-          ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°`, normal: side!, clear: reach }
+          ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${lengthText(len)} · ${num(ang, 1)}°`, normal: side!, clear: reach }
           : floorFrom && floorTo && floorAlong && floorLen >= MIN_WALL_LENGTH
-            ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${num(floorLen)} m · ${num(floorAng, 1)}°`, normal: { x: -floorAlong.y, y: floorAlong.x }, clear: 0 }
+            ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${lengthText(floorLen)} · ${num(floorAng, 1)}°`, normal: { x: -floorAlong.y, y: floorAlong.x }, clear: 0 }
             : tape && tapeFrom && tapeTo
               ? {
                   at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 },
-                  text: `${num(tape.length)} m · ${num(tape.angle, 1)}°`,
+                  text: `${lengthText(tape.length)} · ${num(tape.angle, 1)}°`,
                   normal: { x: -tape.dy / tape.length, y: tape.dx / tape.length },
                   clear: 0,
                 }
@@ -146,7 +147,7 @@ export function renderFrame(app: App): void {
           ? t('warn.roomNotEnclosed')
           : r.sharing.length > 0
             ? t('warn.roomShared', { rooms: r.sharing.map((id) => app.store.get().rooms.find((x) => x.id === id)).flatMap((x) => (x ? [`${x.number} · ${name(x.name)}`] : [])).join(', ') })
-            : `${num(r.area)} m²`,
+            : areaText(r.area),
         ...(!r.enclosed
           ? { brief: t('warn.roomNotEnclosedBrief') }
           : r.sharing.length > 0
@@ -173,7 +174,7 @@ export function renderFrame(app: App): void {
       // The opening being placed shows its distance as a dimension too (drawn only, not typed in: the
       // footer field takes the distance while placing).
       dims: [
-        ...app.currentDims().map((d) => ({ ...d, text: num(d.value) })),
+        ...app.currentDims().map((d) => ({ ...d, text: lengthNum(d.value) })),
         ...(guide ? [guide.dim] : []),
         ...(guideDim && guideOff! > 0 ? [{ ...guideDim, side: ui.guide!.base.dir, clear: 0 }] : []),
       ],
@@ -215,11 +216,11 @@ export function renderFrame(app: App): void {
       measure: marks?.to && marks.text
         ? { at: { x: (marks.base.x + marks.to.x) / 2, y: (marks.base.y + marks.to.y) / 2 }, text: marks.text }
         : end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
-          ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${num(len)} m · ${num(ang, 1)}°` }
+          ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${lengthText(len)} · ${num(ang, 1)}°` }
           : floorFrom && floorTo && floorLen >= MIN_WALL_LENGTH
-            ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${num(floorLen)} m · ${num(floorAng, 1)}°` }
+            ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${lengthText(floorLen)} · ${num(floorAng, 1)}°` }
             : tape && tapeFrom && tapeTo
-              ? { at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 }, text: `${num(tape.length)} m · ${num(tape.angle, 1)}°` }
+              ? { at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 }, text: `${lengthText(tape.length)} · ${num(tape.angle, 1)}°` }
               : app.bendMeasure(),
       anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
       // A floor's outline being drawn, or a beam from its first point to where the next click lands.
@@ -418,14 +419,14 @@ export function placeDims(app: App, dims: readonly TempDim[]): void {
       }
     }
     if (node instanceof HTMLButtonElement) {
-      node.textContent = num(d.value);
+      node.textContent = lengthNum(d.value);
       node.title = t('dim.edit');
-      node.setAttribute('aria-label', `${num(d.value)} m. ${t('dim.edit')}`);
+      node.setAttribute('aria-label', `${lengthText(d.value)}. ${t('dim.edit')}`);
     }
     nodes.push(node);
   }
   // Where the plan places them (plan-view.ts: dimValueBoxes), which its tags keep off too.
-  const boxes = app.plan.dimValueBoxes(dims.map((d) => ({ ...d, text: num(d.value) })));
+  const boxes = app.plan.dimValueBoxes(dims.map((d) => ({ ...d, text: lengthNum(d.value) })));
   nodes.forEach((node, i) => {
     node.style.left = `${boxes[i]!.x + boxes[i]!.w / 2}px`;
     node.style.top = `${boxes[i]!.y + boxes[i]!.h / 2}px`;
@@ -447,7 +448,7 @@ export function dimField(app: App, d: TempDim): HTMLInputElement {
   input.type = 'text';
   input.autocomplete = 'off';
   input.spellcheck = false;
-  input.value = num(d.value);
+  input.value = lengthNum(d.value);
   input.setAttribute('aria-label', t('foot.measure'));
   const close = () => {
     if (app.ui.dimEdit !== d.id) return;
@@ -467,7 +468,7 @@ export function dimField(app: App, d: TempDim): HTMLInputElement {
     const dim = app.currentDims().find((x) => x.id === d.id);
     const cmd = v.ok && dim ? dim.apply(v.value) : null;
     if (!cmd) {
-      app.ui.error = t(v.ok ? 'hint.dimRefused' : 'hint.badMeasure', { text });
+      app.ui.error = t(v.ok ? 'hint.dimRefused' : 'hint.badMeasure', { ...typingExamples(), text });
       return app.renderChrome();
     }
     app.ui.error = null;

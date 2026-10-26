@@ -141,7 +141,7 @@ export function fieldsSection<T>(title: string, open: boolean, fields: readonly 
     // Every number scrubs from its label, as Revit's and Figma's do: one rule for all panels.
     const scrubbing = (r: HTMLElement) => {
       const label = r.querySelector('label');
-      if (field.kind === 'number' && label) scrub(label, () => value as number | null, field.set, minOf(field, items));
+      if (field.kind === 'number' && label) scrub(label, () => value as number | null, field.set, minOf(field, items), field.unit ?? 'm');
       return r;
     };
     if (!own) return scrubbing(row(labelled(field), control, { sub: field.sub === true, wide: field.wide === true }));

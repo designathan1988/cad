@@ -2,9 +2,9 @@
 // Held by walls, doors and windows: placed from their geometry, deleted with them, and carried, mirrored
 // or copied as they are (contract.ts: holders, transformed).
 
+import { lengthNum } from '../../ui/units';
 import { finite, isObject, isPoint } from '../../core/guards';
 import type { Point2 } from '../../core/vector';
-import { num } from '../../ui/i18n';
 import type { ElementKind, PlanPaint } from '../contract';
 import { placeDimension, resolve, segmentDistance } from '../dimension/anchor';
 import { setDimensionDistance } from '../dimension/commands';
@@ -103,9 +103,9 @@ export const dimensionKind: ElementKind<Dimension, DimensionSolid> = {
     return a && b ? { ...d, id: c.id, a, b, offset: wholeOffset } : null;
   },
   plan: (p, s, lit) => {
-    if (s.at) drawDimension(p, s.at, num(s.at.length), lit ? p.color('--wall-sel') : p.color('--text-2'));
+    if (s.at) drawDimension(p, s.at, lengthNum(s.at.length), lit ? p.color('--wall-sel') : p.color('--text-2'));
   },
-  keepOut: (p, s) => (s.at ? { boxes: [valueBox(p, s.at, num(s.at.length))], lines: [{ a: p.toScreen(s.at.la), b: p.toScreen(s.at.lb) }] } : null),
+  keepOut: (p, s) => (s.at ? { boxes: [valueBox(p, s.at, lengthNum(s.at.length))], lines: [{ a: p.toScreen(s.at.la), b: p.toScreen(s.at.lb) }] } : null),
   // As lines and a text, as R12 readers all draw them: the extension lines, the dimension line, a tick at
   // each end, the value over the middle.
   dxf: (s, out) => {
@@ -127,7 +127,7 @@ export const dimensionKind: ElementKind<Dimension, DimensionSolid> = {
     let angle = (Math.atan2(uy, ux) * 180) / Math.PI;
     if (angle > 90) angle -= 180;
     if (angle <= -90) angle += 180;
-    out.text('A-ANNO-DIMS', { x: (d.la.x + d.lb.x) / 2 + nx * DXF_H, y: (d.la.y + d.lb.y) / 2 + ny * DXF_H }, DXF_H, num(d.length), angle);
+    out.text('A-ANNO-DIMS', { x: (d.la.x + d.lb.x) / 2 + nx * DXF_H, y: (d.la.y + d.lb.y) / 2 + ny * DXF_H }, DXF_H, lengthNum(d.length), angle);
   },
   // What each measures now: null when an end's element is gone.
   fields: (items, { dispatch }) =>

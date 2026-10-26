@@ -1,6 +1,7 @@
 // The project as a file: saving, opening, a new one, and the exports (GLB, DXF). Functions over the app (app.ts delegates).
 
-import { markPrefix, materialLabel, name, num, t } from '../ui/i18n';
+import { areaText } from '../ui/units';
+import { markPrefix, materialLabel, name, t } from '../ui/i18n';
 import { materialIn } from '../elements/material/schema';
 import { planDxf, toCp1252 } from '../io/export-dxf';
 import { anyKinds, kindOfKey } from '../elements/registry';
@@ -84,7 +85,7 @@ export function exportDxf(app: App): void {
     return app.renderChrome();
   }
   const marks = app.ui.openingTags ? openingMarks(doc.openings, markPrefix()) : undefined;
-  const text = planDxf(app.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²`, ...(marks ? { marks } : {}) });
+  const text = planDxf(app.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => areaText(a), ...(marks ? { marks } : {}) });
   const level = doc.levels.find((l) => l.id === levelId);
   const file = `${app.fileBase()} - ${level ? safeFileName(name(level.name)) : ''}.dxf`;
   app.download(file, new Blob([toCp1252(text)], { type: 'application/dxf' }), 'application/dxf');

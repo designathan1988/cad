@@ -53,7 +53,12 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
   box.replaceChildren(
     el('div', { class: 'panel-head' }, el('span', { class: 'panel-title' }, t('browser.title')), close),
     // The other projects kept in this browser (app/projects.ts).
-    section(t('projects.title'), true, item(t('pal.projects'), () => app.openProjects(), { lead: icon('folder', 16) })),
+    section(
+      t('projects.title'),
+      true,
+      item(t('pal.projects'), () => app.openProjects(), { lead: icon('folder', 16) }),
+      item(t('units.now', { u: doc.units.length, n: doc.units.decimals }), () => app.openUnits(), {}),
+    ),
     section(
       t('browser.levels'),
       true,
