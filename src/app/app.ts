@@ -913,12 +913,29 @@ export class App {
     // A chain just ended (closed on its start, Enter, Esc): the snap it showed is the old chain's, as
     // "Start · closes" left under the pointer until it moved. The next move snaps afresh.
     if (r.state.kind === 'idle' && this.ui.wall.kind !== 'idle') this.ui.snap = null;
+    const was = this.ui.wall;
     this.ui.wall = r.state;
     if (r.segment || r.segments) this.shell.measure.value = '';
     if (r.segment) this.store.dispatch(addWalls([this.oriented(r.segment.start, r.segment.end, newId('wall'), r.segment.bulge ?? 0)]));
     // A rectangle's four walls, as one undo step.
     else if (r.segments) this.store.dispatch(addWalls(r.segments.map((s) => this.oriented(s.start, s.end, newId('wall')))));
     else this.refresh();
+    // A chain closed on its start: its walls are the last ones added, one per step.
+    if (r.segment && r.state.kind === 'idle' && (was.kind === 'drawing' || was.kind === 'bend')) this.checkLoop(was.count + 1);
+  }
+
+  /**
+   * An outline just closed turning clockwise has each wall's exterior face (the right of its
+   * direction) inside it: said, with the way back, since a house drawn that way showed its outer
+   * finish on the room side and nothing told why.
+   */
+  private checkLoop(n: number): void {
+    const loop = this.store.get().walls.slice(-n);
+    if (loop.length < 3) return;
+    const area = loop.reduce((s, w) => s + (w.start.x * w.end.y - w.end.x * w.start.y), 0) / 2;
+    if (area >= 0) return;
+    this.ui.info = t('hint.exteriorInside', { n: loop.length });
+    this.renderChrome();
   }
 
   /** The footer field: a length (and angle) while drawing; a new length for one selected wall. */

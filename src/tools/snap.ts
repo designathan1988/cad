@@ -77,7 +77,11 @@ export const GRID_STEP = 0.05;
 const RADIUS_PX = 10;
 const ORIGIN = vec(0, 0);
 const ANGLE_STEP = 15;
-const ANGLE_TOL_DEG = 3;
+/**
+ * How far off a 15° step (or a wall's direction) the pointer may be and still be taken onto it. At 3°
+ * a wall drawn by hand along a house front, 13 px off level over 190 px, came out at 4°, askew.
+ */
+const ANGLE_TOL_DEG = 5;
 /** How far past a wall's end its extension catches the cursor (m). */
 const EXTENSION_REACH = 8;
 /** A perpendicular foot this near the last point is the point itself, not a snap. */
