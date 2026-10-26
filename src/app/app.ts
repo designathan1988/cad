@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { parseLength, parseLengthAngle, parseNumber, parsePoint } from '../core/measure';
 import { createStore, type Store } from '../core/store';
-import { distance, type Point2 } from '../core/vector';
+import { distance, type Point2, scale } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { addWalls, resetWallsToType, setWalls, updateWalls } from '../elements/wall/commands';
@@ -69,7 +69,7 @@ import type { ViewKey } from './view-keys';
 import { type TempDim, tempDims } from './temp-dims';
 import { cutAt, exploding, liftOf, readView3D, shownLevels, type View3D } from './view-3d';
 import { MODIFY_START, type ModifyEvent, type ModifyKind, type ModifyState, modifyTransition, previewTransform } from '../tools/modify-tool';
-import { canTransform, copyToLevel, transformSelection } from '../tools/transform';
+import { canTransform, copiesInSeries, copyToLevel, transformSelection } from '../tools/transform';
 import { changeReferenceLine, stretchEnd } from '../tools/edit';
 import { canMerge, cornerWalls, mergeWalls, splitWall } from '../tools/split';
 import { contextEntries } from './context-menu';
@@ -822,7 +822,9 @@ export class App {
       return this.refresh();
     }
     const doc = this.store.get();
-    const result = transformSelection(doc, this.modifyBefore ?? deriveGeometry(doc), [...this.ui.selection], r.apply, m.copy, newId, m.disjoin);
+    const geometry = this.modifyBefore ?? deriveGeometry(doc);
+    const ids = [...this.ui.selection];
+    const result = transformSelection(doc, geometry, ids, r.apply, m.copy, newId, m.disjoin);
     const label = m.kind === 'move' && m.copy ? 'cmd.copy' : (`cmd.${m.kind}` as MessageKey);
     this.ui.tool = 'select';
     this.ui.modify = null;
@@ -830,6 +832,63 @@ export class App {
     this.ui.snap = null;
     this.ui.selection = new Set(result.selection);
     this.store.dispatch({ label, apply: () => result.doc });
+    // A copy moved by a step: typing "3x" or "/3" next makes a series of it (copySeries).
+    const origin = { x: 0, y: 0 };
+    const delta = r.apply.map(origin);
+    const moved = (m.kind === 'move' || m.kind === 'copy') && m.copy && distance(delta, origin) > 0;
+    this.lastCopy = moved ? { before: doc, geometry, ids, delta, after: this.store.get(), selected: result.selection } : null;
+    if (moved) {
+      this.ui.info = t('hint.seriesOffer');
+      this.renderChrome();
+    }
+  }
+
+  /** The last copy made by a step (Move or Copy with C), while nothing has changed since: a series can replace it. */
+  private lastCopy: {
+    readonly before: Doc;
+    readonly geometry: DerivedGeometry;
+    readonly ids: readonly string[];
+    readonly delta: Point2;
+    readonly after: Doc;
+    readonly selected: readonly string[];
+  } | null = null;
+
+  /**
+   * Whether "3x" or "/3" typed now would make a series of the last copy: nothing changed since, and the
+   * copy still the selection (another click gives the digits back to the view keys).
+   */
+  seriesReady(): boolean {
+    const c = this.lastCopy;
+    return c !== null && this.store.get() === c.after && c.selected.length === this.ui.selection.size && c.selected.every((id) => this.ui.selection.has(id));
+  }
+
+  /**
+   * The last copy made a series, as SketchUp's Move-copy and Revit's Array: `n` copies one after
+   * another at its step ("3x"), or, `divide`, `n` copies spread evenly from the original to where the
+   * copy went ("/3"). It replaces the copy: one undo step, the last copy of the series selected.
+   */
+  private copySeries(n: number, divide: boolean): boolean {
+    const c = this.lastCopy;
+    if (!c || !this.seriesReady()) {
+      this.ui.error = t('hint.seriesAfterCopy');
+      this.renderChrome();
+      return false;
+    }
+    if (!Number.isInteger(n) || n < 1 || n > 200) {
+      this.ui.error = t('hint.seriesCount');
+      this.renderChrome();
+      return false;
+    }
+    const step = divide ? scale(c.delta, 1 / n) : c.delta;
+    const { doc: series, selection: last } = copiesInSeries(c.before, c.geometry, c.ids, c.delta, n, divide, newId);
+    this.store.undo();
+    this.store.dispatch({ label: 'cmd.series', apply: () => series });
+    this.lastCopy = { ...c, after: this.store.get(), selected: last };
+    this.ui.selection = new Set(last);
+    this.ui.error = null;
+    this.ui.info = t('hint.seriesDone', { n, d: num(Math.hypot(step.x, step.y)) });
+    this.refresh();
+    return true;
   }
 
   /** The Split tool: the wall under the point divided there (tools/split.ts), as one undo step. */
@@ -976,6 +1035,12 @@ export class App {
   /** The footer field: a length (and angle) while drawing; a new length for one selected wall. */
   submitMeasure(text: string): boolean {
     if (text.trim() === '') return false;
+    // "3x", "x3", "3*" or "/3": a series of the copy just made (copySeries).
+    const series = /^\s*(?:[x*×]\s*(\d+)|(\d+)\s*[x*×]|\/\s*(\d+))\s*$/i.exec(text);
+    if (series && this.ui.tool === 'select') {
+      const [, a, b, d] = series;
+      return this.copySeries(Number(a ?? b ?? d), d !== undefined);
+    }
     const mod = this.ui.tool === 'modify' ? this.ui.modify : null;
     if (mod) {
       // A distance for Move and Copy (units allowed); degrees or a factor for the others.

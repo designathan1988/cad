@@ -279,3 +279,23 @@ export function copyToLevel(doc: Doc, g: DerivedGeometry, ids: readonly string[]
     selection: r.selection,
   };
 }
+
+/**
+ * `n` copies of the selection `ids` in a series, as SketchUp's Move-copy "3x" and Revit's Array: one
+ * after another at `step` (the copy just made), or, `divide`, spread evenly up to it ("/3"). From the
+ * project `doc` before that copy; the selection after is the last copy.
+ */
+export function copiesInSeries(
+  doc: Doc,
+  g: DerivedGeometry,
+  ids: readonly string[],
+  step: Point2,
+  n: number,
+  divide: boolean,
+  newId: (prefix: string) => string,
+): TransformResult {
+  const each = divide ? scale(step, 1 / n) : step;
+  let r: TransformResult = { doc, selection: [...ids] };
+  for (let k = 1; k <= n; k++) r = transformSelection(r.doc, g, ids, translation(scale(each, k)), true, newId);
+  return r;
+}

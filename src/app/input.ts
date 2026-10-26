@@ -663,6 +663,13 @@ export function wireInput(app: App): void {
     // In the door and window tools a digit is always a measure, aimed or not: it never switches the view
     // (the tester's K2: "1" turned to 3D).
     const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'modify' || app.openingKind() !== null;
+    // Right after a copy, its series is typed there: "3x", "/3".
+    if (/^[\d/]$/.test(e.key) && ui.tool === 'select' && app.seriesReady()) {
+      e.preventDefault();
+      shell.measure.focus();
+      shell.measure.value = e.key;
+      return app.refresh();
+    }
     if (/^[\d.,-]$/.test(e.key) && typing) {
       e.preventDefault();
       shell.measure.focus();
