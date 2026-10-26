@@ -374,11 +374,18 @@ export class Scene3D {
     this.flight = requestAnimationFrame(step);
   }
 
+  /** A flight under way stops where it is (a tour stopped). */
+  stopFlight(): void {
+    cancelAnimationFrame(this.flight);
+  }
+
   /** The camera as it was before walking, given back when the walk ends. */
   private beforeWalk: { position: THREE.Vector3; target: THREE.Vector3; ortho: boolean } | null = null;
 
   /** A walk begins (app/walk.ts): the orbit put aside, the perspective camera at the walker's eyes. */
   startWalk(): void {
+    // A tour's flight still under way would carry the camera off the walker's eyes, frame by frame.
+    this.stopFlight();
     if (this.beforeWalk) return;
     this.beforeWalk = { position: this.camera.position.clone(), target: this.controls.target.clone(), ortho: this.orthoOn };
     this.setOrtho(false);

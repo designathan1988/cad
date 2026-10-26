@@ -878,6 +878,7 @@ export class App {
     if (!this.tour) return;
     this.tour = null;
     clearTimeout(this.tourTimer);
+    this.scene.stopFlight();
     this.renderChrome();
   }
 
@@ -992,6 +993,8 @@ export class App {
       return this.renderChrome();
     }
     this.ui.drag = null;
+    // A tour going on would fly the camera off to its next stop: walking ends it, as a tour ends a walk.
+    this.stopTour();
     this.setTool('select');
     this.ui.selection.clear();
     this.setView('3d');
@@ -1002,7 +1005,7 @@ export class App {
     this.walkLast = performance.now();
     cancelAnimationFrame(this.walkFrame);
     this.walkFrame = requestAnimationFrame((now) => this.walkTick(now));
-    this.toast(t('toast.walk'));
+    this.toast(t('toast.walk', { h: num(this.eyeHeight) }));
     this.render();
   }
 
