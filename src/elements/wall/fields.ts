@@ -36,7 +36,7 @@ const REFS: readonly { value: ReferenceLine; key: MessageKey; short: MessageKey;
   { value: 'interiorFace', key: 'ref.interiorFace', short: 'ref.short.interiorFace', icon: 'refInterior' },
 ];
 
-const JOINS = ['auto', 'miter', 'through', 'stop', 'off'] as const;
+const JOINS = ['auto', 'miter', 'through', 'stop', 'square', 'off'] as const;
 
 const thickness = (doc: Doc, w: DocWall) => (doc.wallTypes.find((x) => x.id === w.wallTypeId)?.layers ?? []).reduce((s, l) => s + l.thickness, 0);
 
@@ -167,7 +167,7 @@ export function wallFields(
         // The ends stay; the arc keeps its side, and stays a major arc if it was one.
         set: (v) => act.updateRadius(v),
       },
-      // How each end joins (Revit's Wall Joins: butt, miter, disallow): automatic unless chosen.
+      // How each end joins (Revit's Wall Joins: butt, miter, square off, disallow): automatic unless chosen.
       ...(['start', 'end'] as const).map(
         (end): Field<DocWall> => ({
           id: `join-${end}`,

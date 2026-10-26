@@ -289,7 +289,14 @@ Quarto 1); arco com cotas de corda e de raio, alça de curvatura e raio editado 
 - Resolvido em 2026-10-26 (3f06e1a): junta escolhida por ponta da parede, no painel (Mais opções): Chanfro,
   Topo: esta passa / esta para, Desunida (o Disallow Join do Revit); a ponta é nomeada por onde está
   (cima, baixo, esquerda, direita). Arquivo versão 7. Chanfro e topo valem para o L de duas paredes
-  retas; em nó de 3+ pontas e com arco só Desunida tem efeito. Falta: corte reto nas duas (Square off).
+  retas; em nó de 3+ pontas e com arco só Desunida tem efeito.
+- Resolvido em 2026-10-26: Esquadro (o Square off do Revit, "esquadra a ponta a 90°"): a parede escolhida
+  passa e a ponta dela é cortada reta à própria linha, cobrindo o canto (num ângulo diferente de 90° a quina
+  sai para fora); a outra encosta nela como num T. A 90° é igual a "Topo: esta passa". Arquivo versão 9.
+  Visto no navegador na quina da direita da Parede 19 (planta e 3D), e escolhido só com o teclado: a lista
+  do painel perdia o foco a cada passo da seta e as setas seguintes moviam a parede selecionada; agora o
+  painel redesenhado devolve o foco ao mesmo controle. Entre tipos diferentes o Esquadro usa o topo como T
+  (sem camada por camada).
 - Mutação ≥ 90 %.
 
 ## Adendo 2: conjunto BIM (ref/chat.txt:74-152; etapas 16 a 33)

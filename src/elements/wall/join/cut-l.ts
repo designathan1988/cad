@@ -59,9 +59,10 @@ export function resolveCorner(
   layered = false,
   /**
    * The user's choice (EndJoin): a miter even between different types, or a butt with this wall going
-   * through. Undefined: automatic.
+   * through; `square`: its end cut square to its own line, past the corner (Revit's Square off), the
+   * other abutting it as in a T. Undefined: automatic.
    */
-  force?: 'miter' | { readonly through: string },
+  force?: 'miter' | { readonly through: string; readonly square?: boolean },
 ): CornerResult {
   const ua = intoBody(a, aEnd);
   const ub = intoBody(b, bEnd);
@@ -98,6 +99,7 @@ export function resolveCorner(
   // A butt covers the same region as the miter (outer faces to the outer corner, inner faces to the
   // inner one), so every degenerate rule above holds for both.
   const mitered = force === 'miter' || (force === undefined && sameSequence(a, aEnd, b, bEnd));
+  if (typeof force === 'object' && force.square) return tButt(a, aEnd, b, bEnd, node, extension, bevel, beyond, angle, limit, shared, force.through === a.id);
   if (!mitered && !layered) return tButt(a, aEnd, b, bEnd, node, extension, bevel, beyond, angle, limit, shared);
   if (!mitered) {
     const aThrough = typeof force === 'object' ? force.through === a.id : goesThrough(a, b);
@@ -139,7 +141,10 @@ const far = (w: WallShape, end: WallEnd): Point2 => endPoint(w, end === 'start' 
 /**
  * The butt as a T: the thicker core goes through to the other wall's outer face, whole, and the other
  * abuts it by the T priority rule. Its butt corner (the through wall's inner face on that outer face)
- * and the abutting layers' deepest points must stay short of both free ends.
+ * and the abutting layers' deepest points must stay short of both free ends. `squared`: this wall (a
+ * when true, b when false) goes through and its end is square to its own line, through the farther of
+ * its faces' meetings with the other's outer face, so it covers the corner and stands out of it at an
+ * angle (Square off); at 90° that is the butt itself.
  */
 function tButt(
   a: WallShape,
@@ -153,8 +158,9 @@ function tButt(
   angle: number,
   limit: number,
   shared: () => CornerResult,
+  squared?: boolean,
 ): CornerResult {
-  const aThrough = goesThrough(a, b);
+  const aThrough = squared ?? goesThrough(a, b);
   const [t, tEnd, c, cEnd] = aThrough ? [a, aEnd, b, bEnd] : [b, bEnd, a, aEnd];
   const n = wallNormal(c);
   const towardT = dot(n, intoBody(t, tEnd)) > 0 ? n : scale(n, -1);
@@ -167,7 +173,21 @@ function tButt(
   const { cut, notches, deepest } = resolveAbutment(c, cEnd, t);
   if (q === null || beyond(q) || deepest.some(beyond)) return overlapping(a, b);
   if (angle >= 90 && distance(node, q) > limit) return shared();
-  const through: EndCut = { extension, cuts: [halfPlaneThrough(outerFace.point, towardT), ...bevel] };
+  let end = halfPlaneThrough(outerFace.point, towardT);
+  if (squared !== undefined) {
+    // The farther of t's two faces on c's outer face, along t: the square end goes through it.
+    const ut = intoBody(t, tEnd);
+    const hits = [t0, t1].flatMap((o) => {
+      const f = faceLine(t, o);
+      const p = intersectLines(f.point, f.direction, outerFace.point, outerFace.direction);
+      return p ? [p] : [];
+    });
+    if (hits.length < 2 || hits.some(beyond)) return overlapping(a, b);
+    const tip = hits.reduce((x, y) => (dot(sub(y, node), ut) < dot(sub(x, node), ut) ? y : x));
+    if (distance(node, tip) > limit) return shared();
+    end = halfPlaneThrough(tip, ut);
+  }
+  const through: EndCut = { extension, cuts: [end, ...bevel] };
   const abutting: EndCut = { ...cut, cuts: [...cut.cuts, ...bevel] };
   return aThrough ? { a: through, b: abutting, warning: null, notches } : { a: abutting, b: through, warning: null, notches };
 }

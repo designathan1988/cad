@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest';
 import { computeWallGeometry } from '../../../src/elements/wall/geometry/footprint';
 import type { EndJoin, Wall, WallType } from '../../../src/elements/wall/schema';
 import type { Point2 } from '../../../src/core/vector';
+import { newDocument } from '../../../src/app/document';
+import { readProject, writeProject } from '../../../src/io/project-file';
 
 const solid: WallType = { id: 'solid', name: 'solid', layers: [{ thickness: 0.2, function: 'structure', materialId: 'concrete' }] };
 const layered: WallType = {
@@ -75,11 +77,45 @@ describe('join choices at a wall end', () => {
     expect([covers(w, 'a', inner), covers(w, 'b', inner)]).toEqual([true, true]);
   });
 
+  it('"square" at 90°: the butt with this one going on', () => {
+    const g = (w: Wall[]) => computeWallGeometry(w, types).pieces;
+    expect(g(L('square'))).toEqual(g(L('through')));
+    expect(g(L(undefined, 'square'))).toEqual(g(L('stop')));
+  });
+
+  it('"square" at 120°: a goes on and ends square to its line, at the farther of its faces on b\'s outer face', () => {
+    // b to (−1.5, 2.598): its outer face is n·p = −0.1, n = (0.866, 0.5). a's faces y = ±0.1 meet it at
+    // x = −0.173 (y = 0.1) and x = −0.058 (y = −0.1): the square end is x = −0.173.
+    const w: Wall[] = [
+      { id: 'a', wallTypeId: 'solid', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline' },
+      { id: 'b', wallTypeId: 'solid', start: { x: 0, y: 0 }, end: { x: -1.5, y: 1.5 * Math.sqrt(3) }, referenceLine: 'centerline' },
+    ];
+    const square = [{ ...w[0]!, joins: { start: 'square' as const } }, w[1]!];
+    const through = [{ ...w[0]!, joins: { start: 'through' as const } }, w[1]!];
+    const corner = { x: -0.17, y: -0.09 };
+    expect([covers(square, 'a', corner), covers(through, 'a', corner)]).toEqual([true, false]);
+    expect(covers(square, 'a', { x: -0.18, y: 0.09 })).toBe(false);
+    // Inside both bands: a's, and b abuts it.
+    const shared = { x: -0.1, y: 0.05 };
+    expect([covers(square, 'a', shared), covers(square, 'b', shared)]).toEqual([true, false]);
+    expect(covers(square, 'b', { x: -0.2, y: 0.25 })).toBe(true);
+  });
+
   it('between different types (automatic: a butt), "miter" makes the diagonal', () => {
     const auto = L(undefined, undefined, 'layered');
     // Automatic between types: one goes through (the solid core of 0.20 is thicker than 0.16).
     expect(covers(auto, 'a', above)).toBe(true);
     const mitred = L('miter', undefined, 'layered');
     expect([covers(mitred, 'a', below), covers(mitred, 'a', above)]).toEqual([true, false]);
+  });
+
+  it('every choice is read back from the file; an unknown one drops the wall and says so', () => {
+    const joins: EndJoin[] = ['off', 'through', 'stop', 'miter', 'square'];
+    const walls = joins.map((j, k) => ({ ...L()[0]!, id: `w${k}`, levelId: 'lvl_ground', joins: { start: j } }));
+    const back = readProject(writeProject({ ...newDocument(), walls }));
+    expect(back.ok && back.doc.walls.map((w) => w.joins?.start)).toEqual(joins);
+    const bad = readProject(JSON.stringify({ ...newDocument(), walls: [{ ...walls[0]!, joins: { start: 'bevel' } }] }));
+    expect(bad.ok && bad.doc.walls).toEqual([]);
+    expect(bad.ok && bad.fixes.some((f) => f.kind === 'droppedWalls')).toBe(true);
   });
 });

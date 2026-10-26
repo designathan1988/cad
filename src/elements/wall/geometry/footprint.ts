@@ -113,13 +113,22 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     const reachB = arcReach(rb, ra);
     // Two straight walls butt layer by layer; with an arc's segment, the T butt its chain relies on.
     const straight = !chains.has(parentOf(ra.wallId)) && !chains.has(parentOf(rb.wallId));
-    // The user's choice at either end (EndJoin), for two straight walls: a miter, or who goes through.
+    // The user's choice at either end (EndJoin), for two straight walls: a miter, who goes through, or
+    // whose end is squared off (it goes through; chosen at both ends, the first wall's).
     const ca = choice.get(keyOf(ra));
     const cb = choice.get(keyOf(rb));
     const aThrough = ca === 'through' || cb === 'stop';
     const bThrough = cb === 'through' || ca === 'stop';
-    const force =
-      !straight ? undefined : aThrough !== bThrough ? { through: aThrough ? ra.wallId : rb.wallId } : !aThrough && (ca === 'miter' || cb === 'miter') ? ('miter' as const) : undefined;
+    const squared = ca === 'square' ? ra : cb === 'square' ? rb : null;
+    const force = !straight
+      ? undefined
+      : squared
+        ? { through: squared.wallId, square: true }
+        : aThrough !== bThrough
+          ? { through: aThrough ? ra.wallId : rb.wallId }
+          : !aThrough && (ca === 'miter' || cb === 'miter')
+            ? ('miter' as const)
+            : undefined;
     const result = resolveCorner(
       byId.get(ra.wallId)!,
       ra.end,

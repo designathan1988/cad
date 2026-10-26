@@ -25,8 +25,9 @@ import type { DocWall } from '../app/document';
  * Version 6: saved views (saved-views.ts). Older files have none.
  * Version 7: a wall's join choice at each end (`joins`, schema.ts EndJoin). Older walls have none: automatic.
  * Version 8: points of interest (points.ts). Older files have none.
+ * Version 9: a wall end can be squared off ('square' in `joins`).
  */
-export const CURRENT_VERSION = 8;
+export const CURRENT_VERSION = 9;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
@@ -71,7 +72,7 @@ export const isWall = (w: unknown): w is DocWall =>
   (w.bulge === undefined || finite(w.bulge)) &&
   isTop(w.top) &&
   (w.baseOffset === undefined || finite(w.baseOffset)) &&
-  (w.joins === undefined || (isObject(w.joins) && [w.joins.start, w.joins.end].every((j) => j === undefined || ['off', 'through', 'stop', 'miter'].includes(j as string))));
+  (w.joins === undefined || (isObject(w.joins) && [w.joins.start, w.joins.end].every((j) => j === undefined || ['off', 'through', 'stop', 'miter', 'square'].includes(j as string))));
 
 const isRule = (r: unknown): boolean => {
   if (!isObject(r)) return false;

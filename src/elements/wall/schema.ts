@@ -45,7 +45,7 @@ export interface WallType {
  * face) or 'stop' (this one stops at the other's face); 'off', not joined at all, ended square.
  * Absent: automatic.
  */
-export type EndJoin = 'off' | 'through' | 'stop' | 'miter';
+export type EndJoin = 'off' | 'through' | 'stop' | 'miter' | 'square';
 
 /** What the user decided. Thickness, layers and core come from the type, always derived. */
 export interface Wall {

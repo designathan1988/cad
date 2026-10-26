@@ -174,5 +174,30 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     empty.append(el('strong', {}, t('panel.nothing')), el('span', {}, t('panel.nothingHint')));
     nodes.push(empty);
   }
+  // A control of the panel that had the focus has it again in the panel drawn anew: a list changed with
+  // the arrow keys took one step, then the focus fell to the page and the next keys went to the app.
+  const a = document.activeElement;
+  const mark = a instanceof HTMLElement && root.contains(a) ? focusMark(root, a) : null;
   root.replaceChildren(...nodes);
+  if (mark && !root.contains(document.activeElement)) {
+    const again = focusables(root).filter((e) => signature(e) === mark.sig)[mark.n];
+    again?.focus({ preventScroll: true });
+  }
+}
+
+const focusables = (root: HTMLElement): HTMLElement[] => [...root.querySelectorAll<HTMLElement>('input, select, textarea, button')];
+
+/**
+ * What a control is, in any panel drawn from the same state: its kind, its name and its row's label.
+ * Not its title: a list's is the option chosen, so it changes with the value.
+ */
+const signature = (e: HTMLElement): string => {
+  const label = (e as HTMLInputElement).labels?.[0]?.textContent ?? '';
+  return [e.tagName, (e as HTMLInputElement).type ?? '', e.getAttribute('aria-label') ?? '', label].join('|');
+};
+
+/** A control by its signature and, among the controls that share it, its place. */
+function focusMark(root: HTMLElement, e: HTMLElement): { sig: string; n: number } {
+  const sig = signature(e);
+  return { sig, n: focusables(root).filter((x) => signature(x) === sig).indexOf(e) };
 }
