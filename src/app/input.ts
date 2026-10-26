@@ -28,14 +28,12 @@ import { arrowStep } from '../tools/nudge';
 import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
 import { GUIDE_PX, guideBaseAt } from '../tools/guide-tool';
-import { noteBox, shownHeight } from '../elements/note/schema';
 import { placeDimension, segmentDistance } from '../elements/dimension/anchor';
 import { eachSolid } from '../elements/registry';
 import type { PickOrder } from '../elements/contract';
-import { GRID_BUBBLE_PX } from '../render/plan-view';
 import type { LevelsShown } from './view-3d';
 import type { ModifyKind } from '../tools/modify-tool';
-import { add, cross, distance, normalize, sub } from '../core/vector';
+import { cross, distance, normalize, sub } from '../core/vector';
 import { outerSides } from '../elements/wall/geometry/seams';
 
 /** How near (screen pixels) the pointer must come to a wall, a door or a window to take it. */
@@ -259,44 +257,16 @@ export function wireInput(app: App): void {
       .sort((a, b) => a.off - b.off)
       .slice(0, 1)
       .map((x) => x.id);
-    // An axis by a bubble, before everything (a bubble at a corner lies over the walls there: a click in
-    // it took the wall), or by its line, after the walls on it.
-    const bubble = GRID_BUBBLE_PX / app.plan.scale;
-    const grids = app.shownGrids();
-    const bubbleHit = grids
-      .filter((g) => {
-        const u = normalize(sub(g.end, g.start));
-        const ends = [sub(g.start, { x: u.x * bubble, y: u.y * bubble }), add(g.end, { x: u.x * bubble, y: u.y * bubble })];
-        return ends.some((c) => distance(p, c) <= bubble);
-      })
-      .slice(0, 1)
-      .map((g) => g.id);
-    const gridHit = grids
-      .map((g) => ({ id: g.id, off: segmentDistance(p, g.start, g.end) }))
-      .filter((x) => x.off <= near)
-      .sort((a, b) => a.off - b.off)
-      .slice(0, 1)
-      .map((x) => x.id);
     // The registry's kinds under the point, by where they come among the rest (contract.ts: pick); of
-    // one order, the one drawn last first.
-    const kindHits = (order: PickOrder) =>
-      [...eachSolid(g.kinds)]
-        .filter((x) => x.kind.pick === order && x.kind.hit(x.solid, p, near))
-        .reverse()
-        .map((x) => x.id);
+    // one order, the one drawn last first. A handle (an axis's bubble, over the walls at a corner) first of all.
+    const solids = [...eachSolid(g.kinds)].reverse();
+    const grabbed = solids.filter((x) => x.kind.grab?.(x.solid, p, app.plan.scale)).slice(0, 1).map((x) => x.id);
+    const kindHits = (order: PickOrder) => solids.filter((x) => x.kind.pick === order && x.kind.hit(x.solid, p, near, app.plan.scale)).map((x) => x.id);
     return [
-      ...bubbleHit,
+      ...grabbed,
       ...dimHit,
+      // A text over everything it is written on (the last kind drawn, so the first here).
       ...kindHits('beforeWalls'),
-      // A text note over everything it is written on.
-      ...app
-        .levelNotes()
-        .filter((n) => {
-          const b = noteBox(n, shownHeight(n, app.plan.scale));
-          return p.x >= b.x0 - near && p.x <= b.x1 + near && p.y >= b.y0 - near && p.y <= b.y1 + near;
-        })
-        .slice(-1)
-        .map((n) => n.id),
       openingAt(g, p, near),
       wallAt(g, p, undefined, near),
       // A guide where the pointer is on it: before the room it runs across.
@@ -307,9 +277,8 @@ export function wireInput(app: App): void {
         .sort((a, b) => a.off - b.off)
         .slice(0, 1)
         .map((x) => x.id),
+      // Beams, and an axis after the walls on it: a click on a wall over an axis takes the wall.
       ...kindHits('afterWalls'),
-      // An axis after the walls on it: a click on a wall over an axis takes the wall.
-      ...gridHit,
       ...[...g.rooms.values()].filter((r) => r.enclosed && insideRing(r.outline, p)).map((r) => r.room.id),
       ...[...g.floors.values()].filter((f) => f.outline.length >= 3 && insideRing(f.outline, p)).map((f) => f.floor.id),
       // Last, what lies over everything (a roof: its overhang, outside the walls, is where it is taken first).

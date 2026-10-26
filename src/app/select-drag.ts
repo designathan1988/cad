@@ -21,7 +21,6 @@ import { insidePolygon, openingOutline } from './geometry';
 import { updateOpening } from '../elements/opening/commands';
 import type { Opening } from '../elements/opening/schema';
 import type { Guide } from '../elements/guide/schema';
-import { type Note, noteBox, shownHeight } from '../elements/note/schema';
 import { offsetThrough, placeDimension } from '../elements/dimension/anchor';
 import { wallsOnGrids } from '../elements/grid/carry';
 import { eachSolid, kindIds, kindLists, moveKinds } from '../elements/registry';
@@ -41,10 +40,8 @@ export type Drag =
       readonly rooms: ReadonlySet<string>;
       readonly floors: ReadonlySet<string>;
       readonly guides: ReadonlySet<string>;
-      readonly notes: ReadonlySet<string>;
-      /** Grid axes; the walls on them are among `ids`. */
-      readonly grids: ReadonlySet<string>;
-      /** The registry's elements (elements/registry.ts) going: selected, or on a selected axis. */
+      /** The registry's elements (elements/registry.ts) going: selected (texts, axes), or on a selected axis.
+       * The walls on a selected axis are among `ids`. */
       readonly kinds: ReadonlySet<string>;
     }
   | { readonly kind: 'grip'; readonly id: WallId; readonly end: WallEnd; readonly walls: readonly DocWall[] }
@@ -134,14 +131,12 @@ export function selectGestures(app: App): SelectGestures {
         const doc = app.store.get();
         // The walls on a selected axis go with it (elements/grid/carry.ts).
         const moving = [...doc.walls.filter((w) => ui.selection.has(w.id)).map((w) => w.id), ...wallsOnGrids(doc, [...ui.selection])];
-        const grids = new Set(doc.grids.filter((g) => ui.selection.has(g.id)).map((g) => g.id));
         const carried = new Set(wallsOnGrids(doc, [...ui.selection]));
         const kinds = kindIds(doc, [...ui.selection, ...carried]);
         const going = () => roomsGoingWith(doc, app.geometry, ui.selection);
         const rooms = new Set([...going(), ...doc.rooms.filter((r) => ui.selection.has(r.id)).map((r) => r.id)]);
         const floors = new Set(doc.floors.filter((f) => ui.selection.has(f.id) && f.source.kind === 'outline').map((f) => f.id));
         const guides = new Set(doc.guides.filter((g) => ui.selection.has(g.id)).map((g) => g.id));
-        const notes = new Set(doc.notes.filter((n) => ui.selection.has(n.id)).map((n) => n.id));
         const only = ui.selection.size === 1 ? [...ui.selection][0]! : null;
         const sliding = only !== null ? doc.openings.find((o) => o.id === only) : undefined;
         const placed = sliding ? app.geometry.openings.get(sliding.id) : undefined;
@@ -153,8 +148,8 @@ export function selectGestures(app: App): SelectGestures {
           const f = placed.frame;
           const centre = add(f.start, scale(f.dir, (placed.end - placed.start) / 2));
           ui.drag = { kind: 'slide', id: sliding.id, grab: dot(sub(pending.at, centre), f.dir), walls: doc.walls, openings: doc.openings };
-        } else if (pending.kind === 'wall' && moving.length + rooms.size + floors.size + guides.size + notes.size + grids.size + kinds.size > 0) {
-          ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, floors, guides, notes, grids, kinds };
+        } else if (pending.kind === 'wall' && moving.length + rooms.size + floors.size + guides.size + kinds.size > 0) {
+          ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, floors, guides, kinds };
         }
         else if (pending.kind === 'grip') ui.drag = { kind: 'grip', id: pending.id, end: pending.end, walls: doc.walls };
         else if (pending.kind === 'stretch') {
@@ -251,15 +246,13 @@ export function selectGestures(app: App): SelectGestures {
         const rooms = moveRooms(before.rooms, d.rooms, dragTransform(d));
         const floors = d.kind === 'move' ? moveFloors(before.floors, d.floors, dragTransform(d)) : before.floors;
         const guides = d.kind === 'move' ? moveGuides(before.guides, d) : before.guides;
-        const notes = d.kind === 'move' ? moveNotes(before.notes, d) : before.notes;
         const kinds = d.kind === 'move' ? moveKinds(before, d.kinds, d.delta) : before;
-        const grids = d.kind === 'move' && d.grids.size > 0 && (d.delta.x !== 0 || d.delta.y !== 0) ? before.grids.map((g) => (d.grids.has(g.id) ? { ...g, start: add(g.start, d.delta), end: add(g.end, d.delta) } : g)) : before.grids;
         const walls = setWalls(d.walls);
         // One undo step for the walls and what went with them; a room, a floor, a guide or a note alone is a move too.
-        const moved = rooms.some((r, i) => r !== before.rooms[i]) || floors.some((f, i) => f !== before.floors[i]) || guides !== before.guides || notes !== before.notes || grids !== before.grids || kinds !== before;
+        const moved = rooms.some((r, i) => r !== before.rooms[i]) || floors.some((f, i) => f !== before.floors[i]) || guides !== before.guides || kinds !== before;
         app.store.dispatch({ label: d.kind === 'move' ? 'cmd.move' : walls.label, apply: (x) => {
           const next = walls.apply(x);
-          return next === x && !moved ? x : { ...next, ...kindLists(kinds), rooms, floors, guides, notes, grids };
+          return next === x && !moved ? x : { ...next, ...kindLists(kinds), rooms, floors, guides };
         } });
       } else if (d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'bulge') app.store.dispatch(setWalls(d.walls));
       else if (d?.kind === 'slide') {
@@ -293,12 +286,6 @@ export interface Pickable {
 export function moveGuides(guides: readonly Guide[], d: Extract<Drag, { kind: 'move' }>): readonly Guide[] {
   if (d.guides.size === 0 || (d.delta.x === 0 && d.delta.y === 0)) return guides;
   return guides.map((g) => (d.guides.has(g.id) ? { ...g, point: add(g.point, d.delta) } : g));
-}
-
-/** The notes as a move takes them: the same list when it takes none, or does not move. */
-export function moveNotes(notes: readonly Note[], d: Extract<Drag, { kind: 'move' }>): readonly Note[] {
-  if (d.notes.size === 0 || (d.delta.x === 0 && d.delta.y === 0)) return notes;
-  return notes.map((n) => (d.notes.has(n.id) ? { ...n, at: add(n.at, d.delta) } : n));
 }
 
 /** Where a move or a turn takes a point, as it stands now. */
@@ -350,10 +337,9 @@ function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): voi
       .filter((r) => r.enclosed)
       .map((r) => ({ id: r.room.id, outlines: [screen(r.outline, elevation(r.room.levelId), elevation(r.room.levelId), r.room.levelId)] })),
     ...[...g.floors.values()].map((f) => ({ id: f.floor.id, outlines: [screen(f.outline, f.bottom, f.top, f.floor.levelId)] })),
-    // The registry's kinds by their outlines.
-    ...[...eachSolid(app.visibleGeometry().kinds)].map((x) => ({ id: x.id, outlines: x.kind.outlines(x.solid).map((o) => o.map((q) => app.plan.toScreen(q))) })),
-    // An axis by its line.
-    ...app.shownGrids().map((g) => ({ id: g.id, outlines: [[app.plan.toScreen(g.start), app.plan.toScreen(g.end)]] })),
+    // The registry's kinds by their outlines (a text's box as drawn at this scale, an axis's line).
+    // Texts and axes are in plan only: not in a window drawn in 3D.
+    ...[...eachSolid(app.visibleGeometry().kinds)].filter((x) => app.ui.view === 'plan' || x.kind.solid).map((x) => ({ id: x.id, outlines: x.kind.outlines(x.solid, app.plan.scale).map((o) => o.map((q) => app.plan.toScreen(q))) })),
     // A dimension by its line.
     ...app.store
       .get()
@@ -362,11 +348,6 @@ function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): voi
         const at = placeDimension(app.store.get(), app.geometry, d);
         return at ? [{ id: d.id, outlines: [[app.plan.toScreen(at.la), app.plan.toScreen(at.lb)]] }] : [];
       }),
-    // A note by its box.
-    ...app.levelNotes().map((n) => {
-      const b = noteBox(n, shownHeight(n, app.plan.scale));
-      return { id: n.id, outlines: [[vec(b.x0, b.y0), vec(b.x1, b.y0), vec(b.x1, b.y1), vec(b.x0, b.y1)].map((p) => app.plan.toScreen(p))] };
-    }),
     // A guide has no ends: only a crossing selection, which it runs through, takes it.
     ...app.levelGuides().map((x) => {
       const a = app.plan.toScreen(x.point);

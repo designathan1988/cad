@@ -145,8 +145,8 @@ export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): 
   // calls it, its own data on the node for a renderer or a viewer to read.
   const counts = new Map<string, number>();
   for (const x of eachSolid(g.kinds)) {
-    const made = x.kind.solid?.(x.solid);
-    if (!made) continue;
+    const made = x.levelId === null ? null : x.kind.solid?.(x.solid);
+    if (!made || x.levelId === null) continue;
     made.geometry.translate(0, made.y, 0);
     const n = (counts.get(x.kind.key) ?? 0) + 1;
     counts.set(x.kind.key, n);

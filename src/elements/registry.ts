@@ -7,21 +7,26 @@ import type { Transform } from '../tools/transform';
 import type { AnyKind, KindKey } from './contract';
 import { beamKind } from './kinds/beam';
 import { columnKind } from './kinds/column';
+import { gridKind } from './kinds/grid';
+import { noteKind } from './kinds/note';
 import { railingKind } from './kinds/railing';
 import { roofKind } from './kinds/roof';
 import { stairKind } from './kinds/stair';
 
 /** Drawn in this order (later over earlier); the panel shows the first with a selected element. */
-export const KINDS: readonly AnyKind[] = [stairKind, railingKind, columnKind, roofKind, beamKind];
+export const KINDS: readonly AnyKind[] = [stairKind, railingKind, columnKind, roofKind, gridKind, beamKind, noteKind];
 
 export const kindOfKey = (key: KindKey): AnyKind => KINDS.find((k) => k.key === key)!;
 
 /** The kind an id belongs to, by its prefix; null for the elements not in the registry yet. */
 export const kindOfId = (id: string): AnyKind | null => KINDS.find((k) => id.startsWith(`${k.prefix}_`)) ?? null;
 
-/** A kind's list in the document. */
+/** A kind's list in the document (an axis has no level: it is on every one). */
 export const listOf = (doc: Doc, k: AnyKind): readonly { readonly id: string; readonly levelId: string }[] =>
   doc[k.key] as readonly { readonly id: string; readonly levelId: string }[];
+
+/** The level a derived element is on; null for one on every level. */
+export const levelOfSolid = (k: AnyKind, s: unknown): string | null => (k.everyLevel ? null : (k.element(s) as { levelId: string }).levelId);
 
 /** The document with a kind's list replaced. */
 export const withList = (doc: Doc, k: AnyKind, list: readonly unknown[]): Doc => ({ ...doc, [k.key]: list }) as Doc;
@@ -39,12 +44,15 @@ export function filterKinds(solids: KindSolids, keep: (k: AnyKind, s: unknown) =
 }
 
 /** Every derived element, with its kind. */
-export function* eachSolid(solids: KindSolids): Generator<{ kind: AnyKind; solid: unknown; id: string; levelId: string }> {
+export function* eachSolid(solids: KindSolids): Generator<{ kind: AnyKind; solid: unknown; id: string; levelId: string | null }> {
   for (const k of KINDS)
     for (const [id, s] of solids.get(k.key) ?? new Map()) {
-      yield { kind: k, solid: s, id, levelId: k.element(s).levelId };
+      yield { kind: k, solid: s, id, levelId: levelOfSolid(k, s) };
     }
 }
+
+/** The derived forms of one kind. */
+export const solidsOf = <S>(solids: KindSolids, k: AnyKind): S[] => [...((solids.get(k.key) ?? new Map()) as Map<string, S>).values()];
 
 /** Whether a derived element with this id is there. */
 export const hasSolid = (solids: KindSolids, id: string): boolean => {
@@ -102,10 +110,15 @@ export function copyKinds(doc: Doc, ids: ReadonlySet<string>, t: Transform, fres
   const added: string[] = [];
   for (const k of KINDS) {
     const list = listOf(doc, k);
-    const copies = list.filter((e) => ids.has(e.id)).map((e) => k.mapped(e, t, fresh(e.id, k.prefix)) as { readonly id: string });
-    if (copies.length === 0) continue;
-    added.push(...copies.map((e) => e.id));
-    next = withList(next, k, [...list, ...copies]);
+    const taken = list.filter((e) => ids.has(e.id));
+    if (taken.length === 0) continue;
+    // One after another: a copy named on from the copies before it.
+    const all = taken.reduce<unknown[]>((so, e) => {
+      const copy = k.mapped(e, t, fresh(e.id, k.prefix));
+      return [...so, k.copied ? k.copied(so, copy) : copy];
+    }, [...list]);
+    added.push(...all.slice(list.length).map((e) => (e as { readonly id: string }).id));
+    next = withList(next, k, all);
   }
   return { doc: next, added };
 }
@@ -114,6 +127,7 @@ export function copyKinds(doc: Doc, ids: ReadonlySet<string>, t: Transform, fres
 export function kindsOnLevel(after: Doc, before: Doc, levelId: string): Doc {
   let next = after;
   for (const k of KINDS) {
+    if (k.everyLevel) continue;
     const n = listOf(before, k).length;
     next = withList(next, k, listOf(after, k).map((e, i) => (i >= n ? { ...e, levelId } : e)));
   }
@@ -124,6 +138,8 @@ export function kindsOnLevel(after: Doc, before: Doc, levelId: string): Doc {
 export function appendKinds(onto: Doc, after: Doc, before: Doc): Doc {
   let next = onto;
   for (const k of KINDS) {
+    // An axis is on every level already: pasting it would lay a second one over it.
+    if (k.everyLevel) continue;
     const extra = listOf(after, k).slice(listOf(before, k).length);
     if (extra.length > 0) next = withList(next, k, [...listOf(onto, k), ...extra]);
   }

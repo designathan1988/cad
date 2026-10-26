@@ -5,7 +5,7 @@ import { CEILING_THICKNESS } from '../elements/room/schema';
 import * as THREE from 'three';
 import { parseLength, parseLengthAngle, parseNumber, parsePoint } from '../core/measure';
 import { createStore, type Store } from '../core/store';
-import { add, distance, type Point2, scale } from '../core/vector';
+import { distance, type Point2, scale } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { addWalls, resetWallsToType, setWalls, updateWalls } from '../elements/wall/commands';
@@ -44,8 +44,9 @@ import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui
 import { snapLabel, type Snap } from '../tools/snap';
 import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, rectangle, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
-import { type Drag, dragTransform, hull, moveGuides, moveNotes } from './select-drag';
-import { anyKinds, appendKinds, filterKinds, hasSolid, KINDS, kindLists, kindOfId, kindOfKey, moveKinds } from '../elements/registry';
+import { type Drag, dragTransform, hull, moveGuides } from './select-drag';
+import { anyKinds, appendKinds, filterKinds, hasSolid, KINDS, kindLists, kindOfId, kindOfKey, levelOfSolid, moveKinds, solidsOf } from '../elements/registry';
+import { gridKind } from '../elements/kinds/grid';
 import { addRailing } from '../elements/railing/commands';
 import { RAILING_HEIGHT, RAILING_PREFIX } from '../elements/railing/schema';
 import { addStair } from '../elements/stair/commands';
@@ -57,14 +58,14 @@ import { addBeam } from '../elements/beam/commands';
 import { BEAM_DEPTH, BEAM_PREFIX, BEAM_WIDTH } from '../elements/beam/schema';
 import { addColumn } from '../elements/column/commands';
 import { COLUMN_PREFIX, COLUMN_SIZE } from '../elements/column/schema';
-import { addNote, updateNotes } from '../elements/note/commands';
+import { addNote } from '../elements/note/commands';
 import { addDimension, setDimensionDistance } from '../elements/dimension/commands';
 import { anchorAt, offsetThrough, placeDimension } from '../elements/dimension/anchor';
 import { DIM_PREFIX, type Dimension, isDimId } from '../elements/dimension/schema';
-import { addGrid, renameGrid } from '../elements/grid/commands';
+import { addGrid } from '../elements/grid/commands';
 import { GRID_PREFIX, type Grid, isGridId, nextGridName } from '../elements/grid/schema';
 import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState, dimensionTransition } from '../tools/dimension-tool';
-import { LEVEL_MARK_HEIGHT, NOTE_HEIGHT, NOTE_PREFIX, type Note, elevationText, isNoteId } from '../elements/note/schema';
+import { LEVEL_MARK_HEIGHT, NOTE_HEIGHT, NOTE_PREFIX, isNoteId } from '../elements/note/schema';
 import { geometryOf, keepRooms, moveFloors, moveRooms } from './carry';
 import { keepOpenings } from './keep-openings';
 import { stepSelection } from './keyboard-select';
@@ -410,14 +411,10 @@ export class App {
       let n = 0;
       const previewId = (prefix: string) => `${prefix}_preview${++n}`;
       const shownDoc = transformSelection(doc, this.modifyBefore ?? this.geometry, [...this.ui.selection], t, m.copy, previewId, m.disjoin).doc;
-      this.previewNotes = shownDoc.notes;
-      this.previewGrids = shownDoc.grids;
       // Doors and windows, and a room the walls would be moved past, as they will be when the move is made.
       this.geometry = keepRooms(doc, keepOpenings(doc, shownDoc)).geometry;
       return this.render();
     }
-    this.previewNotes = null;
-    this.previewGrids = null;
     // While dragging, the walls as dragged; the rooms going with a move or a turn go in the preview too,
     // so they never show as open mid-drag.
     const shown =
@@ -1218,22 +1215,6 @@ export class App {
     return this.shownGuides().filter((g) => g.levelId === this.ui.levelId);
   }
 
-  /** The notes as the Modify tool would leave them with the pointer where it is (refresh), or null. */
-  private previewNotes: readonly Note[] | null = null;
-
-  /** The notes of the level shown, as a move being dragged or the Modify tool takes them; plan only. */
-  levelNotes(): Note[] {
-    if (this.ui.view !== 'plan') return [];
-    const d = this.ui.drag;
-    const doc = this.store.get();
-    const notes = this.previewNotes ?? doc.notes;
-    // A level mark says its level's height plus its own: as its text, so it is drawn, boxed and picked as one.
-    const elevation = levelOf(doc, this.ui.levelId)?.elevation ?? 0;
-    return (d?.kind === 'move' ? moveNotes(notes, d) : notes)
-      .filter((n) => n.levelId === this.ui.levelId)
-      .map((n) => (n.elevation ? { ...n, text: elevationText(elevation + n.elevation.offset, (m) => num(m)) } : n));
-  }
-
   /** A level mark where the menu was opened (or the middle of the view), selected: it says the level's height. */
   addLevelMarkHere(at?: Point2): void {
     const p = at ?? this.plan.center;
@@ -1696,26 +1677,17 @@ export class App {
     this.setTool('select');
   }
 
-  /** The axes as a move being dragged or the Modify tool takes them, and the one being drawn; plan only. */
-  private planGrids(): NonNullable<PlanOverlay['grids']> {
-    if (this.ui.view !== 'plan' || this.ui.hidden.has('guides')) return [];
-    const d = this.ui.drag;
-    const grids = this.previewGrids ?? this.store.get().grids;
-    const moved = d?.kind === 'move' && d.grids.size > 0 ? grids.map((g) => (d.grids.has(g.id) ? { ...g, start: add(g.start, d.delta), end: add(g.end, d.delta) } : g)) : grids;
-    const out = moved.map((g) => ({ ...g, selected: this.ui.selection.has(g.id) || this.ui.hover === g.id }));
-    const from = this.ui.tool === 'grid' ? this.ui.gridFrom : null;
+  /** The axis being drawn with the grid tool, and the name it will get; plan only. */
+  private gridDraft(): { name: string; start: Point2; end: Point2 } | null {
+    const from = this.ui.view === 'plan' && this.ui.tool === 'grid' ? this.ui.gridFrom : null;
     const to = this.ui.snap?.point ?? this.ui.cursor;
-    if (from && to && distance(from, to) > 0) out.push({ id: '', name: nextGridName(this.store.get().grids, from, to), start: from, end: to, selected: true });
-    return out;
+    return from && to && distance(from, to) > 0 ? { name: nextGridName(this.store.get().grids, from, to), start: from, end: to } : null;
   }
 
-  /** The axes as drawn now (planGrids, without the one being drawn): what picking and snapping see. */
+  /** The axes as drawn now (a move being dragged or the Modify tool taking them): what snapping sees; plan only. */
   shownGrids(): readonly Grid[] {
-    return this.planGrids().filter((g) => g.id !== '');
+    return this.ui.view === 'plan' ? solidsOf<Grid>(this.visibleGeometry().kinds, gridKind) : [];
   }
-
-  /** The axes as the Modify tool would leave them with the pointer where it is (refresh), or null. */
-  private previewGrids: readonly Grid[] | null = null;
 
   /** The dimension tool: a click or Esc (dimension-tool.ts). The third click makes the dimension. */
   dimensionEvent(event: DimensionToolEvent): void {
@@ -2046,6 +2018,11 @@ export class App {
       return this.renderChrome();
     }
     const r = copyToLevel(c.doc, c.geometry, c.ids, this.ui.levelId, newId);
+    // Only axes taken: they are on this level already.
+    if (r.selection.length === 0) {
+      this.ui.info = t('hint.pasteAxes');
+      return this.renderChrome();
+    }
     const added = {
       walls: r.doc.walls.slice(c.doc.walls.length),
       openings: r.doc.openings.slice(c.doc.openings.length),
@@ -2053,7 +2030,6 @@ export class App {
       rooms: r.doc.rooms.slice(c.doc.rooms.length),
       floors: r.doc.floors.slice(c.doc.floors.length),
       guides: r.doc.guides.slice(c.doc.guides.length),
-      notes: r.doc.notes.slice(c.doc.notes.length),
       dimensions: r.doc.dimensions.slice(c.doc.dimensions.length),
     };
     const level = levelOf(this.store.get(), this.ui.levelId);
@@ -2071,7 +2047,6 @@ export class App {
         rooms: [...d.rooms, ...rooms],
         floors: [...d.floors, ...added.floors],
         guides: [...d.guides, ...added.guides],
-        notes: [...d.notes, ...added.notes],
         dimensions: [...d.dimensions, ...added.dimensions],
       }),
     });
@@ -2376,7 +2351,7 @@ export class App {
       return this.renderChrome();
     }
     const marks = this.ui.openingTags ? openingMarks(doc.openings, markPrefix()) : undefined;
-    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²`, ...(marks ? { marks } : {}), notes: this.store.get().notes.map((n) => (n.elevation ? { ...n, text: elevationText((levelOf(this.store.get(), n.levelId)?.elevation ?? 0) + n.elevation.offset, (m) => num(m)) } : n)), dimensions: this.store.get().dimensions.flatMap((d) => (d.levelId === levelId ? (placeDimension(this.store.get(), this.geometry, d) ?? []) : [])), length: (m) => num(m), grids: this.store.get().grids });
+    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²`, ...(marks ? { marks } : {}), dimensions: this.store.get().dimensions.flatMap((d) => (d.levelId === levelId ? (placeDimension(this.store.get(), this.geometry, d) ?? []) : [])), length: (m) => num(m) });
     const level = doc.levels.find((l) => l.id === levelId);
     const file = `${this.fileBase()} - ${level ? safeFileName(name(level.name)) : ''}.dxf`;
     this.download(file, new Blob([toCp1252(text)], { type: 'application/dxf' }), 'application/dxf');
@@ -2470,7 +2445,7 @@ export class App {
   private selectionKinds(): number {
     const g = this.geometry;
     const ids = [...this.ui.selection];
-    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isNoteId) ? 1 : 0) + (ids.some(isDimId) ? 1 : 0) + (ids.some(isGridId) ? 1 : 0) + new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
+    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isDimId) ? 1 : 0) + new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
   }
 
   selectedWalls(): DocWall[] {
@@ -2628,9 +2603,8 @@ export class App {
         roomSpace: ui.tool === 'room' ? ui.roomSpace : null,
         preview,
         guides: this.levelGuides(),
-        notes: this.levelNotes().map((n) => ({ ...n, selected: ui.selection.has(n.id) || ui.hover === n.id })),
         dimensions: this.planDimensions(),
-        grids: this.planGrids(),
+        gridDraft: this.gridDraft(),
         guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
         snap:
           // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
@@ -2810,9 +2784,7 @@ export class App {
         openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing] } : null,
         total: ui.selection.size,
         guides: doc.guides.filter((g) => ui.selection.has(g.id)),
-        notes: doc.notes.filter((n) => ui.selection.has(n.id)).map((n) => (n.elevation ? { ...n, text: elevationText((levelOf(doc, n.levelId)?.elevation ?? 0) + n.elevation.offset, (m) => num(m)) } : n)),
         dimensions: doc.dimensions.filter((d) => ui.selection.has(d.id)),
-        grids: doc.grids.filter((g) => ui.selection.has(g.id)),
         // The first registry kind with a selected element, and those of its elements, as derived.
         kind: (() => {
           for (const k of KINDS) {
@@ -2904,9 +2876,7 @@ export class App {
           this.refresh();
         },
         clearGuides: () => this.clearGuides(),
-        updateNotes: (ids, patch) => this.store.dispatch(updateNotes(ids, patch)),
         setDimensionDistance: (ids, distance) => this.store.dispatch(setDimensionDistance(ids, distance)),
-        renameGrid: (id, name) => this.store.dispatch(renameGrid(id, name)),
         dispatch: (c) => this.store.dispatch(c),
         // The wall moved across, with its joins kept as a move keeps them: the face then meets the one below.
         alignBelow: (step) => this.store.dispatch(setWalls(moveWalls(this.store.get(), [step.upperId], step.shift), 'cmd.alignBelow')),
@@ -3096,7 +3066,10 @@ export class App {
         openings: new Map([...g.openings].filter(([, o]) => solids.has(o.opening.wallId))),
         rooms: new Map([...g.rooms].filter(([, r]) => shown.has(r.room.levelId))),
         floors: new Map([...g.floors].filter(([, f]) => shown.has(f.floor.levelId))),
-        kinds: filterKinds(g.kinds, (k, x) => shown.has(k.element(x).levelId)),
+        kinds: filterKinds(g.kinds, (k, x) => {
+          const l = levelOfSolid(k, x);
+          return l === null || shown.has(l);
+        }),
       };
     }
     const solids = new Map([...g.solids].filter(([, s]) => s.wall.levelId === this.ui.levelId));
@@ -3104,7 +3077,11 @@ export class App {
     const openings = new Map([...g.openings].filter(([, o]) => levelWalls.has(o.opening.wallId)));
     const rooms = new Map([...g.rooms].filter(([, r]) => r.room.levelId === this.ui.levelId));
     const floors = new Map([...g.floors].filter(([, f]) => f.floor.levelId === this.ui.levelId));
-    const kinds = filterKinds(g.kinds, (k, x) => k.element(x).levelId === this.ui.levelId);
+    // An axis (on every level) on each; a text, like the rest, on its own.
+    const kinds = filterKinds(g.kinds, (k, x) => {
+      const l = levelOfSolid(k, x);
+      return l === null || l === this.ui.levelId;
+    });
     return { ...g, solids, openings, rooms, floors, kinds };
   }
 
@@ -3127,13 +3104,9 @@ export class App {
     else this.ui.hidden.add(c);
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      // Guides and notes have no geometry: a guide goes only when guides are hidden, a note never.
-      if (isNoteId(id) || isDimId(id)) continue;
-      if (isGridId(id) ? this.ui.hidden.has('guides') : false) {
-        this.ui.selection.delete(id);
-        continue;
-      }
-      if (isGridId(id)) continue;
+      // Guides and dimensions have no geometry: a guide goes only when guides are hidden, a dimension never.
+      if (isDimId(id)) continue;
+      // The registry's: with their category (a text has none, an axis goes with the guides).
       if (kindOfId(id)) {
         if (!hasSolid(shown.kinds, id)) this.ui.selection.delete(id);
         continue;

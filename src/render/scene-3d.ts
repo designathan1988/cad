@@ -563,6 +563,8 @@ export class Scene3D {
     }
     // The registry's kinds (elements/registry.ts): each gives its solid; rebuilt only when it changed.
     for (const x of eachSolid(g.kinds)) {
+      // Texts and axes are drawn in plan only (no solid, no level of their own for an axis).
+      if (!x.kind.solid || x.levelId === null) continue;
       seen.add(x.id);
       const state = selected.has(x.id) ? 's' : 'n';
       let k = this.shapeKeys.get(x.solid as object);

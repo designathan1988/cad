@@ -14,7 +14,7 @@ import type { MessageKey } from '../ui/i18n';
 import type { IconName } from '../ui/icons';
 
 /** The document's lists the registry's kinds keep. */
-export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings';
+export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'notes' | 'grids';
 
 /** What the plan view lends a kind to draw itself with. */
 export interface PlanPaint {
@@ -23,12 +23,17 @@ export interface PlanPaint {
   readonly color: (token: string) => string;
   /** Pixels a metre. */
   readonly scale: number;
+  /** The interface's font family, and a font of its own sizes (`--fs-sm`) at a weight. */
+  readonly family: string;
+  readonly font: (weight: string, size: string) => string;
 }
 
 /** What the DXF writer lends a kind. */
 export interface DxfOut {
   readonly line: (layer: string, a: Point2, b: Point2) => void;
   readonly polyline: (layer: string, points: readonly Point2[], closed: boolean) => void;
+  /** A TEXT of `height` (m) centred on `at`. */
+  readonly text: (layer: string, at: Point2, height: number, text: string) => void;
 }
 
 /** A kind's 3D: a geometry in three.js coordinates, standing `y` up, in one of the scene's materials. */
@@ -43,16 +48,24 @@ export interface KindSolid {
 /** Where a click finds it among the rest: before the walls (inside them), after them, or last of all. */
 export type PickOrder = 'beforeWalls' | 'afterWalls' | 'last';
 
-export interface ElementKind<E extends { readonly id: string; readonly levelId: string }, S> {
+export interface ElementKind<E extends { readonly id: string; readonly levelId?: string }, S> {
   readonly key: KindKey;
   /** Its ids start with this and an underscore. */
   readonly prefix: string;
-  /** The browser category that hides it. */
-  readonly category: Category;
+  /** The browser category that hides it; null for one that is always shown. */
+  readonly category: Category | null;
+  /** On every level (it has no level of its own): a grid axis. Not pasted onto another level. */
+  readonly everyLevel?: true;
+  /** Drawn in plan over the guides and the other kinds (a text). */
+  readonly over?: true;
   readonly icon: IconName;
   /** The panel's title for one and for several ({n}). */
   readonly one: MessageKey;
   readonly many: MessageKey;
+  /** The panel's icon and title, when they depend on what is selected (an axis's name, a level mark). */
+  readonly title?: (items: readonly S[]) => { readonly icon: IconName; readonly text: string };
+  /** A line under its fields in the panel. */
+  readonly hint?: MessageKey;
   /** The file reader's word for the ones it dropped ({count}). */
   readonly dropped: MessageKey;
   /** A node's name in the GLB ({n}) and its material's name. */
@@ -63,15 +76,20 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId: 
   /** As built, from the document. */
   readonly derive: (doc: Doc, e: E) => S;
   readonly element: (s: S) => E;
-  /** Its outlines in plan: for a window or crossing selection, framing, and bounds. */
-  readonly outlines: (s: S) => readonly (readonly Point2[])[];
-  /** Under the point p, within `near` (m). */
-  readonly hit: (s: S, p: Point2, near: number) => boolean;
+  /** Its outlines in plan at `scale` px a metre (a text's letters keep a size on screen): for a window
+   * or crossing selection, framing, and bounds. */
+  readonly outlines: (s: S, scale?: number) => readonly (readonly Point2[])[];
+  /** Under the point p, within `near` (m), at `scale` px a metre. */
+  readonly hit: (s: S, p: Point2, near: number, scale: number) => boolean;
+  /** A handle taken before everything else under the point (an axis's bubble). */
+  readonly grab?: (s: S, p: Point2, scale: number) => boolean;
   readonly pick: PickOrder;
   /** Moved by d (arrows, a drag). */
   readonly moved: (e: E, d: Point2) => E;
   /** Taken by a Modify tool's transform, under `id` (its own, or its copy's). */
   readonly mapped: (e: E, t: Transform, id: string) => E;
+  /** A copy as added after `all` (an axis named on from the last). */
+  readonly copied?: (all: readonly E[], e: E) => E;
   /** Lying on a grid axis's line, so it goes with the axis. */
   readonly onGrid?: (e: E, onLine: (p: Point2) => boolean) => boolean;
   /** "Select similar": the same as `b`. */

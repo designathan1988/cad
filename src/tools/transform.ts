@@ -6,8 +6,7 @@
 // and positions, never thicknesses or the sizes of doors and windows. A mirror swaps each wall's ends,
 // so its layers, and its doors' hinges, come out mirrored rather than turned over.
 
-import { copyKinds, hasKinds, kindsOnLevel, mapKinds } from '../elements/registry';
-import { GRID_PREFIX, type Grid, nextGridName } from '../elements/grid/schema';
+import { copyKinds, hasKinds, kindOfId, kindsOnLevel, mapKinds } from '../elements/registry';
 import { wallsOnGrids } from '../elements/grid/carry';
 import { roomsGoingWith } from '../app/carry';
 import type { Doc, DocWall } from '../app/document';
@@ -15,7 +14,6 @@ import type { DerivedGeometry } from '../app/geometry';
 import { add, dot, normalize, type Point2, scale, sub } from '../core/vector';
 import { GROUP_PREFIX, type GroupSpacing, type Opening, type OpeningGroup, OPENING_PREFIX, type PositionRule } from '../elements/opening/schema';
 import { GUIDE_PREFIX } from '../elements/guide/schema';
-import { NOTE_PREFIX } from '../elements/note/schema';
 import { DIM_PREFIX, type DimAnchor, type Dimension } from '../elements/dimension/schema';
 import { resolve } from '../elements/dimension/anchor';
 import { aimAt } from '../app/opening-ui';
@@ -173,10 +171,7 @@ export function transformSelection(
   const rooms = new Set([...roomsGoingWith(doc, g, walls), ...doc.rooms.filter((r) => set.has(r.id)).map((r) => r.id)]);
   const floors = new Set(doc.floors.filter((f) => set.has(f.id) && f.source.kind === 'outline').map((f) => f.id));
   const guides = new Set(doc.guides.filter((x) => set.has(x.id)).map((x) => x.id));
-  // Notes keep reading upright: only their point goes (a turn, a mirror), their letters as they are.
-  const notes = new Set(doc.notes.filter((x) => set.has(x.id)).map((x) => x.id));
   const dims = new Set(doc.dimensions.filter((x) => set.has(x.id)).map((x) => x.id));
-  const grids = new Set(doc.grids.filter((x) => set.has(x.id)).map((x) => x.id));
   const outline = (points: readonly Point2[]) => points.map(t.map);
   // A dimension's end held by a wall that goes (or a door or window on one) goes with it; mirrored, that
   // wall's ends trade places (edit.ts: swap), so the end is counted from the other one, the jamb the other.
@@ -211,8 +206,6 @@ export function transformSelection(
             : f,
       ),
       guides: doc.guides.map((x) => (guides.has(x.id) ? { ...x, point: t.map(x.point), dir: mapDir(t, x.point, x.dir) } : x)),
-      notes: doc.notes.map((x) => (notes.has(x.id) ? { ...x, at: t.map(x.at) } : x)),
-      grids: doc.grids.map((x) => (grids.has(x.id) ? { ...x, start: t.map(x.start), end: t.map(x.end) } : x)),
       dimensions: doc.dimensions.map((d) => {
         const a = swapped(dims.has(d.id) ? freePoint(d.a) : d.a);
         const b = swapped(dims.has(d.id) ? freePoint(d.b) : d.b);
@@ -244,12 +237,8 @@ export function transformSelection(
   for (const f of floorList) fresh(f.id, 'floor');
   const guideList = doc.guides.filter((x) => guides.has(x.id));
   for (const x of guideList) fresh(x.id, GUIDE_PREFIX);
-  const noteList = doc.notes.filter((x) => notes.has(x.id));
-  for (const x of noteList) fresh(x.id, NOTE_PREFIX);
   const dimList = doc.dimensions.filter((x) => dims.has(x.id));
   for (const x of dimList) fresh(x.id, DIM_PREFIX);
-  const gridList = doc.grids.filter((x) => grids.has(x.id));
-  for (const x of gridList) fresh(x.id, GRID_PREFIX);
   const to = (id: string) => ids2.get(id) ?? id;
 
   const newWalls = doc.walls
@@ -281,13 +270,6 @@ export function transformSelection(
     rooms: [...doc.rooms, ...newRooms],
     floors: [...doc.floors, ...newFloors],
     guides: [...doc.guides, ...guideList.map((x) => ({ ...x, id: to(x.id), point: t.map(x.point), dir: mapDir(t, x.point, x.dir) }))],
-    notes: [...doc.notes, ...noteList.map((x) => ({ ...x, id: to(x.id), at: t.map(x.at) }))],
-    // A copied axis is named on from the last of its kind, as a new one is.
-    grids: gridList.reduce<Grid[]>((all, x) => {
-      const start = t.map(x.start);
-      const end = t.map(x.end);
-      return [...all, { id: to(x.id), name: nextGridName(all, start, end), start, end }];
-    }, [...doc.grids]),
     // A copied dimension is held by the copies of what held it; an end on something not copied is
     // left where the copy of that point lands, free.
     dimensions: [
@@ -311,9 +293,7 @@ export function transformSelection(
     ...doc.rooms.filter((r) => set.has(r.id)).map((r) => to(r.id)),
     ...doc.floors.filter((f) => floors.has(f.id)).map((f) => to(f.id)),
     ...guideList.map((x) => to(x.id)),
-    ...noteList.map((x) => to(x.id)),
     ...dimList.map((x) => to(x.id)),
-    ...gridList.map((x) => to(x.id)),
   ];
   // The registry's elements (columns, beams, roofs, stairs, guardrails), copied by their own mapping.
   const kinds = copyKinds(next, set, t, fresh);
@@ -329,9 +309,7 @@ export function canTransform(doc: Doc, ids: readonly string[]): boolean {
     doc.rooms.some((r) => set.has(r.id)) ||
     doc.floors.some((f) => set.has(f.id) && f.source.kind === 'outline') ||
     doc.guides.some((x) => set.has(x.id)) ||
-    doc.notes.some((x) => set.has(x.id)) ||
     doc.dimensions.some((x) => set.has(x.id)) ||
-    doc.grids.some((x) => set.has(x.id)) ||
     hasKinds(doc, set)
   );
 }
@@ -344,13 +322,14 @@ export function canTransform(doc: Doc, ids: readonly string[]): boolean {
  */
 export function copyToLevel(doc: Doc, g: DerivedGeometry, ids: readonly string[], levelId: string, newId: (prefix: string) => string): TransformResult {
   const walls = new Set(doc.walls.filter((w) => ids.includes(w.id)).map((w) => w.id));
-  const taken = ids.filter((id) => !doc.openings.some((o) => o.id === id && !walls.has(o.wallId)));
+  // An axis is on every level already: it is not copied onto one (nor counted, nor selected).
+  const taken = ids.filter((id) => !doc.openings.some((o) => o.id === id && !walls.has(o.wallId)) && !kindOfId(id)?.everyLevel);
   const r = transformSelection(doc, g, taken, translation({ x: 0, y: 0 }), true, newId);
   const onLevel = <T extends { readonly levelId: string }>(list: readonly T[], before: number): T[] => list.map((x, i) => (i >= before ? { ...x, levelId } : x));
   let last = doc.rooms.filter((x) => x.levelId === levelId).reduce((n, x) => Math.max(n, Number.parseInt(x.number, 10) || 0), 0);
   const rooms = onLevel(r.doc.rooms, doc.rooms.length).map((x, i) => (i >= doc.rooms.length ? { ...x, number: String(++last) } : x));
   return {
-    doc: kindsOnLevel({ ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length), rooms, floors: onLevel(r.doc.floors, doc.floors.length), guides: onLevel(r.doc.guides, doc.guides.length), notes: onLevel(r.doc.notes, doc.notes.length), dimensions: onLevel(r.doc.dimensions, doc.dimensions.length) }, doc, levelId),
+    doc: kindsOnLevel({ ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length), rooms, floors: onLevel(r.doc.floors, doc.floors.length), guides: onLevel(r.doc.guides, doc.guides.length), dimensions: onLevel(r.doc.dimensions, doc.dimensions.length) }, doc, levelId),
     selection: r.selection,
   };
 }

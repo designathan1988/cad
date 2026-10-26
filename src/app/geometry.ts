@@ -455,6 +455,6 @@ export function hideCategories(g: DerivedGeometry, hidden: ReadonlySet<Category>
     rooms: hidden.has('rooms') ? new Map() : g.rooms,
     floors: hidden.has('floors') ? new Map() : g.floors,
     // Each kind with its category (structure with the walls, stairs and guardrails with the floors).
-    kinds: filterKinds(g.kinds, (k) => !hidden.has(k.category)),
+    kinds: filterKinds(g.kinds, (k) => k.category === null || !hidden.has(k.category)),
   };
 }

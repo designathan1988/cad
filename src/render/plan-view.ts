@@ -2,6 +2,7 @@
 // The joined outline needs no boolean union: every piece is stroked first, then every piece is
 // filled over the strokes, so lines between joined pieces disappear and only the outside stays.
 
+import { drawAxis } from '../elements/kinds/grid';
 import { eachSolid } from '../elements/registry';
 import type { Point2 } from '../core/vector';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
@@ -10,7 +11,6 @@ import { layoutRoomTags } from './room-tags';
 import type { Handles } from '../app/handles';
 import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
-import { type Note, noteBox, shownHeight } from '../elements/note/schema';
 import { LAYER_TOKEN } from '../ui/swatch';
 import { separateLabels } from '../app/dim-labels';
 
@@ -55,7 +55,7 @@ export interface DimMark {
 }
 
 /** A grid bubble's radius (px), its centre this far past the axis's end. */
-export const GRID_BUBBLE_PX = 12;
+export { GRID_BUBBLE_PX } from '../elements/kinds/grid';
 
 export interface PlanOverlay {
   readonly selected: ReadonlySet<WallId>;
@@ -67,14 +67,14 @@ export interface PlanOverlay {
   /** The level's guides: lines without ends, dashed across the whole plan (selected and hovered as elements). */
   readonly guides?: readonly { readonly id: string; readonly point: Point2; readonly dir: Point2 }[];
   /** The level's text notes, as tall as their letters at the plan's scale. */
-  readonly notes?: readonly (Note & { readonly selected: boolean })[];
   /**
    * Permanent dimensions (elements/dimension): the points measured (a, b), the dimension line (la to lb),
    * the value. The one being made has no id.
    */
   readonly dimensions?: readonly { readonly id: string; readonly a: Point2; readonly b: Point2; readonly la: Point2; readonly lb: Point2; readonly text: string; readonly selected: boolean }[];
   /** Grid axes: dash-dot lines with their name in a bubble at each end; the one being drawn has no id. */
-  readonly grids?: readonly { readonly id: string; readonly name: string; readonly start: Point2; readonly end: Point2; readonly selected: boolean }[];
+  /** The axis being drawn (the grid tool), with the name it will get. */
+  readonly gridDraft?: { readonly name: string; readonly start: Point2; readonly end: Point2 } | null;
   /** The guide being placed. */
   readonly guideDraft?: { readonly point: Point2; readonly dir: Point2 } | null;
   /**
@@ -475,11 +475,14 @@ export class PlanView {
     outline(drawn, color('--wall-sel'), 3);
     fill(drawn, color('--wall-sel-fill'));
     // The registry's kinds (elements/registry.ts), each drawing itself; lit when selected or under the pointer.
-    const paint = { ctx, toScreen: (v: Point2) => this.toScreen(v), color, scale: this.scale };
-    for (const x of eachSolid(g.kinds)) x.kind.plan(paint, x.solid, o.selected.has(x.id) || o.hover === x.id);
+    const family = getComputedStyle(this.canvas).getPropertyValue('--font').trim() || 'sans-serif';
+    const paint = { ctx, toScreen: (v: Point2) => this.toScreen(v), color, scale: this.scale, family, font: (weight: string, size: string) => this.font(weight, size) };
+    const kinds = [...eachSolid(g.kinds)];
+    // Texts over the guides and the rest (contract.ts: over), drawn below.
+    for (const x of kinds) if (!x.kind.over) x.kind.plan(paint, x.solid, o.selected.has(x.id) || o.hover === x.id);
     this.drawOpenings(g, o, { line: color('--wall-line'), sel: color('--wall-sel'), selFill: color('--wall-sel-fill'), warn: color('--warn'), canvas: color('--canvas') });
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
-    for (const g of o.grids ?? []) this.drawGridAxis(g, g.selected ? color('--wall-sel') : color('--text-2'), color('--canvas'));
+    if (o.gridDraft) drawAxis(paint, o.gridDraft.start, o.gridDraft.end, o.gridDraft.name, color('--wall-sel'));
     // Guides over the walls, thin: a guide laid on a wall's face is seen there.
     for (const g of o.guides ?? []) {
       const lit = o.selected.has(g.id) || o.hover === g.id;
@@ -489,7 +492,7 @@ export class PlanView {
     if (o.axisLine) this.drawLine(o.axisLine.point, o.axisLine.dir, color('--snap'), 1.4, [12, 4, 2, 4]);
     for (const r of o.refLines ?? []) this.drawRefLine(r, color('--ref-line'));
     if (o.ray) this.dashed(o.ray.start, o.ray.end, color('--snap'));
-    this.drawNotes(o.notes ?? [], color);
+    for (const x of kinds) if (x.kind.over) x.kind.plan(paint, x.solid, o.selected.has(x.id) || o.hover === x.id);
     this.drawOpeningTags(o.openingTags ?? [], color);
     const kept = o.dimensions ?? [];
     this.drawRoomTags(o.roomLabels, color, [...this.dimValueBoxes(o.dims ?? []), ...kept.map((d) => this.keptDimValueBox(d))], o.dims ?? [], kept.map((d) => ({ a: this.toScreen(d.la), b: this.toScreen(d.lb) })));
@@ -794,113 +797,6 @@ export class PlanView {
   }
 
   /** A grid axis: a dash-dot line between its bubbles, each a circle with its name, past its ends. */
-  private drawGridAxis(g: NonNullable<PlanOverlay['grids']>[number], colour: string, bg: string): void {
-    const ctx = this.ctx;
-    const a = this.toScreen(g.start);
-    const b = this.toScreen(g.end);
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
-    if (len < 1) return;
-    const u = { x: (b.x - a.x) / len, y: (b.y - a.y) / len };
-    const r = GRID_BUBBLE_PX;
-    ctx.save();
-    ctx.strokeStyle = colour;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([14, 4, 2, 4]);
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.font = this.font('600', '--fs-sm');
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    for (const [p, s] of [
-      [a, -1],
-      [b, 1],
-    ] as const) {
-      const c = { x: p.x + u.x * r * s, y: p.y + u.y * r * s };
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = bg;
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = colour;
-      ctx.fillText(g.name, c.x, c.y + 0.5);
-    }
-    ctx.restore();
-  }
-
-  /**
-   * A level mark: the plan's level symbol (a circle with two opposite quarters filled, crossed) at its
-   * point, and the height it says to its right; a selected one boxed.
-   */
-  private drawLevelMark(n: NonNullable<PlanOverlay['notes']>[number], c: Point2, px: number, colour: string, family: string): void {
-    const ctx = this.ctx;
-    const r = px * 0.5;
-    ctx.save();
-    ctx.strokeStyle = colour;
-    ctx.fillStyle = colour;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
-    ctx.moveTo(c.x - r * 1.4, c.y);
-    ctx.lineTo(c.x + r * 1.4, c.y);
-    ctx.moveTo(c.x, c.y - r * 1.4);
-    ctx.lineTo(c.x, c.y + r * 1.4);
-    ctx.stroke();
-    for (const start of [-Math.PI / 2, Math.PI / 2]) {
-      ctx.beginPath();
-      ctx.moveTo(c.x, c.y);
-      ctx.arc(c.x, c.y, r, start, start + Math.PI / 2);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.font = `${Math.max(2, px)}px ${family}`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(n.text, c.x + r + px * 0.3, c.y);
-    if (n.selected) {
-      const b = noteBox(n, px / this.scale);
-      const p0 = this.toScreen({ x: b.x0, y: b.y1 });
-      const p1 = this.toScreen({ x: b.x1, y: b.y0 });
-      ctx.setLineDash([4, 3]);
-      ctx.strokeRect(p0.x - 2, p0.y - 2, p1.x - p0.x + 4, p1.y - p0.y + 4);
-    }
-    ctx.restore();
-  }
-
-  /** Text notes: their letters as tall as they are at this scale, a line each; a selected one boxed. */
-  private drawNotes(notes: NonNullable<PlanOverlay['notes']>, color: (v: string) => string): void {
-    const ctx = this.ctx;
-    const family = getComputedStyle(this.canvas).getPropertyValue('--font').trim() || 'sans-serif';
-    for (const n of notes) {
-      const px = shownHeight(n, this.scale) * this.scale;
-      const lines = n.text.split('\n');
-      const c = this.toScreen(n.at);
-      if (n.elevation) {
-        this.drawLevelMark(n, c, px, n.selected ? color('--wall-sel') : color('--text'), family);
-        continue;
-      }
-      ctx.save();
-      ctx.fillStyle = n.selected ? color('--wall-sel') : color('--text');
-      ctx.font = `${Math.max(2, px)}px ${family}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const step = px * 1.3;
-      lines.forEach((l, i) => ctx.fillText(l, c.x, c.y + (i - (lines.length - 1) / 2) * step));
-      if (n.selected) {
-        const b = noteBox(n, shownHeight(n, this.scale));
-        const p0 = this.toScreen({ x: b.x0, y: b.y1 });
-        const p1 = this.toScreen({ x: b.x1, y: b.y0 });
-        ctx.strokeStyle = color('--wall-sel');
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 3]);
-        ctx.strokeRect(p0.x - 2, p0.y - 2, p1.x - p0.x + 4, p1.y - p0.y + 4);
-      }
-      ctx.restore();
-    }
-  }
-
   private font(weight: string, size: string): string {
     const css = getComputedStyle(document.documentElement);
     return `${weight} ${css.getPropertyValue(size).trim()} ${css.getPropertyValue('--font').trim()}`;

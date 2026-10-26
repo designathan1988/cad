@@ -6,7 +6,6 @@
 
 import type { DerivedGeometry } from '../app/geometry';
 import type { Point2 } from '../core/vector';
-import type { Note } from '../elements/note/schema';
 import { eachSolid, KINDS } from '../elements/registry';
 import { markPoint } from '../elements/opening/marks';
 import { symbolLines } from '../elements/opening/symbol';
@@ -37,12 +36,8 @@ export interface DxfLabels {
   readonly area: (m2: number) => string;
   /** Doors' and windows' type marks (opening/marks.ts), as the plan tags them. */
   readonly marks?: ReadonlyMap<string, string>;
-  /** The level's text notes (elements/note). */
-  readonly notes?: readonly Note[];
   /** The level's permanent dimensions, placed (elements/dimension/anchor.ts: placeDimension). */
   readonly dimensions?: readonly { readonly a: Point2; readonly b: Point2; readonly la: Point2; readonly lb: Point2; readonly length: number }[];
-  /** The grid axes, on every level's plan. */
-  readonly grids?: readonly { readonly name: string; readonly start: Point2; readonly end: Point2 }[];
   /** A dimension's value, as the plan writes it. */
   readonly length?: (m: number) => string;
 }
@@ -51,8 +46,6 @@ export interface DxfLabels {
 const TEXT_H = 0.2;
 const MARK_H = 0.15;
 const DIM_H = 0.12;
-/** A grid bubble's radius (m). */
-const BUBBLE_R = 0.35;
 
 /** A text's angle (°) along a direction, kept upright: within ±90°. */
 function angleOf(ux: number, uy: number): number {
@@ -171,7 +164,8 @@ export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels):
     arc('A-DOOR', leaf[0]!, swing[0]!, swing[swing.length - 1]!, pair);
   }
   // The registry's kinds on this level, each writing itself.
-  for (const x of eachSolid(g.kinds)) if (x.levelId === levelId) x.kind.dxf?.(x.solid, { line, polyline });
+  // An axis (on every level) on each plan.
+  for (const x of eachSolid(g.kinds)) if (x.levelId === null || x.levelId === levelId) x.kind.dxf?.(x.solid, { line, polyline, text });
   // Rooms: the outline, and the name and area at the plan's label point.
   for (const r of g.rooms.values()) {
     if (r.room.levelId !== levelId || !r.enclosed) continue;
@@ -196,36 +190,6 @@ export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels):
     const t = 0.08;
     for (const p of [d.la, d.lb]) line('A-ANNO-DIMS', { x: p.x - (ux + nx) * t, y: p.y - (uy + ny) * t }, { x: p.x + (ux + nx) * t, y: p.y + (uy + ny) * t });
     text('A-ANNO-DIMS', { x: (d.la.x + d.lb.x) / 2 + nx * DIM_H, y: (d.la.y + d.lb.y) / 2 + ny * DIM_H }, DIM_H, (labels.length ?? ((m: number) => m.toFixed(2)))(d.length), angleOf(ux, uy));
-  }
-  // Grid axes: the line, and past each end a bubble (a 16-sided circle) with the name.
-  for (const g of labels.grids ?? []) {
-    const len = Math.hypot(g.end.x - g.start.x, g.end.y - g.start.y);
-    if (len === 0) continue;
-    const ux = (g.end.x - g.start.x) / len;
-    const uy = (g.end.y - g.start.y) / len;
-    line('S-GRID', g.start, g.end);
-    for (const [p, s] of [
-      [g.start, -1],
-      [g.end, 1],
-    ] as const) {
-      const c = { x: p.x + ux * BUBBLE_R * s, y: p.y + uy * BUBBLE_R * s };
-      polyline('S-GRID', Array.from({ length: 16 }, (_, i) => ({ x: c.x + BUBBLE_R * Math.cos((i * Math.PI) / 8), y: c.y + BUBBLE_R * Math.sin((i * Math.PI) / 8) })), true);
-      text('S-GRID', c, BUBBLE_R, g.name);
-    }
-  }
-  // Text notes: a TEXT a line, centred as the plan draws them (R12's TEXT has one line).
-  for (const n of labels.notes ?? []) {
-    if (n.levelId !== levelId) continue;
-    if (n.elevation) {
-      // The level symbol, crossed, and the height to its right.
-      const r = n.height * 0.5;
-      line('A-ANNO-TEXT', { x: n.at.x - r * 1.4, y: n.at.y }, { x: n.at.x + r * 1.4, y: n.at.y });
-      line('A-ANNO-TEXT', { x: n.at.x, y: n.at.y - r * 1.4 }, { x: n.at.x, y: n.at.y + r * 1.4 });
-      text('A-ANNO-TEXT', { x: n.at.x + r + n.height * 0.3 + n.text.length * n.height * 0.3, y: n.at.y }, n.height, n.text);
-      continue;
-    }
-    const lines = n.text.split('\n');
-    lines.forEach((l, i) => text('A-ANNO-TEXT', { x: n.at.x, y: n.at.y - (i - (lines.length - 1) / 2) * n.height * 1.3 }, n.height, l));
   }
   pair(0, 'ENDSEC');
   pair(0, 'EOF');

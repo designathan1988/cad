@@ -12,12 +12,8 @@ import { floorPanel, roomPanel, type RoomPanelActions } from '../elements/room/p
 import { nextWallFields, wallFields } from '../elements/wall/fields';
 import { guideFields } from '../elements/guide/fields';
 import type { Guide } from '../elements/guide/schema';
-import { type NoteFieldActions, noteFields } from '../elements/note/fields';
-import type { Note } from '../elements/note/schema';
 import { type DimensionFieldActions, dimensionFields } from '../elements/dimension/fields';
 import type { Dimension } from '../elements/dimension/schema';
-import { type GridFieldActions, gridFields } from '../elements/grid/fields';
-import type { Grid } from '../elements/grid/schema';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { StackedStep } from '../app/stacked';
 import type { ReferenceLine } from '../elements/wall/schema';
@@ -48,10 +44,6 @@ export interface PanelInput {
   readonly total: number;
   /** The selected guides. */
   readonly guides: readonly Guide[];
-  /** The selected text notes. */
-  readonly notes: readonly Note[];
-  /** The selected grid axes. */
-  readonly grids: readonly Grid[];
   /** The first registry kind with a selected element (elements/registry.ts), and those, as derived. */
   readonly kind: { readonly kind: AnyKind; readonly items: readonly unknown[] } | null;
   /** The selected dimensions, and what each measures now (null: an end's element is gone). */
@@ -78,9 +70,7 @@ export interface PanelActions {
   readonly updateOpeningDefaults: (kind: OpeningKind, patch: Partial<OpeningSize>) => void;
   /** Deletes every guide of the level shown. */
   readonly clearGuides: () => void;
-  readonly updateNotes: NoteFieldActions['updateNotes'];
   readonly setDimensionDistance: DimensionFieldActions['setDimensionDistance'];
-  readonly renameGrid: GridFieldActions['renameGrid'];
   /** A command on the document: what a registry kind's fields send. */
   readonly dispatch: (c: Command<Doc>) => void;
   /** Moves the wall so its exterior face meets the face of the wall below it. */
@@ -187,27 +177,17 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     // A registry kind: its own icon, title and fields (elements/contract.ts).
     const { kind, items } = input.kind;
     const n = items.length;
-    nodes.push(head(kind.icon, n === 1 ? t(kind.one) : t(kind.many, { n })));
+    const title = kind.title ? kind.title(items) : { icon: kind.icon, text: n === 1 ? t(kind.one) : t(kind.many, { n }) };
+    nodes.push(head(title.icon, title.text));
     part(n);
     nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, act.dispatch), items));
-  } else if (input.grids.length > 0) {
-    const n = input.grids.length;
-    nodes.push(head('hash', n === 1 ? t('grid.title', { name: input.grids[0]!.name }) : t('grid.titleMany', { n })));
-    part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, gridFields(input.grids, act), input.grids));
-    nodes.push(el('div', { class: 'panel-hint' }, t('grid.held')));
+    if (kind.hint) nodes.push(el('div', { class: 'panel-hint' }, t(kind.hint)));
   } else if (input.dimensions.length > 0) {
     const n = input.dimensions.length;
     nodes.push(head('dimension', n === 1 ? t('dim.title') : t('dim.titleMany', { n })));
     part(n);
     nodes.push(fieldsSection(t('panel.general'), true, dimensionFields(input.dimensions, input.dimensionLength, act), input.dimensions));
     nodes.push(el('div', { class: 'panel-hint' }, t('dim.held')));
-  } else if (input.notes.length > 0) {
-    const n = input.notes.length;
-    const marks = input.notes.every((x) => x.elevation);
-    nodes.push(head(marks ? 'height' : 'text', marks ? (n === 1 ? t('note.levelMark') : t('note.levelMarks', { n })) : n === 1 ? t('note.title') : t('note.titleMany', { n })));
-    part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, noteFields(input.notes, act), input.notes));
   } else if (input.guides.length > 0) {
     const n = input.guides.length;
     nodes.push(head('guide', n === 1 ? t('guide.title') : t('guide.titleMany', { n })));

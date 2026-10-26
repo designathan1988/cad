@@ -13,9 +13,7 @@ import { deriveGeometry } from '../app/geometry';
 import { distributeOpenings } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import { type Floor, type Room, ROOM_USES } from '../elements/room/schema';
-import type { Note } from '../elements/note/schema';
 import type { Dimension } from '../elements/dimension/schema';
-import type { Grid } from '../elements/grid/schema';
 import type { WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
 
@@ -47,7 +45,7 @@ export const CURRENT_VERSION = 20;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes' | 'droppedDimensions' | 'droppedGrids' | KindFix; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedDimensions' | KindFix; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
 
 /** The fix for a registry kind's dropped elements: droppedColumns, droppedBeams and so on. */
@@ -155,18 +153,6 @@ export const isFloor = (f: unknown): f is Floor =>
   (f.slope === undefined || (isObject(f.slope) && finite(f.slope.grade) && finite(f.slope.dir))) &&
   (f.kind === undefined || f.kind === 'ceiling');
 
-/** A text note: a point, some text, letters taller than nothing. */
-export const isNote = (n: unknown): n is Note =>
-  isObject(n) &&
-  typeof n.id === 'string' &&
-  typeof n.levelId === 'string' &&
-  isPoint(n.at) &&
-  typeof n.text === 'string' &&
-  finite(n.height) &&
-  n.height > 0 &&
-  // A level mark says a height, so it needs no text; a note does.
-  (n.elevation === undefined ? n.text.trim() !== '' : isObject(n.elevation) && finite(n.elevation.offset));
-
 /** An end of a dimension: on a wall (an end, along, across), on a jamb, or a point. */
 const isDimAnchor = (a: unknown): boolean =>
   isObject(a) &&
@@ -177,10 +163,6 @@ const isDimAnchor = (a: unknown): boolean =>
 /** A permanent dimension: two ends and the distance of its line. */
 export const isDimension = (d: unknown): d is Dimension =>
   isObject(d) && typeof d.id === 'string' && typeof d.levelId === 'string' && isDimAnchor(d.a) && isDimAnchor(d.b) && finite(d.offset);
-
-/** A grid axis: a name and two different points. */
-export const isGrid = (g: unknown): g is Grid =>
-  isObject(g) && typeof g.id === 'string' && typeof g.name === 'string' && g.name.trim() !== '' && isPoint(g.start) && isPoint(g.end) && JSON.stringify(g.start) !== JSON.stringify(g.end);
 
 /** A guide: a point and a unit direction (a zero one would be no line at all). */
 export const isGuide = (g: unknown): g is Guide =>
@@ -272,24 +254,19 @@ export function repairProject(raw: unknown): ReadResult {
       if (d === all.find((x) => !there(x))) fixes.push({ kind: 'droppedDimensions', count: all.filter((x) => !there(x)).length });
       return false;
     }),
-    grids: keep(raw.grids, isGrid, 'droppedGrids'),
-    // The registry's elements (columns, beams, roofs, stairs, guardrails): checked by their kind; one
+    // The registry's elements (columns, beams, roofs, stairs, guardrails, texts, axes): checked by their kind; one
     // on a level that is gone stands nowhere: dropped, and said.
     ...(Object.fromEntries(
       KINDS.map((k) => {
         const fix = kindFix(k);
         const all = keep(raw[k.key], k.valid, fix) as { readonly levelId: string }[];
-        const gone = all.filter((x) => !levelIds.has(x.levelId)).length;
+        // An axis is on every level: none is gone with one.
+        const there = (x: { readonly levelId: string }) => k.everyLevel === true || levelIds.has(x.levelId);
+        const gone = all.filter((x) => !there(x)).length;
         if (gone > 0) fixes.push({ kind: fix, count: gone });
-        return [k.key, all.filter((x) => levelIds.has(x.levelId))];
+        return [k.key, all.filter(there)];
       }),
     ) as unknown as Pick<Doc, KindKey>),
-    // A note on a level that is gone is on no plan: dropped, and said.
-    notes: keep(raw.notes, isNote, 'droppedNotes').filter((n, _, all) => {
-      if (levelIds.has(n.levelId)) return true;
-      if (n === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedNotes', count: all.filter((x) => !levelIds.has(x.levelId)).length });
-      return false;
-    }),
   };
   return { ok: true, doc: regroupOffJoints(doc, raw.version), fixes };
 }
