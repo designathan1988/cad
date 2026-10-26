@@ -305,9 +305,8 @@ export function marqueePick(items: readonly Pickable[], a: Point2, b: Point2): s
     .map((x) => x.id);
 }
 
-/** Walls, openings, rooms and floors of what is shown, as screen outlines (hulls in 3D). */
+/** The elements shown (the registry's), as screen outlines (hulls in 3D). */
 function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): void {
-  const g = app.visibleGeometry();
   // Each at its level's height in the view (lifted when exploded).
   const screen = (poly: readonly Point2[], bottom: number, top: number, levelId: string) => {
     const pts = app.outlineOnScreen(poly, bottom, top, app.lift(levelId));
@@ -315,12 +314,12 @@ function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): voi
     return app.ui.view === 'plan' ? pts : hull(pts);
   };
   const items: Pickable[] = [
-    ...[...g.solids.values()].map((s) => ({ id: s.wall.id, outlines: s.pieces.map((p) => screen(p.polygon, s.bottom, s.top, s.wall.levelId)) })),
     // The registry's kinds by their outlines (a text's box as drawn at this scale, an axis's line).
-    // Texts, axes and guides are in plan only: not in a window drawn in 3D. A guide has no ends: drawn
-    // far past the window, only a crossing selection, which it runs through, takes it.
+    // In 3D, those with a height (contract.ts: span) as their prisms; texts, axes and guides are in plan
+    // only. A guide has no ends: drawn far past the window, only a crossing selection, which it runs
+    // through, takes it.
     ...[...eachSolid(app.visibleGeometry().kinds)]
-      .filter((x) => app.ui.view === 'plan' || x.kind.solid)
+      .filter((x) => app.ui.view === 'plan' || x.kind.span)
       .map((x) => {
         // One with a height (a floor) as its prism in 3D, at its level's lift.
         const span = x.kind.span?.(x.solid);

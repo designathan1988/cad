@@ -39,6 +39,7 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
   outlines: (s) => [s.railing.points],
   hit: (s, p, near) => s.railing.points.slice(1).some((q, i) => nearSegment(p, s.railing.points[i]!, q, near)),
   pick: 'beforeWalls',
+  span: (s) => ({ bottom: s.bottom, top: s.bottom + s.railing.height }),
   moved: (r, d) => ({ ...r, points: r.points.map((p) => ({ x: p.x + d.x, y: p.y + d.y })) }),
   mapped: (r, t, id) => ({ ...r, id, points: r.points.map(t.map) }),
   // Its path, with a tick at each post.

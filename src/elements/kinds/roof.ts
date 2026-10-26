@@ -45,6 +45,7 @@ export const roofKind: ElementKind<Roof, RoofSolid> = {
   hit: (s, p) => insideRing(s.outline, p),
   // Over everything: its overhang, outside the walls, is where it is taken first.
   pick: 'last',
+  span: (s) => ({ bottom: s.base, top: s.top }),
   moved: (r, d) => ({ ...r, outline: r.outline.map((p) => ({ x: p.x + d.x, y: p.y + d.y })) }),
   // Mirrored, turned back to counter-clockwise, its sides following.
   mapped: (r, t, id) => {

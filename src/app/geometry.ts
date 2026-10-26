@@ -377,17 +377,6 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  for (const s of g.solids.values()) {
-    if (ids && !ids.has(s.wall.id)) continue;
-    for (const piece of s.pieces) {
-      for (const v of piece.polygon) {
-        minX = Math.min(minX, v.x);
-        minY = Math.min(minY, v.y);
-        maxX = Math.max(maxX, v.x);
-        maxY = Math.max(maxY, v.y);
-      }
-    }
-  }
   // Rooms and floors: their outlines.
   const outlines = [
     ...[...g.rooms.values()].filter((r) => !ids || ids.has(r.room.id)).map((r) => r.outline),

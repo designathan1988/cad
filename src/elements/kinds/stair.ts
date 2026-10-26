@@ -44,6 +44,7 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
   outlines: (s) => s.parts.map((p) => p.polygon),
   hit: (s, p) => s.parts.some((q) => insideRing(q.polygon, p)),
   pick: 'beforeWalls',
+  span: (s) => ({ bottom: s.bottom, top: s.bottom + s.height }),
   moved: (s, d) => ({ ...s, at: { x: s.at.x + d.x, y: s.at.y + d.y } }),
   // It turns with a turn; mirrored, it turns the other way.
   mapped: (s, t, id) => {

@@ -15,7 +15,7 @@ import type { MessageKey } from '../ui/i18n';
 import type { IconName } from '../ui/icons';
 
 /** The document's lists the registry's kinds keep. */
-export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings';
+export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings' | 'walls';
 
 /** The derived geometry before the registry's kinds: what a kind held by walls and doors reads. */
 export type BaseGeometry = Omit<DerivedGeometry, 'kinds'>;
@@ -53,7 +53,7 @@ export interface KindSolid {
 
 /** Where a click finds it among the rest: first (a dimension's line, over what it measures), before the
  * walls (inside them), after them, or last of all. */
-export type PickOrder = 'first' | 'beforeWalls' | 'afterWalls' | 'last';
+export type PickOrder = 'first' | 'beforeWalls' | 'walls' | 'afterWalls' | 'last';
 
 /** What a Modify tool tells a kind whose elements are held by others (a dimension by walls and doors). */
 export interface TransformContext {

@@ -49,6 +49,7 @@ export const beamKind: ElementKind<Beam, BeamSolid> = {
   hit: (s, p, near) => insideRing(s.outline, p) || nearSegment(p, s.beam.start, s.beam.end, near),
   // Above the walls in plan: a click aims at what is under it first.
   pick: 'afterWalls',
+  span: (s) => ({ bottom: s.bottom, top: s.top }),
   moved: (b, d) => ({ ...b, start: { x: b.start.x + d.x, y: b.start.y + d.y }, end: { x: b.end.x + d.x, y: b.end.y + d.y } }),
   mapped: (b, t, id) => ({ ...b, id, start: t.map(b.start), end: t.map(b.end), width: b.width * t.factor }),
   onGrid: (b, onLine) => onLine(b.start) && onLine(b.end),

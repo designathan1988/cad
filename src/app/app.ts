@@ -396,7 +396,7 @@ export class App {
     // Levels hidden now leave the selection, as a hidden category does.
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      if (!shown.solids.has(id) && !hasSolid(shown.kinds, id)) this.ui.selection.delete(id);
+      if (!hasSolid(shown.kinds, id)) this.ui.selection.delete(id);
     }
     this.refresh();
   }
@@ -1873,7 +1873,7 @@ export class App {
   stepSelection(dir: 1 | -1): void {
     this.setTool('select');
     const g = this.visibleGeometry();
-    const order = [...g.solids.keys(), ...[...eachSolid(g.kinds)].map((x) => x.id)];
+    const order = [...eachSolid(g.kinds)].map((x) => x.id);
     const next = stepSelection(order, [...this.ui.selection], dir);
     if (!next) return;
     this.ui.selection = new Set([next]);
@@ -2405,9 +2405,8 @@ export class App {
 
   /** How many kinds of element (walls, doors and windows, rooms, floors, guides, notes) the selection holds. */
   private selectionKinds(): number {
-    const g = this.geometry;
     const ids = [...this.ui.selection];
-    return (ids.some((id) => g.solids.has(id)) ? 1 : 0) + new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
+    return new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
   }
 
   selectedWalls(): DocWall[] {
@@ -3054,16 +3053,8 @@ export class App {
     if (this.ui.hidden.has(c)) this.ui.hidden.delete(c);
     else this.ui.hidden.add(c);
     const shown = this.visibleGeometry();
-    for (const id of [...this.ui.selection]) {
-      // The registry's: with their category (a text and a dimension have none, an axis and a guide go with the guides).
-      if (kindOfId(id)) {
-        if (!hasSolid(shown.kinds, id)) this.ui.selection.delete(id);
-        continue;
-      }
-      if (!shown.solids.has(id)) {
-        this.ui.selection.delete(id);
-      }
-    }
+    // Each with its category (a text and a dimension have none, an axis and a guide go with the guides).
+    for (const id of [...this.ui.selection]) if (!hasSolid(shown.kinds, id)) this.ui.selection.delete(id);
     this.refresh();
   }
 
@@ -3078,7 +3069,7 @@ export class App {
     const temp = this.ui.temp;
     const hidden = this.ui.hidden;
     const category = (id: string): Category | null =>
-      doc.walls.some((w) => w.id === id) ? 'walls' : (kindOfId(id)?.category ?? null);
+      kindOfId(id)?.category ?? null;
     const ids = similarTo(doc, this.ui.selection, this.ui.levelId).filter((id) => {
       const c = category(id);
       return (c === null || !hidden.has(c)) && (!temp || shownFor(temp, id));

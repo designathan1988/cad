@@ -265,7 +265,7 @@ export function wireInput(app: App): void {
       // A text over everything it is written on (the last kind drawn, so the first here); a door or a
       // window before the wall that hosts it.
       ...kindHits('beforeWalls'),
-      wallAt(g, p, undefined, near),
+      ...kindHits('walls'),
       // A guide where the pointer is on it (before the room it runs across), beams, and an axis after
       // the walls on it: a click on a wall over an axis takes the wall.
       ...kindHits('afterWalls'),

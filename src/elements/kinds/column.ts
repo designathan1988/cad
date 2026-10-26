@@ -47,6 +47,7 @@ export const columnKind: ElementKind<Column, ColumnSolid> = {
   outlines: (s) => [s.outline],
   hit: (s, p, near) => insideRing(s.outline, p) || s.outline.some((v, i) => nearSegment(p, v, s.outline[(i + 1) % s.outline.length]!, near)),
   pick: 'beforeWalls',
+  span: (s) => ({ bottom: s.bottom, top: s.top }),
   moved: (c, d) => ({ ...c, at: { x: c.at.x + d.x, y: c.at.y + d.y } }),
   // It turns with a turn and a mirror: its x is taken by the transform.
   mapped: (c, t, id) => {
