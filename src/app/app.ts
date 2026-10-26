@@ -38,6 +38,7 @@ import { ViewCube } from '../render/view-cube';
 import { defaultName, getLang, htmlLang, materialName, name, num, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
 import { icon } from '../ui/icons';
 import { renderPanel } from '../ui/panel';
+import { planDxf, toCp1252 } from '../io/export-dxf';
 import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui/shell';
 import { snapLabel, type Snap } from '../tools/snap';
 import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
@@ -142,6 +143,8 @@ export interface UiState {
 const PREVIEW_ID = '__preview__';
 /** A message going after a colon in another ("Cannot place it here: overlaps…"): lower case first. */
 const afterColon = (text: string): string => text.charAt(0).toLowerCase() + text.slice(1);
+/** A name as a file name: what one cannot hold (\ / : * ? " < > |) becomes "-". */
+const safeFileName = (text: string): string => text.replace(/[\\/:*?"<>|]+/g, '-');
 /** The level list's last entry: opens the levels dialog. */
 export const EDIT_LEVELS = '__edit_levels__';
 
@@ -1954,7 +1957,7 @@ export class App {
 
   /** The project's file name: its name without what a file name cannot hold. */
   fileBase(): string {
-    return (this.store.get().name || t('app.untitled')).replace(/[\\/:*?"<>|]+/g, '-');
+    return safeFileName(this.store.get().name || t('app.untitled'));
   }
 
   /**
@@ -1989,6 +1992,21 @@ export class App {
       console.error(e);
       this.toast(t('export.failed', { what: 'GLB', error: e instanceof Error ? e.message : String(e) }));
     }
+  }
+
+  /** The plan of the level shown as DXF R12 (io/export-dxf.ts), for a CAD program. */
+  exportDxf(): void {
+    const doc = this.store.get();
+    const levelId = this.ui.levelId;
+    if (!doc.walls.some((w) => w.levelId === levelId)) {
+      this.ui.info = t('export.nothingHere');
+      return this.renderChrome();
+    }
+    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²` });
+    const level = doc.levels.find((l) => l.id === levelId);
+    const file = `${this.fileBase()} - ${level ? safeFileName(name(level.name)) : ''}.dxf`;
+    this.download(file, new Blob([toCp1252(text)], { type: 'application/dxf' }), 'application/dxf');
+    this.toast(t('export.dxfSaved', { file }));
   }
 
   /**

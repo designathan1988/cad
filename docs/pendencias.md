@@ -409,7 +409,7 @@ Documentação
 
 Importar e exportar
 - Exportar IFC, cada elemento na sua classe (l.122, l.149): falta.
-- Exportar DXF das plantas (l.122, l.149): falta.
+- Exportar DXF das plantas (l.122, l.149): existe ("Planta em DXF…" em Exportar e na paleta), o pavimento atual em DXF R12, metros, código de página 1252: faces das paredes, linhas entre camadas, portas (folha e arco), janelas, contornos e nomes com área dos cômodos, cada um na sua camada (A-WALL, A-WALL-PATT, A-DOOR, A-GLAZ, A-AREA, A-AREA-IDEN). A planta da casa foi lida pelo ezdxf 1.4.5 (auditoria: 0 erros, 0 correções) e desenhada por ele, conferida a olho. Não testado num AutoCAD de verdade.
 - Exportar PDF das pranchas (l.122, l.148): falta.
 - Exportar glTF/GLB do modelo (l.122, l.149): existe ("Modelo 3D (GLB)…" em Exportar, no navegador do projeto, e na paleta). Lido da geometria, não da vista: um grupo por pavimento na altura real, um nó por parede, porta, janela e piso com nome, id, tipo e pavimento nos extras; materiais pelo material das camadas (Reboco, Tijolo). A casa exportada passou no validador oficial da Khronos (gltf-validator 2.0.0-dev.3.10): 0 erros, 0 avisos.
 - Importar DXF como referência (l.123, l.149): falta.
