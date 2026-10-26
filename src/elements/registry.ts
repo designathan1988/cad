@@ -4,9 +4,11 @@
 import type { Doc } from '../app/document';
 import type { Point2 } from '../core/vector';
 import type { Transform } from '../tools/transform';
-import type { AnyKind, KindKey } from './contract';
+import type { DerivedGeometry } from '../app/geometry';
+import type { AnyKind, BaseGeometry, KindKey } from './contract';
 import { beamKind } from './kinds/beam';
 import { columnKind } from './kinds/column';
+import { dimensionKind } from './kinds/dimension';
 import { gridKind } from './kinds/grid';
 import { guideKind } from './kinds/guide';
 import { noteKind } from './kinds/note';
@@ -15,7 +17,7 @@ import { roofKind } from './kinds/roof';
 import { stairKind } from './kinds/stair';
 
 /** Drawn in this order (later over earlier); the panel shows the first with a selected element. */
-export const KINDS: readonly AnyKind[] = [stairKind, railingKind, columnKind, roofKind, gridKind, beamKind, guideKind, noteKind];
+export const KINDS: readonly AnyKind[] = [stairKind, railingKind, columnKind, roofKind, gridKind, beamKind, guideKind, noteKind, dimensionKind];
 
 export const kindOfKey = (key: KindKey): AnyKind => KINDS.find((k) => k.key === key)!;
 
@@ -35,8 +37,9 @@ export const withList = (doc: Doc, k: AnyKind, list: readonly unknown[]): Doc =>
 /** The derived forms of every kind's elements, by kind then id. */
 export type KindSolids = ReadonlyMap<KindKey, ReadonlyMap<string, unknown>>;
 
-export function deriveKinds(doc: Doc): KindSolids {
-  return new Map(KINDS.map((k) => [k.key, new Map(listOf(doc, k).map((e) => [e.id, k.derive(doc, e)]))]));
+/** `g`: the walls, doors and the rest already derived, which a dimension is placed from. */
+export function deriveKinds(doc: Doc, g: BaseGeometry): KindSolids {
+  return new Map(KINDS.map((k) => [k.key, new Map(listOf(doc, k).map((e) => [e.id, k.derive(doc, e, g)]))]));
 }
 
 /** The derived forms, keeping only those `keep` says. */
@@ -85,28 +88,49 @@ export const kindLists = (doc: Doc): Partial<Doc> => Object.fromEntries(KINDS.ma
 /** Whether any registry element is among `ids`. */
 export const hasKinds = (doc: Doc, ids: ReadonlySet<string>): boolean => KINDS.some((k) => listOf(doc, k).some((e) => ids.has(e.id)));
 
-/** The document without the registry elements among `ids`; the same document when none goes. */
+/** Whether an element goes with what goes: among `ids`, or held by one of them (contract.ts: holders). */
+const goesWith = (k: AnyKind, e: { readonly id: string }, ids: ReadonlySet<string>): boolean => ids.has(e.id) || (k.holders?.(e) ?? []).some((h) => ids.has(h));
+
+/** The document without the registry elements among `ids`, and those held by them (a dimension by a
+ * deleted wall, as Revit's goes); the same document when none goes. */
 export function dropKinds(doc: Doc, ids: ReadonlySet<string>): Doc {
   let next = doc;
   for (const k of KINDS) {
     const list = listOf(doc, k);
-    if (list.some((e) => ids.has(e.id))) next = withList(next, k, list.filter((e) => !ids.has(e.id)));
+    if (list.some((e) => goesWith(k, e, ids))) next = withList(next, k, list.filter((e) => !goesWith(k, e, ids)));
   }
   return next;
 }
 
-/** The registry elements among `ids` taken by `t` where they are. */
-export function mapKinds(doc: Doc, ids: ReadonlySet<string>, t: Transform): Doc {
+/** What a Modify tool tells the kinds held by others: what goes along, the copies' ids, the document before. */
+export interface KindTransform {
+  readonly going: (id: string) => boolean;
+  readonly doc: Doc;
+  readonly geometry: DerivedGeometry;
+}
+
+/** The registry elements among `ids` taken by `t` where they are; one held by what goes, with it. */
+export function mapKinds(doc: Doc, ids: ReadonlySet<string>, t: Transform, c: KindTransform): Doc {
   let next = doc;
   for (const k of KINDS) {
     const list = listOf(doc, k);
-    if (list.some((e) => ids.has(e.id))) next = withList(next, k, list.map((e) => (ids.has(e.id) ? k.mapped(e, t, e.id) : e)));
+    const { transformed } = k;
+    if (transformed) {
+      const mapped = list.map((e) => transformed(e, { ...c, t, id: e.id, selected: ids.has(e.id), copy: false, to: (id) => id }) ?? e);
+      if (mapped.some((e, i) => e !== list[i])) next = withList(next, k, mapped);
+    } else if (list.some((e) => ids.has(e.id))) next = withList(next, k, list.map((e) => (ids.has(e.id) ? k.mapped(e, t, e.id) : e)));
   }
   return next;
 }
 
 /** Copies of the registry elements among `ids` taken by `t`, each under `fresh(id, prefix)`; the new ids in order. */
-export function copyKinds(doc: Doc, ids: ReadonlySet<string>, t: Transform, fresh: (id: string, prefix: string) => string): { doc: Doc; added: string[] } {
+export function copyKinds(
+  doc: Doc,
+  ids: ReadonlySet<string>,
+  t: Transform,
+  fresh: (id: string, prefix: string) => string,
+  c: KindTransform & { readonly to: (id: string) => string },
+): { doc: Doc; added: string[] } {
   let next = doc;
   const added: string[] = [];
   for (const k of KINDS) {
@@ -115,7 +139,10 @@ export function copyKinds(doc: Doc, ids: ReadonlySet<string>, t: Transform, fres
     if (taken.length === 0) continue;
     // One after another: a copy named on from the copies before it.
     const all = taken.reduce<unknown[]>((so, e) => {
-      const copy = k.mapped(e, t, fresh(e.id, k.prefix));
+      const id = fresh(e.id, k.prefix);
+      // One held by others: held by their copies, or left out (contract.ts: transformed).
+      const copy = k.transformed ? k.transformed(e, { ...c, t, id, selected: true, copy: true }) : k.mapped(e, t, id);
+      if (copy === null) return so;
       return [...so, k.copied ? k.copied(so, copy) : copy];
     }, [...list]);
     added.push(...all.slice(list.length).map((e) => (e as { readonly id: string }).id));

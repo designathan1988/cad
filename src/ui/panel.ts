@@ -10,8 +10,6 @@ import type { OpeningId, OpeningKind } from '../elements/opening/schema';
 import type { FloorSolid, RoomSolid } from '../elements/room/derive';
 import { floorPanel, roomPanel, type RoomPanelActions } from '../elements/room/panel';
 import { nextWallFields, wallFields } from '../elements/wall/fields';
-import { type DimensionFieldActions, dimensionFields } from '../elements/dimension/fields';
-import type { Dimension } from '../elements/dimension/schema';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { StackedStep } from '../app/stacked';
 import type { ReferenceLine } from '../elements/wall/schema';
@@ -42,9 +40,6 @@ export interface PanelInput {
   readonly total: number;
   /** The first registry kind with a selected element (elements/registry.ts), and those, as derived. */
   readonly kind: { readonly kind: AnyKind; readonly items: readonly unknown[] } | null;
-  /** The selected dimensions, and what each measures now (null: an end's element is gone). */
-  readonly dimensions: readonly Dimension[];
-  readonly dimensionLength: (d: Dimension) => number | null;
   /** Walls whose exterior face does not meet the face of the wall they stand on (app/stacked.ts). */
   readonly stacked: readonly StackedStep[];
 }
@@ -64,7 +59,6 @@ export interface PanelActions {
   readonly opening: OpeningPanelActions;
   readonly room: RoomPanelActions;
   readonly updateOpeningDefaults: (kind: OpeningKind, patch: Partial<OpeningSize>) => void;
-  readonly setDimensionDistance: DimensionFieldActions['setDimensionDistance'];
   /** A command on the document: what a registry kind's fields send. */
   readonly dispatch: (c: Command<Doc>) => void;
   /** Moves the wall so its exterior face meets the face of the wall below it. */
@@ -176,12 +170,6 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     part(n);
     nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, act.dispatch), items));
     if (kind.hint) nodes.push(el('div', { class: 'panel-hint' }, t(kind.hint)));
-  } else if (input.dimensions.length > 0) {
-    const n = input.dimensions.length;
-    nodes.push(head('dimension', n === 1 ? t('dim.title') : t('dim.titleMany', { n })));
-    part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, dimensionFields(input.dimensions, input.dimensionLength, act), input.dimensions));
-    nodes.push(el('div', { class: 'panel-hint' }, t('dim.held')));
   } else if (input.openingTool) {
     const { kind, size } = input.openingTool;
     nodes.push(head(kind, t(kind === 'door' ? 'panel.nextDoor' : 'panel.nextWindow')));

@@ -15,7 +15,7 @@ export const noteKind: ElementKind<Note, Note> = {
   key: 'notes',
   prefix: NOTE_PREFIX,
   category: null,
-  over: true,
+  layer: 'over',
   icon: 'text',
   one: 'note.title',
   many: 'note.titleMany',

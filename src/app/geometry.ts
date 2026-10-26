@@ -166,7 +166,9 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     if (!found.has(levelId)) found.set(levelId, spacesOf(piecesByLevel.get(levelId) ?? []));
     return found.get(levelId)!;
   };
-  return { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors, spaces, kinds: deriveKinds(doc) };
+  const base = { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors, spaces };
+  // The registry's kinds last: a dimension is placed from the walls and doors.
+  return { ...base, kinds: deriveKinds(doc, base) };
 }
 
 /** A height range of a wall, and its plan pieces there: joined only with the walls standing over all of it. */

@@ -60,7 +60,7 @@ import { BEAM_DEPTH, BEAM_PREFIX, BEAM_WIDTH } from '../elements/beam/schema';
 import { addColumn } from '../elements/column/commands';
 import { COLUMN_PREFIX, COLUMN_SIZE } from '../elements/column/schema';
 import { addNote } from '../elements/note/commands';
-import { addDimension, setDimensionDistance } from '../elements/dimension/commands';
+import { addDimension } from '../elements/dimension/commands';
 import { anchorAt, offsetThrough, placeDimension } from '../elements/dimension/anchor';
 import { DIM_PREFIX, type Dimension, isDimId } from '../elements/dimension/schema';
 import { addGrid } from '../elements/grid/commands';
@@ -396,7 +396,7 @@ export class App {
     // Levels hidden now leave the selection, as a hidden category does.
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      if (!isDimId(id) && !shown.solids.has(id) && !hasSolid(shown.kinds, id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
+      if (!shown.solids.has(id) && !hasSolid(shown.kinds, id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
     }
     this.refresh();
   }
@@ -429,9 +429,12 @@ export class App {
           }
         : d?.kind === 'slide'
           ? { ...doc, openings: d.openings }
-          : d && d.kind !== 'marquee' && d.kind !== 'dimLine'
-            ? { ...doc, walls: d.walls }
-            : doc;
+          : d?.kind === 'dimLine'
+            ? // A dimension's line where it is dragged.
+              { ...doc, dimensions: doc.dimensions.map((x) => (x.id === d.id ? { ...x, offset: d.offset } : x)) }
+            : d && d.kind !== 'marquee'
+              ? { ...doc, walls: d.walls }
+              : doc;
     // Walls being dragged: doors and windows keep to their faces and a room they pass over keeps its
     // space, as they will when the walls are dropped.
     const drawing = this.previewWall();
@@ -1704,34 +1707,16 @@ export class App {
     this.render();
   }
 
-  /** The dimensions of the level shown, where they are now, and the one being made; plan only. */
-  private planDimensions(): NonNullable<PlanOverlay['dimensions']> {
-    if (this.ui.view !== 'plan') return [];
-    const doc = this.store.get();
-    const g = this.geometry;
-    const out: NonNullable<PlanOverlay['dimensions']>[number][] = [];
-    const dragged = this.ui.drag?.kind === 'dimLine' ? this.ui.drag : null;
-    for (const dim of doc.dimensions) {
-      if (dim.levelId !== this.ui.levelId) continue;
-      const d = dragged?.id === dim.id ? { ...dim, offset: dragged.offset } : dim;
-      const p = placeDimension(doc, g, d);
-      if (p) out.push({ id: d.id, ...p, text: num(p.length), selected: this.ui.selection.has(d.id) || this.ui.hover === d.id });
-    }
-    const s = this.ui.tool === 'dimension' ? this.ui.dimension : DIMENSION_IDLE;
+  /** The dimension being made with the dimension tool, placed, with its value; plan only. */
+  private dimensionDraft(): (NonNullable<PlanOverlay['dimensionDraft']>) | null {
+    const s = this.ui.view === 'plan' && this.ui.tool === 'dimension' ? this.ui.dimension : DIMENSION_IDLE;
     const at = this.ui.snap?.point ?? this.ui.cursor;
-    if (s.kind !== 'idle' && at) {
-      const a = s.a;
-      const b = s.kind === 'placing' ? s.b : at;
-      const offset = s.kind === 'placing' ? offsetThrough(a, b, at) : 0;
-      const p = placeDimension(doc, g, { id: '', levelId: '', a: { kind: 'point', at: a }, b: { kind: 'point', at: b }, offset });
-      if (p) out.push({ id: '', ...p, text: num(p.length), selected: true });
-    }
-    return out;
-  }
-
-  /** What a dimension measures now; null when what held an end is gone. */
-  dimensionLength(d: Dimension): number | null {
-    return placeDimension(this.store.get(), this.geometry, d)?.length ?? null;
+    if (s.kind === 'idle' || !at) return null;
+    const a = s.a;
+    const b = s.kind === 'placing' ? s.b : at;
+    const offset = s.kind === 'placing' ? offsetThrough(a, b, at) : 0;
+    const p = placeDimension(this.store.get(), this.geometry, { id: '', levelId: '', a: { kind: 'point', at: a }, b: { kind: 'point', at: b }, offset });
+    return p ? { ...p, text: num(p.length) } : null;
   }
 
   wallEvent(event: WallToolEvent): void {
@@ -2023,7 +2008,6 @@ export class App {
       openingGroups: r.doc.openingGroups.slice(c.doc.openingGroups.length),
       rooms: r.doc.rooms.slice(c.doc.rooms.length),
       floors: r.doc.floors.slice(c.doc.floors.length),
-      dimensions: r.doc.dimensions.slice(c.doc.dimensions.length),
     };
     const level = levelOf(this.store.get(), this.ui.levelId);
     // The rooms renumbered on from the level's rooms as they are now, not as they were at the copy.
@@ -2039,7 +2023,6 @@ export class App {
         openingGroups: [...d.openingGroups, ...added.openingGroups],
         rooms: [...d.rooms, ...rooms],
         floors: [...d.floors, ...added.floors],
-        dimensions: [...d.dimensions, ...added.dimensions],
       }),
     });
     this.ui.selection = new Set(r.selection);
@@ -2343,7 +2326,7 @@ export class App {
       return this.renderChrome();
     }
     const marks = this.ui.openingTags ? openingMarks(doc.openings, markPrefix()) : undefined;
-    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²`, ...(marks ? { marks } : {}), dimensions: this.store.get().dimensions.flatMap((d) => (d.levelId === levelId ? (placeDimension(this.store.get(), this.geometry, d) ?? []) : [])), length: (m) => num(m) });
+    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²`, ...(marks ? { marks } : {}) });
     const level = doc.levels.find((l) => l.id === levelId);
     const file = `${this.fileBase()} - ${level ? safeFileName(name(level.name)) : ''}.dxf`;
     this.download(file, new Blob([toCp1252(text)], { type: 'application/dxf' }), 'application/dxf');
@@ -2437,7 +2420,7 @@ export class App {
   private selectionKinds(): number {
     const g = this.geometry;
     const ids = [...this.ui.selection];
-    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isDimId) ? 1 : 0) + new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
+    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
   }
 
   selectedWalls(): DocWall[] {
@@ -2594,7 +2577,7 @@ export class App {
         hover: ui.hover,
         roomSpace: ui.tool === 'room' ? ui.roomSpace : null,
         preview,
-        dimensions: this.planDimensions(),
+        dimensionDraft: this.dimensionDraft(),
         gridDraft: this.gridDraft(),
         guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
         snap:
@@ -2774,7 +2757,6 @@ export class App {
         openingWarnings: this.geometry.openingWarnings,
         openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing] } : null,
         total: ui.selection.size,
-        dimensions: doc.dimensions.filter((d) => ui.selection.has(d.id)),
         // The first registry kind with a selected element, and those of its elements, as derived.
         kind: (() => {
           for (const k of KINDS) {
@@ -2783,7 +2765,6 @@ export class App {
           }
           return null;
         })(),
-        dimensionLength: (d) => this.dimensionLength(d),
         stacked: stackedSteps(doc),
       },
       {
@@ -2865,7 +2846,6 @@ export class App {
           ui.openingDefaults = { ...ui.openingDefaults, [kind]: { ...ui.openingDefaults[kind], ...patch } };
           this.refresh();
         },
-        setDimensionDistance: (ids, distance) => this.store.dispatch(setDimensionDistance(ids, distance)),
         dispatch: (c) => this.store.dispatch(c),
         // The wall moved across, with its joins kept as a move keeps them: the face then meets the one below.
         alignBelow: (step) => this.store.dispatch(setWalls(moveWalls(this.store.get(), [step.upperId], step.shift), 'cmd.alignBelow')),
@@ -3093,9 +3073,7 @@ export class App {
     else this.ui.hidden.add(c);
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      // A dimension has no geometry: it never goes.
-      if (isDimId(id)) continue;
-      // The registry's: with their category (a text has none, an axis and a guide go with the guides).
+      // The registry's: with their category (a text and a dimension have none, an axis and a guide go with the guides).
       if (kindOfId(id)) {
         if (!hasSolid(shown.kinds, id)) this.ui.selection.delete(id);
         continue;

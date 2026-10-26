@@ -3,7 +3,6 @@
 // step along it, a room's point, an outline floor and a guide move. One document out, for one undo step.
 
 import { wallsOnGrids } from '../elements/grid/carry';
-import type { DimAnchor } from '../elements/dimension/schema';
 import { moveFloors, moveRooms, roomsGoingWith } from '../app/carry';
 import type { Doc } from '../app/document';
 import { type DerivedGeometry, hostsIn } from '../app/geometry';
@@ -44,17 +43,13 @@ export function nudge(doc: Doc, g: DerivedGeometry, ids: readonly string[], step
   });
   const rooms = next.rooms.map((r) => (set.has(r.id) && !carried.has(r.id) ? { ...r, seed: moved(r.seed) } : r));
   const floors = moveFloors(next.floors, set, moved);
-  // A dimension's free ends go; an end held by a wall or an opening stays with it.
-  const free = (a: DimAnchor): DimAnchor => (a.kind === 'point' ? { kind: 'point', at: moved(a.at) } : a);
-  const dimensions = next.dimensions.map((d) => (set.has(d.id) && (d.a.kind === 'point' || d.b.kind === 'point') ? { ...d, a: free(d.a), b: free(d.b) } : d));
   const changed =
     next !== doc ||
     openings.some((o, i) => o !== next.openings[i]) ||
     rooms.some((r, i) => r !== next.rooms[i]) ||
-    floors.some((f, i) => f !== next.floors[i]) ||
-    dimensions.some((d, i) => d !== next.dimensions[i]);
-  // The registry's elements (columns, beams, roofs, stairs, guardrails, texts, axes, guides) by their own move.
-  return moveKinds(changed ? { ...next, openings, rooms, floors, dimensions } : doc, set, step);
+    floors.some((f, i) => f !== next.floors[i]);
+  // The registry's elements (columns, beams, roofs, stairs, guardrails, texts, axes, guides, a dimension's free ends) by their own move.
+  return moveKinds(changed ? { ...next, openings, rooms, floors } : doc, set, step);
 }
 
 /** The rule moved `along` metres toward the wall's end; one without a distance is measured from the start. */

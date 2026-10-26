@@ -5,7 +5,7 @@
 
 import type * as THREE from 'three';
 import type { Doc } from '../app/document';
-import type { Category } from '../app/geometry';
+import type { Category, DerivedGeometry } from '../app/geometry';
 import type { Command } from '../core/store';
 import type { Point2 } from '../core/vector';
 import type { Transform } from '../tools/transform';
@@ -14,7 +14,10 @@ import type { MessageKey } from '../ui/i18n';
 import type { IconName } from '../ui/icons';
 
 /** The document's lists the registry's kinds keep. */
-export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'notes' | 'grids' | 'guides';
+export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'notes' | 'grids' | 'guides' | 'dimensions';
+
+/** The derived geometry before the registry's kinds: what a kind held by walls and doors reads. */
+export type BaseGeometry = Omit<DerivedGeometry, 'kinds'>;
 
 /** What the plan view lends a kind to draw itself with. */
 export interface PlanPaint {
@@ -34,8 +37,8 @@ export interface PlanPaint {
 export interface DxfOut {
   readonly line: (layer: string, a: Point2, b: Point2) => void;
   readonly polyline: (layer: string, points: readonly Point2[], closed: boolean) => void;
-  /** A TEXT of `height` (m) centred on `at`. */
-  readonly text: (layer: string, at: Point2, height: number, text: string) => void;
+  /** A TEXT of `height` (m) centred on `at`, turned `angle` degrees. */
+  readonly text: (layer: string, at: Point2, height: number, text: string, angle?: number) => void;
 }
 
 /** A kind's 3D: a geometry in three.js coordinates, standing `y` up, in one of the scene's materials. */
@@ -47,8 +50,32 @@ export interface KindSolid {
   readonly edges: boolean;
 }
 
-/** Where a click finds it among the rest: before the walls (inside them), after them, or last of all. */
-export type PickOrder = 'beforeWalls' | 'afterWalls' | 'last';
+/** Where a click finds it among the rest: first (a dimension's line, over what it measures), before the
+ * walls (inside them), after them, or last of all. */
+export type PickOrder = 'first' | 'beforeWalls' | 'afterWalls' | 'last';
+
+/** What a Modify tool tells a kind whose elements are held by others (a dimension by walls and doors). */
+export interface TransformContext {
+  readonly t: Transform;
+  /** Its id after: its own in place, its copy's. */
+  readonly id: string;
+  /** Selected (taken whole), or only there while what holds it goes. */
+  readonly selected: boolean;
+  readonly copy: boolean;
+  /** Whether a wall, or a door or window, goes along. */
+  readonly going: (id: string) => boolean;
+  /** The id a copied element got (its own when not copied). */
+  readonly to: (id: string) => string;
+  /** The document and its geometry before the tool. */
+  readonly doc: Doc;
+  readonly geometry: DerivedGeometry;
+}
+
+/** Where a kind's text sits on screen, and its lines: what the room tags keep off. */
+export interface KeepOut {
+  readonly boxes: readonly { readonly x: number; readonly y: number; readonly w: number; readonly h: number }[];
+  readonly lines: readonly { readonly a: Point2; readonly b: Point2 }[];
+}
 
 export interface ElementKind<E extends { readonly id: string; readonly levelId?: string }, S> {
   readonly key: KindKey;
@@ -58,8 +85,9 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   readonly category: Category | null;
   /** On every level (it has no level of its own): a grid axis. Not pasted onto another level. */
   readonly everyLevel?: true;
-  /** Drawn in plan over the walls, the doors and the other kinds (a guide, a text). */
-  readonly over?: true;
+  /** Drawn in plan over the walls, the doors and the other kinds (a guide, a text), or over the room
+   * tags too (`top`: a dimension, whose value under a room's name was lost). */
+  readonly layer?: 'over' | 'top';
   /** A line without ends (a guide): its outline is two points of it; framing counts the first only,
    * and only a crossing window takes it. */
   readonly endless?: true;
@@ -78,8 +106,15 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   readonly exportColour: 'structure' | 'floor' | 'roof';
   /** A valid one, read from a file. */
   readonly valid: (x: unknown) => x is E;
-  /** As built, from the document. */
-  readonly derive: (doc: Doc, e: E) => S;
+  /** As built, from the document (and the walls and doors, for one held by them). */
+  readonly derive: (doc: Doc, e: E, g: BaseGeometry) => S;
+  /** The walls, doors and windows holding it: deleting one deletes it; one missing from a file drops it. */
+  readonly holders?: (e: E) => readonly string[];
+  /** Taken by a Modify tool when what holds it may go too: in place (every one, null keeps it as it
+   * is), or copied (the selected ones, null leaves the copy out). Instead of `mapped`. */
+  readonly transformed?: (e: E, c: TransformContext) => E | null;
+  /** On screen, what the room tags keep off. */
+  readonly keepOut?: (p: PlanPaint, s: S) => KeepOut | null;
   readonly element: (s: S) => E;
   /** Its outlines in plan at `scale` px a metre (a text's letters keep a size on screen): for a window
    * or crossing selection, framing, and bounds. */

@@ -36,24 +36,11 @@ export interface DxfLabels {
   readonly area: (m2: number) => string;
   /** Doors' and windows' type marks (opening/marks.ts), as the plan tags them. */
   readonly marks?: ReadonlyMap<string, string>;
-  /** The level's permanent dimensions, placed (elements/dimension/anchor.ts: placeDimension). */
-  readonly dimensions?: readonly { readonly a: Point2; readonly b: Point2; readonly la: Point2; readonly lb: Point2; readonly length: number }[];
-  /** A dimension's value, as the plan writes it. */
-  readonly length?: (m: number) => string;
 }
 
 /** Text height of the room labels and of the type marks (m). */
 const TEXT_H = 0.2;
 const MARK_H = 0.15;
-const DIM_H = 0.12;
-
-/** A text's angle (°) along a direction, kept upright: within ±90°. */
-function angleOf(ux: number, uy: number): number {
-  let a = (Math.atan2(uy, ux) * 180) / Math.PI;
-  if (a > 90) a -= 180;
-  if (a <= -90) a += 180;
-  return a;
-}
 
 export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels): string {
   const out: string[] = [];
@@ -172,24 +159,6 @@ export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels):
     polyline('A-AREA', r.outline, true);
     text('A-AREA-IDEN', { x: r.label.x, y: r.label.y + TEXT_H * 0.7 }, TEXT_H, labels.room(r.room.number, r.room.name));
     text('A-AREA-IDEN', { x: r.label.x, y: r.label.y - TEXT_H * 0.7 }, TEXT_H * 0.8, labels.area(r.area));
-  }
-  // Dimensions as lines and a text, as R12 readers all draw them: the extension lines, the dimension
-  // line, a tick at each end, the value over the middle.
-  for (const d of labels.dimensions ?? []) {
-    const ux = (d.lb.x - d.la.x) / d.length;
-    const uy = (d.lb.y - d.la.y) / d.length;
-    const off = Math.hypot(d.la.x - d.a.x, d.la.y - d.a.y);
-    const nx = off > 1e-9 ? (d.la.x - d.a.x) / off : -uy;
-    const ny = off > 1e-9 ? (d.la.y - d.a.y) / off : ux;
-    const past = (p: Point2, k: number) => ({ x: p.x + nx * k, y: p.y + ny * k });
-    if (off > 1e-9) {
-      line('A-ANNO-DIMS', past(d.a, Math.min(0.05, off)), past(d.la, 0.1));
-      line('A-ANNO-DIMS', past(d.b, Math.min(0.05, off)), past(d.lb, 0.1));
-    }
-    line('A-ANNO-DIMS', d.la, d.lb);
-    const t = 0.08;
-    for (const p of [d.la, d.lb]) line('A-ANNO-DIMS', { x: p.x - (ux + nx) * t, y: p.y - (uy + ny) * t }, { x: p.x + (ux + nx) * t, y: p.y + (uy + ny) * t });
-    text('A-ANNO-DIMS', { x: (d.la.x + d.lb.x) / 2 + nx * DIM_H, y: (d.la.y + d.lb.y) / 2 + ny * DIM_H }, DIM_H, (labels.length ?? ((m: number) => m.toFixed(2)))(d.length), angleOf(ux, uy));
   }
   pair(0, 'ENDSEC');
   pair(0, 'EOF');

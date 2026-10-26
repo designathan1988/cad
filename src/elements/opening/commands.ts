@@ -4,7 +4,6 @@
 // spreads the others out again, which is what the group is for.
 
 import { dropKinds, hasKinds } from '../registry';
-import { anchorElement } from '../dimension/schema';
 import { type Doc, wallHeights } from '../../app/document';
 import type { Command } from '../../core/store';
 import { deriveGeometry, hostsIn } from '../../app/geometry';
@@ -81,15 +80,11 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
     const gone = new Set(doc.openings.filter((o) => drop.has(o.id) || drop.has(o.wallId)).map((o) => o.id));
     const rooms = doc.rooms.filter((r) => !drop.has(r.id));
     const floorsLeft = doc.floors.filter((f) => !drop.has(f.id));
-    // A dimension goes with what holds either of its ends, as Revit's does.
-    const held = (id: string | null) => id !== null && (drop.has(id) || gone.has(id));
-    const dimensions = doc.dimensions.filter((d) => !drop.has(d.id) && !held(anchorElement(d.a)) && !held(anchorElement(d.b)));
     if (
       walls.length === doc.walls.length &&
       gone.size === 0 &&
       rooms.length === doc.rooms.length &&
       floorsLeft.length === doc.floors.length &&
-      dimensions.length === doc.dimensions.length &&
       !hasKinds(doc, drop)
     ) {
       return doc;
@@ -109,7 +104,8 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
           ? { ...o, rule: { kind: 'fromStart' as const, distance: placed.get(o.id)!.start } }
           : o,
       );
-    return settleGroups(doc, { ...dropKinds(doc, drop), walls, openings, rooms, floors, dimensions });
+    // A dimension goes with what holds either of its ends, as Revit's does (registry.ts: dropKinds).
+    return settleGroups(doc, { ...dropKinds(doc, new Set([...drop, ...gone])), walls, openings, rooms, floors });
   },
 });
 

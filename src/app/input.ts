@@ -28,7 +28,6 @@ import { arrowStep } from '../tools/nudge';
 import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
 import { guideBaseAt } from '../tools/guide-tool';
-import { placeDimension, segmentDistance } from '../elements/dimension/anchor';
 import { eachSolid } from '../elements/registry';
 import type { PickOrder } from '../elements/contract';
 import type { LevelsShown } from './view-3d';
@@ -247,15 +246,6 @@ export function wireInput(app: App): void {
     // Within a few pixels of a wall, a door or a window, it is taken: aiming inside a thin wall, or at a
     // door's leaf, was the only way before.
     const near = PICK_PX / app.plan.scale;
-    // A dimension by its line or its value, before what it measures.
-    const dims = app.store.get().dimensions.filter((d) => d.levelId === ui.levelId);
-    const dimHit = dims
-      .map((d) => ({ id: d.id, at: placeDimension(app.store.get(), app.geometry, d) }))
-      .flatMap((x) => (x.at ? [{ id: x.id, off: Math.min(segmentDistance(p, x.at.la, x.at.lb), distance(p, { x: (x.at.la.x + x.at.lb.x) / 2, y: (x.at.la.y + x.at.lb.y) / 2 }) - 10 / app.plan.scale) }] : []))
-      .filter((x) => x.off <= near)
-      .sort((a, b) => a.off - b.off)
-      .slice(0, 1)
-      .map((x) => x.id);
     // The registry's kinds under the point, by where they come among the rest (contract.ts: pick); of
     // one order, the one drawn last first. A handle (an axis's bubble, over the walls at a corner) first of all.
     const solids = [...eachSolid(g.kinds)].reverse();
@@ -263,7 +253,8 @@ export function wireInput(app: App): void {
     const kindHits = (order: PickOrder) => solids.filter((x) => x.kind.pick === order && x.kind.hit(x.solid, p, near, app.plan.scale)).map((x) => x.id);
     return [
       ...grabbed,
-      ...dimHit,
+      // A dimension by its line or its value, before what it measures.
+      ...kindHits('first'),
       // A text over everything it is written on (the last kind drawn, so the first here).
       ...kindHits('beforeWalls'),
       openingAt(g, p, near),

@@ -339,14 +339,6 @@ function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): voi
         const u = normalize(sub(b!, a!));
         return { id: x.id, outlines: [[add(a!, scale(u, -1e6)), add(a!, scale(u, 1e6))]] };
       }),
-    // A dimension by its line.
-    ...app.store
-      .get()
-      .dimensions.filter((d) => d.levelId === app.ui.levelId)
-      .flatMap((d) => {
-        const at = placeDimension(app.store.get(), app.geometry, d);
-        return at ? [{ id: d.id, outlines: [[app.plan.toScreen(at.la), app.plan.toScreen(at.lb)]] }] : [];
-      }),
   ];
   if (!additive) app.ui.selection.clear();
   for (const id of marqueePick(items, a, b)) app.ui.selection.add(id);

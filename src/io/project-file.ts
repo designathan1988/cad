@@ -12,7 +12,6 @@ import { deriveGeometry } from '../app/geometry';
 import { distributeOpenings } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import { type Floor, type Room, ROOM_USES } from '../elements/room/schema';
-import type { Dimension } from '../elements/dimension/schema';
 import type { WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
 
@@ -44,7 +43,7 @@ export const CURRENT_VERSION = 20;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedViews' | 'droppedPoints' | 'droppedDimensions' | KindFix; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedViews' | 'droppedPoints' | KindFix; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
 
 /** The fix for a registry kind's dropped elements: droppedColumns, droppedBeams and so on. */
@@ -152,17 +151,6 @@ export const isFloor = (f: unknown): f is Floor =>
   (f.slope === undefined || (isObject(f.slope) && finite(f.slope.grade) && finite(f.slope.dir))) &&
   (f.kind === undefined || f.kind === 'ceiling');
 
-/** An end of a dimension: on a wall (an end, along, across), on a jamb, or a point. */
-const isDimAnchor = (a: unknown): boolean =>
-  isObject(a) &&
-  ((a.kind === 'wall' && typeof a.wallId === 'string' && (a.end === 'start' || a.end === 'end') && finite(a.along) && finite(a.offset)) ||
-    (a.kind === 'opening' && typeof a.openingId === 'string' && (a.jamb === 'start' || a.jamb === 'end') && finite(a.offset)) ||
-    (a.kind === 'point' && isPoint(a.at)));
-
-/** A permanent dimension: two ends and the distance of its line. */
-export const isDimension = (d: unknown): d is Dimension =>
-  isObject(d) && typeof d.id === 'string' && typeof d.levelId === 'string' && isDimAnchor(d.a) && isDimAnchor(d.b) && finite(d.offset);
-
 export function writeProject(doc: Doc): string {
   return JSON.stringify({ ...doc, version: CURRENT_VERSION }, null, 2);
 }
@@ -230,22 +218,16 @@ export function repairProject(raw: unknown): ReadResult {
       if (p === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedPoints', count: all.filter((x) => !levelIds.has(x.levelId)).length });
       return false;
     }),
-    // A dimension on a level that is gone, or held by a wall or an opening that is not there: dropped, and said.
-    dimensions: keep(raw.dimensions, isDimension, 'droppedDimensions').filter((d, _, all) => {
-      const there = (x: Dimension) =>
-        levelIds.has(x.levelId) && [x.a, x.b].every((a) => (a.kind === 'wall' ? wallIds.has(a.wallId) : a.kind === 'opening' ? openingIds.has(a.openingId) : true));
-      if (there(d)) return true;
-      if (d === all.find((x) => !there(x))) fixes.push({ kind: 'droppedDimensions', count: all.filter((x) => !there(x)).length });
-      return false;
-    }),
-    // The registry's elements (columns, beams, roofs, stairs, guardrails, texts, axes, guides): checked by their kind; one
-    // on a level that is gone stands nowhere: dropped, and said.
+    // The registry's elements (columns, beams, roofs, stairs, guardrails, texts, axes, guides, dimensions):
+    // checked by their kind; one on a level that is gone stands nowhere, one held by a wall or an opening
+    // that is not there (a dimension) holds to nothing: dropped, and said.
     ...(Object.fromEntries(
       KINDS.map((k) => {
         const fix = kindFix(k);
         const all = keep(raw[k.key], k.valid, fix) as { readonly levelId: string }[];
         // An axis is on every level: none is gone with one.
-        const there = (x: { readonly levelId: string }) => k.everyLevel === true || levelIds.has(x.levelId);
+        const held = (x: { readonly levelId: string }) => (k.holders?.(x) ?? []).every((h: string) => wallIds.has(h) || openingIds.has(h));
+        const there = (x: { readonly levelId: string }) => (k.everyLevel === true || levelIds.has(x.levelId)) && held(x);
         const gone = all.filter((x) => !there(x)).length;
         if (gone > 0) fixes.push({ kind: fix, count: gone });
         return [k.key, all.filter(there)];

@@ -14,7 +14,7 @@ export const guideKind: ElementKind<Guide, Guide> = {
   prefix: GUIDE_PREFIX,
   category: 'guides',
   // Over the walls and the doors, thin: a guide laid on a wall's face is seen there.
-  over: true,
+  layer: 'over',
   endless: true,
   icon: 'guide',
   one: 'guide.title',

@@ -58,7 +58,7 @@ export function anchorAt(doc: Doc, g: DerivedGeometry, levelId: string, p: Point
 }
 
 /** Where a held point is now; null when what held it is gone (deleted, or an opening with no place). */
-export function resolve(doc: Doc, g: DerivedGeometry, a: DimAnchor): Point2 | null {
+export function resolve(doc: Doc, g: Pick<DerivedGeometry, 'openings'>, a: DimAnchor): Point2 | null {
   if (a.kind === 'point') return a.at;
   if (a.kind === 'wall') {
     const w = doc.walls.find((x) => x.id === a.wallId);
@@ -76,7 +76,7 @@ export function resolve(doc: Doc, g: DerivedGeometry, a: DimAnchor): Point2 | nu
 }
 
 /** A dimension where it is now: its two points, its line (off them by its offset) and its length. */
-export function placeDimension(doc: Doc, g: DerivedGeometry, d: Dimension): { a: Point2; b: Point2; la: Point2; lb: Point2; length: number } | null {
+export function placeDimension(doc: Doc, g: Pick<DerivedGeometry, 'openings'>, d: Dimension): { a: Point2; b: Point2; la: Point2; lb: Point2; length: number } | null {
   const a = resolve(doc, g, d.a);
   const b = resolve(doc, g, d.b);
   if (!a || !b || distance(a, b) < 1e-9) return null;
