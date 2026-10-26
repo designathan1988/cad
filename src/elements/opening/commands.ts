@@ -262,19 +262,35 @@ export const distributeOpenings = (groupId: OpeningGroupId, ids: readonly Openin
     });
     if (!onJoint) return spread;
     // One would land on a joint (a T or an X between them): no single equal spacing skips it (ADR 0003),
-    // so one group for each stretch, spread in it. One alone in its stretch stays where it is.
+    // so one group for each stretch, spread in it. Which side of a joint an opening is on goes by its
+    // middle, so one sitting on the joint (a group from a version 3 file) goes to the side it is most
+    // on. One alone in its stretch stays where it is.
+    const mid = (id: OpeningId) => (placed.get(id)!.start + placed.get(id)!.end) / 2;
+    const joints = [...(host?.joints ?? new Map<string, { lo: number; hi: number }>())];
     const runs: OpeningId[][] = [[members[0]!]];
     for (let i = 1; i < members.length; i++) {
-      const prev = placed.get(members[i - 1]!)!;
-      const next = placed.get(members[i]!)!;
-      const between = [...(host?.joints?.values() ?? [])].some((j) => j.lo >= prev.end - 1e-9 && j.hi <= next.start + 1e-9);
+      const [a, b] = [mid(members[i - 1]!), mid(members[i]!)];
+      const between = joints.some(([, j]) => (j.lo + j.hi) / 2 > a && (j.lo + j.hi) / 2 <= b);
       if (between) runs.push([members[i]!]);
       else runs[runs.length - 1]!.push(members[i]!);
     }
     const groups = runs
       .filter((r) => r.length >= 2)
-      .map((r, k) => ({ id: k === 0 ? groupId : `${groupId}-${k + 1}`, wallId: list[0]!.wallId, members: r, spacing, ...stretchAround(host, r.map((id) => placed.get(id)!)) }));
-    return groups.length > 0 ? together(groups) : spread;
+      .map((r, k) => {
+        // Between the joints nearest outside the run's middles.
+        const [lo, hi] = [mid(r[0]!), mid(r[r.length - 1]!)];
+        const before = joints.filter(([, j]) => (j.lo + j.hi) / 2 <= lo).sort((x, y) => y[1].hi - x[1].hi)[0]?.[0] ?? null;
+        const after = joints.filter(([, j]) => (j.lo + j.hi) / 2 > hi).sort((x, y) => x[1].lo - y[1].lo)[0]?.[0] ?? null;
+        return { id: k === 0 ? groupId : `${groupId}-${k + 1}`, wallId: list[0]!.wallId, members: r, spacing, ...(before !== null || after !== null ? { between: [before, after] as const } : {}) };
+      });
+    if (groups.length === 0) return spread;
+    // One left out that was in a group (a version 3 group split here) keeps its place, measured from the start.
+    const grouped = new Set(groups.flatMap((g) => g.members));
+    const alone = new Map(members.filter((id) => !grouped.has(id)).map((id) => [id, placed.get(id)!.start]));
+    const made = together(groups);
+    return alone.size === 0
+      ? made
+      : { ...made, openings: made.openings.map((o) => (alone.has(o.id) && o.rule.kind === 'inGroup' ? { ...o, rule: { kind: 'fromStart' as const, distance: alone.get(o.id)! } } : o)) };
   },
 });
 

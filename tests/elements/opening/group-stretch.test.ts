@@ -139,6 +139,28 @@ describe('a group distributed beside a joint', () => {
     near(startOf(gone, 'x'), (6 - 1.8) / 4);
   });
 
+  it('a version 3 file whose group already sits a window on the X: read, it is spread by stretch, clear of it', () => {
+    // Three 0.60 windows spread over the whole 6 m wall: 1.05 spaces put y from 2.70 to 3.30, on the X.
+    const v3 = JSON.stringify({
+      ...newDocument(),
+      version: 3,
+      walls: [w, c],
+      openings: left.map((o) => ({ ...o, rule: { kind: 'inGroup', groupId: 'g' } })),
+      openingGroups: [{ id: 'g', wallId: 'w', members: ['x', 'y', 'z'], spacing: { kind: 'equal' } }],
+    });
+    const before = readProject(v3.replace('"version":3', '"version":4'));
+    if (!before.ok) throw new Error(before.error);
+    // As version 4 (no migration) it sits on the X, as the tester saw.
+    expect(clean(before.doc)).toBe(false);
+    const read = readProject(v3);
+    if (!read.ok) throw new Error(read.error);
+    expect(clean(read.doc)).toBe(true);
+    // y's middle is on the X's (3.00): it goes with z, to the right; x, alone on the left, stays at 1.05.
+    expect(read.doc.openingGroups.map((g) => [g.members, g.between])).toEqual([[['y', 'z'], ['c', null]]]);
+    near(startOf(read.doc, 'x'), 1.05);
+    near(startOf(read.doc, 'y'), 3.1 + 1.7 / 3);
+  });
+
   it('openings on both sides of the X: no joint outside them, so the whole wall, as before', () => {
     const both = [win('x', { kind: 'fromStart', distance: 0.5 }), win('y', { kind: 'fromEnd', distance: 0.5 })];
     const d = distributeOpenings('g', ['x', 'y'], { kind: 'equal' }).apply(docOf([w, c], both));

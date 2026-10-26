@@ -6,6 +6,8 @@
 import { type Doc, type Level, ownValuesOnly } from '../app/document';
 import type { Guide } from '../elements/guide/schema';
 import { isSavedView } from '../app/saved-views';
+import { deriveGeometry } from '../app/geometry';
+import { distributeOpenings } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { Floor, Room } from '../elements/room/schema';
 import type { WallType } from '../elements/wall/schema';
@@ -192,5 +194,20 @@ export function repairProject(raw: unknown): ReadResult {
       return false;
     }),
   };
-  return { ok: true, doc, fixes };
+  return { ok: true, doc: regroupOffJoints(doc, raw.version), fixes };
+}
+
+/**
+ * A distributed group from before stretches (version 3) spread over its whole wall, and could sit an
+ * opening on a T or an X (the tester's reteste of 16453d5): distributed again as now, by stretch (ADR
+ * 0003), it keeps clear of the joint. Groups clear of every joint are left as they were.
+ */
+function regroupOffJoints(doc: Doc, version: number): Doc {
+  if (version >= 4 || doc.openingGroups.length === 0) return doc;
+  let out = doc;
+  for (const g of doc.openingGroups) {
+    const atJoint = [...deriveGeometry(out).openings.values()].some((o) => g.members.includes(o.opening.id) && o.warnings.includes('openingAtJoint'));
+    if (atJoint) out = distributeOpenings(g.id, g.members, g.spacing).apply(out);
+  }
+  return out;
 }
