@@ -29,6 +29,8 @@ export interface Prefs {
   snaps?: boolean;
   /** Where the plan was looking (pixels per metre, world point at the centre): a reload framed it all again. */
   planView?: { scale: number; center: { x: number; y: number } };
+  /** Walking: the eyes' height above the floor (m). */
+  eyeHeight?: number;
 }
 
 function storage(): Storage | null {

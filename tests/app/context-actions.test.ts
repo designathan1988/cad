@@ -42,10 +42,10 @@ describe('actions for the selection', () => {
     expect(contextIds(doc, ['n'])).toEqual(['move', 'centerOpening', 'frameSelection', 'properties', 'delete']);
   });
 
-  it('a room without a floor offers one; with a floor, not', () => {
-    expect(contextIds(doc, ['r'])).toEqual(['move', 'addFloor', 'frameSelection', 'properties', 'delete']);
+  it('a room without a floor offers one; with a floor, not; and walking from where the menu was opened', () => {
+    expect(contextIds(doc, ['r'])).toEqual(['move', 'addFloor', 'walkHere', 'frameSelection', 'properties', 'delete']);
     const floored = { ...doc, floors: [{ ...doc.floors[0]!, source: { kind: 'room' as const, roomId: 'r' } }] };
-    expect(contextIds(floored, ['r'])).toEqual(['move', 'frameSelection', 'properties', 'delete']);
+    expect(contextIds(floored, ['r'])).toEqual(['move', 'walkHere', 'frameSelection', 'properties', 'delete']);
   });
 
   it('an outline floor: move, frame, properties, delete', () => {
@@ -58,8 +58,8 @@ describe('actions for the selection', () => {
     expect(contextIds(doc, ['w', 'v'])).toEqual(['move', 'frameSelection', 'clearSelection', 'delete']);
   });
 
-  it('nothing: draw a wall, frame all, commands', () => {
-    expect(contextIds(doc, [])).toEqual(['drawWall', 'frameAll', 'commands']);
+  it('nothing: draw a wall, walk from here, frame all, commands', () => {
+    expect(contextIds(doc, [])).toEqual(['drawWall', 'walkHere', 'frameAll', 'commands']);
   });
 
   it('never more than 6', () => {
@@ -72,9 +72,9 @@ describe('guides in the menu', () => {
   const withGuide: Doc = { ...doc, guides: [guide] };
 
   it('with nothing selected, deleting the guides of the level shown is offered only when it has some', () => {
-    expect(contextIds(withGuide, [], 'lvl_ground')).toEqual(['drawWall', 'frameAll', 'clearGuides', 'commands']);
-    expect(contextIds(withGuide, [], 'other')).toEqual(['drawWall', 'frameAll', 'commands']);
-    expect(contextIds(doc, [], 'lvl_ground')).toEqual(['drawWall', 'frameAll', 'commands']);
+    expect(contextIds(withGuide, [], 'lvl_ground')).toEqual(['drawWall', 'walkHere', 'frameAll', 'clearGuides', 'commands']);
+    expect(contextIds(withGuide, [], 'other')).toEqual(['drawWall', 'walkHere', 'frameAll', 'commands']);
+    expect(contextIds(doc, [], 'lvl_ground')).toEqual(['drawWall', 'walkHere', 'frameAll', 'commands']);
   });
 
   it('a guide selected: no zoom to it (it has no ends), its properties, the level\'s guides, delete', () => {

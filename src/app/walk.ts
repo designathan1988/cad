@@ -16,6 +16,9 @@ export interface Walker {
 }
 
 export const EYE_HEIGHT = 1.6;
+/** How low and high the eyes can be set (m): a child, a tall adult. */
+export const EYE_MIN = 0.8;
+export const EYE_MAX = 2.2;
 /** The body, round in plan (m): kept this far from every wall. */
 export const BODY_RADIUS = 0.25;
 export const WALK_SPEED = 1.4;

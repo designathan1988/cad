@@ -59,7 +59,10 @@ export function wireInput(app: App): void {
     if (hit && !ui.selection.has(hit)) ui.selection = new Set([hit]);
     if (!hit) ui.selection.clear();
     app.refresh();
+    // Where the menu was opened, for "Walk from here": the pointer leaves the drawing for the menu.
+    app.contextPoint = worldAt(e)?.p ?? null;
     const entries = contextEntries(app, palette);
+    app.contextPoint = null;
     showMenu(
       entries.map((x, i) => ({ label: x.label, ...(x.keys ? { keys: x.keys } : {}), separated: x.id === 'delete' && i > 0, run: x.run })),
       { x: e.clientX, y: e.clientY },
@@ -536,6 +539,31 @@ export function wireInput(app: App): void {
   shell.homeBtn.addEventListener('click', () => app.frameAll());
   shell.view3d.addEventListener('click', () => app.setView('3d'));
   shell.viewWalk.addEventListener('click', () => app.toggleWalk());
+  // The walking stick: pushed up walks forward, sideways steps aside, as far as it is pushed.
+  const stickAt = (e: PointerEvent) => {
+    const r = shell.walkStick.getBoundingClientRect();
+    const radius = r.width / 2;
+    let dx = (e.clientX - (r.left + radius)) / radius;
+    let dy = (e.clientY - (r.top + radius)) / radius;
+    const len = Math.hypot(dx, dy);
+    if (len > 1) [dx, dy] = [dx / len, dy / len];
+    shell.walkKnob.style.transform = `translate(${dx * radius * 0.6}px, ${dy * radius * 0.6}px)`;
+    app.walkStick = { forward: -dy, side: dx };
+  };
+  shell.walkStick.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    shell.walkStick.setPointerCapture(e.pointerId);
+    stickAt(e);
+  });
+  shell.walkStick.addEventListener('pointermove', (e) => {
+    if (app.walkStick) stickAt(e);
+  });
+  const stickOff = () => {
+    app.walkStick = null;
+    shell.walkKnob.style.transform = '';
+  };
+  shell.walkStick.addEventListener('pointerup', stickOff);
+  shell.walkStick.addEventListener('pointercancel', stickOff);
   shell.viewPlan.addEventListener('click', () => app.setView('plan'));
   shell.level.addEventListener('change', () => {
     if (shell.level.value === EDIT_LEVELS) {
@@ -656,6 +684,10 @@ export function wireInput(app: App): void {
         return;
       }
       if (key === 'escape' || key === '3') return app.exitWalk();
+      if (key === '+' || key === '=' || key === '-') {
+        e.preventDefault();
+        return app.walkEye(key === '-' ? -0.1 : 0.1);
+      }
       if (key === 'pageup' || key === 'pagedown') {
         e.preventDefault();
         return app.walkLevel(key === 'pageup' ? 1 : -1);

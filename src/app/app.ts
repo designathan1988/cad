@@ -68,7 +68,7 @@ import { readProject, writeProject } from '../io/project-file';
 import { fitFactor, keepInView } from './keep-in-view';
 import type { ViewKey } from './view-keys';
 import { deleteView, nextViewName, type SavedView, saveView } from './saved-views';
-import { EYE_HEIGHT, MAX_PITCH, moveWithCollision, obstaclesOf, startPoint, stepFor, type Walker } from './walk';
+import { EYE_HEIGHT, EYE_MAX, EYE_MIN, MAX_PITCH, moveWithCollision, obstaclesOf, startPoint, stepFor, type Walker } from './walk';
 import { BOX_FACES, type BoxFace, boxAround, faceCenter, faceNormal, type SectionBox, sectionLooks } from './section-box';
 import { BOX_HANDLE_HIT } from '../render/overlay-3d';
 import { type TempDim, tempDims } from './temp-dims';
@@ -822,8 +822,17 @@ export class App {
     this.store.dispatch(deleteView(id));
   }
 
+  /** Where the right-click menu was opened (plan point), while its entries are made (input.ts). */
+  contextPoint: Point2 | null = null;
   /** Walking through the model (walk.ts), or null. Interface state: never saved. */
   walker: Walker | null = null;
+  /** The walker's eyes above the floor (m), kept with the preferences. */
+  eyeHeight = (() => {
+    const h = loadPrefs().eyeHeight;
+    return typeof h === 'number' && h >= EYE_MIN && h <= EYE_MAX ? h : EYE_HEIGHT;
+  })();
+  /** The on-screen stick (touch, or a mouse): forward and sideways, −1..1, while it is held. */
+  walkStick: { forward: number; side: number } | null = null;
   /** Keys held while walking: what the next frames move by. */
   readonly walkKeys = new Set<string>();
   private walkFrame = 0;
@@ -869,6 +878,14 @@ export class App {
     else this.enterWalk();
   }
 
+  /** The eyes higher or lower by `step` (m), within EYE_MIN..EYE_MAX; said in the footer. */
+  walkEye(step: number): void {
+    this.eyeHeight = Math.round(Math.min(EYE_MAX, Math.max(EYE_MIN, this.eyeHeight + step)) * 100) / 100;
+    savePrefs({ eyeHeight: this.eyeHeight });
+    this.placeWalker();
+    this.renderChrome();
+  }
+
   /** Turns the view: a drag of dx, dy pixels. */
   walkLook(dx: number, dy: number): void {
     const w = this.walker;
@@ -896,10 +913,13 @@ export class App {
     const seconds = Math.min(0.1, (now - this.walkLast) / 1000);
     this.walkLast = now;
     const k = this.walkKeys;
-    const forward = (k.has('w') || k.has('arrowup') ? 1 : 0) - (k.has('s') || k.has('arrowdown') ? 1 : 0);
-    const side = (k.has('d') || k.has('arrowright') ? 1 : 0) - (k.has('a') || k.has('arrowleft') ? 1 : 0);
+    const stick = this.walkStick;
+    const forward = stick?.forward ?? (k.has('w') || k.has('arrowup') ? 1 : 0) - (k.has('s') || k.has('arrowdown') ? 1 : 0);
+    const side = stick?.side ?? (k.has('d') || k.has('arrowright') ? 1 : 0) - (k.has('a') || k.has('arrowleft') ? 1 : 0);
     if (forward !== 0 || side !== 0) {
-      const d = stepFor(w, forward, side, seconds, k.has('shift'));
+      // The stick moves as far as it is pushed; full out it walks.
+      const push = stick ? Math.min(1, Math.hypot(forward, side)) : 1;
+      const d = stepFor(w, forward, side, seconds * push, k.has('shift'));
       const p = moveWithCollision({ x: w.x, y: w.y }, d, this.obstaclesHere(w.levelId));
       this.walker = { ...w, x: p.x, y: p.y };
       this.placeWalker();
@@ -922,7 +942,7 @@ export class App {
     const w = this.walker;
     if (!w) return;
     const floor = this.store.get().levels.find((l) => l.id === w.levelId)?.elevation ?? 0;
-    this.scene.setWalkView({ x: w.x, y: w.y, z: floor + this.lift(w.levelId) + EYE_HEIGHT }, w.yaw, w.pitch);
+    this.scene.setWalkView({ x: w.x, y: w.y, z: floor + this.lift(w.levelId) + this.eyeHeight }, w.yaw, w.pitch);
   }
 
   /** The guides, as a move being dragged takes them. */
@@ -2491,6 +2511,7 @@ export class App {
     shell.view3d.setAttribute('aria-pressed', String(ui.view === '3d'));
     shell.viewPlan.setAttribute('aria-pressed', String(ui.view === 'plan'));
     shell.viewWalk.setAttribute('aria-pressed', String(this.walker !== null));
+    shell.walkStick.hidden = this.walker === null;
     shell.toolSelect.setAttribute('aria-pressed', String(ui.tool === 'select'));
     shell.toolWall.setAttribute('aria-pressed', String(ui.tool === 'wall'));
     shell.toolRoom.setAttribute('aria-pressed', String(ui.tool === 'room'));
@@ -2621,7 +2642,7 @@ export class App {
       : null;
     const mod = ui.tool === 'modify' ? ui.modify : null;
     const modifyHint = mod ? t(`hint.modify.${mod.kind === 'copy' ? 'move' : mod.kind}.${mod.state.step}` as MessageKey) : null;
-    shell.instr.textContent = this.walker ? t('hint.walk') : (ui.error ?? guideHint ?? modifyHint ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size }));
+    shell.instr.textContent = this.walker ? t('hint.walk', { h: num(this.eyeHeight) }) : (ui.error ?? guideHint ?? modifyHint ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size }));
     shell.instr.classList.toggle('error', ui.error !== null);
     // Alt sets a guide in the tools that draw by points (input.ts), in plan.
     const altGuide = ui.view === 'plan' ? [keyHint('Alt', t('key.guide'))] : [];
@@ -2629,7 +2650,7 @@ export class App {
     // seemed impossible to turn off.
     const snapKey = keyHint('S', t(ui.snaps ? 'key.snapsOn' : 'key.snapsOff'));
     const keys = this.walker
-      ? [keyHint('W A S D', t('key.walk')), keyHint('Shift', t('key.run')), keyHint('PgUp PgDn', t('key.walkLevel')), keyHint('Esc', t('key.exit'))]
+      ? [keyHint('W A S D', t('key.walk')), keyHint('Shift', t('key.run')), keyHint('+ −', t('key.eye')), keyHint('PgUp PgDn', t('key.walkLevel')), keyHint('Esc', t('key.exit'))]
       : ui.guide
       ? [keyHint('Enter', t('key.placeGuide')), keyHint('Esc', t('key.cancel'))]
       : ui.tool === 'split' || ui.tool === 'corner'

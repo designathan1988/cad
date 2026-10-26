@@ -20,6 +20,9 @@ const toThree = (p: Point2, z: number) => new THREE.Vector3(p.x, z, -p.y);
 /** The ground's size: this many times the model's extent, at least GROUND_MIN (m) across. */
 const GROUND_SPAN = 4;
 const GROUND_MIN = 60;
+/** Vertical field of view (degrees): the overview's, and a walker's. */
+const VIEW_FOV = 40;
+const WALK_FOV = 65;
 /** How much of a wall shows in x-ray. */
 const XRAY_OPACITY = 0.28;
 
@@ -40,7 +43,7 @@ function groundFade(): THREE.Texture {
 
 export class Scene3D {
   readonly renderer: THREE.WebGLRenderer;
-  private readonly persp = new THREE.PerspectiveCamera(40, 1, 0.05, 2000);
+  private readonly persp = new THREE.PerspectiveCamera(VIEW_FOV, 1, 0.05, 2000);
   /**
    * Orthographic, as elevations and sections are drawn (Revit's parallel views): no perspective, sizes
    * true at any depth. `orthoHalf`: half the view's height in metres at zoom 1.
@@ -354,6 +357,9 @@ export class Scene3D {
     this.beforeWalk = { position: this.camera.position.clone(), target: this.controls.target.clone(), ortho: this.orthoOn };
     this.setOrtho(false);
     this.controls.enabled = false;
+    // A person's view: wider than the overview's lens, or a room's walls filled it from its middle.
+    this.persp.fov = WALK_FOV;
+    this.persp.updateProjectionMatrix();
   }
 
   /** The walker's eyes (plan x, y and height z) looking along yaw and pitch. */
@@ -372,6 +378,8 @@ export class Scene3D {
     const was = this.beforeWalk;
     if (!was) return;
     this.beforeWalk = null;
+    this.persp.fov = VIEW_FOV;
+    this.persp.updateProjectionMatrix();
     this.persp.position.copy(was.position);
     this.controls.target.copy(was.target);
     this.controls.enabled = true;
