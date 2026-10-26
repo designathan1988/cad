@@ -22,7 +22,15 @@ Only joints inside the wall count (`app/geometry.ts`, `jointsIn`); a corner at a
 so groups between corners are placed as before. File version 4 carries the field; version 3 groups
 have none.
 
+## Openings on both sides of a joint (2026-10-26)
+
+Openings selected on both sides of a joint are first spread over the whole wall, as before; when that
+puts none on a joint, it is kept. When it would put one on a joint, there is no single equal spacing
+that skips it, so the selection is split where a joint lies between two neighbours: each run of two or
+more becomes its own group, spread in its own stretch (`between` recorded for each); one opening alone
+on its side stays where it is.
+
 ## Not done
 
-Openings selected on both sides of a joint keep the whole wall, and one may still land on the joint,
-with its warning: there is no single equal spacing that skips a joint.
+Every run of one (one opening on each side of a joint) with the whole-wall spread landing on the joint:
+it is spread over the wall anyway, and the opening on the joint says so (`openingAtJoint`).

@@ -238,19 +238,18 @@ Ainda abertos (vistas):
 
 ## Esperando reteste no navegador
 
-- Diálogo "Tipos de parede" e editor de camadas (17, parte 4; 08f1a21). Planta e 3D por camada já
-  foram vistos (e3e18c6).
-- Linhas entre camadas nítidas nos eixos e uma só decisão de camadas por vista (08f1a21).
-- Diagonal clara no núcleo, no canto de um L do mesmo tipo (observação 3 do reteste de e3e18c6):
-  as peças de uma mesma cor agora são pintadas num caminho só, então não há costura de
-  antisserrilhado entre elas. Corrigido no código, ainda não visto.
-- Arco: cotas de corda e de raio, alça de curvatura e raio editável no painel (427a512).
+Nenhum. Vistos em 2026-10-26 (1920×1080, gestos): diálogo "Tipos de parede" e editor de camadas
+(camada acrescentada e apagada num tipo sem paredes, total e barra atualizados, o diálogo não pula);
+linhas entre camadas nítidas; canto de L sem a diagonal clara no núcleo (zoom grande na quina do
+Quarto 1); arco com cotas de corda e de raio, alça de curvatura e raio editado no painel (2,59 → 4,00).
 
 ## Detalhes da revisão do testador (checklist em 3287502)
 
-- Com zoom grande, a curva do arco mostra os trechos retos: a flecha de 0,5 mm do ADR 0001 aparece
-  acima de ~2 000 px/m. Ideia: desenhar a planta do arco com mais trechos que o motor usa.
-- Distribuir com aberturas dos dois lados de um encontro usa a parede inteira (ADR 0003, "Not done").
+- Resolvido em 2026-10-26 (f0ac167): com zoom grande, o arco na planta é desenhado no próprio círculo
+  (faces e linhas entre camadas), sem os trechos retos do motor; visto a ~3 000 px/m.
+- Resolvido em 2026-10-26: distribuir com aberturas dos dois lados de um encontro, quando a parede
+  inteira poria uma sobre o encontro, faz um grupo para cada trecho (ADR 0003). Falta só o caso de uma
+  abertura sozinha de cada lado com a distribuição caindo no encontro (fica com o aviso).
 - Grupo v3 que já começa com uma janela sobre o X continua assim até ser editado (reteste de 16453d5).
 - Resolvidos e vistos no reteste de 16453d5: cota de "De outra abertura", pavimento na lista "Com",
   nome do cômodo no centro, pavimento ao recarregar e ao abrir.
