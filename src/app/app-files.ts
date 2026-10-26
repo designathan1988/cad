@@ -1,6 +1,7 @@
 // The project as a file: saving, opening, a new one, and the exports (GLB, DXF). Functions over the app (app.ts delegates).
 
-import { markPrefix, materialName, name, num, t } from '../ui/i18n';
+import { markPrefix, materialLabel, name, num, t } from '../ui/i18n';
+import { materialIn } from '../elements/material/schema';
 import { planDxf, toCp1252 } from '../io/export-dxf';
 import { anyKinds, kindOfKey } from '../elements/registry';
 import { newDocument, startLevel } from './document';
@@ -59,7 +60,7 @@ export async function exportGlb(app: App): Promise<void> {
       window: (n) => t('export.window', { n }),
       kindName: (key, n) => t(kindOfKey(key).exportName, { n }),
       kindMaterial: (key) => t(kindOfKey(key).one),
-      material: materialName,
+      material: (id) => materialLabel(materialIn(doc.materials, id)),
       glass: t('export.glass'),
       leaf: t('export.leaf'),
     });

@@ -18,6 +18,7 @@ import { showPointsDialog } from '../ui/points-dialog';
 import { showSchedulesDialog } from '../ui/schedules-dialog';
 import { watchErrors } from './error-log';
 import { showWallTypes } from '../ui/types-dialog';
+import { showMaterials } from '../ui/materials-dialog';
 import { showPalette } from '../ui/palette';
 import { showProjectsDialog } from '../ui/projects-dialog';
 import { offerTour, startTour } from '../ui/tour';
@@ -41,6 +42,7 @@ export function wireInput(app: App): void {
     help: () => showHelp(app),
     levels: () => showLevels(app),
     wallTypes: () => showWallTypes(app),
+    materials: () => showMaterials(app),
     tour: () => startTour(app),
     openFile: () => shell.fileInput.click(),
     projects: () => showProjectsDialog(app),
@@ -54,6 +56,7 @@ export function wireInput(app: App): void {
   app.openSchedules = () => showSchedulesDialog(app);
   watchErrors(() => app.debugOpen && app.toggleDebug(true));
   app.openWallTypes = (typeId) => showWallTypes(app, typeId);
+  app.openMaterials = () => showMaterials(app);
   shell.sidebar.addEventListener('click', () => app.toggleBrowser());
   offerTour(app);
   let panning: { x: number; y: number } | null = null;

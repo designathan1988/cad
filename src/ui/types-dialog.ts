@@ -28,7 +28,7 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
     for (const x of doc.wallTypes) {
       const b = el('button', { type: 'button', class: 'types-item', 'aria-pressed': String(x.id === chosen) });
       b.dataset.focus = `type:${x.id}`;
-      b.insertAdjacentHTML('beforeend', layerSwatch(x.layers));
+      b.insertAdjacentHTML('beforeend', layerSwatch(x.layers, doc.materials));
       const n = used(x.id);
       b.append(el('span', { class: 'types-name' }, name(x.name)), el('span', { class: 'types-count' }, n === 1 ? t('types.usedByOne') : t('types.usedBy', { n })));
       b.addEventListener('click', () => {
@@ -40,7 +40,7 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
 
     const update = (patch: Parameters<typeof updateWallType>[1]) => app.store.dispatch(updateWallType(type.id, patch));
     const general = fieldsSection(t('types.general'), true, wallTypeFields({ update }), [type]);
-    const layers = layerEditor(type.layers, (next) => update({ layers: next }));
+    const layers = layerEditor(type.layers, doc.materials, (next) => update({ layers: next }));
 
     const btn = (label: string, focus: string, run: () => void) => {
       const b = el('button', { type: 'button', class: 'icon-btn text-btn' }, label);

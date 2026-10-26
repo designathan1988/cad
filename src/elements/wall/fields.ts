@@ -54,7 +54,7 @@ export function wallFields(
         label: 'panel.type',
         kind: 'search',
         // Types are many and alike: a list with search and a thumbnail of each one's layers.
-        options: doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name), keywords: w.name, thumb: layerSwatch(w.layers) })),
+        options: doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name), keywords: w.name, thumb: layerSwatch(w.layers, doc.materials) })),
         get: (w) => w.wallTypeId,
         set: (v) => act.updateWalls({ wallTypeId: v }),
       },
@@ -195,7 +195,7 @@ const sameText = (texts: readonly string[]) => (texts.every((x) => x === texts[0
 
 /** The settings of the next walls the tool draws: the same choices as a wall's, from the same fields. */
 export function nextWallFields(doc: Doc, update: (patch: Partial<WallDefaults>) => void): Field<WallDefaults>[] {
-  const types = doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name), keywords: w.name, thumb: layerSwatch(w.layers) }));
+  const types = doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name), keywords: w.name, thumb: layerSwatch(w.layers, doc.materials) }));
   return [
     { id: 'type', label: 'panel.type', kind: 'search', options: types, get: (d) => d.wallTypeId, set: (v) => update({ wallTypeId: v }) },
     {

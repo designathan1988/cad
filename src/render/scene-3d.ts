@@ -8,8 +8,8 @@ import type { Point2 } from '../core/vector';
 import type { DerivedGeometry, OpeningSolid, WallSolid } from '../app/geometry';
 import { add, scale } from '../core/vector';
 import type { WallId } from '../elements/wall/schema';
-import { LAYER_TOKEN } from '../ui/swatch';
-import { blockPaint, wallMeshKey } from './wall-paint';
+import type { Material } from '../elements/material/schema';
+import { blockPaint, type Paint, wallMeshKey } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
 import { prism, shownPrism, toThree } from './prisms';
 import { eachSolid } from '../elements/registry';
@@ -62,10 +62,9 @@ export class Scene3D {
   // Colours come from the design tokens (styles.css, --3d-*), set in setTheme.
   /** Each solid's shape key (wallMeshKey without the state), kept while the solid lives. */
   private readonly shapeKeys = new WeakMap<object, string>();
-  /** One material per layer colour token, recoloured with the theme like the others. */
-  private readonly layerMaterials = new Map<string, THREE.MeshStandardMaterial>(
-    [...new Set(Object.values(LAYER_TOKEN))].map((name) => [name, new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide })]),
-  );
+  /** One three.js material per project material (elements/material), its colour and finish kept up to date. */
+  private readonly layerMaterials = new Map<string, THREE.MeshStandardMaterial>();
+  private xrayOn = false;
   private readonly materials = {
     side: new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide }),
     top: new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide }),
@@ -157,13 +156,7 @@ export class Scene3D {
     this.ground.position.y = -0.002;
     this.scene.add(this.ground);
     this.renderer.localClippingEnabled = true;
-    for (const m of [...Object.values(this.materials), ...this.layerMaterials.values()]) {
-      m.clippingPlanes = this.clip;
-      // The faces a little behind their depth, so the lines on their edges are not half hidden by them.
-      m.polygonOffset = true;
-      m.polygonOffsetFactor = 1;
-      m.polygonOffsetUnits = 1;
-    }
+    for (const m of Object.values(this.materials)) this.prepare(m);
     this.edgeMaterial.clippingPlanes = this.clip;
     this.capMaterial.clippingPlanes = this.capClip;
     this.boxCapMaterial.clippingPlanes = this.clip;
@@ -199,6 +192,37 @@ export class Scene3D {
     this.invalidate();
   }
 
+  /** A surface's material set up as every other: cut by the section planes, behind its edges' lines. */
+  private prepare(m: THREE.Material): void {
+    m.clippingPlanes = this.clip;
+    // The faces a little behind their depth, so the lines on their edges are not half hidden by them.
+    m.polygonOffset = true;
+    m.polygonOffsetFactor = 1;
+    m.polygonOffsetUnits = 1;
+  }
+
+  /** A wall layer's material: made the first time, then given the project material's colour and finish. */
+  private layerMaterial(m: Material): THREE.MeshStandardMaterial {
+    let x = this.layerMaterials.get(m.id);
+    if (!x) {
+      x = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide });
+      this.prepare(x);
+      this.faint(x, this.xrayOn);
+      this.layerMaterials.set(m.id, x);
+    }
+    if (x.color.getHexString() !== m.color.slice(1).toLowerCase()) x.color.set(m.color);
+    x.roughness = m.roughness;
+    x.metalness = m.metalness;
+    return x;
+  }
+
+  private faint(m: THREE.Material, on: boolean): void {
+    m.transparent = on;
+    m.opacity = on ? XRAY_OPACITY : 1;
+    m.depthWrite = !on;
+    m.needsUpdate = true;
+  }
+
   /**
    * X-ray (view-3d.ts): the walls and floors faint, writing no depth, so what is behind them shows; the
    * lines stay solid, so the shapes still read. Glass and leaves keep their own look.
@@ -206,12 +230,8 @@ export class Scene3D {
   setXray(on: boolean): void {
     const faint = [this.materials.side, this.materials.top, this.materials.floor, this.materials.sideSel, this.materials.topSel, ...this.layerMaterials.values()];
     if (faint[0]!.transparent === on && (on ? faint[0]!.opacity === XRAY_OPACITY : true)) return;
-    for (const m of faint) {
-      m.transparent = on;
-      m.opacity = on ? XRAY_OPACITY : 1;
-      m.depthWrite = !on;
-      m.needsUpdate = true;
-    }
+    this.xrayOn = on;
+    for (const m of faint) this.faint(m, on);
     this.edgeMaterial.opacity = on ? 0.9 : 0.55;
     this.invalidate();
   }
@@ -444,9 +464,7 @@ export class Scene3D {
     this.boxCapMaterial.color = c('--3d-cut');
     this.edgeMaterial.color = c('--3d-edge');
     (this.ground.material as THREE.MeshBasicMaterial).color = c('--3d-ground');
-    // Each layer token has its 3D twin (--layer-structure, --3d-layer-structure): the plan's darken in
-    // the dark theme, and the walls in 3D turned a muddy brown under a bright floor.
-    for (const [name, mat] of this.layerMaterials) mat.color = c(name.replace(/^--layer-/, '--3d-layer-'));
+    // The wall layers keep their materials' own colours in both themes, lit by the scene's light.
     this.sky.color = c('--3d-light');
     this.sky.groundColor = c('--3d-ground-light');
     this.sun.color = c('--3d-light');
@@ -567,13 +585,15 @@ export class Scene3D {
     const faces = this.facesOf(g);
     for (const s of g.solids.values()) {
       seen.add(s.wall.id);
+      // A material's colour or finish changed keeps the walls' meshes: their materials take it here.
+      for (const m of s.materials) this.layerMaterial(m);
       const state = preview.has(s.wall.id) ? 'p' : selected.has(s.wall.id) ? 's' : 'n';
       // The shape's part of the key, once per solid: solids are only replaced when the geometry is
       // computed again, and a switch of view (148 walls) stringified every block each time.
       let shape = this.shapeKeys.get(s);
       // What shows of a wall depends on its neighbours too (faces.ts): their faces are in the key.
       const mine = faces.get(s.wall.id) ?? [];
-      if (shape === undefined) this.shapeKeys.set(s, (shape = wallMeshKey('', s.blocks, s.layers) + JSON.stringify(mine)));
+      if (shape === undefined) this.shapeKeys.set(s, (shape = wallMeshKey('', s.blocks, s.materials) + JSON.stringify(mine)));
       const key = state + shape;
       const old = this.walls.get(s.wall.id);
       if (old?.key === key) {
@@ -670,10 +690,10 @@ export class Scene3D {
 
   private build(s: WallSolid, state: 'p' | 's' | 'n', faces: readonly PrismFaces[]): THREE.Group {
     const group = new THREE.Group();
-    // Each block in its layer's colour, as in plan (wall-paint.ts).
-    const material = (paint: string): THREE.Material => this.layerMaterials.get(paint) ?? this.materials[paint as keyof typeof this.materials];
+    // Each block in its layer's material, as in plan (wall-paint.ts).
+    const material = (paint: Paint): THREE.Material => (typeof paint === 'string' ? this.materials[paint] : this.layerMaterial(paint));
     s.blocks.forEach((b, i) => {
-      const { side, top } = blockPaint(s.layers, b.layerIndex, state);
+      const { side, top } = blockPaint(s.materials, b.layerIndex, state);
       const f = faces[i];
       group.add(new THREE.Mesh(f ? shownPrism(b.polygon, b.bottom, b.top, f) : prism(b.polygon, b.bottom, b.top), [material(side), material(top)]));
     });
@@ -833,6 +853,7 @@ export class Scene3D {
   dispose(): void {
     for (const w of this.walls.values()) this.drop(w.group);
     Object.values(this.materials).forEach((m) => m.dispose());
+    this.layerMaterials.forEach((m) => m.dispose());
     for (const l of this.edges.values()) l.geometry.dispose();
     this.edgeMaterial.dispose();
     this.controls.dispose();

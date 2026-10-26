@@ -1508,6 +1508,7 @@ export class App {
   openLevels: () => void = () => {};
   /** Opens the wall types dialog, on a type if given; set by the input layer too. */
   openWallTypes: (typeId?: string) => void = () => {};
+  openMaterials: () => void = () => {};
 
   renderBrowserDrawer(): void {
     return chrome.renderBrowserDrawer(this);

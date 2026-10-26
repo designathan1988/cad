@@ -21,6 +21,7 @@ import { layerSeams, type Seam } from '../elements/wall/geometry/seams';
 import { deriveRooms, type RoomSolid, type RoomWarning, spacesOf } from '../elements/room/derive';
 import type { RoomId } from '../elements/room/schema';
 import type { Point2 as P } from '../core/vector';
+import { type Material, materialIn } from '../elements/material/schema';
 import { CUT_HEIGHT, cutHeightOf, type Doc, type DocWall, levelOf, wallHeights } from './document';
 
 export type PlanCut = 'cut' | 'below' | 'above';
@@ -42,6 +43,8 @@ export interface WallSolid {
   readonly layers: readonly WallLayer[];
   /** Lines in plan where its pieces meet pieces of another layer (geometry/seams.ts). */
   readonly seams: readonly Seam[];
+  /** Each layer's material (the project's materials), in the order of `layers`: what paints it in plan and 3D. */
+  readonly materials: readonly Material[];
 }
 
 export interface OpeningSolid extends PlacedOpening {
@@ -149,7 +152,8 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     const mine = cuts.get(wall.id) ?? [];
     const layers = types.get(wall.wallTypeId)?.layers ?? [];
     const blocks = (slices.get(wall.id) ?? []).flatMap((sl) => cutSolid(sl.pieces, sl.bottom, sl.top, mine));
-    solids.set(wall.id, { wall, pieces: planPieces.get(wall.id)!, plan: plan.get(wall.id)!, blocks, bottom, top, layers, seams: seams.get(wall.id) ?? [] });
+    const materials = layers.map((l) => materialIn(doc.materials, l.materialId));
+    solids.set(wall.id, { wall, pieces: planPieces.get(wall.id)!, plan: plan.get(wall.id)!, blocks, bottom, top, layers, seams: seams.get(wall.id) ?? [], materials });
   }
   // Rooms see the walls before doors and windows are cut: a door does not open a room.
   const piecesByLevel = new Map<string, P[][]>();

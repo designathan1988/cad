@@ -7,8 +7,8 @@ import { addLayer, moveLayer, removeLayer, setLayer } from '../elements/layers/s
 import { coreLayersOf } from '../elements/wall/geometry/shape';
 import { LAYER_PRIORITY, type LayerFunction } from '../elements/wall/schema';
 import { el, numberField, select } from './controls';
-import { textField } from './fields';
-import { materialName, num, t, type MessageKey } from './i18n';
+import { type Material, materialIn } from '../elements/material/schema';
+import { materialLabel, num, t, type MessageKey } from './i18n';
 import { icon, type IconName } from './icons';
 import { layerBands } from './swatch';
 
@@ -20,13 +20,13 @@ export interface EditableLayer {
 
 const FUNCTIONS = Object.keys(LAYER_PRIORITY) as LayerFunction[];
 
-export function layerEditor<L extends EditableLayer>(layers: readonly L[], onChange: (next: readonly L[]) => void): HTMLElement {
+export function layerEditor<L extends EditableLayer>(layers: readonly L[], materials: readonly Material[], onChange: (next: readonly L[]) => void): HTMLElement {
   const box = el('div', { class: 'layer-editor' });
   const [core0, core1] = coreLayersOf(layers);
   const total = layers.reduce((s, l) => s + l.thickness, 0);
 
   // The stack as it stands, exterior on the left: the thumbnail, large.
-  const bands = layerBands(layers, 240)
+  const bands = layerBands(layers, 240, materials)
     .map((b) => `<rect x="${b.x}" y="0" width="${b.w}" height="24" fill="${b.fill}"/>`)
     .join('');
   const preview = el('div', { class: 'layer-preview' });
@@ -73,13 +73,21 @@ export function layerEditor<L extends EditableLayer>(layers: readonly L[], onCha
       l.function,
       (v) => onChange(setLayer(layers, i, { function: v } as Partial<L>)),
     );
+    // Each control keyed by its layer: drawn again after a change, the dialog puts the focus back on it.
     fn.querySelector('select')!.setAttribute('aria-label', `${t('types.function')}: ${which}`);
+    fn.querySelector('select')!.dataset.focus = `fn:${i}`;
     const thick = numberField(l.thickness, (v) => onChange(setLayer(layers, i, { thickness: v } as Partial<L>)), 0.001, 3);
     thick.querySelector('input')!.setAttribute('aria-label', `${t('types.thickness')}: ${which}`);
-    // Shown by its name; what is typed becomes the material (the shown name typed again changes nothing).
-    const shown = materialName(l.materialId);
-    const material = textField(shown, (v) => v.trim() !== '' && v.trim() !== shown && onChange(setLayer(layers, i, { materialId: v.trim() } as Partial<L>)));
-    material.querySelector('input')!.setAttribute('aria-label', `${t('types.material')}: ${which}`);
+    thick.querySelector('input')!.dataset.focus = `th:${i}`;
+    // One of the project's materials (Materials dialog: its colour, finish and cut pattern).
+    const options = materials.some((m) => m.id === l.materialId) ? materials : [...materials, materialIn(materials, l.materialId)];
+    const material = select(
+      options.map((m) => ({ value: m.id, label: materialLabel(m) })),
+      l.materialId,
+      (v) => onChange(setLayer(layers, i, { materialId: v } as Partial<L>)),
+    );
+    material.querySelector('select')!.setAttribute('aria-label', `${t('types.material')}: ${which}`);
+    material.querySelector('select')!.dataset.focus = `mat:${i}`;
     const inCore = i >= core0 && i <= core1;
     // Not by colour alone: a mark, and its words for screen readers.
     const core = el('span', { class: 'layer-core' }, inCore ? '●' : '');

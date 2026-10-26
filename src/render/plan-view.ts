@@ -12,7 +12,8 @@ import { layoutRoomTags } from './room-tags';
 import type { Handles } from '../app/handles';
 import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
-import { LAYER_TOKEN } from '../ui/swatch';
+import { type CutPattern, shade } from '../elements/material/schema';
+import { hatchPattern } from './hatch';
 import { separateLabels } from '../app/dim-labels';
 
 /**
@@ -342,21 +343,27 @@ export class PlanView {
         }
     };
     // By layer when the walls are wide enough on screen to tell them apart (byLayers): each piece in its
-    // layer function's colour, and a thin line where layers meet (geometry/seams.ts), so they do not
-    // depend on colour alone. Narrower, the walls are one colour, as before.
+    // material's colour (darker in the dark theme: --material-shade) and cut pattern (hatch.ts), and a
+    // thin line where layers meet (geometry/seams.ts), so they do not depend on colour alone. Narrower,
+    // the walls are one colour, as before.
     const thick = (s: (typeof solids)[number]) => s.layers.reduce((t, l) => t + l.thickness, 0);
     const detail = byLayers(normal.filter((s) => s.layers.length > 0 && s.plan === 'cut').map(thick), this.scale);
     const layered = (s: (typeof solids)[number]) => detail && s.layers.length > 0;
     // Pieces of one colour are filled as one path: the canvas covers a path as a whole, so where two
     // of them meet (a core through an L's mitre) no antialiased seam lets the outline under them show.
+    const shadeBy = Number(color('--material-shade')) || 1;
     const fill = (list: typeof solids, colour: string | null) => {
-      const byColour = new Map<string, [Point2[], (typeof solids)[number]['wall']][]>();
+      type Polys = [Point2[], (typeof solids)[number]['wall']][];
+      const byColour = new Map<string, Polys>();
+      const byPattern = new Map<CutPattern, Polys>();
       for (const s of list) {
         const byLayer = colour === null && layered(s);
         for (const p of s.pieces) {
-          const fn = s.layers[p.layerIndex]?.function;
-          const c = colour ?? (byLayer && fn ? color(LAYER_TOKEN[fn]) : color('--wall-fill'));
-          byColour.set(c, [...(byColour.get(c) ?? []), [[...p.polygon], s.wall]]);
+          const m = byLayer ? s.materials[p.layerIndex] : undefined;
+          const c = colour ?? (m ? (m.cut === 'none' ? color('--canvas') : shade(m.color, shadeBy)) : color('--wall-fill'));
+          const poly: Polys[number] = [[...p.polygon], s.wall];
+          byColour.set(c, [...(byColour.get(c) ?? []), poly]);
+          if (m) byPattern.set(m.cut, [...(byPattern.get(m.cut) ?? []), poly]);
         }
       }
       ctx.lineWidth = 1;
@@ -367,6 +374,15 @@ export class PlanView {
         ctx.strokeStyle = c;
         ctx.fill('nonzero');
         ctx.stroke();
+      }
+      const ink = color('--hatch');
+      for (const [cut, polys] of byPattern) {
+        const pattern = hatchPattern(ctx, cut, ink, dpr);
+        if (!pattern) continue;
+        ctx.beginPath();
+        for (const [poly, wall] of polys) piecePath(poly, wall);
+        ctx.fillStyle = pattern;
+        ctx.fill('nonzero');
       }
     };
     const seams = (list: typeof solids) => {

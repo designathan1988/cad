@@ -64,7 +64,7 @@ export function row(label: string | { text: string; icon: IconName }, control: H
  */
 /** `digits`: decimals shown; a layer's thickness needs 3 (0,015 m of plaster), most values 2. */
 /** `unit`: what the value is in, shown after it; metres unless said (a tour's seconds). */
-export function numberField(value: number | null, onCommit: (v: number) => void, min = -Infinity, digits = 2, unit = 'm'): HTMLElement {
+export function numberField(value: number | null, onCommit: (v: number) => void, min = -Infinity, digits = 2, unit = 'm', max = Infinity): HTMLElement {
   const box = el('div', { class: 'num-field' });
   const input = el('input', { type: 'text', inputmode: 'decimal', autocomplete: 'off', spellcheck: 'false' });
   // The value the field stands for: after a commit, the new one, written as every field writes it
@@ -102,8 +102,13 @@ export function numberField(value: number | null, onCommit: (v: number) => void,
       refuse(t('field.notMeasure'));
       return false;
     }
+    // Said in the field's own unit: a measure in metres, a plain number (a finish from 0 to 1) bare.
     if (r.value < min) {
-      refuse(t('field.atLeast', { v: num(min, digits) }));
+      refuse(unit === 'm' ? t('field.atLeast', { v: num(min, digits) }) : t('field.atLeastPlain', { v: num(min, digits) }));
+      return false;
+    }
+    if (r.value > max) {
+      refuse(unit === 'm' ? t('field.atMost', { v: num(max, digits) }) : t('field.atMostPlain', { v: num(max, digits) }));
       return false;
     }
     clear();

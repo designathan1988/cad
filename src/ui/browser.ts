@@ -40,7 +40,7 @@ function savedItem(label: string, kind: '3d' | 'plan', go: () => void, remove: (
   return el('div', {}, row);
 }
 
-export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void, openWallTypes: () => void): void {
+export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void, openWallTypes: () => void, openMaterials: () => void): void {
   const { ui } = app;
   const doc = app.store.get();
   const close = el('button', { type: 'button', class: 'icon-btn', title: t('browser.close'), 'aria-label': t('browser.close') });
@@ -94,12 +94,13 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
       true,
       ...doc.wallTypes.map((type) =>
         item(name(type.name), () => app.selectWallsOfType(type.id), {
-          lead: layerSwatch(type.layers),
+          lead: layerSwatch(type.layers, doc.materials),
           trail: t('browser.typeCount', { n: usage.get(type.id) ?? 0 }),
           disabled: wallsHidden || (usage.get(type.id) ?? 0) === 0,
         }),
       ),
       item(t('types.edit'), openWallTypes),
+      item(t('mats.edit'), openMaterials),
     ),
   );
 }

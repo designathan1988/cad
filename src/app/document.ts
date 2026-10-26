@@ -1,6 +1,7 @@
 // The project document: only what the user decided. Thickness, heights, joins and geometry are
 // always derived from it.
 
+import { BUILT_IN_MATERIALS, type Material } from '../elements/material/schema';
 import { KINDS, listOf } from '../elements/registry';
 import type { Railing } from '../elements/railing/schema';
 import type { Stair } from '../elements/stair/schema';
@@ -47,9 +48,11 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 20;
+  readonly version: 21;
   readonly name: string;
   readonly levels: readonly Level[];
+  /** What the wall layers are made of: colour, finish and cut pattern (elements/material). */
+  readonly materials: readonly Material[];
   readonly wallTypes: readonly WallType[];
   readonly walls: readonly DocWall[];
   /** Doors and windows, each hosted by a wall and placed by a rule. */
@@ -97,9 +100,10 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 20,
+    version: 21,
     name: '',
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
+    materials: [...BUILT_IN_MATERIALS],
     wallTypes: [
       {
         id: 'wt_masonry15',

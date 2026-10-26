@@ -3,6 +3,7 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
+import { BUILT_IN_MATERIALS, CUT_PATTERNS, isColor, type Material, materialFor } from '../elements/material/schema';
 import { type Doc, type Level, ownValuesOnly } from '../app/document';
 import type { AnyKind, KindKey } from '../elements/contract';
 import { KINDS } from '../elements/registry';
@@ -38,12 +39,14 @@ import type { DocWall } from '../app/document';
  * Version 18: roofs (`roofs`, elements/roof). Older files have none.
  * Version 19: stairs (`stairs`, elements/stair). Older files have none.
  * Version 20: guardrails (`railings`, elements/railing). Older files have none.
+ * Version 21: materials as data (`materials`, elements/material): colour, finish, cut pattern. Older
+ *   files get the built-in ones, and one for each other name their layers used.
  */
-export const CURRENT_VERSION = 20;
+export const CURRENT_VERSION = 21;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedGroups' | 'droppedViews' | 'droppedPoints' | KindFix; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedGroups' | 'droppedMaterials' | 'droppedViews' | 'droppedPoints' | KindFix; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number }
   /** Ids without their kind's prefix, renamed with every reference (typed-ids.ts). */
   | { readonly kind: 'typedIds'; readonly count: number };
@@ -70,6 +73,21 @@ export const isLevel = (l: unknown): l is Level =>
 /** A top rule: the level's height plus an offset, or a fixed height above the base. Absent is fine. */
 const isTop = (r: unknown): boolean =>
   r === undefined || (isObject(r) && ((r.kind === 'level' && finite(r.offset)) || (r.kind === 'fixed' && finite(r.height) && r.height > 0)));
+
+/** A material: a name, a #rrggbb colour, a finish between 0 and 1, a cut pattern. */
+export const isMaterial = (m: unknown): m is Material =>
+  isObject(m) &&
+  typeof m.id === 'string' &&
+  m.id !== '' &&
+  typeof m.name === 'string' &&
+  isColor(m.color) &&
+  finite(m.roughness) &&
+  m.roughness >= 0 &&
+  m.roughness <= 1 &&
+  finite(m.metalness) &&
+  m.metalness >= 0 &&
+  m.metalness <= 1 &&
+  (CUT_PATTERNS as readonly unknown[]).includes(m.cut);
 
 export const isWallType = (t: unknown): t is WallType =>
   isObject(t) &&
@@ -172,12 +190,17 @@ export function repairProject(raw: unknown): ReadResult {
   // wall carried both, chosen or not): the rest follow the type.
   const migrated = walls.map((w) => ownValuesOnly(w, wallTypes));
   const openings = keep(raw.openings, isOpening, 'droppedOpenings');
+  // Every layer's material is there: the file's, else a built-in one, else a plain one of that name.
+  const read = keep(raw.materials, isMaterial, 'droppedMaterials');
+  const materials = [...(raw.materials === undefined ? BUILT_IN_MATERIALS : read)];
+  for (const id of new Set(wallTypes.flatMap((t) => t.layers.map((l) => l.materialId)))) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));
   const doc: Doc = {
     version: CURRENT_VERSION,
     name: typeof raw.name === 'string' ? raw.name : '',
     levels,
+    materials,
     wallTypes,
     walls: migrated,
     openings,

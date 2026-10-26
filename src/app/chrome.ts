@@ -31,7 +31,7 @@ export function renderBrowserDrawer(app: App): void {
   app.browserKey = key;
   // Keep the focus on the same button across the rebuild.
   const focused = document.activeElement instanceof HTMLElement && shell.browser.contains(document.activeElement) ? [...shell.browser.querySelectorAll('button')].indexOf(document.activeElement as HTMLButtonElement) : -1;
-  renderBrowser(app, shell.browser, () => app.openLevels(), () => app.openWallTypes());
+  renderBrowser(app, shell.browser, () => app.openLevels(), () => app.openWallTypes(), () => app.openMaterials());
   if (focused >= 0) shell.browser.querySelectorAll('button')[focused]?.focus();
 }
 

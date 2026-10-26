@@ -2,7 +2,7 @@
 // from the view, so what the 3D shows for now (cut, box, x-ray, explode, a hidden wall) is not in it. One
 // group per level at its own height; one node per wall, door, window and floor, named as the interface
 // names it, with its id, kind, type and level in the node's extras; a material per material of the
-// layers (plaster, brick), coloured by the kind of layer.
+// layers (plaster, brick), in its own colour and finish (elements/material).
 // Metres, y up, as glTF wants (three.js's axes, prisms.ts).
 
 import * as THREE from 'three';
@@ -13,6 +13,7 @@ import type { DerivedGeometry } from '../app/geometry';
 import { add, scale } from '../core/vector';
 import { visibleFaces } from '../elements/wall/geometry/faces';
 import type { LayerFunction } from '../elements/wall/schema';
+import type { Material } from '../elements/material/schema';
 import { prism, shownPrism } from './prisms';
 import { eachSolid } from '../elements/registry';
 import type { KindKey } from '../elements/contract';
@@ -59,6 +60,17 @@ export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): 
     }
     return m;
   };
+  // A wall layer in its project material's own colour and finish, one per material, named by it.
+  const layerMaterial = (x: Material) => {
+    const label = naming.material(x.id);
+    let m = materials.get(label);
+    if (!m) {
+      m = new THREE.MeshStandardMaterial({ color: x.color, roughness: x.roughness, metalness: x.metalness });
+      m.name = label;
+      materials.set(label, m);
+    }
+    return m;
+  };
   // One group per level, at its own height already in the blocks' heights: no lift, no explode.
   const levels = new Map<string, THREE.Group>();
   const levelGroup = (id: string) => {
@@ -89,9 +101,8 @@ export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): 
     node.userData = { cad2Id: s.wall.id, kind: 'wall', type: type ? naming.name(type.name) : '', level: levelName(s.wall.levelId) };
     for (const b of s.blocks) {
       const f = faces[k++];
-      const layer = s.layers[b.layerIndex];
-      const fn = layer?.function ?? 'structure';
-      const m = material(fn, naming.material(layer?.materialId ?? fn));
+      const layer = s.materials[b.layerIndex];
+      const m = layer ? layerMaterial(layer) : material('structure', naming.material('structure'));
       node.add(new THREE.Mesh(f ? shownPrism(b.polygon, b.bottom, b.top, f) : prism(b.polygon, b.bottom, b.top), [m, m]));
     }
     levelGroup(s.wall.levelId).add(node);

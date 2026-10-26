@@ -101,16 +101,10 @@
   --3d-ground-light: #9a9fa8;
   /* The ground under the model, which a room with no floor shows. */
   --3d-ground: #dcdfe4;
-  /* Layers in 3D: lit by the scene's own light, the same in both themes like the rest of the 3D; the
-     plan's layer colours below darken in the dark theme for the light wall line, which 3D does not have. */
-  --3d-layer-structure: #9c8f80;
-  --3d-layer-substrate: #b7ad9f;
-  --3d-layer-thermal: #e7c66b;
-  --3d-layer-finish: #ddd8cf;
   --layer-structure: #9c8f80;
-  --layer-substrate: #b7ad9f;
-  --layer-thermal: #e7c66b;
-  --layer-finish: #ddd8cf;
+  /* Materials in plan: their own colours (elements/material), times this, and their cut patterns' lines. */
+  --material-shade: 1;
+  --hatch: rgb(17 18 22 / 0.5);
   --warn: #c2410c;
   --error: #dc2626;
   --warn-soft: #fff1e6;
@@ -165,9 +159,8 @@
   --3d-ground: #4a4d54;
   /* Darker in the dark theme: the light wall line must read on every layer, with room for antialiasing. */
   --layer-structure: #6f655a;
-  --layer-substrate: #6b6356;
-  --layer-thermal: #75612a;
-  --layer-finish: #5a5650;
+  --material-shade: 0.62;
+  --hatch: rgb(236 236 240 / 0.42);
   --warn: #fb923c;
   --error: #f87171;
   --warn-soft: #3a2618;
@@ -1837,6 +1830,44 @@ button.project-name:hover {
 }
 .types-detail {
   min-width: 0;
+}
+/* Materials (materials-dialog.ts): laid out as the wall types, each with its colour beside its name. */
+.mat-chip {
+  grid-row: 1 / 3;
+  width: var(--sp-5);
+  height: var(--sp-5);
+  border: var(--line) solid var(--border-strong);
+  border-radius: var(--radius);
+}
+.mat-detail h3 {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.mat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--control-h);
+  margin-bottom: var(--sp-1);
+}
+.mat-cap {
+  color: var(--text-2);
+}
+.mat-color {
+  width: 100%;
+  height: var(--control-h);
+  padding: 0;
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--field);
+  cursor: pointer;
+}
+.mat-note {
+  margin: var(--sp-3) 0 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
 }
 .layer-editor h3 {
   margin: var(--sp-3) 0 var(--sp-2);
