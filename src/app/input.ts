@@ -242,6 +242,13 @@ export function wireInput(app: App): void {
   /** A section box face being dragged by its handle: the box and the pointer as it was pressed. */
   let boxDrag: { face: BoxFace; box: SectionBox; from: { x: number; y: number }; along: { x: number; y: number } } | null = null;
   const onMove = (e: PointerEvent) => {
+    if (app.walker) {
+      if (looking) {
+        app.walkLook(e.clientX - looking.x, e.clientY - looking.y);
+        looking = { x: e.clientX, y: e.clientY };
+      }
+      return;
+    }
     shift = e.shiftKey;
     // The right button pressed while the left one is held (a chord) comes as a move, not a down:
     // during a drag it cancels it, as a right click does.
@@ -327,7 +334,16 @@ export function wireInput(app: App): void {
     app.render();
   };
 
+  /** While walking, a drag turns the view (walk.ts). */
+  let looking: { x: number; y: number } | null = null;
   const onDown = (e: PointerEvent) => {
+    if (app.walker) {
+      if (e.button === 0) {
+        looking = { x: e.clientX, y: e.clientY };
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      }
+      return;
+    }
     shift = e.shiftKey;
     // What the footer said about the last action is old news once the user acts on the drawing again.
     ui.info = null;
@@ -397,6 +413,10 @@ export function wireInput(app: App): void {
   };
 
   const onUp = (e: PointerEvent) => {
+    if (app.walker) {
+      looking = null;
+      return;
+    }
     if (boxDrag) {
       boxDrag = null;
       app.boxHot = null;
@@ -515,6 +535,7 @@ export function wireInput(app: App): void {
   shell.redo.addEventListener('click', () => app.redo());
   shell.homeBtn.addEventListener('click', () => app.frameAll());
   shell.view3d.addEventListener('click', () => app.setView('3d'));
+  shell.viewWalk.addEventListener('click', () => app.toggleWalk());
   shell.viewPlan.addEventListener('click', () => app.setView('plan'));
   shell.level.addEventListener('change', () => {
     if (shell.level.value === EDIT_LEVELS) {
@@ -608,7 +629,10 @@ export function wireInput(app: App): void {
     }
   });
 
+  // Walking (walk.ts): the keys held move the walker each frame; let go, it stops.
+  const WALK_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift']);
   window.addEventListener('keyup', (e) => {
+    if (app.walker) app.walkKeys.delete(e.key.toLowerCase());
     if (e.key !== 'Alt') return;
     const target = e.target as HTMLElement;
     if (!target.closest('input, select, textarea')) e.preventDefault();
@@ -625,6 +649,20 @@ export function wireInput(app: App): void {
     const ctrl = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
     shift = e.shiftKey;
+    if (app.walker && !ctrl) {
+      if (WALK_KEYS.has(key)) {
+        e.preventDefault();
+        app.walkKeys.add(key);
+        return;
+      }
+      if (key === 'escape' || key === '3') return app.exitWalk();
+      if (key === 'pageup' || key === 'pagedown') {
+        e.preventDefault();
+        return app.walkLevel(key === 'pageup' ? 1 : -1);
+      }
+      // Everything else waits: walking is not editing.
+      return;
+    }
     if (ctrl && key === 'z') {
       e.preventDefault();
       return e.shiftKey ? app.redo() : app.undo();
@@ -806,6 +844,7 @@ export function wireInput(app: App): void {
     if (key === 'n') return app.stepSelection(e.shiftKey ? -1 : 1);
     if (key === 's') return app.toggleSnaps();
     if (key === '1') return app.setView('3d');
+    if (key === '3') return app.enterWalk();
     if (key === '2') return app.setView('plan');
   });
 }

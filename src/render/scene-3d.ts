@@ -12,6 +12,7 @@ import { LAYER_TOKEN } from '../ui/swatch';
 import { blockPaint, wallMeshKey } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
 import { featureEdges } from '../elements/wall/geometry/edges';
+import { symbolLines } from '../elements/opening/symbol';
 import { boxCaps, type SectionBox, type SectionLine, sectionCaps, sectionLooks, type UprightPrism } from '../app/section-box';
 
 const toThree = (p: Point2, z: number) => new THREE.Vector3(p.x, z, -p.y);
@@ -338,6 +339,47 @@ export class Scene3D {
     this.invalidate();
   }
 
+  /** Doors drawn open (walking): a closed leaf filled the view of whoever walked through it. */
+  private doorsOpen = false;
+  setDoorsOpen(open: boolean): void {
+    this.doorsOpen = open;
+  }
+
+  /** The camera as it was before walking, given back when the walk ends. */
+  private beforeWalk: { position: THREE.Vector3; target: THREE.Vector3; ortho: boolean } | null = null;
+
+  /** A walk begins (app/walk.ts): the orbit put aside, the perspective camera at the walker's eyes. */
+  startWalk(): void {
+    if (this.beforeWalk) return;
+    this.beforeWalk = { position: this.camera.position.clone(), target: this.controls.target.clone(), ortho: this.orthoOn };
+    this.setOrtho(false);
+    this.controls.enabled = false;
+  }
+
+  /** The walker's eyes (plan x, y and height z) looking along yaw and pitch. */
+  setWalkView(eye: { x: number; y: number; z: number }, yaw: number, pitch: number): void {
+    const at = toThree({ x: eye.x, y: eye.y }, eye.z);
+    const look = toThree({ x: eye.x + Math.cos(yaw) * Math.cos(pitch), y: eye.y + Math.sin(yaw) * Math.cos(pitch) }, eye.z + Math.sin(pitch));
+    this.persp.position.copy(at);
+    this.persp.up.set(0, 1, 0);
+    this.persp.lookAt(look);
+    this.persp.updateMatrixWorld();
+    this.invalidate();
+  }
+
+  /** The walk ends: the camera and the orbit back as they were. */
+  endWalk(): void {
+    const was = this.beforeWalk;
+    if (!was) return;
+    this.beforeWalk = null;
+    this.persp.position.copy(was.position);
+    this.controls.target.copy(was.target);
+    this.controls.enabled = true;
+    this.controls.update();
+    if (was.ortho) this.setOrtho(true);
+    this.invalidate();
+  }
+
   /** Colours of the theme, read from the design tokens: `token('--3d-side')` and so on. */
   setTheme(dark: boolean, token: (name: string) => string): void {
     const c = (name: string) => new THREE.Color(token(name));
@@ -433,7 +475,7 @@ export class Scene3D {
       const state = preview.has(id) ? 'p' : selected.has(id) ? 's' : o.valid ? 'n' : 'i';
       let shape = this.shapeKeys.get(o);
       if (shape === undefined) this.shapeKeys.set(o, (shape = JSON.stringify([o.frame, o.opening, o.bottom, o.top])));
-      const key = state + shape;
+      const key = state + (this.doorsOpen ? 'o' : '') + shape;
       const old = this.walls.get(id);
       const levelId = g.solids.get(o.opening.wallId)?.wall.levelId ?? '';
       if (old?.key === key) {
@@ -598,7 +640,19 @@ export class Scene3D {
     const mid = (f.faces[0] + f.faces[1]) / 2;
     const half = door ? 0.02 : 0.01;
     const at = (p: Point2, off: number) => add(p, scale(f.normal, off));
-    const poly = [at(f.start, mid - half), at(f.end, mid - half), at(f.end, mid + half), at(f.start, mid + half)];
+    let poly = [at(f.start, mid - half), at(f.end, mid - half), at(f.end, mid + half), at(f.start, mid + half)];
+    // Open, as the plan draws it (symbol.ts): the leaf square to the wall from its hinge.
+    const leaf = door && this.doorsOpen ? symbolLines(o, f)[0] : undefined;
+    if (leaf && leaf.length === 2) {
+      const [h, tip] = leaf as [Point2, Point2];
+      const d = { x: tip.x - h.x, y: tip.y - h.y };
+      const len = Math.hypot(d.x, d.y) || 1;
+      const n = { x: (-d.y / len) * half, y: (d.x / len) * half };
+      const ring = [add(h, scale(n, -1)), add(tip, scale(n, -1)), add(tip, n), add(h, n)];
+      // Counter-clockwise, as prism() wants.
+      const area = ring.reduce((s, p, i) => s + p.x * ring[(i + 1) % 4]!.y - ring[(i + 1) % 4]!.x * p.y, 0);
+      poly = area > 0 ? ring : ring.reverse();
+    }
     const m =
       state === 'p' ? this.materials.preview : state === 's' ? this.materials.topSel : state === 'i' ? this.materials.invalid : door ? this.materials.leaf : this.materials.glass;
     const geo = prism(poly, o.bottom, o.top);

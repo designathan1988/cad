@@ -45,7 +45,6 @@ export function buildShell(root: HTMLElement) {
   const view3d = viewBtn('3d', 'cube');
   const viewPlan = viewBtn('plan', 'map');
   const viewWalk = viewBtn('walk', 'walk');
-  viewWalk.disabled = true;
   center.append(levelBox, views);
 
   const right = el('div', { class: 'right' });
@@ -332,7 +331,7 @@ export function buildShell(root: HTMLElement) {
     view3d.querySelector('.label')!.textContent = t('view.3d');
     viewPlan.querySelector('.label')!.textContent = t('view.plan');
     viewWalk.querySelector('.label')!.textContent = t('view.walk');
-    viewWalk.title = t('view.walkSoon');
+    viewWalk.title = t('view.walkTip');
     view3d.title = `${t('view.3d')} (1)`;
     viewPlan.title = `${t('view.plan')} (2)`;
     floatBar.setAttribute('aria-label', t('ctx.label'));

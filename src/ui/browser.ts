@@ -63,7 +63,7 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
       true,
       item(t('view.3d'), () => app.setView('3d'), { current: ui.view === '3d', lead: icon('cube', 16), ...(ui.view === '3d' ? { trail: t('browser.current') } : {}) }),
       item(t('view.plan'), () => app.setView('plan'), { current: ui.view === 'plan', lead: icon('map', 16), ...(ui.view === 'plan' ? { trail: t('browser.current') } : {}) }),
-      item(t('view.walk'), () => {}, { disabled: true, lead: icon('walk', 16), trail: t('tool.soon') }),
+      item(t('view.walk'), () => app.toggleWalk(), { current: app.walker !== null, lead: icon('walk', 16), ...(app.walker ? { trail: t('browser.current') } : {}) }),
       // Saved views: a click goes back to one; × deletes it (one undo step).
       ...doc.views.map((v) => savedItem(name(v.name), v.kind, () => app.goToView(v.id), () => app.deleteSavedView(v.id))),
       item(t('views.save'), () => app.saveCurrentView(), { lead: icon('plus', 16) }),

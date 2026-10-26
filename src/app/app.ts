@@ -68,6 +68,7 @@ import { readProject, writeProject } from '../io/project-file';
 import { fitFactor, keepInView } from './keep-in-view';
 import type { ViewKey } from './view-keys';
 import { deleteView, nextViewName, type SavedView, saveView } from './saved-views';
+import { EYE_HEIGHT, MAX_PITCH, moveWithCollision, obstaclesOf, startPoint, stepFor, type Walker } from './walk';
 import { BOX_FACES, type BoxFace, boxAround, faceCenter, faceNormal, type SectionBox, sectionLooks } from './section-box';
 import { BOX_HANDLE_HIT } from '../render/overlay-3d';
 import { type TempDim, tempDims } from './temp-dims';
@@ -738,6 +739,8 @@ export class App {
   }
 
   setView(view: ViewId): void {
+    // The plan ends a walk; so does the 3D's own button (the walk is in the 3D view).
+    if (this.walker && (view !== '3d' || this.ui.view === '3d')) this.exitWalk();
     if (this.ui.view === view) return;
     this.ui.view = view;
     // Guides are the plan's: one being placed is dropped.
@@ -817,6 +820,109 @@ export class App {
 
   deleteSavedView(id: string): void {
     this.store.dispatch(deleteView(id));
+  }
+
+  /** Walking through the model (walk.ts), or null. Interface state: never saved. */
+  walker: Walker | null = null;
+  /** Keys held while walking: what the next frames move by. */
+  readonly walkKeys = new Set<string>();
+  private walkFrame = 0;
+  private walkLast = 0;
+  private walkObstacles: { from: DerivedGeometry; levelId: string; list: ReturnType<typeof obstaclesOf> } | null = null;
+
+  /**
+   * Walk mode on, at a point (where the user asked) or the middle of the level's largest room: in the 3D
+   * view, at eye height, looking up the plan. Off again with Esc, the camera as it was.
+   */
+  enterWalk(at?: Point2): void {
+    const start = at ?? startPoint(this.visibleGeometry(), this.ui.levelId);
+    if (!start) {
+      this.ui.info = t('hint.walkNothing');
+      return this.renderChrome();
+    }
+    this.ui.drag = null;
+    this.setTool('select');
+    this.ui.selection.clear();
+    this.setView('3d');
+    this.scene.startWalk();
+    this.walker = { x: start.x, y: start.y, levelId: this.ui.levelId, yaw: Math.PI / 2, pitch: 0 };
+    this.placeWalker();
+    this.walkKeys.clear();
+    this.walkLast = performance.now();
+    cancelAnimationFrame(this.walkFrame);
+    this.walkFrame = requestAnimationFrame((now) => this.walkTick(now));
+    this.toast(t('toast.walk'));
+    this.render();
+  }
+
+  exitWalk(): void {
+    if (!this.walker) return;
+    this.walker = null;
+    this.walkKeys.clear();
+    cancelAnimationFrame(this.walkFrame);
+    this.scene.endWalk();
+    this.render();
+  }
+
+  toggleWalk(): void {
+    if (this.walker) this.exitWalk();
+    else this.enterWalk();
+  }
+
+  /** Turns the view: a drag of dx, dy pixels. */
+  walkLook(dx: number, dy: number): void {
+    const w = this.walker;
+    if (!w) return;
+    this.walker = { ...w, yaw: w.yaw - dx * 0.004, pitch: Math.max(-MAX_PITCH, Math.min(MAX_PITCH, w.pitch - dy * 0.004)) };
+    this.placeWalker();
+  }
+
+  /** To the level above (+1) or below (−1), at the same point of the plan. */
+  walkLevel(step: 1 | -1): void {
+    const w = this.walker;
+    if (!w) return;
+    const levels = [...this.store.get().levels].sort((a, b) => a.elevation - b.elevation);
+    const k = levels.findIndex((l) => l.id === w.levelId) + step;
+    const next = levels[k];
+    if (!next) return;
+    this.walker = { ...w, levelId: next.id };
+    this.setLevel(next.id);
+    this.placeWalker();
+  }
+
+  private walkTick(now: number): void {
+    const w = this.walker;
+    if (!w) return;
+    const seconds = Math.min(0.1, (now - this.walkLast) / 1000);
+    this.walkLast = now;
+    const k = this.walkKeys;
+    const forward = (k.has('w') || k.has('arrowup') ? 1 : 0) - (k.has('s') || k.has('arrowdown') ? 1 : 0);
+    const side = (k.has('d') || k.has('arrowright') ? 1 : 0) - (k.has('a') || k.has('arrowleft') ? 1 : 0);
+    if (forward !== 0 || side !== 0) {
+      const d = stepFor(w, forward, side, seconds, k.has('shift'));
+      const p = moveWithCollision({ x: w.x, y: w.y }, d, this.obstaclesHere(w.levelId));
+      this.walker = { ...w, x: p.x, y: p.y };
+      this.placeWalker();
+    }
+    this.walkFrame = requestAnimationFrame((t2) => this.walkTick(t2));
+  }
+
+  /** The walls that stop the walker on a level, again only when the walls change. */
+  private obstaclesHere(levelId: string): ReturnType<typeof obstaclesOf> {
+    const c = this.walkObstacles;
+    if (c && c.from === this.geometry && c.levelId === levelId) return c.list;
+    const floor = this.store.get().levels.find((l) => l.id === levelId)?.elevation ?? 0;
+    const list = obstaclesOf(this.geometry, levelId, floor);
+    this.walkObstacles = { from: this.geometry, levelId, list };
+    return list;
+  }
+
+  /** The camera at the walker's eyes. */
+  private placeWalker(): void {
+    const w = this.walker;
+    if (!w) return;
+    const floor = this.store.get().levels.find((l) => l.id === w.levelId)?.elevation ?? 0;
+    this.scene.setWalkView({ x: w.x, y: w.y, z: floor + this.lift(w.levelId) + EYE_HEIGHT }, w.yaw, w.pitch);
   }
 
   /** The guides, as a move being dragged takes them. */
@@ -1944,6 +2050,7 @@ export class App {
     } else {
       const shown = this.visibleGeometry();
       this.scene.setXray(ui.view3d.xray);
+      this.scene.setDoorsOpen(this.walker !== null);
       this.scene.setBox(ui.view3d.box);
       this.scene.setOrtho(ui.view3d.ortho);
       this.scene.setSection(ui.view3d.section);
@@ -2383,7 +2490,7 @@ export class App {
     shell.redo.disabled = !store.canRedo();
     shell.view3d.setAttribute('aria-pressed', String(ui.view === '3d'));
     shell.viewPlan.setAttribute('aria-pressed', String(ui.view === 'plan'));
-    shell.viewWalk.setAttribute('aria-pressed', 'false');
+    shell.viewWalk.setAttribute('aria-pressed', String(this.walker !== null));
     shell.toolSelect.setAttribute('aria-pressed', String(ui.tool === 'select'));
     shell.toolWall.setAttribute('aria-pressed', String(ui.tool === 'wall'));
     shell.toolRoom.setAttribute('aria-pressed', String(ui.tool === 'room'));
@@ -2514,14 +2621,16 @@ export class App {
       : null;
     const mod = ui.tool === 'modify' ? ui.modify : null;
     const modifyHint = mod ? t(`hint.modify.${mod.kind === 'copy' ? 'move' : mod.kind}.${mod.state.step}` as MessageKey) : null;
-    shell.instr.textContent = ui.error ?? guideHint ?? modifyHint ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size });
+    shell.instr.textContent = this.walker ? t('hint.walk') : (ui.error ?? guideHint ?? modifyHint ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size }));
     shell.instr.classList.toggle('error', ui.error !== null);
     // Alt sets a guide in the tools that draw by points (input.ts), in plan.
     const altGuide = ui.view === 'plan' ? [keyHint('Alt', t('key.guide'))] : [];
     // S says what it is now, wherever points snap: drawing, it was nowhere in the footer, and the snaps
     // seemed impossible to turn off.
     const snapKey = keyHint('S', t(ui.snaps ? 'key.snapsOn' : 'key.snapsOff'));
-    const keys = ui.guide
+    const keys = this.walker
+      ? [keyHint('W A S D', t('key.walk')), keyHint('Shift', t('key.run')), keyHint('PgUp PgDn', t('key.walkLevel')), keyHint('Esc', t('key.exit'))]
+      : ui.guide
       ? [keyHint('Enter', t('key.placeGuide')), keyHint('Esc', t('key.cancel'))]
       : ui.tool === 'split' || ui.tool === 'corner'
       ? [keyHint('Esc', t('key.exit'))]
