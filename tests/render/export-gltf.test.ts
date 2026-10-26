@@ -54,6 +54,7 @@ const naming: ExportNaming = {
   material: (id) => ({ plaster: 'Reboco', brick: 'Tijolo' })[id] ?? id,
   glass: 'Vidro',
   leaf: 'Folha de porta',
+  frame: 'Marco',
 };
 
 interface Gltf {
@@ -90,7 +91,7 @@ describe('the model as GLB', () => {
     expect(gltf.asset.version).toBe('2.0');
     const byName = new Map(gltf.nodes.filter((n) => n.name).map((n) => [n.name!, n]));
     expect(byName.get('Parede 2')?.extras).toEqual({ cad2Id: 'w2', kind: 'wall', type: 'Masonry 15 cm', level: 'Ground floor' });
-    expect(byName.get('Janela 1')?.extras).toEqual({ cad2Id: 'opening_w', kind: 'window', width: 1.2, height: 1, sill: 1.1, wall: 'Parede 2', level: 'Ground floor' });
+    expect(byName.get('Janela 1')?.extras).toEqual({ cad2Id: 'opening_w', kind: 'window', width: 1.2, height: 1, sill: 1.1, operation: 'NOTDEFINED', wall: 'Parede 2', level: 'Ground floor' });
     expect(byName.get('Ground floor')?.extras).toEqual({ cad2Id: 'lvl_ground', kind: 'level', elevation: 0 });
     // Masonry 15 cm: plaster, brick, plaster; both plasters one material.
     expect(new Set(gltf.materials.map((m) => m.name))).toEqual(new Set(['Reboco', 'Tijolo', 'Folha de porta', 'Vidro', 'Piso']));

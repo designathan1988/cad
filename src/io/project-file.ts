@@ -3,6 +3,7 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
+import { isOpeningStyle, operationsOf } from '../elements/opening/style';
 import { LIBRARY } from '../elements/object/library';
 import { definitionMaterials } from '../elements/object/materials';
 import { isDefinition } from '../elements/object/valid';
@@ -49,8 +50,10 @@ import type { DocWall } from '../app/document';
  * Version 22: the project's units (`units`, ui/units.ts). Older files are in metres with 2 decimals.
  * Version 23: parametric objects (`definitions`, `objects`, elements/object). Older files get the
  *   library's definitions and have no objects; the materials the definitions use are added.
+ * Version 24: a door's or window's make (`style`, elements/opening/style.ts): how it opens, leaves,
+ *   frame, trim, transom, threshold. Older openings have none and are drawn as they were.
  */
-export const CURRENT_VERSION = 23;
+export const CURRENT_VERSION = 24;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
@@ -153,7 +156,8 @@ export const isOpening = (o: unknown): o is Opening =>
   finite(o.sill) &&
   (o.hinge === 'start' || o.hinge === 'end') &&
   (o.swing === 'left' || o.swing === 'right') &&
-  isRule(o.rule);
+  isRule(o.rule) &&
+  (o.style === undefined || (isOpeningStyle(o.style) && operationsOf(o.kind).includes(o.style.operation)));
 
 export function writeProject(doc: Doc): string {
   return JSON.stringify({ ...doc, version: CURRENT_VERSION }, null, 2);

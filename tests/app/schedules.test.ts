@@ -36,6 +36,7 @@ const naming: Naming = {
   outside: 'exterior',
   use: (u) => (u === 'bedroom' ? 'Dormitório' : u),
   markPrefix: { door: 'P', window: 'J' },
+  model: () => 'Simples',
 };
 const BOM = String.fromCharCode(0xfeff);
 
@@ -69,10 +70,10 @@ describe('quantity schedules', () => {
 
   it('doors and windows: their type mark, wall, size, area, and the rooms on each side (or the outside)', () => {
     const doors = schedule(doc, g, 'doors', naming);
-    expect(doors.rows).toEqual([['1', 'P1', 'Ground floor', 'Parede 5', 0.8, 2.1, expect.closeTo(1.68, 9), 'Sala / Quarto']]);
+    expect(doors.rows).toEqual([['1', 'P1', 'Ground floor', 'Parede 5', 0.8, 2.1, expect.closeTo(1.68, 9), 'Sala / Quarto', 'Simples']]);
     const windows = schedule(doc, g, 'windows', naming);
     // The right wall runs up from (4, 0): its left side, the first face, is the room; the outside to the right.
-    expect(windows.rows).toEqual([['1', 'J1', 'Ground floor', 'Parede 2', 1.2, 1.0, 1.1, expect.closeTo(1.2, 9), 'Quarto / exterior']]);
+    expect(windows.rows).toEqual([['1', 'J1', 'Ground floor', 'Parede 2', 1.2, 1.0, 1.1, expect.closeTo(1.2, 9), 'Quarto / exterior', 'Simples']]);
     expect(windows.totals[0]).toBe(1);
     // Widths, heights and sills do not add up.
     expect([windows.totals[4], windows.totals[5], windows.totals[6]]).toEqual([null, null, null]);

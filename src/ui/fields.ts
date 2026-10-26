@@ -116,6 +116,12 @@ const FIELD_ICONS: Readonly<Record<string, IconName>> = {
   volume: 'cube',
   source: 'room',
   offset: 'raise',
+  operation: 'swing',
+  leaves: 'split',
+  frame: 'frame',
+  casing: 'frame',
+  transom: 'window',
+  threshold: 'slab',
 };
 
 /** The label of a row: its icon, then its words. */

@@ -12,6 +12,7 @@ import type { OpeningSolid } from '../../app/geometry';
 import type { Field } from '../../ui/fields';
 import { name, t, type MessageKey } from '../../ui/i18n';
 import { alignCandidates, alignFits, referenceCandidates } from './commands';
+import { fitStyle, leafRange, modelOf, OPENING_MODELS, operationsOf } from './style';
 import {
   type AlignEdge,
   type GroupSpacing,
@@ -22,13 +23,16 @@ import {
   type OpeningGroupId,
   type OpeningId,
   type OpeningKind,
+  type OpeningStyle,
+  type Operation,
   type RuleKind,
 } from './schema';
 
-export type OpeningSize = { readonly width: number; readonly height: number; readonly sill: number };
+export type OpeningSize = { readonly width: number; readonly height: number; readonly sill: number; readonly style?: OpeningStyle | undefined };
 
 export interface OpeningPanelActions {
-  readonly update: (ids: readonly OpeningId[], patch: Partial<Omit<Opening, 'id'>>) => void;
+  /** The same patch for each, or one made from each opening as it is. */
+  readonly update: (ids: readonly OpeningId[], patch: Partial<Omit<Opening, 'id'>> | ((o: Opening) => Partial<Omit<Opening, 'id'>>)) => void;
   /** A new kind of rule for one opening, keeping it where it is. */
   readonly setRule: (id: OpeningId, kind: RuleKind, referenceId?: OpeningId) => void;
   /** The others take the position (or head height) of the first. */
@@ -62,8 +66,10 @@ export function openingFields(selected: readonly OpeningSolid[], update: Opening
       options: (['door', 'window'] as const).map((k) => ({ value: k, label: kindName(k), icon: k })),
       get: (o) => o.opening.kind,
       // The new kind's usual height and sill: a door's 2,10 m over a window's sill would pass the wall.
-      set: (k) => update(ids, { kind: k as OpeningKind, height: OPENING_DEFAULTS[k as OpeningKind].height, sill: OPENING_DEFAULTS[k as OpeningKind].sill }),
+      // A door's make is not a window's: the plain one of the new kind.
+      set: (k) => update(ids, { kind: k as OpeningKind, height: OPENING_DEFAULTS[k as OpeningKind].height, sill: OPENING_DEFAULTS[k as OpeningKind].sill, style: undefined }),
     },
+    modelField(selected.map((x) => x.opening), (style) => update(ids, { style })) as Field<OpeningSolid>,
     { id: 'width', label: 'panel.width', kind: 'number', min: 0.01, get: (o) => o.opening.width, set: (v) => update(ids, { width: v }) },
     { id: 'height', label: 'panel.height', kind: 'number', min: 0.01, get: (o) => o.opening.height, set: (v) => update(ids, { height: v }) },
     // Doors have no sill: shown unless every selected opening is a door.
@@ -324,9 +330,83 @@ export function arrangeFields(doc: Doc, list: readonly Opening[], placed: Readon
 /** The size of the next opening the tool places (one set of values, not elements). */
 export function nextOpeningFields(kind: OpeningKind, set: (patch: Partial<OpeningSize>) => void): Field<OpeningSize>[] {
   return [
+    // A model sets the size it is usually made in too.
+    modelField([{ kind, style: undefined }], (style) => {
+      const m = OPENING_MODELS.find((x) => x.kind === kind && x.style === style);
+      set(m ? { style, width: m.width, height: m.height, sill: m.sill } : { style });
+    }, (s) => s.style) as Field<OpeningSize>,
     { id: 'width', label: 'panel.width', kind: 'number', min: 0.01, get: (s) => s.width, set: (v) => set({ width: v }) },
     { id: 'height', label: 'panel.height', kind: 'number', min: 0.01, get: (s) => s.height, set: (v) => set({ height: v }) },
     { id: 'sill', label: 'panel.sill', kind: 'number', min: 0, when: () => kind !== 'door', get: (s) => s.sill, set: (v) => set({ sill: v }) },
+  ];
+}
+
+/** An opening's model as said: the catalog's name, the operation's for one changed by hand, or plain. */
+export function modelName(o: Pick<Opening, 'kind' | 'style'>): string {
+  if (!o.style) return t('model.plain');
+  const m = modelOf(o);
+  return m ? t(`model.${m.id}` as MessageKey) : t(`op.${o.kind}.${o.style.operation}` as MessageKey);
+}
+
+/** The model from the catalog (style.ts): plain (no style), one of the kind's, or "changed" for one made by hand. */
+function modelField<T>(list: readonly Pick<Opening, 'kind' | 'style'>[], set: (style: OpeningStyle | undefined) => void, styleOf?: (x: T) => OpeningStyle | undefined): Field<T> {
+  const kind = list[0]?.kind ?? 'door';
+  const models = OPENING_MODELS.filter((m) => m.kind === kind);
+  const valueOf = (o: Pick<Opening, 'kind' | 'style'>) => (o.style ? (modelOf(o)?.id ?? 'custom') : '');
+  return {
+    id: 'model',
+    label: 'panel.model',
+    kind: 'select',
+    icon: kind,
+    when: () => list.every((o) => o.kind === kind),
+    options: [
+      { value: '', label: t('model.plain') },
+      ...models.map((m) => ({ value: m.id, label: t(`model.${m.id}` as MessageKey) })),
+      ...(list.some((o) => valueOf(o) === 'custom') ? [{ value: 'custom', label: t('model.custom') }] : []),
+    ],
+    get: (x: T) => valueOf(styleOf ? { kind, style: styleOf(x) } : (x as unknown as { opening: Opening }).opening),
+    set: (v) => {
+      if (v === 'custom') return;
+      set(models.find((m) => m.id === v)?.style);
+    },
+  };
+}
+
+/**
+ * How the selected doors or windows are made and open (style.ts): the operation, the leaves, the frame,
+ * the trim, the transom and a door's threshold. Each change keeps each opening's other properties.
+ */
+export function styleFields(selected: readonly OpeningSolid[], update: OpeningPanelActions['update']): Field<OpeningSolid>[] {
+  const ids = selected.map((s) => s.opening.id);
+  const kind = selected[0]?.opening.kind ?? 'door';
+  const change = (patch: Partial<OpeningStyle>) => update(ids, (o) => (o.style ? { style: fitStyle(o.kind, { ...o.style, ...patch }) } : {}));
+  const style = (x: OpeningSolid) => x.opening.style!;
+  const leafMax = Math.max(...selected.map((x) => leafRange(style(x).operation)[1]));
+  return [
+    {
+      id: 'operation',
+      label: 'panel.operation',
+      kind: 'select',
+      options: operationsOf(kind).map((op) => ({ value: op, label: t(`op.${kind}.${op}` as MessageKey) })),
+      get: (x) => style(x).operation,
+      set: (v) => change({ operation: v as Operation }),
+    },
+    { id: 'leaves', label: kind === 'door' ? 'panel.leaves' : 'panel.panes', kind: 'number', unit: '', decimals: 0, min: 1, when: () => leafMax > 1, get: (x) => style(x).leaves, set: (v) => change({ leaves: v }) },
+    { id: 'frame', label: 'panel.frame', kind: 'number', min: 0, get: (x) => style(x).frame, set: (v) => change({ frame: Math.min(0.3, v) }) },
+    { id: 'casing', label: 'panel.casing', kind: 'number', min: 0, get: (x) => style(x).casing, set: (v) => change({ casing: Math.min(0.3, v) }) },
+    { id: 'transom', label: 'panel.transom', kind: 'number', min: 0, get: (x) => style(x).transom, set: (v) => change({ transom: v }) },
+    {
+      id: 'threshold',
+      label: 'panel.threshold',
+      kind: 'segmented',
+      when: () => kind === 'door',
+      options: [
+        { value: '1', label: t('object.yes') },
+        { value: '0', label: t('object.no') },
+      ],
+      get: (x) => (style(x).threshold ? '1' : '0'),
+      set: (v) => change({ threshold: v === '1' }),
+    },
   ];
 }
 

@@ -1,6 +1,7 @@
 // Quantity schedules (ref/chat.txt:119, l.147): doors, windows, rooms with their areas, walls with
 // their lengths and areas, read from the model and never stored (l.128), and as CSV. Pure.
 
+import type { Opening } from '../elements/opening/schema';
 import { add, scale } from '../core/vector';
 import { referenceLength } from '../elements/opening/derive';
 import { openingMarks } from '../elements/opening/marks';
@@ -42,6 +43,8 @@ export interface Naming {
   readonly use: (use: RoomUse) => string;
   /** The type marks' prefixes (marks.ts). */
   readonly markPrefix: Readonly<Record<'door' | 'window', string>>;
+  /** A door's or window's model as the panel names it (opening/fields.ts modelName). */
+  readonly model: (o: Opening) => string;
 }
 
 const col = (key: string, unit: ColumnUnit): ScheduleColumn => ({ key: `schedule.col.${key}`, unit });
@@ -122,6 +125,7 @@ export function schedule(doc: Doc, g: DerivedGeometry, kind: ScheduleKind, namin
     ...(kind === 'windows' ? [col('sill', 'm')] : []),
     col('area', 'm2'),
     col('rooms', 'text'),
+    col('model', 'text'),
   ];
   const walls = new Map(doc.walls.map((w) => [w.id, w]));
   const hosted = doc.openings.filter((o) => o.kind === openingKind && walls.has(o.wallId)).map((o) => ({ o, levelId: walls.get(o.wallId)!.levelId }));
@@ -138,6 +142,7 @@ export function schedule(doc: Doc, g: DerivedGeometry, kind: ScheduleKind, namin
       ...(kind === 'windows' ? [o.sill] : []),
       o.width * o.height,
       sidesOf(g, o.id, levelId, naming),
+      naming.model(o),
     ];
   });
   return { kind, columns, rows, totals: totalsOf(columns, rows) };

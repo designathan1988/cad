@@ -21,6 +21,7 @@ import {
   type OpeningPanelActions,
   type OpeningSize,
   positionFields,
+  styleFields,
 } from './fields';
 import type { OpeningId, OpeningKind } from './schema';
 import { openingMarks } from './marks';
@@ -47,7 +48,10 @@ export function openingPanel(
   const group = groupIds.size === 1 ? doc.openingGroups.find((g) => groupIds.has(g.id)) : undefined;
   if (group) nodes.push(fieldsSection(t('panel.group'), true, groupFields(group, placed, act), [group]));
   if (list.length >= 2) nodes.push(fieldsSection(t('panel.arrange'), true, arrangeFields(doc, list, placed, act), list));
-  if (one && one.opening.kind === 'door') nodes.push(fieldsSection(t('panel.door.leaf'), true, leafFields(one, act.update, rooms), selected));
+  // How they are made, when every one has a make and all are of one kind.
+  if (list.every((o) => o.style) && list.every((o) => o.kind === list[0]!.kind)) nodes.push(fieldsSection(t('panel.make'), true, styleFields(selected, act.update), selected));
+  // A door's leaf, or a casement window's: the side it opens to and its hinge.
+  if (one && (one.opening.kind === 'door' || one.opening.style?.operation === 'casement')) nodes.push(fieldsSection(t('panel.door.leaf'), true, leafFields(one, act.update, rooms), selected));
   const mine = warnings.filter((w) => w.openings.some((id) => ids.includes(id)));
   if (mine.length > 0) {
     const box = el('div', { class: 'warn-list', role: 'status' });

@@ -64,6 +64,7 @@ export async function exportGlb(app: App): Promise<void> {
       material: (id) => materialLabel(materialIn(doc.materials, id)),
       glass: t('export.glass'),
       leaf: t('export.leaf'),
+      frame: t('export.frame'),
     });
     const bytes = await toGlb(scene);
     scene.traverse((o) => (o as { geometry?: { dispose(): void } }).geometry?.dispose());

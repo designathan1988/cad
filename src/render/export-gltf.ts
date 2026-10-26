@@ -5,12 +5,13 @@
 // layers (plaster, brick), in its own colour and finish (elements/material).
 // Metres, y up, as glTF wants (three.js's axes, prisms.ts).
 
+import { openingParts } from '../elements/opening/parts';
+import { ifcOperation } from '../elements/opening/style';
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import type { Doc } from '../app/document';
 import { levelOf, wallNumber } from '../app/document';
 import type { DerivedGeometry } from '../app/geometry';
-import { add, scale } from '../core/vector';
 import { visibleFaces } from '../elements/wall/geometry/faces';
 import type { LayerFunction } from '../elements/wall/schema';
 import type { Material } from '../elements/material/schema';
@@ -31,10 +32,11 @@ export interface ExportNaming {
   readonly material: (materialId: string) => string;
   readonly glass: string;
   readonly leaf: string;
+  readonly frame: string;
 }
 
 /** Plain colours for the materials, as a viewer shows them lit: not the interface's, which follow its theme. */
-const COLOUR: Readonly<Record<LayerFunction | 'floor' | 'leaf' | 'glass' | 'roof', number>> = {
+const COLOUR: Readonly<Record<LayerFunction | 'floor' | 'leaf' | 'glass' | 'roof' | 'frame', number>> = {
   structure: 0xc9b8a3,
   substrate: 0xd8cfc2,
   thermal: 0xe5d68c,
@@ -44,6 +46,7 @@ const COLOUR: Readonly<Record<LayerFunction | 'floor' | 'leaf' | 'glass' | 'roof
   roof: 0xa8634a,
   leaf: 0x8a5a3c,
   glass: 0x9cc3dd,
+  frame: 0x8d9298,
 };
 
 export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): THREE.Scene {
@@ -108,31 +111,33 @@ export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): 
     levelGroup(s.wall.levelId).add(node);
   }
 
-  // Doors and windows: the leaf closed, the glass in the middle of the wall, as the 3D shows them.
+  // Doors and windows: their parts closed (opening/parts.ts), as the 3D shows them; how each opens by
+  // its IFC name, for a viewer or a converter to read.
   const count = { door: 0, window: 0 };
   for (const o of g.openings.values()) {
     const f = o.frame;
     const host = g.solids.get(o.opening.wallId);
     if (!f || !host) continue;
     const door = o.opening.kind === 'door';
-    const mid = (f.faces[0] + f.faces[1]) / 2;
-    const half = door ? 0.02 : 0.01;
-    const at = (p: { x: number; y: number }, off: number) => add(p, scale(f.normal, off));
-    const poly = [at(f.start, mid - half), at(f.end, mid - half), at(f.end, mid + half), at(f.start, mid + half)];
-    const m = door ? material('leaf', naming.leaf) : material('glass', naming.glass);
-    const mesh = new THREE.Mesh(prism(poly, o.bottom, o.top), [m, m]);
+    const node = new THREE.Group();
+    for (const part of openingParts(o, f, false)) {
+      const m = part.role === 'leaf' ? material('leaf', naming.leaf) : part.role === 'glass' ? material('glass', naming.glass) : material('frame', naming.frame);
+      node.add(new THREE.Mesh(prism(part.polygon, part.bottom, part.top), [m, m]));
+    }
     const n = ++count[o.opening.kind];
-    mesh.name = door ? naming.door(n) : naming.window(n);
-    mesh.userData = {
+    node.name = door ? naming.door(n) : naming.window(n);
+    node.userData = {
       cad2Id: o.opening.id,
       kind: o.opening.kind,
       width: o.opening.width,
       height: o.opening.height,
       sill: o.opening.sill,
+      operation: ifcOperation(o.opening),
+      ...(o.opening.style ? { leaves: o.opening.style.leaves, frame: o.opening.style.frame, casing: o.opening.style.casing, transom: o.opening.style.transom, threshold: o.opening.style.threshold } : {}),
       wall: naming.wallTag(wallNumber(doc, o.opening.wallId) ?? 0),
       level: levelName(host.wall.levelId),
     };
-    levelGroup(host.wall.levelId).add(mesh);
+    levelGroup(host.wall.levelId).add(node);
   }
 
   // The registry's kinds (elements/registry.ts): each its solid, named and numbered as the interface

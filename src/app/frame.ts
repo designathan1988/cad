@@ -351,7 +351,11 @@ export function renderFrame(app: App): void {
         update: (ids, patch) => {
           // One command for the whole selection: one undo step.
           const doc = app.store.get();
-          const next = ids.reduce((d, id) => updateOpening(id, patch).apply(d), doc);
+          // A patch made per opening (its own style changed in one property) or the same for all.
+          const next = ids.reduce((d, id) => {
+            const o = d.openings.find((x) => x.id === id);
+            return o ? updateOpening(id, typeof patch === 'function' ? patch(o) : patch).apply(d) : d;
+          }, doc);
           if (next !== doc) app.store.dispatch({ label: 'cmd.updateOpening', apply: () => next });
         },
         setRule: (id, kind, referenceId) => {

@@ -63,6 +63,28 @@ export interface Opening {
   readonly hinge: 'start' | 'end';
   /** Doors: the side of the wall the leaf opens to, seen along the drawing direction. */
   readonly swing: 'left' | 'right';
+  /** How it is made and opens (style.ts). Absent: drawn as a plain leaf or pane, as before styles. */
+  readonly style?: OpeningStyle | undefined;
+}
+
+/** How a door opens (IFC IfcDoorTypeOperationEnum, style.ts maps them). */
+export const DOOR_OPERATIONS = ['swing', 'double', 'sliding', 'pivot', 'folding', 'overhead', 'roller'] as const;
+/** How a window's panes open (IFC IfcWindowPanelOperationEnum). */
+export const WINDOW_OPERATIONS = ['fixed', 'sliding', 'casement', 'awning', 'hopper', 'pivot', 'doubleHung'] as const;
+export type Operation = (typeof DOOR_OPERATIONS)[number] | (typeof WINDOW_OPERATIONS)[number];
+
+/**
+ * The make of a door or window, after IFC's lining and panel properties: how it opens, its leaves or
+ * panes side by side, the frame's width in the jambs and head, the trim on both faces past the jambs,
+ * a transom over the leaves (its height), a threshold on the floor. Lengths in metres; 0 is none.
+ */
+export interface OpeningStyle {
+  readonly operation: Operation;
+  readonly leaves: number;
+  readonly frame: number;
+  readonly casing: number;
+  readonly transom: number;
+  readonly threshold: boolean;
 }
 
 export const OPENING_DEFAULTS: Readonly<Record<OpeningKind, { readonly width: number; readonly height: number; readonly sill: number }>> = {
@@ -75,9 +97,10 @@ export function newOpening(
   wallId: WallId,
   kind: OpeningKind,
   rule: PositionRule,
-  size: Partial<Pick<Opening, 'width' | 'height' | 'sill' | 'hinge' | 'swing'>> = {},
+  size: Partial<Pick<Opening, 'width' | 'height' | 'sill' | 'hinge' | 'swing' | 'style'>> = {},
 ): Opening {
-  return { id, wallId, kind, ...OPENING_DEFAULTS[kind], hinge: 'start', swing: 'left', ...size, rule };
+  const { style, ...rest } = size;
+  return { id, wallId, kind, ...OPENING_DEFAULTS[kind], hinge: 'start', swing: 'left', ...rest, ...(style ? { style } : {}), rule };
 }
 
 /** The ids every opening id starts with, so a selection can tell openings from walls. */

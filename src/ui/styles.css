@@ -109,6 +109,7 @@
   --3d-edge: #3f3a34;
   --3d-glass: #9cc7e6;
   --3d-leaf: #a0764f;
+  --3d-frame: #8d9298;
   --3d-light: #ffffff;
   --3d-ground-light: #9a9fa8;
   /* The ground under the model, which a room with no floor shows. */
@@ -166,6 +167,7 @@
   --3d-preview: #7ea0e6;
   --3d-glass: #9cc7e6;
   --3d-leaf: #a0764f;
+  --3d-frame: #8d9298;
   --3d-light: #ffffff;
   --3d-ground-light: #9a9fa8;
   --3d-ground: #4a4d54;
@@ -425,6 +427,7 @@ button.project-name:hover {
 .segmented button:not(.has-icon) {
   height: auto;
   min-height: var(--control-h-sm);
+  padding: 0 var(--sp-1);
   white-space: normal;
   line-height: 1.2;
   text-align: center;
@@ -436,7 +439,9 @@ button.project-name:hover {
   -webkit-line-clamp: 2;
   line-clamp: 2;
   overflow: hidden;
-  overflow-wrap: anywhere;
+  /* A word breaks where the language hyphenates it, not at any letter ("Esquerd / a"). */
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 .segmented button:hover:not(:disabled) {
   color: var(--text);

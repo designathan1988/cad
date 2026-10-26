@@ -76,7 +76,8 @@ export const openingKind: ElementKind<Opening, OpeningItem> = {
   // The wall system moves and maps it (nudge.ts, transform.ts); these are its own when asked alone.
   moved: (o) => o,
   mapped: (o, _t, id) => ({ ...o, id }),
-  similar: (a, b) => a.kind === b.kind && Math.abs(a.width - b.width) < 1e-6 && Math.abs(a.height - b.height) < 1e-6 && Math.abs(a.sill - b.sill) < 1e-6,
+  similar: (a, b) =>
+    a.kind === b.kind && Math.abs(a.width - b.width) < 1e-6 && Math.abs(a.height - b.height) < 1e-6 && Math.abs(a.sill - b.sill) < 1e-6 && JSON.stringify(a.style) === JSON.stringify(b.style),
   // Drawn with its wall (plan-view.ts: drawOpenings), in the cut.
   plan: () => {},
   span: (s) => ({ bottom: s.bottom, top: s.top }),

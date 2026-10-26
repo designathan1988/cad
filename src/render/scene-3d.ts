@@ -6,7 +6,6 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Point2 } from '../core/vector';
 import type { DerivedGeometry, OpeningSolid, WallSolid } from '../app/geometry';
-import { add, scale } from '../core/vector';
 import type { WallId } from '../elements/wall/schema';
 import type { Material } from '../elements/material/schema';
 import { blockPaint, type Paint, wallMeshKey } from './wall-paint';
@@ -15,7 +14,7 @@ import { prism, shownPrism, toThree } from './prisms';
 import { eachSolid } from '../elements/registry';
 import type { KindSolid } from '../elements/contract';
 import { featureEdges } from '../elements/wall/geometry/edges';
-import { symbolLines } from '../elements/opening/symbol';
+import { openingParts } from '../elements/opening/parts';
 import { boxCaps, type SectionBox, type SectionLine, sectionCaps, sectionLooks, type UprightPrism } from '../app/section-box';
 
 /** The ground's size: this many times the model's extent, at least GROUND_MIN (m) across. */
@@ -75,6 +74,7 @@ export class Scene3D {
     preview: new THREE.MeshStandardMaterial({ roughness: 0.8, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
     glass: new THREE.MeshStandardMaterial({ roughness: 0.1, transparent: true, opacity: 0.45, side: THREE.DoubleSide }),
     leaf: new THREE.MeshStandardMaterial({ roughness: 0.7, side: THREE.DoubleSide }),
+    frame: new THREE.MeshStandardMaterial({ roughness: 0.5, metalness: 0.2, side: THREE.DoubleSide }),
     invalid: new THREE.MeshStandardMaterial({ roughness: 0.6, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
   };
   /** The cut (view-3d.ts): everything above its plane is clipped away; shared by every material, so a cut is one change. */
@@ -459,6 +459,7 @@ export class Scene3D {
     m.preview.color = c('--3d-preview');
     m.glass.color = c('--3d-glass');
     m.leaf.color = c('--3d-leaf');
+    m.frame.color = c('--3d-frame');
     m.invalid.color = c('--warn');
     this.capMaterial.color = c('--3d-cut');
     this.boxCapMaterial.color = c('--3d-cut');
@@ -703,31 +704,16 @@ export class Scene3D {
     return group;
   }
 
-  /** A window's glass in the middle of the wall, or a door's closed leaf. */
+  /** A door or window: its parts (opening/parts.ts), each in its role's material, or all in the state's. */
   private buildOpening(o: OpeningSolid, state: 'p' | 's' | 'n' | 'i'): THREE.Group {
     const group = new THREE.Group();
-    const f = o.frame!;
-    const door = o.opening.kind === 'door';
-    const mid = (f.faces[0] + f.faces[1]) / 2;
-    const half = door ? 0.02 : 0.01;
-    const at = (p: Point2, off: number) => add(p, scale(f.normal, off));
-    let poly = [at(f.start, mid - half), at(f.end, mid - half), at(f.end, mid + half), at(f.start, mid + half)];
-    // Open, as the plan draws it (symbol.ts): the leaf square to the wall from its hinge.
-    const leaf = door && this.doorsOpen ? symbolLines(o, f)[0] : undefined;
-    if (leaf && leaf.length === 2) {
-      const [h, tip] = leaf as [Point2, Point2];
-      const d = { x: tip.x - h.x, y: tip.y - h.y };
-      const len = Math.hypot(d.x, d.y) || 1;
-      const n = { x: (-d.y / len) * half, y: (d.x / len) * half };
-      const ring = [add(h, scale(n, -1)), add(tip, scale(n, -1)), add(tip, n), add(h, n)];
-      // Counter-clockwise, as prism() wants.
-      const area = ring.reduce((s, p, i) => s + p.x * ring[(i + 1) % 4]!.y - ring[(i + 1) % 4]!.x * p.y, 0);
-      poly = area > 0 ? ring : ring.reverse();
+    const m = this.materials;
+    const shown = state === 'p' ? m.preview : state === 's' ? m.topSel : state === 'i' ? m.invalid : null;
+    for (const part of openingParts(o, o.frame!, this.doorsOpen)) {
+      const mat = shown ?? (part.role === 'leaf' ? m.leaf : part.role === 'glass' ? m.glass : m.frame);
+      const geo = prism(part.polygon, part.bottom, part.top);
+      group.add(new THREE.Mesh(geo, [mat, mat]), this.outline(geo));
     }
-    const m =
-      state === 'p' ? this.materials.preview : state === 's' ? this.materials.topSel : state === 'i' ? this.materials.invalid : door ? this.materials.leaf : this.materials.glass;
-    const geo = prism(poly, o.bottom, o.top);
-    group.add(new THREE.Mesh(geo, [m, m]), this.outline(geo));
     return group;
   }
 

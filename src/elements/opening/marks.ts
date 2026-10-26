@@ -1,5 +1,5 @@
 // Door and window type marks (ref/chat.txt:117, "etiquetas automáticas: tipo da porta e da janela"):
-// openings have sizes, not types, so a type is a size. Each kind's distinct sizes are numbered from the
+// openings have sizes and makes, not types, so a type is a size with its make. Each kind's distinct sizes are numbered from the
 // smallest, by width, then height, then sill: every 0.90 × 2.10 door is the same type, its mark the
 // same on the plan, in the schedule and in the panel. Derived, never stored. Pure.
 
@@ -14,13 +14,15 @@ const SAME = 1e-6;
 export function openingMarks(openings: readonly Opening[], prefix: Readonly<Record<OpeningKind, string>>): Map<OpeningId, string> {
   const marks = new Map<OpeningId, string>();
   for (const kind of ['door', 'window'] as const) {
-    const sizes: { width: number; height: number; sill: number }[] = [];
-    const same = (a: { width: number; height: number; sill: number }, b: typeof a) =>
-      Math.abs(a.width - b.width) <= SAME && Math.abs(a.height - b.height) <= SAME && (kind === 'door' || Math.abs(a.sill - b.sill) <= SAME);
-    const ofKind = openings.filter((o) => o.kind === kind);
-    for (const o of ofKind) if (!sizes.some((s) => same(s, o))) sizes.push({ width: o.width, height: o.height, sill: o.sill });
-    sizes.sort((a, b) => a.width - b.width || a.height - b.height || a.sill - b.sill);
-    for (const o of ofKind) marks.set(o.id, `${prefix[kind]}${sizes.findIndex((s) => same(s, o)) + 1}`);
+    // A type is a size and a make (style.ts): a sliding door and a hinged one of one size are two types.
+    const sizes: { width: number; height: number; sill: number; make: string }[] = [];
+    const makeOf = (o: Opening) => (o.style ? JSON.stringify(o.style) : '');
+    const same = (a: { width: number; height: number; sill: number; make: string }, b: typeof a) =>
+      Math.abs(a.width - b.width) <= SAME && Math.abs(a.height - b.height) <= SAME && (kind === 'door' || Math.abs(a.sill - b.sill) <= SAME) && a.make === b.make;
+    const ofKind = openings.filter((o) => o.kind === kind).map((o) => ({ o, key: { width: o.width, height: o.height, sill: o.sill, make: makeOf(o) } }));
+    for (const { key } of ofKind) if (!sizes.some((s) => same(s, key))) sizes.push(key);
+    sizes.sort((a, b) => a.width - b.width || a.height - b.height || a.sill - b.sill || a.make.localeCompare(b.make));
+    for (const { o, key } of ofKind) marks.set(o.id, `${prefix[kind]}${sizes.findIndex((s) => same(s, key)) + 1}`);
   }
   return marks;
 }
