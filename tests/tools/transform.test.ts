@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 import { newOpening } from '../../src/elements/opening/schema';
-import { canTransform, reflection, rotation, scaling, transformSelection, translation } from '../../src/tools/transform';
+import { canTransform, copyToLevel, reflection, rotation, scaling, transformSelection, translation } from '../../src/tools/transform';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -133,5 +133,30 @@ describe('a door selected without its wall', () => {
     expect(deriveGeometry(r.doc).openings.get(copy.id)!.start).toBeCloseTo(2, 9);
     const nowhere = transformSelection(doc, g, ['opening_d'], translation({ x: 0, y: 1.5 }), true, newId);
     expect(nowhere.doc.openings).toHaveLength(1);
+  });
+});
+
+describe('copied to another level (Ctrl+C, Ctrl+V)', () => {
+  const twoLevels: Doc = { ...doc, levels: [...doc.levels, { id: 'lvl_up', name: 'Upper', elevation: 3, height: 2.8 }] };
+  const g2 = deriveGeometry(twoLevels);
+
+  it('the box, its door and its room: copies on the upper level in the same place, the originals kept', () => {
+    const r = copyToLevel(twoLevels, g2, [...box, 'room'], 'lvl_up', newId);
+    const added = r.doc.walls.slice(twoLevels.walls.length);
+    expect(added).toHaveLength(4);
+    expect(added.every((w) => w.levelId === 'lvl_up')).toBe(true);
+    expect(added.map((w) => [w.start, w.end])).toEqual(box.map((id) => [find(twoLevels, id).start, find(twoLevels, id).end]));
+    expect(r.doc.walls.slice(0, twoLevels.walls.length)).toEqual(twoLevels.walls);
+    // The door goes onto the copy of its wall; the room is numbered as the upper level's first.
+    const door = r.doc.openings.at(-1)!;
+    expect(door.wallId).toBe(added[0]!.id);
+    const room = r.doc.rooms.at(-1)!;
+    expect(room).toMatchObject({ levelId: 'lvl_up', number: '1', seed: { x: 2, y: 1.5 } });
+    expect(deriveGeometry(r.doc).rooms.get(room.id)!.enclosed).toBe(true);
+  });
+
+  it('a door selected without its wall is left out (its wall is not on that level)', () => {
+    const r = copyToLevel(twoLevels, g2, ['opening_d'], 'lvl_up', newId);
+    expect(r.doc.openings).toHaveLength(twoLevels.openings.length);
   });
 });
