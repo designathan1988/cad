@@ -1,4 +1,5 @@
-// Nodes with 3, 4 and 5+ ends (docs/wall-joins-spec.md §7.4). Every expected value is worked out by hand.
+// Nodes with 3, 4 and 5+ ends (docs/wall-joins-spec.md §7.4, §7.6). Every expected value is worked out
+// by hand.
 
 import { describe, expect, it } from 'vitest';
 import { vec } from '../../../src/core/vector';
@@ -91,54 +92,96 @@ describe('node with 4 ends: four walls meeting at one point', () => {
 
 describe('node with 3 ends and no pair in line', () => {
   // a 30 cm along 0°, b 30 cm along 160°, c 10 cm along 30°; all single structure, on the axis.
-  // No pair is within 10° of in line, so the passage is the two thickest cores, a and b. c leaves
-  // inside their 160° wedge, clear of b, and abuts a's face y = 0.15. Its faces are the offsets ±0.05
-  // along n = (−sin 30°, cos 30°); on y = 0.15 they meet at t = (0.15 − o·cos 30°)/sin 30°.
+  // No pair is within 10° of in line: every arm takes its sector (§7.6), cut on the lines to the
+  // corners the faces make across each gap.
+  //   a|c: a's face y = 0.15 and c's face at −0.05 along n_c = (−sin 30°, cos 30°), reached at t along
+  //        c with −0.05·cos 30° + t·sin 30° = 0.15.
+  //   c|b: c's face at +0.05 along n_c and b's face at +0.15 along m = (sin 20°, cos 20°), b's normal
+  //        toward c: sin 20°·x + cos 20°·y = 0.15 and −sin 30°·x + cos 30°·y = 0.05, determinant sin 50°.
+  //   b|a: b's face at −0.15 along m and a's face y = −0.15: x = −0.15·tan 10°.
+  // Seen from the node, b's sector runs from the c|b corner (48°) round to the b|a corner (260°), more
+  // than a half-turn: 30 cm beside 10 cm, the corners leave the node outside them. The lines then start
+  // from the middle of the three corners, which lies inside all three walls.
   const r = Math.PI / 180;
+  const sin = (deg: number) => Math.sin(deg * r);
+  const cos = (deg: number) => Math.cos(deg * r);
   const walls = [
     testWall('a', vec(0, 0), vec(4, 0), 0.3),
-    testWall('b', vec(0, 0), vec(4 * Math.cos(160 * r), 4 * Math.sin(160 * r)), 0.3),
-    testWall('c', vec(0, 0), vec(3 * Math.cos(30 * r), 3 * Math.sin(30 * r)), 0.1),
+    testWall('b', vec(0, 0), vec(4 * cos(160), 4 * sin(160)), 0.3),
+    testWall('c', vec(0, 0), vec(3 * cos(30), 3 * sin(30)), 0.1),
   ];
   const g = geometry(walls);
+  const t = (0.15 + 0.05 * cos(30)) / sin(30);
+  const ac: XY = [0.05 * sin(30) + t * cos(30), 0.15];
+  const cb: XY = [(0.15 * cos(30) - 0.05 * cos(20)) / sin(50), (0.05 * sin(20) + 0.15 * sin(30)) / sin(50)];
+  const ba: XY = [-0.15 * Math.tan(10 * r), -0.15];
+  const mid: XY = [(ac[0] + cb[0] + ba[0]) / 3, (ac[1] + cb[1] + ba[1]) / 3];
 
-  it('c abuts a: cut on the face y = 0.15', () => {
+  it('joins without a warning, one piece each', () => {
     expect(g.warnings).toEqual([]);
-    const u = vec(Math.cos(30 * r), Math.sin(30 * r));
-    const n = vec(-Math.sin(30 * r), Math.cos(30 * r));
-    const onFace = (o: number): XY => {
-      const t = (0.15 - o * n.y) / u.y;
-      return [o * n.x + t * u.x, 0.15];
-    };
-    const far = (o: number): XY => [3 * u.x + o * n.x, 3 * u.y + o * n.y];
-    expectPolygon(g.pieces.get('c')![0]!.polygon, [onFace(-0.05), far(-0.05), far(0.05), onFace(0.05)]);
+    for (const w of walls) expect(g.pieces.get(w.id)).toHaveLength(1);
+  });
+
+  it('each wall is cut on the lines from the middle to its two corners', () => {
+    expectPolygon(g.pieces.get('a')![0]!.polygon, [[4, -0.15], [4, 0.15], ac, mid, ba]);
+    const farB = (o: number): XY => [4 * cos(160) + o * sin(20), 4 * sin(160) + o * cos(20)];
+    expectPolygon(g.pieces.get('b')![0]!.polygon, [farB(0.15), cb, mid, ba, farB(-0.15)]);
+    const farC = (o: number): XY => [3 * cos(30) - o * sin(30), 3 * sin(30) + o * cos(30)];
+    expectPolygon(g.pieces.get('c')![0]!.polygon, [ac, farC(-0.05), farC(0.05), cb, mid]);
+  });
+
+  it('no two pieces overlap', () => {
+    const [a, b, c] = walls.map((w) => g.pieces.get(w.id)![0]!.polygon);
+    expect(overlapArea(a!, b!)).toBeLessThan(1e-9);
+    expect(overlapArea(b!, c!)).toBeLessThan(1e-9);
+    expect(overlapArea(c!, a!)).toBeLessThan(1e-9);
   });
 });
 
-describe('5 ends, and ends that do not fit', () => {
-  it('five ends at one point: no joins, complexJoin', () => {
+describe('5 ends, and an end across a step', () => {
+  it('five ends at one point: each arm cut from the node to the corners beside it, no warning', () => {
+    // 10 cm walls 72° apart. Neighbours' faces meet on the bisector between them, 0.05/sin 36° from
+    // the node, which lies inside all five corners (§7.6). Before, five ends warned complexJoin and
+    // stayed square, overlapping.
     const r = Math.PI / 180;
     const walls = [0, 72, 144, 216, 288].map((deg, i) =>
       testWall(`w${i}`, vec(0, 0), vec(3 * Math.cos(deg * r), 3 * Math.sin(deg * r)), 0.1),
     );
     const g = geometry(walls);
-    expect(g.warnings).toEqual([{ kind: 'complexJoin', walls: ['w0', 'w1', 'w2', 'w3', 'w4'] }]);
-    for (const w of walls) expect(g.pieces.get(w.id)).toHaveLength(1);
+    expect(g.warnings).toEqual([]);
+    const at = (deg: number, len: number): XY => [len * Math.cos(deg * r), len * Math.sin(deg * r)];
+    const d = 0.05 / Math.sin(36 * r);
+    walls.forEach((w, i) => {
+      const deg = 72 * i;
+      const far = (o: number): XY => [at(deg, 3)[0] + at(deg + 90, o)[0], at(deg, 3)[1] + at(deg + 90, o)[1]];
+      expect(g.pieces.get(w.id)).toHaveLength(1);
+      expectPolygon(g.pieces.get(w.id)![0]!.polygon, [[0, 0], at(deg - 36, d), far(-0.05), far(0.05), at(deg + 36, d)]);
+    });
+    const polys = walls.map((w) => g.pieces.get(w.id)![0]!.polygon);
+    for (let i = 0; i < polys.length; i++) {
+      for (let j = i + 1; j < polys.length; j++) expect(overlapArea(polys[i]!, polys[j]!)).toBeLessThan(1e-9);
+    }
   });
 
-  it('an end straddling a passage whose walls differ there warns complexJoin and stays square', () => {
+  it('an end straddling a passage whose walls differ there takes its sector: corners above, the step below', () => {
     // a 20 cm and b 30 cm in line along x, both on the axis: their faces step at x = 0. c, 10 cm,
-    // leaves upward across the step, so it is neither only against a nor against matching faces.
+    // leaves upward across the step, so it fits neither only against a nor against matching faces (it
+    // warned complexJoin and stayed square). Its sector (§7.6): c's faces meet a's face y = 0.1 at
+    // (−0.05, 0.1) and b's face y = 0.15 at (0.05, 0.15); below, a and b in line split on x = 0.
     const walls = [
       testWall('a', vec(-4, 0), vec(0, 0), 0.2),
       testWall('b', vec(0, 0), vec(4, 0), 0.3),
       testWall('c', vec(0, 0), vec(0, 3), 0.1),
     ];
     const g = geometry(walls);
-    expect(g.warnings).toEqual([{ kind: 'complexJoin', walls: ['c', 'a', 'b'] }]);
-    expectPolygon(g.pieces.get('c')![0]!.polygon, [[-0.05, 0], [0.05, 0], [0.05, 3], [-0.05, 3]]);
-    // The passage still joins: one cut at x = 0.
-    expectPolygon(g.pieces.get('a')![0]!.polygon, [[-4, -0.1], [0, -0.1], [0, 0.1], [-4, 0.1]]);
+    expect(g.warnings).toEqual([]);
+    expectPolygon(g.pieces.get('c')![0]!.polygon, [[0, 0], [0.05, 0.15], [0.05, 3], [-0.05, 3], [-0.05, 0.1]]);
+    expectPolygon(g.pieces.get('a')![0]!.polygon, [[-4, -0.1], [0, -0.1], [0, 0], [-0.05, 0.1], [-4, 0.1]]);
+    expectPolygon(g.pieces.get('b')![0]!.polygon, [[0, -0.15], [4, -0.15], [4, 0.15], [0.05, 0.15], [0, 0]]);
+    // The union of the three bands: a 4 × 0.2, b 4 × 0.3, and c's 3 × 0.1 less what lies inside a
+    // (0.05 × 0.1) and inside b (0.05 × 0.15). Nothing overlaps, nothing is left open.
+    const total = [...g.pieces.values()].flat().reduce((s, p) => s + shoelace(p.polygon), 0);
+    expect(total).toBeCloseTo(0.8 + 1.2 + (0.3 - 0.005 - 0.0075), 12);
   });
 });
 
