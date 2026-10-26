@@ -1,6 +1,8 @@
 // Properties panel, built from what is selected: each element's sections come from its fields
 // (elements/*/fields.ts, rendered by fields.ts). It only reads state and sends changes.
 
+import { type StairFieldActions, stairFields } from '../elements/stair/fields';
+import type { StairSolid } from '../elements/stair/geometry';
 import { type RoofFieldActions, roofFields } from '../elements/roof/fields';
 import type { RoofSolid } from '../elements/roof/geometry';
 import { type BeamFieldActions, beamFields } from '../elements/beam/fields';
@@ -62,6 +64,8 @@ export interface PanelInput {
   readonly beams: readonly Beam[];
   /** The selected roofs, as built. */
   readonly roofs: readonly RoofSolid[];
+  /** The selected stairs, as laid out. */
+  readonly stairs: readonly StairSolid[];
   /** The selected dimensions, and what each measures now (null: an end's element is gone). */
   readonly dimensions: readonly Dimension[];
   readonly dimensionLength: (d: Dimension) => number | null;
@@ -92,6 +96,7 @@ export interface PanelActions {
   readonly updateColumns: ColumnFieldActions['updateColumns'];
   readonly updateBeams: BeamFieldActions['updateBeams'];
   readonly updateRoofs: RoofFieldActions['updateRoofs'];
+  readonly updateStairs: StairFieldActions['updateStairs'];
   /** Moves the wall so its exterior face meets the face of the wall below it. */
   readonly alignBelow: (step: StackedStep) => void;
 }
@@ -106,7 +111,7 @@ function common<T>(walls: readonly DocWall[], get: (w: DocWall) => T): T | null 
 
 export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActions): void {
   const { doc, selected } = input;
-  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window' | 'room' | 'slab' | 'guide' | 'text' | 'dimension' | 'height' | 'hash' | 'column' | 'beam' | 'roof', title: string) => {
+  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window' | 'room' | 'slab' | 'guide' | 'text' | 'dimension' | 'height' | 'hash' | 'column' | 'beam' | 'roof' | 'stair', title: string) => {
     const h = el('div', { class: 'panel-head' });
     h.innerHTML = icon(iconName, 16);
     const close = el('button', { class: 'icon-btn', type: 'button', title: t('panel.close'), 'aria-label': t('panel.close') });
@@ -192,6 +197,11 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     nodes.push(head(kinds.size === 1 && kinds.has('window') ? 'window' : 'door', openingTitle(input.openings)));
     part(input.openings.length);
     nodes.push(...openingPanel(doc, input.placed, input.openings, input.openingWarnings, act.opening, input.levelRooms));
+  } else if (input.stairs.length > 0) {
+    const n = input.stairs.length;
+    nodes.push(head('stair', n === 1 ? t('stair.title') : t('stair.titleMany', { n })));
+    part(n);
+    nodes.push(fieldsSection(t('panel.general'), true, stairFields(input.stairs, act), input.stairs));
   } else if (input.roofs.length > 0) {
     const n = input.roofs.length;
     nodes.push(head('roof', n === 1 ? t('roof.title') : t('roof.titleMany', { n })));

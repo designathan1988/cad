@@ -487,6 +487,46 @@ export class PlanView {
       ctx.lineWidth = lit ? 2 : 1;
       ctx.stroke();
     }
+    // Stairs: each step and landing outlined, the walking line from the first step to the top, an arrow there.
+    ctx.save();
+    for (const s of g.stairs.values()) {
+      const lit = o.selected.has(s.stair.id) || o.hover === s.stair.id;
+      ctx.strokeStyle = lit ? color('--wall-sel') : color('--wall-line');
+      ctx.lineWidth = lit ? 1.5 : 1;
+      for (const p of s.parts) {
+        const pts = p.polygon.map((v) => this.toScreen(v));
+        ctx.beginPath();
+        pts.forEach((q, i) => (i === 0 ? ctx.moveTo(q.x, q.y) : ctx.lineTo(q.x, q.y)));
+        ctx.closePath();
+        if (lit) {
+          ctx.fillStyle = color('--accent-soft');
+          ctx.fill();
+        }
+        ctx.stroke();
+      }
+      const walk = s.walk.map((v) => this.toScreen(v));
+      if (walk.length >= 2) {
+        ctx.beginPath();
+        walk.forEach((q, i) => (i === 0 ? ctx.moveTo(q.x, q.y) : ctx.lineTo(q.x, q.y)));
+        ctx.stroke();
+        const a = walk.at(-2)!;
+        const b = walk.at(-1)!;
+        const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        const ux = (b.x - a.x) / len;
+        const uy = (b.y - a.y) / len;
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(b.x - ux * 9 - uy * 4, b.y - uy * 9 + ux * 4);
+        ctx.lineTo(b.x - ux * 9 + uy * 4, b.y - uy * 9 - ux * 4);
+        ctx.closePath();
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(walk[0]!.x, walk[0]!.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
     // Roofs above the cut: the eaves dashed, the ridges and hips (the faces' sides) thin; lit when selected.
     ctx.save();
     for (const r of g.roofs.values()) {

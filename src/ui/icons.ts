@@ -64,6 +64,7 @@ const paths = {
   column: 'M7 5h10v14H7zM7 5l10 14M17 5L7 19',
   beam: 'M3 9h18v6H3zM3 9l3 3-3 3M21 9l-3 3 3 3',
   roof: 'M2 13l10-8 10 8M5 11v8h14v-8',
+  stair: 'M4 20h4v-4h4v-4h4V8h4',
   move: 'M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3',
   width: 'M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4',
   split: 'M3 12h7M14 12h7M12 4v16M9 7l3-3 3 3M9 17l3 3 3-3',

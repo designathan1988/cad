@@ -28,6 +28,7 @@ export const DXF_LAYERS = [
   { name: 'S-COLS', colour: 7 }, // columns
   { name: 'S-BEAM', colour: 8 }, // beams, above the cut
   { name: 'A-ROOF', colour: 6 }, // roofs: eaves and the faces' sides
+  { name: 'A-FLOR-STRS', colour: 2 }, // stairs: steps, landings, walking line
 ] as const;
 type Layer = (typeof DXF_LAYERS)[number]['name'];
 
@@ -169,6 +170,12 @@ export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels):
     if (!leaf || !swing) continue;
     line('A-DOOR', leaf[0]!, leaf[1]!);
     arc('A-DOOR', leaf[0]!, swing[0]!, swing[swing.length - 1]!, pair);
+  }
+  // Stairs: each step and landing, and the walking line.
+  for (const s of g.stairs.values()) {
+    if (s.stair.levelId !== levelId) continue;
+    for (const p of s.parts) polyline('A-FLOR-STRS', p.polygon, true);
+    if (s.walk.length >= 2) polyline('A-FLOR-STRS', s.walk, false);
   }
   // Roofs: the eaves and, for a sloped one, each face's outline (ridges, hips, valleys).
   for (const r of g.roofs.values()) {

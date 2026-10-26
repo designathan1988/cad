@@ -83,6 +83,53 @@ export function slabGeometry(outline: readonly Point2[], holes: readonly (readon
 }
 
 /**
+ * A stair: each step and landing a solid from the stair's bottom up to its top (a spiral's, a slab of
+ * its riser), and its handrails as narrow upright ribbons. In three.js coordinates, from height 0.
+ */
+export function stairGeometry(
+  parts: readonly { readonly polygon: readonly Point2[]; readonly top: number }[],
+  rails: readonly (readonly { x: number; y: number; z: number }[])[],
+  riser: number,
+  solid: boolean,
+): THREE.BufferGeometry {
+  const pos: number[] = [];
+  const tri = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3) => pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+  for (const p of parts) {
+    const low = solid ? 0 : Math.max(0, p.top - Math.min(0.05, riser));
+    const poly = p.polygon;
+    const n = poly.length;
+    for (let i = 1; i < n - 1; i++) {
+      tri(toThree(poly[0]!, low), toThree(poly[i + 1]!, low), toThree(poly[i]!, low));
+      tri(toThree(poly[0]!, p.top), toThree(poly[i]!, p.top), toThree(poly[i + 1]!, p.top));
+    }
+    for (let i = 0; i < n; i++) {
+      const a = poly[i]!;
+      const b = poly[(i + 1) % n]!;
+      tri(toThree(a, low), toThree(b, low), toThree(b, p.top));
+      tri(toThree(a, low), toThree(b, p.top), toThree(a, p.top));
+    }
+  }
+  for (const r of rails) {
+    for (let i = 0; i + 1 < r.length; i++) {
+      const a = r[i]!;
+      const b = r[i + 1]!;
+      // A 5 cm ribbon under the rail's line, and a post down to the steps at its start.
+      tri(new THREE.Vector3(a.x, a.z, -a.y), new THREE.Vector3(b.x, b.z, -b.y), new THREE.Vector3(b.x, b.z - 0.05, -b.y));
+      tri(new THREE.Vector3(a.x, a.z, -a.y), new THREE.Vector3(b.x, b.z - 0.05, -b.y), new THREE.Vector3(a.x, a.z - 0.05, -a.y));
+    }
+    for (const v of [r[0]!, r[r.length - 1]!]) {
+      const q = 0.02;
+      tri(new THREE.Vector3(v.x - q, v.z, -v.y), new THREE.Vector3(v.x + q, v.z, -v.y), new THREE.Vector3(v.x + q, v.z - 0.9, -v.y));
+      tri(new THREE.Vector3(v.x - q, v.z, -v.y), new THREE.Vector3(v.x + q, v.z - 0.9, -v.y), new THREE.Vector3(v.x - q, v.z - 0.9, -v.y));
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
  * A roof's faces as solid slabs (their build-up `thickness` square to each face's slope, so taller
  * upright), its gable infills and a flat roof's parapet: one geometry, in three.js coordinates.
  */

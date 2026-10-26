@@ -194,7 +194,9 @@ export function wireInput(app: App): void {
               ? ui.beamFrom
               : ui.tool === 'roof'
                 ? (ui.roofDraft.at(-1) ?? null)
-                : null;
+                : ui.tool === 'stair'
+                  ? ui.stairFrom
+                  : null;
     const measuring = ui.tool === 'measure' || ui.tool === 'dimension';
     const modifyFrom = ui.tool === 'modify' && ui.modify && ui.modify.state.step !== 'base' ? ui.modify.state.base : null;
     const faces = measuring ? levelFaces() : [];
@@ -271,6 +273,8 @@ export function wireInput(app: App): void {
       .sort((a, b) => a.off - b.off)
       .slice(0, 1)
       .map((x) => x.id);
+    // A stair on any of its steps: before the walls and rooms it lies among.
+    const stairHit = [...g.stairs.values()].filter((s) => s.parts.some((q) => insideRing(q.polygon, p))).slice(-1).map((s) => s.stair.id);
     // A column inside its section (or a few pixels off it): before the walls it stands in.
     const columnHit = [...g.columns.values()]
       .filter((c) => insideRing(c.outline, p) || c.outline.some((v, i) => segmentDistance(p, v, c.outline[(i + 1) % c.outline.length]!) <= near))
@@ -285,6 +289,7 @@ export function wireInput(app: App): void {
       ...bubbleHit,
       ...dimHit,
       ...columnHit,
+      ...stairHit,
       // A text note over everything it is written on.
       ...app
         .levelNotes()
@@ -368,7 +373,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'roof') {
+    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'roof' || ui.tool === 'stair') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -608,6 +613,11 @@ export function wireInput(app: App): void {
       if (at) app.roofClick(snapped(e)?.point ?? at.p, at.mpp);
       return;
     }
+    if (ui.tool === 'stair') {
+      const at = aimAt3d(e);
+      if (at) app.stairClick(snapped(e)?.point ?? at.p);
+      return;
+    }
     if (ui.tool === 'room' || ui.tool === 'floor') {
       const at = worldAt(e);
       if (!at) return;
@@ -727,6 +737,7 @@ export function wireInput(app: App): void {
   shell.toolColumn.addEventListener('click', () => app.setTool('column'));
   shell.toolBeam.addEventListener('click', () => app.setTool('beam'));
   shell.toolRoof.addEventListener('click', () => app.setTool('roof'));
+  shell.toolStair.addEventListener('click', () => app.setTool('stair'));
   shell.toolSplit.addEventListener('click', () => app.setTool('split'));
   shell.toolCorner.addEventListener('click', () => app.setTool('corner'));
   for (const [kind, b] of Object.entries(shell.modifyTools)) b.addEventListener('click', () => app.startModify(kind as ModifyKind));
@@ -974,6 +985,11 @@ export function wireInput(app: App): void {
       if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'grid') return app.gridEscape();
       if (ui.tool === 'column') return app.setTool('select');
+      if (ui.tool === 'stair') {
+        if (!ui.stairFrom) return app.setTool('select');
+        ui.stairFrom = null;
+        return app.render();
+      }
       if (ui.tool === 'roof') {
         if (ui.roofDraft.length === 0) return app.setTool('select');
         ui.roofDraft = [];
@@ -1047,6 +1063,7 @@ export function wireInput(app: App): void {
     if (key === 'p') return app.setTool('column');
     if (key === 'b') return app.setTool('beam');
     if (key === 't') return app.setTool('roof');
+    if (key === 'e') return app.setTool('stair');
     if (key === 'v') return app.setTool('select');
     if (key === 'f') return app.frameSelection();
     // Choosing and moving elements without a mouse: N / Shift+N go through the level's elements;

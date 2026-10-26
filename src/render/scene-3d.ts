@@ -12,7 +12,7 @@ import type { WallId } from '../elements/wall/schema';
 import { LAYER_TOKEN } from '../ui/swatch';
 import { blockPaint, wallMeshKey } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
-import { prism, roofGeometry, shownPrism, slabGeometry, toThree } from './prisms';
+import { prism, roofGeometry, shownPrism, slabGeometry, stairGeometry, toThree } from './prisms';
 import { featureEdges } from '../elements/wall/geometry/edges';
 import { symbolLines } from '../elements/opening/symbol';
 import { boxCaps, type SectionBox, type SectionLine, sectionCaps, sectionLooks, type UprightPrism } from '../app/section-box';
@@ -584,6 +584,31 @@ export class Scene3D {
       this.scene.add(group);
       this.walls.set(id, { group, key });
       place(id, c.column.levelId);
+    }
+    // Stairs: their steps and landings, and handrails (prisms.ts: stairGeometry).
+    for (const s of g.stairs.values()) {
+      const id = s.stair.id;
+      seen.add(id);
+      const state = selected.has(id) ? 's' : 'n';
+      let skey = this.shapeKeys.get(s);
+      if (skey === undefined) this.shapeKeys.set(s, (skey = JSON.stringify([s.stair, s.bottom, s.height])));
+      const key = state + skey;
+      const old = this.walls.get(id);
+      if (old?.key === key) {
+        place(id, s.stair.levelId);
+        continue;
+      }
+      if (old) this.drop(old.group);
+      const group = new THREE.Group();
+      const geo = stairGeometry(s.parts, s.rails, s.riser, s.stair.kind !== 'spiral');
+      const mesh = new THREE.Mesh(geo, state === 's' ? this.materials.sideSel : this.materials.floor);
+      mesh.position.y = s.bottom;
+      mesh.add(this.outline(geo));
+      group.add(mesh);
+      group.userData.wallId = id;
+      this.scene.add(group);
+      this.walls.set(id, { group, key });
+      place(id, s.stair.levelId);
     }
     // Roofs: their faces as slabs, gables and parapets (prisms.ts: roofGeometry).
     for (const r of g.roofs.values()) {

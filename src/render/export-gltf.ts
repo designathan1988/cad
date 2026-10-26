@@ -14,7 +14,7 @@ import type { DerivedGeometry } from '../app/geometry';
 import { add, scale } from '../core/vector';
 import { visibleFaces } from '../elements/wall/geometry/faces';
 import type { LayerFunction } from '../elements/wall/schema';
-import { prism, roofGeometry, shownPrism, slabGeometry } from './prisms';
+import { prism, roofGeometry, shownPrism, slabGeometry, stairGeometry } from './prisms';
 
 /** How the nodes and materials are named: as the interface says it. */
 export interface ExportNaming {
@@ -26,6 +26,7 @@ export interface ExportNaming {
   readonly column: (n: number) => string;
   readonly beam: (n: number) => string;
   readonly roof: (n: number) => string;
+  readonly stair: (n: number) => string;
   /** A layer's material by its id (plaster, brick): what a renderer assigns its own materials by. */
   readonly material: (materialId: string) => string;
   readonly glass: string;
@@ -151,6 +152,15 @@ export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): 
     mesh.name = naming.column(++columns);
     mesh.userData = { cad2Id: c.column.id, kind: 'column', level: levelName(c.column.levelId), width: c.column.width, depth: c.column.depth };
     levelGroup(c.column.levelId).add(mesh);
+  }
+  let stairs = 0;
+  for (const s of g.stairs.values()) {
+    const geo = stairGeometry(s.parts, s.rails, s.riser, s.stair.kind !== 'spiral');
+    geo.translate(0, s.bottom, 0);
+    const mesh = new THREE.Mesh(geo, material('floor', naming.floorMaterial));
+    mesh.name = naming.stair(++stairs);
+    mesh.userData = { cad2Id: s.stair.id, kind: 'stair', level: levelName(s.stair.levelId), risers: s.risers, riser: s.riser, tread: s.stair.tread };
+    levelGroup(s.stair.levelId).add(mesh);
   }
   let roofs = 0;
   for (const r of g.roofs.values()) {
