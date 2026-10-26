@@ -3,7 +3,7 @@
 // turns it. Each answers within a reach larger than its drawing.
 
 import { describe, expect, it } from 'vitest';
-import { handleAt, handlesFor } from '../../src/app/handles';
+import { doorFlips, handleAt, handlesFor } from '../../src/app/handles';
 import type { DocWall } from '../../src/app/document';
 
 const wall = (id: string, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
@@ -82,7 +82,7 @@ describe('handles', () => {
   });
 
   it('nothing selected: no handles', () => {
-    expect(handlesFor([], toScreen)).toEqual({ squares: [], arrows: [], rotate: null, bulge: null });
+    expect(handlesFor([], toScreen)).toEqual({ squares: [], arrows: [], rotate: null, bulge: null, flips: [] });
   });
 
   it('which handle is under the pointer: within the reach, the turn handle first, then arrows, then squares', () => {
@@ -111,5 +111,35 @@ describe('the turn handle and the temporary dimensions', () => {
   it('a value away from it leaves it where it was', () => {
     const h = handlesFor([wall('w', [1, 1], [4, 1])], toScreen, [{ x: 300, y: 300, w: 40, h: 22 }]);
     expect(h.rotate!.at).toEqual({ x: 250, y: 428 });
+  });
+});
+
+describe("a door's flip controls", () => {
+  // A door 0.9 m wide on the x axis from (1, 1) to (1.9, 1), faces at ±0.075 along +y, its leaf on +y:
+  // at 100 px per metre, from (100, 400) to (190, 400), the face on screen at y = 392.5.
+  const frame = { start: { x: 1, y: 1 }, end: { x: 1.9, y: 1 }, normal: { x: 0, y: 1 }, faces: [-0.075, 0.075] as const };
+
+  it('on the side the leaf sweeps, 16 px out from the face: swing left of the middle, hinge right', () => {
+    const [swing, hinge] = doorFlips('d', frame, 1, toScreen);
+    expect(swing!.which).toBe('swing');
+    expect(swing!.at.x).toBeCloseTo(145 - 12, 9);
+    expect(swing!.at.y).toBeCloseTo(392.5 - 16, 9);
+    expect(swing!.dir.y).toBeCloseTo(-1, 9);
+    expect(hinge!.which).toBe('hinge');
+    expect(hinge!.at.x).toBeCloseTo(145 + 12, 9);
+    expect(hinge!.dir.x).toBeCloseTo(1, 9);
+  });
+
+  it('the leaf on the other side puts them there; a door under 36 px wide on screen has none', () => {
+    const [swing] = doorFlips('d', frame, -1, toScreen);
+    expect(swing!.at.y).toBeCloseTo(407.5 + 16, 9);
+    expect(doorFlips('d', frame, 1, (p) => ({ x: p.x * 30, y: 500 - p.y * 30 }))).toEqual([]);
+  });
+
+  it('they answer before the other handles', () => {
+    const flips = doorFlips('d', frame, 1, toScreen);
+    const h = { squares: [], arrows: [], rotate: null, bulge: null, flips };
+    expect(handleAt(h, { x: 134, y: 377 }, 8)).toEqual({ kind: 'flip', which: 'swing', id: 'd' });
+    expect(handleAt(h, { x: 158, y: 376 }, 8)).toEqual({ kind: 'flip', which: 'hinge', id: 'd' });
   });
 });
