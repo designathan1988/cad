@@ -4,7 +4,7 @@
 import { add, type Point2, scale } from '../core/vector';
 import { deriveOpenings, hostsOf, type OpeningWarning, type PlacedOpening } from '../elements/opening/derive';
 import type { Opening, OpeningId } from '../elements/opening/schema';
-import { symbolLines } from '../elements/opening/symbol';
+import { swingRegion, symbolLines } from '../elements/opening/symbol';
 import { type Block, cutPlan, cutSolid, type OpeningCut, type OpeningFrame, openingFrame } from '../elements/opening/void';
 import { computeWallGeometry, type Piece } from '../elements/wall/geometry/footprint';
 import { area, clipHalfPlane, type ConvexPolygon, halfPlaneThrough, overlapArea, toCounterClockwise } from '../elements/wall/geometry/convex';
@@ -104,6 +104,25 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     if (!touched) continue;
     openings.set(id, { ...o, valid: false, warnings: [...o.warnings, 'openingAtJoint'] });
     jointWarnings.push({ kind: 'openingAtJoint', openings: [id] });
+  }
+  // Two doors of a level whose leaves sweep the same floor: both warned. A door put beside another
+  // could open into it, with nothing said.
+  const doors = [...openings.values()].flatMap((o) => {
+    const region = swingRegion(o, o.frame);
+    const levelId = byId.get(o.opening.wallId)?.levelId;
+    return region && levelId ? [{ id: o.opening.id, levelId, region: toCounterClockwise(region) }] : [];
+  });
+  for (let i = 0; i < doors.length; i++) {
+    for (let j = i + 1; j < doors.length; j++) {
+      const a = doors[i]!;
+      const b = doors[j]!;
+      if (a.levelId !== b.levelId || overlapArea(a.region, b.region) <= AREA_EPSILON) continue;
+      for (const id of [a.id, b.id]) {
+        const o = openings.get(id)!;
+        if (!o.warnings.includes('openingSwingClash')) openings.set(id, { ...o, valid: false, warnings: [...o.warnings, 'openingSwingClash'] });
+      }
+      jointWarnings.push({ kind: 'openingSwingClash', openings: [a.id, b.id] });
+    }
   }
   const solids = new Map<WallId, WallSolid>();
   const planPieces = new Map<WallId, Piece[]>();

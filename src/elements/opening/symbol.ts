@@ -32,3 +32,15 @@ export function symbolLines(op: { readonly opening: Opening; readonly start: num
   }
   return [[hinge, tip], arc];
 }
+
+/**
+ * The floor a door's leaf sweeps, as a convex polygon: the hinge and the arc its edge draws, from the
+ * leaf standing open back to the strike jamb (every third of the symbol's 24 steps, inside the disc).
+ * Null for a window.
+ */
+export function swingRegion(op: { readonly opening: Opening; readonly start: number; readonly end: number }, f: OpeningFrame | null): Point2[] | null {
+  if (!f || op.opening.kind !== 'door') return null;
+  const [leaf, arc] = symbolLines(op, f);
+  if (!leaf || !arc) return null;
+  return [leaf[0]!, ...arc.filter((_, i) => i % 3 === 0)];
+}

@@ -17,7 +17,15 @@ export interface HostInfo {
   readonly joints?: ReadonlyMap<WallId, { readonly lo: number; readonly hi: number }>;
 }
 
-export type OpeningWarningKind = 'openingNoHost' | 'openingBadReference' | 'openingOutside' | 'openingOverlap' | 'openingTooTall' | 'openingAtJoint';
+export type OpeningWarningKind =
+  | 'openingNoHost'
+  | 'openingBadReference'
+  | 'openingOutside'
+  | 'openingOverlap'
+  | 'openingTooTall'
+  | 'openingAtJoint'
+  /** Two doors' leaves sweep the same floor (app/geometry.ts). */
+  | 'openingSwingClash';
 
 export interface OpeningWarning {
   readonly kind: OpeningWarningKind;

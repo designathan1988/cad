@@ -2091,7 +2091,10 @@ export class App {
     const aiming = placing !== null && ui.opening.kind === 'aiming';
     const openingHint = placing
       ? ui.opening.kind === 'aiming'
-        ? this.previewProblem() ?? t('hint.openingAim', { rule: ruleText(ui.opening.rule, ruleBase(ui.opening.aim, ui.opening.rule)) })
+        ? this.previewProblem() ??
+          t(this.geometry.openings.get(OPENING_PREVIEW_ID)?.warnings.includes('openingSwingClash') ? 'hint.openingAimClash' : 'hint.openingAim', {
+            rule: ruleText(ui.opening.rule, ruleBase(ui.opening.aim, ui.opening.rule)),
+          })
         : t('hint.openingPlace', { kind: t(placing === 'door' ? 'panel.door' : 'panel.window').toLowerCase() })
       : null;
     const toolHint =
