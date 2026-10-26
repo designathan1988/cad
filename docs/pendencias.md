@@ -195,28 +195,35 @@ encaixe (S): ele desligava, mas o rodapé não dizia isso ao desenhar e a escolh
 recarregar. Agora o rodapé diz "encaixes: sim/não" em parede, retângulo, piso, medir e modificar, e a
 escolha é guardada.
 
-Achados da quinta rodada ainda abertos:
-- Num cômodo muito pequeno (0,75 m) a etiqueta, empurrada para baixo da cota, fica sobre a parede.
-- A alça de girar pode ficar sobre o valor de uma cota temporária; o quadrado da alça de ponta cobre o
-  triângulo de aviso de uma abertura na junta.
-- Recarregar a página volta a planta ao enquadramento inicial (zoom e posição não são guardados).
-- Sem passar o mouse (toque), a ferramenta Cômodo não tem prévia: o toque cria direto.
+Sétima rodada (2026-10-26, Chrome visível pelo Playwright, 1920×1080, 1024, 768 e 390 px), corrigido e
+visto no navegador (c39ba66 a 30cdc98):
+- Recarregar a página mantém o zoom e a posição da planta.
+- Num cômodo muito pequeno (0,75 m) a etiqueta empurrada para fora da cota não fica mais sobre a parede:
+  ela fica dentro do cômodo ou sai.
+- Etiqueta de cômodo afastada de uma cota fica dentro do cômodo, ou sai; a alça de girar fica abaixo do
+  valor das cotas temporárias; o aviso de uma abertura sai de baixo da alça de ponta.
+- Ferramenta Cômodo no toque: o primeiro toque mostra o espaço e a área, o segundo cria.
+- Duas portas cujas folhas varrem o mesmo piso dão aviso (também ao mirar uma porta nova).
+- Porta selecionada vira no próprio desenho: dois controles (lado e mão) e as teclas Espaço e H.
+- Modificar leva porta ou janela sozinha (ao longo da parede, ou para outra); Ctrl+C e Ctrl+V copiam
+  para outro pavimento no mesmo lugar; depois de uma cópia, "3x" faz mais na mesma distância e "/3"
+  divide até ela; Deslocar (Shift+O): cópia paralela de uma parede a uma distância, como o Offset do Revit.
+- Paredes de outros pavimentos não se unem nem se movem juntas (mover ou esticar uma parede deixava
+  a de baixo ir junto).
+- Parede empilhada fora da face da parede de baixo: aviso no painel com o tamanho do degrau e o botão
+  "Alinhar com a parede de baixo"; ao desenhar pela face, o ponteiro encaixa nas faces da parede de baixo.
+- 3D com arestas finas onde a superfície vira (paredes, pisos, portas e janelas), sem linha nas emendas
+  de paredes unidas, entre camadas ou nos trechos de um arco; sobem com o pavimento no Explodir e são
+  cortadas no Cortar.
+- Rodapé abaixo de 1100 px com a dica em até duas linhas (a 768 px cortava em "por ja…"); no celular a
+  barra do 3D não fica mais sob o cubo de vista.
+- Barra superior com botões de toque de 44 px a 768 px: nada se cobre, as ferramentas vão para "…" e os
+  botões do app para ☰ (visto com a emulação de toque do Chrome). A 375 px com toque não foi visto: a
+  janela pequena do Chrome, coberta por outras, segura os cliques (be78138 desliga isso no Playwright).
 
-Achados da rodada anterior ainda abertos:
-- Modificar: porta ou janela sozinha não é levada (vai com a parede); cópia para outro pavimento;
-  matriz (várias cópias em série) e deslocamento paralelo (offset) ainda não.
-- Paredes empilhadas com faces desalinhadas (ex.: 20 cm sob 15 cm, ambas no eixo) deixam um degrau
-  visível na fachada. Falta: aviso e ação "Alinhar com a parede de baixo" (Chief Architect: Align With
-  Wall Above/Below), encaixe na face da parede de baixo ao desenhar, arestas finas no 3D. A linha que
-  apareceu na Casa Jardim vinha de uma parede de 20 cm (provável resto de teste meu), devolvida a 15 cm.
+Ainda abertos:
 - Caixa de corte com alças (Revit Section Box, Vectorworks Clip Cube), corte vertical a partir de uma
   linha na planta, elevações, ocultar/isolar temporário, raio-X, vistas salvas.
-- Barra superior em tela de toque (botões de 44 px), visto com a emulação de toque do Chrome: a 768 px
-  os botões da direita (comandos, atalhos, idioma, tema…) cobrem as vistas, e a 375 px Refazer fica sob
-  Comandos. Já acontecia antes das ferramentas de edição irem para o alto (os mesmos botões, sem elas,
-  não cabem); falta decidir quais saem para a paleta nessas larguras.
-- Duas folhas de porta que se cruzam (ao colocar uma porta perto de outra) não dão aviso.
-- Mudar o lado de abertura não tem atalho no próprio desenho (só painel e barra).
 
 ## Esperando reteste no navegador
 
@@ -324,24 +331,24 @@ Ferramentas de edição (valem para todos os elementos)
 - Selecionar por cerca (l.107): falta.
 - Selecionar semelhantes (l.107): falta.
 - Conjuntos de seleção salvos (l.107): falta.
-- Mover com valores digitados (l.108): parcial, existem arrastar, setas (5 cm, Alt 1 cm) e cota temporária.
-- Girar com valores digitados (l.108): parcial, existe a alça de girar.
-- Copiar (l.108): falta.
-- Espelhar (l.108): falta.
-- Escalar quando fizer sentido (l.108): falta.
-- Matriz linear (l.108): falta.
+- Mover com valores digitados (l.108): existe (Shift+M, ponto-base e distância digitada; setas e cota temporária).
+- Girar com valores digitados (l.108): existe (Shift+R com ângulo digitado, e a alça de girar).
+- Copiar (l.108): existe (Shift+C; Ctrl+C e Ctrl+V).
+- Espelhar (l.108): existe (Shift+X).
+- Escalar quando fizer sentido (l.108): existe (Shift+E).
+- Matriz linear (l.108): existe (depois de uma cópia, "3x" ou "/3").
 - Matriz polar (l.108): falta.
 - Matriz por caminho (l.108): falta.
 - Alinhar (l.109): parcial. Aberturas (alinhar, distribuir, centralizar entre as paredes ao lado) e paredes
   retas paralelas (alinhar com a primeira, distribuir com espaços iguais, 2026-10-25); falta alinhar
   cômodos e paredes a outros elementos (a um eixo, a uma face).
-- Deslocar, offset (l.109): falta.
+- Deslocar, offset (l.109): existe para paredes retas (Shift+O).
 - Aparar e estender (l.109): parcial. Canto (Shift+T) leva duas paredes até se encontrarem; falta aparar
   ou estender uma parede até outra sem mexer nesta (Trim/Extend Single Element do Revit).
-- Cortar pelo meio (l.109): falta.
+- Cortar pelo meio (l.109): existe para paredes (Dividir, Shift+S).
 - Editar contornos: arrastar vértices e lados, inserir e remover vértices, lado reto em arco (l.110): falta.
 - Alças e cotas temporárias clicáveis em cada elemento (l.111): parcial, paredes e aberturas; o arco não tem cota nem alça.
-- Copiar e colar entre pavimentos na mesma posição (l.112): falta.
+- Copiar e colar entre pavimentos na mesma posição (l.112): existe (Ctrl+C, trocar o pavimento, Ctrl+V).
 - Travar (l.113): falta.
 - Ocultar (l.113): parcial, por categoria no navegador.
 - Isolar (l.113): falta.
