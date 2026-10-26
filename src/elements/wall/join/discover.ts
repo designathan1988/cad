@@ -62,12 +62,20 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
   // Two ends that meet inside another wall's band, coming from either of its faces: not an L running
   // on through that wall's body, but two Ts against it, one on each face (a wall continued across
   // another, drawn to its axis from both sides). As an L they overlapped it, with no warning.
+  // A straight host must pass the point, reaching on past it by more than the two walls' thickness
+  // either way: a third wall ending 1 cm beyond an L's corner, inside it, made the L two Ts against
+  // that wall's end, and the L's inner corner was left open.
   const across = (pair: readonly [EndRef, EndRef]): boolean =>
     !internal(pair[0], pair[1]) &&
     valid.some((host) => {
       if (pair.some((r) => parentOf(r.wallId) === parentOf(host.id) || !insideBand(host, at(r), joint(host)))) return false;
       const n = wallNormal(host);
       const [a, b] = pair.map((r) => byId.get(r.wallId)!);
+      if (parentOf(host.id) === host.id) {
+        const s = stationOf(host, at(pair[0]));
+        const reach = Math.max(a!.thickness, b!.thickness);
+        if (s < reach || s > wallLength(host) - reach) return false;
+      }
       return !parallel(a!, host) && !parallel(b!, host) && dot(n, intoBody(a!, pair[0].end)) * dot(n, intoBody(b!, pair[1].end)) < 0;
     });
 
