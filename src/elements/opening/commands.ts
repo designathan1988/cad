@@ -7,7 +7,7 @@ import { type Doc, wallHeights } from '../../app/document';
 import type { Command } from '../../core/store';
 import { deriveGeometry, hostsIn } from '../../app/geometry';
 import { deriveOpenings, type HostInfo, type OpeningWarningKind, type PlacedOpening } from './derive';
-import type { AlignEdge, GroupSpacing, Opening, OpeningGroupId, OpeningId, PositionRule, RuleKind } from './schema';
+import type { AlignEdge, GroupSpacing, Opening, OpeningGroup, OpeningGroupId, OpeningId, PositionRule, RuleKind } from './schema';
 
 /** Why a new opening cannot go where it is aimed (it overlaps another, or does not fit), or null. */
 export function placementProblem(doc: Doc, opening: Opening): OpeningWarningKind | null {
@@ -242,11 +242,39 @@ export const distributeOpenings = (groupId: OpeningGroupId, ids: readonly Openin
     const list = doc.openings.filter((o) => want.has(o.id));
     if (list.length < 2 || list.some((o) => o.wallId !== list[0]!.wallId) || !doc.walls.some((w) => w.id === list[0]!.wallId)) return doc;
     const hosts = hostsIn(doc);
+    const host = hosts.get(list[0]!.wallId);
     const placed = deriveOpenings(doc.openings, hosts, doc.openingGroups).placed;
     const members = [...list].sort((a, b) => placed.get(a.id)!.start - placed.get(b.id)!.start).map((o) => o.id);
-    const openings = doc.openings.map((o) => (want.has(o.id) ? { ...o, rule: { kind: 'inGroup' as const, groupId } } : o));
-    const group = { id: groupId, wallId: list[0]!.wallId, members, spacing, ...stretchAround(hosts.get(list[0]!.wallId), members.map((id) => placed.get(id)!)) };
-    return settleGroups(doc, { ...doc, openings, openingGroups: [...doc.openingGroups.filter((g) => g.id !== groupId), group] });
+    const whole = { id: groupId, wallId: list[0]!.wallId, members, spacing, ...stretchAround(host, members.map((id) => placed.get(id)!)) };
+    const together = (groups: readonly OpeningGroup[]) => {
+      const groupOf = new Map(groups.flatMap((g) => g.members.map((id) => [id, g.id] as const)));
+      const openings = doc.openings.map((o) => (groupOf.has(o.id) ? { ...o, rule: { kind: 'inGroup' as const, groupId: groupOf.get(o.id)! } } : o));
+      const made = new Set(groups.map((g) => g.id));
+      return settleGroups(doc, { ...doc, openings, openingGroups: [...doc.openingGroups.filter((g) => !made.has(g.id)), ...groups] });
+    };
+    // Spread over the stretch they are in, the whole wall when no joint lies outside them all; kept when
+    // none lands on a joint.
+    const spread = together([whole]);
+    const after = deriveOpenings(spread.openings, hosts, spread.openingGroups).placed;
+    const onJoint = members.some((id) => {
+      const p = after.get(id);
+      return p !== undefined && [...(host?.joints?.values() ?? [])].some((j) => p.start < j.hi - 1e-9 && p.end > j.lo + 1e-9);
+    });
+    if (!onJoint) return spread;
+    // One would land on a joint (a T or an X between them): no single equal spacing skips it (ADR 0003),
+    // so one group for each stretch, spread in it. One alone in its stretch stays where it is.
+    const runs: OpeningId[][] = [[members[0]!]];
+    for (let i = 1; i < members.length; i++) {
+      const prev = placed.get(members[i - 1]!)!;
+      const next = placed.get(members[i]!)!;
+      const between = [...(host?.joints?.values() ?? [])].some((j) => j.lo >= prev.end - 1e-9 && j.hi <= next.start + 1e-9);
+      if (between) runs.push([members[i]!]);
+      else runs[runs.length - 1]!.push(members[i]!);
+    }
+    const groups = runs
+      .filter((r) => r.length >= 2)
+      .map((r, k) => ({ id: k === 0 ? groupId : `${groupId}-${k + 1}`, wallId: list[0]!.wallId, members: r, spacing, ...stretchAround(host, r.map((id) => placed.get(id)!)) }));
+    return groups.length > 0 ? together(groups) : spread;
   },
 });
 

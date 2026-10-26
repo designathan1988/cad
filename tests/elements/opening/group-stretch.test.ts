@@ -49,6 +49,37 @@ describe('a group distributed beside a joint', () => {
     });
   }
 
+  it('two left of the X and three right: spread over the wall one would land on it, so a group for each side', () => {
+    // Over the whole wall: (6 − 5 × 0.6) / 6 = 0.5 spaces put the third at 2.70 to 3.30, on the X.
+    const five = [
+      win('x', { kind: 'fromStart', distance: 0.2 }),
+      win('y', { kind: 'fromStart', distance: 0.9 }),
+      win('z', { kind: 'fromEnd', distance: 1.6 }),
+      win('v', { kind: 'fromEnd', distance: 0.9 }),
+      win('u', { kind: 'fromEnd', distance: 0.2 }),
+    ];
+    const d = distributeOpenings('g', ['x', 'y', 'z', 'v', 'u'], { kind: 'equal' }).apply(docOf([w, c], five));
+    expect(d.openingGroups.map((g) => [g.id, g.members, g.between])).toEqual([
+      ['g', ['x', 'y'], [null, 'c']],
+      ['g-2', ['z', 'v', 'u'], ['c', null]],
+    ]);
+    // Left: (2.90 − 1.20) / 3; right, from 3.10: (2.90 − 1.80) / 4 = 0.275.
+    near(startOf(d, 'x'), 1.7 / 3);
+    near(startOf(d, 'y'), (1.7 / 3) * 2 + 0.6);
+    near(startOf(d, 'z'), 3.375);
+    near(startOf(d, 'v'), 4.25);
+    near(startOf(d, 'u'), 5.125);
+    expect(clean(d)).toBe(true);
+  });
+
+  it('two left of the X and one right: over the wall the second would land on it (1.05 spaces), so the two spread on their side and the one stays', () => {
+    const three = [win('x', { kind: 'fromStart', distance: 0.2 }), win('y', { kind: 'fromStart', distance: 0.9 }), win('z', { kind: 'fromEnd', distance: 0.9 })];
+    const d = distributeOpenings('g', ['x', 'y', 'z'], { kind: 'equal' }).apply(docOf([w, c], three));
+    expect(d.openingGroups.map((g) => g.members)).toEqual([['x', 'y']]);
+    near(startOf(d, 'z'), 4.5);
+    expect(d.openings.find((o) => o.id === 'z')!.rule).toEqual({ kind: 'fromEnd', distance: 0.9 });
+  });
+
   it('right of the X: between the joint and the wall end, from 3.10', () => {
     const d = distributeOpenings('g', ['x', 'y', 'z'], { kind: 'equal' }).apply(docOf([w, c], right));
     expect(d.openingGroups[0]!.between).toEqual(['c', null]);
