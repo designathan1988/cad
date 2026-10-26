@@ -304,9 +304,14 @@ button.project-name:hover {
   background: var(--hover);
   color: var(--text);
 }
-.icon-btn:disabled {
+.icon-btn:disabled,
+.levels .icon-btn[aria-disabled='true'] {
   opacity: 0.4;
   cursor: default;
+}
+.levels .icon-btn[aria-disabled='true']:hover {
+  background: transparent;
+  color: var(--text-2);
 }
 .icon-btn[aria-pressed='true'] {
   background: var(--accent-soft);
@@ -460,13 +465,15 @@ button.project-name:hover {
   flex: 1;
 }
 
-/* The edit tools in the top bar (shell.ts): those that do not fit are folded into the More menu. */
+/* The edit tools in the top bar (shell.ts): those that do not fit are folded into the More menu, and the
+   right side's buttons into its own. */
 .edit-tools {
   display: flex;
   align-items: center;
   gap: var(--sp-half);
 }
-.edit-tools > [hidden] {
+.edit-tools > [hidden],
+.top .right > [hidden] {
   display: none;
 }
 
@@ -946,6 +953,9 @@ button.project-name:hover {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* The keys' column takes its widest (Ctrl+Shift+Z / Ctrl+Y): at 420 px the descriptions wrapped in
+     three and four lines beside it. */
+  width: min(var(--dialog-w-lg), calc(100vw - 2 * var(--sp-4)));
 }
 .help-dialog dl {
   min-height: 0;
@@ -1023,10 +1033,14 @@ button.project-name:hover {
   .level-select {
     width: calc(var(--level-w) * 0.79);
   }
-  /* Keyboard-only help leaves; language and theme are in the command palette, which stays. */
-  .top .needs-keyboard,
-  .top .in-palette {
+  /* Keyboard-only help leaves; language and theme fold into the top bar's menu when the row is full. */
+  .top .needs-keyboard {
     display: none;
+  }
+  /* The first row: the left side as wide as what it holds, the right one the rest (shell.ts: fitTop
+     folds the right side's buttons until they fit), not half each, which put Redo under Commands. */
+  .top .left {
+    flex: 0 1 auto;
   }
   .panel {
     top: auto;

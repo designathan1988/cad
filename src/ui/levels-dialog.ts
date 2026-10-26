@@ -42,7 +42,9 @@ export function showLevels(app: App): void {
       const del = el('button', { type: 'button', class: 'icon-btn' });
       del.innerHTML = icon('trash', 16);
       const blocker = deleteBlocker(doc, l.id);
-      del.disabled = blocker !== null;
+      // Dimmed but not disabled: a disabled button takes no pointer, so its tooltip, which says why it
+      // cannot delete, never showed on hover.
+      del.setAttribute('aria-disabled', String(blocker !== null));
       // Named by what it does; when it cannot, the reason is its description (and its tooltip).
       del.setAttribute('aria-label', t('levels.deleteNamed', { name: label }));
       const why = blocker === 'last' ? t('levels.cantDeleteLast') : blocker === 'walls' ? t('levels.cantDeleteWalls') : null;
@@ -56,6 +58,7 @@ export function showLevels(app: App): void {
       }
       del.dataset.focus = `del:${l.id}`;
       del.addEventListener('click', () => {
+        if (blocker !== null) return;
         app.store.dispatch(deleteLevel(l.id));
         if (app.ui.levelId === l.id) app.ui.levelId = app.store.get().levels[0]!.id;
         app.refresh();

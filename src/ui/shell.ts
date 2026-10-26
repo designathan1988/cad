@@ -51,14 +51,18 @@ export function buildShell(root: HTMLElement) {
   const right = el('div', { class: 'right' });
   const commands = iconButton('command');
   const shortcuts = iconButton('keyboard', 'icon-btn needs-keyboard');
-  const lang = el('button', { type: 'button', class: 'icon-btn text-btn in-palette' });
-  const theme = iconButton('moon', 'icon-btn in-palette');
+  const lang = el('button', { type: 'button', class: 'icon-btn text-btn' });
+  const theme = iconButton('moon');
   const newFile = iconButton('fileNew');
   const open = iconButton('folder');
   const save = iconButton('download');
   const fileInput = el('input', { type: 'file', accept: '.json,application/json', hidden: '' });
   const panelToggle = iconButton('panel');
-  right.append(commands, shortcuts, lang, theme, newFile, open, save, panelToggle, fileInput);
+  // What the right side has no room for (fitTop, below); commands and the panel always stay.
+  const moreApp = iconButton('menu');
+  moreApp.setAttribute('aria-haspopup', 'menu');
+  moreApp.hidden = true;
+  right.append(commands, shortcuts, lang, theme, newFile, open, save, moreApp, panelToggle, fileInput);
   top.append(left, center, right);
 
   // The side bar holds what draws; what changes or measures the drawing is in the top bar (below).
@@ -167,44 +171,88 @@ export function buildShell(root: HTMLElement) {
   helpBack.hidden = true;
   root.append(top, tools, viewport, panel, foot, helpBack);
 
+  // The footer's tip comes first: the key hints that leave it no room go, the first ones first (Esc,
+  // last, is the one most needed). At 1280 px the wall tool's tip was cut after a few words. The keys
+  // are rebuilt on every render: measured only when the texts or the footer's width change.
+  let footKey = '';
+  let footHidden = 0;
+  const fitFoot = (force = false) => {
+    const items = [...keys.children] as HTMLElement[];
+    const key = `${instr.textContent}|${keys.textContent}|${measureLabel.textContent}`;
+    if (force || key !== footKey) {
+      footKey = key;
+      for (const k of items) k.hidden = false;
+      footHidden = 0;
+      while (footHidden < items.length && instr.scrollWidth > instr.clientWidth + 1) items[footHidden++]!.hidden = true;
+    } else items.forEach((k, i) => (k.hidden = i < footHidden));
+  };
+  new ResizeObserver(() => fitFoot(true)).observe(foot);
+
   /** The More button pressed while the tool in use is one of those folded into it. */
   const syncMore = () => moreTools.setAttribute('aria-pressed', String(editItems.some((x) => x.hidden && x.getAttribute('aria-pressed') === 'true')));
-  // The edit tools keep to the room the top bar has: from the last, those that do not fit go to the
-  // More menu (a tool bar's overflow, as Revit folds its ribbon's panels). The level and the views stay
-  // centred while both sides fit beside them; when they do not, the left side takes what the right one
-  // leaves. On a phone the tools share the second row with the level and the views (styles.css).
+  // The right side's buttons that fold into its menu, the first to go first: the keys' help, language
+  // and theme, then the project's files. Each one is also in the command palette.
+  const appItems: HTMLButtonElement[] = [shortcuts, lang, theme, newFile, open, save];
+  /** What is folded at each step: an app button alone (one the window's width has not already taken
+   * away: the keys' help on a phone); an edit tool from the last, with the line before it. */
+  const appSteps = () => appItems.filter((x) => x.getClientRects().length > 0).map((x) => [x]);
+  const editSteps: HTMLElement[][] = [];
+  for (let i = editItems.length - 1; i >= 0; i--) {
+    // A line with nothing after it goes with what it parted.
+    editSteps.push(editItems[i - 1]?.classList.contains('sep') ? [editItems[i]!, editItems[--i]!] : [editItems[i]!]);
+  }
+  // The top bar keeps to the room it has: what does not fit goes, step by step, to a menu (a tool bar's
+  // overflow, as Revit folds its ribbon's panels) — the right side's buttons to its own (☰), then the
+  // edit tools, from the last, to More (…). The level and the views stay centred while both sides fit
+  // beside them; when they do not, the left side takes what the right one leaves. On a phone the tools
+  // share the second row with the level and the views (styles.css), and each row folds on its own.
   const phone = matchMedia('(max-width: 600px)');
-  const overflowing = () => {
-    if (!phone.matches) return top.scrollWidth > top.clientWidth + 1;
+  /** A box's buttons past either of its edges: the right side, laid out from its end, spills to the left,
+   * over the views, where no scroll width shows it (the 44 px touch buttons at 768 px, before). */
+  const spills = (box: HTMLElement) => {
+    const b = box.getBoundingClientRect();
+    return [...box.children].some((c) => {
+      const r = c.getBoundingClientRect();
+      return r.width > 0 && (r.left < b.left - 1 || r.right > b.right + 1);
+    });
+  };
+  const firstRowOver = () => top.scrollWidth > top.clientWidth + 1 || spills(left) || spills(right);
+  const editOver = () => {
     // Wrapped below the level and the views (centred on one row, they are of other heights), or past the edge.
     const e = editTools.getBoundingClientRect();
     return e.top >= center.getBoundingClientRect().bottom || e.right > top.getBoundingClientRect().right;
+  };
+  const fold = (steps: readonly HTMLElement[][], over: () => boolean) => {
+    for (const step of steps) {
+      if (!over()) return;
+      for (const x of step) x.hidden = true;
+      moreApp.hidden = !appItems.some((x) => x.hidden);
+      moreTools.hidden = !editItems.some((x) => x.hidden);
+    }
   };
   const fitTop = () => {
     // On a phone the tools are the bar's own item, for its second row; the first row stays as it was.
     if (phone.matches && editTools.parentElement !== top) right.before(editTools);
     if (!phone.matches && editTools.parentElement !== left) left.append(editTools);
-    for (const x of editItems) x.hidden = false;
-    moreTools.hidden = true;
+    for (const x of [...appItems, ...editItems]) x.hidden = false;
+    moreApp.hidden = moreTools.hidden = true;
     left.style.minWidth = right.style.minWidth = phone.matches ? '' : 'max-content';
-    for (let i = editItems.length - 1; i >= 0 && overflowing(); i--) {
-      editItems[i]!.hidden = true;
-      // A line with nothing after it goes with what it parted.
-      if (editItems[i - 1]?.classList.contains('sep')) editItems[--i]!.hidden = true;
-      moreTools.hidden = false;
-    }
-    // Too narrow with every tool folded: the project's name gives way, as before the tools came here.
-    if (overflowing()) left.style.minWidth = right.style.minWidth = '';
+    if (phone.matches) {
+      fold(appSteps(), firstRowOver);
+      fold(editSteps, editOver);
+    } else fold([...appSteps(), ...editSteps], firstRowOver);
+    // Too narrow with everything folded: the project's name gives way, as before the tools came here.
+    if (firstRowOver()) left.style.minWidth = right.style.minWidth = '';
     syncMore();
   };
   new ResizeObserver(fitTop).observe(top);
   phone.addEventListener('change', fitTop);
   void document.fonts.ready.then(fitTop);
-  /** The folded tools as menu items: each one's icon, its tip's name and key; choosing it clicks it. */
-  const foldedTools = (): MenuItem[] => {
+  /** The folded buttons of one menu as its items: each one's icon, its tip's name and key; choosing it clicks it. */
+  const folded = (from: readonly HTMLElement[], icons: (b: HTMLButtonElement) => IconName): MenuItem[] => {
     const items: MenuItem[] = [];
     let line = false;
-    for (const x of editItems) {
+    for (const x of from) {
       if (!x.hidden) continue;
       if (x.classList.contains('sep')) {
         line = items.length > 0;
@@ -216,16 +264,20 @@ export function buildShell(root: HTMLElement) {
       const [, label, keys] = /^(.*?)(?: \(([^)]+)\))?$/.exec(b.getAttribute('aria-label') ?? '')!;
       // Dimmed on the bar (nothing selected that it takes), not to be chosen in the menu, as in the palette.
       const off = b.disabled || b.getAttribute('aria-disabled') === 'true';
-      items.push({ label: label!, ...(keys ? { keys } : {}), icon: editIcons.get(b)!, disabled: off, separated: line, run: () => b.click() });
+      items.push({ label: label!, ...(keys ? { keys } : {}), icon: icons(b), disabled: off, separated: line, run: () => b.click() });
       line = false;
     }
     return items;
   };
+  const foldedTools = () => folded(editItems, (b) => editIcons.get(b)!);
+  // The language button shows its code, not an icon; the theme's icon is the one it shows now (app.ts).
+  const appIcons = new Map<HTMLButtonElement, IconName>([[shortcuts, 'keyboard'], [lang, 'language'], [newFile, 'fileNew'], [open, 'folder'], [save, 'download']]);
+  const foldedApp = () => folded(appItems, (b) => appIcons.get(b) ?? ((b.dataset.icon as IconName | undefined) ?? 'moon'));
 
   const parts = {
     homeBtn, projectName, undo, redo, level, newFile, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
     panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, modifyTools, toolSplit, toolCorner, dims, browser, sidebar,
-    emptyHint, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, editTools, moreTools, fitTop, syncMore, foldedTools,
+    emptyHint, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, editTools, moreTools, fitTop, syncMore, foldedTools, moreApp, foldedApp, fitFoot,
   };
 
   const relabel = () => {
@@ -287,6 +339,7 @@ export function buildShell(root: HTMLElement) {
     labelled(cut, 'view3d.cut', 'view3d.cutTip');
     tip(snapBtn, 'foot.snap');
     tip(moreTools, 'top.moreTools');
+    tip(moreApp, 'top.moreOptions');
     editTools.setAttribute('aria-label', t('aria.editTools'));
     emptyHint.textContent = t('empty.hint');
     tools.setAttribute('aria-label', t('aria.tools'));

@@ -88,6 +88,8 @@ export interface UiState {
   levelId: string;
   theme: 'light' | 'dark';
   panelOpen: boolean;
+  /** On a narrow screen, the panel shown by its button while it would wait hidden (renderFrame). */
+  panelPeek: boolean;
   browserOpen: boolean;
   /** Categories hidden from view by the project browser (the document keeps them). */
   hidden: Set<Category>;
@@ -158,6 +160,7 @@ export class App {
       levelId: startLevel(doc, prefs.levelId),
       theme: prefs.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
       panelOpen: prefs.panelOpen ?? true,
+      panelPeek: false,
       browserOpen: prefs.browserOpen ?? false,
       hidden: new Set(),
       snaps: true,
@@ -743,13 +746,18 @@ export class App {
       this.ui.info = t('hint.splitNoWall');
       return this.renderChrome();
     }
-    const r = splitWall(doc, wallId, point, newId('wall'));
+    const id = newId('wall');
+    const r = splitWall(doc, wallId, point, id);
     if (typeof r === 'string') {
       this.ui.error = t(r === 'throughOpening' ? 'hint.splitThroughOpening' : 'hint.splitTooShort');
       return this.renderChrome();
     }
     this.ui.error = null;
     this.store.dispatch({ label: 'cmd.split', apply: () => r });
+    // The cut leaves no mark on the plan (the two parts join where it was): said, or it looked as if
+    // the click had done nothing.
+    this.ui.info = t('hint.splitDone', { n: wallNumber(r, wallId) ?? '', m: wallNumber(r, id) ?? '' });
+    this.renderChrome();
   }
 
   /** The Corner tool: the first wall clicked, then the second, met at the corner of their lines. */
@@ -773,6 +781,8 @@ export class App {
     }
     this.ui.error = null;
     this.store.dispatch(setWalls(walls, 'cmd.corner'));
+    this.ui.info = t('hint.cornerDone', { a: wallNumber(doc, first) ?? '', b: wallNumber(doc, wallId) ?? '' });
+    this.renderChrome();
   }
 
   /** Two walls in line, end to end, of one type, joined into one (tools/split.ts). */
@@ -787,6 +797,8 @@ export class App {
     }
     this.ui.selection = new Set([ids[0]!]);
     this.store.dispatch({ label: 'cmd.merge', apply: () => next });
+    this.ui.info = t('hint.mergeDone', { n: wallNumber(next, ids[0]!) ?? '' });
+    this.renderChrome();
   }
 
   /** Whether the selection is two walls that can be joined into one. */
@@ -1348,7 +1360,10 @@ export class App {
     const narrow = matchMedia('(max-width: 900px)').matches;
     // On narrow screens the project browser and the panel are both drawers over the drawing: while the
     // browser is open the panel waits, so the drawing keeps the most room.
-    shell.panel.hidden = !ui.panelOpen || (narrow && ((ui.selection.size === 0 && ui.tool === 'select') || ui.browserOpen));
+    const waits = narrow && ((ui.selection.size === 0 && ui.tool === 'select') || ui.browserOpen);
+    // Shown by its button while it waits, until it has something to show: then the rule above is back.
+    if (!waits) ui.panelPeek = false;
+    shell.panel.hidden = !ui.panelOpen || (waits && !ui.panelPeek);
     shell.planCanvas.classList.toggle('hidden', !plan);
     shell.glCanvas.classList.toggle('hidden', plan);
     this.cube.root.hidden = plan;
@@ -1807,8 +1822,14 @@ export class App {
     if (focused >= 0) shell.browser.querySelectorAll('button')[focused]?.focus();
   }
 
-  togglePanel(open = !this.ui.panelOpen): void {
+  /**
+   * The button toggles what is on screen. On a narrow screen the panel waits hidden while it has
+   * nothing to show: the button looked pressed then, and a click only switched a preference that
+   * changed nothing; now it shows the panel.
+   */
+  togglePanel(open = this.shell.panel.hidden): void {
     this.ui.panelOpen = open;
+    this.ui.panelPeek = open;
     savePrefs({ panelOpen: open });
     this.render();
   }
@@ -1816,7 +1837,7 @@ export class App {
   private renderChrome(): void {
     const { ui, shell, store } = this;
     const doc = store.get();
-    shell.panelToggle.setAttribute('aria-pressed', String(ui.panelOpen));
+    shell.panelToggle.setAttribute('aria-pressed', String(!shell.panel.hidden));
     const projectName = doc.name || t('app.untitled');
     // Another name, another width: the top bar's edit tools fitted again.
     if (shell.projectName.textContent !== projectName) {
@@ -1971,13 +1992,22 @@ export class App {
         ? [
             keyHint('Enter', t('key.finish')),
             ...(w.kind === 'drawing' && w.count > 0 ? [keyHint('⌫', t('key.undoSegment'))] : []),
-            keyHint('A', t('key.arc')),
+            // What the key does now: with the arc on, it goes back to straight walls.
+            keyHint('A', t(arc || w.kind === 'bend' ? 'key.arcOff' : 'key.arc')),
             keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')),
             keyHint('Shift', t('key.straight')),
             ...altGuide,
             keyHint('Esc', t('key.finish')),
           ]
-        : [keyHint('A', t('key.arc')), keyHint('Q', t('key.rect')), keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')), ...altGuide, keyHint('S', t('key.snapOff')), keyHint('Esc', t('key.exit'))]
+        : [
+            // Each key says what it does now: with the rectangle on, Q went on saying "rectangle".
+            keyHint('A', t(arc ? 'key.arcOff' : 'key.arc')),
+            keyHint('Q', t(rect ? 'key.rectOff' : 'key.rect')),
+            keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')),
+            ...altGuide,
+            keyHint('S', t('key.snapOff')),
+            keyHint('Esc', t('key.exit')),
+          ]
       : ui.selection.size > 0
         ? [
             keyHint('Shift', t('key.addRemove')),
@@ -1987,7 +2017,10 @@ export class App {
             keyHint('F', t('key.frame')),
             keyHint('Esc', t('key.clear')),
           ]
-        : [keyHint('Ctrl K', t('key.commands')), keyHint('Ctrl A', t('key.selectAll')), keyHint('?', t('key.shortcuts'))];
+        : ui.view === '3d'
+          ? // In 3D a left drag selects by window, as in plan: how to turn the view was nowhere on screen.
+            [keyHint(t('key.rightDrag'), t('key.orbit')), keyHint(t('key.middleDrag'), t('key.pan')), keyHint('Ctrl K', t('key.commands')), keyHint('?', t('key.shortcuts'))]
+          : [keyHint('Ctrl K', t('key.commands')), keyHint('Ctrl A', t('key.selectAll')), keyHint('?', t('key.shortcuts'))];
     shell.keys.replaceChildren(...keys);
     const lengthMode = drawing && w.kind === 'drawing';
     // Where a point is asked for: the wall's start, a floor's corners, a room's point.
@@ -2025,6 +2058,7 @@ export class App {
     shell.toolWall.classList.toggle('arc-mode', drawing && arc);
     shell.toolWall.classList.toggle('rect-mode', drawing && rect);
     shell.coords.textContent = ui.cursor ? `x ${num(ui.cursor.x)} m  y ${num(ui.cursor.y)} m` : '';
+    shell.fitFoot();
     this.placeFloatBar();
   }
 

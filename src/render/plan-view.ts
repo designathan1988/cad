@@ -376,7 +376,7 @@ export class PlanView {
     if (o.axisLine) this.drawLine(o.axisLine.point, o.axisLine.dir, color('--snap'), 1.4, [12, 4, 2, 4]);
     for (const r of o.refLines ?? []) this.drawRefLine(r, color('--ref-line'));
     if (o.ray) this.dashed(o.ray.start, o.ray.end, color('--snap'));
-    this.drawRoomTags(o.roomLabels, color, this.dimValueBoxes(o.dims ?? []));
+    this.drawRoomTags(o.roomLabels, color, this.dimValueBoxes(o.dims ?? []), o.dims ?? []);
     if (o.draft && o.draft.length > 0) {
       ctx.save();
       ctx.strokeStyle = color('--wall-sel');
@@ -502,7 +502,12 @@ export class PlanView {
     return sized.map((s, i) => ({ x: at[i]!.x - s.w / 2, y: at[i]!.y - s.h / 2, w: s.w, h: s.h }));
   }
 
-  private drawRoomTags(labels: PlanOverlay['roomLabels'], color: (name: string) => string, avoid: readonly { x: number; y: number; w: number; h: number }[] = []): void {
+  private drawRoomTags(
+    labels: PlanOverlay['roomLabels'],
+    color: (name: string) => string,
+    avoid: readonly { x: number; y: number; w: number; h: number }[] = [],
+    dims: readonly DimMark[] = [],
+  ): void {
     const { ctx } = this;
     const nameFont = this.font('600', '--fs-sm');
     const areaFont = this.font('400', '--fs-sm');
@@ -514,10 +519,20 @@ export class PlanView {
       return { x: p.x, y: p.y, width, name: l.name, short: l.short, area: l.area, warn: l.warn };
     });
     const measure = (text: string) => this.textWidth(text, nameFont);
-    const tags = layoutRoomTags(inputs, measure, this.size, avoid);
+    // The dimensions are drawn over the tags: each tag steps aside from their lines (room-tags.ts).
+    const lines = dims.flatMap((d) => {
+      const l = this.dimLine(d);
+      return [
+        { a: l.a, b: l.b },
+        { a: l.fromA, b: l.a },
+        { a: l.fromB, b: l.b },
+      ];
+    });
+    const tags = layoutRoomTags(inputs, measure, this.size, avoid, lines);
     this.labelBoxes = tags.map((tag) => tag.box);
     for (const tag of tags) {
-      const warn = inputs.find((i) => i.x === tag.x && i.y === tag.y)?.warn ?? false;
+      // By its input: a tag moved off a dimension no longer stands at its room's point.
+      const warn = inputs[tag.index]?.warn ?? false;
       ctx.fillStyle = color('--canvas');
       ctx.globalAlpha = 0.92;
       ctx.fillRect(tag.box.x, tag.box.y, tag.box.w, tag.box.h);

@@ -191,15 +191,21 @@ export function snap(input: SnapInput): Snap {
   }
 
   // Square to a wall from the last point (Revit's SP): the foot of the point on the wall's line, when
-  // the cursor is near it.
+  // the cursor is near it; the nearest such foot, and on a face too (the tape). The first wall in the
+  // list won before: measuring a room from its face, the tape ended on the far wall's axis, 7,5 cm
+  // past its face, since the axis came first and lay within reach.
   if (from) {
-    for (const { s, i } of straight) {
+    let near: { foot: Point2; d: number; i: number } | null = null;
+    for (const [i, s] of input.segments.entries()) {
+      if (s.bulge || distance(s.start, s.end) === 0) continue;
       const u = normalize(sub(s.end, s.start));
       const foot = add(s.start, scale(u, dot(sub(from, s.start), u)));
       const t = dot(sub(foot, s.start), u);
       if (t <= 0 || t >= distance(s.start, s.end) || distance(foot, from) < MIN_SNAP_RUN) continue;
-      if (distance(foot, cursor) <= r) return { point: foot, kind: 'perpendicular', ...of(i) };
+      const d = distance(foot, cursor);
+      if (d <= r && (near === null || d < near.d)) near = { foot, d, i };
     }
+    if (near) return { point: near.foot, kind: 'perpendicular', ...of(near.i) };
   }
 
   // On the body of a wall: before alignment, which every wall's own ends would otherwise always win.

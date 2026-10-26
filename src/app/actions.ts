@@ -50,10 +50,11 @@ export function appActions(app: App, open: Openers): Action[] {
   return [
     make('tool.select', 'tool.select', tools, () => app.setTool('select'), { keys: 'V' }),
     make('tool.wall', 'tool.wall', tools, () => app.setTool('wall'), { keys: 'W' }),
+    // Q in the wall tool, as A is for the arc: the palette showed no key for it.
     make('tool.rectWall', 'pal.rectWall', tools, () => {
       app.setTool('wall');
       app.wallEvent({ kind: 'rect' });
-    }),
+    }, { keys: 'W, Q' }),
     make('tool.arcWall', 'pal.arcWall', tools, () => {
       app.setTool('wall');
       app.wallEvent({ kind: 'arc' });

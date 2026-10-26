@@ -26,6 +26,7 @@ import { GUIDE_PX, guideBaseAt } from '../tools/guide-tool';
 import type { LevelsShown } from './view-3d';
 import type { ModifyKind } from '../tools/modify-tool';
 import { cross, sub } from '../core/vector';
+import { outerSides } from '../elements/wall/geometry/seams';
 
 /** How near (screen pixels) the pointer must come to a wall, a door or a window to take it. */
 const PICK_PX = 6;
@@ -135,6 +136,17 @@ export function wireInput(app: App): void {
     return hit ? { p: hit.p, mpp: app.scene.metresPerPixel(hit.p, hit.height) } : worldAt(e);
   };
 
+  // The walls' faces on the level, for the tape: the outline of their pieces, once per geometry. Every
+  // piece's side was one before, and the line between a wall's plaster and its core caught the tape
+  // first (a room of 4,35 m measured 4,38 m, core to core).
+  let faceCache: { geometry: typeof app.geometry; levelId: string; faces: { start: Point2; end: Point2; face: true }[] } | null = null;
+  const levelFaces = () => {
+    if (!faceCache || faceCache.geometry !== app.geometry || faceCache.levelId !== ui.levelId) {
+      const polygons = [...app.geometry.solids.values()].filter((s) => s.wall.levelId === ui.levelId).flatMap((s) => s.pieces.map((p) => p.polygon));
+      faceCache = { geometry: app.geometry, levelId: ui.levelId, faces: outerSides(polygons).map((s) => ({ start: s.a, end: s.b, face: true as const })) };
+    }
+    return faceCache.faces;
+  };
   /** Half a wall's thickness: its ends snap from anywhere on its body near them (snap.ts: reach). */
   const halfOf = (id: string) => (app.geometry.solids.get(id)?.layers.reduce((t, l) => t + l.thickness, 0) ?? 0) / 2;
   const snapped = (e: PointerEvent | MouseEvent) => {
@@ -148,12 +160,7 @@ export function wireInput(app: App): void {
     // from wall to wall, not from axis to axis.
     const tape = ui.tool === 'measure' && ui.measure.kind === 'from' ? ui.measure.a : null;
     const modifyFrom = ui.tool === 'modify' && ui.modify && ui.modify.state.step !== 'base' ? ui.modify.state.base : null;
-    const faces =
-      ui.tool === 'measure'
-        ? [...app.geometry.solids.values()]
-            .filter((s) => s.wall.levelId === ui.levelId)
-            .flatMap((s) => s.pieces.flatMap((p) => p.polygon.map((a, i) => ({ start: a, end: p.polygon[(i + 1) % p.polygon.length]!, face: true }))))
-        : [];
+    const faces = ui.tool === 'measure' ? levelFaces() : [];
     // The level below's walls too, without their numbers (those are the other level's): drawing an
     // upper floor snaps onto the walls it stands on.
     const below = ui.hidden.has('walls') ? null : app.levelBelow();
@@ -175,6 +182,16 @@ export function wireInput(app: App): void {
       orthogonal: shift,
       guides: app.levelGuides(),
     });
+  };
+
+  /**
+   * The Split tool's point: only a snap on a wall's body or its middle. An alignment or an extension
+   * names the wall it comes from, away from the point: in the void, aligned with a wall's end, the
+   * click went to that wall ("too near an end"), and the guide promised a cut where there is no wall.
+   */
+  const splitSnap = (e: PointerEvent | MouseEvent) => {
+    const s = snapped(e);
+    return s && (s.kind === 'onWall' || s.kind === 'midpoint') ? s : null;
   };
 
   /** The element under the pointer: an opening before the wall that hosts it. */
@@ -247,7 +264,7 @@ export function wireInput(app: App): void {
     }
     if (ui.tool === 'split') {
       // Where the cut would go: on a wall's body or its middle, named.
-      ui.snap = snapped(e);
+      ui.snap = splitSnap(e);
       return app.render();
     }
     if (ui.tool === 'corner') {
@@ -385,7 +402,7 @@ export function wireInput(app: App): void {
       return;
     }
     if (ui.tool === 'split') {
-      const s = snapped(e);
+      const s = splitSnap(e);
       const at = aimAt3d(e);
       if (at) app.splitAt(s?.point ?? at.p, s?.wallId ?? (ui.view === 'plan' ? (wallAt(app.visibleGeometry(), at.p, undefined, PICK_PX / app.plan.scale) ?? undefined) : undefined));
       return;
@@ -475,6 +492,11 @@ export function wireInput(app: App): void {
   shell.moreTools.addEventListener('click', () => {
     const r = shell.moreTools.getBoundingClientRect();
     showMenu(shell.foldedTools(), { x: r.left, y: r.bottom + 4 }, t('top.moreTools'));
+  });
+  // The right side's buttons it had no room for (language, theme, files), under its menu.
+  shell.moreApp.addEventListener('click', () => {
+    const r = shell.moreApp.getBoundingClientRect();
+    showMenu(shell.foldedApp(), { x: r.right, y: r.bottom + 4 }, t('top.moreOptions'));
   });
   shell.snapBtn.addEventListener('click', () => app.toggleSnaps());
   for (const [mode, b] of Object.entries(shell.levelsShown)) b.addEventListener('click', () => app.setView3D({ levels: mode as LevelsShown }));

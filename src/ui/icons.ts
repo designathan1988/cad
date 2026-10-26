@@ -53,6 +53,9 @@ const paths = {
   split: 'M3 12h7M14 12h7M12 4v16M9 7l3-3 3 3M9 17l3 3 3-3',
   corner: 'M5 20V8M5 8h14M3 4l4 4M5 8 9 4',
   merge: 'M3 12h18M8 8l4 4-4 4M16 8l-4 4 4 4',
+  // The top bar's own overflow (shell.ts): three lines, apart from the edit tools' three dots.
+  menu: 'M4 6h16M4 12h16M4 18h16',
+  language: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c-3 3.5-3 14.5 0 18M12 3c3 3.5 3 14.5 0 18',
   more: 'M4 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0M11 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0M18 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0',
   height: 'M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4',
   raise: 'M4 20h16M12 16V5M8 9l4-4 4 4',
