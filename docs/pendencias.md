@@ -268,8 +268,10 @@ Quarto 1); arco com cotas de corda e de raio, alça de curvatura e raio editado 
 - Resolvido em 2026-10-25: faces de corte no 3D (faces.ts).
 - Resolvido em 2026-10-25: L entre tipos diferentes em butt camada por camada (wall-joins-spec.md, §7.1 e
   entrega 6): o reboco interno e o núcleo não aparecem mais na quina de fora.
-- Falta: o mesmo butt camada por camada quando uma das paredes é o segmento de um arco, e na passagem
-  de um nó de 3 ou 4 pontas. Ali o butt ainda é como T (a parede que passa vai inteira até a face
+- Resolvido em 2026-10-26: o butt camada por camada também quando o arco encosta numa parede reta que
+  passa (o reboco interno e o núcleo da reta não aparecem mais na quina de fora). Falta: quando é o arco
+  que passa (a reta é dividida pelos trechos dele, spillOverArc, e segue em T), e na passagem de um nó
+  de 3 ou 4 pontas. Ali o butt ainda é como T (a parede que passa vai inteira até a face
   externa da outra), porque as cadeias dos arcos (footprint.ts) e os nós (node.ts, `alone`) reconhecem
   a parede que encosta por ter cortes por camada.
 - Resolvido em 2026-10-26 (44527ab): junções de várias paredes num ponto por setores (wall-joins-spec.md,

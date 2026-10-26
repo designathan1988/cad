@@ -6,7 +6,7 @@ import { AREA_EPSILON, POINT_TOLERANCE } from '../../../core/tolerance';
 import { add, distance, dot, intersectLines, type Point2, scale, sub } from '../../../core/vector';
 import { resolveCorner } from '../join/cut-l';
 import { type AbutmentResult, resolveAbutment } from '../join/cut-t';
-import { deriveJoins } from '../join/discover';
+import { deriveJoins, goesThrough } from '../join/discover';
 import { onLine } from '../join/junctions';
 import { resolveNode } from '../join/node';
 import { resolveSectors, type SectorArm } from '../join/sectors';
@@ -113,8 +113,16 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     const { ends: [ra, rb], node } = corner;
     const reachA = arcReach(ra, rb);
     const reachB = arcReach(rb, ra);
-    // Two straight walls butt layer by layer; with an arc's segment, the T butt its chain relies on.
+    // Two straight walls butt layer by layer, and so does an arc's end against a straight wall that goes
+    // through: the earlier segments of the arc then carry their T against it as before (arcStems). Where
+    // the arc goes through, its chain splits the straight wall by its segments (spillOverArc), which
+    // takes the T butt. As a T, a straight wall's inner plaster and core showed on the corner's outside.
     const straight = !chains.has(parentOf(ra.wallId)) && !chains.has(parentOf(rb.wallId));
+    const aArc = chains.has(parentOf(ra.wallId));
+    const bArc = chains.has(parentOf(rb.wallId));
+    const aGoesThrough = goesThrough(byId.get(ra.wallId)!, byId.get(rb.wallId)!);
+    const arcAbuts = aArc !== bArc && (aArc ? !aGoesThrough : aGoesThrough);
+    const layered = straight || arcAbuts;
     // The user's choice at either end (EndJoin), for two straight walls: a miter, who goes through, or
     // whose end is squared off (it goes through; chosen at both ends, the first wall's).
     const ca = choice.get(keyOf(ra));
@@ -138,7 +146,7 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
       rb.end,
       node,
       { ...(reachA !== undefined ? { a: reachA } : {}), ...(reachB !== undefined ? { b: reachB } : {}) },
-      straight,
+      layered,
       force,
     );
     if (result.a) endCuts.set(keyOf(ra), result.a);
@@ -147,7 +155,8 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     // An arc's end segment abutting in a butt notches the other wall only up to its joint with the next
     // segment, a radial plane, as in a T (the next segments carry their own): bounded square at its
     // chord's end, a sliver of the other wall's finish was left un-notched.
-    const abutsArc = (r: EndRef, cut: EndCut | null) => !result.warning && cut?.layerCuts && chains.has(parentOf(r.wallId));
+    // (Layer by layer, every layer is already cut where it meets the other's: no T notches.)
+    const abutsArc = (r: EndRef, cut: EndCut | null) => !layered && !result.warning && cut?.layerCuts && chains.has(parentOf(r.wallId));
     if (abutsArc(ra, result.a) || abutsArc(rb, result.b)) {
       const [arc, other] = abutsArc(ra, result.a) ? [ra, rb] : [rb, ra];
       const chain = chains.get(parentOf(arc.wallId))!;
