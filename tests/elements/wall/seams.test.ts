@@ -73,6 +73,14 @@ describe('seams of real walls', () => {
     }
   });
 
+  it('two walls in line, the second drawn the other way: no line across the joint (its finish faces swap sides)', () => {
+    // b's finish1 lies where a's finish2 does: the same plaster, the same kind of layer.
+    const d: Doc = { ...newDocument(), walls: [wall('a', [0, 0], [4, 0], 'wt_masonry15'), wall('b', [8, 0], [4, 0], 'wt_masonry15')] };
+    const g = deriveGeometry(d);
+    const across = [...g.solids.values()].flatMap((s) => s.seams).filter((s) => Math.abs(s.a.x - s.b.x) < 1e-9);
+    expect(across).toEqual([]);
+  });
+
   it('the solid knows its layers, for their colours', () => {
     const d: Doc = { ...newDocument(), walls: [wall('a', [0, 0], [4, 0], 'wt_masonry15')] };
     const s = deriveGeometry(d).solids.get('a')!;

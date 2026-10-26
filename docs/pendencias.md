@@ -156,7 +156,9 @@ anexo desenhado na Casa Jardim com gestos imprecisos), corrigidos e vistos no na
   motivo ao passar o mouse; atalhos mais largos; "Próxima porta/janela" com o texto certo; W, Q na paleta.
 
 Achados desta rodada ainda abertos (os cinco primeiros foram resolvidos na quinta rodada, abaixo):
-- A passagem entre uma parede desenhada no sentido horário e a vizinha mostra a linha entre os acabamentos.
+- Resolvido em 2026-10-26: a passagem entre uma parede desenhada no sentido contrário e a vizinha mostrava
+  uma linha atravessando os acabamentos (o acabamento 1 de uma encontrava o 2 da outra, o mesmo reboco). O
+  acabamento é um só tipo de camada nas duas faces; visto no navegador no topo da divisa Sala/Garagem.
 - Não verificado: a barra superior com emulação de toque (botões de 44 px).
 
 Quinta rodada (2026-10-25, Chrome visível pelo Playwright, 1920×1080 e 390×844; a Casa Jardim com

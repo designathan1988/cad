@@ -135,7 +135,10 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
       .filter((w) => w.levelId === levelId && plan.get(w.id) === 'cut')
       .flatMap((w) => {
         const layers = types.get(w.wallTypeId)?.layers ?? [];
-        return (planPieces.get(w.id) ?? []).map((p) => ({ wallId: w.id, polygon: p.polygon, key: `${layers[p.layerIndex]?.function}|${layers[p.layerIndex]?.materialId}` }));
+        // A finish is one kind of layer on either face: a wall drawn the other way from its neighbour in
+        // line has its finish1 where the neighbour's finish2 is, the same plaster, and no line between.
+        const kind = (k: number) => (layers[k]?.function === 'finish2' ? 'finish1' : layers[k]?.function);
+        return (planPieces.get(w.id) ?? []).map((p) => ({ wallId: w.id, polygon: p.polygon, key: `${kind(p.layerIndex)}|${layers[p.layerIndex]?.materialId}` }));
       });
     for (const [id, s] of layerSeams(list)) seams.set(id, s);
   }
