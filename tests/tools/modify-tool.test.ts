@@ -71,3 +71,32 @@ describe('mirror', () => {
     expect(p.y).toBeCloseTo(-3, 12);
   });
 });
+
+describe('offset', () => {
+  // A wall along the line (0, 0) → (4, 3): its unit normal (−0.6, 0.8) points to its left.
+  const line = { start: at(0, 0), end: at(4, 3) };
+
+  it('one click, no base: as far off the line as the pointer, square to it', () => {
+    // (−0.6, 0.8) · (1, 2) = 1: the pointer at (1, 2) is 1 m to the left.
+    const r = modifyTransition('offset', MODIFY_START, click(1, 2), null, line);
+    const p = r.apply!.map(at(0, 0));
+    expect(p.x).toBeCloseTo(-0.6, 12);
+    expect(p.y).toBeCloseTo(0.8, 12);
+    expect(r.state).toEqual(MODIFY_START);
+  });
+
+  it('a typed distance goes to the side the pointer is on', () => {
+    const right = modifyTransition('offset', MODIFY_START, { kind: 'typed', value: 2 }, at(3, 0), line).apply!.map(at(0, 0));
+    expect(right.x).toBeCloseTo(1.2, 12);
+    expect(right.y).toBeCloseTo(-1.6, 12);
+    const left = modifyTransition('offset', MODIFY_START, { kind: 'typed', value: 2 }, at(0, 3), line).apply!.map(at(0, 0));
+    expect(left.x).toBeCloseTo(-1.2, 12);
+    expect(left.y).toBeCloseTo(1.6, 12);
+  });
+
+  it('on the line itself, or with no wall, nothing; Esc leaves', () => {
+    expect(modifyTransition('offset', MODIFY_START, click(2, 1.5), null, line).rejected).toBe(true);
+    expect(modifyTransition('offset', MODIFY_START, click(1, 2), null).rejected).toBe(true);
+    expect(modifyTransition('offset', MODIFY_START, { kind: 'escape' }, null, line).leave).toBe(true);
+  });
+});
