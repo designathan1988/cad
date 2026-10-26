@@ -88,6 +88,8 @@ export interface UiState {
   hover: WallId | null;
   /** With the room tool: the space with no room under the pointer, where a click makes one. */
   roomSpace: readonly Point2[] | null;
+  /** That space was shown by a tap (a finger has no hover): a second tap in it makes the room. */
+  tapToConfirm: boolean;
   levelId: string;
   theme: 'light' | 'dark';
   panelOpen: boolean;
@@ -146,6 +148,10 @@ export class App {
   geometry: DerivedGeometry;
   /** Each view is framed on its first show; after that the camera is the user's. */
   private readonly framed = { plan: false, '3d': false };
+  /** Where the plan was looking when the page was last left: its first show goes back there. */
+  private savedPlanView: { scale: number; center: Point2 } | null = null;
+  private planViewKept = '';
+  private planViewTimer = 0;
   private panelDoc: Doc | null = null;
   private panelKey = '';
   private toastTimer = 0;
@@ -175,6 +181,7 @@ export class App {
       selection: new Set(),
       hover: null,
       roomSpace: null,
+      tapToConfirm: false,
       levelId: startLevel(doc, prefs.levelId),
       theme: prefs.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
       panelOpen: prefs.panelOpen ?? true,
@@ -200,6 +207,10 @@ export class App {
       wallFlip: false,
       dimEdit: null,
     };
+    const pv = prefs.planView;
+    if (pv && Number.isFinite(pv.scale) && pv.scale >= 2 && pv.scale <= 4000 && Number.isFinite(pv.center?.x) && Number.isFinite(pv.center?.y)) {
+      this.savedPlanView = { scale: pv.scale, center: { x: pv.center.x, y: pv.center.y } };
+    }
     this.shell = buildShell(root);
     this.plan = new PlanView(this.shell.planCanvas);
     this.scene = new Scene3D(this.shell.glCanvas);
@@ -226,7 +237,7 @@ export class App {
     // The first framing waits until the viewport has a size: framing a 0 × 0 canvas sets a useless scale.
     new ResizeObserver(() => {
       const r = this.shell.viewport.getBoundingClientRect();
-      if (!this.framed[this.ui.view] && r.width > 0 && r.height > 0) this.frameAll();
+      if (!this.framed[this.ui.view] && r.width > 0 && r.height > 0) this.frameFirst();
       else this.render();
     }).observe(this.shell.viewport);
     this.applyTheme();
@@ -638,6 +649,8 @@ export class App {
     const host = (tool === 'door' || tool === 'window') && this.ui.selection.size === 1 ? this.store.get().walls.find((w) => this.ui.selection.has(w.id)) : undefined;
     this.ui.tool = tool;
     this.ui.wall = IDLE;
+    this.ui.roomSpace = null;
+    this.ui.tapToConfirm = false;
     // A side flipped for some walls is not left for later ones, drawn another time.
     this.ui.wallFlip = false;
     this.ui.opening = OPENING_IDLE;
@@ -672,7 +685,29 @@ export class App {
     this.ui.guide = null;
     savePrefs({ view });
     this.render();
-    if (!this.framed[view]) this.frameAll();
+    if (!this.framed[view]) this.frameFirst();
+  }
+
+  /** A view's first show: the plan where it was left before a reload, else everything framed. */
+  private frameFirst(): void {
+    const saved = this.ui.view === 'plan' ? this.savedPlanView : null;
+    this.savedPlanView = null;
+    if (!saved) return this.frameAll();
+    this.framed.plan = true;
+    this.plan.scale = saved.scale;
+    this.plan.center = saved.center;
+    this.render();
+  }
+
+  /** The plan's zoom and position, kept for the next visit once they have been still for a moment. */
+  private keepPlanView(): void {
+    if (this.ui.view !== 'plan' || !this.framed.plan) return;
+    const { scale, center } = this.plan;
+    const key = `${scale}|${center.x}|${center.y}`;
+    if (key === this.planViewKept) return;
+    this.planViewKept = key;
+    clearTimeout(this.planViewTimer);
+    this.planViewTimer = window.setTimeout(() => savePrefs({ planView: { scale, center: { x: center.x, y: center.y } } }), 400);
   }
 
   /** The guides, as a move being dragged takes them. */
@@ -1408,6 +1443,7 @@ export class App {
   }
 
   render(): void {
+    this.keepPlanView();
     if (!this.perf) return this.renderFrame();
     this.marks = [['start', performance.now()]];
     this.renderFrame();
@@ -1825,6 +1861,7 @@ export class App {
     return handlesFor(
       walls.filter((w) => this.ui.selection.has(w.id)),
       (p) => this.plan.toScreen(p),
+      this.plan.dimValueBoxes(this.currentDims().map((x) => ({ ...x, text: num(x.value) }))),
     );
   }
 
@@ -2042,7 +2079,7 @@ export class App {
         ? t(ui.selection.size === 0 ? 'hint.corner1' : 'hint.corner2')
         : ui.tool === 'room'
         ? ui.roomSpace
-          ? t('hint.roomHere', { area: num(Math.abs(signedArea(ui.roomSpace))) })
+          ? t(ui.tapToConfirm ? 'hint.roomTapAgain' : 'hint.roomHere', { area: num(Math.abs(signedArea(ui.roomSpace))) })
           : t('hint.roomPlace')
         : ui.tool === 'floor'
           ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')

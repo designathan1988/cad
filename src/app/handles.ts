@@ -29,7 +29,20 @@ export type HandleHit =
   | { readonly kind: 'rotate'; readonly pivot: Point2 }
   | { readonly kind: 'bulge'; readonly id: WallId };
 
-export function handlesFor(walls: readonly DocWall[], toScreen: (p: Point2) => Point2): Handles {
+type Box = { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
+
+/** Whether a disc of radius r at p touches the box. */
+const discMeets = (p: Point2, r: number, b: Box) => {
+  const dx = p.x - Math.max(b.x, Math.min(p.x, b.x + b.w));
+  const dy = p.y - Math.max(b.y, Math.min(p.y, b.y + b.h));
+  return dx * dx + dy * dy < r * r;
+};
+
+/**
+ * `avoid`: screen boxes the turn handle keeps off (the temporary dimensions' values): it sat on one
+ * and took its clicks, the value unreadable under it.
+ */
+export function handlesFor(walls: readonly DocWall[], toScreen: (p: Point2) => Point2, avoid: readonly Box[] = []): Handles {
   if (walls.length === 0) return { squares: [], arrows: [], rotate: null, bulge: null };
   const one = walls.length === 1 ? walls[0]! : null;
   const squares = one ? (['start', 'end'] as const).map((end) => ({ id: one.id, end, at: toScreen(one[end]) })) : [];
@@ -57,6 +70,12 @@ export function handlesFor(walls: readonly DocWall[], toScreen: (p: Point2) => P
   const others = [...squares.map((s) => s.at), ...arrows.map((a) => a.at), ...(bulge ? [bulge.at] : [])];
   let at = { x: centre.x, y: below + ROTATE_OFFSET };
   if (others.some((o) => Math.hypot(o.x - at.x, o.y - at.y) < HANDLE_CLEAR)) at = { x: at.x, y: Math.max(below, ...others.map((o) => o.y)) + ROTATE_OFFSET };
+  // Below a value it would cover, as many times as values stack there.
+  for (let k = 0; k < avoid.length; k++) {
+    const hit = avoid.find((b) => discMeets(at, HANDLE_CLEAR / 2, b));
+    if (!hit) break;
+    at = { x: at.x, y: hit.y + hit.h + HANDLE_CLEAR / 2 + 2 };
+  }
   return { squares, arrows, rotate: { at, pivot }, bulge };
 }
 

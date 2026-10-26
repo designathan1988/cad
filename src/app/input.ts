@@ -422,7 +422,21 @@ export function wireInput(app: App): void {
     if (ui.tool === 'room' || ui.tool === 'floor') {
       const at = worldAt(e);
       if (!at) return;
-      if (ui.tool === 'room') return app.roomClick(at.p);
+      if (ui.tool === 'room') {
+        // A finger does not hover: its first tap in a space shows the room it would make there, as
+        // the pointer does before a click, and a second tap in that space makes it. One tap made it
+        // unseen.
+        if (e.pointerType === 'touch' && ui.view === 'plan') {
+          const space = app.roomSpaceAt(at.p);
+          if (space && !(ui.tapToConfirm && ui.roomSpace && insideRing(ui.roomSpace, at.p))) {
+            ui.roomSpace = space;
+            ui.tapToConfirm = true;
+            return app.render();
+          }
+        }
+        ui.tapToConfirm = false;
+        return app.roomClick(at.p);
+      }
       // Inside a room (its floor) as clicked; a corner where it snaps.
       return app.floorClick(at.p, at.mpp, false, snapped(e)?.point ?? at.p);
     }

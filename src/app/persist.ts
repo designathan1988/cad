@@ -27,6 +27,8 @@ export interface Prefs {
   refLines?: boolean;
   /** Points snap (S): off, it stays off. */
   snaps?: boolean;
+  /** Where the plan was looking (pixels per metre, world point at the centre): a reload framed it all again. */
+  planView?: { scale: number; center: { x: number; y: number } };
 }
 
 function storage(): Storage | null {

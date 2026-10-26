@@ -532,10 +532,11 @@ export class PlanView {
     const areaFont = this.font('400', '--fs-sm');
     const inputs = labels.map((l) => {
       const p = this.toScreen(l.at);
-      const xs = l.outline.map((v) => this.toScreen(v).x);
+      const outline = l.outline.map((v) => this.toScreen(v));
+      const xs = outline.map((v) => v.x);
       // An open room has no outline: its warning is shown whole.
       const width = xs.length > 0 ? Math.max(...xs) - Math.min(...xs) : Infinity;
-      return { x: p.x, y: p.y, width, name: l.name, short: l.short, area: l.area, ...(l.brief ? { brief: l.brief } : {}), warn: l.warn };
+      return { x: p.x, y: p.y, width, outline, name: l.name, short: l.short, area: l.area, ...(l.brief ? { brief: l.brief } : {}), warn: l.warn };
     });
     const measure = (text: string) => this.textWidth(text, nameFont);
     // The dimensions are drawn over the tags: each tag steps aside from their lines (room-tags.ts),
@@ -644,8 +645,28 @@ export class PlanView {
       ctx.strokeStyle = colour;
       ctx.lineWidth = active ? 1.6 : 1;
       for (const line of symbolLines(op, op.frame)) (path(line), ctx.stroke());
-      if (!op.valid) this.warnSign(this.toScreen({ x: (f.start.x + f.end.x) / 2, y: (f.start.y + f.end.y) / 2 }), c.warn, c.canvas);
+      if (!op.valid) this.warnSign(this.clearOfHandles(f.start, f.end, o.handles), c.warn, c.canvas);
     }
+  }
+
+  /**
+   * Where an opening's warning sign goes: at its middle, or stepped across the wall away from the
+   * selection's handles. One at a wall's joint lay under the square of the wall's end, unseen.
+   */
+  private clearOfHandles(a: Point2, b: Point2, h: Handles): Point2 {
+    const mid = this.toScreen({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    const marks = [...h.squares.map((s) => s.at), ...h.arrows.map((x) => x.at), ...(h.rotate ? [h.rotate.at] : []), ...(h.bulge ? [h.bulge.at] : [])];
+    const clear = (p: Point2) => marks.every((m) => Math.hypot(m.x - p.x, m.y - p.y) >= 16);
+    if (clear(mid)) return mid;
+    const sa = this.toScreen(a);
+    const sb = this.toScreen(b);
+    const len = Math.hypot(sb.x - sa.x, sb.y - sa.y) || 1;
+    const n = { x: -(sb.y - sa.y) / len, y: (sb.x - sa.x) / len };
+    for (const k of [1, -1, 2, -2]) {
+      const p = { x: mid.x + n.x * 16 * k, y: mid.y + n.y * 16 * k };
+      if (clear(p)) return p;
+    }
+    return mid;
   }
 
   /** A small triangle with "!" at a screen point: the sign of a problem, readable without colour. */
