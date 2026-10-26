@@ -190,7 +190,9 @@ export function wireInput(app: App): void {
           ? ui.dimension.a
           : ui.tool === 'grid'
             ? ui.gridFrom
-            : null;
+            : ui.tool === 'beam'
+              ? ui.beamFrom
+              : null;
     const measuring = ui.tool === 'measure' || ui.tool === 'dimension';
     const modifyFrom = ui.tool === 'modify' && ui.modify && ui.modify.state.step !== 'base' ? ui.modify.state.base : null;
     const faces = measuring ? levelFaces() : [];
@@ -272,6 +274,11 @@ export function wireInput(app: App): void {
       .filter((c) => insideRing(c.outline, p) || c.outline.some((v, i) => segmentDistance(p, v, c.outline[(i + 1) % c.outline.length]!) <= near))
       .slice(-1)
       .map((c) => c.column.id);
+    // A beam by its outline, after the walls under it (it is above them, in plan a click aims lower first).
+    const beamHit = [...g.beams.values()]
+      .filter((b) => insideRing(b.outline, p) || segmentDistance(p, b.beam.start, b.beam.end) <= near)
+      .slice(-1)
+      .map((b) => b.beam.id);
     return [
       ...bubbleHit,
       ...dimHit,
@@ -295,6 +302,7 @@ export function wireInput(app: App): void {
         .sort((a, b) => a.off - b.off)
         .slice(0, 1)
         .map((x) => x.id),
+      ...beamHit,
       // An axis after the walls on it: a click on a wall over an axis takes the wall.
       ...gridHit,
       ...[...g.rooms.values()].filter((r) => r.enclosed && insideRing(r.outline, p)).map((r) => r.room.id),
@@ -356,7 +364,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column') {
+    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -487,6 +495,11 @@ export function wireInput(app: App): void {
       app.gridEscape();
       return true;
     }
+    if (ui.tool === 'beam' && ui.beamFrom) {
+      ui.beamFrom = null;
+      app.render();
+      return true;
+    }
     if (ui.tool === 'measure' && ui.measure.kind !== 'idle') {
       app.measureEvent({ kind: 'escape' });
       return true;
@@ -575,6 +588,11 @@ export function wireInput(app: App): void {
     if (ui.tool === 'column') {
       const at = aimAt3d(e);
       if (at) app.columnClick(snapped(e)?.point ?? at.p);
+      return;
+    }
+    if (ui.tool === 'beam') {
+      const at = aimAt3d(e);
+      if (at) app.beamClick(snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'room' || ui.tool === 'floor') {
@@ -694,6 +712,7 @@ export function wireInput(app: App): void {
   shell.toolDimension.addEventListener('click', () => app.setTool('dimension'));
   shell.toolGrid.addEventListener('click', () => app.setTool('grid'));
   shell.toolColumn.addEventListener('click', () => app.setTool('column'));
+  shell.toolBeam.addEventListener('click', () => app.setTool('beam'));
   shell.toolSplit.addEventListener('click', () => app.setTool('split'));
   shell.toolCorner.addEventListener('click', () => app.setTool('corner'));
   for (const [kind, b] of Object.entries(shell.modifyTools)) b.addEventListener('click', () => app.startModify(kind as ModifyKind));
@@ -941,6 +960,11 @@ export function wireInput(app: App): void {
       if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'grid') return app.gridEscape();
       if (ui.tool === 'column') return app.setTool('select');
+      if (ui.tool === 'beam') {
+        if (!ui.beamFrom) return app.setTool('select');
+        ui.beamFrom = null;
+        return app.render();
+      }
       if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? app.wallEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'split') return app.setTool('select');
       // The Corner tool lets go of its first wall first (below), then of itself.
@@ -1002,6 +1026,7 @@ export function wireInput(app: App): void {
     if (key === 'l') return app.setTool('floor');
     if (key === 'm') return app.setTool('measure');
     if (key === 'p') return app.setTool('column');
+    if (key === 'b') return app.setTool('beam');
     if (key === 'v') return app.setTool('select');
     if (key === 'f') return app.frameSelection();
     // Choosing and moving elements without a mouse: N / Shift+N go through the level's elements;

@@ -43,7 +43,9 @@ import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui
 import { snapLabel, type Snap } from '../tools/snap';
 import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, rectangle, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
-import { type Drag, dragTransform, hull, moveColumns, moveGuides, moveNotes } from './select-drag';
+import { type Drag, dragTransform, hull, moveBeams, moveColumns, moveGuides, moveNotes } from './select-drag';
+import { addBeam, updateBeams } from '../elements/beam/commands';
+import { BEAM_DEPTH, BEAM_PREFIX, BEAM_WIDTH, isBeamId } from '../elements/beam/schema';
 import { addColumn, updateColumns } from '../elements/column/commands';
 import { COLUMN_PREFIX, COLUMN_SIZE, isColumnId } from '../elements/column/schema';
 import { addNote, updateNotes } from '../elements/note/commands';
@@ -142,6 +144,8 @@ export interface UiState {
   dimension: DimensionToolState;
   /** The grid tool's first point, before the axis is made. */
   gridFrom: Point2 | null;
+  /** The beam tool's first point, before the beam is made. */
+  beamFrom: Point2 | null;
   /** A guide being placed (guide-tool.ts): Alt over a wall or a guide in a drawing tool. */
   guide: GuideDraft | null;
   /** How the 3D view shows the levels: which, exploded, cut (view-3d.ts). */
@@ -236,6 +240,7 @@ export class App {
       measure: MEASURE_IDLE,
       dimension: DIMENSION_IDLE,
       gridFrom: null,
+      beamFrom: null,
       guide: null,
       view3d: readView3D(prefs.view3d),
       modify: null,
@@ -368,7 +373,7 @@ export class App {
     // Levels hidden now leave the selection, as a hidden category does.
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      if (!isGuideId(id) && !isNoteId(id) && !isDimId(id) && !isGridId(id) && !shown.solids.has(id) && !shown.columns.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
+      if (!isGuideId(id) && !isNoteId(id) && !isDimId(id) && !isGridId(id) && !shown.solids.has(id) && !shown.columns.has(id) && !shown.beams.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
     }
     this.refresh();
   }
@@ -402,6 +407,7 @@ export class App {
             rooms: moveRooms(doc.rooms, d.rooms, dragTransform(d)),
             floors: d.kind === 'move' ? moveFloors(doc.floors, d.floors, dragTransform(d)) : doc.floors,
             columns: d.kind === 'move' ? moveColumns(doc.columns, d) : doc.columns,
+            beams: d.kind === 'move' ? moveBeams(doc.beams, d) : doc.beams,
           }
         : d?.kind === 'slide'
           ? { ...doc, openings: d.openings }
@@ -772,6 +778,7 @@ export class App {
     this.ui.measure = MEASURE_IDLE;
     this.ui.dimension = DIMENSION_IDLE;
     this.ui.gridFrom = null;
+    this.ui.beamFrom = null;
     this.ui.guide = null;
     this.ui.modify = null;
     this.modifyBefore = null;
@@ -1502,6 +1509,22 @@ export class App {
     this.render();
   }
 
+  /** The beam tool: a click starts a beam, the next ends it (the section of the last one made); Esc drops it. */
+  beamClick(p: Point2): void {
+    const from = this.ui.beamFrom;
+    if (!from) {
+      this.ui.beamFrom = p;
+      return this.render();
+    }
+    if (distance(from, p) < MIN_WALL_LENGTH) return;
+    const last = this.store.get().beams.at(-1);
+    this.store.dispatch(addBeam({ id: newId(BEAM_PREFIX), levelId: this.ui.levelId, start: from, end: p, width: last?.width ?? BEAM_WIDTH, depth: last?.depth ?? BEAM_DEPTH }));
+    // On from its end, as walls are drawn in a chain.
+    this.ui.beamFrom = p;
+    this.ui.info = t('hint.beamMade');
+    this.render();
+  }
+
   /** The column tool: a click stands a column there, the section of the last one made. */
   columnClick(p: Point2): void {
     const last = this.store.get().columns.at(-1);
@@ -1898,6 +1921,7 @@ export class App {
       notes: r.doc.notes.slice(c.doc.notes.length),
       dimensions: r.doc.dimensions.slice(c.doc.dimensions.length),
       columns: r.doc.columns.slice(c.doc.columns.length),
+      beams: r.doc.beams.slice(c.doc.beams.length),
     };
     const level = levelOf(this.store.get(), this.ui.levelId);
     // The rooms renumbered on from the level's rooms as they are now, not as they were at the copy.
@@ -1916,6 +1940,7 @@ export class App {
         notes: [...d.notes, ...added.notes],
         dimensions: [...d.dimensions, ...added.dimensions],
         columns: [...d.columns, ...added.columns],
+        beams: [...d.beams, ...added.beams],
       }),
     });
     this.ui.selection = new Set(r.selection);
@@ -2180,7 +2205,7 @@ export class App {
    */
   async exportGlb(): Promise<void> {
     const doc = this.store.get();
-    if (doc.walls.length === 0 && doc.floors.length === 0 && doc.columns.length === 0) {
+    if (doc.walls.length === 0 && doc.floors.length === 0 && doc.columns.length === 0 && doc.beams.length === 0) {
       this.ui.info = t('export.nothing');
       return this.renderChrome();
     }
@@ -2193,6 +2218,7 @@ export class App {
         window: (n) => t('export.window', { n }),
         floor: (n) => t('export.floor', { n }),
         column: (n) => t('export.column', { n }),
+        beam: (n) => t('export.beam', { n }),
         material: materialName,
         glass: t('export.glass'),
         leaf: t('export.leaf'),
@@ -2313,7 +2339,7 @@ export class App {
   private selectionKinds(): number {
     const g = this.geometry;
     const ids = [...this.ui.selection];
-    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isNoteId) ? 1 : 0) + (ids.some(isDimId) ? 1 : 0) + (ids.some(isGridId) ? 1 : 0) + (ids.some(isColumnId) ? 1 : 0);
+    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isNoteId) ? 1 : 0) + (ids.some(isDimId) ? 1 : 0) + (ids.some(isGridId) ? 1 : 0) + (ids.some(isColumnId) ? 1 : 0) + (ids.some(isBeamId) ? 1 : 0);
   }
 
   selectedWalls(): DocWall[] {
@@ -2477,7 +2503,7 @@ export class App {
         guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
         snap:
           // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
             ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
             : null,
         measure: guideDim
@@ -2532,7 +2558,13 @@ export class App {
           warn: !r.enclosed || r.sharing.length > 0,
           outline: r.outline,
         })),
-        draft: ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])] : null,
+        // A floor's outline being drawn, or a beam from its first point to where the next click lands.
+        draft:
+          ui.tool === 'floor' && ui.floorDraft.length > 0
+            ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
+            : ui.tool === 'beam' && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
+              ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
+              : null,
         draftCorners: ui.tool === 'floor' ? ui.floorDraft : [],
         openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
         // The opening being placed shows its distance as a dimension too (drawn only, not typed in: the
@@ -2587,7 +2619,13 @@ export class App {
                 ? { at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 }, text: `${num(tape.length)} m · ${num(tape.angle, 1)}°` }
                 : this.bendMeasure(),
         anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
-        draft: ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])] : null,
+        // A floor's outline being drawn, or a beam from its first point to where the next click lands.
+        draft:
+          ui.tool === 'floor' && ui.floorDraft.length > 0
+            ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
+            : ui.tool === 'beam' && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
+              ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
+              : null,
         box: ui.view3d.box,
         boxHot: this.boxHot,
         points: this.pointsShown(),
@@ -2633,6 +2671,7 @@ export class App {
         dimensions: doc.dimensions.filter((d) => ui.selection.has(d.id)),
         grids: doc.grids.filter((g) => ui.selection.has(g.id)),
         columns: doc.columns.filter((c) => ui.selection.has(c.id)),
+        beams: doc.beams.filter((b) => ui.selection.has(b.id)),
         dimensionLength: (d) => this.dimensionLength(d),
         stacked: stackedSteps(doc),
       },
@@ -2718,6 +2757,7 @@ export class App {
         setDimensionDistance: (ids, distance) => this.store.dispatch(setDimensionDistance(ids, distance)),
         renameGrid: (id, name) => this.store.dispatch(renameGrid(id, name)),
         updateColumns: (ids, patch) => this.store.dispatch(updateColumns(ids, patch)),
+        updateBeams: (ids, patch) => this.store.dispatch(updateBeams(ids, patch)),
         // The wall moved across, with its joins kept as a move keeps them: the face then meets the one below.
         alignBelow: (step) => this.store.dispatch(setWalls(moveWalls(this.store.get(), [step.upperId], step.shift), 'cmd.alignBelow')),
       },
@@ -2907,6 +2947,7 @@ export class App {
         rooms: new Map([...g.rooms].filter(([, r]) => shown.has(r.room.levelId))),
         floors: new Map([...g.floors].filter(([, f]) => shown.has(f.floor.levelId))),
         columns: new Map([...g.columns].filter(([, c]) => shown.has(c.column.levelId))),
+        beams: new Map([...g.beams].filter(([, b]) => shown.has(b.beam.levelId))),
       };
     }
     const solids = new Map([...g.solids].filter(([, s]) => s.wall.levelId === this.ui.levelId));
@@ -2915,7 +2956,8 @@ export class App {
     const rooms = new Map([...g.rooms].filter(([, r]) => r.room.levelId === this.ui.levelId));
     const floors = new Map([...g.floors].filter(([, f]) => f.floor.levelId === this.ui.levelId));
     const columns = new Map([...g.columns].filter(([, c]) => c.column.levelId === this.ui.levelId));
-    return { ...g, solids, openings, rooms, floors, columns };
+    const beams = new Map([...g.beams].filter(([, b]) => b.beam.levelId === this.ui.levelId));
+    return { ...g, solids, openings, rooms, floors, columns, beams };
   }
 
   toggleBrowser(open = !this.ui.browserOpen): void {
@@ -2944,8 +2986,8 @@ export class App {
         continue;
       }
       if (isGridId(id)) continue;
-      if (isColumnId(id)) {
-        if (!shown.columns.has(id)) this.ui.selection.delete(id);
+      if (isColumnId(id) || isBeamId(id)) {
+        if (!shown.columns.has(id) && !shown.beams.has(id)) this.ui.selection.delete(id);
         continue;
       }
       if (isGuideId(id) ? this.ui.hidden.has('guides') : !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) {
@@ -3060,6 +3102,7 @@ export class App {
     shell.toolDimension.setAttribute('aria-pressed', String(ui.tool === 'dimension'));
     shell.toolGrid.setAttribute('aria-pressed', String(ui.tool === 'grid'));
     shell.toolColumn.setAttribute('aria-pressed', String(ui.tool === 'column'));
+    shell.toolBeam.setAttribute('aria-pressed', String(ui.tool === 'beam'));
     shell.toolSplit.setAttribute('aria-pressed', String(ui.tool === 'split'));
     shell.toolCorner.setAttribute('aria-pressed', String(ui.tool === 'corner'));
     // The Modify tools: the one in use pressed; dimmed while the selection holds nothing they take (a
@@ -3180,7 +3223,9 @@ export class App {
                 ? t(ui.gridFrom ? 'hint.gridEnd' : 'hint.gridStart')
                 : ui.tool === 'column'
                   ? t('hint.columnPlace')
-                  : null;
+                  : ui.tool === 'beam'
+                    ? t(ui.beamFrom ? 'hint.beamEnd' : 'hint.beamStart')
+                    : null;
     const guideHint = ui.guide
       ? t('hint.guide', {
           d: num(this.guideOffset() ?? 0),
@@ -3220,6 +3265,8 @@ export class App {
       ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.gridFrom ? 'key.back' : 'key.exit'))]
       : ui.tool === 'column'
       ? [snapKey, keyHint('Esc', t('key.exit'))]
+      : ui.tool === 'beam'
+      ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
       : ui.tool === 'measure'
       ? [keyHint('Shift', t('key.straight')), ...altGuide, snapKey, keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clear'))]
       : ui.tool === 'floor'

@@ -461,6 +461,24 @@ export class PlanView {
       ctx.lineWidth = lit ? 2 : 1;
       ctx.stroke();
     }
+    // Beams above the cut: their outline dashed, as hidden lines are; lit when selected or under the pointer.
+    ctx.save();
+    ctx.setLineDash([6, 4]);
+    for (const b of g.beams.values()) {
+      const lit = o.selected.has(b.beam.id) || o.hover === b.beam.id;
+      const pts = b.outline.map((v) => this.toScreen(v));
+      ctx.beginPath();
+      pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      ctx.closePath();
+      if (lit) {
+        ctx.fillStyle = color('--wall-sel-fill');
+        ctx.fill();
+      }
+      ctx.strokeStyle = lit ? color('--wall-sel') : color('--text-2');
+      ctx.lineWidth = lit ? 2 : 1;
+      ctx.stroke();
+    }
+    ctx.restore();
     this.drawOpenings(g, o, { line: color('--wall-line'), sel: color('--wall-sel'), selFill: color('--wall-sel-fill'), warn: color('--warn'), canvas: color('--canvas') });
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
     for (const g of o.grids ?? []) this.drawGridAxis(g, g.selected ? color('--wall-sel') : color('--text-2'), color('--canvas'));

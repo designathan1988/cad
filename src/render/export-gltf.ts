@@ -23,6 +23,7 @@ export interface ExportNaming {
   readonly window: (n: number) => string;
   readonly floor: (n: number) => string;
   readonly column: (n: number) => string;
+  readonly beam: (n: number) => string;
   /** A layer's material by its id (plaster, brick): what a renderer assigns its own materials by. */
   readonly material: (materialId: string) => string;
   readonly glass: string;
@@ -147,6 +148,16 @@ export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): 
     mesh.name = naming.column(++columns);
     mesh.userData = { cad2Id: c.column.id, kind: 'column', level: levelName(c.column.levelId), width: c.column.width, depth: c.column.depth };
     levelGroup(c.column.levelId).add(mesh);
+  }
+  let beams = 0;
+  for (const b of g.beams.values()) {
+    const geo = new THREE.ExtrudeGeometry(new THREE.Shape(b.outline.map((p) => new THREE.Vector2(p.x, p.y))), { depth: b.top - b.bottom, bevelEnabled: false });
+    geo.rotateX(-Math.PI / 2);
+    geo.translate(0, b.bottom, 0);
+    const mesh = new THREE.Mesh(geo, material('structure', naming.columnMaterial));
+    mesh.name = naming.beam(++beams);
+    mesh.userData = { cad2Id: b.beam.id, kind: 'beam', level: levelName(b.beam.levelId), width: b.beam.width, depth: b.beam.depth };
+    levelGroup(b.beam.levelId).add(mesh);
   }
   return scene;
 }

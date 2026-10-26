@@ -3,6 +3,7 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
+import type { Beam } from '../elements/beam/schema';
 import type { Column } from '../elements/column/schema';
 import { type Doc, type Level, ownValuesOnly } from '../app/document';
 import type { Guide } from '../elements/guide/schema';
@@ -36,12 +37,13 @@ import type { DocWall } from '../app/document';
  * Version 13: level marks, notes with an `elevation` (elements/note). Older files have none.
  * Version 14: grid axes (`grids`, elements/grid). Older files have none.
  * Version 15: columns (`columns`, elements/column). Older files have none.
+ * Version 16: beams (`beams`, elements/beam). Older files have none.
  */
-export const CURRENT_VERSION = 15;
+export const CURRENT_VERSION = 16;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes' | 'droppedDimensions' | 'droppedGrids' | 'droppedColumns'; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes' | 'droppedDimensions' | 'droppedGrids' | 'droppedColumns' | 'droppedBeams'; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -165,6 +167,20 @@ const isDimAnchor = (a: unknown): boolean =>
 export const isDimension = (d: unknown): d is Dimension =>
   isObject(d) && typeof d.id === 'string' && typeof d.levelId === 'string' && isDimAnchor(d.a) && isDimAnchor(d.b) && finite(d.offset);
 
+/** A beam: two different points, a section above zero. */
+export const isBeam = (b: unknown): b is Beam =>
+  isObject(b) &&
+  typeof b.id === 'string' &&
+  typeof b.levelId === 'string' &&
+  isPoint(b.start) &&
+  isPoint(b.end) &&
+  JSON.stringify(b.start) !== JSON.stringify(b.end) &&
+  finite(b.width) &&
+  b.width > 0 &&
+  finite(b.depth) &&
+  b.depth > 0 &&
+  (b.topOffset === undefined || finite(b.topOffset));
+
 /** A column: a point, a section above zero, an angle. */
 export const isColumn = (c: unknown): c is Column =>
   isObject(c) &&
@@ -273,6 +289,12 @@ export function repairProject(raw: unknown): ReadResult {
       return false;
     }),
     grids: keep(raw.grids, isGrid, 'droppedGrids'),
+    // A beam on a level that is gone spans nothing: dropped, and said.
+    beams: keep(raw.beams, isBeam, 'droppedBeams').filter((b, _, all) => {
+      if (levelIds.has(b.levelId)) return true;
+      if (b === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedBeams', count: all.filter((x) => !levelIds.has(x.levelId)).length });
+      return false;
+    }),
     // A column on a level that is gone stands nowhere: dropped, and said.
     columns: keep(raw.columns, isColumn, 'droppedColumns').filter((c, _, all) => {
       if (levelIds.has(c.levelId)) return true;

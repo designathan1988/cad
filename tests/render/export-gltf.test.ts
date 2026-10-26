@@ -50,6 +50,7 @@ const naming: ExportNaming = {
   window: (n) => `Janela ${n}`,
   floor: (n) => `Piso ${n}`,
   column: (n) => `Pilar ${n}`,
+  beam: (n) => `Viga ${n}`,
   material: (id) => ({ plaster: 'Reboco', brick: 'Tijolo' })[id] ?? id,
   glass: 'Vidro',
   leaf: 'Folha de porta',

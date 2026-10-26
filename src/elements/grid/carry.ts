@@ -1,4 +1,4 @@
-// What goes with an axis: the walls lying on it and the columns standing on it, on every level
+// What goes with an axis: the walls and beams lying on it and the columns standing on it, on every level
 // (schema.ts: onGrid). Pure.
 
 import type { Doc } from '../../app/document';
@@ -19,6 +19,10 @@ export function wallsOnGrids(doc: Doc, ids: readonly string[]): string[] {
   const set = new Set(ids);
   const taken = doc.grids.filter((g) => set.has(g.id));
   if (taken.length === 0) return [];
-  const on = (g: Grid) => [...onGrid(g, doc.walls).map((w) => w.id), ...doc.columns.filter((c) => onLine(g, c.at)).map((c) => c.id)];
+  const on = (g: Grid) => [
+    ...onGrid(g, doc.walls).map((w) => w.id),
+    ...onGrid(g, doc.beams).map((b) => b.id),
+    ...doc.columns.filter((c) => onLine(g, c.at)).map((c) => c.id),
+  ];
   return [...new Set(taken.flatMap(on))].filter((id) => !set.has(id));
 }

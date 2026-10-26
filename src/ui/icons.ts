@@ -62,6 +62,7 @@ const paths = {
   // A box drawn dashed, a handle on its face.
   box: 'M4 6h12v12H4zM16 6l4-2v12l-4 2M4 6l4-2h12M18 12h3',
   column: 'M7 5h10v14H7zM7 5l10 14M17 5L7 19',
+  beam: 'M3 9h18v6H3zM3 9l3 3-3 3M21 9l-3 3 3 3',
   move: 'M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3',
   width: 'M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4',
   split: 'M3 12h7M14 12h7M12 4v16M9 7l3-3 3 3M9 17l3 3 3-3',
