@@ -38,6 +38,8 @@ export interface Prefs {
   tourSeconds?: number;
   /** The project open last, of those kept in the browser (io/project-db.ts). */
   projectId?: string;
+  /** The ribbon's tab shown last (app/ribbon-tabs.ts). */
+  ribbonTab?: string;
 }
 
 function storage(): Storage | null {

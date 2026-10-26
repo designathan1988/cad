@@ -1,10 +1,12 @@
-// The window layout: top bar, tool bar, viewport, properties panel, footer. Builds the DOM once and
-// exposes the parts the app updates; texts are refreshed by relabel() when the language changes.
+// The window layout, as the interface model (Revit's): a dark title bar (the projects, quick access,
+// the project's name, the command search), the ribbon's tabs and the ribbon (ui/ribbon.ts, filled by
+// app/chrome.ts), the views' strip over the drawing (level, Plan, 3D, Walk, the project browser), the
+// drawing, the properties on the right and the status bar. Builds the DOM once and exposes the parts the
+// app updates; texts are refreshed by relabel() when the language changes.
 
 import { el } from './controls';
 import { t, type MessageKey } from './i18n';
 import { icon, type IconName } from './icons';
-import type { MenuItem } from './menu';
 
 /** `modify`: Move, Copy, Rotate, Scale or Mirror on the selection (tools/modify-tool.ts), a button each. */
 export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'column' | 'beam' | 'roof' | 'stair' | 'railing' | 'grid' | 'measure' | 'dimension' | 'modify' | 'split' | 'corner';
@@ -18,113 +20,63 @@ function iconButton(name: IconName, cls = 'icon-btn'): HTMLButtonElement {
 }
 
 export function buildShell(root: HTMLElement) {
-  const top = el('header', { class: 'top' });
+  // Title bar: the projects (the app's mark), quick access, the project's name, the search, settings.
+  const top = el('header', { class: 'top titlebar' });
   const left = el('div', { class: 'left' });
-  const homeBtn = iconButton('home');
-  // A button: a click (or Enter) renames the project in place (input.ts).
-  const projectName = el('button', { type: 'button', class: 'project-name' });
+  const homeBtn = iconButton('folder', 'icon-btn app-mark');
+  const open = iconButton('fileNew', 'icon-btn quick');
+  const save = iconButton('download', 'icon-btn quick');
   const undo = iconButton('undo');
   const redo = iconButton('redo');
-  left.append(homeBtn, projectName, el('span', { class: 'sep' }), undo, redo);
-
+  left.append(homeBtn, el('span', { class: 'sep' }), open, save, el('span', { class: 'sep' }), undo, redo);
   const center = el('div', { class: 'center' });
+  // A button: a click (or Enter) renames the project in place (input.ts).
+  const projectName = el('button', { type: 'button', class: 'project-name' });
+  const savedNote = el('span', { class: 'saved-note' });
+  center.append(projectName, savedNote);
+  const right = el('div', { class: 'right' });
+  // The command search, as wide as a field, with its key: what the palette (Ctrl+K) finds.
+  const commands = el('button', { type: 'button', class: 'search-btn' });
+  commands.innerHTML = icon('command', 16);
+  const commandsLabel = el('span', { class: 'search-label' });
+  commands.append(commandsLabel, el('span', { class: 'kbd' }, 'Ctrl K'));
+  const shortcuts = iconButton('keyboard', 'icon-btn needs-keyboard');
+  const lang = el('button', { type: 'button', class: 'icon-btn text-btn' });
+  const theme = iconButton('moon');
+  const panelToggle = iconButton('panel');
+  const fileInput = el('input', { type: 'file', accept: '.json,application/json', hidden: '' });
+  right.append(commands, shortcuts, lang, theme, panelToggle, fileInput);
+  top.append(left, center, right);
+
+  // The ribbon's tabs (File first) and the ribbon: filled by app/chrome.ts from app/ribbon-tabs.ts.
+  const tabs = el('nav', { class: 'rb-tabs', role: 'tablist' });
+  const fileMenu = el('button', { type: 'button', class: 'rb-tab rb-file' });
+  fileMenu.setAttribute('aria-haspopup', 'menu');
+  const ribbon = el('div', { class: 'ribbon', role: 'toolbar' });
+
+  // The views' strip, over the drawing: the level, Plan, 3D and Walk as tabs, and the project browser.
+  const strip = el('div', { class: 'view-strip' });
   const levelBox = el('div', { class: 'select level-select' });
   const level = el('select');
   levelBox.append(level);
   levelBox.insertAdjacentHTML('beforeend', icon('chevronDown', 14));
-  const views = el('div', { class: 'segmented', role: 'group' });
+  const views = el('div', { class: 'view-tabs', role: 'group' });
   const viewBtn = (id: '3d' | 'plan' | 'walk', ic: IconName) => {
-    // With an icon, so narrow screens keep only the icon (controls.ts: segmented), as before 5751448.
-    const b = el('button', { type: 'button', 'data-view': id, class: 'has-icon' });
+    const b = el('button', { type: 'button', 'data-view': id, class: 'view-tab has-icon' });
     b.innerHTML = icon(ic, 16);
     b.append(el('span', { class: 'label' }));
     views.append(b);
     return b;
   };
-  const view3d = viewBtn('3d', 'cube');
   const viewPlan = viewBtn('plan', 'map');
+  const view3d = viewBtn('3d', 'cube');
   const viewWalk = viewBtn('walk', 'walk');
-  center.append(levelBox, views);
+  const sidebar = el('button', { type: 'button', class: 'icon-btn text-btn browser-toggle' });
+  sidebar.innerHTML = icon('sidebar', 16);
+  const sidebarLabel = el('span', { class: 'label' });
+  sidebar.append(sidebarLabel);
+  strip.append(levelBox, views, el('span', { class: 'spacer' }), sidebar);
 
-  const right = el('div', { class: 'right' });
-  const commands = iconButton('command');
-  const shortcuts = iconButton('keyboard', 'icon-btn needs-keyboard');
-  const lang = el('button', { type: 'button', class: 'icon-btn text-btn' });
-  const theme = iconButton('moon');
-  const newFile = iconButton('fileNew');
-  const open = iconButton('folder');
-  const save = iconButton('download');
-  const fileInput = el('input', { type: 'file', accept: '.json,application/json', hidden: '' });
-  const panelToggle = iconButton('panel');
-  // What the right side has no room for (fitTop, below); commands and the panel always stay.
-  const moreApp = iconButton('menu');
-  moreApp.setAttribute('aria-haspopup', 'menu');
-  moreApp.hidden = true;
-  right.append(commands, shortcuts, lang, theme, newFile, open, save, moreApp, panelToggle, fileInput);
-  top.append(left, center, right);
-
-  // The side bar holds what draws; what changes or measures the drawing is in the top bar (below).
-  const tools = el('nav', { class: 'tools', 'aria-label': 'Tools' });
-  const toolSelect = iconButton('pointer', 'icon-btn tool');
-  const toolWall = iconButton('wall', 'icon-btn tool');
-  const toolDoor = iconButton('door', 'icon-btn tool');
-  const toolWindow = iconButton('window', 'icon-btn tool');
-  const toolFloor = iconButton('slab', 'icon-btn tool');
-  const toolRoom = iconButton('room', 'icon-btn tool');
-  const toolGrid = iconButton('hash', 'icon-btn tool');
-  const toolColumn = iconButton('column', 'icon-btn tool');
-  const toolBeam = iconButton('beam', 'icon-btn tool');
-  const toolRoof = iconButton('roof', 'icon-btn tool');
-  const toolStair = iconButton('stair', 'icon-btn tool');
-  const toolRailing = iconButton('railing', 'icon-btn tool');
-  // Every tool its own button and icon, one click away, in families parted by a line: building
-  // (wall, floor), openings (door, window), spaces (room). A tool kept in another's submenu was not
-  // found (the user's request: "cada uma das 4 deve ter o seu ícone").
-  const sep = () => el('div', { class: 'group-sep' });
-  tools.append(toolSelect, sep(), toolWall, toolFloor, toolColumn, toolBeam, toolRoof, toolStair, toolRailing, sep(), toolDoor, toolWindow, sep(), toolRoom, sep(), toolGrid);
-
-  // The tools that change or measure what is drawn, in the top bar beside undo and redo, as the Modify
-  // tab of Revit's ribbon and the top tool bars of SketchUp and ArchiCAD (the user's request: "essas
-  // ferramentas deveriam ficar na barra superior e não na barra de ferramentas lateral").
-  const editTools = el('div', { class: 'edit-tools', role: 'group' });
-  const editIcons = new Map<HTMLButtonElement, IconName>();
-  const editTool = (name: IconName) => {
-    const b = iconButton(name, 'icon-btn tool');
-    editIcons.set(b, name);
-    return b;
-  };
-  // Move, Copy, Rotate, Mirror and Scale on the selection (tools/modify-tool.ts), as Revit's Modify panel.
-  const modifyTools = {
-    move: editTool('move'),
-    copy: editTool('copy'),
-    rotate: editTool('rotate'),
-    mirror: editTool('mirror'),
-    scale: editTool('scale'),
-    offset: editTool('offset'),
-  };
-  // On walls under the pointer, without a selection first: divide one, make two meet at a corner.
-  const toolSplit = editTool('split');
-  const toolCorner = editTool('corner');
-  // Measuring and dimensioning, together: the tape (nothing kept) and the dimension (kept, held by the walls).
-  const toolMeasure = editTool('ruler');
-  const toolDimension = editTool('dimension');
-  const moreTools = iconButton('more');
-  moreTools.setAttribute('aria-haspopup', 'menu');
-  moreTools.hidden = true;
-  const editItems: HTMLElement[] = [
-    ...Object.values(modifyTools),
-    el('span', { class: 'sep' }),
-    toolSplit,
-    toolCorner,
-    el('span', { class: 'sep' }),
-    toolMeasure,
-    toolDimension,
-  ];
-  editTools.append(...editItems, moreTools);
-  left.append(el('span', { class: 'sep edit-sep' }), editTools);
-
-  const sidebar = iconButton('sidebar', 'icon-btn tool');
-  tools.append(el('div', { class: 'spacer' }), sidebar);
   const browser = el('aside', { class: 'browser', 'aria-label': 'Project browser' });
   browser.hidden = true;
 
@@ -210,7 +162,7 @@ export function buildShell(root: HTMLElement) {
 
   const helpBack = el('div', { class: 'dialog-back' });
   helpBack.hidden = true;
-  root.append(top, tools, viewport, panel, foot, helpBack);
+  root.append(top, tabs, ribbon, strip, viewport, panel, foot, helpBack);
 
   // The footer's tip comes first: the key hints that leave it no room go, the first ones first (Esc,
   // last, is the one most needed). At 1280 px the wall tool's tip was cut after a few words. The keys
@@ -229,96 +181,10 @@ export function buildShell(root: HTMLElement) {
   };
   new ResizeObserver(() => fitFoot(true)).observe(foot);
 
-  /** The More button pressed while the tool in use is one of those folded into it. */
-  const syncMore = () => moreTools.setAttribute('aria-pressed', String(editItems.some((x) => x.hidden && x.getAttribute('aria-pressed') === 'true')));
-  // The right side's buttons that fold into its menu, the first to go first: the keys' help, language
-  // and theme, then the project's files. Each one is also in the command palette.
-  const appItems: HTMLButtonElement[] = [shortcuts, lang, theme, newFile, open, save];
-  /** What is folded at each step: an app button alone (one the window's width has not already taken
-   * away: the keys' help on a phone); an edit tool from the last, with the line before it. */
-  const appSteps = () => appItems.filter((x) => x.getClientRects().length > 0).map((x) => [x]);
-  const editSteps: HTMLElement[][] = [];
-  for (let i = editItems.length - 1; i >= 0; i--) {
-    // A line with nothing after it goes with what it parted.
-    editSteps.push(editItems[i - 1]?.classList.contains('sep') ? [editItems[i]!, editItems[--i]!] : [editItems[i]!]);
-  }
-  // The top bar keeps to the room it has: what does not fit goes, step by step, to a menu (a tool bar's
-  // overflow, as Revit folds its ribbon's panels) — the right side's buttons to its own (☰), then the
-  // edit tools, from the last, to More (…). The level and the views stay centred while both sides fit
-  // beside them; when they do not, the left side takes what the right one leaves. On a phone the tools
-  // share the second row with the level and the views (styles.css), and each row folds on its own.
-  const phone = matchMedia('(max-width: 600px)');
-  /** A box's buttons past either of its edges: the right side, laid out from its end, spills to the left,
-   * over the views, where no scroll width shows it (the 44 px touch buttons at 768 px, before). */
-  const spills = (box: HTMLElement) => {
-    const b = box.getBoundingClientRect();
-    return [...box.children].some((c) => {
-      const r = c.getBoundingClientRect();
-      return r.width > 0 && (r.left < b.left - 1 || r.right > b.right + 1);
-    });
-  };
-  const firstRowOver = () => top.scrollWidth > top.clientWidth + 1 || spills(left) || spills(right);
-  const editOver = () => {
-    // Wrapped below the level and the views (centred on one row, they are of other heights), or past the edge.
-    const e = editTools.getBoundingClientRect();
-    return e.top >= center.getBoundingClientRect().bottom || e.right > top.getBoundingClientRect().right;
-  };
-  const fold = (steps: readonly HTMLElement[][], over: () => boolean) => {
-    for (const step of steps) {
-      if (!over()) return;
-      for (const x of step) x.hidden = true;
-      moreApp.hidden = !appItems.some((x) => x.hidden);
-      moreTools.hidden = !editItems.some((x) => x.hidden);
-    }
-  };
-  const fitTop = () => {
-    // On a phone the tools are the bar's own item, for its second row; the first row stays as it was.
-    if (phone.matches && editTools.parentElement !== top) right.before(editTools);
-    if (!phone.matches && editTools.parentElement !== left) left.append(editTools);
-    for (const x of [...appItems, ...editItems]) x.hidden = false;
-    moreApp.hidden = moreTools.hidden = true;
-    left.style.minWidth = right.style.minWidth = phone.matches ? '' : 'max-content';
-    if (phone.matches) {
-      fold(appSteps(), firstRowOver);
-      fold(editSteps, editOver);
-    } else fold([...appSteps(), ...editSteps], firstRowOver);
-    // Too narrow with everything folded: the project's name gives way, as before the tools came here.
-    if (firstRowOver()) left.style.minWidth = right.style.minWidth = '';
-    syncMore();
-  };
-  new ResizeObserver(fitTop).observe(top);
-  phone.addEventListener('change', fitTop);
-  void document.fonts.ready.then(fitTop);
-  /** The folded buttons of one menu as its items: each one's icon, its tip's name and key; choosing it clicks it. */
-  const folded = (from: readonly HTMLElement[], icons: (b: HTMLButtonElement) => IconName): MenuItem[] => {
-    const items: MenuItem[] = [];
-    let line = false;
-    for (const x of from) {
-      if (!x.hidden) continue;
-      if (x.classList.contains('sep')) {
-        line = items.length > 0;
-        continue;
-      }
-      const b = x as HTMLButtonElement;
-      // Its name as the tip gives it (tooltip.ts takes the title away; the aria-label stays), the
-      // trailing "(key)" to the right, as the right-click menu shows keys.
-      const [, label, keys] = /^(.*?)(?: \(([^)]+)\))?$/.exec(b.getAttribute('aria-label') ?? '')!;
-      // Dimmed on the bar (nothing selected that it takes), not to be chosen in the menu, as in the palette.
-      const off = b.disabled || b.getAttribute('aria-disabled') === 'true';
-      items.push({ label: label!, ...(keys ? { keys } : {}), icon: icons(b), disabled: off, separated: line, run: () => b.click() });
-      line = false;
-    }
-    return items;
-  };
-  const foldedTools = () => folded(editItems, (b) => editIcons.get(b)!);
-  // The language button shows its code, not an icon; the theme's icon is the one it shows now (app.ts).
-  const appIcons = new Map<HTMLButtonElement, IconName>([[shortcuts, 'keyboard'], [lang, 'language'], [newFile, 'fileNew'], [open, 'folder'], [save, 'download']]);
-  const foldedApp = () => folded(appItems, (b) => appIcons.get(b) ?? ((b.dataset.icon as IconName | undefined) ?? 'moon'));
-
   const parts = {
-    homeBtn, projectName, undo, redo, level, newFile, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolColumn, toolBeam, toolRoof, toolStair, toolRailing, toolGrid, toolMeasure, toolDimension, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, modifyTools, toolSplit, toolCorner, dims, browser, sidebar,
-    emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, editTools, moreTools, fitTop, syncMore, foldedTools, moreApp, foldedApp, fitFoot,
+    homeBtn, projectName, savedNote, undo, redo, level, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
+    panelToggle, tabs, fileMenu, ribbon, strip, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, dims, browser, sidebar,
+    emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, fitFoot,
   };
 
   const relabel = () => {
@@ -326,42 +192,25 @@ export function buildShell(root: HTMLElement) {
       b.title = t(key);
       b.setAttribute('aria-label', t(key));
     };
-    tip(homeBtn, 'float.frame');
+    tip(homeBtn, 'pal.projects');
     projectName.title = t('top.rename');
     tip(undo, 'top.undo');
     tip(redo, 'top.redo');
     tip(commands, 'top.commands');
+    commandsLabel.textContent = t('top.search');
     tip(shortcuts, 'top.shortcuts');
     tip(lang, 'top.language');
     tip(theme, 'top.theme');
     tip(save, 'top.export');
-    tip(newFile, 'top.new');
     tip(open, 'top.open');
     tip(panelToggle, 'top.panel');
     tip(level, 'top.level');
-    tip(toolSelect, 'tool.selectKey');
-    tip(toolWall, 'tool.wallKey');
-    tip(toolDoor, 'tool.doorKey');
-    tip(toolWindow, 'tool.windowKey');
-    tip(toolRoom, 'tool.roomKey');
-    tip(toolFloor, 'tool.floorKey');
-    tip(toolGrid, 'tool.gridKey');
-    tip(toolColumn, 'tool.columnKey');
-    tip(toolBeam, 'tool.beamKey');
-    tip(toolRoof, 'tool.roofKey');
-    tip(toolStair, 'tool.stairKey');
-    tip(toolRailing, 'tool.railingKey');
-    tip(toolMeasure, 'tool.measureKey');
-    tip(modifyTools.move, 'tool.moveKey');
-    tip(modifyTools.copy, 'tool.copyKey');
-    tip(modifyTools.rotate, 'tool.rotateKey');
-    tip(modifyTools.mirror, 'tool.mirrorKey');
-    tip(modifyTools.scale, 'tool.scaleKey');
-    tip(modifyTools.offset, 'tool.offsetKey');
-    tip(toolSplit, 'tool.splitKey');
-    tip(toolCorner, 'tool.cornerKey');
-    tip(toolDimension, 'tool.dimensionKey');
     tip(sidebar, 'tool.sidebar');
+    sidebarLabel.textContent = t('browser.short');
+    fileMenu.textContent = t('rib.file');
+    tabs.setAttribute('aria-label', t('rib.tabs'));
+    ribbon.setAttribute('aria-label', t('rib.ribbon'));
+    strip.setAttribute('aria-label', t('rib.views'));
     browser.setAttribute('aria-label', t('browser.title'));
     view3d.querySelector('.label')!.textContent = t('view.3d');
     viewPlan.querySelector('.label')!.textContent = t('view.plan');
@@ -386,9 +235,6 @@ export function buildShell(root: HTMLElement) {
     labelled(box, 'view3d.box', 'view3d.boxTip');
     labelled(ortho, 'view3d.ortho', 'view3d.orthoTip');
     tip(snapBtn, 'foot.snap');
-    tip(moreTools, 'top.moreTools');
-    tip(moreApp, 'top.moreOptions');
-    editTools.setAttribute('aria-label', t('aria.editTools'));
     emptyHint.textContent = t('empty.hint');
     tempReset.textContent = t('temp.reset');
     walkStick.setAttribute('aria-label', t('walk.stick'));
@@ -398,12 +244,9 @@ export function buildShell(root: HTMLElement) {
     tip(tourStop, 'gtour.stop');
     pointEdit.textContent = t('poi.edit');
     tip(pointClose, 'poi.close');
-    tools.setAttribute('aria-label', t('aria.tools'));
     planCanvas.setAttribute('aria-label', t('view.plan'));
     glCanvas.setAttribute('aria-label', t('view.3d'));
     panel.setAttribute('aria-label', t('aria.properties'));
-    // Another language, other widths: the views' names, the tips the folded tools are named by.
-    fitTop();
   };
   return { ...parts, relabel };
 }

@@ -1,0 +1,175 @@
+// What the ribbon holds (ui/ribbon.ts), by tab, as in the interface model: Architecture, Annotate,
+// Modify, View and Manage, and the File menu. Only actions the app has (app/actions.ts); what is built
+// later gets a place here when it gets its action. Pressed states read the app's own.
+
+import type { RibbonItem, RibbonTab } from '../ui/ribbon';
+import type { MessageKey } from '../ui/i18n';
+import type { App } from './app';
+import type { ModifyKind } from '../tools/modify-tool';
+import type { ToolId } from '../ui/shell';
+
+/** Every button with its short name (rib.s.<action>): the palette's full name stays its tooltip. */
+export function ribbonTabs(app: App): readonly RibbonTab[] {
+  return tabsOf(app).map((tab) => ({
+    ...tab,
+    panels: tab.panels.map((p) => ({ ...p, items: p.items.map((i) => ({ ...i, short: i.short ?? (`rib.s.${i.id}` as MessageKey) })) })),
+  }));
+}
+
+function tabsOf(app: App): readonly RibbonTab[] {
+  const { ui } = app;
+  const tool = (id: ToolId, action: string, icon: RibbonItem['icon'], size: 'L' | 'S', short?: MessageKey): RibbonItem => ({
+    id: action,
+    icon,
+    size,
+    pressed: () => ui.tool === id,
+    ...(short ? { short } : {}),
+  });
+  const modify = (kind: ModifyKind, icon: RibbonItem['icon']): RibbonItem => ({
+    id: `edit.${kind}`,
+    icon,
+    size: 'S',
+    pressed: () => ui.tool === 'modify' && ui.modify?.kind === kind,
+    explains: true,
+  });
+  const select = { title: 'rib.p.select' as const, items: [tool('select', 'tool.select', 'pointer', 'L')] };
+  return [
+    {
+      id: 'arch',
+      title: 'rib.tab.arch',
+      panels: [
+        select,
+        {
+          title: 'rib.p.build',
+          items: [
+            tool('wall', 'tool.wall', 'wall', 'L'),
+            tool('door', 'tool.door', 'door', 'L'),
+            tool('window', 'tool.window', 'window', 'L'),
+            tool('column', 'tool.column', 'column', 'S'),
+            tool('beam', 'tool.beam', 'beam', 'S'),
+            tool('floor', 'tool.floor', 'slab', 'S'),
+            tool('roof', 'tool.roof', 'roof', 'S'),
+            { id: 'tool.rectWall', icon: 'wall', size: 'S' },
+            { id: 'tool.arcWall', icon: 'radius', size: 'S' },
+          ],
+        },
+        { title: 'rib.p.circulation', items: [tool('stair', 'tool.stair', 'stair', 'L'), tool('railing', 'tool.railing', 'railing', 'S')] },
+        { title: 'rib.p.rooms', items: [tool('room', 'tool.room', 'room', 'L')] },
+        {
+          title: 'rib.p.reference',
+          items: [tool('grid', 'tool.grid', 'hash', 'S'), { id: 'level.edit', icon: 'levelsAll', size: 'S' }, { id: 'edit.clearGuides', icon: 'guide', size: 'S' }],
+        },
+      ],
+    },
+    {
+      id: 'annotate',
+      title: 'rib.tab.annotate',
+      panels: [
+        select,
+        { title: 'rib.p.dims', items: [tool('dimension', 'tool.dimension', 'dimension', 'L'), tool('measure', 'tool.measure', 'ruler', 'L')] },
+        { title: 'rib.p.text', items: [{ id: 'edit.addNote', icon: 'text', size: 'L' }, { id: 'edit.addLevelMark', icon: 'height', size: 'S' }] },
+        { title: 'rib.p.tags', items: [{ id: 'settings.openingTags', icon: 'tag', size: 'S', pressed: () => ui.openingTags }] },
+      ],
+    },
+    {
+      id: 'modify',
+      title: 'rib.tab.modify',
+      panels: [
+        select,
+        {
+          title: 'rib.p.modify',
+          items: [modify('move', 'move'), modify('copy', 'copy'), modify('rotate', 'rotate'), modify('mirror', 'mirror'), modify('scale', 'scale'), modify('offset', 'offset')],
+        },
+        {
+          title: 'rib.p.walls',
+          items: [tool('split', 'edit.split', 'split', 'S'), tool('corner', 'edit.corner', 'corner', 'S'), { id: 'edit.merge', icon: 'merge', size: 'S' }],
+        },
+        { title: 'rib.p.clipboard', items: [{ id: 'edit.copyClip', icon: 'copy', size: 'S' }, { id: 'edit.paste', icon: 'plus', size: 'S' }] },
+        {
+          title: 'rib.p.selection',
+          items: [{ id: 'edit.selectAll', icon: 'pointer', size: 'S' }, { id: 'edit.selectSimilar', icon: 'zoomSel', size: 'S' }, { id: 'edit.delete', icon: 'trash', size: 'S' }],
+        },
+      ],
+    },
+    {
+      id: 'view',
+      title: 'rib.tab.view',
+      panels: [
+        {
+          title: 'rib.p.views',
+          items: [
+            { id: 'view.plan', icon: 'map', size: 'L', pressed: () => ui.view === 'plan' && app.walker === null },
+            { id: 'view.3d', icon: 'cube', size: 'L', pressed: () => ui.view === '3d' && app.walker === null },
+            { id: 'view.walk', icon: 'walk', size: 'L', pressed: () => app.walker !== null },
+          ],
+        },
+        { title: 'rib.p.navigate', items: [{ id: 'view.frameAll', icon: 'frame', size: 'S' }, { id: 'view.frameSelection', icon: 'zoomSel', size: 'S' }] },
+        {
+          title: 'rib.p.saved',
+          items: [{ id: 'view.save', icon: 'plus', size: 'S' }, { id: 'view.tourEdit', icon: 'play', size: 'S' }, { id: 'view.points', icon: 'pin', size: 'S' }],
+        },
+        {
+          title: 'rib.p.elevations',
+          items: [
+            { id: 'view.elevation.north', icon: 'arrowUp', size: 'S' },
+            { id: 'view.elevation.south', icon: 'arrowDown', size: 'S' },
+            { id: 'view.elevation.east', icon: 'chevronRight', size: 'S' },
+            { id: 'view.elevation.west', icon: 'chevronLeft', size: 'S' },
+            { id: 'view.section', icon: 'cut', size: 'S' },
+            { id: 'view.sectionOff', icon: 'close', size: 'S' },
+          ],
+        },
+        {
+          title: 'rib.p.visibility',
+          items: [
+            { id: 'view.tempHide', icon: 'flip', size: 'S' },
+            { id: 'view.tempIsolate', icon: 'center', size: 'S' },
+            { id: 'view.tempReset', icon: 'close', size: 'S' },
+            { id: 'settings.refLines', icon: 'refCenter', size: 'S', pressed: () => ui.refLines },
+          ],
+        },
+        {
+          title: 'rib.p.panels',
+          items: [
+            { id: 'settings.browser', icon: 'sidebar', size: 'S', pressed: () => ui.browserOpen },
+            { id: 'settings.panel', icon: 'panel', size: 'S', pressed: () => !app.shell.panel.hidden },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'manage',
+      title: 'rib.tab.manage',
+      panels: [
+        {
+          title: 'rib.p.settings',
+          items: [
+            { id: 'material.edit', icon: 'slab', size: 'L' },
+            { id: 'type.edit', icon: 'wall', size: 'S' },
+            { id: 'units.edit', icon: 'ruler', size: 'S' },
+            { id: 'level.edit', icon: 'levelsAll', size: 'S' },
+          ],
+        },
+        { title: 'rib.p.project', items: [{ id: 'file.projects', icon: 'folder', size: 'L' }, { id: 'view.schedules', icon: 'table', size: 'S' }] },
+        { title: 'rib.p.export', items: [{ id: 'file.exportGlb', icon: 'cube', size: 'S' }, { id: 'file.exportDxf', icon: 'map', size: 'S' }, { id: 'file.save', icon: 'download', size: 'S' }] },
+      ],
+    },
+  ];
+}
+
+/** The File menu: the project's files, then help and the interface's settings. */
+export const FILE_MENU: readonly (string | '-')[] = [
+  'file.new',
+  'file.projects',
+  'file.open',
+  'file.save',
+  '-',
+  'file.exportGlb',
+  'file.exportDxf',
+  'view.schedules',
+  '-',
+  'settings.language',
+  'settings.theme',
+  'help.shortcuts',
+  'help.tour',
+];

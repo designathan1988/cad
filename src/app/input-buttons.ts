@@ -5,16 +5,16 @@ import { t } from '../ui/i18n';
 import type { App } from './app';
 import { EDIT_LEVELS } from './app';
 import { showLevels } from '../ui/levels-dialog';
-import { showMenu } from '../ui/menu';
+import { type MenuItem, showMenu } from '../ui/menu';
+import { FILE_MENU } from './ribbon-tabs';
 import type { LevelsShown } from './view-3d';
-import type { ModifyKind } from '../tools/modify-tool';
 import { renameInPlace, showHelp } from './input';
 
 export function wireButtons(app: App, palette: () => void): void {
   const { shell, ui } = app;
   shell.undo.addEventListener('click', () => app.undo());
   shell.redo.addEventListener('click', () => app.redo());
-  shell.homeBtn.addEventListener('click', () => app.frameAll());
+  shell.homeBtn.addEventListener('click', () => app.openProjects());
   shell.view3d.addEventListener('click', () => app.setView('3d'));
   shell.viewWalk.addEventListener('click', () => app.toggleWalk());
   shell.tourPrev.addEventListener('click', () => app.tourStep(-1));
@@ -36,7 +36,6 @@ export function wireButtons(app: App, palette: () => void): void {
   shell.theme.addEventListener('click', () => app.toggleTheme());
   shell.save.addEventListener('click', () => app.saveFile());
   shell.open.addEventListener('click', () => shell.fileInput.click());
-  shell.newFile.addEventListener('click', () => app.newProject());
   shell.projectName.addEventListener('click', () => renameInPlace(app));
   shell.fileInput.addEventListener('change', () => {
     const file = shell.fileInput.files?.[0];
@@ -44,33 +43,34 @@ export function wireButtons(app: App, palette: () => void): void {
     if (file) void app.openFile(file);
   });
   shell.panelToggle.addEventListener('click', () => app.togglePanel());
-  shell.toolSelect.addEventListener('click', () => app.setTool('select'));
-  shell.toolWall.addEventListener('click', () => app.setTool('wall'));
-  shell.toolDoor.addEventListener('click', () => app.setTool('door'));
-  shell.toolWindow.addEventListener('click', () => app.setTool('window'));
-  shell.toolRoom.addEventListener('click', () => app.setTool('room'));
-  shell.toolFloor.addEventListener('click', () => app.setTool('floor'));
-  shell.toolMeasure.addEventListener('click', () => app.setTool('measure'));
-  shell.toolDimension.addEventListener('click', () => app.setTool('dimension'));
-  shell.toolGrid.addEventListener('click', () => app.setTool('grid'));
-  shell.toolColumn.addEventListener('click', () => app.setTool('column'));
-  shell.toolBeam.addEventListener('click', () => app.setTool('beam'));
-  shell.toolRoof.addEventListener('click', () => app.setTool('roof'));
-  shell.toolStair.addEventListener('click', () => app.setTool('stair'));
-  shell.toolRailing.addEventListener('click', () => app.setTool('railing'));
-  shell.toolSplit.addEventListener('click', () => app.setTool('split'));
-  shell.toolCorner.addEventListener('click', () => app.setTool('corner'));
-  for (const [kind, b] of Object.entries(shell.modifyTools)) b.addEventListener('click', () => app.startModify(kind as ModifyKind));
-  // The edit tools the top bar had no room for, under its More button.
-  shell.moreTools.addEventListener('click', () => {
-    const r = shell.moreTools.getBoundingClientRect();
-    showMenu(shell.foldedTools(), { x: r.left, y: r.bottom + 4 }, t('top.moreTools'));
+  // The File menu, under its tab: the project's files, help and settings (app/ribbon-tabs.ts).
+  shell.fileMenu.addEventListener('click', () => {
+    const actions = new Map(app.actionList().map((a) => [a.id, a]));
+    const r = shell.fileMenu.getBoundingClientRect();
+    let line = false;
+    const items: MenuItem[] = [];
+    for (const id of FILE_MENU) {
+      if (id === '-') {
+        line = items.length > 0;
+        continue;
+      }
+      const a = actions.get(id);
+      if (!a) continue;
+      items.push({ label: a.label, ...(a.keys ? { keys: a.keys } : {}), disabled: !a.enabled, separated: line, run: a.run });
+      line = false;
+    }
+    showMenu(items, { x: r.left, y: r.bottom + 2 }, t('rib.file'));
   });
-  // The right side's buttons it had no room for (language, theme, files), under its menu.
-  shell.moreApp.addEventListener('click', () => {
-    const r = shell.moreApp.getBoundingClientRect();
-    showMenu(shell.foldedApp(), { x: r.right, y: r.bottom + 4 }, t('top.moreOptions'));
-  });
+  // The ribbon wider than the window: the mouse wheel scrolls it sideways, as Office's does.
+  shell.ribbon.addEventListener(
+    'wheel',
+    (e) => {
+      if (shell.ribbon.scrollWidth <= shell.ribbon.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      shell.ribbon.scrollLeft += e.deltaY;
+    },
+    { passive: false },
+  );
   shell.snapBtn.addEventListener('click', () => app.toggleSnaps());
   for (const [mode, b] of Object.entries(shell.levelsShown)) b.addEventListener('click', () => app.setView3D({ levels: mode as LevelsShown }));
   shell.explode.addEventListener('click', () => app.toggleExplode());

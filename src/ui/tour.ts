@@ -16,8 +16,8 @@ interface Stop {
 }
 
 export const TOUR: readonly Stop[] = [
-  { target: (app) => app.shell.tools, title: 'tour.tools.title', text: 'tour.tools.text' },
-  { target: (app) => app.shell.editTools, title: 'tour.edit.title', text: 'tour.edit.text' },
+  { target: (app) => app.shell.ribbon, title: 'tour.tools.title', text: 'tour.tools.text' },
+  { target: (app) => app.shell.tabs, title: 'tour.edit.title', text: 'tour.edit.text' },
   { target: (app) => app.shell.panel, title: 'tour.panel.title', text: 'tour.panel.text' },
   { target: (app) => app.shell.foot, title: 'tour.foot.title', text: 'tour.foot.text' },
   { target: (app) => app.shell.commands, title: 'tour.palette.title', text: 'tour.palette.text' },

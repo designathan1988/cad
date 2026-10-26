@@ -16,9 +16,16 @@
   --radius-sm: 4px;
   --radius: 6px;
   --radius-lg: 8px;
-  --top-h: 44px;
+  --top-h: 40px;
+  --tabs-h: 30px;
+  --ribbon-h: 92px;
+  --strip-h: 36px;
   --foot-h: 36px;
-  --tools-w: 52px;
+  /* Where the drawing starts under the frame: a panel over the drawing (narrow windows) starts there. */
+  --chrome-top: calc(var(--top-h) + var(--tabs-h) + var(--ribbon-h) + var(--strip-h));
+  --rb-large-w: 64px;
+  --rb-small-h: 24px;
+  --search-w: 300px;
   --control-h: 32px;
   --control-h-sm: 32px;
   --field-h: 32px;
@@ -219,8 +226,8 @@ textarea {
 #app {
   display: grid;
   /* minmax(0, 1fr): the middle row never grows past the window, so the footer stays visible. */
-  grid-template-rows: var(--top-h) minmax(0, 1fr) var(--foot-h);
-  grid-template-columns: var(--tools-w) 1fr auto;
+  grid-template-rows: var(--top-h) var(--tabs-h) var(--ribbon-h) var(--strip-h) minmax(0, 1fr) var(--foot-h);
+  grid-template-columns: minmax(0, 1fr) auto;
   height: 100%;
 }
 .top {
@@ -443,49 +450,7 @@ button.project-name:hover {
   cursor: default;
 }
 
-/* Tools */
-.tools {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--sp-1);
-  padding: var(--sp-2) 0;
-  min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: none;
-  border-right: var(--line) solid var(--border);
-  background: var(--bg);
-}
-.tools .group-sep {
-  width: var(--sep-w);
-  height: var(--line);
-  background: var(--border);
-  margin: var(--sp-1) 0;
-}
-.tools .tool {
-  width: var(--tool-w);
-  height: var(--control-h);
-  flex: none;
-}
-/* A Modify tool with nothing selected that it takes: dimmed, still clickable (it says what to select). */
-.tool[aria-disabled='true'] {
-  opacity: 0.4;
-}
-.tools .spacer {
-  flex: 1;
-}
 
-/* The edit tools in the top bar (shell.ts): those that do not fit are folded into the More menu, and the
-   right side's buttons into its own. */
-.edit-tools {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-half);
-}
-.edit-tools > [hidden],
-.top .right > [hidden] {
-  display: none;
-}
 
 /* Viewport */
 .viewport {
@@ -1182,12 +1147,12 @@ button.project-name:hover {
 }
 @media (max-width: 900px) {
   #app {
-    grid-template-columns: var(--tools-w) 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .panel {
     position: fixed;
     right: 0;
-    top: var(--top-h);
+    top: var(--chrome-top);
     bottom: var(--foot-h);
     z-index: 10;
     box-shadow: var(--shadow);
@@ -1205,55 +1170,43 @@ button.project-name:hover {
     display: none;
   }
 }
-/* Phones: the top bar takes two rows (the level, the views and the edit tools go below), the buttons
-   that need a keyboard leave, and the panel is a sheet over the lower part of the drawing, not a column
-   over it. */
+/* Phones: the title bar keeps the projects, undo and redo and the search; the ribbon scrolls sideways
+   with smaller buttons; the panel is a sheet over the lower part of the drawing, not a column over it. */
 @media (max-width: 600px) {
   :root {
-    --top-h: 84px;
+    --ribbon-h: 80px;
+    --rb-large-w: 52px;
+  }
+  /* The panels' names leave (each button keeps its own); the views show their icons, the level a name. */
+  .rb-title,
+  .view-tab .label,
+  .browser-toggle .label {
+    display: none;
+  }
+  .view-strip .level-select {
+    flex: none;
   }
   /* The 3D view's controls at the left: centred, at 390 px, the view cube covered Cut. */
   .view-bar {
     left: var(--sp-3);
     transform: none;
   }
-  .top {
-    flex-wrap: wrap;
-    align-content: center;
-    row-gap: var(--sp-half);
-  }
-  /* The second row, after a break: the level, the views and the edit tools, centred together (on a
-     phone shell.ts: fitTop puts the edit tools in the bar itself, out of its left part). */
-  .top::after {
-    content: '';
-    order: 2;
-    flex-basis: 100%;
-  }
-  .top .center {
-    order: 3;
-    margin-left: auto;
-  }
-  .top > .edit-tools {
-    order: 4;
-    margin-right: auto;
-  }
-  .top .edit-sep {
-    display: none;
-  }
-  .project-name {
-    max-width: calc(var(--name-w) * 0.44);
-  }
-  .level-select {
-    width: calc(var(--level-w) * 0.79);
-  }
-  /* Keyboard-only help leaves; language and theme fold into the top bar's menu when the row is full. */
+  .titlebar .quick,
+  .titlebar .sep,
+  .saved-note,
+  .search-label,
+  .search-btn .kbd,
   .top .needs-keyboard {
     display: none;
   }
-  /* The first row: the left side as wide as what it holds, the right one the rest (shell.ts: fitTop
-     folds the right side's buttons until they fit), not half each, which put Redo under Commands. */
-  .top .left {
-    flex: 0 1 auto;
+  .search-btn {
+    width: auto;
+  }
+  .project-name {
+    max-width: calc(var(--name-w) * 0.5);
+  }
+  .level-select {
+    width: calc(var(--level-w) * 0.7);
   }
   .panel {
     top: auto;
@@ -1287,12 +1240,12 @@ button.project-name:hover {
     --control-h-sm: 44px;
     --field-h: 44px;
     --wide-btn-h: 44px;
-    --tools-w: 56px;
-    --top-h: 56px;
+    --top-h: 48px;
+    --tabs-h: 40px;
+    --strip-h: 48px;
+    --rb-small-h: 44px;
+    --ribbon-h: 128px;
     --foot-h: 52px;
-  }
-  .tools .tool {
-    width: var(--touch);
   }
   .menu-item,
   .palette-option {
@@ -1301,9 +1254,9 @@ button.project-name:hover {
 }
 @media (pointer: coarse) and (max-width: 600px) {
   :root {
-    --top-h: 104px;
     /* The footer's three lines, as on any phone (the touch sizes above came later and won). */
     --foot-h: 60px;
+    --ribbon-h: 104px;
   }
   /* Home, undo, redo, commands, open, save and panel at 44 px fill the row: the name gives way. */
   .project-name {
@@ -1330,9 +1283,6 @@ button.project-name:hover {
 }
 .marquee[hidden] {
   display: none;
-}
-.tools .tool.arc-mode {
-  box-shadow: inset 0 calc(-1 * var(--line-2)) 0 var(--accent);
 }
 
 /* Command palette (Ctrl+K) */
@@ -2103,4 +2053,311 @@ textarea.text-field {
 }
 .debug-error {
   color: var(--error);
+}
+
+/* The frame (shell.ts), as the interface model: a dark title bar, the ribbon's tabs, the ribbon, the
+   views' strip over the drawing, the properties on the right, the status bar. */
+:root {
+  --title-bg: #1f2329;
+  --title-text: #e8eaee;
+  --title-text-2: #a4a9b3;
+  --title-hover: rgb(255 255 255 / 0.09);
+  --title-field: rgb(255 255 255 / 0.08);
+  --title-border: rgb(255 255 255 / 0.14);
+  --saved-ok: #3fb27f;
+  --on-accent: #ffffff;
+}
+:root[data-theme='dark'] {
+  --title-bg: #111215;
+}
+.titlebar {
+  grid-row: 1;
+  background: var(--title-bg);
+  color: var(--title-text);
+  border-bottom: 0;
+}
+.titlebar .icon-btn,
+.titlebar .project-name {
+  color: var(--title-text);
+}
+.titlebar .icon-btn:hover:not(:disabled),
+.titlebar .project-name:hover {
+  background: var(--title-hover);
+}
+.titlebar .icon-btn:disabled {
+  opacity: 0.4;
+}
+.titlebar .icon-btn[aria-pressed='true'] {
+  background: var(--title-hover);
+  color: var(--title-text);
+}
+.titlebar .sep {
+  width: var(--line);
+  height: var(--sep-h);
+  background: var(--title-border);
+  margin: 0 var(--sp-1);
+}
+.titlebar .center {
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.saved-note {
+  color: var(--title-text-2);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.saved-note::before {
+  content: '';
+  display: inline-block;
+  width: var(--sp-2);
+  height: var(--sp-2);
+  margin-right: var(--sp-1);
+  border-radius: var(--pill);
+  background: var(--saved-ok);
+  vertical-align: middle;
+}
+.app-mark {
+  color: var(--on-accent);
+  background: var(--accent);
+}
+.titlebar .app-mark:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 85%, var(--on-accent));
+}
+.search-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: var(--search-w);
+  max-width: 40vw;
+  height: calc(var(--control-h) - var(--sp-1));
+  padding: 0 var(--sp-2);
+  border: var(--line) solid var(--title-border);
+  border-radius: var(--radius);
+  background: var(--title-field);
+  color: var(--title-text-2);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.search-btn:hover {
+  color: var(--title-text);
+}
+.search-label {
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-btn .kbd {
+  border-color: var(--title-border);
+  background: transparent;
+  color: var(--title-text-2);
+}
+
+/* The ribbon's tabs: File (a menu) first, then the tabs; the chosen one joins the ribbon under it. */
+.rb-tabs {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-half);
+  padding: 0 var(--sp-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--bg-2);
+  border-bottom: var(--line) solid var(--border);
+}
+.rb-tab {
+  flex: none;
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-bottom: var(--line-2) solid transparent;
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.rb-tab:hover {
+  color: var(--text);
+}
+.rb-tab[aria-selected='true'] {
+  border-bottom-color: var(--accent);
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 600;
+}
+.rb-file {
+  margin: var(--sp-1) var(--sp-1) var(--sp-1) 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+}
+.rb-file:hover {
+  color: var(--accent-contrast);
+  background: color-mix(in srgb, var(--accent) 85%, #000000);
+}
+
+/* The ribbon: panels side by side, each with its title under it; what does not fit scrolls sideways. */
+.ribbon {
+  grid-row: 3;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* No bar over the panels' titles: the wheel scrolls it sideways (input-buttons.ts), a finger drags it. */
+  scrollbar-width: none;
+  background: var(--bg);
+  border-bottom: var(--line) solid var(--border);
+}
+.rb-panel {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  padding: var(--sp-1) var(--sp-1) 0;
+  border-right: var(--line) solid var(--border);
+}
+.rb-body {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  gap: var(--sp-half);
+  min-height: 0;
+}
+.rb-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--line);
+}
+.rb-title {
+  padding: var(--sp-half) 0;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  text-align: center;
+  white-space: nowrap;
+}
+.rb-large,
+.rb-small {
+  display: flex;
+  align-items: center;
+  border: var(--line) solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.rb-large {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: var(--sp-1);
+  width: var(--rb-large-w);
+  height: 100%;
+  padding: var(--sp-1) var(--sp-half);
+}
+.rb-large .rb-label {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--fs-xs);
+  line-height: 1.15;
+  text-align: center;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.rb-small {
+  gap: var(--sp-1);
+  height: var(--rb-small-h);
+  padding: 0 var(--sp-2) 0 var(--sp-1);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.rb-large:hover,
+.rb-small:hover {
+  background: var(--hover);
+}
+.rb-large[aria-pressed='true'],
+.rb-small[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.rb-large[aria-disabled='true'],
+.rb-small[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* The views' strip: the level, the views as tabs, the project browser's button. */
+.view-strip {
+  grid-row: 4;
+  grid-column: 1;
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-2);
+  min-width: 0;
+  padding: 0 var(--sp-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--bg-2);
+  border-bottom: var(--line) solid var(--border);
+}
+.view-strip .level-select {
+  align-self: center;
+}
+.view-strip .spacer {
+  flex: 1;
+}
+.view-tabs {
+  display: flex;
+  align-items: stretch;
+}
+.view-tab {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-bottom: var(--line-2) solid transparent;
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.view-tab:hover {
+  color: var(--text);
+}
+.view-tab[aria-pressed='true'] {
+  border-bottom-color: var(--accent);
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 600;
+}
+.browser-toggle {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  gap: var(--sp-1);
+  width: auto;
+  padding: 0 var(--sp-2);
+}
+.viewport {
+  grid-row: 5;
+  grid-column: 1;
+}
+.panel {
+  grid-row: 4 / 6;
+  grid-column: 2;
+}
+.foot {
+  grid-row: 6;
+  grid-column: 1 / -1;
+}
+@media (pointer: coarse) {
+  /* Touch: a column of small buttons would be three 44 px rows; they go side by side instead. */
+  .rb-column {
+    flex-direction: row;
+  }
 }

@@ -1,6 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import type { Action } from './actions';
 import { lengthNum, setUnits } from '../ui/units';
 import * as viewing from './view-ui';
 import * as selecting from './selection-ui';
@@ -1513,6 +1514,16 @@ export class App {
   openWallTypes: (typeId?: string) => void = () => {};
   openMaterials: () => void = () => {};
   openUnits: () => void = () => {};
+  /** Every action by name (app/actions.ts), set by the input layer: the ribbon and the File menu run them. */
+  actionList: () => Action[] = () => [];
+  /** The ribbon's tab shown, kept between visits, and what it was last drawn from (chrome.ts). */
+  ribbonTab = loadPrefs().ribbonTab ?? 'arch';
+  ribbonKey = '';
+  chooseRibbonTab(id: string): void {
+    this.ribbonTab = id;
+    savePrefs({ ribbonTab: id });
+    this.renderChrome();
+  }
 
   renderBrowserDrawer(): void {
     return chrome.renderBrowserDrawer(this);

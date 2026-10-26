@@ -13,8 +13,9 @@ import { kindOfId, levelOfSolid } from '../elements/registry';
 import { elementIds, wallNumber } from './document';
 import { boundsOf, openingOutline } from './geometry';
 import { renderBrowser } from '../ui/browser';
+import { renderRibbonTab, renderRibbonTabs } from '../ui/ribbon';
+import { ribbonTabs } from './ribbon-tabs';
 import { exploding, shownLevels } from './view-3d';
-import { canTransform } from '../tools/transform';
 import { contextEntries } from './context-menu';
 import { placeBarY } from '../ui/bar-place';
 import { signedArea } from '../elements/room/derive';
@@ -42,11 +43,9 @@ export function renderChrome(app: App): void {
   const doc = store.get();
   shell.panelToggle.setAttribute('aria-pressed', String(!shell.panel.hidden));
   const projectName = doc.name || t('app.untitled');
-  // Another name, another width: the top bar's edit tools fitted again.
-  if (shell.projectName.textContent !== projectName) {
-    shell.projectName.textContent = projectName;
-    shell.fitTop();
-  }
+  if (shell.projectName.textContent !== projectName) shell.projectName.textContent = projectName;
+  // Where the project is kept: in this browser's database, else in its local storage.
+  shell.savedNote.textContent = t(app.db ? 'top.savedHere' : 'top.savedLocal');
   document.title = `${projectName} · cad2`;
   shell.undo.disabled = !store.canUndo();
   shell.redo.disabled = !store.canRedo();
@@ -66,30 +65,7 @@ export function renderChrome(app: App): void {
     shell.tourPlay.setAttribute('aria-label', t(app.tour.playing ? 'gtour.pause' : 'gtour.resume'));
     shell.tourPlay.title = t(app.tour.playing ? 'gtour.pause' : 'gtour.resume');
   }
-  shell.toolSelect.setAttribute('aria-pressed', String(ui.tool === 'select'));
-  shell.toolWall.setAttribute('aria-pressed', String(ui.tool === 'wall'));
-  shell.toolRoom.setAttribute('aria-pressed', String(ui.tool === 'room'));
-  shell.toolFloor.setAttribute('aria-pressed', String(ui.tool === 'floor'));
-  shell.toolDoor.setAttribute('aria-pressed', String(ui.tool === 'door'));
-  shell.toolWindow.setAttribute('aria-pressed', String(ui.tool === 'window'));
-  shell.toolMeasure.setAttribute('aria-pressed', String(ui.tool === 'measure'));
-  shell.toolDimension.setAttribute('aria-pressed', String(ui.tool === 'dimension'));
-  shell.toolGrid.setAttribute('aria-pressed', String(ui.tool === 'grid'));
-  shell.toolColumn.setAttribute('aria-pressed', String(ui.tool === 'column'));
-  shell.toolBeam.setAttribute('aria-pressed', String(ui.tool === 'beam'));
-  shell.toolRoof.setAttribute('aria-pressed', String(ui.tool === 'roof'));
-  shell.toolStair.setAttribute('aria-pressed', String(ui.tool === 'stair'));
-  shell.toolRailing.setAttribute('aria-pressed', String(ui.tool === 'railing'));
-  shell.toolSplit.setAttribute('aria-pressed', String(ui.tool === 'split'));
-  shell.toolCorner.setAttribute('aria-pressed', String(ui.tool === 'corner'));
-  // The Modify tools: the one in use pressed; dimmed while the selection holds nothing they take (a
-  // click then says what to select).
-  const transformable = canTransform(doc, [...ui.selection]);
-  for (const [kind, b] of Object.entries(shell.modifyTools)) {
-    b.setAttribute('aria-pressed', String(ui.tool === 'modify' && ui.modify?.kind === kind));
-    b.setAttribute('aria-disabled', String(!transformable));
-  }
-  shell.syncMore();
+  renderRibbon(app);
   shell.lang.textContent = getLang().toUpperCase();
   // Rewritten only when it changes: replacing the icon under the pointer between press and release
   // would cancel the click.
@@ -335,8 +311,9 @@ export function renderChrome(app: App): void {
   const what = shell.measureLabel.textContent ?? '';
   shell.measure.setAttribute('aria-label', what === t('foot.measure') ? what : `${t('foot.measure')}: ${what}`);
   shell.measure.placeholder = t(sidesMode ? 'foot.sidesHint' : angleMode ? 'foot.angleHint' : factorMode ? 'foot.factorHint' : ui.guide ? 'foot.distanceHint' : pointMode && !lengthMode ? 'foot.pointHint' : lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint', typingExamples());
-  shell.toolWall.classList.toggle('arc-mode', drawing && arc);
-  shell.toolWall.classList.toggle('rect-mode', drawing && rect);
+  // The wall tool's arc and rectangle modes, pressed on the ribbon while on.
+  shell.ribbon.querySelector('[data-action="tool.arcWall"]')?.setAttribute('aria-pressed', String(drawing && arc));
+  shell.ribbon.querySelector('[data-action="tool.rectWall"]')?.setAttribute('aria-pressed', String(drawing && rect));
   shell.coords.textContent = ui.cursor ? `x ${lengthText(ui.cursor.x)}  y ${lengthText(ui.cursor.y)}` : '';
   shell.fitFoot();
   app.placeFloatBar();
@@ -449,4 +426,29 @@ export function placeFloatBar(app: App): void {
   const y = placeBarY({ left, w, h }, { top: yTop, bottom: yBottom }, boxes, { h: covered });
   bar.style.left = `${left}px`;
   bar.style.top = `${Math.min(Math.max(8, y), covered - h - 8)}px`;
+}
+
+/**
+ * The ribbon's tabs and the chosen tab's panels (ui/ribbon.ts), from the app's actions: drawn again only
+ * when what they show changes (the tab, the language, an action's name, key, state or pressed state).
+ */
+export function renderRibbon(app: App): void {
+  const { shell } = app;
+  const list = app.actionList();
+  const actions = new Map(list.map((a) => [a.id, a]));
+  const tabs = ribbonTabs(app);
+  if (!tabs.some((x) => x.id === app.ribbonTab)) app.ribbonTab = tabs[0]!.id;
+  const tab = tabs.find((x) => x.id === app.ribbonTab)!;
+  const states = tab.panels.flatMap((p) => p.items.map((i) => {
+    const a = actions.get(i.id);
+    return a ? [i.id, a.label, a.keys ?? '', a.enabled, i.pressed?.() ?? null] : [i.id];
+  }));
+  const key = JSON.stringify([getLang(), app.ribbonTab, states]);
+  if (key === app.ribbonKey) return;
+  app.ribbonKey = key;
+  // Keep the focus on the same button across the rebuild.
+  const focused = document.activeElement instanceof HTMLElement && shell.ribbon.contains(document.activeElement) ? document.activeElement.dataset.action : undefined;
+  renderRibbonTabs(shell.tabs, tabs, app.ribbonTab, (id) => app.chooseRibbonTab(id), shell.fileMenu);
+  renderRibbonTab(shell.ribbon, tab, actions);
+  if (focused) shell.ribbon.querySelector<HTMLElement>(`[data-action="${focused}"]`)?.focus();
 }
