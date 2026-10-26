@@ -1114,8 +1114,12 @@ export class App {
   }
 
   deleteSelection(): void {
-    if (this.ui.selection.size === 0) return;
+    const n = this.ui.selection.size;
+    if (n === 0) return;
     this.store.dispatch(deleteElements([...this.ui.selection]));
+    // Said, with the way back: the elements went without a word, and a window selection can take more than was seen.
+    this.ui.info = t(n === 1 ? 'hint.deletedOne' : 'hint.deleted', { n });
+    this.renderChrome();
   }
 
   /**
