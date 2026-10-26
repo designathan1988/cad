@@ -411,10 +411,10 @@ Entrega final do adendo 2 (l.152)
 - Trocar de pavimento por seletor ou atalho, no mesmo ponto (l.164, l.187): existe (PageUp e PageDown).
 - Esc sai e volta à câmera anterior (l.165): existe.
 - Máquina de estado do modo caminhar com tabela escrita (l.180): falta.
-- Tour guiado: paradas com nome e legenda; reordenar, editar e apagar (l.169, l.188): falta. O tour de 4 passos da interface (l.240) existe e é outra coisa.
+- Tour guiado: paradas com nome e legenda; reordenar, editar e apagar (l.169, l.188): existe (as vistas salvas são as paradas; diálogo "Vistas e tour"). O tour de 4 passos da interface (l.240) é outra coisa.
 - Pontos de interesse numerados com cartão de título e texto (l.170, l.188): falta.
-- Reproduzir o tour com transição suave, anterior e próximo, automático com tempo por parada (l.171, l.188): falta.
-- Paradas, pontos e configurações do tour no documento, por comandos, no desfazer, salvos com versão e migração (l.178): falta.
+- Reproduzir o tour com transição suave, anterior e próximo, automático com tempo por parada (l.171, l.188): existe (voo de 1,2 s entre vistas 3D; ← → Espaço Esc; segundos por parada guardados).
+- Paradas, pontos e configurações do tour no documento, por comandos, no desfazer, salvos com versão e migração (l.178): parcial; paradas e legendas no documento (versão 6+), por comandos com desfazer; o tempo por parada fica nas preferências; pontos de interesse ainda não.
 - "Exportar para web": pacote com index.html e os arquivos do modelo, sem instalar nada (l.173, l.189): falta.
 - Visualizador para visitantes, somente leitura, ponto de entrada separado que reaproveita cálculo e renderização (l.174, l.183): falta.
 - O visitante gira e aproxima, caminha com colisão, troca de pavimento, segue o tour, abre pontos de interesse e vê a planta com a sua posição (l.174): falta.
