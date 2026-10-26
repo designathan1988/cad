@@ -223,6 +223,40 @@ export class PlanView {
       });
       ctx.closePath();
     };
+    /**
+     * A wall piece's outline on the path. On an arc wall an edge whose ends lie on one face circle (the
+     * chord the engine's 0.5 mm segments take, ADR 0001) is drawn as the circle itself: zoomed past
+     * ~2000 px/m the chords showed. A point cut on a chord is up to 0.5 mm inside the circle, so the
+     * test of equal radii (to 0.1 µm) takes the chords only.
+     */
+    type Walled = { start: Point2; end: Point2; bulge?: number };
+    /** From u (where the path is) to v: along the wall's face circle when both lie on it, else straight. */
+    const edgeOf = (wall: Walled) => {
+      const arc = wall.bulge ? arcOf({ start: wall.start, end: wall.end, bulge: wall.bulge }) : null;
+      const c = arc ? this.toScreen(arc.center) : null;
+      const radius = (p: Point2) => (arc ? Math.hypot(p.x - arc.center.x, p.y - arc.center.y) : 0);
+      return (u: Point2, v: Point2) => {
+        const q = this.toScreen(v);
+        const ru = radius(u);
+        if (!c || ru < 1e-6 || Math.abs(ru - radius(v)) >= 1e-7) return ctx.lineTo(q.x, q.y);
+        const p = this.toScreen(u);
+        const a0 = Math.atan2(p.y - c.y, p.x - c.x);
+        const a1 = Math.atan2(q.y - c.y, q.x - c.x);
+        let d = a1 - a0;
+        while (d > Math.PI) d -= 2 * Math.PI;
+        while (d <= -Math.PI) d += 2 * Math.PI;
+        ctx.arc(c.x, c.y, Math.hypot(p.x - c.x, p.y - c.y), a0, a1, d < 0);
+      };
+    };
+    const piecePath = (poly: readonly Point2[], wall: Walled) => {
+      const edge = edgeOf(wall);
+      if (poly.length === 0) return;
+      const first = this.toScreen(poly[0]!);
+      ctx.moveTo(first.x, first.y);
+      for (let i = 1; i < poly.length; i++) edge(poly[i - 1]!, poly[i]!);
+      edge(poly[poly.length - 1]!, poly[0]!);
+      ctx.closePath();
+    };
     // The level below, faint, under everything of this one: an upper floor is drawn over its walls
     // (it was drawn blind, with nothing to align to). Filled only, so it never reads as this level's.
     if (o.underlay && o.underlay.length > 0) {
@@ -281,7 +315,12 @@ export class PlanView {
     const outline = (list: typeof solids, line: string, width: number) => {
       ctx.strokeStyle = line;
       ctx.lineWidth = width;
-      for (const s of list) for (const p of s.pieces) (trace(p.polygon), ctx.stroke());
+      for (const s of list)
+        for (const p of s.pieces) {
+          ctx.beginPath();
+          piecePath(p.polygon, s.wall);
+          ctx.stroke();
+        }
     };
     // By layer when the walls are wide enough on screen to tell them apart (byLayers): each piece in its
     // layer function's colour, and a thin line where layers meet (geometry/seams.ts), so they do not
@@ -292,26 +331,19 @@ export class PlanView {
     // Pieces of one colour are filled as one path: the canvas covers a path as a whole, so where two
     // of them meet (a core through an L's mitre) no antialiased seam lets the outline under them show.
     const fill = (list: typeof solids, colour: string | null) => {
-      const byColour = new Map<string, Point2[][]>();
+      const byColour = new Map<string, [Point2[], (typeof solids)[number]['wall']][]>();
       for (const s of list) {
         const byLayer = colour === null && layered(s);
         for (const p of s.pieces) {
           const fn = s.layers[p.layerIndex]?.function;
           const c = colour ?? (byLayer && fn ? color(LAYER_TOKEN[fn]) : color('--wall-fill'));
-          byColour.set(c, [...(byColour.get(c) ?? []), [...p.polygon]]);
+          byColour.set(c, [...(byColour.get(c) ?? []), [[...p.polygon], s.wall]]);
         }
       }
       ctx.lineWidth = 1;
       for (const [c, polys] of byColour) {
         ctx.beginPath();
-        for (const poly of polys) {
-          poly.forEach((v, i) => {
-            const s = this.toScreen(v);
-            if (i === 0) ctx.moveTo(s.x, s.y);
-            else ctx.lineTo(s.x, s.y);
-          });
-          ctx.closePath();
-        }
+        for (const [poly, wall] of polys) piecePath(poly, wall);
         ctx.fillStyle = c;
         ctx.strokeStyle = c;
         ctx.fill('nonzero');
@@ -324,6 +356,16 @@ export class PlanView {
       ctx.beginPath();
       for (const s of list) {
         if (!layered(s)) continue;
+        if (s.wall.bulge) {
+          // On an arc, along the layers' circle, as the faces are (piecePath).
+          const edge = edgeOf(s.wall);
+          for (const seam of s.seams) {
+            const a = this.toScreen(seam.a);
+            ctx.moveTo(a.x, a.y);
+            edge(seam.a, seam.b);
+          }
+          continue;
+        }
         for (const seam of s.seams) {
           const [a, b] = crisp(this.toScreen(seam.a), this.toScreen(seam.b));
           ctx.moveTo(a.x, a.y);
@@ -339,13 +381,7 @@ export class PlanView {
     const seen = normal.filter((s) => s.plan !== 'cut');
     const cut = normal.filter((s) => s.plan === 'cut');
     const pieces = (s: (typeof solids)[number]) => {
-      for (const p of s.pieces)
-        p.polygon.forEach((v, i) => {
-          const q = this.toScreen(v);
-          if (i === 0) ctx.moveTo(q.x, q.y);
-          else ctx.lineTo(q.x, q.y);
-          if (i === p.polygon.length - 1) ctx.closePath();
-        });
+      for (const p of s.pieces) piecePath(p.polygon, s.wall);
     };
     for (const s of seen) {
       ctx.save();
