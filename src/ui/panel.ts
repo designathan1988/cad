@@ -12,10 +12,11 @@ import { nextWallFields, wallFields } from '../elements/wall/fields';
 import { guideFields } from '../elements/guide/fields';
 import type { Guide } from '../elements/guide/schema';
 import type { JoinWarning } from '../elements/wall/join/types';
+import type { StackedStep } from '../app/stacked';
 import type { ReferenceLine } from '../elements/wall/schema';
 import { el } from './controls';
 import { fieldsSection } from './fields';
-import { name, t, type MessageKey } from './i18n';
+import { name, num, t, type MessageKey } from './i18n';
 import { icon } from './icons';
 
 export interface PanelInput {
@@ -38,6 +39,8 @@ export interface PanelInput {
   readonly total: number;
   /** The selected guides. */
   readonly guides: readonly Guide[];
+  /** Walls whose exterior face does not meet the face of the wall they stand on (app/stacked.ts). */
+  readonly stacked: readonly StackedStep[];
 }
 
 export interface PanelActions {
@@ -56,6 +59,8 @@ export interface PanelActions {
   readonly updateOpeningDefaults: (kind: OpeningKind, patch: Partial<OpeningSize>) => void;
   /** Deletes every guide of the level shown. */
   readonly clearGuides: () => void;
+  /** Moves the wall so its exterior face meets the face of the wall below it. */
+  readonly alignBelow: (step: StackedStep) => void;
 }
 
 /** The common value of a field across the selection, or null when it differs. */
@@ -110,6 +115,17 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
       const line = (k: JoinWarning['kind']) =>
         k === 'wallsOverlap' && numbers.length > 0 ? t('warn.wallsOverlapWith', { walls: numbers.join(', ') }) : t(`warn.${k}` as MessageKey);
       box.append(el('div', {}, ...[...new Set(mine.map((w) => w.kind))].map((k) => el('div', {}, line(k)))));
+      nodes.push(box);
+    }
+    // One wall standing off the face of the wall below: the step, and the way to align it.
+    const step = selected.length === 1 ? input.stacked.find((s) => s.upperId === selected[0]!.id) : undefined;
+    if (step) {
+      const box = el('div', { class: 'warn-list', role: 'status' });
+      box.innerHTML = icon('warning', 16);
+      const below = wallNumber(doc, step.lowerId) ?? '';
+      const align = el('button', { class: 'btn', type: 'button' }, t('panel.alignBelow'));
+      align.addEventListener('click', () => act.alignBelow(step));
+      box.append(el('div', {}, el('div', {}, t('warn.stackedStep', { d: num(step.size * 100, 1), n: below })), align));
       nodes.push(box);
     }
   } else if (input.rooms.length > 0) {

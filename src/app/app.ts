@@ -63,6 +63,7 @@ const SNAP_OF = {
 import { boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, openingOutline } from './geometry';
 import { renderBrowser } from '../ui/browser';
 import { loadDocument, loadPrefs, saveDocument, savePrefs } from './persist';
+import { stackedSteps } from './stacked';
 import { readProject, writeProject } from '../io/project-file';
 import { fitFactor, keepInView } from './keep-in-view';
 import type { ViewKey } from './view-keys';
@@ -70,7 +71,7 @@ import { type TempDim, tempDims } from './temp-dims';
 import { cutAt, exploding, liftOf, readView3D, shownLevels, type View3D } from './view-3d';
 import { MODIFY_START, type ModifyEvent, type ModifyKind, type ModifyState, modifyTransition, type OffsetLine, previewTransform } from '../tools/modify-tool';
 import { canTransform, copiesInSeries, copyToLevel, transformSelection } from '../tools/transform';
-import { changeReferenceLine, stretchEnd } from '../tools/edit';
+import { changeReferenceLine, moveWalls, stretchEnd } from '../tools/edit';
 import { canMerge, cornerWalls, mergeWalls, splitWall } from '../tools/split';
 import { contextEntries } from './context-menu';
 import { referenceLength } from '../elements/opening/derive';
@@ -1829,6 +1830,7 @@ export class App {
         openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing] } : null,
         total: ui.selection.size,
         guides: doc.guides.filter((g) => ui.selection.has(g.id)),
+        stacked: stackedSteps(doc),
       },
       {
         updateWalls: (patch) => this.store.dispatch(updateWalls([...ui.selection], patch)),
@@ -1889,6 +1891,8 @@ export class App {
           this.refresh();
         },
         clearGuides: () => this.clearGuides(),
+        // The wall moved across, with its joins kept as a move keeps them: the face then meets the one below.
+        alignBelow: (step) => this.store.dispatch(setWalls(moveWalls(this.store.get(), [step.upperId], step.shift), 'cmd.alignBelow')),
       },
     );
     this.afterPanel();
