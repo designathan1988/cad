@@ -190,6 +190,14 @@ export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels):
   // Text notes: a TEXT a line, centred as the plan draws them (R12's TEXT has one line).
   for (const n of labels.notes ?? []) {
     if (n.levelId !== levelId) continue;
+    if (n.elevation) {
+      // The level symbol, crossed, and the height to its right.
+      const r = n.height * 0.5;
+      line('A-ANNO-TEXT', { x: n.at.x - r * 1.4, y: n.at.y }, { x: n.at.x + r * 1.4, y: n.at.y });
+      line('A-ANNO-TEXT', { x: n.at.x, y: n.at.y - r * 1.4 }, { x: n.at.x, y: n.at.y + r * 1.4 });
+      text('A-ANNO-TEXT', { x: n.at.x + r + n.height * 0.3 + n.text.length * n.height * 0.3, y: n.at.y }, n.height, n.text);
+      continue;
+    }
     const lines = n.text.split('\n');
     lines.forEach((l, i) => text('A-ANNO-TEXT', { x: n.at.x, y: n.at.y - (i - (lines.length - 1) / 2) * n.height * 1.3 }, n.height, l));
   }

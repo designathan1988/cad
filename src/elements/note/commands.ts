@@ -10,16 +10,23 @@ export const addNote = (note: Note): Command<Doc> => ({
 });
 
 /** Text and height of the notes; an empty text or a height not above zero changes nothing. */
-export const updateNotes = (ids: readonly string[], patch: { readonly text?: string; readonly height?: number }): Command<Doc> => ({
+export const updateNotes = (ids: readonly string[], patch: { readonly text?: string; readonly height?: number; readonly offset?: number }): Command<Doc> => ({
   label: 'cmd.updateNote',
   apply: (doc) => {
     if (patch.text !== undefined && patch.text.trim() === '') return doc;
     if (patch.height !== undefined && !(patch.height > 0)) return doc;
+    if (patch.offset !== undefined && !Number.isFinite(patch.offset)) return doc;
     let changed = false;
     const notes = doc.notes.map((n) => {
       if (!ids.includes(n.id)) return n;
-      const next = { ...n, ...(patch.text !== undefined ? { text: patch.text.trim() } : {}), ...(patch.height !== undefined ? { height: patch.height } : {}) };
-      if (next.text === n.text && next.height === n.height) return n;
+      const next = {
+        ...n,
+        ...(patch.text !== undefined && !n.elevation ? { text: patch.text.trim() } : {}),
+        ...(patch.height !== undefined ? { height: patch.height } : {}),
+        // Only a level mark has an adjustment.
+        ...(patch.offset !== undefined && n.elevation ? { elevation: { offset: patch.offset } } : {}),
+      };
+      if (next.text === n.text && next.height === n.height && next.elevation?.offset === n.elevation?.offset) return n;
       changed = true;
       return next;
     });

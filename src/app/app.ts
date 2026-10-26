@@ -49,7 +49,7 @@ import { addDimension, setDimensionDistance } from '../elements/dimension/comman
 import { anchorAt, offsetThrough, placeDimension } from '../elements/dimension/anchor';
 import { DIM_PREFIX, type Dimension, isDimId } from '../elements/dimension/schema';
 import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState, dimensionTransition } from '../tools/dimension-tool';
-import { NOTE_HEIGHT, NOTE_PREFIX, type Note, isNoteId } from '../elements/note/schema';
+import { LEVEL_MARK_HEIGHT, NOTE_HEIGHT, NOTE_PREFIX, type Note, elevationText, isNoteId } from '../elements/note/schema';
 import { geometryOf, keepRooms, moveFloors, moveRooms } from './carry';
 import { keepOpenings } from './keep-openings';
 import { stepSelection } from './keyboard-select';
@@ -1151,8 +1151,29 @@ export class App {
   levelNotes(): Note[] {
     if (this.ui.view !== 'plan') return [];
     const d = this.ui.drag;
-    const notes = this.previewNotes ?? this.store.get().notes;
-    return (d?.kind === 'move' ? moveNotes(notes, d) : notes).filter((n) => n.levelId === this.ui.levelId);
+    const doc = this.store.get();
+    const notes = this.previewNotes ?? doc.notes;
+    // A level mark says its level's height plus its own: as its text, so it is drawn, boxed and picked as one.
+    const elevation = levelOf(doc, this.ui.levelId)?.elevation ?? 0;
+    return (d?.kind === 'move' ? moveNotes(notes, d) : notes)
+      .filter((n) => n.levelId === this.ui.levelId)
+      .map((n) => (n.elevation ? { ...n, text: elevationText(elevation + n.elevation.offset, (m) => num(m)) } : n));
+  }
+
+  /** A level mark where the menu was opened (or the middle of the view), selected: it says the level's height. */
+  addLevelMarkHere(at?: Point2): void {
+    const p = at ?? this.plan.center;
+    const id = newId(NOTE_PREFIX);
+    this.store.dispatch(addNote({ id, levelId: this.ui.levelId, at: { x: p.x, y: p.y }, text: '', height: LEVEL_MARK_HEIGHT, elevation: { offset: 0 } }));
+    if (this.ui.view !== 'plan') this.setView('plan');
+    this.setTool('select');
+    this.ui.selection = new Set([id]);
+    this.showProperties();
+    this.refresh();
+    // Its adjustment ready to type: a step down or up from the level.
+    const field = this.shell.panel.querySelector<HTMLInputElement>('input');
+    field?.focus();
+    field?.select();
   }
 
   /** A text note where the menu was opened (or the middle of the view), selected, its text ready to type in the panel. */
@@ -2126,7 +2147,7 @@ export class App {
       return this.renderChrome();
     }
     const marks = this.ui.openingTags ? openingMarks(doc.openings, markPrefix()) : undefined;
-    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²`, ...(marks ? { marks } : {}), notes: this.store.get().notes, dimensions: this.store.get().dimensions.flatMap((d) => (d.levelId === levelId ? (placeDimension(this.store.get(), this.geometry, d) ?? []) : [])), length: (m) => num(m) });
+    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²`, ...(marks ? { marks } : {}), notes: this.store.get().notes.map((n) => (n.elevation ? { ...n, text: elevationText((levelOf(this.store.get(), n.levelId)?.elevation ?? 0) + n.elevation.offset, (m) => num(m)) } : n)), dimensions: this.store.get().dimensions.flatMap((d) => (d.levelId === levelId ? (placeDimension(this.store.get(), this.geometry, d) ?? []) : [])), length: (m) => num(m) });
     const level = doc.levels.find((l) => l.id === levelId);
     const file = `${this.fileBase()} - ${level ? safeFileName(name(level.name)) : ''}.dxf`;
     this.download(file, new Blob([toCp1252(text)], { type: 'application/dxf' }), 'application/dxf');
@@ -2535,7 +2556,7 @@ export class App {
         openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing] } : null,
         total: ui.selection.size,
         guides: doc.guides.filter((g) => ui.selection.has(g.id)),
-        notes: doc.notes.filter((n) => ui.selection.has(n.id)),
+        notes: doc.notes.filter((n) => ui.selection.has(n.id)).map((n) => (n.elevation ? { ...n, text: elevationText((levelOf(doc, n.levelId)?.elevation ?? 0) + n.elevation.offset, (m) => num(m)) } : n)),
         dimensions: doc.dimensions.filter((d) => ui.selection.has(d.id)),
         dimensionLength: (d) => this.dimensionLength(d),
         stacked: stackedSteps(doc),

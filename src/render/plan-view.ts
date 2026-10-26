@@ -757,6 +757,45 @@ export class PlanView {
     ctx.restore();
   }
 
+  /**
+   * A level mark: the plan's level symbol (a circle with two opposite quarters filled, crossed) at its
+   * point, and the height it says to its right; a selected one boxed.
+   */
+  private drawLevelMark(n: NonNullable<PlanOverlay['notes']>[number], c: Point2, px: number, colour: string, family: string): void {
+    const ctx = this.ctx;
+    const r = px * 0.5;
+    ctx.save();
+    ctx.strokeStyle = colour;
+    ctx.fillStyle = colour;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+    ctx.moveTo(c.x - r * 1.4, c.y);
+    ctx.lineTo(c.x + r * 1.4, c.y);
+    ctx.moveTo(c.x, c.y - r * 1.4);
+    ctx.lineTo(c.x, c.y + r * 1.4);
+    ctx.stroke();
+    for (const start of [-Math.PI / 2, Math.PI / 2]) {
+      ctx.beginPath();
+      ctx.moveTo(c.x, c.y);
+      ctx.arc(c.x, c.y, r, start, start + Math.PI / 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.font = `${Math.max(2, px)}px ${family}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(n.text, c.x + r + px * 0.3, c.y);
+    if (n.selected) {
+      const b = noteBox(n, px / this.scale);
+      const p0 = this.toScreen({ x: b.x0, y: b.y1 });
+      const p1 = this.toScreen({ x: b.x1, y: b.y0 });
+      ctx.setLineDash([4, 3]);
+      ctx.strokeRect(p0.x - 2, p0.y - 2, p1.x - p0.x + 4, p1.y - p0.y + 4);
+    }
+    ctx.restore();
+  }
+
   /** Text notes: their letters as tall as they are at this scale, a line each; a selected one boxed. */
   private drawNotes(notes: NonNullable<PlanOverlay['notes']>, color: (v: string) => string): void {
     const ctx = this.ctx;
@@ -765,6 +804,10 @@ export class PlanView {
       const px = shownHeight(n, this.scale) * this.scale;
       const lines = n.text.split('\n');
       const c = this.toScreen(n.at);
+      if (n.elevation) {
+        this.drawLevelMark(n, c, px, n.selected ? color('--wall-sel') : color('--text'), family);
+        continue;
+      }
       ctx.save();
       ctx.fillStyle = n.selected ? color('--wall-sel') : color('--text');
       ctx.font = `${Math.max(2, px)}px ${family}`;

@@ -46,6 +46,7 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
   addPoint: { icon: 'pin' },
   selectSimilar: { icon: 'pointer' },
   addNote: { icon: 'text' },
+  addLevelMark: { icon: 'height' },
   commands: { icon: 'command', keys: 'Ctrl+K' },
 };
 
@@ -88,6 +89,10 @@ export function contextEntries(app: App, openCommands: () => void): ContextEntry
     addNote: (() => {
       const at = app.contextPoint;
       return () => app.addNoteHere(at ?? undefined);
+    })(),
+    addLevelMark: (() => {
+      const at = app.contextPoint;
+      return () => app.addLevelMarkHere(at ?? undefined);
     })(),
     commands: openCommands,
   };

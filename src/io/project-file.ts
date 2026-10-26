@@ -31,8 +31,9 @@ import type { DocWall } from '../app/document';
  * Version 10: a room's use and its own ceiling height (`use`, `height`). Older rooms have neither.
  * Version 11: text notes (`notes`, elements/note). Older files have none.
  * Version 12: permanent dimensions (`dimensions`, elements/dimension). Older files have none.
+ * Version 13: level marks, notes with an `elevation` (elements/note). Older files have none.
  */
-export const CURRENT_VERSION = 12;
+export const CURRENT_VERSION = 13;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
@@ -139,7 +140,15 @@ export const isFloor = (f: unknown): f is Floor =>
 
 /** A text note: a point, some text, letters taller than nothing. */
 export const isNote = (n: unknown): n is Note =>
-  isObject(n) && typeof n.id === 'string' && typeof n.levelId === 'string' && isPoint(n.at) && typeof n.text === 'string' && n.text.trim() !== '' && finite(n.height) && n.height > 0;
+  isObject(n) &&
+  typeof n.id === 'string' &&
+  typeof n.levelId === 'string' &&
+  isPoint(n.at) &&
+  typeof n.text === 'string' &&
+  finite(n.height) &&
+  n.height > 0 &&
+  // A level mark says a height, so it needs no text; a note does.
+  (n.elevation === undefined ? n.text.trim() !== '' : isObject(n.elevation) && finite(n.elevation.offset));
 
 /** An end of a dimension: on a wall (an end, along, across), on a jamb, or a point. */
 const isDimAnchor = (a: unknown): boolean =>

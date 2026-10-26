@@ -86,7 +86,7 @@ function common<T>(walls: readonly DocWall[], get: (w: DocWall) => T): T | null 
 
 export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActions): void {
   const { doc, selected } = input;
-  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window' | 'room' | 'slab' | 'guide' | 'text' | 'dimension', title: string) => {
+  const head = (iconName: 'wall' | 'pointer' | 'door' | 'window' | 'room' | 'slab' | 'guide' | 'text' | 'dimension' | 'height', title: string) => {
     const h = el('div', { class: 'panel-head' });
     h.innerHTML = icon(iconName, 16);
     const close = el('button', { class: 'icon-btn', type: 'button', title: t('panel.close'), 'aria-label': t('panel.close') });
@@ -172,7 +172,8 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     nodes.push(el('div', { class: 'panel-hint' }, t('dim.held')));
   } else if (input.notes.length > 0) {
     const n = input.notes.length;
-    nodes.push(head('text', n === 1 ? t('note.title') : t('note.titleMany', { n })));
+    const marks = input.notes.every((x) => x.elevation);
+    nodes.push(head(marks ? 'height' : 'text', marks ? (n === 1 ? t('note.levelMark') : t('note.levelMarks', { n })) : n === 1 ? t('note.title') : t('note.titleMany', { n })));
     part(n);
     nodes.push(fieldsSection(t('panel.general'), true, noteFields(input.notes, act), input.notes));
   } else if (input.guides.length > 0) {

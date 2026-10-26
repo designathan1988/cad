@@ -138,6 +138,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('view.schedules', 'schedule.open', views, () => app.openSchedules(), { keywords: 'schedule quantitativos tabela CSV portas janelas cômodos paredes áreas' }),
     make('view.addPoint', 'pal.addPoint', views, () => app.addPointHere()),
     make('edit.addNote', 'ctx.addNote', edit, () => app.addNoteHere(), { keywords: 'texto text nota note anotação annotation' }),
+    make('edit.addLevelMark', 'ctx.addLevelMark', edit, () => app.addLevelMarkHere(), { keywords: 'cota de nível level mark elevation altura spot' }),
     make('view.tourPlay', 'gtour.play', views, () => app.playTour(), { enabled: doc.views.length > 0 }),
     ...doc.views.map((v) => ({
       id: `view.go.${v.id}`,
