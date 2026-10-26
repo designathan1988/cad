@@ -51,3 +51,30 @@ describe('an opening over a joint', () => {
     expect(g.openings.get('o')!.warnings).toEqual([]);
   });
 });
+
+describe('two doors whose leaves sweep the same floor', () => {
+  // Both near the box's corner (0, 0), 0.9 m wide, opening into the room: one on the bottom wall hinged
+  // at its start, its leaf sweeping the quarter disc up from about (0.3, 0.1); one on the left wall
+  // hinged at its end, sweeping the quarter disc right from about (0.1, 0.3). They overlap.
+  const near = (swing: 'left' | 'right') => ({
+    ...box,
+    openings: [
+      newOpening('a', 'b', 'door', { kind: 'fromStart', distance: 0.2 }, { hinge: 'start', swing: 'left' }),
+      newOpening('c', 'l', 'door', { kind: 'fromEnd', distance: 0.2 }, { hinge: 'end', swing }),
+    ],
+  });
+
+  it('both are flagged, and the warning names the two', () => {
+    const g = deriveGeometry(near('left'));
+    expect(g.openings.get('a')!.warnings).toContain('openingSwingClash');
+    expect(g.openings.get('c')!.warnings).toContain('openingSwingClash');
+    expect(g.openings.get('a')!.valid).toBe(false);
+    expect(g.openingWarnings).toContainEqual({ kind: 'openingSwingClash', openings: ['a', 'c'] });
+  });
+
+  it('the left one opening outward sweeps outside the room: neither is flagged', () => {
+    const g = deriveGeometry(near('right'));
+    expect(g.openings.get('a')!.warnings).toEqual([]);
+    expect(g.openings.get('c')!.warnings).toEqual([]);
+  });
+});
