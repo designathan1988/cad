@@ -348,7 +348,7 @@ Construção
 - Vão vertical por vários pavimentos, poço de escada ou de elevador (l.93): falta.
 - Cômodos por clique dentro de paredes, com nome, número, área e perímetro (l.94): existem.
 - Cômodos por linhas separadoras (l.94, l.140): falta.
-- Cômodos com uso e pé-direito (l.94): falta.
+- Cômodos com uso e pé-direito (l.94): existe. Uso numa lista (sala, dormitório, cozinha, banheiro, área de serviço, escritório, circulação, garagem, depósito, outro); pé-direito do pavimento ou próprio, marcado e com volta, como as sobrescritas da parede; volume no painel; uso, pé-direito e volume na tabela de cômodos. Vários cômodos de uma vez, num passo. Arquivo versão 10. Visto no navegador e desfeito na casa.
 - Zonas (l.94, l.140): falta.
 - Terreno por pontos ou curvas de nível (l.95, l.141): falta.
 - Platô sob a construção (l.95, l.141): falta.

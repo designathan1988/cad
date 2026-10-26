@@ -22,6 +22,8 @@ interface Common<T> {
   /** Some selected element sets this value over its type's; `reset` gives it back to the type. */
   readonly own?: (items: readonly T[]) => boolean;
   readonly reset?: () => void;
+  /** What the value comes from when not set (a room's height: its level's), for the way back and the note. */
+  readonly ownWords?: { readonly reset: MessageKey; readonly note: MessageKey };
 }
 
 /** `short`: what a segmented button shows under its icon, the full label being its name and tooltip. */
@@ -98,6 +100,8 @@ const FIELD_ICONS: Readonly<Record<string, IconName>> = {
   number: 'hash',
   area: 'room',
   perimeter: 'frame',
+  use: 'tag',
+  volume: 'cube',
   source: 'room',
   offset: 'raise',
 };
@@ -113,6 +117,7 @@ export function fieldsSection<T>(title: string, open: boolean, fields: readonly 
   const states = fieldStates(fields, items);
   const noteId = `own-note-${Math.random().toString(36).slice(2, 8)}`;
   let anyOwn = false;
+  let note: MessageKey = 'panel.overrideNote';
   const rows = states.map(({ field, value }) => {
     if (field.kind === 'note') return el('div', {}, el('div', { class: 'panel-note' }, String(value)));
     if (field.kind === 'action') {
@@ -131,20 +136,22 @@ export function fieldsSection<T>(title: string, open: boolean, fields: readonly 
     };
     if (!own) return scrubbing(row(labelled(field), control, { sub: field.sub === true, wide: field.wide === true }));
     anyOwn = true;
+    if (field.ownWords) note = field.ownWords.note;
     // The note is the field's description; the way back says which field it puts back.
     control.querySelector('input, select, button')?.setAttribute('aria-describedby', noteId);
     const what = t(field.label);
+    const resetText = t(field.ownWords?.reset ?? 'panel.resetToTypeOf', { field: what });
     const back = el('button', {
       type: 'button',
       class: 'icon-btn reset-type',
-      title: t('panel.resetToTypeOf', { field: what }),
-      'aria-label': t('panel.resetToTypeOf', { field: what }),
+      title: resetText,
+      'aria-label': resetText,
     });
     back.innerHTML = icon('undo', 14);
     back.addEventListener('click', () => field.reset?.());
     return scrubbing(row(labelled(field), el('div', { class: 'overridden' }, control, back), { sub: field.sub === true, mark: true }));
   });
-  if (anyOwn) rows.push(el('div', {}, el('div', { class: 'panel-note', id: noteId }, t('panel.overrideNote'))));
+  if (anyOwn) rows.push(el('div', {}, el('div', { class: 'panel-note', id: noteId }, t(note))));
   return section(title, open, ...rows);
 }
 

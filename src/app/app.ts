@@ -85,7 +85,7 @@ import { referenceLength } from '../elements/opening/derive';
 import { doorFlips, type Handles, handlesFor, ROTATE_OFFSET } from './handles';
 import { placeBarY } from '../ui/bar-place';
 import { newId } from '../core/id';
-import { addFloor, addRoom, updateFloor, updateRoom } from '../elements/room/commands';
+import { addFloor, addRoom, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
 import { insideRing, signedArea, type FloorSolid, type RoomSolid } from '../elements/room/derive';
 import { FLOOR_DEFAULTS } from '../elements/room/schema';
 
@@ -2412,6 +2412,8 @@ export class App {
         close: () => this.togglePanel(false),
         room: {
           updateRoom: (id, patch) => this.store.dispatch(updateRoom(id, patch)),
+          updateRooms: (ids, patch) => this.store.dispatch(updateRooms(ids, patch)),
+          levelHeight: (levelId) => levelOf(this.store.get(), levelId)?.height ?? 0,
           updateFloor: (ids, patch) => {
             const doc = this.store.get();
             const next = ids.reduce((d, id) => updateFloor(id, patch).apply(d), doc);

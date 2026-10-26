@@ -4,14 +4,15 @@
 import { add, scale } from '../core/vector';
 import { referenceLength } from '../elements/opening/derive';
 import { insideRing } from '../elements/room/derive';
+import type { RoomUse } from '../elements/room/schema';
 import { type Doc, levelOf, wallHeights, wallNumber } from './document';
 import type { DerivedGeometry } from './geometry';
 
 export type ScheduleKind = 'doors' | 'windows' | 'rooms' | 'walls';
 export const SCHEDULE_KINDS: readonly ScheduleKind[] = ['doors', 'windows', 'rooms', 'walls'];
 
-/** What a column holds: text, a count, a length (m) or an area (m²). */
-export type ColumnUnit = 'text' | 'count' | 'm' | 'm2';
+/** What a column holds: text, a count, a length (m), an area (m²) or a volume (m³). */
+export type ColumnUnit = 'text' | 'count' | 'm' | 'm2' | 'm3';
 
 export interface ScheduleColumn {
   /** The column's name, as a message key (schedule.col.*). */
@@ -36,6 +37,8 @@ export interface Naming {
   readonly wallTag: (n: number) => string;
   /** Outside every room, on that side of a door or window. */
   readonly outside: string;
+  /** A room's use, as the interface says it. */
+  readonly use: (use: RoomUse) => string;
 }
 
 const col = (key: string, unit: ColumnUnit): ScheduleColumn => ({ key: `schedule.col.${key}`, unit });
@@ -52,11 +55,31 @@ export function schedule(doc: Doc, g: DerivedGeometry, kind: ScheduleKind, namin
     return l ? naming.name(l.name) : '';
   };
   if (kind === 'rooms') {
-    const columns = [col('number', 'text'), col('name', 'text'), col('level', 'text'), col('area', 'm2'), col('perimeter', 'm')];
+    const columns = [
+      col('number', 'text'),
+      col('name', 'text'),
+      col('use', 'text'),
+      col('level', 'text'),
+      col('area', 'm2'),
+      col('perimeter', 'm'),
+      col('ceiling', 'm'),
+      col('volume', 'm3'),
+    ];
     const rows = byLevel(doc, doc.rooms).map((r) => {
       const solid = g.rooms.get(r.id);
       const enclosed = solid?.enclosed === true;
-      return [r.number, naming.name(r.name), levelName(r.levelId), enclosed ? solid.area : null, enclosed ? solid.perimeter : null];
+      // Its own height, else its level's.
+      const height = r.height ?? levelOf(doc, r.levelId)?.height ?? 0;
+      return [
+        r.number,
+        naming.name(r.name),
+        r.use ? naming.use(r.use) : '',
+        levelName(r.levelId),
+        enclosed ? solid.area : null,
+        enclosed ? solid.perimeter : null,
+        height,
+        enclosed ? solid.area * height : null,
+      ];
     });
     return { kind, columns, rows, totals: totalsOf(columns, rows) };
   }
@@ -135,9 +158,9 @@ function sidesOf(g: DerivedGeometry, id: string, levelId: string, naming: Naming
 function totalsOf(columns: readonly ScheduleColumn[], rows: readonly (readonly Cell[])[]): Cell[] {
   return columns.map((c, i) => {
     if (i === 0) return rows.length;
-    if (c.unit !== 'm' && c.unit !== 'm2') return null;
-    // A height or a width does not add up; a length or an area does.
-    if (c.key === 'schedule.col.height' || c.key === 'schedule.col.width' || c.key === 'schedule.col.sill') return null;
+    if (c.unit !== 'm' && c.unit !== 'm2' && c.unit !== 'm3') return null;
+    // A height or a width does not add up; a length, an area or a volume does.
+    if (['schedule.col.height', 'schedule.col.width', 'schedule.col.sill', 'schedule.col.ceiling'].includes(c.key)) return null;
     return rows.reduce((s, r) => s + (typeof r[i] === 'number' ? (r[i] as number) : 0), 0);
   });
 }
@@ -154,7 +177,7 @@ export function toCsv(s: Schedule, headers: readonly string[], totalLabel: strin
   };
   const cell = (v: Cell, unit: ColumnUnit) => {
     if (v === null) return '';
-    if (typeof v === 'number') return unit === 'count' || unit === 'text' ? String(v) : number(v, unit === 'm2' ? 2 : 3);
+    if (typeof v === 'number') return unit === 'count' || unit === 'text' ? String(v) : number(v, unit === 'm' ? 3 : 2);
     return /[";,\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
   };
   const line = (cells: readonly Cell[]) => cells.map((v, i) => cell(v, s.columns[i]!.unit)).join(sep);

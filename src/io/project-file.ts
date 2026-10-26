@@ -10,7 +10,7 @@ import { isPointOfInterest } from '../app/points';
 import { deriveGeometry } from '../app/geometry';
 import { distributeOpenings } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
-import type { Floor, Room } from '../elements/room/schema';
+import { type Floor, type Room, ROOM_USES } from '../elements/room/schema';
 import type { WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
 
@@ -26,8 +26,9 @@ import type { DocWall } from '../app/document';
  * Version 7: a wall's join choice at each end (`joins`, schema.ts EndJoin). Older walls have none: automatic.
  * Version 8: points of interest (points.ts). Older files have none.
  * Version 9: a wall end can be squared off ('square' in `joins`).
+ * Version 10: a room's use and its own ceiling height (`use`, `height`). Older rooms have neither.
  */
-export const CURRENT_VERSION = 9;
+export const CURRENT_VERSION = 10;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
@@ -112,7 +113,14 @@ export const isOpening = (o: unknown): o is Opening =>
   isRule(o.rule);
 
 export const isRoom = (r: unknown): r is Room =>
-  isObject(r) && typeof r.id === 'string' && typeof r.levelId === 'string' && isPoint(r.seed) && typeof r.name === 'string' && typeof r.number === 'string';
+  isObject(r) &&
+  typeof r.id === 'string' &&
+  typeof r.levelId === 'string' &&
+  isPoint(r.seed) &&
+  typeof r.name === 'string' &&
+  typeof r.number === 'string' &&
+  (r.use === undefined || (ROOM_USES as readonly unknown[]).includes(r.use)) &&
+  (r.height === undefined || (finite(r.height) && r.height > 0));
 
 export const isFloor = (f: unknown): f is Floor =>
   isObject(f) &&

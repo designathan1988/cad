@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, newDocument } from '../../../src/app/document';
 import { createStore } from '../../../src/core/store';
 import { vec } from '../../../src/core/vector';
-import { addFloor, addRoom, updateFloor, updateRoom } from '../../../src/elements/room/commands';
+import { addFloor, addRoom, updateFloor, updateRoom, updateRooms } from '../../../src/elements/room/commands';
+import { readProject, writeProject } from '../../../src/io/project-file';
 
 const room = { id: 'r', levelId: 'lvl_ground', seed: vec(4, 3), name: 'Room 1', number: '1' };
 const floor = { id: 'f', levelId: 'lvl_ground', source: { kind: 'room' as const, roomId: 'r' }, thickness: 0.15, offset: 0 };
@@ -15,6 +16,36 @@ describe('room and floor commands', () => {
     expect(s.get().rooms[0]).toMatchObject({ name: 'Kitchen', number: '101' });
     s.undo();
     expect(s.get().rooms[0]!.name).toBe('Room 1');
+  });
+
+  it("use and own height, for several rooms in one step; null gives back none and the level's height", () => {
+    const other = { ...room, id: 'q', name: 'Room 2', number: '2' };
+    const s = createStore<Doc>({ ...newDocument(), rooms: [room, other] });
+    s.dispatch(updateRooms(['r', 'q'], { use: 'bedroom', height: 2.6 }));
+    expect(s.get().rooms.map((r) => [r.use, r.height])).toEqual([
+      ['bedroom', 2.6],
+      ['bedroom', 2.6],
+    ]);
+    s.dispatch(updateRoom('q', { use: null, height: null }));
+    expect(s.get().rooms[1]).not.toHaveProperty('use');
+    expect(s.get().rooms[1]).not.toHaveProperty('height');
+    // A height not above zero changes nothing.
+    s.dispatch(updateRoom('r', { height: 0 }));
+    expect(s.get().rooms[0]!.height).toBe(2.6);
+    s.undo();
+    s.undo();
+    expect(s.get().rooms.every((r) => r.use === undefined && r.height === undefined)).toBe(true);
+  });
+
+  it('use and height are read back from the file; an unknown use or a height of zero drops the room, and says so', () => {
+    const doc: Doc = { ...newDocument(), rooms: [{ ...room, use: 'kitchen', height: 2.7 }] };
+    const back = readProject(writeProject(doc));
+    expect(back.ok && back.doc.rooms[0]).toMatchObject({ use: 'kitchen', height: 2.7 });
+    for (const bad of [{ use: 'ballroom' }, { height: 0 }]) {
+      const r = readProject(JSON.stringify({ ...doc, rooms: [{ ...room, ...bad }] }));
+      expect(r.ok && r.doc.rooms).toEqual([]);
+      expect(r.ok && r.fixes.some((f) => f.kind === 'droppedRooms')).toBe(true);
+    }
   });
 
   it('a blank room name is refused; no change, no step', () => {

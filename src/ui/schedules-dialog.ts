@@ -2,6 +2,7 @@
 // each saved as CSV for a spreadsheet. Read from the model: nothing here changes it.
 
 import type { App } from '../app/app';
+import type { RoomUse } from '../elements/room/schema';
 import { type Cell, schedule, SCHEDULE_KINDS, type ScheduleColumn, type ScheduleKind, toCsv } from '../app/schedules';
 import { el, segmented } from './controls';
 import { openProjectDialog } from './dialog';
@@ -9,7 +10,7 @@ import { getLang, type MessageKey, name, num, t } from './i18n';
 
 export function showSchedulesDialog(app: App, first: ScheduleKind = 'rooms'): void {
   let kind = first;
-  const naming = { name, wallTag: (n: number) => t('wall.tag', { n }), outside: t('schedule.outside') };
+  const naming = { name, wallTag: (n: number) => t('wall.tag', { n }), outside: t('schedule.outside'), use: (u: RoomUse) => t(`use.${u}`) };
   const shown = (v: Cell, c: ScheduleColumn): string => {
     if (v === null) return '—';
     if (typeof v === 'string') return v;

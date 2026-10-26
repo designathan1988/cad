@@ -8,6 +8,10 @@ import type { Point2 } from '../../core/vector';
 export type RoomId = string;
 export type FloorId = string;
 
+/** What a room is for (ref/chat.txt:94): one of these, or none said. */
+export const ROOM_USES = ['living', 'bedroom', 'kitchen', 'bathroom', 'service', 'office', 'circulation', 'garage', 'storage', 'other'] as const;
+export type RoomUse = (typeof ROOM_USES)[number];
+
 export interface Room {
   readonly id: RoomId;
   readonly levelId: LevelId;
@@ -15,6 +19,9 @@ export interface Room {
   readonly seed: Point2;
   readonly name: string;
   readonly number: string;
+  readonly use?: RoomUse;
+  /** Floor to ceiling (m), when the room has its own; else its level's height. */
+  readonly height?: number;
 }
 
 export type FloorSource =

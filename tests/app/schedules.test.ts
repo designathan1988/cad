@@ -30,21 +30,35 @@ const doc: Doc = {
   ],
 };
 const g = deriveGeometry(doc);
-const naming: Naming = { name: (s) => s, wallTag: (n) => `Parede ${n}`, outside: 'exterior' };
+const naming: Naming = { name: (s) => s, wallTag: (n) => `Parede ${n}`, outside: 'exterior', use: (u) => (u === 'bedroom' ? 'Dormitório' : u) };
+const BOM = String.fromCharCode(0xfeff);
 
 describe('quantity schedules', () => {
-  it('rooms: number, name, level, area and perimeter; the total area', () => {
+  it('rooms: number, name, use, level, area, perimeter, ceiling height and volume; the totals', () => {
     const s = schedule(doc, g, 'rooms', naming);
-    expect(s.rows.map((r) => r.slice(0, 3))).toEqual([
-      ['1', 'Sala', 'Ground floor'],
-      ['2', 'Quarto', 'Ground floor'],
+    expect(s.rows.map((r) => r.slice(0, 4))).toEqual([
+      ['1', 'Sala', '', 'Ground floor'],
+      ['2', 'Quarto', '', 'Ground floor'],
     ]);
     for (const r of s.rows) {
-      expect(r[3]).toBeCloseTo(5.2725, 9);
-      expect(r[4]).toBeCloseTo(9.4, 9);
+      expect(r[4]).toBeCloseTo(5.2725, 9);
+      expect(r[5]).toBeCloseTo(9.4, 9);
+      // No height of its own: the level's 2.80 m; the volume 5.2725 × 2.8.
+      expect(r[6]).toBeCloseTo(2.8, 9);
+      expect(r[7]).toBeCloseTo(14.763, 9);
     }
     expect(s.totals[0]).toBe(2);
-    expect(s.totals[3]).toBeCloseTo(10.545, 9);
+    expect(s.totals[4]).toBeCloseTo(10.545, 9);
+    // Heights do not add up; volumes do.
+    expect(s.totals[6]).toBeNull();
+    expect(s.totals[7]).toBeCloseTo(29.526, 9);
+  });
+
+  it("a room's own use and height go in its row", () => {
+    const own: Doc = { ...doc, rooms: doc.rooms.map((r) => (r.id === 'room_b' ? { ...r, use: 'bedroom' as const, height: 2.5 } : r)) };
+    const r = schedule(own, deriveGeometry(own), 'rooms', naming).rows[1]!;
+    expect([r[2], r[6]]).toEqual(['Dormitório', 2.5]);
+    expect(r[7]).toBeCloseTo(5.2725 * 2.5, 9);
   });
 
   it('doors and windows: their wall, size, area, and the rooms on each side (or the outside)', () => {
@@ -75,13 +89,14 @@ describe('quantity schedules', () => {
 
   it('CSV: a UTF-8 mark, the language\'s separator and decimal mark, quotes where needed, the totals last', () => {
     const s = schedule(doc, g, 'rooms', { ...naming, name: (n) => (n === 'Sala' ? 'Sala; cozinha' : n) });
-    const pt = toCsv(s, ['Nº', 'Nome', 'Pavimento', 'Área (m²)', 'Perímetro (m)'], 'Total', 'pt');
-    expect(pt.startsWith('﻿Nº;Nome;')).toBe(true);
+    const headers = ['Nº', 'Nome', 'Uso', 'Pavimento', 'Área (m²)', 'Perímetro (m)', 'Pé-direito (m)', 'Volume (m³)'];
+    const pt = toCsv(s, headers, 'Total', 'pt');
+    expect(pt.startsWith(`${BOM}Nº;Nome;`)).toBe(true);
     const lines = pt.slice(1).trim().split('\r\n');
-    expect(lines[1]).toBe('1;"Sala; cozinha";Ground floor;5,27;9,400');
+    expect(lines[1]).toBe('1;"Sala; cozinha";;Ground floor;5,27;9,400;2,800;14,76');
     // 10.545 m² is 10.5449… in binary: 10,54, what the two rooms shown (5,27 each) add to.
-    expect(lines[3]).toBe('Total: 2;;;10,54;18,800');
-    const en = toCsv(s, ['No.', 'Name', 'Level', 'Area (m²)', 'Perimeter (m)'], 'Total', 'en');
-    expect(en.slice(1).split('\r\n')[2]).toBe('2,Quarto,Ground floor,5.27,9.400');
+    expect(lines[3]).toBe('Total: 2;;;;10,54;18,800;;29,53');
+    const en = toCsv(s, headers, 'Total', 'en');
+    expect(en.slice(1).split('\r\n')[2]).toBe('2,Quarto,,Ground floor,5.27,9.400,2.800,14.76');
   });
 });
