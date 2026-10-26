@@ -1460,6 +1460,16 @@ button.project-name:hover {
 .browser[hidden] {
   display: none;
 }
+/* A saved view: its name goes to it, the button beside deletes it. */
+.browser-row {
+  display: flex;
+  align-items: center;
+  grid-column: 1 / -1;
+}
+.browser-row .browser-item {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .browser-item {
   display: flex;
   grid-column: 1 / -1;

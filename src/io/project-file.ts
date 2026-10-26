@@ -5,6 +5,7 @@
 
 import { type Doc, type Level, ownValuesOnly } from '../app/document';
 import type { Guide } from '../elements/guide/schema';
+import { isSavedView } from '../app/saved-views';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { Floor, Room } from '../elements/room/schema';
 import type { WallType } from '../elements/wall/schema';
@@ -18,12 +19,13 @@ import type { DocWall } from '../app/document';
  * Version 4: a distributed group may keep to a stretch of its wall (`between`: the walls whose joints
  * bound it). Older groups have none and take the whole wall, as they did.
  * Version 5: guides (construction lines of a level's plan). Older files have none.
+ * Version 6: saved views (saved-views.ts). Older files have none.
  */
-export const CURRENT_VERSION = 5;
+export const CURRENT_VERSION = 6;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides'; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews'; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -181,6 +183,12 @@ export function repairProject(raw: unknown): ReadResult {
     guides: keep(raw.guides, isGuide, 'droppedGuides').filter((g, _, all) => {
       if (levelIds.has(g.levelId)) return true;
       if (g === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedGuides', count: all.filter((x) => !levelIds.has(x.levelId)).length });
+      return false;
+    }),
+    // A view of a level that is gone shows nothing: dropped, and said.
+    views: keep(raw.views, isSavedView, 'droppedViews').filter((v, _, all) => {
+      if (levelIds.has(v.levelId)) return true;
+      if (v === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedViews', count: all.filter((x) => !levelIds.has(x.levelId)).length });
       return false;
     }),
   };

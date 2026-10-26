@@ -67,6 +67,7 @@ import { stackedSteps } from './stacked';
 import { readProject, writeProject } from '../io/project-file';
 import { fitFactor, keepInView } from './keep-in-view';
 import type { ViewKey } from './view-keys';
+import { deleteView, nextViewName, type SavedView, saveView } from './saved-views';
 import { type TempDim, tempDims } from './temp-dims';
 import { cutAt, exploding, liftOf, readView3D, shownLevels, type View3D } from './view-3d';
 import { MODIFY_START, type ModifyEvent, type ModifyKind, type ModifyState, modifyTransition, type OffsetLine, previewTransform } from '../tools/modify-tool';
@@ -713,6 +714,55 @@ export class App {
     this.planViewKept = key;
     clearTimeout(this.planViewTimer);
     this.planViewTimer = window.setTimeout(() => savePrefs({ planView: { scale, center: { x: center.x, y: center.y } } }), 400);
+  }
+
+  /**
+   * The view as it is now, saved in the project under the next free name ("3D 1", "Térreo 1"): the 3D
+   * camera and what the 3D shows, or the plan's level, zoom and position.
+   */
+  saveCurrentView(): void {
+    const doc = this.store.get();
+    const level = doc.levels.find((l) => l.id === this.ui.levelId);
+    const id = newId('view');
+    let view: SavedView;
+    if (this.ui.view === '3d') {
+      const p = this.scene.camera.position;
+      const q = this.scene.controls.target;
+      view = { id, kind: '3d', name: nextViewName(doc.views, '3D'), levelId: this.ui.levelId, position: [p.x, p.y, p.z], target: [q.x, q.y, q.z], view3d: this.ui.view3d };
+    } else {
+      const c = this.plan.center;
+      view = { id, kind: 'plan', name: nextViewName(doc.views, level ? name(level.name) : t('view.plan')), levelId: this.ui.levelId, scale: this.plan.scale, center: { x: c.x, y: c.y } };
+    }
+    this.store.dispatch(saveView(view));
+    this.toast(t('toast.viewSaved', { name: view.name }));
+  }
+
+  /** Back to a saved view: its level, and its camera or its plan framing. Not an undo step. */
+  goToView(id: string): void {
+    const v = this.store.get().views.find((x) => x.id === id);
+    if (!v) return;
+    if (v.levelId !== this.ui.levelId) this.setLevel(v.levelId);
+    if (v.kind === '3d') {
+      this.ui.view3d = v.view3d;
+      savePrefs({ view3d: v.view3d });
+      this.setView('3d');
+      this.framed['3d'] = true;
+      this.scene.camera.position.set(...v.position);
+      this.scene.controls.target.set(...v.target);
+      this.scene.camera.up.set(0, 1, 0);
+      this.scene.controls.update();
+      this.scene.invalidate();
+    } else {
+      this.setView('plan');
+      this.framed.plan = true;
+      this.plan.scale = v.scale;
+      this.plan.center = { x: v.center.x, y: v.center.y };
+    }
+    this.refresh();
+  }
+
+  deleteSavedView(id: string): void {
+    this.store.dispatch(deleteView(id));
   }
 
   /** The guides, as a move being dragged takes them. */
@@ -2171,7 +2221,7 @@ export class App {
     shell.sidebar.setAttribute('aria-pressed', String(ui.browserOpen));
     if (!ui.browserOpen) return;
     const doc = this.store.get();
-    const key = JSON.stringify([getLang(), ui.view, ui.levelId, [...ui.hidden], ui.refLines, doc.levels, doc.wallTypes.map((x) => [x.id, x.name]), doc.walls.map((w) => w.wallTypeId)]);
+    const key = JSON.stringify([getLang(), ui.view, ui.levelId, [...ui.hidden], ui.refLines, doc.levels, doc.wallTypes.map((x) => [x.id, x.name]), doc.walls.map((w) => w.wallTypeId), doc.views.map((v) => [v.id, v.name])]);
     if (key === this.browserKey) return;
     this.browserKey = key;
     // Keep the focus on the same button across the rebuild.

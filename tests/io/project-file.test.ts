@@ -156,7 +156,7 @@ describe('walls from before version 3', () => {
 describe('version 5', () => {
   const guide = { id: 'guide_1', levelId: 'lvl_ground', point: { x: 0, y: 1.2 }, dir: { x: 1, y: 0 } };
   it('guides read back as they are; an older file has none', () => {
-    expect(CURRENT_VERSION).toBe(5);
+    expect(CURRENT_VERSION).toBeGreaterThanOrEqual(5);
     const back = readProject(writeProject({ ...newDocument(), guides: [guide] }));
     expect(back.ok && back.doc.guides).toEqual([guide]);
     const v4 = readProject(JSON.stringify({ ...newDocument(), version: 4, guides: undefined }));
