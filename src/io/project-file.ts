@@ -3,6 +3,7 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
+import type { Column } from '../elements/column/schema';
 import { type Doc, type Level, ownValuesOnly } from '../app/document';
 import type { Guide } from '../elements/guide/schema';
 import { isSavedView } from '../app/saved-views';
@@ -34,12 +35,13 @@ import type { DocWall } from '../app/document';
  * Version 12: permanent dimensions (`dimensions`, elements/dimension). Older files have none.
  * Version 13: level marks, notes with an `elevation` (elements/note). Older files have none.
  * Version 14: grid axes (`grids`, elements/grid). Older files have none.
+ * Version 15: columns (`columns`, elements/column). Older files have none.
  */
-export const CURRENT_VERSION = 14;
+export const CURRENT_VERSION = 15;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes' | 'droppedDimensions' | 'droppedGrids'; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes' | 'droppedDimensions' | 'droppedGrids' | 'droppedColumns'; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -163,6 +165,19 @@ const isDimAnchor = (a: unknown): boolean =>
 export const isDimension = (d: unknown): d is Dimension =>
   isObject(d) && typeof d.id === 'string' && typeof d.levelId === 'string' && isDimAnchor(d.a) && isDimAnchor(d.b) && finite(d.offset);
 
+/** A column: a point, a section above zero, an angle. */
+export const isColumn = (c: unknown): c is Column =>
+  isObject(c) &&
+  typeof c.id === 'string' &&
+  typeof c.levelId === 'string' &&
+  isPoint(c.at) &&
+  finite(c.width) &&
+  c.width > 0 &&
+  finite(c.depth) &&
+  c.depth > 0 &&
+  finite(c.angle) &&
+  (c.topOffset === undefined || finite(c.topOffset));
+
 /** A grid axis: a name and two different points. */
 export const isGrid = (g: unknown): g is Grid =>
   isObject(g) && typeof g.id === 'string' && typeof g.name === 'string' && g.name.trim() !== '' && isPoint(g.start) && isPoint(g.end) && JSON.stringify(g.start) !== JSON.stringify(g.end);
@@ -258,6 +273,12 @@ export function repairProject(raw: unknown): ReadResult {
       return false;
     }),
     grids: keep(raw.grids, isGrid, 'droppedGrids'),
+    // A column on a level that is gone stands nowhere: dropped, and said.
+    columns: keep(raw.columns, isColumn, 'droppedColumns').filter((c, _, all) => {
+      if (levelIds.has(c.levelId)) return true;
+      if (c === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedColumns', count: all.filter((x) => !levelIds.has(x.levelId)).length });
+      return false;
+    }),
     // A note on a level that is gone is on no plan: dropped, and said.
     notes: keep(raw.notes, isNote, 'droppedNotes').filter((n, _, all) => {
       if (levelIds.has(n.levelId)) return true;

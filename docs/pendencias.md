@@ -334,7 +334,7 @@ Referências do projeto
 Construção
 - Topo da parede preso a telhado ou laje (l.84, l.136): falta.
 - Paredes cortina: grade de montantes e travessas, painéis de vidro ou opacos, porta num painel (l.85, l.138): falta.
-- Pilares (l.86, l.134): falta.
+- Pilares (l.86, l.134): existe (ferramenta Pilar, P, na barra lateral e na paleta: um clique põe um pilar, com encaixe em cantos e cruzamentos de eixos; seção, ângulo e ajuste do topo no painel; do piso ao topo do pavimento; planta cortada com a cor da estrutura; 3D; GLB; DXF na camada S-COLS; mover, copiar, girar, espelhar, setas; selecionar semelhantes; vai com o eixo em que está; arquivo versão 15). Testado no app: pôr três, painel, 3D com F, selecionar semelhantes, apagar. Corrigido no caminho: pilar branco chapado no tema escuro; campos sem ícone. Falta: pilar inclinado, seção circular, pilar que corta a parede (hoje se sobrepõem).
 - Vigas (l.86, l.134): falta.
 - Lajes e pisos por contorno ou pelo interior de paredes fechadas (l.87, l.135): parcial, existe piso por contorno e por cômodo.
 - **Lajes e pisos com camadas** (l.87, l.135): falta. O editor de camadas do 17 deve servir a eles.

@@ -1,6 +1,7 @@
 // The project document: only what the user decided. Thickness, heights, joins and geometry are
 // always derived from it.
 
+import type { Column } from '../elements/column/schema';
 import type { PointOfInterest } from './points';
 import type { SavedView } from './saved-views';
 import type { Point2 } from '../core/vector';
@@ -41,7 +42,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 14;
+  readonly version: 15;
   readonly name: string;
   readonly levels: readonly Level[];
   readonly wallTypes: readonly WallType[];
@@ -65,6 +66,8 @@ export interface Doc {
   readonly dimensions: readonly Dimension[];
   /** Grid axes, the same on every level (elements/grid). */
   readonly grids: readonly Grid[];
+  /** Columns (elements/column). */
+  readonly columns: readonly Column[];
 }
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */
@@ -75,13 +78,13 @@ export interface WallDefaults {
   readonly top: HeightRule;
 }
 
-/** The ids of every element that can be selected: walls, openings, rooms, floors, guides, notes, dimensions and grids. */
+/** The ids of every element that can be selected: walls, openings, rooms, floors, guides, notes, dimensions, grids and columns. */
 export const elementIds = (doc: Doc): Set<string> =>
-  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.guides, ...doc.notes, ...doc.dimensions, ...doc.grids].map((e) => e.id));
+  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.guides, ...doc.notes, ...doc.dimensions, ...doc.grids, ...doc.columns].map((e) => e.id));
 
 export function newDocument(): Doc {
   return {
-    version: 14,
+    version: 15,
     name: '',
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
     wallTypes: [
@@ -125,6 +128,7 @@ export function newDocument(): Doc {
     notes: [],
     dimensions: [],
     grids: [],
+    columns: [],
   };
 }
 

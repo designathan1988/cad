@@ -22,11 +22,13 @@ export interface ExportNaming {
   readonly door: (n: number) => string;
   readonly window: (n: number) => string;
   readonly floor: (n: number) => string;
+  readonly column: (n: number) => string;
   /** A layer's material by its id (plaster, brick): what a renderer assigns its own materials by. */
   readonly material: (materialId: string) => string;
   readonly glass: string;
   readonly leaf: string;
   readonly floorMaterial: string;
+  readonly columnMaterial: string;
 }
 
 /** Plain colours for the materials, as a viewer shows them lit: not the interface's, which follow its theme. */
@@ -134,6 +136,17 @@ export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): 
     mesh.name = naming.floor(++floors);
     mesh.userData = { cad2Id: fl.floor.id, kind: 'floor', level: levelName(fl.floor.levelId), thickness: fl.top - fl.bottom };
     levelGroup(fl.floor.levelId).add(mesh);
+  }
+  // Columns: their section extruded from bottom to top, in the structure's colour.
+  let columns = 0;
+  for (const c of g.columns.values()) {
+    const geo = new THREE.ExtrudeGeometry(new THREE.Shape(c.outline.map((p) => new THREE.Vector2(p.x, p.y))), { depth: c.top - c.bottom, bevelEnabled: false });
+    geo.rotateX(-Math.PI / 2);
+    geo.translate(0, c.bottom, 0);
+    const mesh = new THREE.Mesh(geo, material('structure', naming.columnMaterial));
+    mesh.name = naming.column(++columns);
+    mesh.userData = { cad2Id: c.column.id, kind: 'column', level: levelName(c.column.levelId), width: c.column.width, depth: c.column.depth };
+    levelGroup(c.column.levelId).add(mesh);
   }
   return scene;
 }

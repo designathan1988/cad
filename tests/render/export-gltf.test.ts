@@ -49,10 +49,12 @@ const naming: ExportNaming = {
   door: (n) => `Porta ${n}`,
   window: (n) => `Janela ${n}`,
   floor: (n) => `Piso ${n}`,
+  column: (n) => `Pilar ${n}`,
   material: (id) => ({ plaster: 'Reboco', brick: 'Tijolo' })[id] ?? id,
   glass: 'Vidro',
   leaf: 'Folha de porta',
   floorMaterial: 'Piso',
+  columnMaterial: 'Pilar',
 };
 
 interface Gltf {

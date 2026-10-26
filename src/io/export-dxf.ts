@@ -25,6 +25,7 @@ export const DXF_LAYERS = [
   { name: 'A-ANNO-TEXT', colour: 7 }, // text notes
   { name: 'A-ANNO-DIMS', colour: 3 }, // permanent dimensions
   { name: 'S-GRID', colour: 1 }, // grid axes and their bubbles
+  { name: 'S-COLS', colour: 7 }, // columns
 ] as const;
 type Layer = (typeof DXF_LAYERS)[number]['name'];
 
@@ -167,6 +168,8 @@ export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels):
     line('A-DOOR', leaf[0]!, leaf[1]!);
     arc('A-DOOR', leaf[0]!, swing[0]!, swing[swing.length - 1]!, pair);
   }
+  // Columns: their section, closed.
+  for (const c of g.columns.values()) if (c.column.levelId === levelId) polyline('S-COLS', c.outline, true);
   // Rooms: the outline, and the name and area at the plan's label point.
   for (const r of g.rooms.values()) {
     if (r.room.levelId !== levelId || !r.enclosed) continue;

@@ -31,7 +31,14 @@ export type FieldOption = { readonly value: string; readonly label: string; read
 
 export type Field<T> =
   /** `min`: the lowest value, or one that depends on what is selected (an arc's radius: half its chord). */
-  | (Common<T> & { readonly kind: 'number'; readonly get: (x: T) => number; readonly set: (v: number) => void; readonly min?: number | ((items: readonly T[]) => number) })
+  | (Common<T> & {
+      readonly kind: 'number';
+      readonly get: (x: T) => number;
+      readonly set: (v: number) => void;
+      readonly min?: number | ((items: readonly T[]) => number);
+      /** What the value is in, after it: metres unless said ("°" for an angle). */
+      readonly unit?: string;
+    })
   | (Common<T> & { readonly kind: 'text'; readonly get: (x: T) => string; readonly set: (v: string) => void })
   | (Common<T> & {
       readonly kind: 'select' | 'segmented' | 'search';
@@ -162,7 +169,7 @@ const minOf = <T>(field: Extract<Field<T>, { kind: 'number' }>, items: readonly 
 function controlFor<T>(field: Field<T>, value: number | string | null, items: readonly T[]): HTMLElement {
   switch (field.kind) {
     case 'number':
-      return numberField(value as number | null, field.set, minOf(field, items));
+      return numberField(value as number | null, field.set, minOf(field, items), 2, field.unit ?? 'm');
     case 'text':
       return textField(value as string | null, field.set);
     case 'select':

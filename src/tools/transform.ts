@@ -6,6 +6,7 @@
 // and positions, never thicknesses or the sizes of doors and windows. A mirror swaps each wall's ends,
 // so its layers, and its doors' hinges, come out mirrored rather than turned over.
 
+import { COLUMN_PREFIX, type Column } from '../elements/column/schema';
 import { GRID_PREFIX, type Grid, nextGridName } from '../elements/grid/schema';
 import { wallsOnGrids } from '../elements/grid/carry';
 import { roomsGoingWith } from '../app/carry';
@@ -176,6 +177,13 @@ export function transformSelection(
   const notes = new Set(doc.notes.filter((x) => set.has(x.id)).map((x) => x.id));
   const dims = new Set(doc.dimensions.filter((x) => set.has(x.id)).map((x) => x.id));
   const grids = new Set(doc.grids.filter((x) => set.has(x.id)).map((x) => x.id));
+  const columns = new Set(doc.columns.filter((x) => set.has(x.id)).map((x) => x.id));
+  // A column turns with a turn and a mirror: its x is taken by the transform, its y kept square to it.
+  const column = (c: Column, id: string): Column => {
+    const at = t.map(c.at);
+    const x = t.map({ x: c.at.x + Math.cos(c.angle), y: c.at.y + Math.sin(c.angle) });
+    return { ...c, id, at, angle: Math.atan2(x.y - at.y, x.x - at.x), width: c.width * t.factor, depth: c.depth * t.factor };
+  };
   const outline = (points: readonly Point2[]) => points.map(t.map);
   // A dimension's end held by a wall that goes (or a door or window on one) goes with it; mirrored, that
   // wall's ends trade places (edit.ts: swap), so the end is counted from the other one, the jamb the other.
@@ -206,6 +214,7 @@ export function transformSelection(
       guides: doc.guides.map((x) => (guides.has(x.id) ? { ...x, point: t.map(x.point), dir: mapDir(t, x.point, x.dir) } : x)),
       notes: doc.notes.map((x) => (notes.has(x.id) ? { ...x, at: t.map(x.at) } : x)),
       grids: doc.grids.map((x) => (grids.has(x.id) ? { ...x, start: t.map(x.start), end: t.map(x.end) } : x)),
+      columns: doc.columns.map((x) => (columns.has(x.id) ? column(x, x.id) : x)),
       dimensions: doc.dimensions.map((d) => {
         const a = swapped(dims.has(d.id) ? freePoint(d.a) : d.a);
         const b = swapped(dims.has(d.id) ? freePoint(d.b) : d.b);
@@ -242,6 +251,8 @@ export function transformSelection(
   for (const x of dimList) fresh(x.id, DIM_PREFIX);
   const gridList = doc.grids.filter((x) => grids.has(x.id));
   for (const x of gridList) fresh(x.id, GRID_PREFIX);
+  const columnList = doc.columns.filter((x) => columns.has(x.id));
+  for (const x of columnList) fresh(x.id, COLUMN_PREFIX);
   const to = (id: string) => ids2.get(id) ?? id;
 
   const newWalls = doc.walls
@@ -273,6 +284,7 @@ export function transformSelection(
     floors: [...doc.floors, ...newFloors],
     guides: [...doc.guides, ...guideList.map((x) => ({ ...x, id: to(x.id), point: t.map(x.point), dir: mapDir(t, x.point, x.dir) }))],
     notes: [...doc.notes, ...noteList.map((x) => ({ ...x, id: to(x.id), at: t.map(x.at) }))],
+    columns: [...doc.columns, ...columnList.map((x) => column(x, to(x.id)))],
     // A copied axis is named on from the last of its kind, as a new one is.
     grids: gridList.reduce<Grid[]>((all, x) => {
       const start = t.map(x.start);
@@ -305,6 +317,7 @@ export function transformSelection(
     ...noteList.map((x) => to(x.id)),
     ...dimList.map((x) => to(x.id)),
     ...gridList.map((x) => to(x.id)),
+    ...columnList.map((x) => to(x.id)),
   ];
   return { doc: next, selection };
 }
@@ -320,7 +333,8 @@ export function canTransform(doc: Doc, ids: readonly string[]): boolean {
     doc.guides.some((x) => set.has(x.id)) ||
     doc.notes.some((x) => set.has(x.id)) ||
     doc.dimensions.some((x) => set.has(x.id)) ||
-    doc.grids.some((x) => set.has(x.id))
+    doc.grids.some((x) => set.has(x.id)) ||
+    doc.columns.some((x) => set.has(x.id))
   );
 }
 
@@ -338,7 +352,7 @@ export function copyToLevel(doc: Doc, g: DerivedGeometry, ids: readonly string[]
   let last = doc.rooms.filter((x) => x.levelId === levelId).reduce((n, x) => Math.max(n, Number.parseInt(x.number, 10) || 0), 0);
   const rooms = onLevel(r.doc.rooms, doc.rooms.length).map((x, i) => (i >= doc.rooms.length ? { ...x, number: String(++last) } : x));
   return {
-    doc: { ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length), rooms, floors: onLevel(r.doc.floors, doc.floors.length), guides: onLevel(r.doc.guides, doc.guides.length), notes: onLevel(r.doc.notes, doc.notes.length), dimensions: onLevel(r.doc.dimensions, doc.dimensions.length) },
+    doc: { ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length), rooms, floors: onLevel(r.doc.floors, doc.floors.length), guides: onLevel(r.doc.guides, doc.guides.length), notes: onLevel(r.doc.notes, doc.notes.length), dimensions: onLevel(r.doc.dimensions, doc.dimensions.length), columns: onLevel(r.doc.columns, doc.columns.length) },
     selection: r.selection,
   };
 }

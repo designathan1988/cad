@@ -1,6 +1,7 @@
 // Document → derived wall geometry, through the join engine. Recomputed when the document changes,
 // never stored.
 
+import { type Column, columnOutline } from '../elements/column/schema';
 import { add, type Point2, scale } from '../core/vector';
 import { deriveOpenings, hostsOf, type OpeningWarning, type PlacedOpening } from '../elements/opening/derive';
 import type { Opening, OpeningId } from '../elements/opening/schema';
@@ -61,6 +62,26 @@ export interface DerivedGeometry {
   /** A level's spaces, the ones its walls close in (room/derive.ts): where the room tool can put a room. Found when asked. */
   readonly spaces: (levelId: string) => readonly (readonly P[])[];
   readonly floors: ReadonlyMap<FloorId, FloorSolid>;
+  readonly columns: ReadonlyMap<string, ColumnSolid>;
+}
+
+/** A column as it stands: its section in plan, its bottom and top. */
+export interface ColumnSolid {
+  readonly column: Column;
+  readonly outline: readonly P[];
+  readonly bottom: number;
+  readonly top: number;
+}
+
+/** Columns from their level's floor to its top (plus their adjustment). */
+export function deriveColumns(doc: Doc): Map<string, ColumnSolid> {
+  return new Map(
+    doc.columns.map((c) => {
+      const level = doc.levels.find((l) => l.id === c.levelId) ?? { elevation: 0, height: 2.8 };
+      const bottom = level.elevation;
+      return [c.id, { column: c, outline: columnOutline(c), bottom, top: Math.max(bottom + 0.01, level.elevation + level.height + (c.topOffset ?? 0)) }];
+    }),
+  );
 }
 
 /**
@@ -163,7 +184,7 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     if (!found.has(levelId)) found.set(levelId, spacesOf(piecesByLevel.get(levelId) ?? []));
     return found.get(levelId)!;
   };
-  return { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors, spaces };
+  return { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors, spaces, columns: deriveColumns(doc) };
 }
 
 /** A height range of a wall, and its plan pieces there: joined only with the walls standing over all of it. */
@@ -398,6 +419,7 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
   const outlines = [
     ...[...g.rooms.values()].filter((r) => !ids || ids.has(r.room.id)).map((r) => r.outline),
     ...[...g.floors.values()].filter((f) => !ids || ids.has(f.floor.id)).map((f) => f.outline),
+    ...[...g.columns.values()].filter((c) => !ids || ids.has(c.column.id)).map((c) => c.outline),
   ];
   for (const v of outlines.flat()) {
     minX = Math.min(minX, v.x);
@@ -438,6 +460,7 @@ export function applyTemporary(g: DerivedGeometry, temp: TemporaryView | null): 
     openings,
     rooms: new Map([...g.rooms].filter(([id]) => keep(id))),
     floors: new Map([...g.floors].filter(([id]) => keep(id))),
+    columns: new Map([...g.columns].filter(([id]) => keep(id))),
   };
 }
 
@@ -449,5 +472,7 @@ export function hideCategories(g: DerivedGeometry, hidden: ReadonlySet<Category>
     openings: hidden.has('openings') ? new Map() : g.openings,
     rooms: hidden.has('rooms') ? new Map() : g.rooms,
     floors: hidden.has('floors') ? new Map() : g.floors,
+    // Columns are structure, as walls are: hidden with them.
+    columns: hidden.has('walls') ? new Map() : g.columns,
   };
 }

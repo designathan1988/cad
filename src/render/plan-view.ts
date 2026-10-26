@@ -447,6 +447,20 @@ export class PlanView {
     const drawn = solids.filter((x) => o.preview.has(x.wall.id));
     outline(drawn, color('--wall-sel'), 3);
     fill(drawn, color('--wall-sel-fill'));
+    // Columns cut, filled as a wall's structure layer is (they are structure), outlined as walls are;
+    // lit when selected or under the pointer.
+    for (const c of g.columns.values()) {
+      const lit = o.selected.has(c.column.id) || o.hover === c.column.id;
+      const pts = c.outline.map((v) => this.toScreen(v));
+      ctx.beginPath();
+      pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      ctx.closePath();
+      ctx.fillStyle = lit ? color('--wall-sel-fill') : color('--layer-structure');
+      ctx.fill();
+      ctx.strokeStyle = lit ? color('--wall-sel') : color('--wall-line');
+      ctx.lineWidth = lit ? 2 : 1;
+      ctx.stroke();
+    }
     this.drawOpenings(g, o, { line: color('--wall-line'), sel: color('--wall-sel'), selFill: color('--wall-sel-fill'), warn: color('--warn'), canvas: color('--canvas') });
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
     for (const g of o.grids ?? []) this.drawGridAxis(g, g.selected ? color('--wall-sel') : color('--text-2'), color('--canvas'));

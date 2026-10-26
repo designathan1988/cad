@@ -7,6 +7,7 @@
 // with snaps. Drag on empty space: window selection (left to right: wholly inside) or crossing
 // selection (right to left: anything touched), as in Revit and AutoCAD. Esc cancels any drag.
 
+import type { Column } from '../elements/column/schema';
 import { add, distance, dot, normalize, type Point2, scale, sub, vec } from '../core/vector';
 import { setWalls } from '../elements/wall/commands';
 import type { WallEnd, WallId } from '../elements/wall/schema';
@@ -43,6 +44,8 @@ export type Drag =
       readonly notes: ReadonlySet<string>;
       /** Grid axes; the walls on them are among `ids`. */
       readonly grids: ReadonlySet<string>;
+      /** Columns: selected, or standing on a selected axis. */
+      readonly columns: ReadonlySet<string>;
     }
   | { readonly kind: 'grip'; readonly id: WallId; readonly end: WallEnd; readonly walls: readonly DocWall[] }
   /** `grab`: from the end to where the arrow was taken, kept all along so the end does not jump. */
@@ -132,6 +135,8 @@ export function selectGestures(app: App): SelectGestures {
         // The walls on a selected axis go with it (elements/grid/carry.ts).
         const moving = [...doc.walls.filter((w) => ui.selection.has(w.id)).map((w) => w.id), ...wallsOnGrids(doc, [...ui.selection])];
         const grids = new Set(doc.grids.filter((g) => ui.selection.has(g.id)).map((g) => g.id));
+        const carried = new Set(wallsOnGrids(doc, [...ui.selection]));
+        const columns = new Set(doc.columns.filter((c) => ui.selection.has(c.id) || carried.has(c.id)).map((c) => c.id));
         const going = () => roomsGoingWith(doc, app.geometry, ui.selection);
         const rooms = new Set([...going(), ...doc.rooms.filter((r) => ui.selection.has(r.id)).map((r) => r.id)]);
         const floors = new Set(doc.floors.filter((f) => ui.selection.has(f.id) && f.source.kind === 'outline').map((f) => f.id));
@@ -148,8 +153,8 @@ export function selectGestures(app: App): SelectGestures {
           const f = placed.frame;
           const centre = add(f.start, scale(f.dir, (placed.end - placed.start) / 2));
           ui.drag = { kind: 'slide', id: sliding.id, grab: dot(sub(pending.at, centre), f.dir), walls: doc.walls, openings: doc.openings };
-        } else if (pending.kind === 'wall' && moving.length + rooms.size + floors.size + guides.size + notes.size + grids.size > 0) {
-          ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, floors, guides, notes, grids };
+        } else if (pending.kind === 'wall' && moving.length + rooms.size + floors.size + guides.size + notes.size + grids.size + columns.size > 0) {
+          ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, floors, guides, notes, grids, columns };
         }
         else if (pending.kind === 'grip') ui.drag = { kind: 'grip', id: pending.id, end: pending.end, walls: doc.walls };
         else if (pending.kind === 'stretch') {
@@ -247,13 +252,14 @@ export function selectGestures(app: App): SelectGestures {
         const floors = d.kind === 'move' ? moveFloors(before.floors, d.floors, dragTransform(d)) : before.floors;
         const guides = d.kind === 'move' ? moveGuides(before.guides, d) : before.guides;
         const notes = d.kind === 'move' ? moveNotes(before.notes, d) : before.notes;
+        const columns = d.kind === 'move' ? moveColumns(before.columns, d) : before.columns;
         const grids = d.kind === 'move' && d.grids.size > 0 && (d.delta.x !== 0 || d.delta.y !== 0) ? before.grids.map((g) => (d.grids.has(g.id) ? { ...g, start: add(g.start, d.delta), end: add(g.end, d.delta) } : g)) : before.grids;
         const walls = setWalls(d.walls);
         // One undo step for the walls and what went with them; a room, a floor, a guide or a note alone is a move too.
-        const moved = rooms.some((r, i) => r !== before.rooms[i]) || floors.some((f, i) => f !== before.floors[i]) || guides !== before.guides || notes !== before.notes || grids !== before.grids;
+        const moved = rooms.some((r, i) => r !== before.rooms[i]) || floors.some((f, i) => f !== before.floors[i]) || guides !== before.guides || notes !== before.notes || grids !== before.grids || columns !== before.columns;
         app.store.dispatch({ label: d.kind === 'move' ? 'cmd.move' : walls.label, apply: (x) => {
           const next = walls.apply(x);
-          return next === x && !moved ? x : { ...next, rooms, floors, guides, notes, grids };
+          return next === x && !moved ? x : { ...next, rooms, floors, guides, notes, grids, columns };
         } });
       } else if (d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'bulge') app.store.dispatch(setWalls(d.walls));
       else if (d?.kind === 'slide') {
@@ -287,6 +293,12 @@ export interface Pickable {
 export function moveGuides(guides: readonly Guide[], d: Extract<Drag, { kind: 'move' }>): readonly Guide[] {
   if (d.guides.size === 0 || (d.delta.x === 0 && d.delta.y === 0)) return guides;
   return guides.map((g) => (d.guides.has(g.id) ? { ...g, point: add(g.point, d.delta) } : g));
+}
+
+/** The columns as a move takes them: the same list when it takes none, or does not move. */
+export function moveColumns(columns: readonly Column[], d: Extract<Drag, { kind: 'move' }>): readonly Column[] {
+  if (d.columns.size === 0 || (d.delta.x === 0 && d.delta.y === 0)) return columns;
+  return columns.map((c) => (d.columns.has(c.id) ? { ...c, at: add(c.at, d.delta) } : c));
 }
 
 /** The notes as a move takes them: the same list when it takes none, or does not move. */
@@ -344,6 +356,8 @@ function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): voi
       .filter((r) => r.enclosed)
       .map((r) => ({ id: r.room.id, outlines: [screen(r.outline, elevation(r.room.levelId), elevation(r.room.levelId), r.room.levelId)] })),
     ...[...g.floors.values()].map((f) => ({ id: f.floor.id, outlines: [screen(f.outline, f.bottom, f.top, f.floor.levelId)] })),
+    // A column by its section.
+    ...[...app.visibleGeometry().columns.values()].map((c) => ({ id: c.column.id, outlines: [c.outline.map((p) => app.plan.toScreen(p))] })),
     // An axis by its line.
     ...app.shownGrids().map((g) => ({ id: g.id, outlines: [[app.plan.toScreen(g.start), app.plan.toScreen(g.end)]] })),
     // A dimension by its line.

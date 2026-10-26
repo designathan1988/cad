@@ -64,6 +64,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('tool.window', 'tool.window', tools, () => app.setTool('window'), { keys: 'Shift+W' }),
     make('tool.room', 'tool.room', tools, () => app.setTool('room'), { keys: 'R' }),
     make('tool.measure', 'tool.measure', tools, () => app.setTool('measure'), { keys: 'M' }),
+    make('tool.column', 'tool.column', tools, () => app.setTool('column'), { keys: 'P', keywords: 'pilar pilares coluna column estrutura structure' }),
     make('tool.grid', 'tool.grid', tools, () => app.setTool('grid'), { keys: 'Shift+G', keywords: 'eixo eixos grade grid axis axes estrutura' }),
     make('tool.dimension', 'tool.dimension', tools, () => app.setTool('dimension'), { keys: 'Shift+D', keywords: 'cota dimension medida permanente' }),
     make('view.3d', 'view.3d', views, () => app.setView('3d'), { keys: '1', enabled: ui.view !== '3d' }),

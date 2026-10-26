@@ -557,6 +557,32 @@ export class Scene3D {
       this.walls.set(id, { group, key });
       place(id, f.floor.levelId);
     }
+    // Columns: their section extruded from bottom to top, as the floors are.
+    for (const c of g.columns.values()) {
+      const id = c.column.id;
+      seen.add(id);
+      const state = selected.has(id) ? 's' : 'n';
+      let ckey = this.shapeKeys.get(c);
+      if (ckey === undefined) this.shapeKeys.set(c, (ckey = JSON.stringify([c.outline, c.bottom, c.top])));
+      const key = state + ckey;
+      const old = this.walls.get(id);
+      if (old?.key === key) {
+        place(id, c.column.levelId);
+        continue;
+      }
+      if (old) this.drop(old.group);
+      const group = new THREE.Group();
+      const geo = new THREE.ExtrudeGeometry(new THREE.Shape(c.outline.map((p) => new THREE.Vector2(p.x, p.y))), { depth: c.top - c.bottom, bevelEnabled: false });
+      const mesh = new THREE.Mesh(geo, state === 's' ? this.materials.sideSel : this.materials.side);
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.y = c.bottom;
+      mesh.add(this.outline(geo));
+      group.add(mesh);
+      group.userData.wallId = id;
+      this.scene.add(group);
+      this.walls.set(id, { group, key });
+      place(id, c.column.levelId);
+    }
     const faces = this.facesOf(g);
     for (const s of g.solids.values()) {
       seen.add(s.wall.id);
