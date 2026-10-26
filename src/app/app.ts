@@ -30,7 +30,7 @@ import { addGuide, clearGuides } from '../elements/guide/commands';
 import { GUIDE_PREFIX, type Guide, isGuideId } from '../elements/guide/schema';
 import { aimAlong, OPENING_PREVIEW_ID, ruleGuide, ruleText } from './opening-ui';
 import type { WallId } from '../elements/wall/schema';
-import { type Insets, PlanView } from '../render/plan-view';
+import { type Insets, type PlanOverlay, PlanView } from '../render/plan-view';
 import { Scene3D } from '../render/scene-3d';
 import { Overlay3D, type Overlay3DState } from '../render/overlay-3d';
 import { toolCursor } from '../ui/cursors';
@@ -45,6 +45,10 @@ import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, rectangle, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, dragTransform, hull, moveGuides, moveNotes } from './select-drag';
 import { addNote, updateNotes } from '../elements/note/commands';
+import { addDimension, setDimensionDistance } from '../elements/dimension/commands';
+import { anchorAt, offsetThrough, placeDimension } from '../elements/dimension/anchor';
+import { DIM_PREFIX, type Dimension, isDimId } from '../elements/dimension/schema';
+import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState, dimensionTransition } from '../tools/dimension-tool';
 import { NOTE_HEIGHT, NOTE_PREFIX, type Note, isNoteId } from '../elements/note/schema';
 import { geometryOf, keepRooms, moveFloors, moveRooms } from './carry';
 import { keepOpenings } from './keep-openings';
@@ -130,6 +134,8 @@ export interface UiState {
   floorDraft: Point2[];
   /** The measure tool's tape (measure-tool.ts). */
   measure: MeasureState;
+  /** The dimension tool's ends, before the dimension is made (dimension-tool.ts). */
+  dimension: DimensionToolState;
   /** A guide being placed (guide-tool.ts): Alt over a wall or a guide in a drawing tool. */
   guide: GuideDraft | null;
   /** How the 3D view shows the levels: which, exploded, cut (view-3d.ts). */
@@ -222,6 +228,7 @@ export class App {
       drag: null,
       floorDraft: [],
       measure: MEASURE_IDLE,
+      dimension: DIMENSION_IDLE,
       guide: null,
       view3d: readView3D(prefs.view3d),
       modify: null,
@@ -354,7 +361,7 @@ export class App {
     // Levels hidden now leave the selection, as a hidden category does.
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      if (!isGuideId(id) && !isNoteId(id) && !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
+      if (!isGuideId(id) && !isNoteId(id) && !isDimId(id) && !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
     }
     this.refresh();
   }
@@ -753,6 +760,7 @@ export class App {
     this.ui.opening = OPENING_IDLE;
     this.ui.floorDraft = [];
     this.ui.measure = MEASURE_IDLE;
+    this.ui.dimension = DIMENSION_IDLE;
     this.ui.guide = null;
     this.ui.modify = null;
     this.modifyBefore = null;
@@ -1462,6 +1470,55 @@ export class App {
     this.render();
   }
 
+  /** The dimension tool: a click or Esc (dimension-tool.ts). The third click makes the dimension. */
+  dimensionEvent(event: DimensionToolEvent): void {
+    const r = dimensionTransition(this.ui.dimension, event);
+    this.ui.dimension = r.state;
+    this.shell.measure.value = '';
+    if (r.make) {
+      const doc = this.store.get();
+      const g = this.visibleGeometry();
+      const dim: Dimension = {
+        id: newId(DIM_PREFIX),
+        levelId: this.ui.levelId,
+        a: anchorAt(doc, g, this.ui.levelId, r.make.a),
+        b: anchorAt(doc, g, this.ui.levelId, r.make.b),
+        offset: offsetThrough(r.make.a, r.make.b, r.make.through),
+      };
+      this.store.dispatch(addDimension(dim));
+      this.ui.info = t('hint.dimensionMade');
+    }
+    this.render();
+  }
+
+  /** The dimensions of the level shown, where they are now, and the one being made; plan only. */
+  private planDimensions(): NonNullable<PlanOverlay['dimensions']> {
+    if (this.ui.view !== 'plan') return [];
+    const doc = this.store.get();
+    const g = this.geometry;
+    const out: NonNullable<PlanOverlay['dimensions']>[number][] = [];
+    for (const d of doc.dimensions) {
+      if (d.levelId !== this.ui.levelId) continue;
+      const p = placeDimension(doc, g, d);
+      if (p) out.push({ id: d.id, ...p, text: num(p.length), selected: this.ui.selection.has(d.id) || this.ui.hover === d.id });
+    }
+    const s = this.ui.tool === 'dimension' ? this.ui.dimension : DIMENSION_IDLE;
+    const at = this.ui.snap?.point ?? this.ui.cursor;
+    if (s.kind !== 'idle' && at) {
+      const a = s.a;
+      const b = s.kind === 'placing' ? s.b : at;
+      const offset = s.kind === 'placing' ? offsetThrough(a, b, at) : 0;
+      const p = placeDimension(doc, g, { id: '', levelId: '', a: { kind: 'point', at: a }, b: { kind: 'point', at: b }, offset });
+      if (p) out.push({ id: '', ...p, text: num(p.length), selected: true });
+    }
+    return out;
+  }
+
+  /** What a dimension measures now; null when what held an end is gone. */
+  dimensionLength(d: Dimension): number | null {
+    return placeDimension(this.store.get(), this.geometry, d)?.length ?? null;
+  }
+
   wallEvent(event: WallToolEvent): void {
     const r = wallTransition(this.ui.wall, event);
     // A value typed for one step (a length, a radius) never carries over to the next.
@@ -1554,7 +1611,7 @@ export class App {
     const point = parsePoint(text);
     if (point.ok) {
       const wall = this.ui.tool === 'wall' && this.ui.wall.kind !== 'bend';
-      if (!wall && this.ui.tool !== 'floor' && this.ui.tool !== 'room' && this.ui.tool !== 'measure') {
+      if (!wall && this.ui.tool !== 'floor' && this.ui.tool !== 'room' && this.ui.tool !== 'measure' && this.ui.tool !== 'dimension') {
         this.ui.error = t('hint.pointHere', { text });
         this.renderChrome();
         return false;
@@ -1562,6 +1619,7 @@ export class App {
       this.ui.error = null;
       if (wall) this.wallEvent({ kind: 'click', point: point.value });
       else if (this.ui.tool === 'measure') this.measureEvent({ kind: 'click', point: point.value });
+      else if (this.ui.tool === 'dimension') this.dimensionEvent({ kind: 'click', point: point.value });
       else if (this.ui.tool === 'floor') this.floorClick(point.value, 0, true);
       else this.roomClick(point.value);
       return true;
@@ -1658,7 +1716,7 @@ export class App {
    * Hiding again adds to what is hidden; with nothing selected, everything shows again (HR).
    */
   hideTemporarily(mode: 'hide' | 'isolate'): void {
-    const ids = [...this.ui.selection].filter((id) => !isGuideId(id) && !isNoteId(id));
+    const ids = [...this.ui.selection].filter((id) => !isGuideId(id) && !isNoteId(id) && !isDimId(id));
     if (ids.length === 0) {
       if (this.ui.temp) this.resetTemporary();
       else {
@@ -1747,6 +1805,7 @@ export class App {
       floors: r.doc.floors.slice(c.doc.floors.length),
       guides: r.doc.guides.slice(c.doc.guides.length),
       notes: r.doc.notes.slice(c.doc.notes.length),
+      dimensions: r.doc.dimensions.slice(c.doc.dimensions.length),
     };
     const level = levelOf(this.store.get(), this.ui.levelId);
     // The rooms renumbered on from the level's rooms as they are now, not as they were at the copy.
@@ -1763,6 +1822,7 @@ export class App {
         floors: [...d.floors, ...added.floors],
         guides: [...d.guides, ...added.guides],
         notes: [...d.notes, ...added.notes],
+        dimensions: [...d.dimensions, ...added.dimensions],
       }),
     });
     this.ui.selection = new Set(r.selection);
@@ -2064,7 +2124,7 @@ export class App {
       return this.renderChrome();
     }
     const marks = this.ui.openingTags ? openingMarks(doc.openings, markPrefix()) : undefined;
-    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²`, ...(marks ? { marks } : {}), notes: this.store.get().notes });
+    const text = planDxf(this.geometry, levelId, { room: (n, s) => `${n} · ${name(s)}`, area: (a) => `${num(a)} m²`, ...(marks ? { marks } : {}), notes: this.store.get().notes, dimensions: this.store.get().dimensions.flatMap((d) => (d.levelId === levelId ? (placeDimension(this.store.get(), this.geometry, d) ?? []) : [])), length: (m) => num(m) });
     const level = doc.levels.find((l) => l.id === levelId);
     const file = `${this.fileBase()} - ${level ? safeFileName(name(level.name)) : ''}.dxf`;
     this.download(file, new Blob([toCp1252(text)], { type: 'application/dxf' }), 'application/dxf');
@@ -2158,7 +2218,7 @@ export class App {
   private selectionKinds(): number {
     const g = this.geometry;
     const ids = [...this.ui.selection];
-    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isNoteId) ? 1 : 0);
+    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isNoteId) ? 1 : 0) + (ids.some(isDimId) ? 1 : 0);
   }
 
   selectedWalls(): DocWall[] {
@@ -2317,10 +2377,11 @@ export class App {
         preview,
         guides: this.levelGuides(),
         notes: this.levelNotes().map((n) => ({ ...n, selected: ui.selection.has(n.id) || ui.hover === n.id })),
+        dimensions: this.planDimensions(),
         guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
         snap:
           // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+          (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
             ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
             : null,
         measure: guideDim
@@ -2473,6 +2534,8 @@ export class App {
         total: ui.selection.size,
         guides: doc.guides.filter((g) => ui.selection.has(g.id)),
         notes: doc.notes.filter((n) => ui.selection.has(n.id)),
+        dimensions: doc.dimensions.filter((d) => ui.selection.has(d.id)),
+        dimensionLength: (d) => this.dimensionLength(d),
         stacked: stackedSteps(doc),
       },
       {
@@ -2554,6 +2617,7 @@ export class App {
         },
         clearGuides: () => this.clearGuides(),
         updateNotes: (ids, patch) => this.store.dispatch(updateNotes(ids, patch)),
+        setDimensionDistance: (ids, distance) => this.store.dispatch(setDimensionDistance(ids, distance)),
         // The wall moved across, with its joins kept as a move keeps them: the face then meets the one below.
         alignBelow: (step) => this.store.dispatch(setWalls(moveWalls(this.store.get(), [step.upperId], step.shift), 'cmd.alignBelow')),
       },
@@ -2772,7 +2836,7 @@ export class App {
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
       // Guides and notes have no geometry: a guide goes only when guides are hidden, a note never.
-      if (isNoteId(id)) continue;
+      if (isNoteId(id) || isDimId(id)) continue;
       if (isGuideId(id) ? this.ui.hidden.has('guides') : !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) {
         this.ui.selection.delete(id);
       }
@@ -2882,6 +2946,7 @@ export class App {
     shell.toolDoor.setAttribute('aria-pressed', String(ui.tool === 'door'));
     shell.toolWindow.setAttribute('aria-pressed', String(ui.tool === 'window'));
     shell.toolMeasure.setAttribute('aria-pressed', String(ui.tool === 'measure'));
+    shell.toolDimension.setAttribute('aria-pressed', String(ui.tool === 'dimension'));
     shell.toolSplit.setAttribute('aria-pressed', String(ui.tool === 'split'));
     shell.toolCorner.setAttribute('aria-pressed', String(ui.tool === 'corner'));
     // The Modify tools: the one in use pressed; dimmed while the selection holds nothing they take (a
@@ -2996,7 +3061,9 @@ export class App {
           ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
           : ui.tool === 'measure'
             ? this.measureHint()
-            : null;
+            : ui.tool === 'dimension'
+              ? t(ui.dimension.kind === 'idle' ? 'hint.dimensionStart' : ui.dimension.kind === 'from' ? 'hint.dimensionEnd' : 'hint.dimensionPlace')
+              : null;
     const guideHint = ui.guide
       ? t('hint.guide', {
           d: num(this.guideOffset() ?? 0),
@@ -3030,6 +3097,8 @@ export class App {
         ]
       : placing || ui.tool === 'room'
       ? [keyHint('Esc', t('key.exit'))]
+      : ui.tool === 'dimension'
+      ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.dimension.kind === 'idle' ? 'key.exit' : 'key.back'))]
       : ui.tool === 'measure'
       ? [keyHint('Shift', t('key.straight')), ...altGuide, snapKey, keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clear'))]
       : ui.tool === 'floor'

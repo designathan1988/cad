@@ -2,6 +2,7 @@
 // joins (and the rooms they surround), doors and windows slide along their wall by the part of the
 // step along it, a room's point, an outline floor and a guide move. One document out, for one undo step.
 
+import type { DimAnchor } from '../elements/dimension/schema';
 import { moveFloors, moveRooms, roomsGoingWith } from '../app/carry';
 import type { Doc } from '../app/document';
 import { type DerivedGeometry, hostsIn } from '../app/geometry';
@@ -42,14 +43,18 @@ export function nudge(doc: Doc, g: DerivedGeometry, ids: readonly string[], step
   const floors = moveFloors(next.floors, set, moved);
   const guides = next.guides.map((g) => (set.has(g.id) ? { ...g, point: moved(g.point) } : g));
   const notes = next.notes.map((n) => (set.has(n.id) ? { ...n, at: moved(n.at) } : n));
+  // A dimension's free ends go; an end held by a wall or an opening stays with it.
+  const free = (a: DimAnchor): DimAnchor => (a.kind === 'point' ? { kind: 'point', at: moved(a.at) } : a);
+  const dimensions = next.dimensions.map((d) => (set.has(d.id) && (d.a.kind === 'point' || d.b.kind === 'point') ? { ...d, a: free(d.a), b: free(d.b) } : d));
   const changed =
     next !== doc ||
     openings.some((o, i) => o !== next.openings[i]) ||
     rooms.some((r, i) => r !== next.rooms[i]) ||
     floors.some((f, i) => f !== next.floors[i]) ||
     guides.some((g, i) => g !== next.guides[i]) ||
-    notes.some((n, i) => n !== next.notes[i]);
-  return changed ? { ...next, openings, rooms, floors, guides, notes } : doc;
+    notes.some((n, i) => n !== next.notes[i]) ||
+    dimensions.some((d, i) => d !== next.dimensions[i]);
+  return changed ? { ...next, openings, rooms, floors, guides, notes, dimensions } : doc;
 }
 
 /** The rule moved `along` metres toward the wall's end; one without a distance is measured from the start. */

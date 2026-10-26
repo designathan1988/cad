@@ -7,10 +7,9 @@ import { icon, type IconName } from './icons';
 import type { MenuItem } from './menu';
 
 /** `modify`: Move, Copy, Rotate, Scale or Mirror on the selection (tools/modify-tool.ts), a button each. */
-export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'measure' | 'modify' | 'split' | 'corner';
+export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'measure' | 'dimension' | 'modify' | 'split' | 'corner';
 export type ViewId = '3d' | 'plan';
 
-const SOON: readonly { icon: IconName; key: MessageKey }[] = [{ icon: 'dimension', key: 'tool.dimension' }];
 
 function iconButton(name: IconName, cls = 'icon-btn'): HTMLButtonElement {
   const b = el('button', { type: 'button', class: cls });
@@ -100,13 +99,9 @@ export function buildShell(root: HTMLElement) {
   // On walls under the pointer, without a selection first: divide one, make two meet at a corner.
   const toolSplit = editTool('split');
   const toolCorner = editTool('corner');
-  // Measuring and dimensioning, together: the tape works, the dimension is to come.
+  // Measuring and dimensioning, together: the tape (nothing kept) and the dimension (kept, held by the walls).
   const toolMeasure = editTool('ruler');
-  const soonButtons = SOON.map((s) => {
-    const b = editTool(s.icon);
-    b.disabled = true;
-    return { b, key: s.key };
-  });
+  const toolDimension = editTool('dimension');
   const moreTools = iconButton('more');
   moreTools.setAttribute('aria-haspopup', 'menu');
   moreTools.hidden = true;
@@ -117,7 +112,7 @@ export function buildShell(root: HTMLElement) {
     toolCorner,
     el('span', { class: 'sep' }),
     toolMeasure,
-    ...soonButtons.map((s) => s.b),
+    toolDimension,
   ];
   editTools.append(...editItems, moreTools);
   left.append(el('span', { class: 'sep edit-sep' }), editTools);
@@ -316,7 +311,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, undo, redo, level, newFile, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, modifyTools, toolSplit, toolCorner, dims, browser, sidebar,
+    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, toolDimension, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, modifyTools, toolSplit, toolCorner, dims, browser, sidebar,
     emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, editTools, moreTools, fitTop, syncMore, foldedTools, moreApp, foldedApp, fitFoot,
   };
 
@@ -353,10 +348,7 @@ export function buildShell(root: HTMLElement) {
     tip(modifyTools.offset, 'tool.offsetKey');
     tip(toolSplit, 'tool.splitKey');
     tip(toolCorner, 'tool.cornerKey');
-    for (const s of soonButtons) {
-      s.b.title = `${t(s.key)}: ${t('tool.soon')}`;
-      s.b.setAttribute('aria-label', s.b.title);
-    }
+    tip(toolDimension, 'tool.dimensionKey');
     tip(sidebar, 'tool.sidebar');
     browser.setAttribute('aria-label', t('browser.title'));
     view3d.querySelector('.label')!.textContent = t('view.3d');

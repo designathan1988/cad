@@ -3,6 +3,7 @@
 // to keep their openings where they were. The one exception is a distributed group: losing a member
 // spreads the others out again, which is what the group is for.
 
+import { anchorElement } from '../dimension/schema';
 import { type Doc, wallHeights } from '../../app/document';
 import type { Command } from '../../core/store';
 import { deriveGeometry, hostsIn } from '../../app/geometry';
@@ -81,13 +82,17 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
     const floorsLeft = doc.floors.filter((f) => !drop.has(f.id));
     const guides = doc.guides.filter((g) => !drop.has(g.id));
     const notes = doc.notes.filter((n) => !drop.has(n.id));
+    // A dimension goes with what holds either of its ends, as Revit's does.
+    const held = (id: string | null) => id !== null && (drop.has(id) || gone.has(id));
+    const dimensions = doc.dimensions.filter((d) => !drop.has(d.id) && !held(anchorElement(d.a)) && !held(anchorElement(d.b)));
     if (
       walls.length === doc.walls.length &&
       gone.size === 0 &&
       rooms.length === doc.rooms.length &&
       floorsLeft.length === doc.floors.length &&
       guides.length === doc.guides.length &&
-      notes.length === doc.notes.length
+      notes.length === doc.notes.length &&
+      dimensions.length === doc.dimensions.length
     ) {
       return doc;
     }
@@ -106,7 +111,7 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
           ? { ...o, rule: { kind: 'fromStart' as const, distance: placed.get(o.id)!.start } }
           : o,
       );
-    return settleGroups(doc, { ...doc, walls, openings, rooms, floors, guides, notes });
+    return settleGroups(doc, { ...doc, walls, openings, rooms, floors, guides, notes, dimensions });
   },
 });
 

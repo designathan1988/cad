@@ -12,6 +12,7 @@ import { distributeOpenings } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import { type Floor, type Room, ROOM_USES } from '../elements/room/schema';
 import type { Note } from '../elements/note/schema';
+import type { Dimension } from '../elements/dimension/schema';
 import type { WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
 
@@ -29,12 +30,13 @@ import type { DocWall } from '../app/document';
  * Version 9: a wall end can be squared off ('square' in `joins`).
  * Version 10: a room's use and its own ceiling height (`use`, `height`). Older rooms have neither.
  * Version 11: text notes (`notes`, elements/note). Older files have none.
+ * Version 12: permanent dimensions (`dimensions`, elements/dimension). Older files have none.
  */
-export const CURRENT_VERSION = 11;
+export const CURRENT_VERSION = 12;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes'; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedRooms' | 'droppedFloors' | 'droppedGroups' | 'droppedGuides' | 'droppedViews' | 'droppedPoints' | 'droppedNotes' | 'droppedDimensions'; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number };
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -139,6 +141,17 @@ export const isFloor = (f: unknown): f is Floor =>
 export const isNote = (n: unknown): n is Note =>
   isObject(n) && typeof n.id === 'string' && typeof n.levelId === 'string' && isPoint(n.at) && typeof n.text === 'string' && n.text.trim() !== '' && finite(n.height) && n.height > 0;
 
+/** An end of a dimension: on a wall (an end, along, across), on a jamb, or a point. */
+const isDimAnchor = (a: unknown): boolean =>
+  isObject(a) &&
+  ((a.kind === 'wall' && typeof a.wallId === 'string' && (a.end === 'start' || a.end === 'end') && finite(a.along) && finite(a.offset)) ||
+    (a.kind === 'opening' && typeof a.openingId === 'string' && (a.jamb === 'start' || a.jamb === 'end') && finite(a.offset)) ||
+    (a.kind === 'point' && isPoint(a.at)));
+
+/** A permanent dimension: two ends and the distance of its line. */
+export const isDimension = (d: unknown): d is Dimension =>
+  isObject(d) && typeof d.id === 'string' && typeof d.levelId === 'string' && isDimAnchor(d.a) && isDimAnchor(d.b) && finite(d.offset);
+
 /** A guide: a point and a unit direction (a zero one would be no line at all). */
 export const isGuide = (g: unknown): g is Guide =>
   isObject(g) &&
@@ -190,13 +203,16 @@ export function repairProject(raw: unknown): ReadResult {
   // A wall keeps a top or base offset only when it differs from its type's (before version 3 every
   // wall carried both, chosen or not): the rest follow the type.
   const migrated = walls.map((w) => ownValuesOnly(w, wallTypes));
+  const openings = keep(raw.openings, isOpening, 'droppedOpenings');
+  const wallIds = new Set(walls.map((w) => w.id));
+  const openingIds = new Set(openings.map((o) => o.id));
   const doc: Doc = {
     version: CURRENT_VERSION,
     name: typeof raw.name === 'string' ? raw.name : '',
     levels,
     wallTypes,
     walls: migrated,
-    openings: keep(raw.openings, isOpening, 'droppedOpenings'),
+    openings,
     openingGroups: keep(raw.openingGroups, isOpeningGroup, 'droppedGroups'),
     rooms: keep(raw.rooms, isRoom, 'droppedRooms'),
     floors: keep(raw.floors, isFloor, 'droppedFloors'),
@@ -216,6 +232,14 @@ export function repairProject(raw: unknown): ReadResult {
     points: keep(raw.points, isPointOfInterest, 'droppedPoints').filter((p, _, all) => {
       if (levelIds.has(p.levelId)) return true;
       if (p === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedPoints', count: all.filter((x) => !levelIds.has(x.levelId)).length });
+      return false;
+    }),
+    // A dimension on a level that is gone, or held by a wall or an opening that is not there: dropped, and said.
+    dimensions: keep(raw.dimensions, isDimension, 'droppedDimensions').filter((d, _, all) => {
+      const there = (x: Dimension) =>
+        levelIds.has(x.levelId) && [x.a, x.b].every((a) => (a.kind === 'wall' ? wallIds.has(a.wallId) : a.kind === 'opening' ? openingIds.has(a.openingId) : true));
+      if (there(d)) return true;
+      if (d === all.find((x) => !there(x))) fixes.push({ kind: 'droppedDimensions', count: all.filter((x) => !there(x)).length });
       return false;
     }),
     // A note on a level that is gone is on no plan: dropped, and said.

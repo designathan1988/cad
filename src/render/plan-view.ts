@@ -64,6 +64,11 @@ export interface PlanOverlay {
   readonly guides?: readonly { readonly id: string; readonly point: Point2; readonly dir: Point2 }[];
   /** The level's text notes, as tall as their letters at the plan's scale. */
   readonly notes?: readonly (Note & { readonly selected: boolean })[];
+  /**
+   * Permanent dimensions (elements/dimension): the points measured (a, b), the dimension line (la to lb),
+   * the value. The one being made has no id.
+   */
+  readonly dimensions?: readonly { readonly id: string; readonly a: Point2; readonly b: Point2; readonly la: Point2; readonly lb: Point2; readonly text: string; readonly selected: boolean }[];
   /** The guide being placed. */
   readonly guideDraft?: { readonly point: Point2; readonly dir: Point2 } | null;
   /**
@@ -449,6 +454,7 @@ export class PlanView {
     for (const r of o.refLines ?? []) this.drawRefLine(r, color('--ref-line'));
     if (o.ray) this.dashed(o.ray.start, o.ray.end, color('--snap'));
     this.drawNotes(o.notes ?? [], color);
+    for (const d of o.dimensions ?? []) this.drawPermanentDim(d, d.selected ? color('--wall-sel') : color('--text-2'), color('--canvas'));
     this.drawOpeningTags(o.openingTags ?? [], color);
     this.drawRoomTags(o.roomLabels, color, this.dimValueBoxes(o.dims ?? []), o.dims ?? []);
     if (o.draft && o.draft.length > 0) {
@@ -669,6 +675,67 @@ export class PlanView {
   }
 
   /** A canvas font from the design tokens: weight, a size token, the family token. */
+  /**
+   * A permanent dimension: extension lines from just off the points measured to just past its line, the
+   * line, a 45° tick at each end, and its value over the line's middle, upright, on a pad.
+   */
+  private drawPermanentDim(d: NonNullable<PlanOverlay['dimensions']>[number], colour: string, bg: string): void {
+    const ctx = this.ctx;
+    const a = this.toScreen(d.a);
+    const b = this.toScreen(d.b);
+    const la = this.toScreen(d.la);
+    const lb = this.toScreen(d.lb);
+    const len = Math.hypot(lb.x - la.x, lb.y - la.y);
+    if (len < 1) return;
+    const u = { x: (lb.x - la.x) / len, y: (lb.y - la.y) / len };
+    // Toward the line from the points measured; along u's normal when the line is on them.
+    const off = Math.hypot(la.x - a.x, la.y - a.y);
+    const n = off > 0.5 ? { x: (la.x - a.x) / off, y: (la.y - a.y) / off } : { x: u.y, y: -u.x };
+    const gap = Math.min(3, off);
+    ctx.save();
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (const [p, l] of [
+      [a, la],
+      [b, lb],
+    ] as const) {
+      if (off > 0.5) {
+        ctx.moveTo(p.x + n.x * gap, p.y + n.y * gap);
+        ctx.lineTo(l.x + n.x * 4, l.y + n.y * 4);
+      }
+    }
+    ctx.moveTo(la.x - u.x * 4, la.y - u.y * 4);
+    ctx.lineTo(lb.x + u.x * 4, lb.y + u.y * 4);
+    const tx = (u.x + n.x) * 4;
+    const ty = (u.y + n.y) * 4;
+    for (const p of [la, lb]) {
+      ctx.moveTo(p.x - tx, p.y - ty);
+      ctx.lineTo(p.x + tx, p.y + ty);
+    }
+    ctx.stroke();
+    // The value: upright (its angle within ±90°), on the side of the line away from what it measures.
+    let angle = Math.atan2(u.y, u.x);
+    if (angle > Math.PI / 2) angle -= Math.PI;
+    if (angle <= -Math.PI / 2) angle += Math.PI;
+    const font = this.font('500', '--fs-xs');
+    ctx.font = font;
+    const tw = ctx.measureText(d.text).width;
+    const mid = { x: (la.x + lb.x) / 2 + n.x * 9, y: (la.y + lb.y) / 2 + n.y * 9 };
+    ctx.translate(mid.x, mid.y);
+    ctx.rotate(angle);
+    ctx.fillStyle = bg;
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(-tw / 2 - 3, -8, tw + 6, 15);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = colour;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Too short for its value: the value stays, the line shows what it is of.
+    ctx.fillText(d.text, 0, 0);
+    ctx.restore();
+  }
+
   /** Text notes: their letters as tall as they are at this scale, a line each; a selected one boxed. */
   private drawNotes(notes: NonNullable<PlanOverlay['notes']>, color: (v: string) => string): void {
     const ctx = this.ctx;

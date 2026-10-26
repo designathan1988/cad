@@ -22,6 +22,7 @@ import { updateOpening } from '../elements/opening/commands';
 import type { Opening } from '../elements/opening/schema';
 import type { Guide } from '../elements/guide/schema';
 import { type Note, noteBox, shownHeight } from '../elements/note/schema';
+import { placeDimension } from '../elements/dimension/anchor';
 import { ruleAt } from '../tools/opening-tool';
 import { aimAlong, aimAt } from './opening-ui';
 
@@ -321,6 +322,14 @@ function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): voi
       .filter((r) => r.enclosed)
       .map((r) => ({ id: r.room.id, outlines: [screen(r.outline, elevation(r.room.levelId), elevation(r.room.levelId), r.room.levelId)] })),
     ...[...g.floors.values()].map((f) => ({ id: f.floor.id, outlines: [screen(f.outline, f.bottom, f.top, f.floor.levelId)] })),
+    // A dimension by its line.
+    ...app.store
+      .get()
+      .dimensions.filter((d) => d.levelId === app.ui.levelId)
+      .flatMap((d) => {
+        const at = placeDimension(app.store.get(), app.geometry, d);
+        return at ? [{ id: d.id, outlines: [[app.plan.toScreen(at.la), app.plan.toScreen(at.lb)]] }] : [];
+      }),
     // A note by its box.
     ...app.levelNotes().map((n) => {
       const b = noteBox(n, shownHeight(n, app.plan.scale));

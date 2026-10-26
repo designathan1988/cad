@@ -29,9 +29,10 @@ import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
 import { GUIDE_PX, guideBaseAt } from '../tools/guide-tool';
 import { noteBox, shownHeight } from '../elements/note/schema';
+import { placeDimension, segmentDistance } from '../elements/dimension/anchor';
 import type { LevelsShown } from './view-3d';
 import type { ModifyKind } from '../tools/modify-tool';
-import { cross, sub } from '../core/vector';
+import { cross, distance, sub } from '../core/vector';
 import { outerSides } from '../elements/wall/geometry/seams';
 
 /** How near (screen pixels) the pointer must come to a wall, a door or a window to take it. */
@@ -181,9 +182,11 @@ export function wireInput(app: App): void {
     const draft = ui.tool === 'floor' ? ui.floorDraft : null;
     // The tape snaps from its start, and onto the walls' faces and corners too: one measures a room
     // from wall to wall, not from axis to axis.
-    const tape = ui.tool === 'measure' && ui.measure.kind === 'from' ? ui.measure.a : null;
+    const tape =
+      ui.tool === 'measure' && ui.measure.kind === 'from' ? ui.measure.a : ui.tool === 'dimension' && ui.dimension.kind === 'from' ? ui.dimension.a : null;
+    const measuring = ui.tool === 'measure' || ui.tool === 'dimension';
     const modifyFrom = ui.tool === 'modify' && ui.modify && ui.modify.state.step !== 'base' ? ui.modify.state.base : null;
-    const faces = ui.tool === 'measure' ? levelFaces() : [];
+    const faces = measuring ? levelFaces() : [];
     // The level below's walls too, without their numbers (those are the other level's): drawing an
     // upper floor snaps onto the walls it stands on.
     const below = ui.hidden.has('walls') ? null : app.levelBelow();
@@ -197,8 +200,8 @@ export function wireInput(app: App): void {
       segments: [
         ...faces,
         ...(onFace ? belowFaces(below) : []),
-        ...walls.filter((x) => x.levelId === ui.levelId).map((x) => ({ id: x.id, start: x.start, end: x.end, reach: ui.tool === 'measure' ? 0 : halfOf(x.id), ...(x.bulge ? { bulge: x.bulge } : {}) })),
-        ...walls.filter((x) => x.levelId === below).map((x) => ({ start: x.start, end: x.end, reach: ui.tool === 'measure' ? 0 : halfOf(x.id), ...(x.bulge ? { bulge: x.bulge } : {}) })),
+        ...walls.filter((x) => x.levelId === ui.levelId).map((x) => ({ id: x.id, start: x.start, end: x.end, reach: measuring ? 0 : halfOf(x.id), ...(x.bulge ? { bulge: x.bulge } : {}) })),
+        ...walls.filter((x) => x.levelId === below).map((x) => ({ start: x.start, end: x.end, reach: measuring ? 0 : halfOf(x.id), ...(x.bulge ? { bulge: x.bulge } : {}) })),
       ],
       // Modifying, snapped from the base point: right angles and 15° steps from it, as a wall from its last point.
       from: tape ?? modifyFrom ?? (draft ? (draft.at(-1) ?? null) : w.kind === 'drawing' ? w.last : null),
@@ -229,7 +232,17 @@ export function wireInput(app: App): void {
     // Within a few pixels of a wall, a door or a window, it is taken: aiming inside a thin wall, or at a
     // door's leaf, was the only way before.
     const near = PICK_PX / app.plan.scale;
+    // A dimension by its line or its value, before what it measures.
+    const dims = app.store.get().dimensions.filter((d) => d.levelId === ui.levelId);
+    const dimHit = dims
+      .map((d) => ({ id: d.id, at: placeDimension(app.store.get(), app.geometry, d) }))
+      .flatMap((x) => (x.at ? [{ id: x.id, off: Math.min(segmentDistance(p, x.at.la, x.at.lb), distance(p, { x: (x.at.la.x + x.at.lb.x) / 2, y: (x.at.la.y + x.at.lb.y) / 2 }) - 10 / app.plan.scale) }] : []))
+      .filter((x) => x.off <= near)
+      .sort((a, b) => a.off - b.off)
+      .slice(0, 1)
+      .map((x) => x.id);
     return [
+      ...dimHit,
       // A text note over everything it is written on.
       ...app
         .levelNotes()
@@ -308,7 +321,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'measure') {
+    if (ui.tool === 'measure' || ui.tool === 'dimension') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -431,6 +444,10 @@ export function wireInput(app: App): void {
       }
       return true;
     }
+    if (ui.tool === 'dimension' && ui.dimension.kind !== 'idle') {
+      app.dimensionEvent({ kind: 'escape' });
+      return true;
+    }
     if (ui.tool === 'measure' && ui.measure.kind !== 'idle') {
       app.measureEvent({ kind: 'escape' });
       return true;
@@ -504,6 +521,11 @@ export function wireInput(app: App): void {
     if (ui.tool === 'measure') {
       const at = worldAt(e);
       if (at) app.measureEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
+      return;
+    }
+    if (ui.tool === 'dimension') {
+      const at = worldAt(e);
+      if (at) app.dimensionEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
       return;
     }
     if (ui.tool === 'room' || ui.tool === 'floor') {
@@ -620,6 +642,7 @@ export function wireInput(app: App): void {
   shell.toolRoom.addEventListener('click', () => app.setTool('room'));
   shell.toolFloor.addEventListener('click', () => app.setTool('floor'));
   shell.toolMeasure.addEventListener('click', () => app.setTool('measure'));
+  shell.toolDimension.addEventListener('click', () => app.setTool('dimension'));
   shell.toolSplit.addEventListener('click', () => app.setTool('split'));
   shell.toolCorner.addEventListener('click', () => app.setTool('corner'));
   for (const [kind, b] of Object.entries(shell.modifyTools)) b.addEventListener('click', () => app.startModify(kind as ModifyKind));
@@ -781,7 +804,7 @@ export function wireInput(app: App): void {
       return palette();
     }
     // The view by keyboard (view-keys.ts): + and − zoom, Shift+arrows move or turn it (the tester's K4).
-    const typingNow = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'modify' || app.openingKind() !== null;
+    const typingNow = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'modify' || app.openingKind() !== null;
     const view = viewKey(e.key, { shift: e.shiftKey, ctrl, alt: e.altKey, typing: typingNow });
     if (view) {
       e.preventDefault();
@@ -830,7 +853,7 @@ export function wireInput(app: App): void {
     // temporary dimensions or in the panel, so 1 and 2 keep switching the view.
     // In the door and window tools a digit is always a measure, aimed or not: it never switches the view
     // (the tester's K2: "1" turned to 3D).
-    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'modify' || app.openingKind() !== null;
+    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'modify' || app.openingKind() !== null;
     // Right after a copy, its series is typed there: "3x", "/3".
     if (/^[\d/]$/.test(e.key) && ui.tool === 'select' && app.seriesReady()) {
       e.preventDefault();
@@ -864,6 +887,7 @@ export function wireInput(app: App): void {
       }
       if (ui.tool === 'room' || ui.tool === 'floor') return app.setTool('select');
       if (ui.tool === 'measure') return ui.measure.kind !== 'idle' ? app.measureEvent({ kind: 'escape' }) : app.setTool('select');
+      if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? app.wallEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'split') return app.setTool('select');
       // The Corner tool lets go of its first wall first (below), then of itself.
@@ -899,6 +923,7 @@ export function wireInput(app: App): void {
     if (e.shiftKey && key === 'o') return app.startModify('offset');
     if (e.shiftKey && key === 's') return app.setTool('split');
     if (e.shiftKey && key === 't') return app.setTool('corner');
+    if (e.shiftKey && key === 'd') return app.setTool('dimension');
     if (e.shiftKey && key === 'j') return app.mergeSelection();
     if (e.shiftKey && key === 'h') return app.hideTemporarily('hide');
     if (e.shiftKey && key === 'i') return app.hideTemporarily('isolate');

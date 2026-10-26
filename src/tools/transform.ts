@@ -13,6 +13,8 @@ import { add, dot, normalize, type Point2, scale, sub } from '../core/vector';
 import { GROUP_PREFIX, type GroupSpacing, type Opening, type OpeningGroup, OPENING_PREFIX, type PositionRule } from '../elements/opening/schema';
 import { GUIDE_PREFIX } from '../elements/guide/schema';
 import { NOTE_PREFIX } from '../elements/note/schema';
+import { DIM_PREFIX, type DimAnchor, type Dimension } from '../elements/dimension/schema';
+import { resolve } from '../elements/dimension/anchor';
 import { aimAt } from '../app/opening-ui';
 import { transformWalls } from './edit';
 import { ruleAt } from './opening-tool';
@@ -169,7 +171,18 @@ export function transformSelection(
   const guides = new Set(doc.guides.filter((x) => set.has(x.id)).map((x) => x.id));
   // Notes keep reading upright: only their point goes (a turn, a mirror), their letters as they are.
   const notes = new Set(doc.notes.filter((x) => set.has(x.id)).map((x) => x.id));
+  const dims = new Set(doc.dimensions.filter((x) => set.has(x.id)).map((x) => x.id));
   const outline = (points: readonly Point2[]) => points.map(t.map);
+  // A dimension's end held by a wall that goes (or a door or window on one) goes with it; mirrored, that
+  // wall's ends trade places (edit.ts: swap), so the end is counted from the other one, the jamb the other.
+  const hostOf = new Map(doc.openings.map((o) => [o.id, o.wallId]));
+  const goes = (a: DimAnchor) => (a.kind === 'wall' ? walls.has(a.wallId) : a.kind === 'opening' ? walls.has(hostOf.get(a.openingId) ?? '') : false);
+  const swapped = (a: DimAnchor): DimAnchor =>
+    !t.mirror || !goes(a) ? a : a.kind === 'wall' ? { ...a, end: a.end === 'start' ? 'end' : 'start' } : a.kind === 'opening' ? { ...a, jamb: a.jamb === 'start' ? 'end' : 'start' } : a;
+  // The dimensions taken whole: selected, or with both ends on what goes. Their line keeps its side.
+  const whole = (d: Dimension) => dims.has(d.id) || (goes(d.a) && goes(d.b));
+  const lineOffset = (d: Dimension) => (whole(d) ? d.offset * t.factor * (t.mirror ? -1 : 1) : d.offset);
+  const freePoint = (a: DimAnchor): DimAnchor => (a.kind === 'point' ? { kind: 'point', at: t.map(a.at) } : a);
 
   if (!copy) {
     const same = (id: string) => id;
@@ -188,6 +201,12 @@ export function transformSelection(
       floors: doc.floors.map((f) => (floors.has(f.id) && f.source.kind === 'outline' ? { ...f, source: { kind: 'outline', points: outline(f.source.points) } } : f)),
       guides: doc.guides.map((x) => (guides.has(x.id) ? { ...x, point: t.map(x.point), dir: mapDir(t, x.point, x.dir) } : x)),
       notes: doc.notes.map((x) => (notes.has(x.id) ? { ...x, at: t.map(x.at) } : x)),
+      dimensions: doc.dimensions.map((d) => {
+        const a = swapped(dims.has(d.id) ? freePoint(d.a) : d.a);
+        const b = swapped(dims.has(d.id) ? freePoint(d.b) : d.b);
+        const offset = lineOffset(d);
+        return a === d.a && b === d.b && offset === d.offset ? d : { ...d, a, b, offset };
+      }),
     };
     return { doc: next, selection: [...ids] };
   }
@@ -214,6 +233,8 @@ export function transformSelection(
   for (const x of guideList) fresh(x.id, GUIDE_PREFIX);
   const noteList = doc.notes.filter((x) => notes.has(x.id));
   for (const x of noteList) fresh(x.id, NOTE_PREFIX);
+  const dimList = doc.dimensions.filter((x) => dims.has(x.id));
+  for (const x of dimList) fresh(x.id, DIM_PREFIX);
   const to = (id: string) => ids2.get(id) ?? id;
 
   const newWalls = doc.walls
@@ -245,6 +266,22 @@ export function transformSelection(
     floors: [...doc.floors, ...newFloors],
     guides: [...doc.guides, ...guideList.map((x) => ({ ...x, id: to(x.id), point: t.map(x.point), dir: mapDir(t, x.point, x.dir) }))],
     notes: [...doc.notes, ...noteList.map((x) => ({ ...x, id: to(x.id), at: t.map(x.at) }))],
+    // A copied dimension is held by the copies of what held it; an end on something not copied is
+    // left where the copy of that point lands, free.
+    dimensions: [
+      ...doc.dimensions,
+      ...dimList.flatMap((d) => {
+        const end = (a: DimAnchor): DimAnchor | null => {
+          if (a.kind === 'point') return freePoint(a);
+          if (goes(a)) return swapped(a.kind === 'wall' ? { ...a, wallId: to(a.wallId) } : { ...a, openingId: to(a.openingId) });
+          const p = resolve(doc, g, a);
+          return p ? { kind: 'point', at: t.map(p) } : null;
+        };
+        const a = end(d.a);
+        const b = end(d.b);
+        return a && b ? [{ ...d, id: to(d.id), a, b, offset: d.offset * t.factor * (t.mirror ? -1 : 1) }] : [];
+      }),
+    ],
   };
   const selection = [
     ...newWalls.map((w) => w.id),
@@ -253,6 +290,7 @@ export function transformSelection(
     ...doc.floors.filter((f) => floors.has(f.id)).map((f) => to(f.id)),
     ...guideList.map((x) => to(x.id)),
     ...noteList.map((x) => to(x.id)),
+    ...dimList.map((x) => to(x.id)),
   ];
   return { doc: next, selection };
 }
@@ -266,7 +304,8 @@ export function canTransform(doc: Doc, ids: readonly string[]): boolean {
     doc.rooms.some((r) => set.has(r.id)) ||
     doc.floors.some((f) => set.has(f.id) && f.source.kind === 'outline') ||
     doc.guides.some((x) => set.has(x.id)) ||
-    doc.notes.some((x) => set.has(x.id))
+    doc.notes.some((x) => set.has(x.id)) ||
+    doc.dimensions.some((x) => set.has(x.id))
   );
 }
 
@@ -284,7 +323,7 @@ export function copyToLevel(doc: Doc, g: DerivedGeometry, ids: readonly string[]
   let last = doc.rooms.filter((x) => x.levelId === levelId).reduce((n, x) => Math.max(n, Number.parseInt(x.number, 10) || 0), 0);
   const rooms = onLevel(r.doc.rooms, doc.rooms.length).map((x, i) => (i >= doc.rooms.length ? { ...x, number: String(++last) } : x));
   return {
-    doc: { ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length), rooms, floors: onLevel(r.doc.floors, doc.floors.length), guides: onLevel(r.doc.guides, doc.guides.length), notes: onLevel(r.doc.notes, doc.notes.length) },
+    doc: { ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length), rooms, floors: onLevel(r.doc.floors, doc.floors.length), guides: onLevel(r.doc.guides, doc.guides.length), notes: onLevel(r.doc.notes, doc.notes.length), dimensions: onLevel(r.doc.dimensions, doc.dimensions.length) },
     selection: r.selection,
   };
 }
