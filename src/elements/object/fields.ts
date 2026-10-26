@@ -61,6 +61,7 @@ export function objectFields(items: readonly ObjectItem[], doc: Doc, dispatch: (
           icon: p.kind === 'length' ? 'width' : 'hash',
           ...(p.min !== undefined ? { min: p.min } : {}),
           ...(p.kind === 'length' ? {} : { unit: '' }),
+          ...(p.kind === 'integer' ? { decimals: 0 } : {}),
           get: (x) => x.eval.env[p.name] ?? 0,
           set,
         });

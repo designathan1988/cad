@@ -152,6 +152,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
           title: 'rib.p.settings',
           items: [
             { id: 'material.edit', icon: 'slab', size: 'L' },
+            { id: 'objects.edit', icon: 'box', size: 'L' },
             { id: 'type.edit', icon: 'wall', size: 'S' },
             { id: 'units.edit', icon: 'ruler', size: 'S' },
             { id: 'level.edit', icon: 'levelsAll', size: 'S' },

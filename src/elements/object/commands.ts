@@ -76,3 +76,41 @@ export const resetObjectValue = (ids: readonly ObjectId[], name: string): Comman
     return changed ? { ...doc, objects } : doc;
   },
 });
+
+/** A definition added to the project's library (a new one, a copy, one read from a library file). */
+export const addDefinition = (def: ObjectDefinition): Command<Doc> => ({
+  label: 'cmd.addDefinition',
+  apply: (doc) => (doc.definitions.some((d) => d.id === def.id) ? doc : { ...doc, definitions: [...doc.definitions, def] }),
+});
+
+/**
+ * A definition replaced by its edited version (the object editor's Save): every object of it changes at
+ * once. An object whose type is gone takes the first type, its own values kept where the parameter is.
+ */
+export const updateDefinition = (def: ObjectDefinition): Command<Doc> => ({
+  label: 'cmd.updateDefinition',
+  apply: (doc) => {
+    const old = doc.definitions.find((d) => d.id === def.id);
+    if (!old || JSON.stringify(old) === JSON.stringify(def)) return doc;
+    const names = new Set(def.params.filter((p) => p.formula === undefined).map((p) => p.name));
+    const objects = doc.objects.map((o) => {
+      if (o.definitionId !== def.id) return o;
+      const typeId = def.types.some((t) => t.id === o.typeId) ? o.typeId : def.types[0]!.id;
+      const values = Object.fromEntries(Object.entries(o.values).filter(([k]) => names.has(k)));
+      return typeId === o.typeId && Object.keys(values).length === Object.keys(o.values).length ? o : { ...o, typeId, values };
+    });
+    return { ...doc, definitions: doc.definitions.map((d) => (d.id === def.id ? def : d)), objects };
+  },
+});
+
+/** Why a definition cannot be deleted: objects of it are placed, or another definition nests it. */
+export function definitionDeleteBlocker(doc: Doc, id: string): 'inUse' | 'nested' | null {
+  if (doc.objects.some((o) => o.definitionId === id)) return 'inUse';
+  if (doc.definitions.some((d) => d.id !== id && d.parts.some((p) => p.kind === 'object' && p.definition === id))) return 'nested';
+  return null;
+}
+
+export const deleteDefinition = (id: string): Command<Doc> => ({
+  label: 'cmd.deleteDefinition',
+  apply: (doc) => (definitionDeleteBlocker(doc, id) === null && doc.definitions.some((d) => d.id === id) ? { ...doc, definitions: doc.definitions.filter((d) => d.id !== id) } : doc),
+});

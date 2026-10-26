@@ -1,6 +1,7 @@
 // Mouse and keyboard. Plan: wheel zooms at the cursor, middle button pans. 3D: wheel zooms at the
 // cursor, middle pans, Shift + middle or right rotates (OrbitControls). Left button is the tool's.
 
+import { showObjects } from '../ui/objects-dialog';
 import { endHandleDrag, moveHandleDrag, objectHandleAt, startHandleDrag } from './object-handles';
 import { showUnits } from '../ui/units-dialog';
 import { type BoxFace, dragDistance, moveFace, type SectionBox } from './section-box';
@@ -46,6 +47,7 @@ export function wireInput(app: App): void {
     wallTypes: () => showWallTypes(app),
     materials: () => showMaterials(app),
     units: () => showUnits(app),
+    objects: () => showObjects(app),
     tour: () => startTour(app),
     openFile: () => shell.fileInput.click(),
     projects: () => showProjectsDialog(app),
@@ -63,6 +65,7 @@ export function wireInput(app: App): void {
   app.openWallTypes = (typeId) => showWallTypes(app, typeId);
   app.openMaterials = () => showMaterials(app);
   app.openUnits = () => showUnits(app);
+  app.openObjects = () => showObjects(app);
   shell.sidebar.addEventListener('click', () => app.toggleBrowser());
   offerTour(app);
   let panning: { x: number; y: number } | null = null;

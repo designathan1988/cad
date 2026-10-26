@@ -1553,6 +1553,7 @@ export class App {
   openWallTypes: (typeId?: string) => void = () => {};
   openMaterials: () => void = () => {};
   openUnits: () => void = () => {};
+  openObjects: () => void = () => {};
   objectClick(p: Point2): void {
     kindTools.objectClick(this, p);
   }
