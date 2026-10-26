@@ -6,6 +6,7 @@
 import { type Doc, type Level, ownValuesOnly } from '../app/document';
 import type { AnyKind, KindKey } from '../elements/contract';
 import { KINDS } from '../elements/registry';
+import { typedIds } from './typed-ids';
 import { isSavedView } from '../app/saved-views';
 import { isPointOfInterest } from '../app/points';
 import { deriveGeometry } from '../app/geometry';
@@ -42,8 +43,10 @@ export const CURRENT_VERSION = 20;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' |  'droppedGroups' | 'droppedViews' | 'droppedPoints' | KindFix; readonly count: number }
-  | { readonly kind: 'movedToFirstLevel'; readonly count: number };
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedGroups' | 'droppedViews' | 'droppedPoints' | KindFix; readonly count: number }
+  | { readonly kind: 'movedToFirstLevel'; readonly count: number }
+  /** Ids without their kind's prefix, renamed with every reference (typed-ids.ts). */
+  | { readonly kind: 'typedIds'; readonly count: number };
 
 /** The fix for a registry kind's dropped elements: droppedColumns, droppedBeams and so on. */
 type KindFix = `dropped${Capitalize<KindKey>}`;
@@ -208,7 +211,10 @@ export function repairProject(raw: unknown): ReadResult {
       }),
     ) as unknown as Pick<Doc, Exclude<KindKey, 'openings' | 'walls'>>),
   };
-  return { ok: true, doc: regroupOffJoints(doc, raw.version), fixes };
+  // Every id says its kind (typed-ids.ts): one written without it is renamed, and said.
+  const typed = typedIds(doc);
+  if (typed.renamed > 0) fixes.push({ kind: 'typedIds', count: typed.renamed });
+  return { ok: true, doc: regroupOffJoints(typed.doc, raw.version), fixes };
 }
 
 /**

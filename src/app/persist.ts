@@ -60,7 +60,7 @@ export function loadDocument(): Doc | null {
   if (!raw) return null;
   const r = readProject(raw);
   if (r.ok) {
-    if (r.fixes.length > 0) console.warn('The saved project had bad elements, dropped:', r.fixes);
+    if (r.fixes.length > 0) console.warn('The saved project was repaired (bad elements dropped, ids given their kind):', r.fixes);
     return r.doc;
   }
   console.warn(`The saved project could not be read (${r.error}); starting a new one. The saved copy is kept under`, `${DOC_KEY}.invalid`);
@@ -68,10 +68,10 @@ export function loadDocument(): Doc | null {
   return null;
 }
 
-/** The document if every element is valid, or null. Documents saved before openings, rooms or floors get none. */
+/** The document if every element is valid (ids given their kind's prefix are kept: typed-ids.ts), or null. Documents saved before openings, rooms or floors get none. */
 export function validateDocument(raw: unknown): Doc | null {
   const r = repairProject(raw);
-  return r.ok && r.fixes.length === 0 ? r.doc : null;
+  return r.ok && r.fixes.every((f) => f.kind === 'typedIds') ? r.doc : null;
 }
 
 export function loadPrefs(): Prefs {

@@ -2375,7 +2375,8 @@ export class App {
     this.framed.plan = false;
     this.framed['3d'] = false;
     this.frameAll();
-    const fixed = r.fixes.reduce((s, f) => s + f.count, 0);
+    // Elements left out; ids only given their kind's prefix (typed-ids.ts) were kept, and are not counted.
+    const fixed = r.fixes.filter((f) => f.kind !== 'typedIds').reduce((s, f) => s + f.count, 0);
     this.toast(fixed > 1 ? t('toast.openedFixed', { n: fixed }) : fixed === 1 ? t('toast.openedFixedOne') : t('toast.openedUndo'));
   }
 
