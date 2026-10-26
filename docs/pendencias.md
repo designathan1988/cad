@@ -411,7 +411,7 @@ Importar e exportar
 - Exportar IFC, cada elemento na sua classe (l.122, l.149): falta.
 - Exportar DXF das plantas (l.122, l.149): falta.
 - Exportar PDF das pranchas (l.122, l.148): falta.
-- Exportar glTF/GLB do modelo (l.122, l.149): falta.
+- Exportar glTF/GLB do modelo (l.122, l.149): existe ("Modelo 3D (GLB)…" em Exportar, no navegador do projeto, e na paleta). Lido da geometria, não da vista: um grupo por pavimento na altura real, um nó por parede, porta, janela e piso com nome, id, tipo e pavimento nos extras; materiais pelo material das camadas (Reboco, Tijolo). A casa exportada passou no validador oficial da Khronos (gltf-validator 2.0.0-dev.3.10): 0 erros, 0 avisos.
 - Importar DXF como referência (l.123, l.149): falta.
 - Importar imagem de planta em escala (l.123, l.149): falta.
 

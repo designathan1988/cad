@@ -106,6 +106,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('file.new', 'pal.new', file, () => app.newProject()),
     make('file.open', 'pal.open', file, open.openFile, { keys: 'Ctrl+O' }),
     make('file.save', 'pal.save', file, () => app.saveFile(), { keys: 'Ctrl+S' }),
+    make('file.exportGlb', 'export.glb', file, () => void app.exportGlb(), { keywords: 'GLB glTF 3D export exportar modelo' }),
     make('settings.snaps', 'pal.snaps', settings, () => app.toggleSnaps(), { keys: 'S' }),
     make('settings.theme', 'pal.theme', settings, () => app.toggleTheme()),
     make('settings.language', 'pal.language', settings, () => app.setLanguage(app.otherLanguage()), { keys: 'Shift+L', keywords: 'English Português' }),

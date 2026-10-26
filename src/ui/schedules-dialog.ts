@@ -45,8 +45,7 @@ export function showSchedulesDialog(app: App, first: ScheduleKind = 'rooms'): vo
     csv.dataset.focus = 'csv';
     csv.disabled = s.rows.length === 0;
     csv.addEventListener('click', () => {
-      const doc = app.store.get();
-      const file = `${(doc.name || t('app.untitled')).replace(/[\\/:*?"<>|]+/g, '-')} - ${t(`schedule.kind.${kind}`)}.csv`;
+      const file = `${app.fileBase()} - ${t(`schedule.kind.${kind}`)}.csv`;
       app.download(file, toCsv(s, headers, t('schedule.total'), getLang()), 'text/csv;charset=utf-8');
       app.toast(t('schedule.saved', { file }));
     });

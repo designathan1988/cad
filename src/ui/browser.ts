@@ -73,6 +73,12 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
       ...(doc.views.length > 0 ? [item(t('gtour.play'), () => app.playTour(), { lead: icon('play', 16) })] : []),
     ),
     section(
+      t('browser.export'),
+      false,
+      item(t('export.glb'), () => void app.exportGlb(), { lead: icon('cube', 16) }),
+      item(t('schedule.open'), () => app.openSchedules(), { lead: icon('table', 16) }),
+    ),
+    section(
       t('browser.layers'),
       true,
       ...CATEGORIES.map((c) => item(t(c.key), () => app.toggleCategory(c.id), { pressed: !ui.hidden.has(c.id), trail: ui.hidden.has(c.id) ? t('layer.hidden') : t('layer.shown') })),

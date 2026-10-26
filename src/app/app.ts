@@ -35,7 +35,7 @@ import { Scene3D } from '../render/scene-3d';
 import { Overlay3D, type Overlay3DState } from '../render/overlay-3d';
 import { toolCursor } from '../ui/cursors';
 import { ViewCube } from '../render/view-cube';
-import { defaultName, getLang, htmlLang, name, num, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
+import { defaultName, getLang, htmlLang, materialName, name, num, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
 import { icon } from '../ui/icons';
 import { renderPanel } from '../ui/panel';
 import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui/shell';
@@ -1935,7 +1935,7 @@ export class App {
   saveFile(): void {
     const doc = this.store.get();
     // Named after the project, without what a file name cannot hold: every save was "project.json".
-    this.download(`${(doc.name || t('app.untitled')).replace(/[\\/:*?"<>|]+/g, '-')}.json`, writeProject(doc), 'application/json');
+    this.download(`${this.fileBase()}.json`, writeProject(doc), 'application/json');
     this.toast(t('toast.saved'));
   }
 
@@ -1951,6 +1951,45 @@ export class App {
 
   /** Opens the quantity schedules; set by the input layer. */
   openSchedules: () => void = () => {};
+
+  /** The project's file name: its name without what a file name cannot hold. */
+  fileBase(): string {
+    return (this.store.get().name || t('app.untitled')).replace(/[\\/:*?"<>|]+/g, '-');
+  }
+
+  /**
+   * The model as GLB (render/export-gltf.ts), for a viewer or a renderer: loaded when first asked for,
+   * so the exporter does not weigh on every start. A failure is said, not swallowed.
+   */
+  async exportGlb(): Promise<void> {
+    const doc = this.store.get();
+    if (doc.walls.length === 0 && doc.floors.length === 0) {
+      this.ui.info = t('export.nothing');
+      return this.renderChrome();
+    }
+    try {
+      const { modelScene, toGlb } = await import('../render/export-gltf');
+      const scene = modelScene(doc, this.geometry, {
+        name,
+        wallTag: (n) => t('wall.tag', { n }),
+        door: (n) => t('export.door', { n }),
+        window: (n) => t('export.window', { n }),
+        floor: (n) => t('export.floor', { n }),
+        material: materialName,
+        glass: t('export.glass'),
+        leaf: t('export.leaf'),
+        floorMaterial: t('floor.title'),
+      });
+      const bytes = await toGlb(scene);
+      scene.traverse((o) => (o as { geometry?: { dispose(): void } }).geometry?.dispose());
+      const file = `${this.fileBase()}.glb`;
+      this.download(file, new Blob([bytes], { type: 'model/gltf-binary' }), 'model/gltf-binary');
+      this.toast(t('export.glbSaved', { file }));
+    } catch (e) {
+      console.error(e);
+      this.toast(t('export.failed', { what: 'GLB', error: e instanceof Error ? e.message : String(e) }));
+    }
+  }
 
   /**
    * The view by keyboard (view-keys.ts): in plan, zoom about the middle of the free part and move by
