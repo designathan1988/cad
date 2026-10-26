@@ -93,3 +93,23 @@ describe('handles', () => {
     expect(handleAt(h, { x: 250, y: 300 }, 8)).toBeNull();
   });
 });
+
+describe('the turn handle and the temporary dimensions', () => {
+  it('a value it would cover sends it just below the value; two stacked, below both', () => {
+    // The handle of the 3 m wall above is at (250, 428), 13 px reach. A value 40 × 22 at (230, 420)
+    // covers it: it goes to 442 + 13 + 2 = 457. A second value under that one, at (230, 450), sends it
+    // to 472 + 15 = 487.
+    const one = handlesFor([wall('w', [1, 1], [4, 1])], toScreen, [{ x: 230, y: 420, w: 40, h: 22 }]);
+    expect(one.rotate!.at).toEqual({ x: 250, y: 457 });
+    const two = handlesFor([wall('w', [1, 1], [4, 1])], toScreen, [
+      { x: 230, y: 420, w: 40, h: 22 },
+      { x: 230, y: 450, w: 40, h: 22 },
+    ]);
+    expect(two.rotate!.at).toEqual({ x: 250, y: 487 });
+  });
+
+  it('a value away from it leaves it where it was', () => {
+    const h = handlesFor([wall('w', [1, 1], [4, 1])], toScreen, [{ x: 300, y: 300, w: 40, h: 22 }]);
+    expect(h.rotate!.at).toEqual({ x: 250, y: 428 });
+  });
+});

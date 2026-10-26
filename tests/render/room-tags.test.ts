@@ -37,4 +37,34 @@ describe('room tags and the temporary dimensions', () => {
     const nearBottom = layoutRoomTags([tag(400, 590, 200)], measure, view, [{ x: 380, y: 580, w: 40, h: 20 }]);
     expect(nearBottom[0]!.box.y + nearBottom[0]!.box.h).toBeLessThanOrEqual(580);
   });
+
+  // A room 60 px wide and 50 px deep on screen (a 0.75 m closet): the tag, number and area, is 57 × 32.
+  // Below the value (y 312 to 344) it would pass the room's bottom at 330, above it (256 to 288) its top
+  // at 280: it sat on the wall.
+  const value = { x: 380, y: 290, w: 40, h: 20 };
+  const rect = (x0: number, y0: number, x1: number, y1: number) => [
+    { x: x0, y: y0 },
+    { x: x1, y: y0 },
+    { x: x1, y: y1 },
+    { x: x0, y: y1 },
+  ];
+
+  it('a tag moved off a value stays inside its room: in a closet with no room for it, it is left out', () => {
+    const closet = { ...tag(400, 300, 60), outline: rect(370, 280, 430, 330) };
+    expect(layoutRoomTags([closet], measure, view, [value])).toEqual([]);
+  });
+
+  it('in a room deep enough, the tag goes below the value, inside the room', () => {
+    const deep = { ...tag(400, 300, 80), outline: rect(360, 250, 440, 400) };
+    const [t] = layoutRoomTags([deep], measure, view, [value]);
+    expect(t!.box.y).toBeGreaterThanOrEqual(value.y + value.h);
+    expect(t!.box.y + t!.box.h).toBeLessThanOrEqual(400);
+  });
+
+  it('with the room only above the value, the tag goes above', () => {
+    const shallow = { ...tag(400, 300, 80), outline: rect(360, 240, 440, 320) };
+    const [t] = layoutRoomTags([shallow], measure, view, [value]);
+    expect(t!.box.y + t!.box.h).toBeLessThanOrEqual(value.y);
+    expect(t!.box.y).toBeGreaterThanOrEqual(240);
+  });
 });
