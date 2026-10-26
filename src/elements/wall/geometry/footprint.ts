@@ -92,17 +92,19 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     const at = passing.map((w) => onLine(w, j.point));
     const arms: SectorArm[] = [
       ...passing.flatMap((w, k) => [
-        { wall: { ...w, end: at[k]! }, end: 'end' as const, reach: distance(w.start, at[k]!) },
-        { wall: { ...w, start: at[k]! }, end: 'start' as const, reach: distance(at[k]!, w.end) },
+        { wall: { ...w, end: at[k]! }, end: 'end' as const, reach: distance(w.start, at[k]!), through: w.id },
+        { wall: { ...w, start: at[k]! }, end: 'start' as const, reach: distance(at[k]!, w.end), through: w.id },
       ]),
       ...j.ends.map((r) => ({ wall: byId.get(r.wallId)!, end: r.end, reach: wallLength(byId.get(r.wallId)!) })),
     ];
-    const cuts = resolveSectors(arms, j.point);
-    if (!cuts) {
+    const sectors = resolveSectors(arms, j.point);
+    if (!sectors) {
       report({ kind: 'complexJoin', walls: [...j.passing, ...j.ends.map((r) => r.wallId)] });
       continue;
     }
     for (const x of [...j.absorbs.corners, ...j.absorbs.nodes, ...j.absorbs.crossings, ...j.absorbs.abutments]) absorbed.add(x);
+    const cuts = sectors.cuts;
+    notches.push(...sectors.notches);
     passing.forEach((w, k) => junctionSplits.push({ wallId: w.id, point: at[k]!, before: cuts[2 * k]!, after: cuts[2 * k + 1]! }));
     j.ends.forEach((r, k) => endCuts.set(keyOf(r), cuts[2 * passing.length + k]!));
   }

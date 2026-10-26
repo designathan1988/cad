@@ -10,6 +10,9 @@ export interface HalfPlane {
   readonly offset: number;
 }
 
+/** How near a line (m) a vertex counts as on it, far below any drawn or modelled size. */
+const ON_LINE = 1e-11;
+
 /** Counter-clockwise, at least three vertices, no repeated consecutive vertex. */
 export type ConvexPolygon = readonly Point2[];
 
@@ -35,10 +38,20 @@ export function toCounterClockwise(poly: readonly Point2[]): ConvexPolygon {
   return signedArea(poly) < 0 ? [...poly].reverse() : poly;
 }
 
-/** Sutherland–Hodgman against one half-plane. Returns [] when nothing of substance is left. */
+/**
+ * Sutherland–Hodgman against one half-plane. Returns [] when nothing of substance is left. A vertex
+ * within ON_LINE of the line is on it: kept, and no crossing is made next to it. Clipped twice by one
+ * line (a sector of a half-turn has both its sides on it), the vertices left on it came back with
+ * rounding of either sign, and the "crossing" between two of them, an ill-conditioned division, put a
+ * vertex microns off a straight side.
+ */
 export function clipHalfPlane(poly: ConvexPolygon, plane: HalfPlane): ConvexPolygon {
   const out: Point2[] = [];
-  const side = (p: Point2): number => dot(plane.normal, p) - plane.offset;
+  const tol = ON_LINE * Math.hypot(plane.normal.x, plane.normal.y);
+  const side = (p: Point2): number => {
+    const s = dot(plane.normal, p) - plane.offset;
+    return Math.abs(s) <= tol ? 0 : s;
+  };
   for (let i = 0; i < poly.length; i++) {
     const a = poly[i]!;
     const b = poly[(i + 1) % poly.length]!;

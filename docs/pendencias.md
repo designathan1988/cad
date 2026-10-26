@@ -277,17 +277,32 @@ Quarto 1); arco com cotas de corda e de raio, alça de curvatura e raio editado 
   num ponto ou a poucos centímetros, ponta dentro de um L, Y de espessuras muito diferentes. Visto no
   navegador com gestos e capturas, também no 3D.
 - Resolvido em 2026-10-26: os três casos de `tests/elements/wall/nodes.test.ts` que descreviam a regra
-  anterior foram refeitos à mão (falham no motor anterior); suíte inteira 673/673. Faltam casos à mão
-  para as junções (cruzamentos num ponto, a poucos centímetros, ponta num cruzamento, ponta dentro de um
-  L) e para o centro dos cantos com espessuras diferentes, e uma suíte de propriedade dos setores.
+  anterior foram refeitos à mão (falham no motor anterior); suíte inteira 673/673. Os casos à mão das
+  junções existem (49ecaee: cruzamentos num ponto e a poucos centímetros, ponta num cruzamento, ponta
+  dentro de um L, Y de espessuras diferentes).
+- Resolvido em 2026-10-26: suíte de propriedade dos setores (sectors.property.test.ts): 3 ou 4 paredes
+  cruzando num ponto devem cobrir exatamente a união das faixas; 3 a 6 pontas num ponto, sem sobreposição,
+  faixas cobertas longe do ponto e tudo visível do ponto (sem furo nem bolsão). Ela achou, e foi corrigido:
+  - parede grossa cruzada por finas perto do canto delas ficava com um entalhe na face (sem aviso): agora
+    passa inteira e as outras se dividem entre si fora dela;
+  - ponta grossa entre finas em ângulo fechado caía na regra da passagem com duas pontas do mesmo lado,
+    sobrepostas e sem aviso: agora fica com a faixa dela a partir do ponto e as outras se dividem; e se a
+    regra da passagem ainda sobrepuser, avisa complexJoin;
+  - setor de mais de meia volta numa ponta fina ao lado da folga externa: agora é exato (corte de volta e
+    o resto da volta tirado como entalhe);
+  - passagem quase reta de paredes diferentes: o canto externo distante levava a fina 2 m pela grossa;
+    agora dá degrau, como o L com 90° ou mais;
+  - o recorte de polígonos deixava um vértice a micra de um lado reto ao cortar duas vezes pela mesma
+    reta.
+  Também saiu da suíte o polyclip-ts, que estourava a pilha ou não fechava o anel com essas peças.
 - Resolvido em 2026-10-26: girar paredes juntas a outras que ficaram levava o canto ao cruzamento das
   linhas (de 36a2489; o teste de transform.ts pegou). Agora só o Mover mantém as linhas das juntas; girar
   leva os cantos junto. Visto no navegador: caixa girada 90° com o ângulo digitado mantém a forma e a
   parede que ficou acompanha o canto; arrastar uma parede com 6 px de desvio ainda mantém as vizinhas
   retas.
-- Falta: setores para arcos (os nós com trechos de arco seguem a regra da passagem) e para um braço que
+- Falta: setores para arcos (os nós com trechos de arco seguem a regra da passagem) e para uma parede que
   passa pelo ponto com setor de mais de meia volta (aí a junção avisa `ComplexJoin` e fica a regra
-  anterior).
+  anterior; a ponta com setor de mais de meia volta já é exata).
 - Resolvido em 2026-10-26 (3f06e1a): junta escolhida por ponta da parede, no painel (Mais opções): Chanfro,
   Topo: esta passa / esta para, Desunida (o Disallow Join do Revit); a ponta é nomeada por onde está
   (cima, baixo, esquerda, direita). Arquivo versão 7. Chanfro e topo valem para o L de duas paredes

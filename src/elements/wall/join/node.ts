@@ -46,7 +46,7 @@ export function resolveNode(walls: ReadonlyMap<WallId, WallShape>, refs: readonl
       ends.map((e) => ({ wall: e.wall, end: e.ref.end, reach: wallLength(e.wall) })),
       point,
     );
-    return cuts ? { endCuts: cuts.map((cut, k) => [ends[k]!.ref, cut] as const), notches: [], warnings: [] } : null;
+    return cuts ? { endCuts: cuts.cuts.map((cut, k) => [ends[k]!.ref, cut] as const), notches: cuts.notches, warnings: [] } : null;
   };
   const inLine = inLinePair(ends);
   if (inLine === null || ends.length > 4) {
@@ -100,6 +100,9 @@ export function resolveNode(walls: ReadonlyMap<WallId, WallShape>, refs: readonl
     const s = sectors();
     if (s) return s;
   }
+  // Two ends on one side of the passage overlap each other where they both reach it: said, not drawn as
+  // if it were joined.
+  if (oneSide && !warnings.some((w) => w.kind === 'complexJoin')) warnings.push({ kind: 'complexJoin', walls: ends.map((e) => e.wall.id) });
   return { endCuts, notches, warnings };
 }
 
