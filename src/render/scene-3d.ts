@@ -14,6 +14,25 @@ import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
 
 const toThree = (p: Point2, z: number) => new THREE.Vector3(p.x, z, -p.y);
 
+/** The ground's size: this many times the model's extent, at least GROUND_MIN (m) across. */
+const GROUND_SPAN = 4;
+const GROUND_MIN = 60;
+
+/** Opaque in its middle, fading to nothing at its edge: the ground runs off into the background. */
+function groundFade(): THREE.Texture {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, '#fff');
+  g.addColorStop(0.4, '#fff');
+  g.addColorStop(1, '#000');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  return new THREE.CanvasTexture(canvas);
+}
+
 export class Scene3D {
   readonly renderer: THREE.WebGLRenderer;
   readonly camera = new THREE.PerspectiveCamera(40, 1, 0.05, 2000);
@@ -50,6 +69,14 @@ export class Scene3D {
   private covered = { right: 0, bottom: 0, left: 0 };
   private offsetDirty = false;
   private readonly grid: THREE.GridHelper;
+  /**
+   * The ground under the model, at its lowest base: a room with no floor shows it. Before, it showed
+   * the background, a black hole among the walls in the dark theme.
+   */
+  private readonly ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, alphaMap: groundFade() }),
+  );
   private needsRender = true;
   private raf = 0;
   onChange: () => void = () => {};
@@ -81,6 +108,12 @@ export class Scene3D {
     this.grid = new THREE.GridHelper(200, 200);
     this.grid.position.y = -0.001;
     this.scene.add(this.grid);
+    // Under the grid and drawn before it, writing no depth: the grid's lines stay on it.
+    this.ground.rotation.x = -Math.PI / 2;
+    this.ground.renderOrder = -1;
+    this.ground.scale.set(GROUND_MIN, GROUND_MIN, 1);
+    this.ground.position.y = -0.002;
+    this.scene.add(this.ground);
     this.renderer.localClippingEnabled = true;
     for (const m of [...Object.values(this.materials), ...this.layerMaterials.values()]) m.clippingPlanes = this.clip;
     this.scene.add(this.caps);
@@ -129,6 +162,7 @@ export class Scene3D {
     m.leaf.color = c('--3d-leaf');
     m.invalid.color = c('--warn');
     this.capMaterial.color = c('--3d-cut');
+    (this.ground.material as THREE.MeshBasicMaterial).color = c('--3d-ground');
     // Each layer token has its 3D twin (--layer-structure, --3d-layer-structure): the plan's darken in
     // the dark theme, and the walls in 3D turned a muddy brown under a bright floor.
     for (const [name, mat] of this.layerMaterials) mat.color = c(name.replace(/^--layer-/, '--3d-layer-'));
@@ -275,7 +309,22 @@ export class Scene3D {
         this.walls.delete(id);
       }
     }
+    this.placeGround(g);
     this.invalidate();
+  }
+
+  /** The ground centred under the walls and floors shown, GROUND_SPAN times as wide, just under the lowest of them. */
+  private placeGround(g: DerivedGeometry): void {
+    const solids = [...g.solids.values()];
+    const floors = [...g.floors.values()];
+    const points = [...solids.flatMap((s) => [s.wall.start, s.wall.end]), ...floors.flatMap((f) => f.outline)];
+    const xs = points.map((p) => p.x);
+    const ys = points.map((p) => p.y);
+    const [x0, x1, y0, y1] = points.length > 0 ? [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)] : [0, 0, 0, 0];
+    const size = Math.max(GROUND_MIN, GROUND_SPAN * Math.max(x1 - x0, y1 - y0));
+    const lowest = Math.min(0, ...solids.map((s) => s.bottom), ...floors.map((f) => f.bottom));
+    this.ground.scale.set(size, size, 1);
+    this.ground.position.set((x0 + x1) / 2, lowest - 0.002, -(y0 + y1) / 2);
   }
 
   /**
@@ -373,7 +422,6 @@ export class Scene3D {
     return (2 * d * Math.tan((this.camera.fov * Math.PI) / 360)) / h;
   }
 
-  /** Looks at a box from a direction (three.js space), far enough to see all of it. */
   /** How much a panel covers at the right and bottom edges of the canvas (screen pixels). */
   setCovered(covered: { right: number; bottom: number; left?: number }): void {
     const next = { right: covered.right, bottom: covered.bottom, left: covered.left ?? 0 };

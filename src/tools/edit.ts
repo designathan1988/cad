@@ -69,15 +69,16 @@ export function transformWalls(doc: Doc, ids: readonly WallId[], map: (p: Point2
 }
 
 /**
- * A move keeps the Ts of the moved walls too: an end of one that met another wall's body (within its
+ * A drag keeps the Ts of the moved walls too: an end of one that met another wall's body (within its
  * thickness, away from its ends) slides along its own wall's new line to stay as far from that wall's
  * line as it was, while that is still along that wall. Moved free, a partition between two walls taken
- * with a hand that drifted 5 mm along it came off one of them, and the two rooms it divided became one.
+ * with a hand that drifted 5 mm along it came off one of them, and the two rooms it divided became
+ * one; turned, it came off both. `walls`: every wall after the move or the turn, in `doc`'s order.
  */
-export function moveWalls(doc: Doc, ids: readonly WallId[], delta: Point2): DocWall[] {
+function keepOnHosts(doc: Doc, ids: readonly WallId[], walls: readonly DocWall[]): DocWall[] {
   const set = new Set(ids);
   const hosts = doc.walls.filter((h) => !set.has(h.id) && !h.bulge && distance(h.start, h.end) > 0);
-  return transformWalls(doc, ids, (p) => add(p, delta)).map((w, i) => {
+  return walls.map((w, i) => {
     const was = doc.walls[i]!;
     if (!set.has(w.id) || w.bulge) return w;
     const along = sub(w.end, w.start);
@@ -99,6 +100,10 @@ export function moveWalls(doc: Doc, ids: readonly WallId[], delta: Point2): DocW
     const end = keep(was.end, w.end);
     return start === w.start && end === w.end ? w : { ...w, start, end };
   });
+}
+
+export function moveWalls(doc: Doc, ids: readonly WallId[], delta: Point2): DocWall[] {
+  return keepOnHosts(doc, ids, transformWalls(doc, ids, (p) => add(p, delta)));
 }
 
 export function stretchEnd(doc: Doc, id: WallId, end: WallEnd, to: Point2): DocWall[] {
@@ -124,7 +129,7 @@ export function rotateWalls(doc: Doc, ids: readonly WallId[], pivot: Point2, ang
     const d = sub(p, pivot);
     return add(pivot, { x: d.x * c - d.y * s, y: d.x * s + d.y * c });
   };
-  return transformWalls(doc, [...set], turn);
+  return keepOnHosts(doc, [...set], transformWalls(doc, [...set], turn));
 }
 
 /**

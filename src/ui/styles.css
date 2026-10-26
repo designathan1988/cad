@@ -88,6 +88,8 @@
   --3d-leaf: #a0764f;
   --3d-light: #ffffff;
   --3d-ground-light: #9a9fa8;
+  /* The ground under the model, which a room with no floor shows. */
+  --3d-ground: #dcdfe4;
   /* Layers in 3D: lit by the scene's own light, the same in both themes like the rest of the 3D; the
      plan's layer colours below darken in the dark theme for the light wall line, which 3D does not have. */
   --3d-layer-structure: #9c8f80;
@@ -148,6 +150,7 @@
   --3d-leaf: #a0764f;
   --3d-light: #ffffff;
   --3d-ground-light: #9a9fa8;
+  --3d-ground: #4a4d54;
   /* Darker in the dark theme: the light wall line must read on every layer, with room for antialiasing. */
   --layer-structure: #6f655a;
   --layer-substrate: #6b6356;
