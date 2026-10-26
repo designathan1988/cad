@@ -1,5 +1,6 @@
 // One frame of the views: the plan's overlay (selection, previews, snaps, tags, temporary dimensions and their value fields) or the 3D's, and the panel. Functions over the app (app.ts delegates).
 
+import { objectHandles } from './object-handles';
 import { areaText, lengthNum, lengthText, typingExamples } from '../ui/units';
 import { parseLength } from '../core/measure';
 import { distance } from '../core/vector';
@@ -135,6 +136,8 @@ export function renderFrame(app: App): void {
       openingTags: app.openingTags(),
       ray: marks?.ref ? { start: marks.base, end: marks.ref } : null,
       handles: app.handles(),
+      objectHandles: objectHandles(app),
+      hotHandle: app.hotHandle,
       anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
       wallTags: app.wallTags(),
       roomLabels: [...app.visibleGeometry().rooms.values()].map((r) => ({
@@ -239,6 +242,8 @@ export function renderFrame(app: App): void {
       box: ui.view3d.box,
       boxHot: app.boxHot,
       points: app.pointsShown(),
+      objectHandles: objectHandles(app),
+      hotHandle: app.hotHandle,
     };
     app.overlay3d.draw(app.overlayState);
   }

@@ -3,6 +3,10 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
+import { LIBRARY } from '../elements/object/library';
+import { definitionMaterials } from '../elements/object/materials';
+import { isDefinition } from '../elements/object/valid';
+import { objectKind } from '../elements/kinds/object';
 import { DEFAULT_UNITS, isUnits } from '../ui/units';
 import { BUILT_IN_MATERIALS, CUT_PATTERNS, isColor, type Material, materialFor } from '../elements/material/schema';
 import { type Doc, type Level, ownValuesOnly } from '../app/document';
@@ -43,12 +47,14 @@ import type { DocWall } from '../app/document';
  * Version 21: materials as data (`materials`, elements/material): colour, finish, cut pattern. Older
  *   files get the built-in ones, and one for each other name their layers used.
  * Version 22: the project's units (`units`, ui/units.ts). Older files are in metres with 2 decimals.
+ * Version 23: parametric objects (`definitions`, `objects`, elements/object). Older files get the
+ *   library's definitions and have no objects; the materials the definitions use are added.
  */
-export const CURRENT_VERSION = 22;
+export const CURRENT_VERSION = 23;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedGroups' | 'droppedMaterials' | 'resetUnits' | 'droppedViews' | 'droppedPoints' | KindFix; readonly count: number }
+  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedGroups' | 'droppedMaterials' | 'resetUnits' | 'droppedDefinitions' | 'droppedViews' | 'droppedPoints' | KindFix; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number }
   /** Ids without their kind's prefix, renamed with every reference (typed-ids.ts). */
   | { readonly kind: 'typedIds'; readonly count: number };
@@ -198,14 +204,19 @@ export function repairProject(raw: unknown): ReadResult {
   for (const id of new Set(wallTypes.flatMap((t) => t.layers.map((l) => l.materialId)))) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   // Units that are not ones (a unit it does not know, decimals out of range): metres again, and said.
   if (raw.units !== undefined && !isUnits(raw.units)) fixes.push({ kind: 'resetUnits', count: 1 });
+  // The objects' definitions: the file's, or the library for a file from before them; and the
+  // materials they use, as the layers' (a definition is data: a material it names is kept with it).
+  const definitions = raw.definitions === undefined ? [...LIBRARY] : keep(raw.definitions, isDefinition, 'droppedDefinitions');
+  for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));
-  const doc: Doc = {
+  let doc: Doc = {
     version: CURRENT_VERSION,
     name: typeof raw.name === 'string' ? raw.name : '',
     units: isUnits(raw.units) ? { length: raw.units.length, decimals: raw.units.decimals } : DEFAULT_UNITS,
     levels,
     materials,
+    definitions,
     wallTypes,
     walls: migrated,
     openings,
@@ -239,6 +250,12 @@ export function repairProject(raw: unknown): ReadResult {
       }),
     ) as unknown as Pick<Doc, Exclude<KindKey, 'openings' | 'walls'>>),
   };
+  // An object of a definition the project does not have stands for nothing: dropped, and said.
+  const orphans = doc.objects.filter((o) => !definitions.some((d) => d.id === o.definitionId));
+  if (orphans.length > 0) {
+    doc = { ...doc, objects: doc.objects.filter((o) => !orphans.includes(o)) };
+    fixes.push({ kind: kindFix(objectKind), count: orphans.length });
+  }
   // Every id says its kind (typed-ids.ts): one written without it is renamed, and said.
   const typed = typedIds(doc);
   if (typed.renamed > 0) fixes.push({ kind: 'typedIds', count: typed.renamed });

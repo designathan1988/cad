@@ -30,6 +30,11 @@ export const BUILT_IN_MATERIALS: readonly Material[] = [
   { id: 'concrete', name: '', color: '#a3a29d', roughness: 0.8, metalness: 0, cut: 'concrete' },
   { id: 'gypsum', name: '', color: '#f2f0ea', roughness: 0.9, metalness: 0, cut: 'solid' },
   { id: 'insulation', name: '', color: '#f1d36e', roughness: 0.95, metalness: 0, cut: 'insulation' },
+  // What the objects of the library are made of (elements/object/library.ts).
+  { id: 'wood', name: '', color: '#a87a52', roughness: 0.7, metalness: 0, cut: 'wood' },
+  { id: 'mdfWhite', name: '', color: '#eeece6', roughness: 0.6, metalness: 0, cut: 'solid' },
+  { id: 'metal', name: '', color: '#8e949b', roughness: 0.35, metalness: 0.8, cut: 'solid' },
+  { id: 'glass', name: '', color: '#bfd9e8', roughness: 0.05, metalness: 0, cut: 'none' },
 ];
 
 /** A material for a name an older file used and the built-in ones do not have: grey, plain. */

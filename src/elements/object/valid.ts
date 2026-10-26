@@ -1,0 +1,55 @@
+// What a file may hold of parametric objects (phase 3), checked as it is read: a definition with the
+// shape of one (its formulas are checked when evaluated, and a failing one is said, not refused), and an
+// instance with a place, a turn and values. Pure guards.
+
+import { finite, isObject, isPoint } from '../../core/guards';
+import type { ObjectDefinition, ObjectInstance, Part, Words } from './schema';
+
+const isWords = (w: unknown): w is Words => isObject(w) && typeof w.pt === 'string' && typeof w.en === 'string';
+const isExpr = (e: unknown): boolean => (typeof e === 'number' && Number.isFinite(e)) || typeof e === 'string';
+const PARAM_KINDS = ['length', 'number', 'integer', 'bool', 'choice', 'material'];
+
+function isPart(p: unknown): p is Part {
+  if (!isObject(p) || !isExpr(p.x) || !isExpr(p.y) || !isExpr(p.z)) return false;
+  if (p.when !== undefined && typeof p.when !== 'string') return false;
+  if (p.material !== undefined && typeof p.material !== 'string') return false;
+  if (p.repeat !== undefined && !(isObject(p.repeat) && isExpr(p.repeat.count))) return false;
+  if (p.kind === 'box') return isExpr(p.w) && isExpr(p.d) && isExpr(p.h);
+  if (p.kind === 'cylinder') return isExpr(p.r) && isExpr(p.h);
+  if (p.kind === 'object') return typeof p.definition === 'string' && (p.values === undefined || isObject(p.values));
+  return false;
+}
+
+export function isDefinition(d: unknown): d is ObjectDefinition {
+  return (
+    isObject(d) &&
+    typeof d.id === 'string' &&
+    isWords(d.name) &&
+    typeof d.category === 'string' &&
+    Array.isArray(d.params) &&
+    d.params.every((p) => isObject(p) && typeof p.name === 'string' && /^[A-Za-z_À-ÿ][\wÀ-ÿ]*$/.test(p.name) && isWords(p.label) && PARAM_KINDS.includes(p.kind as string) && (typeof p.default === 'number' || typeof p.default === 'string')) &&
+    Array.isArray(d.parts) &&
+    d.parts.every(isPart) &&
+    Array.isArray(d.handles) &&
+    d.handles.every((h) => isObject(h) && typeof h.param === 'string' && ['x', 'y', 'z'].includes(h.axis as string) && Array.isArray(h.at) && h.at.length === 3 && h.at.every(isExpr)) &&
+    Array.isArray(d.types) &&
+    d.types.length > 0 &&
+    d.types.every((t) => isObject(t) && typeof t.id === 'string' && isWords(t.name) && isObject(t.values)) &&
+    (d.rules === undefined || (Array.isArray(d.rules) && d.rules.every((r) => isObject(r) && typeof r.when === 'string' && isWords(r.message))))
+  );
+}
+
+export function isObjectInstance(o: unknown): o is ObjectInstance {
+  return (
+    isObject(o) &&
+    typeof o.id === 'string' &&
+    typeof o.levelId === 'string' &&
+    typeof o.definitionId === 'string' &&
+    typeof o.typeId === 'string' &&
+    isPoint(o.at) &&
+    finite(o.angle) &&
+    finite(o.elevation) &&
+    isObject(o.values) &&
+    Object.values(o.values).every((v) => (typeof v === 'number' && Number.isFinite(v)) || typeof v === 'string')
+  );
+}

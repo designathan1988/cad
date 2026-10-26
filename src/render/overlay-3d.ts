@@ -3,6 +3,7 @@
 // height of the level, so it reads in depth), the line being drawn with its length, its start, and a
 // floor outline being drawn. Screen space, on a canvas laid over the WebGL one; it takes no pointer.
 
+import { drawObjectHandles, type ScreenHandle } from '../app/object-handles';
 import type { Point2 } from '../core/vector';
 import { BOX_FACES, type BoxFace, boxEdges, faceCenter, type SectionBox } from '../app/section-box';
 import { drawPointDisc } from './plan-view';
@@ -24,6 +25,9 @@ export interface Overlay3DState {
   readonly boxHot: BoxFace | null;
   /** Points of interest: where each one's disc stands (plan point and height). */
   readonly points: readonly { readonly n: number; readonly at: Point2; readonly z: number; readonly open: boolean }[];
+  /** The selected object's handles on screen (app/object-handles.ts), and the one under the pointer. */
+  readonly objectHandles: readonly ScreenHandle[];
+  readonly hotHandle: ScreenHandle | null;
 }
 
 /** A box handle's radius on screen (px); a press this near takes it (BOX_HANDLE_HIT). */
@@ -88,6 +92,8 @@ export class Overlay3D {
       const p = at(s.measure.at);
       if (p) this.tag(p, s.measure.text, color('--accent-text'), color('--canvas'), { x: 0, y: -14 });
     }
+    // The selected object's handles (before the snap, whose drawing ends early behind the camera).
+    drawObjectHandles(ctx, s.objectHandles, color('--bg'), color('--wall-sel'), s.hotHandle);
     if (s.snap) {
       const p = at(s.snap.point);
       if (!p) return;

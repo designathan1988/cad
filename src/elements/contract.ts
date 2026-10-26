@@ -5,6 +5,7 @@
 
 import type * as THREE from 'three';
 import type { Doc } from '../app/document';
+import type { Material } from './material/schema';
 import type { Category, DerivedGeometry } from '../app/geometry';
 import type { UprightPrism } from '../app/section-box';
 import type { Command } from '../core/store';
@@ -15,7 +16,7 @@ import type { MessageKey } from '../ui/i18n';
 import type { IconName } from '../ui/icons';
 
 /** The document's lists the registry's kinds keep. */
-export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings' | 'walls';
+export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'objects' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings' | 'walls';
 
 /** The derived geometry before the registry's kinds: what a kind held by walls and doors reads. */
 export type BaseGeometry = Omit<DerivedGeometry, 'kinds'>;
@@ -42,11 +43,12 @@ export interface DxfOut {
   readonly text: (layer: string, at: Point2, height: number, text: string, angle?: number) => void;
 }
 
-/** A kind's 3D: a geometry in three.js coordinates, standing `y` up, in one of the scene's materials. */
+/** A kind's 3D: a geometry in three.js coordinates, standing `y` up, in one of the scene's materials or
+ * in a material of the project (a parametric object's part). */
 export interface KindSolid {
   readonly geometry: THREE.BufferGeometry;
   readonly y: number;
-  readonly material: 'side' | 'floor' | 'roof';
+  readonly material: 'side' | 'floor' | 'roof' | Material;
   /** Its edges drawn, as walls' are. */
   readonly edges: boolean;
 }
@@ -170,7 +172,8 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   /** "Select similar": the same as `b`. */
   readonly similar?: (a: E, b: E) => boolean;
   readonly plan: (p: PlanPaint, s: S, lit: boolean) => void;
-  readonly solid?: (s: S) => KindSolid | null;
+  /** Its 3D: one solid, or several (an object's parts, each in its material). */
+  readonly solid?: (s: S) => KindSolid | readonly KindSolid[] | null;
   /** Its DXF layers ({name, colour}) and what it writes on them for its level. */
   readonly dxfLayers?: readonly { readonly name: string; readonly colour: number }[];
   readonly dxf?: (s: S, out: DxfOut) => void;

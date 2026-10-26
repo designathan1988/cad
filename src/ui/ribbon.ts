@@ -16,6 +16,8 @@ export interface RibbonItem {
   readonly size: 'L' | 'S';
   /** A shorter name for the button than the action's (its full name stays its tooltip). */
   readonly short?: MessageKey;
+  /** Its name as written, for one named by data (an object's definition). */
+  readonly text?: string;
   /** Pressed: the tool in use, the view shown, a mode that is on. */
   readonly pressed?: () => boolean;
   /** Dimmed, a click still runs it, to say what it needs (the Modify tools with nothing selected). */
@@ -35,7 +37,7 @@ export interface RibbonTab {
 
 /** One button of the ribbon, for its action; disabled when the action is (with the palette's reason). */
 function button(item: RibbonItem, action: Action): HTMLButtonElement {
-  const label = item.short ? t(item.short) : action.label;
+  const label = item.text ?? (item.short ? t(item.short) : action.label);
   const tip = action.keys ? `${action.label} (${action.keys})` : action.label;
   const b = el('button', { type: 'button', class: item.size === 'L' ? 'rb-large' : 'rb-small', title: tip, 'aria-label': tip });
   b.dataset.action = item.id;

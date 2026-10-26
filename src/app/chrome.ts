@@ -1,5 +1,6 @@
 // The interface around the views: the tool bar, the level list, the footer's hints and keys, the float bar, the browser drawer. Functions over the app (app.ts delegates).
 
+import { words } from '../elements/object/fields';
 import { lengthText, typingExamples } from '../ui/units';
 import * as THREE from 'three';
 import { type Point2 } from '../core/vector';
@@ -179,6 +180,8 @@ export function renderChrome(app: App): void {
               ? t(ui.gridFrom ? 'hint.gridEnd' : 'hint.gridStart')
               : ui.tool === 'column'
                 ? t('hint.columnPlace')
+                : ui.tool === 'object'
+                  ? t('hint.object', { name: objectName(app) })
                 : ui.tool === 'beam'
                   ? t(ui.beamFrom ? 'hint.beamEnd' : 'hint.beamStart')
                   : ui.tool === 'roof'
@@ -227,6 +230,8 @@ export function renderChrome(app: App): void {
     ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.gridFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'column'
     ? [snapKey, keyHint('Esc', t('key.exit'))]
+    : ui.tool === 'object'
+    ? [keyHint(t('key.spaceKey'), t('key.turn90')), snapKey, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'beam'
     ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
     : ui.tool === 'stair'
@@ -451,4 +456,10 @@ export function renderRibbon(app: App): void {
   renderRibbonTabs(shell.tabs, tabs, app.ribbonTab, (id) => app.chooseRibbonTab(id), shell.fileMenu);
   renderRibbonTab(shell.ribbon, tab, actions);
   if (focused) shell.ribbon.querySelector<HTMLElement>(`[data-action="${focused}"]`)?.focus();
+}
+
+/** The object tool's definition, named in the interface's language. */
+function objectName(app: App): string {
+  const def = app.store.get().definitions.find((d) => d.id === app.ui.objectDef);
+  return def ? words(def.name) : '';
 }

@@ -2,6 +2,7 @@
 // Modify, View and Manage, and the File menu. Only actions the app has (app/actions.ts); what is built
 // later gets a place here when it gets its action. Pressed states read the app's own.
 
+import { words } from '../elements/object/fields';
 import type { RibbonItem, RibbonTab } from '../ui/ribbon';
 import type { MessageKey } from '../ui/i18n';
 import type { App } from './app';
@@ -12,7 +13,7 @@ import type { ToolId } from '../ui/shell';
 export function ribbonTabs(app: App): readonly RibbonTab[] {
   return tabsOf(app).map((tab) => ({
     ...tab,
-    panels: tab.panels.map((p) => ({ ...p, items: p.items.map((i) => ({ ...i, short: i.short ?? (`rib.s.${i.id}` as MessageKey) })) })),
+    panels: tab.panels.map((p) => ({ ...p, items: p.items.map((i) => (i.text ? i : { ...i, short: i.short ?? (`rib.s.${i.id}` as MessageKey) })) })),
   }));
 }
 
@@ -54,6 +55,12 @@ function tabsOf(app: App): readonly RibbonTab[] {
           ],
         },
         { title: 'rib.p.circulation', items: [tool('stair', 'tool.stair', 'stair', 'L'), tool('railing', 'tool.railing', 'railing', 'S')] },
+        {
+          title: 'rib.p.objects',
+          items: app.store.get().definitions.map(
+            (d): RibbonItem => ({ id: `tool.object.${d.id}`, icon: 'box', size: 'S', text: words(d.name), pressed: () => ui.tool === 'object' && ui.objectDef === d.id }),
+          ),
+        },
         { title: 'rib.p.rooms', items: [tool('room', 'tool.room', 'room', 'L')] },
         {
           title: 'rib.p.reference',

@@ -400,7 +400,7 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
 }
 
 /** Categories of elements the project browser can hide from view (not from the document). Guides have no geometry: the plan and the snaps leave them out themselves. */
-export type Category = 'walls' | 'openings' | 'rooms' | 'floors' | 'guides';
+export type Category = 'walls' | 'openings' | 'rooms' | 'floors' | 'objects' | 'guides';
 
 /** The geometry without the hidden categories; the same object when nothing is hidden. */
 /**

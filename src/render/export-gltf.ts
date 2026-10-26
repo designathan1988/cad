@@ -16,7 +16,7 @@ import type { LayerFunction } from '../elements/wall/schema';
 import type { Material } from '../elements/material/schema';
 import { prism, shownPrism } from './prisms';
 import { eachSolid } from '../elements/registry';
-import type { KindKey } from '../elements/contract';
+import type { KindKey, KindSolid } from '../elements/contract';
 
 /** How the nodes and materials are named: as the interface says it. */
 export interface ExportNaming {
@@ -141,13 +141,18 @@ export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): 
   for (const x of eachSolid(g.kinds)) {
     const made = x.levelId === null ? null : x.kind.solid?.(x.solid);
     if (!made || x.levelId === null) continue;
-    made.geometry.translate(0, made.y, 0);
     const n = (counts.get(x.kind.key) ?? 0) + 1;
     counts.set(x.kind.key, n);
-    const mesh = new THREE.Mesh(made.geometry, material(x.kind.exportColour, naming.kindMaterial(x.kind.key)));
-    mesh.name = naming.kindName(x.kind.key, n);
-    mesh.userData = { cad2Id: x.id, kind: x.kind.prefix, level: levelName(x.levelId), params: x.kind.element(x.solid) };
-    levelGroup(x.levelId).add(mesh);
+    // One solid, or a node of several (an object's parts), each in its own material.
+    const parts = Array.isArray(made) ? (made as readonly KindSolid[]) : [made as KindSolid];
+    const meshes = parts.map((part) => {
+      part.geometry.translate(0, part.y, 0);
+      return new THREE.Mesh(part.geometry, typeof part.material === 'string' ? material(x.kind.exportColour, naming.kindMaterial(x.kind.key)) : layerMaterial(part.material));
+    });
+    const node: THREE.Object3D = meshes.length === 1 ? meshes[0]! : new THREE.Group().add(...meshes);
+    node.name = naming.kindName(x.kind.key, n);
+    node.userData = { cad2Id: x.id, kind: x.kind.prefix, level: levelName(x.levelId), params: x.kind.element(x.solid) };
+    levelGroup(x.levelId).add(node);
   }
   return scene;
 }

@@ -2,6 +2,7 @@
 // The joined outline needs no boolean union: every piece is stroked first, then every piece is
 // filled over the strokes, so lines between joined pieces disappear and only the outside stays.
 
+import { drawObjectHandles, type ScreenHandle } from '../app/object-handles';
 import { drawAxis } from '../elements/kinds/grid';
 import { drawDimension, type Placed } from '../elements/kinds/dimension';
 import { eachSolid } from '../elements/registry';
@@ -94,6 +95,9 @@ export interface PlanOverlay {
   readonly axis: { readonly start: Point2; readonly end: Point2 } | null;
   /** Handles of the selection, in screen pixels (app/handles.ts). */
   readonly handles: Handles;
+  /** The selected object's handles (app/object-handles.ts), and the one under the pointer. */
+  readonly objectHandles?: readonly ScreenHandle[];
+  readonly hotHandle?: ScreenHandle | null;
   /** The point a wall chain goes on from: marked even before the pointer moves. */
   readonly anchor?: Point2 | null;
   /** Wall numbers at the middle of the walls selected or under the pointer, as snap labels name them. */
@@ -517,6 +521,7 @@ export class PlanView {
       this.label(tag.at, tag.text, color('--wall-sel'), color('--canvas'), font, { x: 0, y: dy });
     }
     this.drawHandles(o.handles, color('--bg'), color('--wall-sel'));
+    if (o.objectHandles) drawObjectHandles(this.ctx, o.objectHandles, color('--bg'), color('--wall-sel'), o.hotHandle ?? null);
     if (o.anchor) {
       const p = this.toScreen(o.anchor);
       ctx.save();

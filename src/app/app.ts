@@ -1,6 +1,10 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import type { ScreenHandle } from './object-handles';
+import type { HandleDrag } from './object-handles';
+import { OBJECT_PREVIEW } from './kind-tools';
+import type { ObjectInstance } from '../elements/object/schema';
 import type { Action } from './actions';
 import { lengthNum, setUnits } from '../ui/units';
 import * as viewing from './view-ui';
@@ -114,6 +118,11 @@ export interface UiState {
   gridFrom: Point2 | null;
   /** The beam tool's first point, before the beam is made. */
   beamFrom: Point2 | null;
+  /** The object tool's definition (elements/object), and the turn the next object is placed at (radians). */
+  objectDef: string;
+  objectAngle: number;
+  /** An object's handle being dragged (object-handles.ts): its preview until let go. */
+  handleDrag: HandleDrag | null;
   /** The floor the floor tool's outline goes through as a hole (startFloorHole), or null for a new floor. */
   holeFor: string | null;
   /** Corners of a roof's outline being drawn. */
@@ -157,6 +166,8 @@ export class App {
   readonly overlay3d: Overlay3D;
   /** What the overlay showed last: drawn again as the camera turns, without a whole render. */
   overlayState: Overlay3DState | null = null;
+  /** The object handle under the pointer (object-handles.ts), drawn lit. */
+  hotHandle: ScreenHandle | null = null;
   readonly ui: UiState;
   geometry: DerivedGeometry;
   /** Each view is framed on its first show; after that the camera is the user's. */
@@ -223,6 +234,9 @@ export class App {
       dimension: DIMENSION_IDLE,
       gridFrom: null,
       beamFrom: null,
+      objectDef: 'def_table',
+      objectAngle: 0,
+      handleDrag: null,
       holeFor: null,
       roofDraft: [],
       stairFrom: null,
@@ -336,8 +350,9 @@ export class App {
       return this.render();
     }
     // While dragging, the walls as dragged; the rooms going with a move or a turn go in the preview too,
-    // so they never show as open mid-drag.
-    const shown =
+    // so they never show as open mid-drag. The object tool shows the object under the pointer.
+    const placed = this.previewObject(doc);
+    const shown = placed ? placed :
       d?.kind === 'move' || d?.kind === 'rotate'
         ? {
             ...doc,
@@ -364,6 +379,30 @@ export class App {
           ? geometryOf(shown)
           : deriveGeometry(shown, drawing, placing);
     this.render();
+  }
+
+  /** The object tool's object where the pointer is (snapped), as it would be placed; null otherwise. */
+  previewObject(doc: Doc): Doc | null {
+    // An object's handle dragged: the object as it would be with the value and position so far.
+    const h = this.ui.handleDrag;
+    if (h) return { ...doc, objects: doc.objects.map((o) => (o.id === h.handle.id ? { ...o, at: h.at, values: { ...o.values, [h.handle.param]: h.value } } : o)) };
+    const at = this.ui.tool === 'object' && this.ui.view === 'plan' ? (this.ui.snap?.point ?? this.ui.cursor) : null;
+    const def = doc.definitions.find((d) => d.id === this.ui.objectDef);
+    if (!at || !def) return null;
+    const preview: ObjectInstance = { id: OBJECT_PREVIEW, levelId: this.ui.levelId, definitionId: def.id, typeId: def.types[0]!.id, at: { x: at.x, y: at.y }, angle: this.ui.objectAngle, elevation: 0, values: {} };
+    return { ...doc, objects: [...doc.objects, preview] };
+  }
+
+  /** The object tool with a definition (the ribbon's and the palette's Place table, Place bookcase…). */
+  placeObject(definitionId: string): void {
+    this.ui.objectDef = definitionId;
+    this.setTool('object');
+  }
+
+  /** Space with the object tool: the next object a quarter turn on. */
+  turnObject(): void {
+    this.ui.objectAngle = (this.ui.objectAngle + Math.PI / 2) % (2 * Math.PI);
+    this.refresh();
   }
 
   /** The door or window tool's kind, or null for the other tools. */
@@ -1514,6 +1553,9 @@ export class App {
   openWallTypes: (typeId?: string) => void = () => {};
   openMaterials: () => void = () => {};
   openUnits: () => void = () => {};
+  objectClick(p: Point2): void {
+    kindTools.objectClick(this, p);
+  }
   /** Every action by name (app/actions.ts), set by the input layer: the ribbon and the File menu run them. */
   actionList: () => Action[] = () => [];
   /** The ribbon's tab shown, kept between visits, and what it was last drawn from (chrome.ts). */

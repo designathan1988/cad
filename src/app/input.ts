@@ -1,6 +1,7 @@
 // Mouse and keyboard. Plan: wheel zooms at the cursor, middle button pans. 3D: wheel zooms at the
 // cursor, middle pans, Shift + middle or right rotates (OrbitControls). Left button is the tool's.
 
+import { endHandleDrag, moveHandleDrag, objectHandleAt, startHandleDrag } from './object-handles';
 import { showUnits } from '../ui/units-dialog';
 import { type BoxFace, dragDistance, moveFace, type SectionBox } from './section-box';
 import type { Point2 } from '../core/vector';
@@ -341,6 +342,11 @@ export function wireInput(app: App): void {
       ui.snap = snapped(e);
       return app.render();
     }
+    if (ui.tool === 'object') {
+      // The object follows the pointer: derived again, as the Modify tools' previews are.
+      ui.snap = snapped(e);
+      return app.refresh();
+    }
     if (ui.tool === 'modify') {
       // The result follows the pointer: a preview of the whole selection, copies included.
       ui.snap = snapped(e);
@@ -373,6 +379,18 @@ export function wireInput(app: App): void {
     if (app.openingKind()) {
       const seen = aimAt3d(e);
       return app.openingEvent({ kind: 'hover', aim: seen ? aimAt(app.store.get(), app.geometry, ui.levelId, seen.p, seen.mpp, OPENING_PREVIEW_ID) : null });
+    }
+    if (ui.handleDrag) {
+      ui.handleDrag = moveHandleDrag(app, ui.handleDrag, local(e));
+      return app.refresh();
+    }
+    if (ui.tool === 'select' && !downAt) {
+      // The handle under the pointer, lit, so it is seen to be taken.
+      const hot = objectHandleAt(app, local(e));
+      if (hot?.param !== app.hotHandle?.param || hot?.id !== app.hotHandle?.id) {
+        app.hotHandle = hot;
+        app.render();
+      }
     }
     if (downAt && ui.tool === 'select') {
       gestures.move(local(e), at?.p ?? null, snapAt, e.shiftKey, e.altKey);
@@ -418,6 +436,13 @@ export function wireInput(app: App): void {
       boxDrag = { face, box: ui.view3d.box, from: { x: e.clientX, y: e.clientY }, along: app.boxFaceOnScreen(face) };
       app.boxHot = face;
       return app.render();
+    }
+    // A selected object's handle (object-handles.ts), in plan or 3D: its parameter goes with the pointer.
+    const handle = ui.tool === 'select' ? objectHandleAt(app, local(e)) : null;
+    if (handle) {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      ui.handleDrag = startHandleDrag(app, handle, local(e));
+      return app.refresh();
     }
     downAt = { x: e.clientX, y: e.clientY };
     if (ui.tool === 'select') {
@@ -513,6 +538,12 @@ export function wireInput(app: App): void {
       contextMenu(e);
       return;
     }
+    if (e.button === 0 && ui.handleDrag) {
+      const d = ui.handleDrag;
+      ui.handleDrag = null;
+      endHandleDrag(app, d);
+      return app.refresh();
+    }
     if (e.button !== 0 || !downAt) return;
     const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 4;
     downAt = null;
@@ -569,6 +600,11 @@ export function wireInput(app: App): void {
     if (ui.tool === 'column') {
       const at = aimAt3d(e);
       if (at) app.columnClick(snapped(e)?.point ?? at.p);
+      return;
+    }
+    if (ui.tool === 'object') {
+      const at = aimAt3d(e);
+      if (at) app.objectClick(snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'beam') {

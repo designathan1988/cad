@@ -572,11 +572,14 @@ export class Scene3D {
       const made = x.kind.solid?.(x.solid);
       if (!made) continue;
       const group = new THREE.Group();
-      const material = state === 's' ? this.materials.sideSel : this.materials[made.material as KindSolid['material']];
-      const mesh = new THREE.Mesh(made.geometry, material);
-      mesh.position.y = made.y;
-      if (made.edges) mesh.add(this.outline(made.geometry));
-      group.add(mesh);
+      // One solid, or several (an object's parts), each in a scene material or a project material.
+      for (const part of Array.isArray(made) ? (made as readonly KindSolid[]) : [made as KindSolid]) {
+        const material = state === 's' ? this.materials.sideSel : typeof part.material === 'string' ? this.materials[part.material] : this.layerMaterial(part.material);
+        const mesh = new THREE.Mesh(part.geometry, material);
+        mesh.position.y = part.y;
+        if (part.edges) mesh.add(this.outline(part.geometry));
+        group.add(mesh);
+      }
       group.userData.wallId = x.id;
       this.scene.add(group);
       this.walls.set(x.id, { group, key });

@@ -2,6 +2,7 @@
 // command palette lists these; the toolbar, keys and menus do the same things, with the same names
 // and keys (ref/chat.txt:200), because they read them from here.
 
+import { words } from '../elements/object/fields';
 import { tBoth, name, t, type MessageKey } from '../ui/i18n';
 import type { App } from './app';
 import { canTransform } from '../tools/transform';
@@ -74,6 +75,15 @@ export function appActions(app: App, open: Openers): Action[] {
     make('tool.column', 'tool.column', tools, () => app.setTool('column'), { keys: 'P', keywords: 'pilar pilares coluna column estrutura structure' }),
     make('tool.grid', 'tool.grid', tools, () => app.setTool('grid'), { keys: 'Shift+G', keywords: 'eixo eixos grade grid axis axes estrutura' }),
     make('tool.dimension', 'tool.dimension', tools, () => app.setTool('dimension'), { keys: 'Shift+D', keywords: 'cota dimension medida permanente' }),
+    // One per object definition of the project: placed by the same tool, named by the definition.
+    ...doc.definitions.map((d) => ({
+      id: `tool.object.${d.id}`,
+      label: t('pal.object', { name: words(d.name) }),
+      group: t(tools),
+      keywords: `${d.name.pt} ${d.name.en} objeto object mobiliário furniture`,
+      enabled: true,
+      run: () => app.placeObject(d.id),
+    })),
     make('view.3d', 'view.3d', views, () => app.setView('3d'), { keys: '1', enabled: ui.view !== '3d' }),
     make('view.plan', 'view.plan', views, () => app.setView('plan'), { keys: '2', enabled: ui.view !== 'plan' }),
     make('view.walk', 'pal.walk', views, () => app.toggleWalk(), { keys: '3' }),
@@ -128,7 +138,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('settings.refLines', 'pal.refLines', settings, () => app.toggleRefLines()),
     make('settings.debug', 'debug.pal', settings, () => app.toggleDebug(), { keys: 'F7', keywords: 'debug diagnóstico diagnostics erros errors problemas' }),
     make('settings.openingTags', 'pal.openingTags', settings, () => app.toggleOpeningTags(), { keywords: 'etiquetas tags marks tipo type portas janelas doors windows' }),
-    ...(['walls', 'openings', 'rooms', 'floors', 'guides'] as const).map((c) =>
+    ...(['walls', 'openings', 'rooms', 'floors', 'objects', 'guides'] as const).map((c) =>
       make(`layer.${c}`, ui.hidden.has(c) ? (`pal.show.${c}` as const) : (`pal.hide.${c}` as const), settings, () => app.toggleCategory(c)),
     ),
     ...[...doc.levels]

@@ -151,6 +151,10 @@ export function wireKeys(app: App, k: KeyContext): void {
     }
     // Esc cancels a drag whatever is held: with Alt (a wall dragged alone) it never got below, and
     // letting go of the button then kept the move.
+    if (e.key === 'Escape' && ui.handleDrag) {
+      ui.handleDrag = null;
+      return app.refresh();
+    }
     if (e.key === 'Escape' && k.gestures.cancel()) {
       k.downAt = null;
       return k.showMarquee();
@@ -197,7 +201,7 @@ export function wireKeys(app: App, k: KeyContext): void {
       if (ui.tool === 'measure') return ui.measure.kind !== 'idle' ? app.measureEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'grid') return app.gridEscape();
-      if (ui.tool === 'column') return app.setTool('select');
+      if (ui.tool === 'column' || ui.tool === 'object') return app.setTool('select');
       if (ui.tool === 'railing') {
         if (ui.railingDraft.length === 0) return app.setTool('select');
         return app.railingFinish();
@@ -275,6 +279,11 @@ export function wireKeys(app: App, k: KeyContext): void {
     if (e.key === ' ' && ui.tool === 'wall') {
       e.preventDefault();
       return app.toggleWallFlip();
+    }
+    // Space with the object tool: the next object a quarter turn on.
+    if (e.key === ' ' && ui.tool === 'object') {
+      e.preventDefault();
+      return app.turnObject();
     }
     // A selected door, flipped from the keyboard: Space sends the leaf to the other side, as in Revit,
     // H the hinge to the other jamb.

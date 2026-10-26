@@ -1,5 +1,8 @@
 // The tools that place the registry's kinds (elements/registry.ts): guardrails, stairs, roofs, beams, columns, grid axes, dimensions, texts and level marks. Functions over the app (app.ts delegates).
 
+import { addObject } from '../elements/object/commands';
+import { OBJECT_PREFIX } from '../elements/object/schema';
+import { words } from '../elements/object/fields';
 import { lengthNum } from '../ui/units';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
@@ -154,6 +157,19 @@ export function beamClick(app: App, p: Point2): void {
   // On from its end, as walls are drawn in a chain.
   app.ui.beamFrom = p;
   app.ui.info = t('hint.beamMade');
+  app.render();
+}
+
+/** The object tool's preview: drawn as an object, never kept. */
+export const OBJECT_PREVIEW = `${OBJECT_PREFIX}_preview`;
+
+/** The object tool: a click places the chosen definition's first type there, turned as the tool is. */
+export function objectClick(app: App, p: Point2): void {
+  const doc = app.store.get();
+  const def = doc.definitions.find((d) => d.id === app.ui.objectDef);
+  if (!def) return;
+  app.store.dispatch(addObject({ id: newId(OBJECT_PREFIX), levelId: app.ui.levelId, definitionId: def.id, typeId: def.types[0]!.id, at: { x: p.x, y: p.y }, angle: app.ui.objectAngle, elevation: 0, values: {} }));
+  app.ui.info = t('hint.objectMade', { name: words(def.name) });
   app.render();
 }
 
