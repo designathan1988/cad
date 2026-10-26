@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 import { newOpening } from '../../src/elements/opening/schema';
-import { canTransform, copyToLevel, reflection, rotation, scaling, transformSelection, translation } from '../../src/tools/transform';
+import { canTransform, copiesInSeries, copyToLevel, reflection, rotation, scaling, transformSelection, translation } from '../../src/tools/transform';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -158,5 +158,24 @@ describe('copied to another level (Ctrl+C, Ctrl+V)', () => {
   it('a door selected without its wall is left out (its wall is not on that level)', () => {
     const r = copyToLevel(twoLevels, g2, ['opening_d'], 'lvl_up', newId);
     expect(r.doc.openings).toHaveLength(twoLevels.openings.length);
+  });
+});
+
+describe('copies in a series ("3x", "/3")', () => {
+  it('3x a step of 5 m right: three boxes at 5, 10 and 15 m, the last one selected', () => {
+    const r = copiesInSeries(doc, g, box, { x: 5, y: 0 }, 3, false, newId);
+    expect(r.doc.walls).toHaveLength(doc.walls.length + 12);
+    const bottoms = r.doc.walls.slice(doc.walls.length).filter((_, i) => i % 4 === 0);
+    expect(bottoms.map((w) => w.start.x)).toEqual([5, 10, 15]);
+    expect(r.selection).toEqual(r.doc.walls.slice(-4).map((w) => w.id));
+    // Each copy takes its door and its room.
+    expect(r.doc.openings).toHaveLength(4);
+    expect(r.doc.rooms.map((x) => x.seed.x)).toEqual([2, 7, 12, 17]);
+  });
+
+  it('/2 the same step: two boxes, at 2.5 and 5 m', () => {
+    const r = copiesInSeries(doc, g, box, { x: 5, y: 0 }, 2, true, newId);
+    const bottoms = r.doc.walls.slice(doc.walls.length).filter((_, i) => i % 4 === 0);
+    expect(bottoms.map((w) => w.start.x)).toEqual([2.5, 5]);
   });
 });
