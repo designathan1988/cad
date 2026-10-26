@@ -28,7 +28,7 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
   merge: { icon: 'merge', keys: 'Shift+J' },
   flipWall: { icon: 'flip' },
   editType: { icon: 'wall' },
-  flipHinge: { icon: 'door' },
+  flipHinge: { icon: 'door', keys: 'H' },
   flipSwing: { icon: 'swing' },
   centerOpening: { icon: 'center' },
   addFloor: { icon: 'slab' },

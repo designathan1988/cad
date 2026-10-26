@@ -488,6 +488,26 @@ export class PlanView {
       ctx.fill();
       ctx.stroke();
     }
+    for (const f of h.flips) {
+      // A disc with a double arrow along its axis, as Revit's flip controls.
+      const { x, y } = f.at;
+      ctx.beginPath();
+      ctx.arc(x, y, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      const d = f.dir;
+      const n = { x: -d.y, y: d.x };
+      ctx.beginPath();
+      ctx.moveTo(x - d.x * 5, y - d.y * 5);
+      ctx.lineTo(x + d.x * 5, y + d.y * 5);
+      for (const s of [1, -1]) {
+        const tip = { x: x + d.x * 5 * s, y: y + d.y * 5 * s };
+        ctx.moveTo(tip.x - d.x * 3 * s + n.x * 3, tip.y - d.y * 3 * s + n.y * 3);
+        ctx.lineTo(tip.x, tip.y);
+        ctx.lineTo(tip.x - d.x * 3 * s - n.x * 3, tip.y - d.y * 3 * s - n.y * 3);
+      }
+      ctx.stroke();
+    }
     if (h.rotate) {
       // A disc with a three-quarter arc and its arrowhead.
       const { x, y } = h.rotate.at;

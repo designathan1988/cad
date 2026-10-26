@@ -728,6 +728,10 @@ export function wireInput(app: App): void {
       e.preventDefault();
       return app.toggleWallFlip();
     }
+    // A selected door, flipped from the keyboard: Space sends the leaf to the other side, as in Revit,
+    // H the hinge to the other jamb.
+    if (e.key === ' ' && ui.tool === 'select' && app.flipDoor('swing')) return e.preventDefault();
+    if (key === 'h' && ui.tool === 'select' && app.flipDoor('hinge')) return;
     if (key === 'd') return app.setTool('door');
     if (key === 'r') return app.setTool('room');
     if (key === 'l') return app.setTool('floor');

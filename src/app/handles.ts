@@ -22,12 +22,18 @@ export interface Handles {
   readonly rotate: { readonly at: Point2; readonly pivot: Point2 } | null;
   /** On one arc wall: at the middle of the arc, dragged to change its curvature (tools/arc-edit.ts). */
   readonly bulge: { readonly id: WallId; readonly at: Point2 } | null;
+  /**
+   * On one selected door, Revit's flip controls: `swing` (its arrows across the wall) sends the leaf to
+   * the other side, `hinge` (along the wall) moves the hinge to the other jamb. `dir`: the arrows' axis.
+   */
+  readonly flips: readonly { readonly which: 'swing' | 'hinge'; readonly id: string; readonly at: Point2; readonly dir: Point2 }[];
 }
 
 export type HandleHit =
   | { readonly kind: 'square' | 'arrow'; readonly id: WallId; readonly end: WallEnd }
   | { readonly kind: 'rotate'; readonly pivot: Point2 }
-  | { readonly kind: 'bulge'; readonly id: WallId };
+  | { readonly kind: 'bulge'; readonly id: WallId }
+  | { readonly kind: 'flip'; readonly which: 'swing' | 'hinge'; readonly id: string };
 
 type Box = { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
 
@@ -43,7 +49,7 @@ const discMeets = (p: Point2, r: number, b: Box) => {
  * and took its clicks, the value unreadable under it.
  */
 export function handlesFor(walls: readonly DocWall[], toScreen: (p: Point2) => Point2, avoid: readonly Box[] = []): Handles {
-  if (walls.length === 0) return { squares: [], arrows: [], rotate: null, bulge: null };
+  if (walls.length === 0) return { squares: [], arrows: [], rotate: null, bulge: null, flips: [] };
   const one = walls.length === 1 ? walls[0]! : null;
   const squares = one ? (['start', 'end'] as const).map((end) => ({ id: one.id, end, at: toScreen(one[end]) })) : [];
   const arrows =
@@ -76,7 +82,7 @@ export function handlesFor(walls: readonly DocWall[], toScreen: (p: Point2) => P
     if (!hit) break;
     at = { x: at.x, y: hit.y + hit.h + HANDLE_CLEAR / 2 + 2 };
   }
-  return { squares, arrows, rotate: { at, pivot }, bulge };
+  return { squares, arrows, rotate: { at, pivot }, bulge, flips: [] };
 }
 
 /** The points that bound a wall: its ends, and for an arc the points where it turns along an axis. */
@@ -93,10 +99,40 @@ function extentOf(w: DocWall): Point2[] {
 
 export function handleAt(h: Handles, screen: Point2, reach: number): HandleHit | null {
   const near = (p: Point2) => Math.hypot(p.x - screen.x, p.y - screen.y) <= reach;
+  const flip = h.flips.find((f) => near(f.at));
+  if (flip) return { kind: 'flip', which: flip.which, id: flip.id };
   if (h.rotate && near(h.rotate.at)) return { kind: 'rotate', pivot: h.rotate.pivot };
   if (h.bulge && near(h.bulge.at)) return { kind: 'bulge', id: h.bulge.id };
   const arrow = h.arrows.find((a) => near(a.at));
   if (arrow) return { kind: 'arrow', id: arrow.id, end: arrow.end };
   const square = h.squares.find((s) => near(s.at));
   return square ? { kind: 'square', id: square.id, end: square.end } : null;
+}
+
+/**
+ * The flip controls of one door, on the side its leaf sweeps, a little in from the wall's face: the
+ * swing control left of the middle, the hinge control right of it (along the wall on screen). None
+ * when the door is under 36 px wide on screen (they would cover it; the keys still flip it).
+ */
+export function doorFlips(
+  id: string,
+  frame: { readonly start: Point2; readonly end: Point2; readonly normal: Point2; readonly faces: readonly [number, number] },
+  leafSide: 1 | -1,
+  toScreen: (p: Point2) => Point2,
+): Handles['flips'] {
+  const a = toScreen(frame.start);
+  const b = toScreen(frame.end);
+  const width = Math.hypot(b.x - a.x, b.y - a.y);
+  if (width < 36) return [];
+  const along = normalize(sub(b, a));
+  const mid = scale(add(a, b), 0.5);
+  // The face on the leaf's side, measured from the reference line: on screen, how far out it is.
+  const face = leafSide > 0 ? Math.max(...frame.faces) : -Math.min(...frame.faces);
+  const onFace = toScreen(add(frame.start, scale(frame.normal, leafSide * face)));
+  const across = normalize(sub(toScreen(add(frame.start, scale(frame.normal, leafSide))), a));
+  const base = add(mid, scale(across, Math.hypot(onFace.x - a.x, onFace.y - a.y) + 16));
+  return [
+    { which: 'swing', id, at: add(base, scale(along, -12)), dir: across },
+    { which: 'hinge', id, at: add(base, scale(along, 12)), dir: along },
+  ];
 }

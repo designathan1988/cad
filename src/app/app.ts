@@ -74,7 +74,7 @@ import { changeReferenceLine, stretchEnd } from '../tools/edit';
 import { canMerge, cornerWalls, mergeWalls, splitWall } from '../tools/split';
 import { contextEntries } from './context-menu';
 import { referenceLength } from '../elements/opening/derive';
-import { type Handles, handlesFor, ROTATE_OFFSET } from './handles';
+import { doorFlips, type Handles, handlesFor, ROTATE_OFFSET } from './handles';
 import { placeBarY } from '../ui/bar-place';
 import { newId } from '../core/id';
 import { addFloor, addRoom, updateFloor, updateRoom } from '../elements/room/commands';
@@ -1858,11 +1858,33 @@ export class App {
     const d = this.ui.drag;
     if (this.ui.tool !== 'select' || this.ui.view !== 'plan' || d?.kind === 'move' || d?.kind === 'marquee') return handlesFor([], (p) => p);
     const walls = d ? d.walls : this.store.get().walls;
-    return handlesFor(
+    const toScreen = (p: Point2) => this.plan.toScreen(p);
+    const h = handlesFor(
       walls.filter((w) => this.ui.selection.has(w.id)),
-      (p) => this.plan.toScreen(p),
+      toScreen,
       this.plan.dimValueBoxes(this.currentDims().map((x) => ({ ...x, text: num(x.value) }))),
     );
+    // One door selected, standing still: its flip controls, on the side its leaf sweeps (the side
+    // `swing` names is the one its temporary dimension keeps off, opening-ui.ts).
+    const one = this.ui.selection.size === 1 && !d ? [...this.ui.selection][0]! : null;
+    const door = one ? this.geometry.openings.get(one) : undefined;
+    if (!door || door.opening.kind !== 'door' || !door.frame) return h;
+    return { ...h, flips: doorFlips(door.opening.id, door.frame, door.opening.swing === 'right' ? -1 : 1, toScreen) };
+  }
+
+  /** The one element selected, when it is a door. */
+  selectedDoor(): boolean {
+    const one = this.ui.selection.size === 1 ? [...this.ui.selection][0] : undefined;
+    return this.store.get().openings.some((o) => o.id === one && o.kind === 'door');
+  }
+
+  /** Flips the one door selected: the side it opens to, or its hinge to the other jamb. False if none. */
+  flipDoor(which: 'swing' | 'hinge', id?: string): boolean {
+    const one = id ?? (this.ui.selection.size === 1 ? [...this.ui.selection][0] : undefined);
+    const o = this.store.get().openings.find((x) => x.id === one && x.kind === 'door');
+    if (!o) return false;
+    this.store.dispatch(updateOpening(o.id, which === 'swing' ? { swing: o.swing === 'left' ? 'right' : 'left' } : { hinge: o.hinge === 'start' ? 'end' : 'start' }));
+    return true;
   }
 
   /** In plan, only the current level's walls and openings; in 3D, the levels the view shows (view-3d.ts). */
@@ -2149,6 +2171,7 @@ export class App {
             keyHint('Shift', t('key.addRemove')),
             // Said before the drag, where it is decided: during it was too late to be found.
             ...(this.selectedWalls().length > 0 ? [keyHint('Alt', t('key.dragAlone'))] : []),
+            ...(this.selectedDoor() ? [keyHint(t('key.spaceKey'), t('key.flipSwing')), keyHint('H', t('key.flipHinge'))] : []),
             keyHint('Del', t('key.delete')),
             keyHint('F', t('key.frame')),
             keyHint('Esc', t('key.clear')),

@@ -90,6 +90,12 @@ export function selectGestures(app: App): SelectGestures {
   return {
     down(screen, world, hit, shift) {
       const handle = handleAt(app.handles(), screen, gripPx());
+      // A door's flip control acts on the press, as a button: the door stays selected.
+      if (handle?.kind === 'flip') {
+        pending = null;
+        app.flipDoor(handle.which, handle.id);
+        return;
+      }
       if (handle?.kind === 'square') pending = { kind: 'grip', id: handle.id, end: handle.end, screen };
       else if (handle?.kind === 'arrow' && world) pending = { kind: 'stretch', id: handle.id, end: handle.end, at: world, screen };
       else if (handle?.kind === 'rotate' && world) pending = { kind: 'rotate', pivot: handle.pivot, at: world, screen };
