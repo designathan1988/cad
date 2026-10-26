@@ -59,6 +59,6 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
   solid: (s) => ({ geometry: railingGeometry(s.railing.points, postsOf(s.railing), s.railing.height), y: s.bottom, material: 'side', edges: false }),
   dxfLayers: [{ name: 'A-FLOR-HRAL', colour: 4 }],
   dxf: (s, out) => out.polyline('A-FLOR-HRAL', s.railing.points, false),
-  fields: (items, dispatch) =>
+  fields: (items, { dispatch }) =>
     throughElement(railingFields(items.map((s) => s.railing), { updateRailings: (ids, patch) => dispatch(updateRailings(ids, patch)) }), (s: RailingSolid) => s.railing),
 };

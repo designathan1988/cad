@@ -93,5 +93,5 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
     for (const p of s.parts) out.polyline('A-FLOR-STRS', p.polygon, true);
     if (s.walk.length >= 2) out.polyline('A-FLOR-STRS', s.walk, false);
   },
-  fields: (items, dispatch) => stairFields(items, { updateStairs: (ids, patch) => dispatch(updateStairs(ids, patch)) }),
+  fields: (items, { dispatch }) => stairFields(items, { updateStairs: (ids, patch) => dispatch(updateStairs(ids, patch)) }),
 };

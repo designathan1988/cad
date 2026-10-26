@@ -164,11 +164,10 @@ export function transformSelection(
     }),
   );
   const rooms = new Set([...roomsGoingWith(doc, g, walls), ...doc.rooms.filter((r) => set.has(r.id)).map((r) => r.id)]);
-  const floors = new Set(doc.floors.filter((f) => set.has(f.id) && f.source.kind === 'outline').map((f) => f.id));
-  const outline = (points: readonly Point2[]) => points.map(t.map);
-  // What a dimension's ends are held by goes along: a wall that goes, or a door or window on one.
+  // What goes along, for what is held by it or follows it (registry.ts): a wall that goes, a door or
+  // window on one (a dimension's ends), a room that goes (its floor).
   const hostOf = new Map(doc.openings.map((o) => [o.id, o.wallId]));
-  const going = (id: string) => walls.has(id) || walls.has(hostOf.get(id) ?? '');
+  const going = (id: string) => walls.has(id) || walls.has(hostOf.get(id) ?? '') || rooms.has(id);
 
   if (!copy) {
     const same = (id: string) => id;
@@ -184,15 +183,8 @@ export function transformSelection(
       openings: doc.openings.map((o) => (walls.has(o.wallId) ? mapOpening(o, t, same) : lone.has(o.id) ? { ...o, ...lone.get(o.id)! } : o)),
       openingGroups: doc.openingGroups.map((x) => (walls.has(x.wallId) ? mapGroup(x, t, same, () => true) : x)),
       rooms: doc.rooms.map((r) => (rooms.has(r.id) ? { ...r, seed: t.map(r.seed) } : r)),
-      floors: doc.floors.map((f) =>
-        floors.has(f.id) && f.source.kind === 'outline'
-          ? { ...f, source: { kind: 'outline', points: outline(f.source.points) }, ...(f.holes ? { holes: f.holes.map(outline) } : {}) }
-          : f.source.kind === 'room' && rooms.has(f.source.roomId) && f.holes
-            ? { ...f, holes: f.holes.map(outline) }
-            : f,
-      ),
     };
-    // The registry's elements by their own mapping; a dimension with what holds it.
+    // The registry's elements by their own mapping; a dimension with what holds it, a floor with its room.
     return { doc: mapKinds(next, set, t, { going, doc, geometry: g }), selection: [...ids] };
   }
 
@@ -212,8 +204,6 @@ export function transformSelection(
   for (const x of groups) fresh(x.id, GROUP_PREFIX);
   const roomList = doc.rooms.filter((r) => rooms.has(r.id));
   for (const r of roomList) fresh(r.id, 'room');
-  const floorList = doc.floors.filter((f) => floors.has(f.id) || (f.source.kind === 'room' && rooms.has(f.source.roomId)));
-  for (const f of floorList) fresh(f.id, 'floor');
   const to = (id: string) => ids2.get(id) ?? id;
 
   const newWalls = doc.walls
@@ -231,27 +221,20 @@ export function transformSelection(
     return String(last + 1);
   };
   const newRooms = roomList.map((r) => ({ ...r, id: to(r.id), seed: t.map(r.seed), number: nextNumber(r.levelId) }));
-  const newFloors = floorList.map((f) => ({
-    ...f,
-    id: to(f.id),
-    source: f.source.kind === 'room' ? { kind: 'room' as const, roomId: to(f.source.roomId) } : { kind: 'outline' as const, points: outline(f.source.points) },
-    ...(f.holes ? { holes: f.holes.map(outline) } : {}),
-  }));
   const next: Doc = {
     ...doc,
     walls: [...doc.walls, ...newWalls],
     openings: [...doc.openings, ...openings.map((o) => mapOpening(o, t, to)), ...loneCopies],
     openingGroups: [...doc.openingGroups, ...groups.map((x) => mapGroup(x, t, to, (w) => walls.has(w)))],
     rooms: [...doc.rooms, ...newRooms],
-    floors: [...doc.floors, ...newFloors],
   };
   const selection = [
     ...newWalls.map((w) => w.id),
     ...loneCopies.map((o) => o.id),
     ...doc.rooms.filter((r) => set.has(r.id)).map((r) => to(r.id)),
-    ...doc.floors.filter((f) => floors.has(f.id)).map((f) => to(f.id)),
   ];
-  // The registry's elements, copied by their own mapping; a dimension held by the copies of what held it.
+  // The registry's elements, copied by their own mapping; a dimension held by the copies of what held it,
+  // a room's floor with the copy of its room.
   const kinds = copyKinds(next, set, t, fresh, { going, to, doc, geometry: g });
   return { doc: kinds.doc, selection: [...selection, ...kinds.added] };
 }
@@ -263,7 +246,6 @@ export function canTransform(doc: Doc, ids: readonly string[]): boolean {
     doc.walls.some((w) => set.has(w.id)) ||
     doc.openings.some((o) => set.has(o.id)) ||
     doc.rooms.some((r) => set.has(r.id)) ||
-    doc.floors.some((f) => set.has(f.id) && f.source.kind === 'outline') ||
     hasKinds(doc, set)
   );
 }
@@ -283,7 +265,7 @@ export function copyToLevel(doc: Doc, g: DerivedGeometry, ids: readonly string[]
   let last = doc.rooms.filter((x) => x.levelId === levelId).reduce((n, x) => Math.max(n, Number.parseInt(x.number, 10) || 0), 0);
   const rooms = onLevel(r.doc.rooms, doc.rooms.length).map((x, i) => (i >= doc.rooms.length ? { ...x, number: String(++last) } : x));
   return {
-    doc: kindsOnLevel({ ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length), rooms, floors: onLevel(r.doc.floors, doc.floors.length) }, doc, levelId),
+    doc: kindsOnLevel({ ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length), rooms }, doc, levelId),
     selection: r.selection,
   };
 }

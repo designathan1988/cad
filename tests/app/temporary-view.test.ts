@@ -1,6 +1,7 @@
 // Hiding and isolating elements for a while (geometry.ts, applyTemporary): the views leave elements out,
 // the document keeps them. A box of four walls with a door in the first, a room and its floor.
 
+import { floorsOf } from '../../src/elements/registry';
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { applyTemporary, deriveGeometry } from '../../src/app/geometry';
@@ -35,7 +36,7 @@ describe('temporary hide and isolate', () => {
     expect(ids(t.solids)).toEqual(['b', 'c', 'd']);
     expect(ids(t.openings)).toEqual([]);
     expect(ids(t.rooms)).toEqual(['r']);
-    expect(ids(t.floors)).toEqual(['f']);
+    expect(ids(floorsOf(t))).toEqual(['f']);
   });
 
   it('a hidden door alone: its wall stays', () => {
@@ -49,14 +50,14 @@ describe('temporary hide and isolate', () => {
     expect(ids(t.solids)).toEqual(['a']);
     expect(ids(t.openings)).toEqual(['o']);
     expect(ids(t.rooms)).toEqual([]);
-    expect(ids(t.floors)).toEqual([]);
+    expect(ids(floorsOf(t))).toEqual([]);
   });
 
   it('an isolated room and floor: no walls', () => {
     const t = applyTemporary(g, { mode: 'isolate', ids: new Set(['r', 'f']) });
     expect(ids(t.solids)).toEqual([]);
     expect(ids(t.rooms)).toEqual(['r']);
-    expect(ids(t.floors)).toEqual(['f']);
+    expect(ids(floorsOf(t))).toEqual(['f']);
   });
 
   it('the walls are not redrawn: the rest of the house keeps its corners', () => {

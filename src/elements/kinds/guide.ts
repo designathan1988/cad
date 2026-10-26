@@ -42,5 +42,5 @@ export const guideKind: ElementKind<Guide, Guide> = {
   // Every guide of the level is like any other.
   similar: () => true,
   plan: (p, g, lit) => p.line(g.point, g.dir, lit ? p.color('--wall-sel') : p.color('--guide'), lit ? 2 : 1, lit ? [10, 4] : [8, 5]),
-  fields: (items, dispatch) => guideFields(() => dispatch(clearGuides(items[0]!.levelId))),
+  fields: (items, { dispatch }) => guideFields(() => dispatch(clearGuides(items[0]!.levelId))),
 };

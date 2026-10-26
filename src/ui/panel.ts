@@ -7,8 +7,8 @@ import type { OpeningSolid } from '../app/geometry';
 import type { OpeningWarning } from '../elements/opening/derive';
 import { nextOpeningPanel, openingPanel, openingTitle, type OpeningPanelActions, type OpeningSize } from '../elements/opening/panel';
 import type { OpeningId, OpeningKind } from '../elements/opening/schema';
-import type { FloorSolid, RoomSolid } from '../elements/room/derive';
-import { floorPanel, roomPanel, type RoomPanelActions } from '../elements/room/panel';
+import type { RoomSolid } from '../elements/room/derive';
+import { roomPanel, type RoomPanelActions } from '../elements/room/panel';
 import { nextWallFields, wallFields } from '../elements/wall/fields';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { StackedStep } from '../app/stacked';
@@ -31,7 +31,6 @@ export interface PanelInput {
   readonly rooms: readonly RoomSolid[];
   /** Every room of the level shown: what lies on each side of a door. */
   readonly levelRooms: readonly RoomSolid[];
-  readonly floors: readonly FloorSolid[];
   readonly placed: ReadonlyMap<OpeningId, OpeningSolid>;
   readonly openingWarnings: readonly OpeningWarning[];
   /** The door or window tool is active: its next opening's size. */
@@ -139,23 +138,6 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
       return r ? `${r.number} · ${name(r.name)}` : '—';
     };
     nodes.push(...roomPanel(input.rooms, act.room, tag));
-  } else if (input.floors.length > 0) {
-    const ceilings = input.floors.every((f) => f.floor.kind === 'ceiling');
-    nodes.push(
-      head(
-        'slab',
-        ceilings
-          ? input.floors.length === 1 ? t('ceiling.title') : t('ceiling.titleMany', { n: input.floors.length })
-          : input.floors.length === 1 ? t('floor.title') : t('floor.titleMany', { n: input.floors.length }),
-      ),
-    );
-    part(input.floors.length);
-    // Shown as the room's own tag and footer show it: a default name in the interface's language.
-    const roomName = (id: string) => {
-      const r = doc.rooms.find((x) => x.id === id);
-      return r ? name(r.name) : '—';
-    };
-    nodes.push(...floorPanel(input.floors, roomName, act.room));
   } else if (input.openings.length > 0) {
     const kinds = new Set(input.openings.map((o) => o.opening.kind));
     nodes.push(head(kinds.size === 1 && kinds.has('window') ? 'window' : 'door', openingTitle(input.openings)));
@@ -168,7 +150,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     const title = kind.title ? kind.title(items) : { icon: kind.icon, text: n === 1 ? t(kind.one) : t(kind.many, { n }) };
     nodes.push(head(title.icon, title.text));
     part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, act.dispatch), items));
+    nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, { dispatch: act.dispatch, doc, ...(act.room.startFloorHole ? { startFloorHole: act.room.startFloorHole } : {}) }), items));
     if (kind.hint) nodes.push(el('div', { class: 'panel-hint' }, t(kind.hint)));
   } else if (input.openingTool) {
     const { kind, size } = input.openingTool;

@@ -5,7 +5,7 @@
 
 import { difference, setPrecision, union } from 'polyclip-ts';
 import type { Point2 } from '../../core/vector';
-import type { Floor, FloorId, Room, RoomId } from './schema';
+import type { Floor, Room, RoomId } from './schema';
 
 export interface RoomSolid {
   readonly room: Room;
@@ -204,29 +204,22 @@ export function deriveRooms(
   return { solids, warnings };
 }
 
-export function deriveFloors(
-  floors: readonly Floor[],
-  rooms: ReadonlyMap<RoomId, RoomSolid>,
-  elevation: (levelId: string) => number,
-): Map<FloorId, FloorSolid> {
-  const out = new Map<FloorId, FloorSolid>();
-  for (const floor of floors) {
-    const raw = floor.source.kind === 'room' ? (rooms.get(floor.source.roomId)?.outline ?? []) : floor.source.points;
-    const outline = signedArea(raw) < 0 ? [...raw].reverse() : [...raw];
-    const top = elevation(floor.levelId) + floor.offset;
-    // Holes the other way round from the outline, as a shape with holes is traced.
-    const holes = (floor.holes ?? []).filter((h) => h.length >= 3).map((h) => (signedArea(h) > 0 ? [...h].reverse() : [...h]));
-    const area = Math.abs(signedArea(outline)) - holes.reduce((s, h) => s + Math.abs(signedArea(h)), 0);
-    // Rising from its lowest corner: how far up each point of it is.
-    let rise: FloorSolid['rise'];
-    if (floor.slope && floor.slope.grade !== 0 && outline.length >= 3) {
-      const u = { x: Math.cos(floor.slope.dir), y: Math.sin(floor.slope.dir) };
-      const base = Math.min(...outline.map((p) => p.x * u.x + p.y * u.y));
-      rise = { u, base, k: floor.slope.grade / 100 };
-    }
-    out.set(floor.id, { floor, outline, holes, area: Math.max(0, area), bottom: top - floor.thickness, top, ...(rise ? { rise } : {}) });
+/** A floor as built: its outline (its room's, or its own) wound counter-clockwise, its holes, area and heights. */
+export function deriveFloor(floor: Floor, rooms: ReadonlyMap<RoomId, RoomSolid>, elevation: (levelId: string) => number): FloorSolid {
+  const raw = floor.source.kind === 'room' ? (rooms.get(floor.source.roomId)?.outline ?? []) : floor.source.points;
+  const outline = signedArea(raw) < 0 ? [...raw].reverse() : [...raw];
+  const top = elevation(floor.levelId) + floor.offset;
+  // Holes the other way round from the outline, as a shape with holes is traced.
+  const holes = (floor.holes ?? []).filter((h) => h.length >= 3).map((h) => (signedArea(h) > 0 ? [...h].reverse() : [...h]));
+  const area = Math.abs(signedArea(outline)) - holes.reduce((s, h) => s + Math.abs(signedArea(h)), 0);
+  // Rising from its lowest corner: how far up each point of it is.
+  let rise: FloorSolid['rise'];
+  if (floor.slope && floor.slope.grade !== 0 && outline.length >= 3) {
+    const u = { x: Math.cos(floor.slope.dir), y: Math.sin(floor.slope.dir) };
+    const base = Math.min(...outline.map((p) => p.x * u.x + p.y * u.y));
+    rise = { u, base, k: floor.slope.grade / 100 };
   }
-  return out;
+  return { floor, outline, holes, area: Math.max(0, area), bottom: top - floor.thickness, top, ...(rise ? { rise } : {}) };
 }
 
 /** How far above its `top` a sloped floor is at p (0 for a flat one). */

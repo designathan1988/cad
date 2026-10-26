@@ -5,10 +5,12 @@ import type { Doc } from '../app/document';
 import type { Point2 } from '../core/vector';
 import type { Transform } from '../tools/transform';
 import type { DerivedGeometry } from '../app/geometry';
+import type { FloorSolid } from './room/derive';
 import type { AnyKind, BaseGeometry, KindKey } from './contract';
 import { beamKind } from './kinds/beam';
 import { columnKind } from './kinds/column';
 import { dimensionKind } from './kinds/dimension';
+import { floorKind } from './kinds/floor';
 import { gridKind } from './kinds/grid';
 import { guideKind } from './kinds/guide';
 import { noteKind } from './kinds/note';
@@ -17,7 +19,7 @@ import { roofKind } from './kinds/roof';
 import { stairKind } from './kinds/stair';
 
 /** Drawn in this order (later over earlier); the panel shows the first with a selected element. */
-export const KINDS: readonly AnyKind[] = [stairKind, railingKind, columnKind, roofKind, gridKind, beamKind, guideKind, noteKind, dimensionKind];
+export const KINDS: readonly AnyKind[] = [stairKind, railingKind, columnKind, roofKind, floorKind, gridKind, beamKind, guideKind, noteKind, dimensionKind];
 
 export const kindOfKey = (key: KindKey): AnyKind => KINDS.find((k) => k.key === key)!;
 
@@ -54,6 +56,9 @@ export function* eachSolid(solids: KindSolids): Generator<{ kind: AnyKind; solid
       yield { kind: k, solid: s, id, levelId: levelOfSolid(k, s) };
     }
 }
+
+/** The floors as built, by id (kinds/floor.ts). */
+export const floorsOf = (g: { readonly kinds: KindSolids }): ReadonlyMap<string, FloorSolid> => (g.kinds.get('floors') ?? new Map()) as ReadonlyMap<string, FloorSolid>;
 
 /** The derived forms of one kind. */
 export const solidsOf = <S>(solids: KindSolids, k: AnyKind): S[] => [...((solids.get(k.key) ?? new Map()) as Map<string, S>).values()];
@@ -92,12 +97,18 @@ export const hasKinds = (doc: Doc, ids: ReadonlySet<string>): boolean => KINDS.s
 const goesWith = (k: AnyKind, e: { readonly id: string }, ids: ReadonlySet<string>): boolean => ids.has(e.id) || (k.holders?.(e) ?? []).some((h) => ids.has(h));
 
 /** The document without the registry elements among `ids`, and those held by them (a dimension by a
- * deleted wall, as Revit's goes); the same document when none goes. */
-export function dropKinds(doc: Doc, ids: ReadonlySet<string>): Doc {
+ * deleted wall, as Revit's goes); one following a deleted element stands alone (a room's floor keeps
+ * its outline: contract.ts, released). The same document when nothing changes. `g`: the document's. */
+export function dropKinds(doc: Doc, ids: ReadonlySet<string>, g: DerivedGeometry): Doc {
   let next = doc;
   for (const k of KINDS) {
     const list = listOf(doc, k);
-    if (list.some((e) => goesWith(k, e, ids))) next = withList(next, k, list.filter((e) => !goesWith(k, e, ids)));
+    const released = (e: { readonly id: string }) => {
+      const f = k.follows?.(e);
+      return f !== null && f !== undefined && ids.has(f) && k.released ? k.released(e, g) : e;
+    };
+    const kept = list.filter((e) => !goesWith(k, e, ids)).map(released);
+    if (kept.length !== list.length || kept.some((e, i) => e !== list[i])) next = withList(next, k, kept);
   }
   return next;
 }
@@ -135,17 +146,23 @@ export function copyKinds(
   const added: string[] = [];
   for (const k of KINDS) {
     const list = listOf(doc, k);
-    const taken = list.filter((e) => ids.has(e.id));
+    // The selected, and those following what is copied (a room's floor its room): copied with it.
+    const following = (e: { readonly id: string }) => {
+      const f = k.follows?.(e);
+      return f !== null && f !== undefined && c.going(f);
+    };
+    const taken = list.filter((e) => ids.has(e.id) || following(e));
     if (taken.length === 0) continue;
     // One after another: a copy named on from the copies before it.
     const all = taken.reduce<unknown[]>((so, e) => {
       const id = fresh(e.id, k.prefix);
       // One held by others: held by their copies, or left out (contract.ts: transformed).
-      const copy = k.transformed ? k.transformed(e, { ...c, t, id, selected: true, copy: true }) : k.mapped(e, t, id);
+      const copy = k.transformed ? k.transformed(e, { ...c, t, id, selected: ids.has(e.id), copy: true }) : k.mapped(e, t, id);
       if (copy === null) return so;
+      // The copies of the selected are selected; those that only followed are not.
+      if (ids.has(e.id)) added.push(id);
       return [...so, k.copied ? k.copied(so, copy) : copy];
     }, [...list]);
-    added.push(...all.slice(list.length).map((e) => (e as { readonly id: string }).id));
     next = withList(next, k, all);
   }
   return { doc: next, added };

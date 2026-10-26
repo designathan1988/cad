@@ -3,7 +3,7 @@
 // step along it, a room's point, an outline floor and a guide move. One document out, for one undo step.
 
 import { wallsOnGrids } from '../elements/grid/carry';
-import { moveFloors, moveRooms, roomsGoingWith } from '../app/carry';
+import { moveRooms, roomsGoingWith } from '../app/carry';
 import type { Doc } from '../app/document';
 import { type DerivedGeometry, hostsIn } from '../app/geometry';
 import { dot, normalize, type Point2, sub } from '../core/vector';
@@ -42,14 +42,12 @@ export function nudge(doc: Doc, g: DerivedGeometry, ids: readonly string[], step
     return { ...o, rule: slid(o.rule, along, p.start) };
   });
   const rooms = next.rooms.map((r) => (set.has(r.id) && !carried.has(r.id) ? { ...r, seed: moved(r.seed) } : r));
-  const floors = moveFloors(next.floors, set, moved);
   const changed =
     next !== doc ||
     openings.some((o, i) => o !== next.openings[i]) ||
-    rooms.some((r, i) => r !== next.rooms[i]) ||
-    floors.some((f, i) => f !== next.floors[i]);
-  // The registry's elements (columns, beams, roofs, stairs, guardrails, texts, axes, guides, a dimension's free ends) by their own move.
-  return moveKinds(changed ? { ...next, openings, rooms, floors } : doc, set, step);
+    rooms.some((r, i) => r !== next.rooms[i]);
+  // The registry's elements (columns, beams, roofs, stairs, guardrails, texts, axes, guides, outline floors, a dimension's free ends) by their own move.
+  return moveKinds(changed ? { ...next, openings, rooms } : doc, set, step);
 }
 
 /** The rule moved `along` metres toward the wall's end; one without a distance is measured from the start. */

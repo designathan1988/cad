@@ -1,5 +1,6 @@
 // Rooms and floors. Every expected area is worked out by hand from the walls' faces.
 
+import { floorsOf } from '../../../src/elements/registry';
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
 import { deriveGeometry } from '../../../src/app/geometry';
@@ -83,10 +84,10 @@ describe('floors', () => {
         ],
       }),
     );
-    expect(g.floors.get('f1')!.area).toBeCloseTo(45.24, 9);
-    expect(g.floors.get('f1')!.top).toBeCloseTo(0, 12);
-    expect(g.floors.get('f1')!.bottom).toBeCloseTo(-0.15, 12);
-    expect(g.floors.get('f2')!.area).toBeCloseTo(6, 12);
+    expect(floorsOf(g).get('f1')!.area).toBeCloseTo(45.24, 9);
+    expect(floorsOf(g).get('f1')!.top).toBeCloseTo(0, 12);
+    expect(floorsOf(g).get('f1')!.bottom).toBeCloseTo(-0.15, 12);
+    expect(floorsOf(g).get('f2')!.area).toBeCloseTo(6, 12);
   });
 
   it('deleting a room keeps its floor where it was, as an outline', () => {
@@ -97,6 +98,6 @@ describe('floors', () => {
     const after = deleteElements(['r']).apply(d);
     expect(after.rooms).toEqual([]);
     expect(after.floors[0]!.source.kind).toBe('outline');
-    expect(deriveGeometry(after).floors.get('f1')!.area).toBeCloseTo(45.24, 9);
+    expect(floorsOf(deriveGeometry(after)).get('f1')!.area).toBeCloseTo(45.24, 9);
   });
 });

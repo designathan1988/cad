@@ -295,46 +295,21 @@ export class PlanView {
       ctx.fillStyle = color('--underlay');
       ctx.fill('nonzero');
     }
-    // Floors and rooms lie under the walls; a floor's holes are left out of it, crossed as voids are
-    // drawn. A ceiling is above the cut: only its outline, dotted.
-    for (const f of g.floors.values()) {
-      if (f.outline.length < 3) continue;
-      const sel = o.selected.has(f.floor.id) || o.hover === f.floor.id;
-      const ceiling = f.floor.kind === 'ceiling';
-      trace(f.outline);
-      for (const h of f.holes) {
-        h.forEach((v, i) => {
-          const s = this.toScreen(v);
-          if (i === 0) ctx.moveTo(s.x, s.y);
-          else ctx.lineTo(s.x, s.y);
-        });
-        ctx.closePath();
-      }
-      if (!ceiling || sel) {
-        ctx.fillStyle = sel ? color('--accent-soft') : color('--floor-fill');
-        ctx.fill('evenodd');
-      }
-      ctx.save();
-      ctx.setLineDash(ceiling ? [2, 3] : [5, 4]);
-      ctx.strokeStyle = sel ? color('--wall-sel') : color('--text-3');
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      // Each hole crossed corner to corner.
-      ctx.setLineDash([]);
-      ctx.beginPath();
-      for (const h of f.holes) {
-        if (h.length < 3) continue;
-        const pts = h.map((v) => this.toScreen(v));
-        ctx.moveTo(pts[0]!.x, pts[0]!.y);
-        ctx.lineTo(pts[Math.floor(pts.length / 2)]!.x, pts[Math.floor(pts.length / 2)]!.y);
-        if (pts.length >= 4) {
-          ctx.moveTo(pts[1]!.x, pts[1]!.y);
-          ctx.lineTo(pts[Math.floor(pts.length / 2) + 1]!.x, pts[Math.floor(pts.length / 2) + 1]!.y);
-        }
-      }
-      ctx.stroke();
-      ctx.restore();
-    }
+    // The registry's kinds (elements/registry.ts), each drawing itself; lit when selected or under the pointer.
+    const family = getComputedStyle(this.canvas).getPropertyValue('--font').trim() || 'sans-serif';
+    const paint = {
+      ctx,
+      toScreen: (v: Point2) => this.toScreen(v),
+      color,
+      scale: this.scale,
+      family,
+      font: (weight: string, size: string) => this.font(weight, size),
+      line: (point: Point2, dir: Point2, colour: string, width: number, dash: readonly number[]) => this.drawLine(point, dir, colour, width, dash),
+    };
+    const kinds = [...eachSolid(g.kinds)];
+    const shownLit = (id: string) => o.selected.has(id) || o.hover === id;
+    // Floors (contract.ts: under) and rooms lie under the walls.
+    for (const x of kinds) if (x.kind.layer === 'under') x.kind.plan(paint, x.solid, shownLit(x.id));
     for (const r of g.rooms.values()) {
       if (!r.enclosed || !(o.selected.has(r.room.id) || o.hover === r.room.id)) continue;
       trace(r.outline);
@@ -470,20 +445,7 @@ export class PlanView {
     const drawn = solids.filter((x) => o.preview.has(x.wall.id));
     outline(drawn, color('--wall-sel'), 3);
     fill(drawn, color('--wall-sel-fill'));
-    // The registry's kinds (elements/registry.ts), each drawing itself; lit when selected or under the pointer.
-    const family = getComputedStyle(this.canvas).getPropertyValue('--font').trim() || 'sans-serif';
-    const paint = {
-      ctx,
-      toScreen: (v: Point2) => this.toScreen(v),
-      color,
-      scale: this.scale,
-      family,
-      font: (weight: string, size: string) => this.font(weight, size),
-      line: (point: Point2, dir: Point2, colour: string, width: number, dash: readonly number[]) => this.drawLine(point, dir, colour, width, dash),
-    };
-    const kinds = [...eachSolid(g.kinds)];
-    // Guides and texts over the walls, the doors and the rest (contract.ts: over), drawn below.
-    const shownLit = (id: string) => o.selected.has(id) || o.hover === id;
+    // The registry's kinds over the walls; guides and texts over the doors and the rest (contract.ts: over), below.
     for (const x of kinds) if (!x.kind.layer) x.kind.plan(paint, x.solid, shownLit(x.id));
     this.drawOpenings(g, o, { line: color('--wall-line'), sel: color('--wall-sel'), selFill: color('--wall-sel-fill'), warn: color('--warn'), canvas: color('--canvas') });
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));

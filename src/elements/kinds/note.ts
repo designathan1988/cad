@@ -109,7 +109,7 @@ export const noteKind: ElementKind<Note, Note> = {
     const lines = n.text.split('\n');
     lines.forEach((l, i) => out.text('A-ANNO-TEXT', { x: n.at.x, y: n.at.y - (i - (lines.length - 1) / 2) * n.height * 1.3 }, n.height, l));
   },
-  fields: (items, dispatch) => noteFields(items, { updateNotes: (ids, patch) => dispatch(updateNotes(ids, patch)) }),
+  fields: (items, { dispatch }) => noteFields(items, { updateNotes: (ids, patch) => dispatch(updateNotes(ids, patch)) }),
 };
 
 /** A level mark: the plan's level symbol (a circle with two opposite quarters filled, crossed) at c, and the height it says to its right. */

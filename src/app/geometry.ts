@@ -18,8 +18,8 @@ import { shapeOf } from '../elements/wall/geometry/shape';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { WallId, WallLayer, WallType } from '../elements/wall/schema';
 import { layerSeams, type Seam } from '../elements/wall/geometry/seams';
-import { deriveFloors, deriveRooms, type FloorSolid, type RoomSolid, type RoomWarning, spacesOf } from '../elements/room/derive';
-import type { FloorId, RoomId } from '../elements/room/schema';
+import { deriveRooms, type RoomSolid, type RoomWarning, spacesOf } from '../elements/room/derive';
+import type { RoomId } from '../elements/room/schema';
 import type { Point2 as P } from '../core/vector';
 import { CUT_HEIGHT, cutHeightOf, type Doc, type DocWall, levelOf, wallHeights } from './document';
 
@@ -61,7 +61,6 @@ export interface DerivedGeometry {
   readonly roomWarnings: readonly RoomWarning[];
   /** A level's spaces, the ones its walls close in (room/derive.ts): where the room tool can put a room. Found when asked. */
   readonly spaces: (levelId: string) => readonly (readonly P[])[];
-  readonly floors: ReadonlyMap<FloorId, FloorSolid>;
   /** The registry's kinds (elements/registry.ts), derived: by kind, then id. */
   readonly kinds: KindSolids;
 }
@@ -160,13 +159,12 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     piecesByLevel.set(wall.levelId, list);
   }
   const roomResult = deriveRooms(doc.rooms, piecesByLevel);
-  const floors = deriveFloors(doc.floors, roomResult.solids, (id) => doc.levels.find((l) => l.id === id)?.elevation ?? 0);
   const found = new Map<string, P[][]>();
   const spaces = (levelId: string): P[][] => {
     if (!found.has(levelId)) found.set(levelId, spacesOf(piecesByLevel.get(levelId) ?? []));
     return found.get(levelId)!;
   };
-  const base = { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, floors, spaces };
+  const base = { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, spaces };
   // The registry's kinds last: a dimension is placed from the walls and doors.
   return { ...base, kinds: deriveKinds(doc, base) };
 }
@@ -402,7 +400,6 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
   // Rooms and floors: their outlines.
   const outlines = [
     ...[...g.rooms.values()].filter((r) => !ids || ids.has(r.room.id)).map((r) => r.outline),
-    ...[...g.floors.values()].filter((f) => !ids || ids.has(f.floor.id)).map((f) => f.outline),
     // A guide has no ends: its point only.
     ...[...eachSolid(g.kinds)].filter((x) => !ids || ids.has(x.id)).flatMap((x) => (x.kind.endless ? [x.kind.outlines(x.solid)[0]!.slice(0, 1)] : x.kind.outlines(x.solid))),
   ];
@@ -444,7 +441,6 @@ export function applyTemporary(g: DerivedGeometry, temp: TemporaryView | null): 
     solids,
     openings,
     rooms: new Map([...g.rooms].filter(([id]) => keep(id))),
-    floors: new Map([...g.floors].filter(([id]) => keep(id))),
     kinds: filterKinds(g.kinds, (k, x) => keep(k.element(x).id)),
   };
 }
@@ -456,7 +452,6 @@ export function hideCategories(g: DerivedGeometry, hidden: ReadonlySet<Category>
     solids: hidden.has('walls') ? new Map() : g.solids,
     openings: hidden.has('openings') ? new Map() : g.openings,
     rooms: hidden.has('rooms') ? new Map() : g.rooms,
-    floors: hidden.has('floors') ? new Map() : g.floors,
     // Each kind with its category (structure with the walls, stairs and guardrails with the floors).
     kinds: filterKinds(g.kinds, (k) => k.category === null || !hidden.has(k.category)),
   };

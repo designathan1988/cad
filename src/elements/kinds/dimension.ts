@@ -130,7 +130,7 @@ export const dimensionKind: ElementKind<Dimension, DimensionSolid> = {
     out.text('A-ANNO-DIMS', { x: (d.la.x + d.lb.x) / 2 + nx * DXF_H, y: (d.la.y + d.lb.y) / 2 + ny * DXF_H }, DXF_H, num(d.length), angle);
   },
   // What each measures now: null when an end's element is gone.
-  fields: (items, dispatch) =>
+  fields: (items, { dispatch }) =>
     throughElement(
       dimensionFields(
         items.map((s) => s.dim),

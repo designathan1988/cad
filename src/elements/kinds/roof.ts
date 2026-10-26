@@ -84,5 +84,5 @@ export const roofKind: ElementKind<Roof, RoofSolid> = {
     out.polyline('A-ROOF', s.outline, true);
     if (s.faces.length > 1) for (const f of s.faces) out.polyline('A-ROOF', f.polygon, true);
   },
-  fields: (items, dispatch) => roofFields(items, { updateRoofs: (ids, patch) => dispatch(updateRoofs(ids, patch)) }),
+  fields: (items, { dispatch }) => roofFields(items, { updateRoofs: (ids, patch) => dispatch(updateRoofs(ids, patch)) }),
 };

@@ -54,7 +54,10 @@ export function roomFields(rooms: readonly RoomSolid[], act: RoomFieldActions): 
   ];
 }
 
-export function floorFields(floors: readonly FloorSolid[], roomName: (id: RoomId) => string, act: RoomFieldActions): Field<FloorSolid>[] {
+/** A floor's own actions (a room's panel has them too). */
+export type FloorFieldActions = Pick<RoomFieldActions, 'updateFloor' | 'startFloorHole' | 'clearFloorHoles'>;
+
+export function floorFields(floors: readonly FloorSolid[], roomName: (id: RoomId) => string, act: FloorFieldActions): Field<FloorSolid>[] {
   const ids = floors.map((f) => f.floor.id);
   return [
     { id: 'thickness', label: 'floor.thickness', kind: 'number', min: 0.01, get: (f) => f.floor.thickness, set: (v) => act.updateFloor(ids, { thickness: v }) },

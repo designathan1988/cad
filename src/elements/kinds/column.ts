@@ -72,5 +72,5 @@ export const columnKind: ElementKind<Column, ColumnSolid> = {
   },
   dxfLayers: [{ name: 'S-COLS', colour: 7 }],
   dxf: (s, out) => out.polyline('S-COLS', s.outline, true),
-  fields: (items, dispatch) => throughElement(columnFields(items.map((s) => s.column), { updateColumns: (ids, patch) => dispatch(updateColumns(ids, patch)) }), (s: ColumnSolid) => s.column),
+  fields: (items, { dispatch }) => throughElement(columnFields(items.map((s) => s.column), { updateColumns: (ids, patch) => dispatch(updateColumns(ids, patch)) }), (s: ColumnSolid) => s.column),
 };

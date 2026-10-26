@@ -2,7 +2,6 @@
 // renders only when something changed. World (x, y, height) maps to three.js (x, height, −y).
 // Each convex piece is a prism; pieces are disjoint by construction, so no 3D boolean exists.
 
-import { riseAt } from '../elements/room/derive';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Point2 } from '../core/vector';
@@ -12,7 +11,7 @@ import type { WallId } from '../elements/wall/schema';
 import { LAYER_TOKEN } from '../ui/swatch';
 import { blockPaint, wallMeshKey } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
-import { prism, shownPrism, slabGeometry, toThree } from './prisms';
+import { prism, shownPrism, toThree } from './prisms';
 import { eachSolid } from '../elements/registry';
 import type { KindSolid } from '../elements/contract';
 import { featureEdges } from '../elements/wall/geometry/edges';
@@ -262,7 +261,7 @@ export class Scene3D {
     const src = this.lastSync;
     const levels = src ? [...new Set([...src.g.solids.values()].map((s) => s.wall.levelId))] : [];
     // The walls and floors by identity (a new derived geometry is a change), the box and lifts by value.
-    const key: unknown[] = [src?.g.solids, src?.g.floors, JSON.stringify([box, this.sectionLine, levels.map((l) => src!.lift(l))])];
+    const key: unknown[] = [src?.g.solids, src?.g.kinds, JSON.stringify([box, this.sectionLine, levels.map((l) => src!.lift(l))])];
     if (key.every((k, i) => k === this.boxCapsKey[i])) return;
     this.boxCapsKey = key;
     for (const c of [...this.boxCapGroup.children]) {
@@ -275,9 +274,11 @@ export class Scene3D {
       const up = src.lift(s.wall.levelId);
       for (const b of s.blocks) prisms.push({ polygon: b.polygon, bottom: b.bottom + up, top: b.top + up });
     }
-    for (const f of src.g.floors.values()) {
-      const up = src.lift(f.floor.levelId);
-      if (f.outline.length >= 3) prisms.push({ polygon: f.outline, bottom: f.bottom + up, top: f.top + up });
+    // The registry's kinds that a cut fills (a floor: contract.ts, caps).
+    for (const x of eachSolid(src.g.kinds)) {
+      if (!x.kind.caps || x.levelId === null) continue;
+      const up = src.lift(x.levelId);
+      for (const c of x.kind.caps(x.solid)) prisms.push({ polygon: c.polygon, bottom: c.bottom + up, top: c.top + up });
     }
     // A hair inside the box, so the face it lies on does not clip it away.
     const e = 0.0005;
@@ -534,33 +535,6 @@ export class Scene3D {
       this.walls.set(id, { group, key });
       place(id, levelId);
     }
-    for (const f of g.floors.values()) {
-      if (f.outline.length < 3) continue;
-      const id = f.floor.id;
-      seen.add(id);
-      const state = selected.has(id) ? 's' : 'n';
-      let fkey = this.shapeKeys.get(f);
-      if (fkey === undefined) this.shapeKeys.set(f, (fkey = JSON.stringify([f.outline, f.holes, f.rise, f.floor.kind, f.bottom, f.top])));
-      const key = state + fkey;
-      const old = this.walls.get(id);
-      if (old?.key === key) {
-        place(id, f.floor.levelId);
-        continue;
-      }
-      if (old) this.drop(old.group);
-      const group = new THREE.Group();
-      const geo = slabGeometry(f.outline, f.holes, f.top - f.bottom, f.rise ? (p) => riseAt(f, p) : undefined);
-      // The shape lies in x–y; turned −90° about x it lies in three.js x–(−z), extruded upward.
-      const mesh = new THREE.Mesh(geo, state === 's' ? this.materials.sideSel : this.materials.floor);
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.position.y = f.bottom;
-      mesh.add(this.outline(geo));
-      group.add(mesh);
-      group.userData.wallId = id;
-      this.scene.add(group);
-      this.walls.set(id, { group, key });
-      place(id, f.floor.levelId);
-    }
     // The registry's kinds (elements/registry.ts): each gives its solid; rebuilt only when it changed.
     for (const x of eachSolid(g.kinds)) {
       // Texts and axes are drawn in plan only (no solid, no level of their own for an axis).
@@ -665,13 +639,14 @@ export class Scene3D {
   /** The ground centred under the walls and floors shown, GROUND_SPAN times as wide, just under the lowest of them. */
   private placeGround(g: DerivedGeometry): void {
     const solids = [...g.solids.values()];
-    const floors = [...g.floors.values()];
-    const points = [...solids.flatMap((s) => [s.wall.start, s.wall.end]), ...floors.flatMap((f) => f.outline)];
+    // And the registry's with a height (a floor: contract.ts, span).
+    const spanned = [...eachSolid(g.kinds)].flatMap((x) => (x.kind.span ? [{ outline: x.kind.outlines(x.solid).flat(), bottom: x.kind.span(x.solid).bottom }] : []));
+    const points = [...solids.flatMap((s) => [s.wall.start, s.wall.end]), ...spanned.flatMap((f) => f.outline)];
     const xs = points.map((p) => p.x);
     const ys = points.map((p) => p.y);
     const [x0, x1, y0, y1] = points.length > 0 ? [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)] : [0, 0, 0, 0];
     const size = Math.max(GROUND_MIN, GROUND_SPAN * Math.max(x1 - x0, y1 - y0));
-    const lowest = Math.min(0, ...solids.map((s) => s.bottom), ...floors.map((f) => f.bottom));
+    const lowest = Math.min(0, ...solids.map((s) => s.bottom), ...spanned.map((f) => f.bottom));
     this.ground.scale.set(size, size, 1);
     this.ground.position.set((x0 + x1) / 2, lowest - 0.002, -(y0 + y1) / 2);
   }

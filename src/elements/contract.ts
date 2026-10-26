@@ -6,6 +6,7 @@
 import type * as THREE from 'three';
 import type { Doc } from '../app/document';
 import type { Category, DerivedGeometry } from '../app/geometry';
+import type { UprightPrism } from '../app/section-box';
 import type { Command } from '../core/store';
 import type { Point2 } from '../core/vector';
 import type { Transform } from '../tools/transform';
@@ -14,7 +15,7 @@ import type { MessageKey } from '../ui/i18n';
 import type { IconName } from '../ui/icons';
 
 /** The document's lists the registry's kinds keep. */
-export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'notes' | 'grids' | 'guides' | 'dimensions';
+export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors';
 
 /** The derived geometry before the registry's kinds: what a kind held by walls and doors reads. */
 export type BaseGeometry = Omit<DerivedGeometry, 'kinds'>;
@@ -71,6 +72,14 @@ export interface TransformContext {
   readonly geometry: DerivedGeometry;
 }
 
+/** What a kind's fields in the panel can do: change the document, read it, or start a tool on one. */
+export interface KindFieldContext {
+  readonly dispatch: (c: Command<Doc>) => void;
+  readonly doc: Doc;
+  /** Draw a hole through a floor (the floor tool on it); not offered where there is no tool. */
+  readonly startFloorHole?: (id: string) => void;
+}
+
 /** Where a kind's text sits on screen, and its lines: what the room tags keep off. */
 export interface KeepOut {
   readonly boxes: readonly { readonly x: number; readonly y: number; readonly w: number; readonly h: number }[];
@@ -85,9 +94,9 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   readonly category: Category | null;
   /** On every level (it has no level of its own): a grid axis. Not pasted onto another level. */
   readonly everyLevel?: true;
-  /** Drawn in plan over the walls, the doors and the other kinds (a guide, a text), or over the room
-   * tags too (`top`: a dimension, whose value under a room's name was lost). */
-  readonly layer?: 'over' | 'top';
+  /** Drawn in plan under the walls (a floor), over the walls, the doors and the other kinds (a guide, a
+   * text), or over the room tags too (`top`: a dimension, whose value under a room's name was lost). */
+  readonly layer?: 'under' | 'over' | 'top';
   /** A line without ends (a guide): its outline is two points of it; framing counts the first only,
    * and only a crossing window takes it. */
   readonly endless?: true;
@@ -115,6 +124,16 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   readonly transformed?: (e: E, c: TransformContext) => E | null;
   /** On screen, what the room tags keep off. */
   readonly keepOut?: (p: PlanPaint, s: S) => KeepOut | null;
+  /** The element it follows (a room's floor its room): copied with it; deleted, it stands alone (`released`). */
+  readonly follows?: (e: E) => string | null;
+  /** On its own when what it follows is deleted (a room's floor keeps the outline it had). */
+  readonly released?: (e: E, g: DerivedGeometry) => E;
+  /** Its bottom and top (m): framed in 3D, under the ground. */
+  readonly span?: (s: S) => { readonly bottom: number; readonly top: number };
+  /** A surface the 3D pointer aims at (a floor), as at the walls. */
+  readonly surface?: true;
+  /** What a section's or a box's cut fills of it. */
+  readonly caps?: (s: S) => readonly UprightPrism[];
   readonly element: (s: S) => E;
   /** Its outlines in plan at `scale` px a metre (a text's letters keep a size on screen): for a window
    * or crossing selection, framing, and bounds. */
@@ -139,7 +158,7 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   /** Its DXF layers ({name, colour}) and what it writes on them for its level. */
   readonly dxfLayers?: readonly { readonly name: string; readonly colour: number }[];
   readonly dxf?: (s: S, out: DxfOut) => void;
-  readonly fields: (items: readonly S[], dispatch: (c: Command<Doc>) => void) => Field<S>[];
+  readonly fields: (items: readonly S[], c: KindFieldContext) => Field<S>[];
 }
 
 /** A kind of any element: what the registry holds. */

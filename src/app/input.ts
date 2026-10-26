@@ -142,7 +142,8 @@ export function wireInput(app: App): void {
     const levels = new Set([ui.levelId, app.levelBelow()]);
     const onLevel = new Set([
       ...doc.walls.filter((w) => levels.has(w.levelId)).map((w) => w.id),
-      ...doc.floors.filter((f) => levels.has(f.levelId)).map((f) => f.id),
+      // The registry's surfaces (a floor) on those levels.
+      ...[...eachSolid(app.geometry.kinds)].filter((x) => x.kind.surface && x.levelId !== null && levels.has(x.levelId)).map((x) => x.id),
     ]);
     const walls = new Set(doc.walls.filter((w) => levels.has(w.levelId)).map((w) => w.id));
     for (const o of doc.openings) if (walls.has(o.wallId)) onLevel.add(o.id);
@@ -263,7 +264,6 @@ export function wireInput(app: App): void {
       // the walls on it: a click on a wall over an axis takes the wall.
       ...kindHits('afterWalls'),
       ...[...g.rooms.values()].filter((r) => r.enclosed && insideRing(r.outline, p)).map((r) => r.room.id),
-      ...[...g.floors.values()].filter((f) => f.outline.length >= 3 && insideRing(f.outline, p)).map((f) => f.floor.id),
       // Last, what lies over everything (a roof: its overhang, outside the walls, is where it is taken first).
       ...kindHits('last'),
     ].filter((id): id is string => id !== null);

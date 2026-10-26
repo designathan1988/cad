@@ -45,7 +45,7 @@ import { snapLabel, type Snap } from '../tools/snap';
 import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, rectangle, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, dragTransform, hull } from './select-drag';
-import { anyKinds, appendKinds, filterKinds, hasSolid, KINDS, kindLists, kindOfId, kindOfKey, levelOfSolid, moveKinds, solidsOf } from '../elements/registry';
+import { anyKinds, appendKinds, eachSolid, filterKinds, hasSolid, KINDS, kindLists, kindOfId, kindOfKey, levelOfSolid, listOf, moveKinds, solidsOf } from '../elements/registry';
 import { gridKind } from '../elements/kinds/grid';
 import { guideKind } from '../elements/kinds/guide';
 import { addRailing } from '../elements/railing/commands';
@@ -67,7 +67,7 @@ import { addGrid } from '../elements/grid/commands';
 import { GRID_PREFIX, type Grid, isGridId, nextGridName } from '../elements/grid/schema';
 import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState, dimensionTransition } from '../tools/dimension-tool';
 import { LEVEL_MARK_HEIGHT, NOTE_HEIGHT, NOTE_PREFIX, isNoteId } from '../elements/note/schema';
-import { geometryOf, keepRooms, moveFloors, moveRooms } from './carry';
+import { geometryOf, keepRooms, moveRooms } from './carry';
 import { keepOpenings } from './keep-openings';
 import { stepSelection } from './keyboard-select';
 import { nudge } from '../tools/nudge';
@@ -113,7 +113,7 @@ import { doorFlips, type Handles, handlesFor, ROTATE_OFFSET } from './handles';
 import { placeBarY } from '../ui/bar-place';
 import { newId } from '../core/id';
 import { addFloor, addFloorHole, addRoom, clearFloorHoles, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
-import { insideRing, signedArea, type FloorSolid, type RoomSolid } from '../elements/room/derive';
+import { insideRing, signedArea, type RoomSolid } from '../elements/room/derive';
 import { FLOOR_DEFAULTS } from '../elements/room/schema';
 
 export interface UiState {
@@ -396,7 +396,7 @@ export class App {
     // Levels hidden now leave the selection, as a hidden category does.
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      if (!shown.solids.has(id) && !hasSolid(shown.kinds, id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
+      if (!shown.solids.has(id) && !hasSolid(shown.kinds, id) && !shown.openings.has(id) && !shown.rooms.has(id)) this.ui.selection.delete(id);
     }
     this.refresh();
   }
@@ -424,8 +424,7 @@ export class App {
             ...doc,
             walls: d.walls,
             rooms: moveRooms(doc.rooms, d.rooms, dragTransform(d)),
-            floors: d.kind === 'move' ? moveFloors(doc.floors, d.floors, dragTransform(d)) : doc.floors,
-            ...(d.kind === 'move' ? kindLists(moveKinds(doc, d.kinds, d.delta)) : {}),
+                ...(d.kind === 'move' ? kindLists(moveKinds(doc, d.kinds, d.delta)) : {}),
           }
         : d?.kind === 'slide'
           ? { ...doc, openings: d.openings }
@@ -490,10 +489,6 @@ export class App {
 
   selectedRooms(): RoomSolid[] {
     return [...this.ui.selection].flatMap((id) => this.geometry.rooms.get(id) ?? []);
-  }
-
-  selectedFloors(): FloorSolid[] {
-    return [...this.ui.selection].flatMap((id) => this.geometry.floors.get(id) ?? []);
   }
 
   /** The smallest space the level's walls close in around p, when no room is in it: where the room tool would make one. */
@@ -1882,7 +1877,7 @@ export class App {
   stepSelection(dir: 1 | -1): void {
     this.setTool('select');
     const g = this.visibleGeometry();
-    const order = [...g.solids.keys(), ...g.openings.keys(), ...g.rooms.keys(), ...g.floors.keys()];
+    const order = [...g.solids.keys(), ...g.openings.keys(), ...g.rooms.keys(), ...[...eachSolid(g.kinds)].map((x) => x.id)];
     const next = stepSelection(order, [...this.ui.selection], dir);
     if (!next) return;
     this.ui.selection = new Set([next]);
@@ -2007,7 +2002,6 @@ export class App {
       openings: r.doc.openings.slice(c.doc.openings.length),
       openingGroups: r.doc.openingGroups.slice(c.doc.openingGroups.length),
       rooms: r.doc.rooms.slice(c.doc.rooms.length),
-      floors: r.doc.floors.slice(c.doc.floors.length),
     };
     const level = levelOf(this.store.get(), this.ui.levelId);
     // The rooms renumbered on from the level's rooms as they are now, not as they were at the copy.
@@ -2022,7 +2016,6 @@ export class App {
         openings: [...d.openings, ...added.openings],
         openingGroups: [...d.openingGroups, ...added.openingGroups],
         rooms: [...d.rooms, ...rooms],
-        floors: [...d.floors, ...added.floors],
       }),
     });
     this.ui.selection = new Set(r.selection);
@@ -2287,7 +2280,7 @@ export class App {
    */
   async exportGlb(): Promise<void> {
     const doc = this.store.get();
-    if (doc.walls.length === 0 && doc.floors.length === 0 && !anyKinds(doc)) {
+    if (doc.walls.length === 0 && !anyKinds(doc)) {
       this.ui.info = t('export.nothing');
       return this.renderChrome();
     }
@@ -2298,13 +2291,11 @@ export class App {
         wallTag: (n) => t('wall.tag', { n }),
         door: (n) => t('export.door', { n }),
         window: (n) => t('export.window', { n }),
-        floor: (n) => t('export.floor', { n }),
         kindName: (key, n) => t(kindOfKey(key).exportName, { n }),
         kindMaterial: (key) => t(kindOfKey(key).one),
         material: materialName,
         glass: t('export.glass'),
         leaf: t('export.leaf'),
-        floorMaterial: t('floor.title'),
       });
       const bytes = await toGlb(scene);
       scene.traverse((o) => (o as { geometry?: { dispose(): void } }).geometry?.dispose());
@@ -2420,7 +2411,7 @@ export class App {
   private selectionKinds(): number {
     const g = this.geometry;
     const ids = [...this.ui.selection];
-    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
+    return [g.solids, g.openings, g.rooms].filter((m) => ids.some((id) => m.has(id))).length + new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
   }
 
   selectedWalls(): DocWall[] {
@@ -2485,7 +2476,7 @@ export class App {
       doc.walls.find((w) => w.id === id)?.levelId ??
       doc.walls.find((w) => w.id === doc.openings.find((o) => o.id === id)?.wallId)?.levelId ??
       doc.rooms.find((r) => r.id === id)?.levelId ??
-      doc.floors.find((x) => x.id === id)?.levelId;
+      KINDS.flatMap((k) => listOf(doc, k)).find((x) => x.id === id)?.levelId;
     const level = ids.map(levelOfId).find((l) => l !== undefined);
     if (level && level !== this.ui.levelId) this.setLevel(level);
     this.setTool('select');
@@ -2752,7 +2743,6 @@ export class App {
         openings: this.selectedWalls().length === 0 ? this.selectedOpenings() : [],
         rooms: this.selectedRooms(),
         levelRooms: [...this.geometry.rooms.values()].filter((r) => r.room.levelId === ui.levelId),
-        floors: this.selectedFloors(),
         placed: this.geometry.openings,
         openingWarnings: this.geometry.openingWarnings,
         openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing] } : null,
@@ -3034,7 +3024,6 @@ export class App {
         solids,
         openings: new Map([...g.openings].filter(([, o]) => solids.has(o.opening.wallId))),
         rooms: new Map([...g.rooms].filter(([, r]) => shown.has(r.room.levelId))),
-        floors: new Map([...g.floors].filter(([, f]) => shown.has(f.floor.levelId))),
         kinds: filterKinds(g.kinds, (k, x) => {
           const l = levelOfSolid(k, x);
           return l === null || shown.has(l);
@@ -3045,13 +3034,12 @@ export class App {
     const levelWalls = new Set(this.store.get().walls.filter((w) => w.levelId === this.ui.levelId).map((w) => w.id));
     const openings = new Map([...g.openings].filter(([, o]) => levelWalls.has(o.opening.wallId)));
     const rooms = new Map([...g.rooms].filter(([, r]) => r.room.levelId === this.ui.levelId));
-    const floors = new Map([...g.floors].filter(([, f]) => f.floor.levelId === this.ui.levelId));
     // An axis (on every level) on each; a text, like the rest, on its own.
     const kinds = filterKinds(g.kinds, (k, x) => {
       const l = levelOfSolid(k, x);
       return l === null || l === this.ui.levelId;
     });
-    return { ...g, solids, openings, rooms, floors, kinds };
+    return { ...g, solids, openings, rooms, kinds };
   }
 
   toggleBrowser(open = !this.ui.browserOpen): void {
@@ -3078,7 +3066,7 @@ export class App {
         if (!hasSolid(shown.kinds, id)) this.ui.selection.delete(id);
         continue;
       }
-      if (!shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) {
+      if (!shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id)) {
         this.ui.selection.delete(id);
       }
     }
@@ -3096,7 +3084,7 @@ export class App {
     const temp = this.ui.temp;
     const hidden = this.ui.hidden;
     const category = (id: string): Category | null =>
-      doc.walls.some((w) => w.id === id) ? 'walls' : doc.openings.some((o) => o.id === id) ? 'openings' : doc.rooms.some((r) => r.id === id) ? 'rooms' : doc.floors.some((f) => f.id === id) ? 'floors' : doc.guides.some((g) => g.id === id) ? 'guides' : null;
+      doc.walls.some((w) => w.id === id) ? 'walls' : doc.openings.some((o) => o.id === id) ? 'openings' : doc.rooms.some((r) => r.id === id) ? 'rooms' : (kindOfId(id)?.category ?? null);
     const ids = similarTo(doc, this.ui.selection, this.ui.levelId).filter((id) => {
       const c = category(id);
       return (c === null || !hidden.has(c)) && (!temp || shownFor(temp, id));
@@ -3529,8 +3517,14 @@ export class App {
           const z = (this.store.get().levels.find((l) => l.id === room.room.levelId)?.elevation ?? 0) + this.lift(room.room.levelId);
           for (const v of room.outline) project(v, z);
         }
-        const floor = this.geometry.floors.get(id);
-        if (floor) for (const v of floor.outline) [floor.bottom, floor.top].forEach((z) => project(v, z + this.lift(floor.floor.levelId)));
+        // The registry's with a height (a floor): their outlines at both faces.
+        const k = kindOfId(id);
+        const s = k?.span ? this.geometry.kinds.get(k.key)?.get(id) : undefined;
+        if (k?.span && s !== undefined) {
+          const { bottom, top } = k.span(s);
+          const up = this.lift(levelOfSolid(k, s) ?? this.ui.levelId);
+          for (const v of k.outlines(s).flat()) [bottom, top].forEach((z) => project(v, z + up));
+        }
         const solid = this.geometry.solids.get(id);
         if (!solid) continue;
         const up = this.lift(solid.wall.levelId);

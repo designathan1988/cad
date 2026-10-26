@@ -75,5 +75,5 @@ export const beamKind: ElementKind<Beam, BeamSolid> = {
   },
   dxfLayers: [{ name: 'S-BEAM', colour: 8 }],
   dxf: (s, out) => out.polyline('S-BEAM', s.outline, true),
-  fields: (items, dispatch) => throughElement(beamFields(items.map((s) => s.beam), { updateBeams: (ids, patch) => dispatch(updateBeams(ids, patch)) }), (s: BeamSolid) => s.beam),
+  fields: (items, { dispatch }) => throughElement(beamFields(items.map((s) => s.beam), { updateBeams: (ids, patch) => dispatch(updateBeams(ids, patch)) }), (s: BeamSolid) => s.beam),
 };

@@ -13,7 +13,7 @@ import type { WallEnd, WallId } from '../elements/wall/schema';
 import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../tools/edit';
 import { bulgeFromMiddle, straightNear } from '../tools/arc-edit';
 import { handleAt } from './handles';
-import { moveFloors, moveRooms, roomsGoingWith } from './carry';
+import { moveRooms, roomsGoingWith } from './carry';
 import { GRID_STEP, type Snap } from '../tools/snap';
 import type { App } from './app';
 import type { DocWall } from './document';
@@ -29,7 +29,7 @@ import { aimAlong, aimAt } from './opening-ui';
 
 /** `rooms`: the rooms going with a move or a turn (carry.ts), found once when the drag starts. */
 export type Drag =
-  /** `ids`: the walls moved; `rooms`: the points moved (rooms going with them, and the selected ones); `floors`: the outlines. */
+  /** `ids`: the walls moved; `rooms`: the points moved (rooms going with them, and the selected ones). */
   | {
       readonly kind: 'move';
       readonly origin: Point2;
@@ -37,7 +37,6 @@ export type Drag =
       readonly ids: readonly string[];
       readonly walls: readonly DocWall[];
       readonly rooms: ReadonlySet<string>;
-      readonly floors: ReadonlySet<string>;
       /** The registry's elements (elements/registry.ts) going: selected (texts, axes), or on a selected axis.
        * The walls on a selected axis are among `ids`. */
       readonly kinds: ReadonlySet<string>;
@@ -133,7 +132,6 @@ export function selectGestures(app: App): SelectGestures {
         const kinds = kindIds(doc, [...ui.selection, ...carried]);
         const going = () => roomsGoingWith(doc, app.geometry, ui.selection);
         const rooms = new Set([...going(), ...doc.rooms.filter((r) => ui.selection.has(r.id)).map((r) => r.id)]);
-        const floors = new Set(doc.floors.filter((f) => ui.selection.has(f.id) && f.source.kind === 'outline').map((f) => f.id));
         const only = ui.selection.size === 1 ? [...ui.selection][0]! : null;
         const sliding = only !== null ? doc.openings.find((o) => o.id === only) : undefined;
         const placed = sliding ? app.geometry.openings.get(sliding.id) : undefined;
@@ -145,8 +143,8 @@ export function selectGestures(app: App): SelectGestures {
           const f = placed.frame;
           const centre = add(f.start, scale(f.dir, (placed.end - placed.start) / 2));
           ui.drag = { kind: 'slide', id: sliding.id, grab: dot(sub(pending.at, centre), f.dir), walls: doc.walls, openings: doc.openings };
-        } else if (pending.kind === 'wall' && moving.length + rooms.size + floors.size + kinds.size > 0) {
-          ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, floors, kinds };
+        } else if (pending.kind === 'wall' && moving.length + rooms.size + kinds.size > 0) {
+          ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, kinds };
         }
         else if (pending.kind === 'grip') ui.drag = { kind: 'grip', id: pending.id, end: pending.end, walls: doc.walls };
         else if (pending.kind === 'stretch') {
@@ -241,14 +239,13 @@ export function selectGestures(app: App): SelectGestures {
         // The rooms whose walls all went along go too (carry.ts): one undo step for both.
         const before = app.store.get();
         const rooms = moveRooms(before.rooms, d.rooms, dragTransform(d));
-        const floors = d.kind === 'move' ? moveFloors(before.floors, d.floors, dragTransform(d)) : before.floors;
         const kinds = d.kind === 'move' ? moveKinds(before, d.kinds, d.delta) : before;
         const walls = setWalls(d.walls);
         // One undo step for the walls and what went with them; a room, a floor, a guide or a note alone is a move too.
-        const moved = rooms.some((r, i) => r !== before.rooms[i]) || floors.some((f, i) => f !== before.floors[i]) || kinds !== before;
+        const moved = rooms.some((r, i) => r !== before.rooms[i]) || kinds !== before;
         app.store.dispatch({ label: d.kind === 'move' ? 'cmd.move' : walls.label, apply: (x) => {
           const next = walls.apply(x);
-          return next === x && !moved ? x : { ...next, ...kindLists(kinds), rooms, floors };
+          return next === x && !moved ? x : { ...next, ...kindLists(kinds), rooms };
         } });
       } else if (d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'bulge') app.store.dispatch(setWalls(d.walls));
       else if (d?.kind === 'slide') {
@@ -326,14 +323,17 @@ function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): voi
     ...[...g.rooms.values()]
       .filter((r) => r.enclosed)
       .map((r) => ({ id: r.room.id, outlines: [screen(r.outline, elevation(r.room.levelId), elevation(r.room.levelId), r.room.levelId)] })),
-    ...[...g.floors.values()].map((f) => ({ id: f.floor.id, outlines: [screen(f.outline, f.bottom, f.top, f.floor.levelId)] })),
     // The registry's kinds by their outlines (a text's box as drawn at this scale, an axis's line).
     // Texts, axes and guides are in plan only: not in a window drawn in 3D. A guide has no ends: drawn
     // far past the window, only a crossing selection, which it runs through, takes it.
     ...[...eachSolid(app.visibleGeometry().kinds)]
       .filter((x) => app.ui.view === 'plan' || x.kind.solid)
       .map((x) => {
-        const outlines = x.kind.outlines(x.solid, app.plan.scale).map((o) => o.map((q) => app.plan.toScreen(q)));
+        // One with a height (a floor) as its prism in 3D, at its level's lift.
+        const span = x.kind.span?.(x.solid);
+        const outlines = x.kind
+          .outlines(x.solid, app.plan.scale)
+          .map((o) => (span && x.levelId !== null ? screen(o, span.bottom, span.top, x.levelId) : o.map((q) => app.plan.toScreen(q))));
         if (!x.kind.endless) return { id: x.id, outlines };
         const [a, b] = outlines[0]!;
         const u = normalize(sub(b!, a!));

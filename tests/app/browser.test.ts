@@ -1,5 +1,6 @@
 // The project browser's data: categories that can be hidden, and how many walls use each type.
 
+import { floorsOf } from '../../src/elements/registry';
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry, hideCategories } from '../../src/app/geometry';
@@ -31,9 +32,9 @@ describe('project browser', () => {
     const noRooms = hideCategories(g, new Set(['rooms']));
     expect(noRooms.rooms.size).toBe(0);
     expect(noRooms.solids).toBe(g.solids);
-    expect(noRooms.floors).toBe(g.floors);
+    expect(floorsOf(noRooms)).toBe(floorsOf(g));
     const nothing = hideCategories(g, new Set(['walls', 'openings', 'rooms', 'floors']));
-    expect([nothing.solids.size, nothing.openings.size, nothing.rooms.size, nothing.floors.size]).toEqual([0, 0, 0, 0]);
+    expect([nothing.solids.size, nothing.openings.size, nothing.rooms.size, floorsOf(nothing).size]).toEqual([0, 0, 0, 0]);
     expect(hideCategories(g, new Set())).toBe(g);
   });
 

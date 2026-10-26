@@ -5,7 +5,6 @@
 // layers (plaster, brick), coloured by the kind of layer.
 // Metres, y up, as glTF wants (three.js's axes, prisms.ts).
 
-import { riseAt } from '../elements/room/derive';
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import type { Doc } from '../app/document';
@@ -14,7 +13,7 @@ import type { DerivedGeometry } from '../app/geometry';
 import { add, scale } from '../core/vector';
 import { visibleFaces } from '../elements/wall/geometry/faces';
 import type { LayerFunction } from '../elements/wall/schema';
-import { prism, shownPrism, slabGeometry } from './prisms';
+import { prism, shownPrism } from './prisms';
 import { eachSolid } from '../elements/registry';
 import type { KindKey } from '../elements/contract';
 
@@ -24,7 +23,6 @@ export interface ExportNaming {
   readonly wallTag: (n: number) => string;
   readonly door: (n: number) => string;
   readonly window: (n: number) => string;
-  readonly floor: (n: number) => string;
   /** A registry kind's node (elements/registry.ts), numbered within its kind, and its material. */
   readonly kindName: (key: KindKey, n: number) => string;
   readonly kindMaterial: (key: KindKey) => string;
@@ -32,7 +30,6 @@ export interface ExportNaming {
   readonly material: (materialId: string) => string;
   readonly glass: string;
   readonly leaf: string;
-  readonly floorMaterial: string;
 }
 
 /** Plain colours for the materials, as a viewer shows them lit: not the interface's, which follow its theme. */
@@ -127,20 +124,6 @@ export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): 
     levelGroup(host.wall.levelId).add(mesh);
   }
 
-  // Floors: extruded down from their top, as the 3D shows them.
-  let floors = 0;
-  for (const fl of g.floors.values()) {
-    if (fl.outline.length < 3) continue;
-    const geo = slabGeometry(fl.outline, fl.holes, fl.top - fl.bottom, fl.rise ? (p) => riseAt(fl, p) : undefined);
-    // The shape lies in x–y; turned −90° about x it lies in three.js x–(−z), extruded upward. Turned in
-    // the geometry itself, as every other mesh here: no node carries a transform to get wrong.
-    geo.rotateX(-Math.PI / 2);
-    geo.translate(0, fl.bottom, 0);
-    const mesh = new THREE.Mesh(geo, material('floor', naming.floorMaterial));
-    mesh.name = naming.floor(++floors);
-    mesh.userData = { cad2Id: fl.floor.id, kind: 'floor', level: levelName(fl.floor.levelId), thickness: fl.top - fl.bottom };
-    levelGroup(fl.floor.levelId).add(mesh);
-  }
   // The registry's kinds (elements/registry.ts): each its solid, named and numbered as the interface
   // calls it, its own data on the node for a renderer or a viewer to read.
   const counts = new Map<string, number>();

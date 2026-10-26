@@ -65,7 +65,7 @@ export const gridKind: ElementKind<Grid, Grid> = {
       out.text('S-GRID', c, BUBBLE_R, g.name);
     }
   },
-  fields: (items, dispatch) => gridFields(items, { renameGrid: (id, name) => dispatch(renameGrid(id, name)) }),
+  fields: (items, { dispatch }) => gridFields(items, { renameGrid: (id, name) => dispatch(renameGrid(id, name)) }),
 };
 
 /** An axis in plan: dashed and dotted, a bubble with its name past each end. Also the one being drawn. */
