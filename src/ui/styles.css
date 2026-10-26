@@ -984,6 +984,17 @@ button.project-name:hover {
   .foot .keys {
     display: none;
   }
+  /* What to do now in up to two lines: at 768 px the select tool's tip was cut at "por ja…". */
+  :root {
+    --foot-h: 48px;
+  }
+  .foot .instr {
+    white-space: normal;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
 }
 @media (max-width: 900px) {
   #app {
@@ -1016,6 +1027,11 @@ button.project-name:hover {
 @media (max-width: 600px) {
   :root {
     --top-h: 84px;
+  }
+  /* The 3D view's controls at the left: centred, at 390 px, the view cube covered Cut. */
+  .view-bar {
+    left: var(--sp-3);
+    transform: none;
   }
   .top {
     flex-wrap: wrap;
