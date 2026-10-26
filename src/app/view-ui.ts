@@ -150,6 +150,8 @@ export function keepSelectionInView(app: App): boolean {
   app.seenIds = ids;
   app.seenShape = shape;
   if (app.ui.selection.size === 0) return false;
+  // Never under the pointer's hand: a drag that brought the panel in slid the drawing mid-gesture.
+  if (app.ui.drag || app.ui.handleDrag) return false;
   if (!resized && !reshaped && covered.right === 0 && covered.bottom === 0 && !covered.left) return false;
   const box = boundsOf(app.geometry, app.ui.selection);
   if (!box) return false;
@@ -164,7 +166,9 @@ export function keepSelectionInView(app: App): boolean {
     const turn = app.handles().rotate?.at.y;
     const ys = [a.y, Math.max(b.y + ROTATE_OFFSET, turn ?? 0) + 12];
     const TEXT = 12;
-    for (const d of app.currentDims()) {
+    // The dimensions count under a phone's sheet (the tester's P07); beside a drawer only the element
+    // itself: its dimensions reaching under the drawer moved the drawing for something already seen.
+    if (covered.bottom > 0) for (const d of app.currentDims()) {
       const line = app.plan.dimLine(d);
       for (const p of [line.a, line.b]) xs.push(p.x - TEXT, p.x + TEXT), ys.push(p.y - TEXT, p.y + TEXT);
     }

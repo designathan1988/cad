@@ -35,6 +35,10 @@ export const BUILT_IN_MATERIALS: readonly Material[] = [
   { id: 'mdfWhite', name: '', color: '#eeece6', roughness: 0.6, metalness: 0, cut: 'solid' },
   { id: 'metal', name: '', color: '#8e949b', roughness: 0.35, metalness: 0.8, cut: 'solid' },
   { id: 'glass', name: '', color: '#bfd9e8', roughness: 0.05, metalness: 0, cut: 'none' },
+  // What floors are built of (room/schema.ts FLOOR_BUILDUPS).
+  { id: 'tile', name: '', color: '#d9d4cb', roughness: 0.3, metalness: 0, cut: 'solid' },
+  { id: 'screed', name: '', color: '#b8b3aa', roughness: 0.9, metalness: 0, cut: 'concrete' },
+  { id: 'gravel', name: '', color: '#8f8a80', roughness: 1, metalness: 0, cut: 'concrete' },
 ];
 
 /** A material for a name an older file used and the built-in ones do not have: grey, plain. */

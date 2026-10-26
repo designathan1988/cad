@@ -15,6 +15,7 @@ export type ContextId =
   | 'flipWall'
   | 'editType'
   | 'flipHinge'
+  | 'toggleOpen'
   | 'flipSwing'
   | 'centerOpening'
   | 'addFloor'
@@ -58,7 +59,8 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: str
   if (doc.walls.some((w) => w.id === id)) return [...modify, 'flipWall', 'editType', 'selectSimilar', 'properties', 'delete'];
   const opening = doc.openings.find((o) => o.id === id);
   if (opening)
-    return opening.kind === 'door' ? [...modify, 'flipHinge', 'flipSwing', 'selectSimilar', 'properties', 'delete'] : [...modify, 'centerOpening', 'selectSimilar', ...common];
+    // Open or close it (shown in 3D), in the place of select similar (a door) or of framing it (a window), which F does.
+    return opening.kind === 'door' ? [...modify, 'toggleOpen', 'flipHinge', 'flipSwing', 'properties', 'delete'] : [...modify, 'toggleOpen', 'centerOpening', 'selectSimilar', 'properties', 'delete'];
   if (doc.rooms.some((r) => r.id === id)) {
     const floored = doc.floors.some((f) => f.kind !== 'ceiling' && f.source.kind === 'room' && f.source.roomId === id);
     const ceiled = doc.floors.some((f) => f.kind === 'ceiling' && f.source.kind === 'room' && f.source.roomId === id);

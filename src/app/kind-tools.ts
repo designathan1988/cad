@@ -18,6 +18,8 @@ import { addRoof } from '../elements/roof/commands';
 import { isConvex } from '../elements/roof/geometry';
 import { edgesFor, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, ROOF_PREFIX, ROOF_THICKNESS, type RoofKind } from '../elements/roof/schema';
 import { addBeam } from '../elements/beam/commands';
+import { addSeparator } from '../elements/separator/commands';
+import { SEPARATOR_PREFIX } from '../elements/separator/schema';
 import { BEAM_DEPTH, BEAM_PREFIX, BEAM_WIDTH } from '../elements/beam/schema';
 import { addColumn } from '../elements/column/commands';
 import { COLUMN_PREFIX, COLUMN_SIZE } from '../elements/column/schema';
@@ -157,6 +159,20 @@ export function beamClick(app: App, p: Point2): void {
   // On from its end, as walls are drawn in a chain.
   app.ui.beamFrom = p;
   app.ui.info = t('hint.beamMade');
+  app.render();
+}
+
+/** The separator tool: a click starts a line bounding rooms, the next ends it and goes on from there. */
+export function separatorClick(app: App, p: Point2): void {
+  const from = app.ui.beamFrom;
+  if (!from) {
+    app.ui.beamFrom = p;
+    return app.render();
+  }
+  if (distance(from, p) < MIN_WALL_LENGTH) return;
+  app.store.dispatch(addSeparator({ id: newId(SEPARATOR_PREFIX), levelId: app.ui.levelId, start: from, end: p }));
+  app.ui.beamFrom = p;
+  app.ui.info = t('hint.separatorMade');
   app.render();
 }
 

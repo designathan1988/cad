@@ -1,6 +1,8 @@
 // The project document: only what the user decided. Thickness, heights, joins and geometry are
 // always derived from it.
 
+import type { Separator } from '../elements/separator/schema';
+import type { Zone } from '../elements/zone/schema';
 import { LIBRARY } from '../elements/object/library';
 import type { ObjectDefinition, ObjectInstance } from '../elements/object/schema';
 import { DEFAULT_UNITS, type Units } from '../ui/units';
@@ -51,7 +53,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 24;
+  readonly version: 25;
   readonly name: string;
   /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
   readonly units: Units;
@@ -93,6 +95,10 @@ export interface Doc {
   readonly definitions: readonly ObjectDefinition[];
   /** Parametric objects placed (elements/object): a definition, a type, the values of its own. */
   readonly objects: readonly ObjectInstance[];
+  /** Lines bounding rooms where there is no wall (elements/separator). */
+  readonly separators: readonly Separator[];
+  /** Rooms taken together under a name, a category and a colour (elements/zone). */
+  readonly zones: readonly Zone[];
 }
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */
@@ -109,7 +115,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 24,
+    version: 25,
     name: '',
     units: DEFAULT_UNITS,
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
@@ -162,6 +168,8 @@ export function newDocument(): Doc {
     railings: [],
     definitions: [...LIBRARY],
     objects: [],
+    separators: [],
+    zones: [],
   };
 }
 

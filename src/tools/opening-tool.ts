@@ -41,6 +41,28 @@ export interface Aim {
   readonly mpp: number;
   /** Stations of the faces of the walls meeting this one (sorted): what the ends are measured from. */
   readonly stops?: readonly number[];
+  /** Where those walls stand across this one: from one face to the other, no room for an opening. */
+  readonly occupied?: readonly (readonly [number, number])[];
+}
+
+/**
+ * The aim with the opening fitted where it can stand: in the free stretch of the wall (between its
+ * ends and the walls meeting it) nearest the cursor where it is wide enough, against the stretch's
+ * end when the cursor is past it. Taken at a wall's end, or over a wall crossing it, an opening was
+ * left half out of its wall ("does not fit in the wall"), dragged or placed.
+ */
+export function fitAim(aim: Aim, width: number): Aim {
+  const bounds = [0, ...(aim.stops ?? []).filter((s) => s > 0 && s < aim.length), aim.length].sort((a, b) => a - b);
+  let best: number | null = null;
+  for (let i = 0; i + 1 < bounds.length; i++) {
+    const a = bounds[i]!;
+    const b = bounds[i + 1]!;
+    const mid = (a + b) / 2;
+    if (b - a < width - 1e-9 || (aim.occupied ?? []).some(([x, y]) => mid > x && mid < y)) continue;
+    const s = Math.min(Math.max(aim.station, a + width / 2), b - width / 2);
+    if (best === null || Math.abs(s - aim.station) < Math.abs(best - aim.station)) best = s;
+  }
+  return best === null || best === aim.station ? aim : { ...aim, station: best };
 }
 
 export type OpeningToolState =
@@ -75,7 +97,8 @@ export function ruleBase(aim: Pick<Aim, 'length' | 'stops'>, rule: PositionRule)
   return 0;
 }
 
-export function ruleAt(aim: Aim, width: number): PositionRule {
+export function ruleAt(taken: Aim, width: number): PositionRule {
+  const aim = fitAim(taken, width);
   if (Math.abs(aim.station - aim.length / 2) <= CENTRE_PX * aim.mpp) return { kind: 'centered' };
   const lo = aim.station - width / 2;
   const hi = aim.station + width / 2;

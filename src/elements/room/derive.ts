@@ -6,6 +6,7 @@
 import { difference, setPrecision, union } from 'polyclip-ts';
 import type { Point2 } from '../../core/vector';
 import type { Floor, Room, RoomId } from './schema';
+import type { Material } from '../material/schema';
 
 export interface RoomSolid {
   readonly room: Room;
@@ -33,6 +34,8 @@ export interface FloorSolid {
   readonly holes: readonly (readonly Point2[])[];
   /** A sloped slab: a point p is `k · (p·u − base)` above `top`. */
   readonly rise?: { readonly u: Point2; readonly base: number; readonly k: number };
+  /** Its build-up's materials, layer by layer from the top (the kind reads them from the project). */
+  readonly layerMaterials?: readonly Material[];
 }
 
 export interface RoomWarning {

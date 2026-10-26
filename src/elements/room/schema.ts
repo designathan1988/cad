@@ -22,6 +22,35 @@ export interface Room {
   readonly use?: RoomUse;
   /** Floor to ceiling (m), when the room has its own; else its level's height. */
   readonly height?: number;
+  /** What its floor, walls and ceiling are finished in (the project's materials) and its skirting's height. */
+  readonly finishes?: RoomFinishes;
+}
+
+export interface RoomFinishes {
+  readonly floor?: string;
+  readonly wall?: string;
+  readonly ceiling?: string;
+  /** The skirting's height (m); none without. */
+  readonly base?: number;
+}
+
+/** How a floor's finish is laid (paginação): the pieces' size, the joint, the pattern and its angle. */
+export const TILE_PATTERNS = ['grid', 'running', 'herringbone', 'checker'] as const;
+export type TilePattern = (typeof TILE_PATTERNS)[number];
+export interface Tiling {
+  /** A piece across and along (m). */
+  readonly width: number;
+  readonly length: number;
+  readonly joint: number;
+  readonly pattern: TilePattern;
+  /** Turned this much (degrees) from the plan's x. */
+  readonly angle: number;
+}
+
+/** A layer of a floor's build-up, from the top down. */
+export interface FloorLayer {
+  readonly materialId: string;
+  readonly thickness: number;
 }
 
 export type FloorSource =
@@ -42,7 +71,32 @@ export interface Floor {
   readonly slope?: { readonly grade: number; readonly dir: number };
   /** A ceiling: hung under the level above, drawn dotted in plan (it is above the cut). */
   readonly kind?: 'ceiling';
+  /** Its finish's pieces, drawn in plan and counted (paginação). */
+  readonly tiling?: Tiling;
+  /** Its build-up from the top down; its thickness is theirs. Absent: one slab of its thickness. */
+  readonly layers?: readonly FloorLayer[];
 }
+
+/** Usual build-ups to start from: a slab with its screed and finish, a ceiling board. */
+export const FLOOR_BUILDUPS: Readonly<Record<string, readonly FloorLayer[]>> = {
+  slabTiled: [
+    { materialId: 'tile', thickness: 0.01 },
+    { materialId: 'screed', thickness: 0.04 },
+    { materialId: 'concrete', thickness: 0.1 },
+  ],
+  slabWood: [
+    { materialId: 'wood', thickness: 0.02 },
+    { materialId: 'screed', thickness: 0.03 },
+    { materialId: 'concrete', thickness: 0.1 },
+  ],
+  groundSlab: [
+    { materialId: 'tile', thickness: 0.01 },
+    { materialId: 'screed', thickness: 0.03 },
+    { materialId: 'concrete', thickness: 0.08 },
+    { materialId: 'gravel', thickness: 0.05 },
+  ],
+  gypsumCeiling: [{ materialId: 'gypsum', thickness: 0.0125 }],
+};
 
 /** A new ceiling's thickness (m): a plaster board. */
 export const CEILING_THICKNESS = 0.02;

@@ -25,7 +25,7 @@ import { type TempDim, tempDims } from './temp-dims';
 import { cutAt } from './view-3d';
 import { changeReferenceLine, moveWalls } from '../tools/edit';
 import { newId } from '../core/id';
-import { clearFloorHoles, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
+import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
 import type { App } from './app';
 import { PREVIEW_ID, SNAP_OF } from './app';
 
@@ -111,7 +111,7 @@ export function renderFrame(app: App): void {
       guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
       snap:
         // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-        (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+        (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
           ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
           : null,
       measure: guideDim
@@ -172,7 +172,7 @@ export function renderFrame(app: App): void {
       draft:
         ui.tool === 'floor' && ui.floorDraft.length > 0
           ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
-          : ui.tool === 'beam' && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
+          : (ui.tool === 'beam' || ui.tool === 'separator') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
             ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
             : ui.tool === 'roof' && ui.roofDraft.length > 0
               ? [...ui.roofDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
@@ -196,7 +196,7 @@ export function renderFrame(app: App): void {
   } else {
     const shown = app.visibleGeometry();
     app.scene.setXray(ui.view3d.xray);
-    app.scene.setDoorsOpen(app.walker !== null);
+    app.scene.setDoorsOpen(app.walker !== null, ui.opened);
     app.scene.setBox(ui.view3d.box);
     app.scene.setOrtho(ui.view3d.ortho);
     app.scene.setSection(ui.view3d.section);
@@ -239,7 +239,7 @@ export function renderFrame(app: App): void {
       draft:
         ui.tool === 'floor' && ui.floorDraft.length > 0
           ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
-          : ui.tool === 'beam' && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
+          : (ui.tool === 'beam' || ui.tool === 'separator') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
             ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
             : ui.tool === 'roof' && ui.roofDraft.length > 0
               ? [...ui.roofDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
@@ -350,6 +350,9 @@ export function renderFrame(app: App): void {
         levelHeight: (levelId) => levelOf(app.store.get(), levelId)?.height ?? 0,
         startFloorHole: (id) => app.startFloorHole(id),
         clearFloorHoles: (ids) => app.store.dispatch(clearFloorHoles(ids)),
+        materials: () => app.store.get().materials,
+        setFloorLayers: (ids, layers) => app.store.dispatch(setFloorLayers(ids, layers)),
+        setFloorTiling: (ids, tiling) => app.store.dispatch(setFloorTiling(ids, tiling)),
         updateFloor: (ids, patch) => {
           const doc = app.store.get();
           const next = ids.reduce((d, id) => updateFloor(id, patch).apply(d), doc);

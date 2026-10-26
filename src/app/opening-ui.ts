@@ -12,7 +12,7 @@ import { type Aim, ruleBase } from '../tools/opening-tool';
 import { t, type MessageKey } from '../ui/i18n';
 import type { Doc } from './document';
 import type { DerivedGeometry } from './geometry';
-import { wallStops } from './wall-stops';
+import { wallStops, wallStopsOf } from './wall-stops';
 
 /** Id of the opening being placed, in the derived geometry only. */
 export const OPENING_PREVIEW_ID = '__opening_preview__';
@@ -54,7 +54,7 @@ export function aimAt(doc: Doc, g: DerivedGeometry, levelId: string, p: Point2, 
     const others = [...g.openings.values()]
       .filter((o) => o.opening.wallId === wall.id && o.opening.id !== previewId)
       .map((o) => ({ id: o.opening.id, start: o.start, end: o.end }));
-    best = { aim: { wallId: wall.id, length, station, side: offset >= centre ? 'left' : 'right', others, mpp, stops: wallStops(doc, wall.id) }, miss };
+    best = { aim: { wallId: wall.id, length, station, side: offset >= centre ? 'left' : 'right', others, mpp, stops: wallStops(doc, wall.id), occupied: occupiedOf(doc, wall.id) }, miss };
   }
   return best?.aim ?? null;
 }
@@ -71,7 +71,14 @@ export function aimAlong(doc: Doc, g: DerivedGeometry, wallId: string, station: 
   const others = [...g.openings.values()]
     .filter((o) => o.opening.wallId === wall.id && o.opening.id !== previewId)
     .map((o) => ({ id: o.opening.id, start: o.start, end: o.end }));
-  return { wallId, length, station: Math.min(Math.max(station, 0), length), side: 'left', others, mpp, stops: wallStops(doc, wallId) };
+  return { wallId, length, station: Math.min(Math.max(station, 0), length), side: 'left', others, mpp, stops: wallStops(doc, wallId), occupied: occupiedOf(doc, wallId) };
+}
+
+/** Where each wall meeting this one stands across it: from its first face to its second. */
+function occupiedOf(doc: Doc, wallId: string): [number, number][] {
+  const by = new Map<string, number[]>();
+  for (const s of wallStopsOf(doc, wallId)) by.set(s.wallId, [...(by.get(s.wallId) ?? []), s.at]);
+  return [...by.values()].filter((xs) => xs.length >= 2).map((xs) => [Math.min(...xs), Math.max(...xs)]);
 }
 
 /**

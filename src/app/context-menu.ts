@@ -29,6 +29,7 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
   flipWall: { icon: 'flip' },
   editType: { icon: 'wall' },
   flipHinge: { icon: 'door', keys: 'H' },
+  toggleOpen: { icon: 'swing' },
   flipSwing: { icon: 'swing' },
   centerOpening: { icon: 'center' },
   addFloor: { icon: 'slab' },
@@ -64,6 +65,10 @@ export function contextEntries(app: App, openCommands: () => void): ContextEntry
     merge: () => app.mergeSelection(),
     flipWall: () => app.store.dispatch(flipWalls(ids)),
     editType: () => app.openWallTypes(app.store.get().walls.find((w) => w.id === one)?.wallTypeId),
+    toggleOpen: () => {
+      if (app.ui.view === 'plan') app.setView('3d');
+      app.toggleOpen(ids);
+    },
     flipHinge: () => opening && app.store.dispatch(updateOpening(opening.id, { hinge: opening.hinge === 'start' ? 'end' : 'start' })),
     flipSwing: () => opening && app.store.dispatch(updateOpening(opening.id, { swing: opening.swing === 'left' ? 'right' : 'left' })),
     centerOpening: () => opening && app.store.dispatch(updateOpening(opening.id, { rule: { kind: 'centered' } })),

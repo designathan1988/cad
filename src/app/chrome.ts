@@ -184,6 +184,8 @@ export function renderChrome(app: App): void {
                   ? t('hint.object', { name: objectName(app) })
                 : ui.tool === 'beam'
                   ? t(ui.beamFrom ? 'hint.beamEnd' : 'hint.beamStart')
+                : ui.tool === 'separator'
+                  ? t(ui.beamFrom ? 'hint.separatorEnd' : 'hint.separatorStart')
                   : ui.tool === 'roof'
                     ? t(ui.roofDraft.length > 0 ? 'hint.roofNext' : 'hint.roofStart')
                     : ui.tool === 'stair'
@@ -232,7 +234,7 @@ export function renderChrome(app: App): void {
     ? [snapKey, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'object'
     ? [keyHint(t('key.spaceKey'), t('key.turn90')), snapKey, keyHint('Esc', t('key.exit'))]
-    : ui.tool === 'beam'
+    : ui.tool === 'beam' || ui.tool === 'separator'
     ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
     : ui.tool === 'stair'
     ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.stairFrom ? 'key.back' : 'key.exit'))]

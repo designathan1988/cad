@@ -372,10 +372,18 @@ export class Scene3D {
     this.invalidate();
   }
 
-  /** Doors drawn open (walking): a closed leaf filled the view of whoever walked through it. */
+  /**
+   * Doors and windows drawn open: all of them while walking (a closed leaf filled the view of whoever
+   * walked through it), and those opened one by one (a double click, the selection's Open).
+   */
   private doorsOpen = false;
-  setDoorsOpen(open: boolean): void {
+  private opened: ReadonlySet<string> = new Set();
+  setDoorsOpen(open: boolean, opened: ReadonlySet<string> = new Set()): void {
     this.doorsOpen = open;
+    this.opened = opened;
+  }
+  private isOpen(id: string): boolean {
+    return this.doorsOpen || this.opened.has(id);
   }
 
   private flight = 0;
@@ -545,7 +553,7 @@ export class Scene3D {
       const state = preview.has(id) ? 'p' : selected.has(id) ? 's' : o.valid ? 'n' : 'i';
       let shape = this.shapeKeys.get(o);
       if (shape === undefined) this.shapeKeys.set(o, (shape = JSON.stringify([o.frame, o.opening, o.bottom, o.top])));
-      const key = state + (this.doorsOpen ? 'o' : '') + shape;
+      const key = state + (this.isOpen(id) ? 'o' : '') + shape;
       const old = this.walls.get(id);
       const levelId = g.solids.get(o.opening.wallId)?.wall.levelId ?? '';
       if (old?.key === key) {
@@ -714,9 +722,16 @@ export class Scene3D {
     const group = new THREE.Group();
     const m = this.materials;
     const shown = state === 'p' ? m.preview : state === 's' ? m.topSel : state === 'i' ? m.invalid : null;
-    for (const part of openingParts(o, o.frame!, this.doorsOpen)) {
+    for (const part of openingParts(o, o.frame!, this.isOpen(o.opening.id))) {
       const mat = shown ?? (part.role === 'leaf' ? m.leaf : part.role === 'glass' ? m.glass : m.frame);
       const geo = prism(part.polygon, part.bottom, part.top);
+      if (part.turn) {
+        // Tilted about its level axis: three.js's (x, height, −y) for the plan's (x, y, height).
+        const { origin, axis, angle } = part.turn;
+        const o3 = new THREE.Vector3(origin.x, origin.z, -origin.y);
+        const r = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(axis.x, 0, -axis.y).normalize(), angle);
+        geo.applyMatrix4(new THREE.Matrix4().makeTranslation(-o3.x, -o3.y, -o3.z)).applyMatrix4(r).applyMatrix4(new THREE.Matrix4().makeTranslation(o3.x, o3.y, o3.z));
+      }
       group.add(new THREE.Mesh(geo, [mat, mat]), this.outline(geo));
     }
     return group;

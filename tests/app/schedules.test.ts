@@ -37,6 +37,7 @@ const naming: Naming = {
   use: (u) => (u === 'bedroom' ? 'Dormitório' : u),
   markPrefix: { door: 'P', window: 'J' },
   model: () => 'Simples',
+  material: (id) => id,
 };
 const BOM = String.fromCharCode(0xfeff);
 
@@ -100,10 +101,10 @@ describe('quantity schedules', () => {
     const pt = toCsv(s, headers, 'Total', 'pt');
     expect(pt.startsWith(`${BOM}Nº;Nome;`)).toBe(true);
     const lines = pt.slice(1).trim().split('\r\n');
-    expect(lines[1]).toBe('1;"Sala; cozinha";;Ground floor;5,27;9,400;2,800;14,76');
+    expect(lines[1]).toBe('1;"Sala; cozinha";;Ground floor;5,27;9,400;2,800;14,76;;;;');
     // 10.545 m² is 10.5449… in binary: 10,54, what the two rooms shown (5,27 each) add to.
-    expect(lines[3]).toBe('Total: 2;;;;10,54;18,800;;29,53');
+    expect(lines[3]).toBe('Total: 2;;;;10,54;18,800;;29,53;;;;');
     const en = toCsv(s, headers, 'Total', 'en');
-    expect(en.slice(1).split('\r\n')[2]).toBe('2,Quarto,,Ground floor,5.27,9.400,2.800,14.76');
+    expect(en.slice(1).split('\r\n')[2]).toBe('2,Quarto,,Ground floor,5.27,9.400,2.800,14.76,,,,');
   });
 });

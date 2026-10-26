@@ -61,7 +61,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
             (d): RibbonItem => ({ id: `tool.object.${d.id}`, icon: 'box', size: 'S', text: words(d.name), pressed: () => ui.tool === 'object' && ui.objectDef === d.id }),
           ),
         },
-        { title: 'rib.p.rooms', items: [tool('room', 'tool.room', 'room', 'L')] },
+        { title: 'rib.p.rooms', items: [tool('room', 'tool.room', 'room', 'L'), tool('separator', 'tool.separator', 'split', 'S'), { id: 'zone.make', icon: 'tag', size: 'S' }] },
         {
           title: 'rib.p.reference',
           items: [tool('grid', 'tool.grid', 'hash', 'S'), { id: 'level.edit', icon: 'levelsAll', size: 'S' }, { id: 'edit.clearGuides', icon: 'guide', size: 'S' }],

@@ -35,11 +35,11 @@ describe('actions for the selection', () => {
   });
 
   it('a door: move (the Modify tools take it alone), flip hinge, flip swing, select similar, properties, delete', () => {
-    expect(contextIds(doc, ['d'])).toEqual(['move', 'flipHinge', 'flipSwing', 'selectSimilar', 'properties', 'delete']);
+    expect(contextIds(doc, ['d'])).toEqual(['move', 'toggleOpen', 'flipHinge', 'flipSwing', 'properties', 'delete']);
   });
 
   it('a window: move, centre on its wall, select similar, frame, properties, delete', () => {
-    expect(contextIds(doc, ['n'])).toEqual(['move', 'centerOpening', 'selectSimilar', 'frameSelection', 'properties', 'delete']);
+    expect(contextIds(doc, ['n'])).toEqual(['move', 'toggleOpen', 'centerOpening', 'selectSimilar', 'properties', 'delete']);
   });
 
   it('a room without a floor offers one; with a floor, not; walking and a point of interest from where the menu was opened', () => {

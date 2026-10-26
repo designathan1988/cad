@@ -52,8 +52,10 @@ import type { DocWall } from '../app/document';
  *   library's definitions and have no objects; the materials the definitions use are added.
  * Version 24: a door's or window's make (`style`, elements/opening/style.ts): how it opens, leaves,
  *   frame, trim, transom, threshold. Older openings have none and are drawn as they were.
+ * Version 25: room separators and zones (`separators`, `zones`); a room's finishes; a floor's tiling
+ *   and build-up (`tiling`, `layers`). Older files have none.
  */
-export const CURRENT_VERSION = 24;
+export const CURRENT_VERSION = 25;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =

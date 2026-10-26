@@ -2,6 +2,9 @@
 // command palette lists these; the toolbar, keys and menus do the same things, with the same names
 // and keys (ref/chat.txt:200), because they read them from here.
 
+import { newId } from '../core/id';
+import { addZone } from '../elements/zone/commands';
+import { ZONE_COLOURS, ZONE_PREFIX } from '../elements/zone/schema';
 import { words } from '../elements/object/fields';
 import { tBoth, name, t, type MessageKey } from '../ui/i18n';
 import type { App } from './app';
@@ -73,6 +76,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('tool.stair', 'tool.stair', tools, () => app.setTool('stair'), { keys: 'E', keywords: 'escada escadas stair stairs degrau caracol rampa ramp' }),
     make('tool.roof', 'tool.roof', tools, () => app.setTool('roof'), { keys: 'T', keywords: 'telhado telhados roof cobertura água águas platibanda' }),
     make('tool.beam', 'tool.beam', tools, () => app.setTool('beam'), { keys: 'B', keywords: 'viga vigas beam estrutura structure' }),
+    make('tool.separator', 'tool.separator', tools, () => app.setTool('separator'), { keywords: 'separador separação cômodo ambiente room separation line' }),
     make('tool.column', 'tool.column', tools, () => app.setTool('column'), { keys: 'P', keywords: 'pilar pilares coluna column estrutura structure' }),
     make('tool.grid', 'tool.grid', tools, () => app.setTool('grid'), { keys: 'Shift+G', keywords: 'eixo eixos grade grid axis axes estrutura' }),
     make('tool.dimension', 'tool.dimension', tools, () => app.setTool('dimension'), { keys: 'Shift+D', keywords: 'cota dimension medida permanente' }),
@@ -98,6 +102,23 @@ export function appActions(app: App, open: Openers): Action[] {
     make('view.xray', 'pal.xray', views, () => app.setView3D({ xray: !ui.view3d.xray })),
     make('view.box', 'pal.box', views, () => app.toggleBox()),
     make('view.ortho', 'pal.ortho', views, () => app.setView3D({ ortho: !ui.view3d.ortho })),
+    // The selected rooms as a zone, named and tinted by its category; selected, to name it in the panel.
+    make(
+      'zone.make',
+      'zone.make',
+      tools,
+      () => {
+        const rooms = doc.rooms.filter((r) => ui.selection.has(r.id));
+        const first = rooms[0];
+        if (!first) return;
+        const id = newId(ZONE_PREFIX);
+        store.dispatch(addZone({ id, levelId: first.levelId, name: t('zone.default', { n: doc.zones.length + 1 }), category: 'social', color: ZONE_COLOURS.social, rooms: rooms.filter((r) => r.levelId === first.levelId).map((r) => r.id) }));
+        ui.selection = new Set([id]);
+        app.showProperties();
+        app.refresh();
+      },
+      { enabled: doc.rooms.some((r) => ui.selection.has(r.id)), keywords: 'zona zonas zone área setor social íntima serviço' },
+    ),
     make('view.section', 'pal.section', views, () => app.sectionAtGuide(), { enabled: doc.guides.some((g) => ui.selection.has(g.id)) }),
     make('view.sectionFlip', 'pal.sectionFlip', views, () => app.sectionAtGuide(true), { enabled: doc.guides.some((g) => ui.selection.has(g.id)) }),
     make('view.sectionOff', 'pal.sectionOff', views, () => app.clearSection(), { enabled: ui.view3d.section !== null }),

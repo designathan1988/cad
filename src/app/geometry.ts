@@ -1,6 +1,7 @@
 // Document → derived wall geometry, through the join engine. Recomputed when the document changes,
 // never stored.
 
+import { separatorStrip } from '../elements/separator/schema';
 import { add, type Point2, scale } from '../core/vector';
 import { deriveKinds, eachSolid, filterKinds, type KindSolids } from '../elements/registry';
 import { deriveOpenings, hostsOf, type OpeningWarning, type PlacedOpening } from '../elements/opening/derive';
@@ -162,10 +163,13 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     for (const piece of pieces.get(wall.id) ?? []) list.push([...piece.polygon]);
     piecesByLevel.set(wall.levelId, list);
   }
-  const roomResult = deriveRooms(doc.rooms, piecesByLevel);
+  // Separators bound rooms as walls of no thickness (elements/separator): the rooms and the spaces a room can go in.
+  const roomPieces = new Map(piecesByLevel);
+  for (const sep of doc.separators) roomPieces.set(sep.levelId, [...(roomPieces.get(sep.levelId) ?? []), separatorStrip(sep)]);
+  const roomResult = deriveRooms(doc.rooms, roomPieces);
   const found = new Map<string, P[][]>();
   const spaces = (levelId: string): P[][] => {
-    if (!found.has(levelId)) found.set(levelId, spacesOf(piecesByLevel.get(levelId) ?? []));
+    if (!found.has(levelId)) found.set(levelId, spacesOf(roomPieces.get(levelId) ?? []));
     return found.get(levelId)!;
   };
   const base = { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, spaces };

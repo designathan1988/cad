@@ -123,6 +123,8 @@ export interface UiState {
   objectAngle: number;
   /** An object's handle being dragged (object-handles.ts): its preview until let go. */
   handleDrag: HandleDrag | null;
+  /** Doors and windows shown open in 3D (a double click, the selection's Open): the view's, not saved. */
+  opened: ReadonlySet<string>;
   /** The floor the floor tool's outline goes through as a hole (startFloorHole), or null for a new floor. */
   holeFor: string | null;
   /** Corners of a roof's outline being drawn. */
@@ -237,6 +239,7 @@ export class App {
       objectDef: 'def_table',
       objectAngle: 0,
       handleDrag: null,
+      opened: new Set(),
       holeFor: null,
       roofDraft: [],
       stairFrom: null,
@@ -385,6 +388,7 @@ export class App {
   previewObject(doc: Doc): Doc | null {
     // An object's handle dragged: the object as it would be with the value and position so far.
     const h = this.ui.handleDrag;
+    if (h?.handle.opening) return { ...doc, openings: doc.openings.map((o) => (o.id === h.handle.id ? { ...o, ...h.patch } : o)) };
     if (h) return { ...doc, objects: doc.objects.map((o) => (o.id === h.handle.id ? { ...o, at: h.at, values: { ...o.values, [h.handle.param]: h.value } } : o)) };
     const at = this.ui.tool === 'object' && this.ui.view === 'plan' ? (this.ui.snap?.point ?? this.ui.cursor) : null;
     const def = doc.definitions.find((d) => d.id === this.ui.objectDef);
@@ -977,6 +981,24 @@ export class App {
   /** The beam tool: a click starts a beam, the next ends it (the section of the last one made); Esc drops it. */
   beamClick(p: Point2): void {
     return kindTools.beamClick(this, p);
+  }
+
+  /** The doors and windows among `ids` opened, or closed when all of them are open. */
+  toggleOpen(ids: readonly string[]): void {
+    const doc = this.store.get();
+    const mine = ids.filter((id) => doc.openings.some((o) => o.id === id));
+    if (mine.length === 0) return;
+    const allOpen = mine.every((id) => this.ui.opened.has(id));
+    const next = new Set(this.ui.opened);
+    for (const id of mine) if (allOpen) next.delete(id);
+    else next.add(id);
+    this.ui.opened = next;
+    this.ui.info = t(allOpen ? 'hint.closedOpenings' : 'hint.openedOpenings', { n: mine.length });
+    this.refresh();
+  }
+
+  separatorClick(p: Point2): void {
+    return kindTools.separatorClick(this, p);
   }
 
   /** The column tool: a click stands a column there, the section of the last one made. */

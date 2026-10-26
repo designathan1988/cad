@@ -17,6 +17,8 @@ export interface OpeningPart {
   readonly bottom: number;
   readonly top: number;
   readonly role: 'leaf' | 'glass' | 'frame';
+  /** Turned about a level axis (a window tilted open): through `origin`, along `axis` in plan, by `angle` radians. */
+  readonly turn?: { readonly origin: { readonly x: number; readonly y: number; readonly z: number }; readonly axis: Point2; readonly angle: number };
 }
 
 type Placed = { readonly opening: Opening; readonly start: number; readonly end: number; readonly bottom: number; readonly top: number };
@@ -56,8 +58,10 @@ export function openingParts(o: Placed, f: OpeningFrame, open: boolean): Opening
   const lo = Math.min(o0, o1);
   const hi = Math.max(o0, o1);
   const parts: OpeningPart[] = [];
+  // A pane or leaf tilted open goes with its turn (see OpeningPart).
+  let turning: OpeningPart['turn'] | undefined;
   const push = (polygon: Point2[], bottom: number, top: number, role: OpeningPart['role']) => {
-    if (top - bottom > 1e-4) parts.push({ polygon, bottom, top, role });
+    if (top - bottom > 1e-4) parts.push({ polygon, bottom, top, role, ...(turning ? { turn: turning } : {}) });
   };
   const fr = Math.min(s.frame, width / 4, (o.top - o.bottom) / 4);
   const a = fr;
@@ -109,7 +113,7 @@ export function openingParts(o: Placed, f: OpeningFrame, open: boolean): Opening
     const w = Math.min(clear, (clear + lap * (n - 1)) / n);
     for (let i = 0; i < n; i++) {
       const spread = n > 1 ? (i * (clear - w)) / (n - 1) : 0;
-      const t0 = open && door ? (op.hinge === 'start' ? a + Math.min(spread, 0.04 * i) : b - w - Math.min(spread, 0.04 * i)) : a + spread;
+      const t0 = open ? (op.hinge === 'start' ? a + Math.min(spread, 0.04 * i) : b - w - Math.min(spread, 0.04 * i)) : a + spread;
       make(t0, t0 + w, mid + (i % 2 === 0 ? -gap : gap));
     }
   };
@@ -125,6 +129,16 @@ export function openingParts(o: Placed, f: OpeningFrame, open: boolean): Opening
         else leaf(a, b, mid, 0.02);
         break;
       case 'folding':
+        if (open) {
+          // Folded against the hinge jamb, standing out on the side it opens to.
+          const w = clear / n;
+          const out = op.swing === 'left' ? 1 : -1;
+          for (let i = 0; i < n; i++) {
+            const t = op.hinge === 'start' ? a + 0.02 + i * 0.04 : b - 0.02 - i * 0.04;
+            push(slabAlong(P(t, mid), P(t, mid + out * w), 0.016), bottom, top, 'leaf');
+          }
+          break;
+        }
         for (let i = 0; i < n; i++) leaf(a + (i * clear) / n + 0.003, a + ((i + 1) * clear) / n - 0.003, mid, 0.018);
         break;
       default: {
@@ -142,19 +156,39 @@ export function openingParts(o: Placed, f: OpeningFrame, open: boolean): Opening
     }
     return parts;
   }
+  // Tilting toward the outside (the exterior face's side) by `angle`, about the level line at `z`.
+  const outside = o0 < o1 ? -1 : 1;
+  const tilt = (z: number, angle: number) => {
+    turning = { origin: { ...P(width / 2, mid), z }, axis: along, angle: outside * angle };
+  };
   switch (s.operation) {
     case 'sliding':
       sliding((t0, t1, off) => pane(t0, t1, off));
       break;
     case 'doubleHung': {
-      // Two sashes, the upper outside the lower, overlapping a little.
+      // Two sashes, the upper outside the lower, overlapping a little; open, the lower one raised.
       const h = (top - bottom) / 2;
-      pane(a, b, mid - gap, bottom, bottom + h + 0.025);
+      const up = open ? h * 0.85 : 0;
+      pane(a, b, mid - gap, bottom + up, bottom + h + 0.025 + up);
       pane(a, b, mid + gap, bottom + h - 0.025, top);
       break;
     }
-    default:
+    case 'casement':
+      if (open) {
+        // Each pane swung square to the wall from its hinge, as the plan draws it.
+        const lines = symbolLines(o, f).filter((l) => l.length === 2 && Math.abs((l[1]!.x - l[0]!.x) * along.x + (l[1]!.y - l[0]!.y) * along.y) < 1e-4 && distance(l[0]!, l[1]!) > 0.1);
+        for (const l of lines) push(slabAlong(l[0]!, l[1]!, 0.02), bottom, top, 'glass');
+        if (lines.length > 0) break;
+      }
       for (let i = 0; i < n; i++) pane(a + (i * clear) / n, a + ((i + 1) * clear) / n, mid);
+      break;
+    default:
+      // Open: an awning out from its head, a hopper and a pivot about their middle.
+      if (open && s.operation === 'awning') tilt(top, Math.PI / 6);
+      else if (open && s.operation === 'hopper') tilt((bottom + top) / 2, -Math.PI / 5);
+      else if (open && s.operation === 'pivot') tilt((bottom + top) / 2, Math.PI / 3);
+      for (let i = 0; i < n; i++) pane(a + (i * clear) / n, a + ((i + 1) * clear) / n, mid);
+      turning = undefined;
   }
   return parts;
 }

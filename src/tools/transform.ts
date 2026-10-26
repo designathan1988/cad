@@ -6,7 +6,7 @@
 // and positions, never thicknesses or the sizes of doors and windows. A mirror swaps each wall's ends,
 // so its layers, and its doors' hinges, come out mirrored rather than turned over.
 
-import { copyKinds, hasKinds, kindOfId, kindsOnLevel, mapKinds } from '../elements/registry';
+import { copyKinds, KINDS, kindOfId, kindsOnLevel, listOf, mapKinds } from '../elements/registry';
 import { wallsOnGrids } from '../elements/grid/carry';
 import { roomsGoingWith } from '../app/carry';
 import type { Doc, DocWall } from '../app/document';
@@ -233,7 +233,9 @@ export function canTransform(doc: Doc, ids: readonly string[]): boolean {
   return (
     doc.walls.some((w) => set.has(w.id)) ||
     doc.openings.some((o) => set.has(o.id)) ||
-    hasKinds(doc, set)
+    // An element that does not move alone (a room's floor follows its room, a zone its rooms) does not
+    // count: Move and Rotate were offered for it and did nothing.
+    KINDS.some((k) => listOf(doc, k).some((e) => set.has(e.id) && (k.moved as (x: unknown, d: { x: number; y: number }) => unknown)(e, { x: 1, y: 0 }) !== e))
   );
 }
 

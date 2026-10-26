@@ -201,7 +201,7 @@ export function wireInput(app: App): void {
           ? ui.dimension.a
           : ui.tool === 'grid'
             ? ui.gridFrom
-            : ui.tool === 'beam'
+            : ui.tool === 'beam' || ui.tool === 'separator'
               ? ui.beamFrom
               : ui.tool === 'roof'
                 ? (ui.roofDraft.at(-1) ?? null)
@@ -341,7 +341,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
+    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -496,7 +496,7 @@ export function wireInput(app: App): void {
       app.gridEscape();
       return true;
     }
-    if (ui.tool === 'beam' && ui.beamFrom) {
+    if ((ui.tool === 'beam' || ui.tool === 'separator') && ui.beamFrom) {
       ui.beamFrom = null;
       app.render();
       return true;
@@ -615,6 +615,11 @@ export function wireInput(app: App): void {
       if (at) app.beamClick(snapped(e)?.point ?? at.p);
       return;
     }
+    if (ui.tool === 'separator') {
+      const at = worldAt(e);
+      if (at) app.separatorClick(snapped(e)?.point ?? at.p);
+      return;
+    }
     if (ui.tool === 'roof') {
       const at = worldAt(e);
       if (at) app.roofClick(snapped(e)?.point ?? at.p, at.mpp);
@@ -669,6 +674,12 @@ export function wireInput(app: App): void {
     });
     c.addEventListener('contextmenu', (e) => e.preventDefault());
   }
+  // A double click on a door or window in 3D opens it, or closes it (the selection's Open does too).
+  shell.glCanvas.addEventListener('dblclick', () => {
+    if (ui.tool !== 'select' || app.walker) return;
+    const ids = [...ui.selection].filter((id) => app.store.get().openings.some((o) => o.id === id));
+    if (ids.length > 0) app.toggleOpen(ids);
+  });
   shell.planCanvas.addEventListener(
     'wheel',
     (e) => {

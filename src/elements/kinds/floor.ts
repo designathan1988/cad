@@ -7,11 +7,13 @@ import type { Point2 } from '../../core/vector';
 import { slabGeometry } from '../../render/prisms';
 import { name, t } from '../../ui/i18n';
 import type { ElementKind } from '../contract';
-import { clearFloorHoles, updateFloor } from '../room/commands';
+import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor } from '../room/commands';
 import { deriveFloor, type FloorSolid, insideRing, riseAt } from '../room/derive';
 import { floorFields } from '../room/fields';
 import type { Floor } from '../room/schema';
 import { trace } from './paint';
+import { tilingDrawing } from '../../render/tiling';
+import { materialIn } from '../material/schema';
 
 export const FLOOR_PREFIX = 'floor';
 
@@ -46,7 +48,10 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
     (f.holes === undefined || (Array.isArray(f.holes) && f.holes.every((h) => Array.isArray(h) && h.length >= 3 && h.every(isPoint)))) &&
     (f.slope === undefined || (isObject(f.slope) && finite(f.slope.grade) && finite(f.slope.dir))) &&
     (f.kind === undefined || f.kind === 'ceiling'),
-  derive: (doc, f, g) => deriveFloor(f, g.rooms, (id) => doc.levels.find((l) => l.id === id)?.elevation ?? 0),
+  derive: (doc, f, g) => {
+    const s = deriveFloor(f, g.rooms, (id) => doc.levels.find((l) => l.id === id)?.elevation ?? 0);
+    return f.layers ? { ...s, layerMaterials: f.layers.map((l) => materialIn(doc.materials, l.materialId)) } : s;
+  },
   element: (s) => s.floor,
   follows: (f) => (f.source.kind === 'room' ? f.source.roomId : null),
   // A floor following a deleted room keeps the outline it had, so it does not move.
@@ -95,6 +100,40 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
       ctx.fillStyle = lit ? p.color('--accent-soft') : p.color('--floor-fill');
       ctx.fill('evenodd');
     }
+    // Its pieces (paginação), inside it only: clipped to its outline less its holes.
+    if (f.floor.tiling && !ceiling) {
+      const drawn = tilingDrawing(f.floor.tiling, f.outline);
+      ctx.save();
+      ctx.clip('evenodd');
+      ctx.fillStyle = p.color('--text-3');
+      ctx.globalAlpha = 0.12;
+      for (const piece of drawn.shaded) {
+        trace(p, piece);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = p.color('--text-3');
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      for (const l of drawn.lines)
+        l.forEach((v, i) => {
+          const q = p.toScreen(v);
+          if (i === 0) ctx.moveTo(q.x, q.y);
+          else ctx.lineTo(q.x, q.y);
+        });
+      ctx.stroke();
+      ctx.restore();
+      // The clip took the path: trace it again for the outline below.
+      trace(p, f.outline);
+      for (const h of f.holes) {
+        h.forEach((v, i) => {
+          const s = p.toScreen(v);
+          if (i === 0) ctx.moveTo(s.x, s.y);
+          else ctx.lineTo(s.x, s.y);
+        });
+        ctx.closePath();
+      }
+    }
     ctx.save();
     ctx.setLineDash(ceiling ? [2, 3] : [5, 4]);
     ctx.strokeStyle = lit ? p.color('--wall-sel') : p.color('--text-3');
@@ -119,7 +158,18 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
   // Extruded down from its top; a sloped one rising across.
   solid: (f) => {
     if (f.outline.length < 3) return null;
-    const geometry = slabGeometry(f.outline, f.holes, f.top - f.bottom, f.rise ? (q) => riseAt(f, q) : undefined);
+    const rise = f.rise ? (q: Point2) => riseAt(f, q) : undefined;
+    // A build-up: each layer its own slab in its material, from the top down.
+    if (f.floor.layers && f.layerMaterials) {
+      let top = f.top;
+      return f.floor.layers.map((l, i) => {
+        const geometry = slabGeometry(f.outline, f.holes, l.thickness, rise);
+        geometry.rotateX(-Math.PI / 2);
+        top -= l.thickness;
+        return { geometry, y: top, material: f.layerMaterials![i]!, edges: true };
+      });
+    }
+    const geometry = slabGeometry(f.outline, f.holes, f.top - f.bottom, rise);
     // The shape lies in x–y; turned −90° about x it lies in three.js x–(−z), extruded upward.
     geometry.rotateX(-Math.PI / 2);
     return { geometry, y: f.bottom, material: 'floor', edges: true };
@@ -140,6 +190,9 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
         },
         ...(c.startFloorHole ? { startFloorHole: c.startFloorHole } : {}),
         clearFloorHoles: (ids) => c.dispatch(clearFloorHoles(ids)),
+        materials: () => c.doc.materials,
+        setFloorLayers: (ids, layers) => c.dispatch(setFloorLayers(ids, layers)),
+        setFloorTiling: (ids, tiling) => c.dispatch(setFloorTiling(ids, tiling)),
       },
     ),
 };

@@ -45,6 +45,8 @@ export interface Naming {
   readonly markPrefix: Readonly<Record<'door' | 'window', string>>;
   /** A door's or window's model as the panel names it (opening/fields.ts modelName). */
   readonly model: (o: Opening) => string;
+  /** A material's name by its id: a room's finishes. */
+  readonly material: (id: string) => string;
 }
 
 const col = (key: string, unit: ColumnUnit): ScheduleColumn => ({ key: `schedule.col.${key}`, unit });
@@ -70,7 +72,13 @@ export function schedule(doc: Doc, g: DerivedGeometry, kind: ScheduleKind, namin
       col('perimeter', 'm'),
       col('ceiling', 'm'),
       col('volume', 'm3'),
+      col('finishFloor', 'text'),
+      col('finishWall', 'text'),
+      col('finishCeiling', 'text'),
+      col('zone', 'text'),
     ];
+    const zoneOf = (id: string) => doc.zones.find((z) => z.rooms.includes(id));
+    const finish = (id: string | undefined) => (id ? naming.material(id) : '');
     const rows = byLevel(doc, doc.rooms).map((r) => {
       const solid = g.rooms.get(r.id);
       const enclosed = solid?.enclosed === true;
@@ -85,6 +93,10 @@ export function schedule(doc: Doc, g: DerivedGeometry, kind: ScheduleKind, namin
         enclosed ? solid.perimeter : null,
         height,
         enclosed ? solid.area * height : null,
+        finish(r.finishes?.floor),
+        finish(r.finishes?.wall),
+        finish(r.finishes?.ceiling),
+        naming.name(zoneOf(r.id)?.name ?? ''),
       ];
     });
     return { kind, columns, rows, totals: totalsOf(columns, rows) };

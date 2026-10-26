@@ -88,5 +88,6 @@ export const roomKind: ElementKind<Room, RoomItem> = {
       updateRoom: (id, patch) => c.dispatch(updateRooms([id], patch)),
       updateRooms: (ids, patch) => c.dispatch(updateRooms(ids, patch)),
       levelHeight: (levelId) => c.doc.levels.find((l) => l.id === levelId)?.height ?? 0,
+      materials: () => c.doc.materials,
     }),
 };

@@ -1,8 +1,9 @@
 // Commands on rooms and floors. Each returns a new document; the store makes each one undo step.
 
+import { materialFor } from '../material/schema';
 import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
-import type { Floor, FloorId, Room, RoomId, RoomUse } from './schema';
+import type { Floor, FloorId, FloorLayer, Room, RoomFinishes, RoomId, RoomUse, Tiling } from './schema';
 
 export const addRoom = (room: Room): Command<Doc> => ({
   label: 'cmd.addRoom',
@@ -10,7 +11,7 @@ export const addRoom = (room: Room): Command<Doc> => ({
 });
 
 /** A change to a room: null takes its use or its own height away (the level's height again). */
-export type RoomPatch = Partial<Pick<Room, 'name' | 'number'>> & { readonly use?: RoomUse | null; readonly height?: number | null };
+export type RoomPatch = Partial<Pick<Room, 'name' | 'number'>> & { readonly use?: RoomUse | null; readonly height?: number | null; readonly finishes?: Partial<Record<keyof RoomFinishes, string | number | null>> };
 
 /** Name, number, use and own height. A blank name, or a height not above zero, changes nothing. */
 export const updateRoom = (id: RoomId, patch: RoomPatch): Command<Doc> => updateRooms([id], patch);
@@ -24,16 +25,23 @@ export const updateRooms = (ids: readonly RoomId[], patch: RoomPatch): Command<D
     let changed = false;
     const rooms = doc.rooms.map((r) => {
       if (!ids.includes(r.id)) return r;
-      const { use, height, ...rest } = patch;
-      const { use: _u, height: _h, ...base } = r;
+      const { use, height, finishes, ...rest } = patch;
+      const { use: _u, height: _h, finishes: _f, ...base } = r;
       const nextUse = use === undefined ? r.use : use === null ? undefined : use;
       const nextHeight = height === undefined ? r.height : height === null ? undefined : height;
+      // Each finish set, or taken off with null; a skirting not above zero is none.
+      const merged: Record<string, string | number> = { ...(r.finishes ?? {}) };
+      for (const [k, v] of Object.entries(finishes ?? {})) {
+        if (v === null || v === '' || (k === 'base' && !(typeof v === 'number' && v > 0))) delete merged[k];
+        else if (v !== undefined) merged[k] = v;
+      }
       const next: Room = {
         ...base,
         ...rest,
         ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
         ...(nextUse !== undefined ? { use: nextUse } : {}),
         ...(nextHeight !== undefined ? { height: nextHeight } : {}),
+        ...(Object.keys(merged).length > 0 ? { finishes: merged as RoomFinishes } : {}),
       };
       if (JSON.stringify(next) === JSON.stringify(r)) return r;
       changed = true;
@@ -58,6 +66,51 @@ export const updateFloor = (id: FloorId, patch: Partial<Pick<Floor, 'thickness' 
     const floors = doc.floors.map((f) => {
       if (f.id !== id) return f;
       const next = { ...f, ...patch };
+      if (JSON.stringify(next) === JSON.stringify(f)) return f;
+      changed = true;
+      return next;
+    });
+    return changed ? { ...doc, floors } : doc;
+  },
+});
+
+/** The materials a build-up uses that the project has not, from the built-in ones. */
+function withMaterials(doc: Doc, layers: readonly FloorLayer[]): Doc {
+  const missing = layers.map((l) => l.materialId).filter((id, i, all) => all.indexOf(id) === i && !doc.materials.some((m) => m.id === id));
+  return missing.length === 0 ? doc : { ...doc, materials: [...doc.materials, ...missing.map(materialFor)] };
+}
+
+/**
+ * The floors' build-up (top first) and so their thickness, or none (one slab, its thickness kept).
+ * A layer not above zero changes nothing.
+ */
+export const setFloorLayers = (ids: readonly FloorId[], layers: readonly FloorLayer[] | null): Command<Doc> => ({
+  label: 'cmd.updateFloor',
+  apply: (doc) => {
+    if (layers && (layers.length === 0 || layers.some((l) => !(l.thickness > 0)))) return doc;
+    let changed = false;
+    const floors = doc.floors.map((f) => {
+      if (!ids.includes(f.id)) return f;
+      const { layers: _l, ...rest } = f;
+      const next: Floor = layers ? { ...rest, layers, thickness: layers.reduce((s, l) => s + l.thickness, 0) } : rest;
+      if (JSON.stringify(next) === JSON.stringify(f)) return f;
+      changed = true;
+      return next;
+    });
+    return changed ? withMaterials({ ...doc, floors }, layers ?? []) : doc;
+  },
+});
+
+/** The floors' finish laid in pieces (paginação), or plain again. Pieces and joint must be sizes. */
+export const setFloorTiling = (ids: readonly FloorId[], tiling: Tiling | null): Command<Doc> => ({
+  label: 'cmd.updateFloor',
+  apply: (doc) => {
+    if (tiling && (!(tiling.width > 0) || !(tiling.length > 0) || !(tiling.joint >= 0) || !Number.isFinite(tiling.angle))) return doc;
+    let changed = false;
+    const floors = doc.floors.map((f) => {
+      if (!ids.includes(f.id)) return f;
+      const { tiling: _t, ...rest } = f;
+      const next: Floor = tiling ? { ...rest, tiling } : rest;
       if (JSON.stringify(next) === JSON.stringify(f)) return f;
       changed = true;
       return next;
