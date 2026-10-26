@@ -83,13 +83,16 @@ export interface PlanOverlay {
   readonly anchor?: Point2 | null;
   /** Wall numbers at the middle of the walls selected or under the pointer, as snap labels name them. */
   readonly wallTags?: readonly { readonly at: Point2; readonly text: string }[];
-  /** Room name and area tags, at each room's point. */
-  /** `short` is shown when the name does not fit the room on screen; `outline` is the room's, if closed. */
+  /**
+   * Room name and area tags, at each room's point. `short` is shown when the name does not fit the room
+   * on screen, `brief` when the area line (a warning) does not; `outline` is the room's, if closed.
+   */
   readonly roomLabels: readonly {
     readonly at: Point2;
     readonly name: string;
     readonly short: string;
     readonly area: string;
+    readonly brief?: string;
     readonly warn: boolean;
     readonly outline: readonly Point2[];
   }[];
@@ -489,8 +492,6 @@ export class PlanView {
     ctx.restore();
   }
 
-  /** Room tags where room-tags.ts places them: with their room, shortened or left out when crowded. */
-  /** Where the temporary dimensions' values sit (DOM boxes at the middle of each dimension line). */
   /**
    * Where the temporary dimensions' values go, as boxes on screen: at the middle of their lines unless
    * one would sit on another (app/dim-labels.ts). The app puts its value buttons at their centres, and
@@ -503,6 +504,7 @@ export class PlanView {
     return sized.map((s, i) => ({ x: at[i]!.x - s.w / 2, y: at[i]!.y - s.h / 2, w: s.w, h: s.h }));
   }
 
+  /** Room tags where room-tags.ts places them: with their room, shortened or left out when crowded. */
   private drawRoomTags(
     labels: PlanOverlay['roomLabels'],
     color: (name: string) => string,
@@ -517,7 +519,7 @@ export class PlanView {
       const xs = l.outline.map((v) => this.toScreen(v).x);
       // An open room has no outline: its warning is shown whole.
       const width = xs.length > 0 ? Math.max(...xs) - Math.min(...xs) : Infinity;
-      return { x: p.x, y: p.y, width, name: l.name, short: l.short, area: l.area, warn: l.warn };
+      return { x: p.x, y: p.y, width, name: l.name, short: l.short, area: l.area, ...(l.brief ? { brief: l.brief } : {}), warn: l.warn };
     });
     const measure = (text: string) => this.textWidth(text, nameFont);
     // The dimensions are drawn over the tags: each tag steps aside from their lines (room-tags.ts),

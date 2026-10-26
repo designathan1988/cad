@@ -3,7 +3,7 @@
 // room. Wall pieces are taken before doors and windows are cut, so a door does not open the room.
 // A point in no hole (outside the walls, or inside a wall) is "not enclosed", as Revit says.
 
-import { setPrecision, union } from 'polyclip-ts';
+import { difference, setPrecision, union } from 'polyclip-ts';
 import type { Point2 } from '../../core/vector';
 import type { Floor, FloorId, Room, RoomId } from './schema';
 
@@ -79,7 +79,6 @@ setPrecision(1e-9);
 
 const cache = new Map<string, Point2[][]>();
 
-/** Holes of the union of a level's wall pieces, memoised on the pieces themselves. */
 /**
  * Where a room's name goes (derived, never stored): the point inside the outline farthest from its
  * edges, to 5 mm, as Mapbox's polylabel finds it. Centred in a rectangle, and inside an L or a U,
@@ -136,6 +135,22 @@ export function labelPoint(ring: readonly Point2[]): Point2 {
   return { x: best.x, y: best.y };
 }
 
+/** Parts smaller than this (m²) are slivers along shared edges, not space. */
+const SLIVER = 0.05;
+
+/**
+ * The middle (labelPoint) of the largest part of `ring` that is in none of `taken`: where a room whose
+ * space a moved wall gave to another room can go, in what is left of its space. Null when nothing is.
+ */
+export function middleOfRest(ring: readonly Point2[], taken: readonly (readonly Point2[])[]): Point2 | null {
+  if (ring.length < 3) return null;
+  const rest = taken.length === 0 ? [[toRing(ring)]] : difference([toRing(ring)], ...taken.map((t) => [toRing(t)]));
+  const parts = rest.map((poly) => fromRing(poly[0]!)).filter((r) => r.length >= 3 && Math.abs(signedArea(r)) > SLIVER);
+  if (parts.length === 0) return null;
+  return labelPoint(parts.reduce((a, b) => (Math.abs(signedArea(b)) > Math.abs(signedArea(a)) ? b : a)));
+}
+
+/** Holes of the union of a level's wall pieces, memoised on the pieces themselves. */
 function holesOf(pieces: readonly (readonly Point2[])[]): Point2[][] {
   if (pieces.length === 0) return [];
   const key = JSON.stringify(pieces);

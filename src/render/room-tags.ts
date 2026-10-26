@@ -1,5 +1,5 @@
 // Where room tags go in plan, and what they say: each at its room's point, its name and area when the
-// room is wide enough on screen, else its number (and area if that fits); none for a room whose point
+// room is wide enough on screen, else its number (and area, or a brief warning, if that fits); none for a room whose point
 // is off the canvas, and none over a tag already placed. Pure: the canvas measures the text.
 
 export interface RoomTagInput {
@@ -11,6 +11,8 @@ export interface RoomTagInput {
   /** What is left when the name does not fit: the number. */
   readonly short: string;
   readonly area: string;
+  /** What is left of the area line when it does not fit: a warning in a few words. */
+  readonly brief?: string;
 }
 
 export interface RoomTag {
@@ -74,7 +76,8 @@ export function layoutRoomTags(
   for (const t of tags) {
     if (t.x < 0 || t.x > view.w || t.y < 0 || t.y > view.h) continue;
     const fits = (rows: string[]) => Math.max(...rows.map(measure)) + PAD <= t.width;
-    const text = fits([t.name, t.area]) ? [t.name, t.area] : fits([t.short, t.area]) ? [t.short, t.area] : [t.short];
+    // A warning too long for its room keeps a few words of it: a lone orange number said nothing.
+    const text = [[t.name, t.area], [t.short, t.area], ...(t.brief ? [[t.short, t.brief]] : [])].find(fits) ?? [t.short];
     const w = Math.max(...text.map(measure)) + PAD;
     const h = text.length * LINE;
     let box = { x: t.x - w / 2, y: t.y - LINE + 1, w, h };

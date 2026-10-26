@@ -1,6 +1,7 @@
 // Editing walls while keeping their joins (pure). Ends that met a moved end follow it, so corners
 // stay closed; ends that abutted a moved wall's body slide along their own wall to stay on it, so Ts
-// stay joined. Nothing here touches geometry beyond the reference lines: the join engine redoes the rest.
+// stay joined, and so do a moved wall's own ends on another's body. Nothing here touches geometry
+// beyond the reference lines: the join engine redoes the rest.
 
 import type { Doc, DocWall } from '../app/document';
 import { POINT_TOLERANCE } from '../core/tolerance';
@@ -67,8 +68,37 @@ export function transformWalls(doc: Doc, ids: readonly WallId[], map: (p: Point2
   return follow(doc.walls, moved, map);
 }
 
+/**
+ * A move keeps the Ts of the moved walls too: an end of one that met another wall's body (within its
+ * thickness, away from its ends) slides along its own wall's new line to stay as far from that wall's
+ * line as it was, while that is still along that wall. Moved free, a partition between two walls taken
+ * with a hand that drifted 5 mm along it came off one of them, and the two rooms it divided became one.
+ */
 export function moveWalls(doc: Doc, ids: readonly WallId[], delta: Point2): DocWall[] {
-  return transformWalls(doc, ids, (p) => add(p, delta));
+  const set = new Set(ids);
+  const hosts = doc.walls.filter((h) => !set.has(h.id) && !h.bulge && distance(h.start, h.end) > 0);
+  return transformWalls(doc, ids, (p) => add(p, delta)).map((w, i) => {
+    const was = doc.walls[i]!;
+    if (!set.has(w.id) || w.bulge) return w;
+    const along = sub(w.end, w.start);
+    const keep = (from: Point2, to: Point2): Point2 => {
+      for (const h of hosts) {
+        if (h.levelId !== w.levelId) continue;
+        const len = distance(h.start, h.end);
+        const u = normalize(sub(h.end, h.start));
+        const t = dot(sub(from, h.start), u);
+        if (t <= POINT_TOLERANCE || t >= len - POINT_TOLERANCE || Math.abs(cross(u, sub(from, h.start))) > wallThickness(doc, h) + POINT_TOLERANCE) continue;
+        const hit = intersectLines(to, along, from, u);
+        if (!hit) continue;
+        const s = dot(sub(hit, h.start), u);
+        if (s > POINT_TOLERANCE && s < len - POINT_TOLERANCE) return hit;
+      }
+      return to;
+    };
+    const start = keep(was.start, w.start);
+    const end = keep(was.end, w.end);
+    return start === w.start && end === w.end ? w : { ...w, start, end };
+  });
 }
 
 export function stretchEnd(doc: Doc, id: WallId, end: WallEnd, to: Point2): DocWall[] {

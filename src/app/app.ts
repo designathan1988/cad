@@ -43,7 +43,7 @@ import { snapLabel, type Snap } from '../tools/snap';
 import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, rectangle, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, dragTransform, hull, moveGuides } from './select-drag';
-import { moveFloors, moveRooms } from './carry';
+import { geometryOf, keepRooms, moveFloors, moveRooms } from './carry';
 import { stepSelection } from './keyboard-select';
 import { nudge } from '../tools/nudge';
 import { type Doc, type DocWall, elementIds, levelOf, newDocument, startLevel, type WallDefaults, wallNumber, wallOverrides } from './document';
@@ -150,7 +150,19 @@ export class App {
     const prefs = loadPrefs();
     setLang(prefs.lang ?? (navigator.language.toLowerCase().startsWith('pt') ? 'pt' : 'en'));
     document.documentElement.lang = htmlLang(getLang());
-    this.store = createStore(loadDocument() ?? newDocument());
+    // Every change to the walls, however it is made, keeps the rooms it moves them past in their space.
+    const store = createStore(loadDocument() ?? newDocument());
+    this.store = {
+      ...store,
+      dispatch: (c) =>
+        store.dispatch({
+          label: c.label,
+          apply: (before) => {
+            const next = c.apply(before);
+            return next === before || next.walls === before.walls ? next : keepRooms(before, next).doc;
+          },
+        }),
+    };
     const doc = this.store.get();
     this.ui = {
       view: prefs.view ?? 'plan',
@@ -251,7 +263,8 @@ export class App {
       let n = 0;
       const previewId = (prefix: string) => `${prefix}_preview${++n}`;
       const shownDoc = transformSelection(doc, this.modifyBefore ?? this.geometry, [...this.ui.selection], t, m.copy, previewId).doc;
-      this.geometry = deriveGeometry(shownDoc);
+      // A room the walls would be moved past keeps its space, as it will when the move is made.
+      this.geometry = keepRooms(doc, shownDoc).geometry;
       return this.render();
     }
     // While dragging, the walls as dragged; the rooms going with a move or a turn go in the preview too,
@@ -269,7 +282,15 @@ export class App {
           : d && d.kind !== 'marquee'
             ? { ...doc, walls: d.walls }
             : doc;
-    this.geometry = deriveGeometry(shown, this.previewWall(), this.previewOpening());
+    // Walls being dragged: a room they pass over keeps its space, as it will when they are dropped.
+    const drawing = this.previewWall();
+    const placing = this.previewOpening();
+    this.geometry =
+      shown.walls !== doc.walls
+        ? keepRooms(doc, shown).geometry
+        : drawing.length === 0 && placing.length === 0
+          ? geometryOf(shown)
+          : deriveGeometry(shown, drawing, placing);
     this.render();
   }
 
@@ -1466,6 +1487,11 @@ export class App {
             : r.sharing.length > 0
               ? t('warn.roomShared', { rooms: r.sharing.map((id) => this.store.get().rooms.find((x) => x.id === id)).flatMap((x) => (x ? [`${x.number} · ${name(x.name)}`] : [])).join(', ') })
               : `${num(r.area)} m²`,
+          ...(!r.enclosed
+            ? { brief: t('warn.roomNotEnclosedBrief') }
+            : r.sharing.length > 0
+              ? { brief: t('warn.roomSharedBrief', { rooms: r.sharing.flatMap((id) => this.store.get().rooms.find((x) => x.id === id)?.number ?? []).join(', ') }) }
+              : {}),
           warn: !r.enclosed || r.sharing.length > 0,
           outline: r.outline,
         })),
