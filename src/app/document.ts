@@ -91,9 +91,9 @@ export interface WallDefaults {
   readonly top: HeightRule;
 }
 
-/** The ids of every element that can be selected: walls, openings, rooms, floors, guides, dimensions and the registry's (elements/registry.ts). */
+/** The ids of every element that can be selected: walls, openings, rooms, floors, dimensions and the registry's (elements/registry.ts). */
 export const elementIds = (doc: Doc): Set<string> =>
-  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.guides, ...doc.dimensions, ...KINDS.flatMap((k) => listOf(doc, k))].map((e) => e.id));
+  new Set([...doc.walls, ...doc.openings, ...doc.rooms, ...doc.floors, ...doc.dimensions, ...KINDS.flatMap((k) => listOf(doc, k))].map((e) => e.id));
 
 export function newDocument(): Doc {
   return {

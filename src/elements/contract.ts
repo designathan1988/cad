@@ -14,7 +14,7 @@ import type { MessageKey } from '../ui/i18n';
 import type { IconName } from '../ui/icons';
 
 /** The document's lists the registry's kinds keep. */
-export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'notes' | 'grids';
+export type KindKey = 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'notes' | 'grids' | 'guides';
 
 /** What the plan view lends a kind to draw itself with. */
 export interface PlanPaint {
@@ -26,6 +26,8 @@ export interface PlanPaint {
   /** The interface's font family, and a font of its own sizes (`--fs-sm`) at a weight. */
   readonly family: string;
   readonly font: (weight: string, size: string) => string;
+  /** A line through `point` along `dir` across the whole view, dashed. */
+  readonly line: (point: Point2, dir: Point2, colour: string, width: number, dash: readonly number[]) => void;
 }
 
 /** What the DXF writer lends a kind. */
@@ -56,8 +58,11 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   readonly category: Category | null;
   /** On every level (it has no level of its own): a grid axis. Not pasted onto another level. */
   readonly everyLevel?: true;
-  /** Drawn in plan over the guides and the other kinds (a text). */
+  /** Drawn in plan over the walls, the doors and the other kinds (a guide, a text). */
   readonly over?: true;
+  /** A line without ends (a guide): its outline is two points of it; framing counts the first only,
+   * and only a crossing window takes it. */
+  readonly endless?: true;
   readonly icon: IconName;
   /** The panel's title for one and for several ({n}). */
   readonly one: MessageKey;

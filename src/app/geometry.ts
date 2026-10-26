@@ -401,7 +401,8 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
   const outlines = [
     ...[...g.rooms.values()].filter((r) => !ids || ids.has(r.room.id)).map((r) => r.outline),
     ...[...g.floors.values()].filter((f) => !ids || ids.has(f.floor.id)).map((f) => f.outline),
-    ...[...eachSolid(g.kinds)].filter((x) => !ids || ids.has(x.id)).flatMap((x) => x.kind.outlines(x.solid)),
+    // A guide has no ends: its point only.
+    ...[...eachSolid(g.kinds)].filter((x) => !ids || ids.has(x.id)).flatMap((x) => (x.kind.endless ? [x.kind.outlines(x.solid)[0]!.slice(0, 1)] : x.kind.outlines(x.solid))),
   ];
   for (const v of outlines.flat()) {
     minX = Math.min(minX, v.x);

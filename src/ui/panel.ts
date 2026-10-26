@@ -10,8 +10,6 @@ import type { OpeningId, OpeningKind } from '../elements/opening/schema';
 import type { FloorSolid, RoomSolid } from '../elements/room/derive';
 import { floorPanel, roomPanel, type RoomPanelActions } from '../elements/room/panel';
 import { nextWallFields, wallFields } from '../elements/wall/fields';
-import { guideFields } from '../elements/guide/fields';
-import type { Guide } from '../elements/guide/schema';
 import { type DimensionFieldActions, dimensionFields } from '../elements/dimension/fields';
 import type { Dimension } from '../elements/dimension/schema';
 import type { JoinWarning } from '../elements/wall/join/types';
@@ -42,8 +40,6 @@ export interface PanelInput {
   readonly openingTool: { readonly kind: OpeningKind; readonly size: OpeningSize } | null;
   /** How many elements are selected, of every kind: the panel edits one kind at a time. */
   readonly total: number;
-  /** The selected guides. */
-  readonly guides: readonly Guide[];
   /** The first registry kind with a selected element (elements/registry.ts), and those, as derived. */
   readonly kind: { readonly kind: AnyKind; readonly items: readonly unknown[] } | null;
   /** The selected dimensions, and what each measures now (null: an end's element is gone). */
@@ -68,8 +64,6 @@ export interface PanelActions {
   readonly opening: OpeningPanelActions;
   readonly room: RoomPanelActions;
   readonly updateOpeningDefaults: (kind: OpeningKind, patch: Partial<OpeningSize>) => void;
-  /** Deletes every guide of the level shown. */
-  readonly clearGuides: () => void;
   readonly setDimensionDistance: DimensionFieldActions['setDimensionDistance'];
   /** A command on the document: what a registry kind's fields send. */
   readonly dispatch: (c: Command<Doc>) => void;
@@ -188,11 +182,6 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     part(n);
     nodes.push(fieldsSection(t('panel.general'), true, dimensionFields(input.dimensions, input.dimensionLength, act), input.dimensions));
     nodes.push(el('div', { class: 'panel-hint' }, t('dim.held')));
-  } else if (input.guides.length > 0) {
-    const n = input.guides.length;
-    nodes.push(head('guide', n === 1 ? t('guide.title') : t('guide.titleMany', { n })));
-    part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, guideFields(act.clearGuides), input.guides));
   } else if (input.openingTool) {
     const { kind, size } = input.openingTool;
     nodes.push(head(kind, t(kind === 'door' ? 'panel.nextDoor' : 'panel.nextWindow')));

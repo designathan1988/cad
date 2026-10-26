@@ -27,13 +27,13 @@ import { contextEntries } from './context-menu';
 import { arrowStep } from '../tools/nudge';
 import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
-import { GUIDE_PX, guideBaseAt } from '../tools/guide-tool';
+import { guideBaseAt } from '../tools/guide-tool';
 import { placeDimension, segmentDistance } from '../elements/dimension/anchor';
 import { eachSolid } from '../elements/registry';
 import type { PickOrder } from '../elements/contract';
 import type { LevelsShown } from './view-3d';
 import type { ModifyKind } from '../tools/modify-tool';
-import { cross, distance, normalize, sub } from '../core/vector';
+import { distance, normalize, sub } from '../core/vector';
 import { outerSides } from '../elements/wall/geometry/seams';
 
 /** How near (screen pixels) the pointer must come to a wall, a door or a window to take it. */
@@ -244,7 +244,6 @@ export function wireInput(app: App): void {
   /** In plan: what is under the point, in the order a click takes it: an opening, its wall, rooms, floors. */
   const planHits = (p: Point2): string[] => {
     const g = app.visibleGeometry();
-    const reach = GUIDE_PX / app.plan.scale;
     // Within a few pixels of a wall, a door or a window, it is taken: aiming inside a thin wall, or at a
     // door's leaf, was the only way before.
     const near = PICK_PX / app.plan.scale;
@@ -269,15 +268,8 @@ export function wireInput(app: App): void {
       ...kindHits('beforeWalls'),
       openingAt(g, p, near),
       wallAt(g, p, undefined, near),
-      // A guide where the pointer is on it: before the room it runs across.
-      ...app
-        .levelGuides()
-        .map((x) => ({ id: x.id, off: Math.abs(cross(x.dir, sub(p, x.point))) }))
-        .filter((x) => x.off <= reach)
-        .sort((a, b) => a.off - b.off)
-        .slice(0, 1)
-        .map((x) => x.id),
-      // Beams, and an axis after the walls on it: a click on a wall over an axis takes the wall.
+      // A guide where the pointer is on it (before the room it runs across), beams, and an axis after
+      // the walls on it: a click on a wall over an axis takes the wall.
       ...kindHits('afterWalls'),
       ...[...g.rooms.values()].filter((r) => r.enclosed && insideRing(r.outline, p)).map((r) => r.room.id),
       ...[...g.floors.values()].filter((f) => f.outline.length >= 3 && insideRing(f.outline, p)).map((f) => f.floor.id),
@@ -741,6 +733,13 @@ export function wireInput(app: App): void {
   // The preview follows what is typed, before Enter: the wall preview is geometry, so refresh it.
   shell.measure.addEventListener('input', () => app.refresh());
   shell.measure.addEventListener('keydown', (e) => {
+    // Alt over a wall starts a guide from the field too: a value left in it (one the drawing did not
+    // take) kept the focus, and Alt did nothing. The field is left; the drawing's keys take Alt.
+    if (e.key === 'Alt' && !ui.guide && guideTools()) {
+      shell.measure.value = '';
+      shell.measure.blur();
+      return;
+    }
     e.stopPropagation();
     const drawing = ui.tool === 'wall' && ui.wall.kind === 'drawing';
     if (e.key === 'Tab' && drawing && !e.shiftKey) {
@@ -804,8 +803,10 @@ export function wireInput(app: App): void {
     // The level list keeps the focus once a level is chosen in it: its arrows go on changing the level,
     // but Ctrl+V (paste on the level just chosen), Ctrl+Z, Del and Esc are the drawing's.
     const levelList = target === shell.level && (ctrl || key === 'delete' || key === 'escape');
+    // Alt from the measure field (it has just left it): a guide, as anywhere in the drawing.
+    const measureAlt = target === shell.measure && e.key === 'Alt';
     if (levelList) shell.level.blur();
-    else if (target.closest('input, select, textarea') || target.closest('.dialog-back') || !shell.helpBack.hidden) return;
+    else if (!measureAlt && (target.closest('input, select, textarea') || target.closest('.dialog-back') || !shell.helpBack.hidden)) return;
     shift = e.shiftKey;
     // The diagnostics panel, from anywhere but a dialog's field.
     if (e.key === 'F7') {

@@ -64,8 +64,6 @@ export interface PlanOverlay {
   readonly roomSpace?: readonly Point2[] | null;
   /** Walls being drawn (ids present in the geometry), shown as a translucent preview. */
   readonly preview: ReadonlySet<WallId>;
-  /** The level's guides: lines without ends, dashed across the whole plan (selected and hovered as elements). */
-  readonly guides?: readonly { readonly id: string; readonly point: Point2; readonly dir: Point2 }[];
   /** The level's text notes, as tall as their letters at the plan's scale. */
   /**
    * Permanent dimensions (elements/dimension): the points measured (a, b), the dimension line (la to lb),
@@ -476,23 +474,27 @@ export class PlanView {
     fill(drawn, color('--wall-sel-fill'));
     // The registry's kinds (elements/registry.ts), each drawing itself; lit when selected or under the pointer.
     const family = getComputedStyle(this.canvas).getPropertyValue('--font').trim() || 'sans-serif';
-    const paint = { ctx, toScreen: (v: Point2) => this.toScreen(v), color, scale: this.scale, family, font: (weight: string, size: string) => this.font(weight, size) };
+    const paint = {
+      ctx,
+      toScreen: (v: Point2) => this.toScreen(v),
+      color,
+      scale: this.scale,
+      family,
+      font: (weight: string, size: string) => this.font(weight, size),
+      line: (point: Point2, dir: Point2, colour: string, width: number, dash: readonly number[]) => this.drawLine(point, dir, colour, width, dash),
+    };
     const kinds = [...eachSolid(g.kinds)];
-    // Texts over the guides and the rest (contract.ts: over), drawn below.
+    // Guides and texts over the walls, the doors and the rest (contract.ts: over), drawn below.
     for (const x of kinds) if (!x.kind.over) x.kind.plan(paint, x.solid, o.selected.has(x.id) || o.hover === x.id);
     this.drawOpenings(g, o, { line: color('--wall-line'), sel: color('--wall-sel'), selFill: color('--wall-sel-fill'), warn: color('--warn'), canvas: color('--canvas') });
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
     if (o.gridDraft) drawAxis(paint, o.gridDraft.start, o.gridDraft.end, o.gridDraft.name, color('--wall-sel'));
-    // Guides over the walls, thin: a guide laid on a wall's face is seen there.
-    for (const g of o.guides ?? []) {
-      const lit = o.selected.has(g.id) || o.hover === g.id;
-      this.drawLine(g.point, g.dir, lit ? color('--wall-sel') : color('--guide'), lit ? 2 : 1, lit ? [10, 4] : [8, 5]);
-    }
+    // Guides over the walls, thin (a guide laid on a wall's face is seen there), and texts over all.
+    for (const x of kinds) if (x.kind.over) x.kind.plan(paint, x.solid, o.selected.has(x.id) || o.hover === x.id);
     if (o.guideDraft) this.drawLine(o.guideDraft.point, o.guideDraft.dir, color('--guide'), 1.6, [10, 4]);
     if (o.axisLine) this.drawLine(o.axisLine.point, o.axisLine.dir, color('--snap'), 1.4, [12, 4, 2, 4]);
     for (const r of o.refLines ?? []) this.drawRefLine(r, color('--ref-line'));
     if (o.ray) this.dashed(o.ray.start, o.ray.end, color('--snap'));
-    for (const x of kinds) if (x.kind.over) x.kind.plan(paint, x.solid, o.selected.has(x.id) || o.hover === x.id);
     this.drawOpeningTags(o.openingTags ?? [], color);
     const kept = o.dimensions ?? [];
     this.drawRoomTags(o.roomLabels, color, [...this.dimValueBoxes(o.dims ?? []), ...kept.map((d) => this.keptDimValueBox(d))], o.dims ?? [], kept.map((d) => ({ a: this.toScreen(d.la), b: this.toScreen(d.lb) })));
@@ -1000,12 +1002,16 @@ export class PlanView {
   /** A line without ends through `point` along `dir`, dashed across the canvas, its dashes fixed to the plan. */
   private drawLine(point: Point2, dir: Point2, colour: string, width: number, dash: readonly number[]): void {
     const { ctx } = this;
-    const a = this.toScreen(point);
+    const at = this.toScreen(point);
     const b = this.toScreen({ x: point.x + dir.x, y: point.y + dir.y });
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const len = Math.hypot(b.x - at.x, b.y - at.y);
     if (len === 0) return;
-    const ux = (b.x - a.x) / len;
-    const uy = (b.y - a.y) / len;
+    const ux = (b.x - at.x) / len;
+    const uy = (b.y - at.y) / len;
+    // Level or upright, on the middle of a pixel row (an odd width) or between two (even): a 1 px line
+    // between rows was smeared over both, pale, and guides of one colour looked of two.
+    const crisp = (v: number) => (width % 2 === 1 ? Math.round(v - 0.5) + 0.5 : Math.round(v));
+    const a = { x: Math.abs(ux) < 1e-9 ? crisp(at.x) : at.x, y: Math.abs(uy) < 1e-9 ? crisp(at.y) : at.y };
     const { w, h } = this.size;
     // Past both edges of the canvas from the line's point, wherever that point is.
     const reach = Math.hypot(w, h) + Math.hypot(a.x - w / 2, a.y - h / 2);

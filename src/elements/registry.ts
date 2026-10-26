@@ -8,13 +8,14 @@ import type { AnyKind, KindKey } from './contract';
 import { beamKind } from './kinds/beam';
 import { columnKind } from './kinds/column';
 import { gridKind } from './kinds/grid';
+import { guideKind } from './kinds/guide';
 import { noteKind } from './kinds/note';
 import { railingKind } from './kinds/railing';
 import { roofKind } from './kinds/roof';
 import { stairKind } from './kinds/stair';
 
 /** Drawn in this order (later over earlier); the panel shows the first with a selected element. */
-export const KINDS: readonly AnyKind[] = [stairKind, railingKind, columnKind, roofKind, gridKind, beamKind, noteKind];
+export const KINDS: readonly AnyKind[] = [stairKind, railingKind, columnKind, roofKind, gridKind, beamKind, guideKind, noteKind];
 
 export const kindOfKey = (key: KindKey): AnyKind => KINDS.find((k) => k.key === key)!;
 

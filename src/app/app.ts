@@ -44,9 +44,10 @@ import { buildShell, keyHint, type Shell, type ToolId, type ViewId } from '../ui
 import { snapLabel, type Snap } from '../tools/snap';
 import { arcMiddle, bulgeKeepingSide } from '../tools/arc-edit';
 import { bulgeThrough, IDLE, rectangle, typedEnd, wallTransition, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
-import { type Drag, dragTransform, hull, moveGuides } from './select-drag';
+import { type Drag, dragTransform, hull } from './select-drag';
 import { anyKinds, appendKinds, filterKinds, hasSolid, KINDS, kindLists, kindOfId, kindOfKey, levelOfSolid, moveKinds, solidsOf } from '../elements/registry';
 import { gridKind } from '../elements/kinds/grid';
+import { guideKind } from '../elements/kinds/guide';
 import { addRailing } from '../elements/railing/commands';
 import { RAILING_HEIGHT, RAILING_PREFIX } from '../elements/railing/schema';
 import { addStair } from '../elements/stair/commands';
@@ -395,7 +396,7 @@ export class App {
     // Levels hidden now leave the selection, as a hidden category does.
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      if (!isGuideId(id) && !isNoteId(id) && !isDimId(id) && !isGridId(id) && !shown.solids.has(id) && !hasSolid(shown.kinds, id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
+      if (!isDimId(id) && !shown.solids.has(id) && !hasSolid(shown.kinds, id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) this.ui.selection.delete(id);
     }
     this.refresh();
   }
@@ -1202,17 +1203,10 @@ export class App {
     this.scene.setWalkView({ x: w.x, y: w.y, z: floor + this.lift(w.levelId) + this.eyeHeight }, w.yaw, w.pitch);
   }
 
-  /** The guides, as a move being dragged takes them. */
-  private shownGuides(): readonly Guide[] {
-    const d = this.ui.drag;
-    const guides = this.store.get().guides;
-    return d?.kind === 'move' ? moveGuides(guides, d) : guides;
-  }
-
-  /** The guides of the level shown, unless hidden. Plan only: they are neither drawn nor snapped to in 3D. */
+  /** The guides of the level shown, unless hidden, as a move being dragged takes them. Plan only: they
+   * are neither drawn nor snapped to in 3D. */
   levelGuides(): Guide[] {
-    if (this.ui.view !== 'plan' || this.ui.hidden.has('guides')) return [];
-    return this.shownGuides().filter((g) => g.levelId === this.ui.levelId);
+    return this.ui.view === 'plan' ? solidsOf<Guide>(this.visibleGeometry().kinds, guideKind) : [];
   }
 
   /** A level mark where the menu was opened (or the middle of the view), selected: it says the level's height. */
@@ -2029,7 +2023,6 @@ export class App {
       openingGroups: r.doc.openingGroups.slice(c.doc.openingGroups.length),
       rooms: r.doc.rooms.slice(c.doc.rooms.length),
       floors: r.doc.floors.slice(c.doc.floors.length),
-      guides: r.doc.guides.slice(c.doc.guides.length),
       dimensions: r.doc.dimensions.slice(c.doc.dimensions.length),
     };
     const level = levelOf(this.store.get(), this.ui.levelId);
@@ -2046,7 +2039,6 @@ export class App {
         openingGroups: [...d.openingGroups, ...added.openingGroups],
         rooms: [...d.rooms, ...rooms],
         floors: [...d.floors, ...added.floors],
-        guides: [...d.guides, ...added.guides],
         dimensions: [...d.dimensions, ...added.dimensions],
       }),
     });
@@ -2445,7 +2437,7 @@ export class App {
   private selectionKinds(): number {
     const g = this.geometry;
     const ids = [...this.ui.selection];
-    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isGuideId) ? 1 : 0) + (ids.some(isDimId) ? 1 : 0) + new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
+    return [g.solids, g.openings, g.rooms, g.floors].filter((m) => ids.some((id) => m.has(id))).length + (ids.some(isDimId) ? 1 : 0) + new Set(ids.flatMap((id) => kindOfId(id)?.key ?? [])).size;
   }
 
   selectedWalls(): DocWall[] {
@@ -2602,7 +2594,6 @@ export class App {
         hover: ui.hover,
         roomSpace: ui.tool === 'room' ? ui.roomSpace : null,
         preview,
-        guides: this.levelGuides(),
         dimensions: this.planDimensions(),
         gridDraft: this.gridDraft(),
         guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
@@ -2783,7 +2774,6 @@ export class App {
         openingWarnings: this.geometry.openingWarnings,
         openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing] } : null,
         total: ui.selection.size,
-        guides: doc.guides.filter((g) => ui.selection.has(g.id)),
         dimensions: doc.dimensions.filter((d) => ui.selection.has(d.id)),
         // The first registry kind with a selected element, and those of its elements, as derived.
         kind: (() => {
@@ -2875,7 +2865,6 @@ export class App {
           ui.openingDefaults = { ...ui.openingDefaults, [kind]: { ...ui.openingDefaults[kind], ...patch } };
           this.refresh();
         },
-        clearGuides: () => this.clearGuides(),
         setDimensionDistance: (ids, distance) => this.store.dispatch(setDimensionDistance(ids, distance)),
         dispatch: (c) => this.store.dispatch(c),
         // The wall moved across, with its joins kept as a move keeps them: the face then meets the one below.
@@ -3104,14 +3093,14 @@ export class App {
     else this.ui.hidden.add(c);
     const shown = this.visibleGeometry();
     for (const id of [...this.ui.selection]) {
-      // Guides and dimensions have no geometry: a guide goes only when guides are hidden, a dimension never.
+      // A dimension has no geometry: it never goes.
       if (isDimId(id)) continue;
-      // The registry's: with their category (a text has none, an axis goes with the guides).
+      // The registry's: with their category (a text has none, an axis and a guide go with the guides).
       if (kindOfId(id)) {
         if (!hasSolid(shown.kinds, id)) this.ui.selection.delete(id);
         continue;
       }
-      if (isGuideId(id) ? this.ui.hidden.has('guides') : !shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) {
+      if (!shown.solids.has(id) && !shown.openings.has(id) && !shown.rooms.has(id) && !shown.floors.has(id)) {
         this.ui.selection.delete(id);
       }
     }
