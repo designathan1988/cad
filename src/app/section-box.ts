@@ -136,3 +136,53 @@ function crossings(poly: readonly Point2[], axis: 'x' | 'y', c: number): [number
   for (let i = 0; i + 1 < at.length; i += 2) if (at[i + 1]! - at[i]! > 1e-9) out.push([at[i]!, at[i + 1]!]);
   return out;
 }
+
+/**
+ * A vertical section (Revit's Section): the vertical plane through a line in plan, keeping what lies on
+ * its left (looking along `dir`), seen square from its right. Made from a guide (app.ts).
+ */
+export interface SectionLine {
+  readonly point: Point2;
+  /** Unit direction; what is kept is on its left. */
+  readonly dir: Point2;
+}
+
+/** The kept side's direction, square to the line: where the section looks. */
+export const sectionLooks = (s: SectionLine): Point2 => ({ x: -s.dir.y, y: s.dir.x });
+
+/** Where the section's plane goes through the prisms: a rectangle for each stretch of outline it crosses. */
+export function sectionCaps(prisms: readonly UprightPrism[], s: SectionLine): Point3[][] {
+  const n = sectionLooks(s);
+  const caps: Point3[][] = [];
+  for (const p of prisms) {
+    const poly = p.polygon;
+    const at: number[] = [];
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i]!;
+      const b = poly[(i + 1) % poly.length]!;
+      const da = (a.x - s.point.x) * n.x + (a.y - s.point.y) * n.y;
+      const db = (b.x - s.point.x) * n.x + (b.y - s.point.y) * n.y;
+      if (da <= 0 !== db <= 0) {
+        const k = da / (da - db);
+        at.push((a.x + (b.x - a.x) * k - s.point.x) * s.dir.x + (a.y + (b.y - a.y) * k - s.point.y) * s.dir.y);
+      }
+    }
+    at.sort((u, v) => u - v);
+    const on = (t: number, z: number): Point3 => ({ x: s.point.x + s.dir.x * t, y: s.point.y + s.dir.y * t, z });
+    for (let i = 0; i + 1 < at.length; i += 2) {
+      if (at[i + 1]! - at[i]! > 1e-9) caps.push([on(at[i]!, p.bottom), on(at[i + 1]!, p.bottom), on(at[i + 1]!, p.top), on(at[i]!, p.top)]);
+    }
+  }
+  return caps;
+}
+
+/** A stored section, or null for anything that is not one. */
+export function readSection(raw: unknown): SectionLine | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const { point, dir } = raw as Record<string, Record<string, unknown> | undefined>;
+  const fin = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+  if (!point || !dir || !fin(point.x) || !fin(point.y) || !fin(dir.x) || !fin(dir.y)) return null;
+  const len = Math.hypot(dir.x, dir.y);
+  if (len < 1e-9) return null;
+  return { point: { x: point.x, y: point.y }, dir: { x: dir.x / len, y: dir.y / len } };
+}

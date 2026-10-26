@@ -78,6 +78,6 @@ describe('guides in the menu', () => {
   });
 
   it('a guide selected: no zoom to it (it has no ends), its properties, the level\'s guides, delete', () => {
-    expect(contextIds(withGuide, ['guide_1'], 'lvl_ground')).toEqual(['move', 'properties', 'clearGuides', 'delete']);
+    expect(contextIds(withGuide, ['guide_1'], 'lvl_ground')).toEqual(['move', 'section', 'properties', 'clearGuides', 'delete']);
   });
 });

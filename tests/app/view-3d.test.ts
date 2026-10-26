@@ -34,14 +34,14 @@ describe('cut', () => {
   it("at the current level's own cut height, lifted with it", () => {
     expect(cutAt(levels, 'ground', { ...VIEW_3D_DEFAULT, cut: true })).toBeCloseTo(1.2, 12);
     expect(cutAt(levels, 'first', { ...VIEW_3D_DEFAULT, cut: true })).toBeCloseTo(4.3, 12);
-    expect(cutAt(levels, 'first', { levels: 'all', explode: true, cut: true, xray: false, box: null, ortho: false })).toBeCloseTo(4.3 + EXPLODE_GAP, 12);
+    expect(cutAt(levels, 'first', { levels: 'all', explode: true, cut: true, xray: false, box: null, ortho: false, section: null })).toBeCloseTo(4.3 + EXPLODE_GAP, 12);
     expect(cutAt(levels, 'first', VIEW_3D_DEFAULT)).toBeNull();
   });
 });
 
 describe('stored', () => {
   it('read back, anything else taken as the default', () => {
-    expect(readView3D({ levels: 'below', explode: true, cut: false })).toEqual({ levels: 'below', explode: true, cut: false, xray: false, box: null, ortho: false });
+    expect(readView3D({ levels: 'below', explode: true, cut: false })).toEqual({ levels: 'below', explode: true, cut: false, xray: false, box: null, ortho: false, section: null });
     expect(readView3D({ xray: true }).xray).toBe(true);
     expect(readView3D({ xray: 'yes' }).xray).toBe(false);
     expect(readView3D({ levels: 'sideways', explode: 'yes' })).toEqual(VIEW_3D_DEFAULT);

@@ -12,7 +12,7 @@ import { LAYER_TOKEN } from '../ui/swatch';
 import { blockPaint, wallMeshKey } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
 import { featureEdges } from '../elements/wall/geometry/edges';
-import { boxCaps, type SectionBox, type UprightPrism } from '../app/section-box';
+import { boxCaps, type SectionBox, type SectionLine, sectionCaps, sectionLooks, type UprightPrism } from '../app/section-box';
 
 const toThree = (p: Point2, z: number) => new THREE.Vector3(p.x, z, -p.y);
 
@@ -84,6 +84,8 @@ export class Scene3D {
   private readonly boxCapGroup = new THREE.Group();
   private readonly boxCapMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
   private boxBox: SectionBox | null = null;
+  private sectionLine: SectionLine | null = null;
+  private sectionPlane: THREE.Plane | null = null;
   private boxCapsKey: unknown[] = [];
   private lastSync: { g: DerivedGeometry; lift: (levelId: string) => number } | null = null;
   /** Where the cut goes through walls, filled as the plan fills them (not clipped itself). */
@@ -233,20 +235,34 @@ export class Scene3D {
     this.invalidate();
   }
 
+  /** A vertical section (section-box.ts): what lies behind its line clipped away, its cut filled. */
+  setSection(s: SectionLine | null): void {
+    if (JSON.stringify(s) === JSON.stringify(this.sectionLine)) return;
+    this.sectionLine = s;
+    if (s) {
+      const n = sectionLooks(s);
+      // Kept: n · (p − point) ≥ 0, with plan (x, y) at three.js (x, −z).
+      this.sectionPlane = new THREE.Plane(new THREE.Vector3(n.x, 0, -n.y), -(n.x * s.point.x + n.y * s.point.y));
+    } else this.sectionPlane = null;
+    this.clipPlanes();
+    this.syncBoxCaps();
+    this.invalidate();
+  }
+
   /** The box's fills, again when the box, the walls or the lifts changed. */
   private syncBoxCaps(): void {
     const box = this.boxBox;
     const src = this.lastSync;
     const levels = src ? [...new Set([...src.g.solids.values()].map((s) => s.wall.levelId))] : [];
     // The walls and floors by identity (a new derived geometry is a change), the box and lifts by value.
-    const key: unknown[] = [src?.g.solids, src?.g.floors, JSON.stringify([box, levels.map((l) => src!.lift(l))])];
+    const key: unknown[] = [src?.g.solids, src?.g.floors, JSON.stringify([box, this.sectionLine, levels.map((l) => src!.lift(l))])];
     if (key.every((k, i) => k === this.boxCapsKey[i])) return;
     this.boxCapsKey = key;
     for (const c of [...this.boxCapGroup.children]) {
       this.boxCapGroup.remove(c);
       if (c instanceof THREE.Mesh) c.geometry.dispose();
     }
-    if (!box || !src) return;
+    if ((!box && !this.sectionLine) || !src) return;
     const prisms: UprightPrism[] = [];
     for (const s of src.g.solids.values()) {
       const up = src.lift(s.wall.levelId);
@@ -259,6 +275,15 @@ export class Scene3D {
     // A hair inside the box, so the face it lies on does not clip it away.
     const e = 0.0005;
     const inside = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo + e), hi - e);
+    if (this.sectionLine) {
+      // A hair on the kept side of the section's plane, for the same reason.
+      const n = sectionLooks(this.sectionLine);
+      for (const cap of sectionCaps(prisms, this.sectionLine)) {
+        const pts = cap.map((p) => toThree({ x: p.x + n.x * e, y: p.y + n.y * e }, p.z));
+        this.boxCapGroup.add(new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([pts[0]!, pts[1]!, pts[2]!, pts[0]!, pts[2]!, pts[3]!]), this.boxCapMaterial));
+      }
+    }
+    if (!box) return;
     for (const cap of boxCaps(prisms, box)) {
       const pts = cap.map((p) => toThree({ x: inside(p.x, box.min.x, box.max.x), y: inside(p.y, box.min.y, box.max.y) }, inside(p.z, box.min.z, box.max.z)));
       let geo: THREE.BufferGeometry;
@@ -279,6 +304,7 @@ export class Scene3D {
     this.clip.length = 0;
     if (this.cutPlane) this.clip.push(this.cutPlane);
     this.clip.push(...this.boxPlanes);
+    if (this.sectionPlane) this.clip.push(this.sectionPlane);
     this.capClip.length = 0;
     this.capClip.push(...this.boxPlanes);
   }

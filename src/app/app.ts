@@ -68,7 +68,7 @@ import { readProject, writeProject } from '../io/project-file';
 import { fitFactor, keepInView } from './keep-in-view';
 import type { ViewKey } from './view-keys';
 import { deleteView, nextViewName, type SavedView, saveView } from './saved-views';
-import { BOX_FACES, type BoxFace, boxAround, faceCenter, faceNormal, type SectionBox } from './section-box';
+import { BOX_FACES, type BoxFace, boxAround, faceCenter, faceNormal, type SectionBox, sectionLooks } from './section-box';
 import { BOX_HANDLE_HIT } from '../render/overlay-3d';
 import { type TempDim, tempDims } from './temp-dims';
 import { cutAt, exploding, liftOf, readView3D, shownLevels, type View3D } from './view-3d';
@@ -1587,6 +1587,41 @@ export class App {
     this.render();
   }
 
+  /**
+   * A vertical section through the selected guide (Revit's Section): the 3D keeps what lies on one side
+   * of it, its cut filled, seen square and parallel from the other. `flip`: the other side.
+   */
+  sectionAtGuide(flip = false): void {
+    const doc = this.store.get();
+    const g = doc.guides.find((x) => this.ui.selection.has(x.id));
+    if (!g) {
+      this.ui.info = t('hint.sectionNoGuide');
+      return this.renderChrome();
+    }
+    // Kept by default: the side with more of the model (the walls' ends on each side), as one would
+    // look at it; `flip` the other one.
+    const left = { x: -g.dir.y, y: g.dir.x };
+    const side = doc.walls.reduce((s, w) => s + Math.sign((w.start.x + w.end.x) / 2 * left.x + ((w.start.y + w.end.y) / 2) * left.y - (g.point.x * left.x + g.point.y * left.y)), 0);
+    const along = side >= 0 !== flip ? g.dir : { x: -g.dir.x, y: -g.dir.y };
+    const section = { point: g.point, dir: along };
+    this.setView('3d');
+    this.setView3D({ section, ortho: true });
+    this.scene.setOrtho(true);
+    this.scene.setSection(section);
+    const n = sectionLooks(section);
+    this.scene.setCovered(this.covered());
+    this.framed['3d'] = true;
+    // From the cut side, looking across the line at what it keeps.
+    this.scene.frame(boundsOf(this.visibleGeometry()), this.height(), new THREE.Vector3(-n.x, 0, n.y));
+    this.toast(t('toast.section'));
+    this.render();
+  }
+
+  /** The vertical section off: the whole model again. */
+  clearSection(): void {
+    if (this.ui.view3d.section) this.setView3D({ section: null });
+  }
+
   frameSelection(): void {
     const box = boundsOf(this.geometry, this.ui.selection);
     // Nothing selected, or nothing with an extent (a guide has no ends): the whole drawing.
@@ -1911,6 +1946,7 @@ export class App {
       this.scene.setXray(ui.view3d.xray);
       this.scene.setBox(ui.view3d.box);
       this.scene.setOrtho(ui.view3d.ortho);
+      this.scene.setSection(ui.view3d.section);
       this.scene.sync(shown, ui.selection, preview, (id) => this.lift(id));
       // Cut at the level's cut height: where it goes through the level's walls, their plan pieces.
       const doc = this.store.get();

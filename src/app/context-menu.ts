@@ -41,6 +41,7 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
   // The same icon as the Home button in the top bar, which does the same.
   frameAll: { icon: 'home', keys: 'Home' },
   clearGuides: { icon: 'guide' },
+  section: { icon: 'cut' },
   commands: { icon: 'command', keys: 'Ctrl+K' },
 };
 
@@ -69,6 +70,7 @@ export function contextEntries(app: App, openCommands: () => void): ContextEntry
     drawWall: () => app.setTool('wall'),
     frameAll: () => app.frameAll(),
     clearGuides: () => app.clearGuides(),
+    section: () => app.sectionAtGuide(),
     commands: openCommands,
   };
   return contextIds(app.store.get(), ids, app.ui.levelId).map((id) => ({

@@ -1,7 +1,7 @@
 // The section box (section-box.ts): faces, moving one, the first box, the drag on screen. By hand.
 
 import { describe, expect, it } from 'vitest';
-import { boxAround, boxCaps, boxEdges, dragDistance, faceCenter, faceNormal, MIN_BOX, moveFace, readBox, type SectionBox } from '../../src/app/section-box';
+import { boxAround, boxCaps, boxEdges, dragDistance, faceCenter, faceNormal, MIN_BOX, moveFace, readBox, readSection, type SectionBox, sectionCaps, sectionLooks } from '../../src/app/section-box';
 
 const box: SectionBox = { min: { x: 0, y: 0, z: 0 }, max: { x: 4, y: 2, z: 3 } };
 
@@ -88,5 +88,43 @@ describe('where the box goes through the walls', () => {
     const U = { polygon: [{ x: 0, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 3 }, { x: 2, y: 3 }, { x: 2, y: 1 }, { x: 1, y: 1 }, { x: 1, y: 3 }, { x: 0, y: 3 }], bottom: 0, top: 0.1 };
     const u2 = boxCaps([U], { ...big, max: { ...big.max, y: 2 } });
     expect(u2.map((q) => [q[0]!.x, q[1]!.x])).toEqual([[0, 1], [2, 3]]);
+  });
+});
+
+describe('a vertical section through a line', () => {
+  const wall = { polygon: [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 0.2 }, { x: 0, y: 0.2 }], bottom: 0, top: 2.8 };
+
+  it('looks to the left of its line', () => {
+    expect(sectionLooks({ point: { x: 0, y: 0 }, dir: { x: 1, y: 0 } })).toEqual({ x: -0, y: 1 });
+  });
+
+  it('across the wall: its section, 20 cm by its height, at the line', () => {
+    // The line x = 1.5 going up the plan: it crosses the wall from y = 0 to 0.2.
+    const caps = sectionCaps([wall], { point: { x: 1.5, y: -5 }, dir: { x: 0, y: 1 } });
+    expect(caps).toHaveLength(1);
+    const got = caps[0]!.map((p) => [p.x, p.y, p.z].map((v) => Math.round(v * 1e9) / 1e9 + 0));
+    expect(got).toEqual([
+      [1.5, 0, 0],
+      [1.5, 0.2, 0],
+      [1.5, 0.2, 2.8],
+      [1.5, 0, 2.8],
+    ]);
+  });
+
+  it('a diagonal line through a wall: the stretch between its two faces', () => {
+    // At 45° through the 20 cm wall: the stretch is 0.2·√2 long.
+    const r = Math.SQRT1_2;
+    const [cap] = sectionCaps([wall], { point: { x: 1, y: -1 }, dir: { x: r, y: r } });
+    expect(Math.hypot(cap![1]!.x - cap![0]!.x, cap![1]!.y - cap![0]!.y)).toBeCloseTo(0.2 * Math.SQRT2, 12);
+  });
+
+  it('a line past the wall goes through nothing', () => {
+    expect(sectionCaps([wall], { point: { x: 0, y: 1 }, dir: { x: 1, y: 0 } })).toEqual([]);
+  });
+
+  it('read back with its direction made unit; anything else is none', () => {
+    expect(readSection({ point: { x: 1, y: 2 }, dir: { x: 0, y: 3 } })).toEqual({ point: { x: 1, y: 2 }, dir: { x: 0, y: 1 } });
+    expect(readSection({ point: { x: 1, y: 2 }, dir: { x: 0, y: 0 } })).toBeNull();
+    expect(readSection(null)).toBeNull();
   });
 });

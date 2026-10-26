@@ -26,6 +26,7 @@ export type ContextId =
   | 'drawWall'
   | 'frameAll'
   | 'clearGuides'
+  | 'section'
   | 'commands';
 
 /** `levelId`: the level shown, whose guides can be deleted at once. */
@@ -44,7 +45,7 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: str
   }
   const id = selection[0]!;
   // A guide has no extent to frame.
-  if (doc.guides.some((g) => g.id === id)) return [...modify, 'properties', ...guides, 'delete'];
+  if (doc.guides.some((g) => g.id === id)) return [...modify, 'section', 'properties', ...guides, 'delete'];
   const common: ContextId[] = ['frameSelection', 'properties', 'delete'];
   if (doc.walls.some((w) => w.id === id)) return [...modify, 'flipWall', 'editType', ...common];
   const opening = doc.openings.find((o) => o.id === id);
