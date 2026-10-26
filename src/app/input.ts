@@ -147,6 +147,16 @@ export function wireInput(app: App): void {
     }
     return faceCache.faces;
   };
+  // The faces of the level below's walls, for a wall drawn on its exterior or interior face: snapped
+  // onto them, it stands flush on the wall below (a wall drawn on its axis has the axes below).
+  let belowCache: { geometry: unknown; levelId: string; faces: { start: Point2; end: Point2; face: true }[] } | null = null;
+  const belowFaces = (levelId: string) => {
+    if (!belowCache || belowCache.geometry !== app.geometry || belowCache.levelId !== levelId) {
+      const polygons = [...app.geometry.solids.values()].filter((s) => s.wall.levelId === levelId).flatMap((s) => s.pieces.map((p) => p.polygon));
+      belowCache = { geometry: app.geometry, levelId, faces: outerSides(polygons).map((s) => ({ start: s.a, end: s.b, face: true as const })) };
+    }
+    return belowCache.faces;
+  };
   /** Half a wall's thickness: its ends snap from anywhere on its body near them (snap.ts: reach). */
   const halfOf = (id: string) => (app.geometry.solids.get(id)?.layers.reduce((t, l) => t + l.thickness, 0) ?? 0) / 2;
   const snapped = (e: PointerEvent | MouseEvent) => {
@@ -165,6 +175,7 @@ export function wireInput(app: App): void {
     // upper floor snaps onto the walls it stands on.
     const below = ui.hidden.has('walls') ? null : app.levelBelow();
     const walls = app.store.get().walls;
+    const onFace = ui.tool === 'wall' && ui.defaults.referenceLine !== 'centerline' && below !== null;
     return snap({
       cursor: at.p,
       mpp: at.mpp,
@@ -172,6 +183,7 @@ export function wireInput(app: App): void {
       // tape takes the face, not the axis the body otherwise stands for.
       segments: [
         ...faces,
+        ...(onFace ? belowFaces(below) : []),
         ...walls.filter((x) => x.levelId === ui.levelId).map((x) => ({ id: x.id, start: x.start, end: x.end, reach: ui.tool === 'measure' ? 0 : halfOf(x.id), ...(x.bulge ? { bulge: x.bulge } : {}) })),
         ...walls.filter((x) => x.levelId === below).map((x) => ({ start: x.start, end: x.end, reach: ui.tool === 'measure' ? 0 : halfOf(x.id), ...(x.bulge ? { bulge: x.bulge } : {}) })),
       ],
