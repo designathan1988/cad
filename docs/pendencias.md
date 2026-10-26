@@ -262,7 +262,9 @@ Achados da rodada anterior ainda abertos:
   L) e para o centro dos cantos com espessuras diferentes, e uma suíte de propriedade dos setores.
 - Resolvido em 2026-10-26: girar paredes juntas a outras que ficaram levava o canto ao cruzamento das
   linhas (de 36a2489; o teste de transform.ts pegou). Agora só o Mover mantém as linhas das juntas; girar
-  leva os cantos junto. Não visto no navegador.
+  leva os cantos junto. Visto no navegador: caixa girada 90° com o tipo digitado mantém a forma e a
+  parede que ficou acompanha o canto; arrastar uma parede com 6 px de desvio ainda mantém as vizinhas
+  retas.
 - Falta: setores para arcos (os nós com trechos de arco seguem a regra da passagem) e para um braço que
   passa pelo ponto com setor de mais de meia volta (aí a junção avisa `ComplexJoin` e fica a regra
   anterior).
