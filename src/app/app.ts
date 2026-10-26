@@ -2038,12 +2038,29 @@ export class App {
           const bulge = w?.bulge ? bulgeKeepingSide(distance(w.start, w.end), w.bulge, radius) : null;
           if (w && bulge !== null) this.store.dispatch(updateWalls([w.id], { bulge }));
         },
+        setEndJoin: (end, join) => {
+          const w = this.store.get().walls.find((x) => ui.selection.has(x.id));
+          if (!w) return;
+          const joins = { ...w.joins, [end]: join === 'auto' ? undefined : join };
+          // An end back to automatic is left out; a wall with neither end chosen has no `joins`.
+          const kept = Object.fromEntries(Object.entries(joins).filter(([, v]) => v !== undefined));
+          this.store.dispatch(setWalls(this.store.get().walls.map((x) => (x.id === w.id ? (Object.keys(kept).length > 0 ? { ...x, joins: kept } : (({ joins: _j, ...rest }) => rest)(x)) : x)), 'cmd.setEndJoin'));
+        },
         arrangeWalls: (how) => {
           // In the order they were picked: the first is the reference.
           const ids = [...ui.selection].filter((id) => this.store.get().walls.some((w) => w.id === id));
           const walls = how === 'align' ? alignWalls(this.store.get(), ids) : distributeWalls(this.store.get(), ids);
           if (walls) this.store.dispatch(setWalls(walls, how === 'align' ? 'cmd.alignWalls' : 'cmd.distributeWalls'));
         },
+        ...(() => {
+          const ws = this.selectedWalls();
+          if (ws.length !== 1) return {};
+          const { start, end } = ws[0]!;
+          const [dx, dy] = [end.x - start.x, end.y - start.y];
+          type Side = 'top' | 'bottom' | 'left' | 'right';
+          const sides: [Side, Side] = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? ['left', 'right'] : ['right', 'left']) : dy > 0 ? ['bottom', 'top'] : ['top', 'bottom'];
+          return { endSides: sides };
+        })(),
         ...(() => {
           const first = [...ui.selection].find((id) => this.store.get().walls.some((w) => w.id === id));
           const n = first ? wallNumber(this.store.get(), first) : null;

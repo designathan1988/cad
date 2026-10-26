@@ -8,7 +8,7 @@ import { name, num, t, type MessageKey } from '../../ui/i18n';
 import { layerSwatch } from '../../ui/swatch';
 import { referenceLength } from '../opening/derive';
 import { arcOf } from './geometry/arc';
-import type { ReferenceLine } from './schema';
+import type { EndJoin, ReferenceLine } from './schema';
 import { canAlignWalls, canDistributeWalls } from '../../tools/arrange-walls';
 
 export interface WallFieldActions {
@@ -22,6 +22,10 @@ export interface WallFieldActions {
   readonly updateRadius: (radius: number) => void;
   /** Several parallel walls: onto the first selected one's line, or with equal spaces (tools/arrange-walls.ts). */
   readonly arrangeWalls: (how: 'align' | 'distribute') => void;
+  /** How the one selected wall joins at an end (EndJoin); 'auto' clears the choice. */
+  readonly setEndJoin: (end: 'start' | 'end', join: EndJoin | 'auto') => void;
+  /** Where each end of the one selected wall is on the plan, to name it: its start, then its end. */
+  readonly endSides?: readonly ['top' | 'bottom' | 'left' | 'right', 'top' | 'bottom' | 'left' | 'right'];
   /** The first selected wall, the reference for aligning: its number on the plan. */
   readonly firstWall?: string;
 }
@@ -31,6 +35,8 @@ const REFS: readonly { value: ReferenceLine; key: MessageKey; short: MessageKey;
   { value: 'exteriorFace', key: 'ref.exteriorFace', short: 'ref.short.exteriorFace', icon: 'refExterior' },
   { value: 'interiorFace', key: 'ref.interiorFace', short: 'ref.short.interiorFace', icon: 'refInterior' },
 ];
+
+const JOINS = ['auto', 'miter', 'through', 'stop', 'off'] as const;
 
 const thickness = (doc: Doc, w: DocWall) => (doc.wallTypes.find((x) => x.id === w.wallTypeId)?.layers ?? []).reduce((s, l) => s + l.thickness, 0);
 
@@ -161,6 +167,19 @@ export function wallFields(
         // The ends stay; the arc keeps its side, and stays a major arc if it was one.
         set: (v) => act.updateRadius(v),
       },
+      // How each end joins (Revit's Wall Joins: butt, miter, disallow): automatic unless chosen.
+      ...(['start', 'end'] as const).map(
+        (end): Field<DocWall> => ({
+          id: `join-${end}`,
+          // Named by where the end is ("the top end"): which end is a wall's start is not seen.
+          label: act.endSides ? (`panel.join.${act.endSides[end === 'start' ? 0 : 1]}` as const) : end === 'start' ? 'panel.joinStart' : 'panel.joinEnd',
+          kind: 'select',
+          when: one,
+          options: JOINS.map((j) => ({ value: j, label: t(`join.${j}`) })),
+          get: (w) => w.joins?.[end] ?? 'auto',
+          set: (v) => act.setEndJoin(end, v as EndJoin | 'auto'),
+        }),
+      ),
     ],
     // Several straight, parallel walls: their lines aligned, or spaced evenly between the outer two.
     arrange: [

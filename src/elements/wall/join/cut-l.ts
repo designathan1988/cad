@@ -57,6 +57,11 @@ export function resolveCorner(
    * node.ts); those keep the T butt for now (docs/pendencias.md).
    */
   layered = false,
+  /**
+   * The user's choice (EndJoin): a miter even between different types, or a butt with this wall going
+   * through. Undefined: automatic.
+   */
+  force?: 'miter' | { readonly through: string },
 ): CornerResult {
   const ua = intoBody(a, aEnd);
   const ub = intoBody(b, bEnd);
@@ -92,9 +97,10 @@ export function resolveCorner(
 
   // A butt covers the same region as the miter (outer faces to the outer corner, inner faces to the
   // inner one), so every degenerate rule above holds for both.
-  if (!sameSequence(a, aEnd, b, bEnd) && !layered) return tButt(a, aEnd, b, bEnd, node, extension, bevel, beyond, angle, limit, shared);
-  if (!sameSequence(a, aEnd, b, bEnd)) {
-    const aThrough = goesThrough(a, b);
+  const mitered = force === 'miter' || (force === undefined && sameSequence(a, aEnd, b, bEnd));
+  if (!mitered && !layered) return tButt(a, aEnd, b, bEnd, node, extension, bevel, beyond, angle, limit, shared);
+  if (!mitered) {
+    const aThrough = typeof force === 'object' ? force.through === a.id : goesThrough(a, b);
     const [t, tEnd, c, cEnd] = aThrough ? [a, aEnd, b, bEnd] : [b, bEnd, a, aEnd];
     const { through, abutting, reached } = butt(t, tEnd, c, cEnd, extension);
     // Every layer's end must stay short of both free ends, or the end swallows the other wall; and,

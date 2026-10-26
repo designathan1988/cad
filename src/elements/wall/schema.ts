@@ -39,6 +39,14 @@ export interface WallType {
   readonly baseOffset?: number;
 }
 
+/**
+ * How one end of a wall joins, when the user chose (Revit's Wall Joins and Disallow Join; spec §2.1):
+ * 'miter' even between different types; in a butt, 'through' (this wall goes on to the other's outer
+ * face) or 'stop' (this one stops at the other's face); 'off', not joined at all, ended square.
+ * Absent: automatic.
+ */
+export type EndJoin = 'off' | 'through' | 'stop' | 'miter';
+
 /** What the user decided. Thickness, layers and core come from the type, always derived. */
 export interface Wall {
   readonly id: WallId;
@@ -48,6 +56,8 @@ export interface Wall {
   readonly referenceLine: ReferenceLine;
   /** 0 or absent: straight. Otherwise tan(sweep / 4), positive counter-clockwise (DXF's bulge). */
   readonly bulge?: number;
+  /** How each end joins, when chosen (EndJoin); absent is automatic. */
+  readonly joins?: { readonly start?: EndJoin; readonly end?: EndJoin };
 }
 
 export interface EndRef {

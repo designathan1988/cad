@@ -12,7 +12,8 @@ import { gatherJunctions } from './junctions';
 
 const ENDS: readonly WallEnd[] = ['start', 'end'];
 
-export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
+/** `off`: ends not to join (`${id}:${end}`, Disallow Join): left out, so they stay square and nothing abuts them. */
+export function deriveJoins(walls: readonly WallShape[], off: ReadonlySet<string> = new Set()): JoinGraph {
   const sorted = [...walls].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const warnings: JoinWarning[] = [];
   const valid = sorted.filter((w) => {
@@ -21,7 +22,7 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
     return ok;
   });
 
-  const ends: EndRef[] = valid.flatMap((w) => ENDS.map((end) => ({ wallId: w.id, end })));
+  const ends: EndRef[] = valid.flatMap((w) => ENDS.map((end) => ({ wallId: w.id, end }))).filter((r) => !off.has(`${r.wallId}:${r.end}`));
   const byId = new Map(valid.map((w) => [w.id, w]));
   const at = (r: EndRef) => endPoint(byId.get(r.wallId)!, r.end);
   // A joint of an arc's own chain is not a meeting of walls: another wall's end there is kept apart
@@ -101,6 +102,8 @@ export function deriveJoins(walls: readonly WallShape[]): JoinGraph {
     const p = at(ref);
     for (const host of valid) {
       if (host.id === wall.id || parentOf(host.id) === parentOf(wall.id) || !insideBand(host, p, joint(host))) continue;
+      // At a host's end not to be joined, nothing joins it there either: the end stays square.
+      if (ENDS.some((e) => off.has(`${host.id}:${e}`) && distance(p, endPoint(host, e)) <= host.thickness + POINT_TOLERANCE)) continue;
       if (parallel(wall, host)) {
         warnings.push({ kind: 'wallsOverlap', walls: [wall.id, host.id] });
       } else {

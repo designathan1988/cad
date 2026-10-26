@@ -1,6 +1,7 @@
 // Properties panel, built from what is selected: each element's sections come from its fields
 // (elements/*/fields.ts, rendered by fields.ts). It only reads state and sends changes.
 
+import type { EndJoin } from '../elements/wall/schema';
 import { type Doc, type DocWall, type WallDefaults, wallNumber } from '../app/document';
 import type { OpeningSolid } from '../app/geometry';
 import type { OpeningWarning } from '../elements/opening/derive';
@@ -50,6 +51,7 @@ export interface PanelActions {
   readonly resetToType: (fields: readonly ('top' | 'baseOffset')[]) => void;
   readonly editType: () => void;
   readonly updateRadius: (radius: number) => void;
+  readonly setEndJoin: (end: 'start' | 'end', join: EndJoin | 'auto') => void;
   readonly arrangeWalls: (how: 'align' | 'distribute') => void;
   readonly firstWall?: string;
   readonly updateDefaults: (patch: Partial<WallDefaults>) => void;

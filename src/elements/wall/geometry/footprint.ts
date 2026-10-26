@@ -49,7 +49,19 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     } else shapes.push(shape);
   }
 
-  const graph = deriveJoins(shapes);
+  // The user's join choices (EndJoin), by the ends of the shapes: an arc's start is its first
+  // segment's, its end its last's.
+  const choice = new Map<string, NonNullable<Wall['joins']>['start']>();
+  for (const wall of walls) {
+    if (!wall.joins) continue;
+    const chain = chains.get(wall.id);
+    const first = chain ? chain.segments[0]!.id : wall.id;
+    const last = chain ? chain.segments[chain.segments.length - 1]!.id : wall.id;
+    if (wall.joins.start) choice.set(`${first}:start`, wall.joins.start);
+    if (wall.joins.end) choice.set(`${last}:end`, wall.joins.end);
+  }
+  const off = new Set([...choice].filter(([, v]) => v === 'off').map(([k]) => k));
+  const graph = deriveJoins(shapes, off);
   const byId = new Map(shapes.map((w) => [w.id, w]));
   const isArc = (id: string) => parentOf(id) !== id;
   const endCuts = new Map<string, EndCut>();
@@ -101,6 +113,13 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     const reachB = arcReach(rb, ra);
     // Two straight walls butt layer by layer; with an arc's segment, the T butt its chain relies on.
     const straight = !chains.has(parentOf(ra.wallId)) && !chains.has(parentOf(rb.wallId));
+    // The user's choice at either end (EndJoin), for two straight walls: a miter, or who goes through.
+    const ca = choice.get(keyOf(ra));
+    const cb = choice.get(keyOf(rb));
+    const aThrough = ca === 'through' || cb === 'stop';
+    const bThrough = cb === 'through' || ca === 'stop';
+    const force =
+      !straight ? undefined : aThrough !== bThrough ? { through: aThrough ? ra.wallId : rb.wallId } : !aThrough && (ca === 'miter' || cb === 'miter') ? ('miter' as const) : undefined;
     const result = resolveCorner(
       byId.get(ra.wallId)!,
       ra.end,
@@ -109,6 +128,7 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
       node,
       { ...(reachA !== undefined ? { a: reachA } : {}), ...(reachB !== undefined ? { b: reachB } : {}) },
       straight,
+      force,
     );
     if (result.a) endCuts.set(keyOf(ra), result.a);
     if (result.b) endCuts.set(keyOf(rb), result.b);

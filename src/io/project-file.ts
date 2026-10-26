@@ -22,8 +22,9 @@ import type { DocWall } from '../app/document';
  * bound it). Older groups have none and take the whole wall, as they did.
  * Version 5: guides (construction lines of a level's plan). Older files have none.
  * Version 6: saved views (saved-views.ts). Older files have none.
+ * Version 7: a wall's join choice at each end (`joins`, schema.ts EndJoin). Older walls have none: automatic.
  */
-export const CURRENT_VERSION = 6;
+export const CURRENT_VERSION = 7;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
@@ -67,7 +68,8 @@ export const isWall = (w: unknown): w is DocWall =>
   typeof w.wallTypeId === 'string' &&
   (w.bulge === undefined || finite(w.bulge)) &&
   isTop(w.top) &&
-  (w.baseOffset === undefined || finite(w.baseOffset));
+  (w.baseOffset === undefined || finite(w.baseOffset)) &&
+  (w.joins === undefined || (isObject(w.joins) && [w.joins.start, w.joins.end].every((j) => j === undefined || ['off', 'through', 'stop', 'miter'].includes(j as string))));
 
 const isRule = (r: unknown): boolean => {
   if (!isObject(r)) return false;

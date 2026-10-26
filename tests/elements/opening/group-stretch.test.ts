@@ -8,7 +8,7 @@ import { deriveGeometry, hostsIn } from '../../../src/app/geometry';
 import { deleteElements, distributeOpenings, setGroupSpacing } from '../../../src/elements/opening/commands';
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { newOpening, type Opening, type PositionRule } from '../../../src/elements/opening/schema';
-import { readProject } from '../../../src/io/project-file';
+import { CURRENT_VERSION, readProject } from '../../../src/io/project-file';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -125,8 +125,8 @@ describe('a group distributed beside a joint', () => {
     });
     const read = readProject(v3);
     if (!read.ok) throw new Error(read.error);
-    // Read as the current version (guides came in 5, views in 6; the groups are as in 4).
-    expect(read.doc.version).toBe(6);
+    // Read as the current version (the groups are as in 4).
+    expect(read.doc.version).toBe(CURRENT_VERSION);
     expect(read.doc.openingGroups[0]!.between).toBeUndefined();
     const equal = setGroupSpacing('g', { kind: 'equal' }).apply(read.doc);
     expect(equal.openingGroups[0]!.between).toEqual([null, 'c']);
