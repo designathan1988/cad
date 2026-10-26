@@ -6,7 +6,7 @@
 import type { Point2 } from '../../core/vector';
 
 export const STAIR_PREFIX = 'stair';
-export type StairKind = 'straight' | 'l' | 'u' | 'spiral';
+export type StairKind = 'straight' | 'l' | 'u' | 'spiral' | 'ramp';
 
 export interface Stair {
   readonly id: string;
@@ -26,7 +26,14 @@ export interface Stair {
   readonly height?: number;
   /** A handrail on each side (default) or none. */
   readonly railing?: boolean;
+  /** A ramp's grade (%). */
+  readonly grade?: number;
 }
+
+/** A ramp's grade (%), the rise between its landings and a landing's length (m), as NBR 9050 has them. */
+export const RAMP_GRADE = 8.33;
+export const RAMP_RISE = 0.8;
+export const RAMP_LANDING = 1.2;
 
 export const isStairId = (id: string): boolean => id.startsWith(`${STAIR_PREFIX}_`);
 

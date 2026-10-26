@@ -87,7 +87,7 @@ export function slabGeometry(outline: readonly Point2[], holes: readonly (readon
  * its riser), and its handrails as narrow upright ribbons. In three.js coordinates, from height 0.
  */
 export function stairGeometry(
-  parts: readonly { readonly polygon: readonly Point2[]; readonly top: number }[],
+  parts: readonly { readonly polygon: readonly Point2[]; readonly top: number; readonly topAt?: (p: Point2) => number }[],
   rails: readonly (readonly { x: number; y: number; z: number }[])[],
   riser: number,
   solid: boolean,
@@ -96,17 +96,19 @@ export function stairGeometry(
   const tri = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3) => pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
   for (const p of parts) {
     const low = solid ? 0 : Math.max(0, p.top - Math.min(0.05, riser));
+    // A ramp's run slopes: its top at each corner.
+    const top = (q: Point2) => (p.topAt ? p.topAt(q) : p.top);
     const poly = p.polygon;
     const n = poly.length;
     for (let i = 1; i < n - 1; i++) {
       tri(toThree(poly[0]!, low), toThree(poly[i + 1]!, low), toThree(poly[i]!, low));
-      tri(toThree(poly[0]!, p.top), toThree(poly[i]!, p.top), toThree(poly[i + 1]!, p.top));
+      tri(toThree(poly[0]!, top(poly[0]!)), toThree(poly[i]!, top(poly[i]!)), toThree(poly[i + 1]!, top(poly[i + 1]!)));
     }
     for (let i = 0; i < n; i++) {
       const a = poly[i]!;
       const b = poly[(i + 1) % n]!;
-      tri(toThree(a, low), toThree(b, low), toThree(b, p.top));
-      tri(toThree(a, low), toThree(b, p.top), toThree(a, p.top));
+      tri(toThree(a, low), toThree(b, low), toThree(b, top(b)));
+      tri(toThree(a, low), toThree(b, top(b)), toThree(a, top(a)));
     }
   }
   for (const r of rails) {

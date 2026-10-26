@@ -180,7 +180,8 @@ export const isStair = (s: unknown): s is Stair =>
   isObject(s) &&
   typeof s.id === 'string' &&
   typeof s.levelId === 'string' &&
-  (s.kind === 'straight' || s.kind === 'l' || s.kind === 'u' || s.kind === 'spiral') &&
+  (s.kind === 'straight' || s.kind === 'l' || s.kind === 'u' || s.kind === 'spiral' || s.kind === 'ramp') &&
+  (s.grade === undefined || (finite(s.grade) && s.grade > 0)) &&
   isPoint(s.at) &&
   finite(s.angle) &&
   finite(s.width) &&

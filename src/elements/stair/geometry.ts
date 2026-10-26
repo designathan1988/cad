@@ -3,14 +3,16 @@
 // STAIR_RISER). Pure.
 
 import { add, type Point2, scale } from '../../core/vector';
-import { RAIL_HEIGHT, type Stair, STAIR_RISER } from './schema';
+import { RAIL_HEIGHT, RAMP_GRADE, RAMP_LANDING, RAMP_RISE, type Stair, STAIR_RISER } from './schema';
 
 export interface StairPart {
   /** In plan, counter-clockwise. */
   readonly polygon: readonly Point2[];
-  /** Its top above the stair's bottom (m). */
+  /** Its top above the stair's bottom (m); a ramp's run, at its high end. */
   readonly top: number;
   readonly landing: boolean;
+  /** A ramp's run: its top at a point, rising along it. */
+  readonly topAt?: (p: Point2) => number;
 }
 
 export interface StairSolid {
@@ -71,6 +73,34 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
       ]);
     }
   };
+  if (stair.kind === 'ramp') {
+    // Runs at the grade, each rising at most RAMP_RISE, with a level landing between them.
+    const k = Math.max(0.5, stair.grade ?? RAMP_GRADE) / 100;
+    const runs = Math.max(1, Math.ceil(height / RAMP_RISE - 1e-9));
+    const rise = height / runs;
+    const runLen = rise / k;
+    const across = { x: -u.y, y: u.x };
+    let o = stair.at;
+    let z = 0;
+    const railPts: [Point2, number][] = [];
+    for (let i = 0; i < runs; i++) {
+      const z0 = z;
+      const o0 = o;
+      parts.push({ polygon: rect(o, u, across, runLen, w), top: z0 + rise, landing: false, topAt: (p) => z0 + k * ((p.x - o0.x) * u.x + (p.y - o0.y) * u.y) });
+      railPts.push([o, z0]);
+      o = add(o, scale(u, runLen));
+      z += rise;
+      railPts.push([o, z]);
+      if (i < runs - 1) {
+        parts.push({ polygon: rect(o, u, across, RAMP_LANDING, w), top: z, landing: true });
+        o = add(o, scale(u, RAMP_LANDING));
+        railPts.push([o, z]);
+      }
+    }
+    walk.push(stair.at, o);
+    for (const s of [-1, 1]) rails.push(railPts.map(([p, zz]) => ({ ...add(p, scale(across, (s * w) / 2)), z: zz + RAIL_HEIGHT })));
+    return { stair, parts, walk, rails: stair.railing === false ? [] : rails, bottom, height, risers: runs, riser: rise };
+  }
   if (stair.kind === 'straight') {
     flight(stair.at, u, risers, 0, 0);
   } else if (stair.kind === 'l') {

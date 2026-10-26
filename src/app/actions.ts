@@ -64,7 +64,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('tool.window', 'tool.window', tools, () => app.setTool('window'), { keys: 'Shift+W' }),
     make('tool.room', 'tool.room', tools, () => app.setTool('room'), { keys: 'R' }),
     make('tool.measure', 'tool.measure', tools, () => app.setTool('measure'), { keys: 'M' }),
-    make('tool.stair', 'tool.stair', tools, () => app.setTool('stair'), { keys: 'E', keywords: 'escada escadas stair stairs degrau caracol' }),
+    make('tool.stair', 'tool.stair', tools, () => app.setTool('stair'), { keys: 'E', keywords: 'escada escadas stair stairs degrau caracol rampa ramp' }),
     make('tool.roof', 'tool.roof', tools, () => app.setTool('roof'), { keys: 'T', keywords: 'telhado telhados roof cobertura água águas platibanda' }),
     make('tool.beam', 'tool.beam', tools, () => app.setTool('beam'), { keys: 'B', keywords: 'viga vigas beam estrutura structure' }),
     make('tool.column', 'tool.column', tools, () => app.setTool('column'), { keys: 'P', keywords: 'pilar pilares coluna column estrutura structure' }),
