@@ -5,6 +5,7 @@
 // Interface state, kept with the preferences: outside the document and its undo, as the camera is.
 
 import { cutHeightOf, type Level } from './document';
+import { readBox, type SectionBox } from './section-box';
 
 export type LevelsShown = 'all' | 'below' | 'current';
 
@@ -13,9 +14,11 @@ export interface View3D {
   readonly explode: boolean;
   readonly cut: boolean;
   readonly xray: boolean;
+  /** The section box: only what is inside it shows; null when off (section-box.ts). */
+  readonly box: SectionBox | null;
 }
 
-export const VIEW_3D_DEFAULT: View3D = { levels: 'all', explode: false, cut: false, xray: false };
+export const VIEW_3D_DEFAULT: View3D = { levels: 'all', explode: false, cut: false, xray: false, box: null };
 
 /** Between two exploded levels, beyond their own height (m). */
 export const EXPLODE_GAP = 2.5;
@@ -59,5 +62,6 @@ export function readView3D(raw: unknown): View3D {
     explode: o.explode === true,
     cut: o.cut === true,
     xray: o.xray === true,
+    box: readBox(o.box),
   };
 }

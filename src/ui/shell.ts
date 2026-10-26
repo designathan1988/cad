@@ -160,6 +160,7 @@ export function buildShell(root: HTMLElement) {
   const explode = barButton(togglesBox, 'explode');
   const cut = barButton(togglesBox, 'cut');
   const xray = barButton(togglesBox, 'xray');
+  const box = barButton(togglesBox, 'box');
   viewBar.append(levelsBox, togglesBox);
   viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, viewBar, emptyHint, tempChip, toast, browser);
 
@@ -284,7 +285,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, undo, redo, level, newFile, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, modifyTools, toolSplit, toolCorner, dims, browser, sidebar,
+    panelToggle, toolSelect, toolWall, toolDoor, toolWindow, toolRoom, toolFloor, toolMeasure, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, modifyTools, toolSplit, toolCorner, dims, browser, sidebar,
     emptyHint, tempChip, tempLabel, tempReset, toast, panel, foot, tools, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, editTools, moreTools, fitTop, syncMore, foldedTools, moreApp, foldedApp, fitFoot,
   };
 
@@ -347,6 +348,7 @@ export function buildShell(root: HTMLElement) {
     labelled(explode, 'view3d.explode', 'view3d.explodeTip');
     labelled(cut, 'view3d.cut', 'view3d.cutTip');
     labelled(xray, 'view3d.xray', 'view3d.xrayTip');
+    labelled(box, 'view3d.box', 'view3d.boxTip');
     tip(snapBtn, 'foot.snap');
     tip(moreTools, 'top.moreTools');
     tip(moreApp, 'top.moreOptions');

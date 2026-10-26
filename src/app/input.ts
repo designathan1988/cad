@@ -1,6 +1,7 @@
 // Mouse and keyboard. Plan: wheel zooms at the cursor, middle button pans. 3D: wheel zooms at the
 // cursor, middle pans, Shift + middle or right rotates (OrbitControls). Left button is the tool's.
 
+import { type BoxFace, dragDistance, moveFace, type SectionBox } from './section-box';
 import type { Point2 } from '../core/vector';
 import { snap } from '../tools/snap';
 import { t } from '../ui/i18n';
@@ -238,12 +239,26 @@ export function wireInput(app: App): void {
    */
   let again: string | null = null;
 
+  /** A section box face being dragged by its handle: the box and the pointer as it was pressed. */
+  let boxDrag: { face: BoxFace; box: SectionBox; from: { x: number; y: number }; along: { x: number; y: number } } | null = null;
   const onMove = (e: PointerEvent) => {
     shift = e.shiftKey;
     // The right button pressed while the left one is held (a chord) comes as a move, not a down:
     // during a drag it cancels it, as a right click does.
     if (e.button === 2 && (e.buttons & 1) === 1 && endWithRightClick()) return;
     app.pointer = { x: e.clientX, y: e.clientY };
+    if (boxDrag) {
+      const d = dragDistance({ x: e.clientX - boxDrag.from.x, y: e.clientY - boxDrag.from.y }, boxDrag.along);
+      return app.setBox(moveFace(boxDrag.box, boxDrag.face, d), false);
+    }
+    if (ui.view === '3d' && ui.view3d.box && (e.buttons & 1) === 0) {
+      const hot = app.boxHandleAt(e.clientX, e.clientY);
+      if (hot !== app.boxHot) {
+        app.boxHot = hot;
+        app.render();
+      }
+      if (hot) return;
+    }
     if (panning && ui.view === 'plan') {
       app.plan.panBy(e.clientX - panning.x, e.clientY - panning.y);
       panning = { x: e.clientX, y: e.clientY };
@@ -325,6 +340,14 @@ export function wireInput(app: App): void {
     }
     if (e.button === 2) rightAt = { x: e.clientX, y: e.clientY };
     if (e.button !== 0) return;
+    // A section box handle: its face goes with the pointer, along the face's axis on screen.
+    const face = app.boxHandleAt(e.clientX, e.clientY);
+    if (face && ui.view3d.box) {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      boxDrag = { face, box: ui.view3d.box, from: { x: e.clientX, y: e.clientY }, along: app.boxFaceOnScreen(face) };
+      app.boxHot = face;
+      return app.render();
+    }
     downAt = { x: e.clientX, y: e.clientY };
     if (ui.tool === 'select') {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -374,6 +397,12 @@ export function wireInput(app: App): void {
   };
 
   const onUp = (e: PointerEvent) => {
+    if (boxDrag) {
+      boxDrag = null;
+      app.boxHot = null;
+      if (ui.view3d.box) app.setBox(ui.view3d.box, true);
+      return;
+    }
     if (panning) {
       panning = null;
       return;
@@ -531,6 +560,7 @@ export function wireInput(app: App): void {
   shell.explode.addEventListener('click', () => app.toggleExplode());
   shell.cut.addEventListener('click', () => app.setView3D({ cut: !ui.view3d.cut }));
   shell.xray.addEventListener('click', () => app.setView3D({ xray: !ui.view3d.xray }));
+  shell.box.addEventListener('click', () => app.toggleBox());
   shell.tempReset.addEventListener('click', () => app.resetTemporary());
   shell.shortcuts.addEventListener('click', () => showHelp(app));
   shell.commands.addEventListener('click', () => palette());

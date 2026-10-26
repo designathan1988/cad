@@ -68,6 +68,8 @@ import { readProject, writeProject } from '../io/project-file';
 import { fitFactor, keepInView } from './keep-in-view';
 import type { ViewKey } from './view-keys';
 import { deleteView, nextViewName, type SavedView, saveView } from './saved-views';
+import { BOX_FACES, type BoxFace, boxAround, faceCenter, faceNormal, type SectionBox } from './section-box';
+import { BOX_HANDLE_HIT } from '../render/overlay-3d';
 import { type TempDim, tempDims } from './temp-dims';
 import { cutAt, exploding, liftOf, readView3D, shownLevels, type View3D } from './view-3d';
 import { MODIFY_START, type ModifyEvent, type ModifyKind, type ModifyState, modifyTransition, type OffsetLine, previewTransform } from '../tools/modify-tool';
@@ -260,6 +262,57 @@ export class App {
   lift(levelId: string): number {
     const levels = this.store.get().levels;
     return this.ui.view === '3d' ? liftOf(levels, levelId, exploding(levels, this.ui.levelId, this.ui.view3d)) : 0;
+  }
+
+  /** The section box on, around what the 3D shows, or off. */
+  toggleBox(): void {
+    if (this.ui.view3d.box) return this.setView3D({ box: null });
+    const doc = this.store.get();
+    const bottom = Math.min(...doc.levels.map((l) => l.elevation));
+    const top = Math.max(...doc.levels.map((l) => l.elevation + l.height));
+    this.setView('3d');
+    this.setView3D({ box: boxAround(boundsOf(this.visibleGeometry()), bottom, top) });
+  }
+
+  /** The box face whose handle is under the pointer or being dragged: drawn larger and filled. */
+  boxHot: BoxFace | null = null;
+
+  /** The box face whose handle is at a screen point (client coordinates), nearest first; null when none. */
+  boxHandleAt(clientX: number, clientY: number): BoxFace | null {
+    const box = this.ui.view3d.box;
+    if (!box || this.ui.view !== '3d') return null;
+    const r = this.shell.viewport.getBoundingClientRect();
+    let best: BoxFace | null = null;
+    let bestD = BOX_HANDLE_HIT;
+    for (const f of BOX_FACES) {
+      const c = faceCenter(box, f);
+      const p = this.projectAt(c, c.z);
+      if (!p) continue;
+      const d = Math.hypot(p.x + r.left - clientX, p.y + r.top - clientY);
+      if (d <= bestD) {
+        bestD = d;
+        best = f;
+      }
+    }
+    return best;
+  }
+
+  /** Pixels a face's handle moves on screen for 1 m out (its drag direction). */
+  boxFaceOnScreen(face: BoxFace): Point2 {
+    const box = this.ui.view3d.box;
+    if (!box) return { x: 0, y: 0 };
+    const c = faceCenter(box, face);
+    const n = faceNormal(face);
+    const a = this.projectAt(c, c.z);
+    const b = this.projectAt({ x: c.x + n.x, y: c.y + n.y }, c.z + n.z);
+    return a && b ? { x: b.x - a.x, y: b.y - a.y } : { x: 0, y: 0 };
+  }
+
+  /** The box as dragged: drawn now, kept with the view when `keep` (the drag's end). */
+  setBox(box: SectionBox, keep: boolean): void {
+    this.ui.view3d = { ...this.ui.view3d, box };
+    if (keep) savePrefs({ view3d: this.ui.view3d });
+    this.render();
   }
 
   /** Explode on or off; with one level shown, said why it does nothing instead. */
@@ -743,8 +796,9 @@ export class App {
     if (!v) return;
     if (v.levelId !== this.ui.levelId) this.setLevel(v.levelId);
     if (v.kind === '3d') {
-      this.ui.view3d = v.view3d;
-      savePrefs({ view3d: v.view3d });
+      // Read as stored views are: a file's view may hold anything.
+      this.ui.view3d = readView3D(v.view3d);
+      savePrefs({ view3d: this.ui.view3d });
       this.setView('3d');
       this.framed['3d'] = true;
       this.scene.camera.position.set(...v.position);
@@ -1840,6 +1894,7 @@ export class App {
     } else {
       const shown = this.visibleGeometry();
       this.scene.setXray(ui.view3d.xray);
+      this.scene.setBox(ui.view3d.box);
       this.scene.sync(shown, ui.selection, preview, (id) => this.lift(id));
       // Cut at the level's cut height: where it goes through the level's walls, their plan pieces.
       const doc = this.store.get();
@@ -1876,6 +1931,8 @@ export class App {
                 : this.bendMeasure(),
         anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
         draft: ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])] : null,
+        box: ui.view3d.box,
+        boxHot: this.boxHot,
       };
       this.overlay3d.draw(this.overlayState);
     }
@@ -2292,6 +2349,7 @@ export class App {
     const alone = shownLevels(doc.levels, ui.levelId, ui.view3d.levels).size < 2;
     shell.explode.setAttribute('aria-pressed', String(spread));
     shell.xray.setAttribute('aria-pressed', String(ui.view3d.xray));
+    shell.box.setAttribute('aria-pressed', String(ui.view3d.box !== null));
     shell.explode.setAttribute('aria-disabled', String(alone));
     shell.cut.setAttribute('aria-pressed', String(ui.view3d.cut));
     const levelKey = JSON.stringify([getLang(), doc.levels.map((l) => [l.id, l.name, l.elevation])]);

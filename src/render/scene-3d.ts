@@ -12,6 +12,7 @@ import { LAYER_TOKEN } from '../ui/swatch';
 import { blockPaint, wallMeshKey } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
 import { featureEdges } from '../elements/wall/geometry/edges';
+import { boxCaps, type SectionBox, type UprightPrism } from '../app/section-box';
 
 const toThree = (p: Point2, z: number) => new THREE.Vector3(p.x, z, -p.y);
 
@@ -62,6 +63,18 @@ export class Scene3D {
   };
   /** The cut (view-3d.ts): everything above its plane is clipped away; shared by every material, so a cut is one change. */
   private readonly clip: THREE.Plane[] = [];
+  /** The cut's plane and the section box's six, together in `clip`. */
+  private cutPlane: THREE.Plane | null = null;
+  private boxPlanes: THREE.Plane[] = [];
+  private boxKey = '';
+  /** The cut's fill is clipped by the box only: its own plane would clip it away. */
+  private readonly capClip: THREE.Plane[] = [];
+  /** Where the box's faces go through walls and floors, filled as a cut is (section-box.ts, boxCaps). */
+  private readonly boxCapGroup = new THREE.Group();
+  private readonly boxCapMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  private boxBox: SectionBox | null = null;
+  private boxCapsKey: unknown[] = [];
+  private lastSync: { g: DerivedGeometry; lift: (levelId: string) => number } | null = null;
   /** Where the cut goes through walls, filled as the plan fills them (not clipped itself). */
   private readonly caps = new THREE.Group();
   private readonly capMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
@@ -133,6 +146,9 @@ export class Scene3D {
       m.polygonOffsetUnits = 1;
     }
     this.edgeMaterial.clippingPlanes = this.clip;
+    this.capMaterial.clippingPlanes = this.capClip;
+    this.boxCapMaterial.clippingPlanes = this.clip;
+    this.scene.add(this.boxCapGroup);
     this.scene.add(this.caps);
   }
 
@@ -144,8 +160,8 @@ export class Scene3D {
     const key = z === null ? '' : JSON.stringify([z, sections]);
     if (key === this.capsKey) return;
     this.capsKey = key;
-    this.clip.length = 0;
-    if (z !== null) this.clip.push(new THREE.Plane(new THREE.Vector3(0, -1, 0), z));
+    this.cutPlane = z === null ? null : new THREE.Plane(new THREE.Vector3(0, -1, 0), z);
+    this.clipPlanes();
     for (const c of [...this.caps.children]) {
       this.caps.remove(c);
       if (c instanceof THREE.Mesh) c.geometry.dispose();
@@ -181,6 +197,81 @@ export class Scene3D {
     this.invalidate();
   }
 
+  /**
+   * The section box (section-box.ts): everything outside it clipped away, by six planes facing in.
+   * Plan x, y and height z are three.js x, −z and y.
+   */
+  setBox(box: { min: { x: number; y: number; z: number }; max: { x: number; y: number; z: number } } | null): void {
+    const key = JSON.stringify(box);
+    if (key === this.boxKey) return;
+    this.boxKey = key;
+    this.boxBox = box;
+    this.boxPlanes = box
+      ? [
+          new THREE.Plane(new THREE.Vector3(1, 0, 0), -box.min.x),
+          new THREE.Plane(new THREE.Vector3(-1, 0, 0), box.max.x),
+          new THREE.Plane(new THREE.Vector3(0, 1, 0), -box.min.z),
+          new THREE.Plane(new THREE.Vector3(0, -1, 0), box.max.z),
+          // Plan y ≥ min: three.js z ≤ −min.
+          new THREE.Plane(new THREE.Vector3(0, 0, -1), -box.min.y),
+          new THREE.Plane(new THREE.Vector3(0, 0, 1), box.max.y),
+        ]
+      : [];
+    this.clipPlanes();
+    this.syncBoxCaps();
+    this.invalidate();
+  }
+
+  /** The box's fills, again when the box, the walls or the lifts changed. */
+  private syncBoxCaps(): void {
+    const box = this.boxBox;
+    const src = this.lastSync;
+    const levels = src ? [...new Set([...src.g.solids.values()].map((s) => s.wall.levelId))] : [];
+    // The walls and floors by identity (a new derived geometry is a change), the box and lifts by value.
+    const key: unknown[] = [src?.g.solids, src?.g.floors, JSON.stringify([box, levels.map((l) => src!.lift(l))])];
+    if (key.every((k, i) => k === this.boxCapsKey[i])) return;
+    this.boxCapsKey = key;
+    for (const c of [...this.boxCapGroup.children]) {
+      this.boxCapGroup.remove(c);
+      if (c instanceof THREE.Mesh) c.geometry.dispose();
+    }
+    if (!box || !src) return;
+    const prisms: UprightPrism[] = [];
+    for (const s of src.g.solids.values()) {
+      const up = src.lift(s.wall.levelId);
+      for (const b of s.blocks) prisms.push({ polygon: b.polygon, bottom: b.bottom + up, top: b.top + up });
+    }
+    for (const f of src.g.floors.values()) {
+      const up = src.lift(f.floor.levelId);
+      if (f.outline.length >= 3) prisms.push({ polygon: f.outline, bottom: f.bottom + up, top: f.top + up });
+    }
+    // A hair inside the box, so the face it lies on does not clip it away.
+    const e = 0.0005;
+    const inside = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo + e), hi - e);
+    for (const cap of boxCaps(prisms, box)) {
+      const pts = cap.map((p) => toThree({ x: inside(p.x, box.min.x, box.max.x), y: inside(p.y, box.min.y, box.max.y) }, inside(p.z, box.min.z, box.max.z)));
+      let geo: THREE.BufferGeometry;
+      if (cap.every((p) => p.z === cap[0]!.z)) {
+        // A top or a bottom: the outline may be any polygon.
+        geo = new THREE.ShapeGeometry(new THREE.Shape(cap.map((p) => new THREE.Vector2(p.x, p.y))));
+        geo.rotateX(-Math.PI / 2);
+        geo.translate(0, pts[0]!.y, 0);
+      } else {
+        geo = new THREE.BufferGeometry().setFromPoints([pts[0]!, pts[1]!, pts[2]!, pts[0]!, pts[2]!, pts[3]!]);
+      }
+      this.boxCapGroup.add(new THREE.Mesh(geo, this.boxCapMaterial));
+    }
+  }
+
+  /** The cut and the box into the planes every material shares (changed in place). */
+  private clipPlanes(): void {
+    this.clip.length = 0;
+    if (this.cutPlane) this.clip.push(this.cutPlane);
+    this.clip.push(...this.boxPlanes);
+    this.capClip.length = 0;
+    this.capClip.push(...this.boxPlanes);
+  }
+
   /** Colours of the theme, read from the design tokens: `token('--3d-side')` and so on. */
   setTheme(dark: boolean, token: (name: string) => string): void {
     const c = (name: string) => new THREE.Color(token(name));
@@ -196,6 +287,7 @@ export class Scene3D {
     m.leaf.color = c('--3d-leaf');
     m.invalid.color = c('--warn');
     this.capMaterial.color = c('--3d-cut');
+    this.boxCapMaterial.color = c('--3d-cut');
     this.edgeMaterial.color = c('--3d-edge');
     (this.ground.material as THREE.MeshBasicMaterial).color = c('--3d-ground');
     // Each layer token has its 3D twin (--layer-structure, --3d-layer-structure): the plan's darken in
@@ -346,6 +438,8 @@ export class Scene3D {
       }
     }
     this.syncEdges(g, lift);
+    this.lastSync = { g, lift };
+    this.syncBoxCaps();
     this.placeGround(g);
     this.invalidate();
   }

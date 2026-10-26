@@ -4,6 +4,7 @@
 // floor outline being drawn. Screen space, on a canvas laid over the WebGL one; it takes no pointer.
 
 import type { Point2 } from '../core/vector';
+import { BOX_FACES, type BoxFace, boxEdges, faceCenter, type SectionBox } from '../app/section-box';
 
 export interface Overlay3DState {
   /** World point (plan) to screen, at a height above the project zero; null behind the camera. */
@@ -17,7 +18,14 @@ export interface Overlay3DState {
   readonly measure: { readonly at: Point2; readonly text: string } | null;
   readonly anchor: Point2 | null;
   readonly draft: readonly Point2[] | null;
+  /** The section box, drawn with a handle at the middle of each face; `boxHot`: the one under the pointer or dragged. */
+  readonly box: SectionBox | null;
+  readonly boxHot: BoxFace | null;
 }
+
+/** A box handle's radius on screen (px); a press this near takes it (BOX_HANDLE_HIT). */
+export const BOX_HANDLE_R = 7;
+export const BOX_HANDLE_HIT = 12;
 
 export class Overlay3D {
   private readonly ctx: CanvasRenderingContext2D;
@@ -52,6 +60,7 @@ export class Overlay3D {
       ctx.stroke();
       ctx.restore();
     };
+    if (s.box) this.drawBox(s.box, s.boxHot, s.project, color('--accent'), color('--bg'));
     if (s.draft && s.draft.length > 1) {
       for (let i = 1; i < s.draft.length; i++) line(at(s.draft[i - 1]!), at(s.draft[i]!), color('--wall-sel'), 1.5, [6, 4]);
     }
@@ -88,6 +97,39 @@ export class Overlay3D {
       ctx.restore();
       if (s.snap.label) this.tag(p, s.snap.label, snapColour, color('--bg'), { x: 14, y: -12 });
     }
+  }
+
+  /** The box's edges dashed, and its six handles: a disc at each face's middle. */
+  private drawBox(box: SectionBox, hot: BoxFace | null, project: Overlay3DState['project'], accent: string, bg: string): void {
+    const { ctx } = this;
+    ctx.save();
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.2;
+    for (const [a, b] of boxEdges(box)) {
+      const p = project(a, a.z);
+      const q = project(b, b.z);
+      if (!p || !q) continue;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(q.x, q.y);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    for (const f of BOX_FACES) {
+      const c = faceCenter(box, f);
+      const p = project(c, c.z);
+      if (!p) continue;
+      const r = f === hot ? BOX_HANDLE_R + 2 : BOX_HANDLE_R;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = f === hot ? accent : bg;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = accent;
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   private cross(p: Point2): void {
