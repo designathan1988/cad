@@ -91,6 +91,11 @@ export function wireKeys(app: App, k: KeyContext): void {
       e.preventDefault();
       return app.saveFile();
     }
+    // The plan printed at its scale (the browser's own print would take the whole interface).
+    if (ctrl && key === 'p') {
+      e.preventDefault();
+      return app.openPrint();
+    }
     if (ctrl && key === 'y') {
       e.preventDefault();
       return app.redo();

@@ -174,7 +174,7 @@ export function drawDimension(p: PlanPaint, d: Placed, text: string, colour: str
   const gap = Math.min(3, off);
   ctx.save();
   ctx.strokeStyle = colour;
-  ctx.lineWidth = 1;
+  ctx.lineWidth = p.pen('annotation');
   ctx.beginPath();
   for (const [q, l] of [
     [a, la],

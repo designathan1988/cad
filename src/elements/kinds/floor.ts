@@ -123,7 +123,7 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
       }
       ctx.globalAlpha = 0.55;
       ctx.strokeStyle = p.color('--text-3');
-      ctx.lineWidth = 0.6;
+      ctx.lineWidth = p.pen('fine') * 0.6;
       ctx.beginPath();
       for (const l of drawn.lines)
         l.forEach((v, i) => {
@@ -147,7 +147,7 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
     ctx.save();
     ctx.setLineDash(ceiling ? [2, 3] : [5, 4]);
     ctx.strokeStyle = lit ? p.color('--wall-sel') : p.color('--text-3');
-    ctx.lineWidth = 1;
+    ctx.lineWidth = p.pen('fine');
     ctx.stroke();
     // Each hole crossed corner to corner: between its outermost corners on each diagonal (a stair's
     // well with a notch had its middle points crossed, askew). A ceiling's are not: above the cut, its

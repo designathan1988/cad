@@ -5,6 +5,7 @@ import type { Separator } from '../elements/separator/schema';
 import type { Curtain } from '../elements/curtain/schema';
 import type { Zone } from '../elements/zone/schema';
 import type { Rule } from '../rules/schema';
+import { DEFAULT_DRAWING, type DrawingSettings } from '../elements/drawing/schema';
 import { LIBRARY } from '../elements/object/library';
 import type { ObjectDefinition, ObjectInstance } from '../elements/object/schema';
 import { DEFAULT_UNITS, type Units } from '../ui/units';
@@ -108,6 +109,8 @@ export interface Doc {
   readonly zones: readonly Zone[];
   /** The norm rules it is checked against (rules/schema.ts); the defaults when it sets none. */
   readonly rules?: readonly Rule[];
+  /** The plan's scale and the pens (elements/drawing/schema.ts); the defaults when it sets none. */
+  readonly drawing?: DrawingSettings;
 }
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */
@@ -296,3 +299,6 @@ export const wallThickness = (doc: Doc, wall: Wall): number =>
   (doc.wallTypes.find((t) => t.id === wall.wallTypeId)?.layers ?? []).reduce((s, l) => s + l.thickness, 0);
 
 export type { Point2 };
+
+/** The project's drawing scale and pens, the defaults when it has set none. */
+export const drawingOf = (doc: Pick<Doc, 'drawing'>): DrawingSettings => doc.drawing ?? DEFAULT_DRAWING;

@@ -91,7 +91,7 @@ export const noteKind: ElementKind<Note, Note> = {
       const p0 = p.toScreen({ x: b.x0, y: b.y1 });
       const p1 = p.toScreen({ x: b.x1, y: b.y0 });
       ctx.strokeStyle = p.color('--wall-sel');
-      ctx.lineWidth = 1;
+      ctx.lineWidth = p.pen('annotation');
       ctx.setLineDash([4, 3]);
       ctx.strokeRect(p0.x - 2, p0.y - 2, p1.x - p0.x + 4, p1.y - p0.y + 4);
     }
@@ -116,7 +116,7 @@ export const noteKind: ElementKind<Note, Note> = {
 function levelMark(p: PlanPaint, c: { x: number; y: number }, px: number, text: string): void {
   const { ctx } = p;
   const r = px * 0.5;
-  ctx.lineWidth = 1;
+  ctx.lineWidth = p.pen('annotation');
   ctx.beginPath();
   ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
   ctx.moveTo(c.x - r * 1.4, c.y);

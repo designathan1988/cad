@@ -92,13 +92,15 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
   // Each piece from the lowest up, filled with the drawing's colour so the higher hides the lower (the
   // top over the legs), outlined thin; the object's box when selected.
   plan: (p, s, lit) => {
+    // At 1:200 and smaller the furniture is left out (drawing/schema.ts, detailOf); selected, it shows.
+    if (p.detail === 'coarse' && !lit) return;
     const line = lit ? p.color('--wall-sel') : p.color('--text-2');
     for (const ring of s.rings) {
       trace(p, ring);
       p.ctx.fillStyle = lit ? p.color('--wall-sel-fill') : p.color('--furniture');
       p.ctx.fill();
       p.ctx.strokeStyle = line;
-      p.ctx.lineWidth = 1;
+      p.ctx.lineWidth = p.pen('fine');
       p.ctx.stroke();
     }
     if (lit) {

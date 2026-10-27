@@ -1644,6 +1644,8 @@ export class App {
   openMaterials: () => void = () => {};
   openUnits: () => void = () => {};
   openObjects: () => void = () => {};
+  /** Printing a plan (ui/print-dialog.ts), set by the input layer. */
+  openPrint: () => void = () => {};
   objectClick(p: Point2): void {
     kindTools.objectClick(this, p);
   }

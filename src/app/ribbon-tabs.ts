@@ -178,10 +178,19 @@ function tabsOf(app: App): readonly RibbonTab[] {
             { id: 'type.edit', icon: 'wall', size: 'S' },
             { id: 'units.edit', icon: 'ruler', size: 'S' },
             { id: 'level.edit', icon: 'levelsAll', size: 'S' },
+            { id: 'drawing.edit', icon: 'scale', size: 'S' },
           ],
         },
         { title: 'rib.p.project', items: [{ id: 'file.projects', icon: 'folder', size: 'L' }, { id: 'view.schedules', icon: 'table', size: 'S' }, { id: 'rules.edit', icon: 'warning', size: 'S' }] },
-        { title: 'rib.p.export', items: [{ id: 'file.exportGlb', icon: 'cube', size: 'S' }, { id: 'file.exportDxf', icon: 'map', size: 'S' }, { id: 'file.save', icon: 'download', size: 'S' }] },
+        {
+          title: 'rib.p.export',
+          items: [
+            { id: 'file.printPlan', icon: 'map', size: 'L' },
+            { id: 'file.exportGlb', icon: 'cube', size: 'S' },
+            { id: 'file.exportDxf', icon: 'map', size: 'S' },
+            { id: 'file.save', icon: 'download', size: 'S' },
+          ],
+        },
       ],
     },
   ];
@@ -194,6 +203,7 @@ export const FILE_MENU: readonly (string | '-')[] = [
   'file.open',
   'file.save',
   '-',
+  'file.printPlan',
   'file.exportGlb',
   'file.exportDxf',
   'view.schedules',

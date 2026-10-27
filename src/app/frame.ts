@@ -20,7 +20,7 @@ import { renderPanel } from '../ui/panel';
 import { snapLabel } from '../tools/snap';
 import { bulgeKeepingSide } from '../tools/arc-edit';
 import { KINDS } from '../elements/registry';
-import { levelOf, wallNumber } from './document';
+import { drawingOf, levelOf, wallNumber } from './document';
 import { shownFor } from './geometry';
 import { stackedSteps } from './stacked';
 import { type TempDim, tempDims } from './temp-dims';
@@ -103,6 +103,7 @@ export function renderFrame(app: App): void {
       : null;
   const guideDim = ui.guide && guideOff !== null ? guideMeasure(ui.guide, guideOff) : null;
   if (plan) {
+    app.plan.drawing = drawingOf(app.store.get());
     app.plan.draw(app.visibleGeometry(), {
       selected: ui.selection,
       hover: ui.hover,

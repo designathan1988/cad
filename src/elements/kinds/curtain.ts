@@ -93,7 +93,7 @@ export const curtainKind: ElementKind<Curtain, CurtainBuilt> = {
     ctx.fillStyle = lit ? p.color('--wall-sel-fill') : p.color('--canvas');
     ctx.fill();
     ctx.strokeStyle = lit ? p.color('--wall-sel') : p.color('--wall-line');
-    ctx.lineWidth = lit ? 1.5 : 1;
+    ctx.lineWidth = p.pen('fine') * (lit ? 1.5 : 1);
     ctx.stroke();
     trace(p, [s.curtain.start, s.curtain.end], false);
     ctx.stroke();

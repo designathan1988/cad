@@ -83,6 +83,8 @@
 
   --bg: #ffffff;
   --bg-2: #f7f7f8;
+  /* Paper, white in either theme (a printed page's preview). */
+  --paper: #ffffff;
   --canvas: #f3f4f6;
   --field: #f1f2f4;
   --hover: #eceef1;
@@ -1858,6 +1860,40 @@ button.project-name:hover {
 }
 .units-body {
   padding: var(--sp-3) var(--sp-4);
+}
+/* Printing a plan (print-dialog.ts): the choices beside the page as it will print; one above the other
+   on a narrow window. */
+.print-dialog {
+  width: min(var(--dialog-w-xl), calc(100vw - 2 * var(--sp-4)));
+}
+.print-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+}
+.print-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-2);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+}
+.print-preview {
+  max-width: 100%;
+  height: auto;
+  background: var(--paper);
+  box-shadow: 0 0 0 var(--line) var(--border);
+}
+.print-warn {
+  color: var(--warn);
+}
+@media (max-width: 720px) {
+  .print-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .mat-note {
   margin: var(--sp-3) 0 0;

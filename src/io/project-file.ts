@@ -24,6 +24,7 @@ import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
 import { isRule as isNormRule } from '../rules/schema';
+import { isDrawingSettings } from '../elements/drawing/schema';
 
 /**
  * Version 1: walls, openings, rooms and floors, each list optional when empty in older saves.
@@ -249,6 +250,8 @@ export function repairProject(raw: unknown): ReadResult {
     version: CURRENT_VERSION,
     // Its own rules, the bad ones left out (the defaults when it has none).
     ...(Array.isArray(raw.rules) ? { rules: (raw.rules as unknown[]).filter(isNormRule) } : {}),
+    // Its scale and pens, when it set them and they are ones (the defaults otherwise).
+    ...(isDrawingSettings(raw.drawing) ? { drawing: raw.drawing } : {}),
     name: typeof raw.name === 'string' ? raw.name : '',
     units: isUnits(raw.units) ? { length: raw.units.length, decimals: raw.units.decimals } : DEFAULT_UNITS,
     levels,

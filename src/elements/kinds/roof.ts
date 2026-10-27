@@ -79,12 +79,12 @@ export const roofKind: ElementKind<Roof, RoofSolid> = {
     }
     ctx.setLineDash([8, 4]);
     ctx.strokeStyle = lit ? p.color('--wall-sel') : p.color('--text-2');
-    ctx.lineWidth = lit ? 2 : 1;
+    ctx.lineWidth = p.pen('fine') * (lit ? 2 : 1);
     ctx.stroke();
     // Its ridges and hips above the cut, as the outline: dashed and faint, so the rooms' names under
     // them stay readable (solid, they ran across the plan's tags).
     ctx.setLineDash([4, 4]);
-    ctx.lineWidth = 1;
+    ctx.lineWidth = p.pen('fine');
     if (!lit) ctx.globalAlpha = 0.5;
     if (s.faces.length > 1)
       for (const f of s.faces) {

@@ -4,6 +4,7 @@
 import { showObjects } from '../ui/objects-dialog';
 import { endHandleDrag, moveHandleDrag, objectHandleAt, startHandleDrag } from './object-handles';
 import { showUnits } from '../ui/units-dialog';
+import { showDrawingSettings, showPrint } from '../ui/print-dialog';
 import { type BoxFace, dragDistance, moveFace, type SectionBox } from './section-box';
 import type { Point2 } from '../core/vector';
 import { snap } from '../tools/snap';
@@ -51,6 +52,8 @@ export function wireInput(app: App): void {
     tour: () => startTour(app),
     openFile: () => shell.fileInput.click(),
     projects: () => showProjectsDialog(app),
+    print: () => showPrint(app),
+    drawing: () => showDrawingSettings(app),
   };
   app.openProjects = () => showProjectsDialog(app);
   const palette = () => showPalette(appActions(app, openers));
@@ -66,6 +69,7 @@ export function wireInput(app: App): void {
   app.openMaterials = () => showMaterials(app);
   app.openUnits = () => showUnits(app);
   app.openObjects = () => showObjects(app);
+  app.openPrint = () => showPrint(app);
   shell.sidebar.addEventListener('click', () => app.toggleBrowser());
   offerTour(app);
   let panning: { x: number; y: number } | null = null;

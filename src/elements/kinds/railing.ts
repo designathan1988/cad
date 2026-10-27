@@ -109,7 +109,7 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
     const { ctx } = p;
     ctx.save();
     ctx.strokeStyle = lit ? p.color('--wall-sel') : p.color('--wall-line');
-    ctx.lineWidth = lit ? 3 : 2;
+    ctx.lineWidth = p.pen('seen') * (lit ? 1.5 : 1);
     trace(p, s.points, false);
     ctx.stroke();
     ctx.fillStyle = ctx.strokeStyle;

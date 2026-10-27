@@ -69,7 +69,7 @@ export const columnKind: ElementKind<Column, ColumnSolid> = {
     p.ctx.fillStyle = lit ? p.color('--wall-sel-fill') : p.color('--layer-structure');
     p.ctx.fill();
     p.ctx.strokeStyle = lit ? p.color('--wall-sel') : p.color('--wall-line');
-    p.ctx.lineWidth = lit ? 2 : 1;
+    p.ctx.lineWidth = p.pen('fine') * (lit ? 2 : 1);
     p.ctx.stroke();
   },
   solid: (s) => {

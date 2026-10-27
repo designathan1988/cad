@@ -6,6 +6,7 @@
 import type * as THREE from 'three';
 import type { Doc } from '../app/document';
 import type { Material } from './material/schema';
+import type { Detail, PenRole } from './drawing/schema';
 import type { Category, DerivedGeometry } from '../app/geometry';
 import type { UprightPrism } from '../app/section-box';
 import type { Command } from '../core/store';
@@ -33,6 +34,10 @@ export interface PlanPaint {
   readonly font: (weight: string, size: string) => string;
   /** A line through `point` along `dir` across the whole view, dashed. */
   readonly line: (point: Point2, dir: Point2, colour: string, width: number, dash: readonly number[]) => void;
+  /** A pen's width in the plan's units (elements/drawing/schema.ts: a pixel on screen). */
+  readonly pen: (role: PenRole) => number;
+  /** How much the drawing's scale shows: layers at fine, outlines at medium, no furniture at coarse. */
+  readonly detail: Detail;
 }
 
 /** What the DXF writer lends a kind. */

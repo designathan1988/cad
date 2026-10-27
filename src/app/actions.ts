@@ -33,6 +33,8 @@ export interface Openers {
   readonly tour: () => void;
   readonly openFile: () => void;
   readonly projects: () => void;
+  readonly print: () => void;
+  readonly drawing: () => void;
 }
 
 export function appActions(app: App, open: Openers): Action[] {
@@ -154,6 +156,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('file.save', 'pal.save', file, () => app.saveFile(), { keys: 'Ctrl+S' }),
     make('file.exportGlb', 'export.glb', file, () => void app.exportGlb(), { keywords: 'GLB glTF 3D export exportar modelo' }),
     make('file.exportDxf', 'export.dxf', file, () => app.exportDxf(), { keywords: 'DXF CAD AutoCAD planta plan export exportar' }),
+    make('file.printPlan', 'print.open', file, open.print, { keys: 'Ctrl+P', keywords: 'PDF imprimir print planta plan escala scale papel paper' }),
     make('settings.snaps', 'pal.snaps', settings, () => app.toggleSnaps(), { keys: 'S' }),
     make('settings.theme', 'pal.theme', settings, () => app.toggleTheme()),
     make('settings.language', 'pal.language', settings, () => app.setLanguage(app.otherLanguage()), { keys: 'Shift+L', keywords: 'English Português' }),
@@ -200,6 +203,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('material.edit', 'mats.edit', edit, open.materials, { keywords: tBoth('mats.title') }),
     make('objects.edit', 'objs.open', edit, open.objects, { keywords: `${tBoth('objs.title')} biblioteca library família family editor` }),
     make('units.edit', 'units.edit', edit, open.units, { keywords: `${tBoth('units.title')} ${tBoth('units.cm')} ${tBoth('units.mm')}` }),
+    make('drawing.edit', 'draw.open', edit, open.drawing, { keywords: `${tBoth('draw.title')} 1:50 1:100 pena pen espessura lineweight` }),
     make('help.shortcuts', 'pal.shortcuts', help, open.help, { keys: '?' }),
     make('help.tour', 'pal.tour', help, open.tour),
   ];

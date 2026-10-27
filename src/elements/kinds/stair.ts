@@ -76,7 +76,7 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
     const { ctx } = p;
     ctx.save();
     ctx.strokeStyle = lit ? p.color('--wall-sel') : p.color('--wall-line');
-    ctx.lineWidth = lit ? 1.5 : 1;
+    ctx.lineWidth = p.pen('fine') * (lit ? 1.5 : 1);
     for (const part of s.parts) {
       trace(p, part.polygon);
       if (lit) {

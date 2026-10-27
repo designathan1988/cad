@@ -2,6 +2,7 @@
 // The joined outline needs no boolean union: every piece is stroked first, then every piece is
 // filled over the strokes, so lines between joined pieces disappear and only the outside stays.
 
+import { DEFAULT_DRAWING, type Detail, detailOf, type DrawingSettings, PEN_UNIT_MM, type PenRole, scaleFactor, TEXT_MM } from '../elements/drawing/schema';
 import { drawObjectHandles, type ScreenHandle } from '../app/object-handles';
 import { drawAxis } from '../elements/kinds/grid';
 import { drawDimension, type Placed } from '../elements/kinds/dimension';
@@ -162,6 +163,13 @@ export class PlanView {
   /** Screen pixels per metre and the world point at the canvas centre. */
   scale = 60;
   center: Point2 = { x: 4, y: 3 };
+  /** The project's scale and pens, set before each drawing (elements/drawing/schema.ts). */
+  drawing: DrawingSettings = DEFAULT_DRAWING;
+  /**
+   * Drawn for paper (app/print.ts), not for the screen: its size in pen units, device pixels a unit,
+   * the scale printed and the paper's colours. No grid; pens, texts and hatches keep their size on paper.
+   */
+  printing: { readonly w: number; readonly h: number; readonly ratio: number; readonly den: number; readonly color: (name: string) => string } | null = null;
   private readonly ctx: CanvasRenderingContext2D;
 
   constructor(readonly canvas: HTMLCanvasElement) {
@@ -179,6 +187,7 @@ export class PlanView {
    * by half the panel's width, a jump the user saw on every panel shown or hidden.
    */
   private get size() {
+    if (this.printing) return { w: this.printing.w, h: this.printing.h };
     const w = this.canvas.clientWidth;
     const h = this.canvas.clientHeight;
     if (w > 0 && h > 0 && (w !== this.seen.w || h !== this.seen.h)) {
@@ -242,9 +251,19 @@ export class PlanView {
     for (const p of points) drawPointDisc(ctx, this.toScreen(p.at), p.n, p.open, accent, bg, font);
   }
 
+  /** A pen's width in the plan's units: a pixel on screen for 0.12 mm (drawing/schema.ts). */
+  pen(role: PenRole): number {
+    return this.drawing.pens[role] / PEN_UNIT_MM;
+  }
+
+  /** What the scale shows: the printed one's, or the project's on screen. */
+  get detail(): Detail {
+    return detailOf(this.printing?.den ?? this.drawing.scale);
+  }
+
   draw(g: DerivedGeometry, o: PlanOverlay): void {
     const { canvas, ctx } = this;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = this.printing?.ratio ?? (window.devicePixelRatio || 1);
     const { w, h } = this.size;
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
       canvas.width = Math.round(w * dpr);
@@ -252,10 +271,10 @@ export class PlanView {
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const css = getComputedStyle(document.documentElement);
-    const color = (name: string) => css.getPropertyValue(name).trim();
+    const color = this.printing?.color ?? ((name: string) => css.getPropertyValue(name).trim());
     ctx.fillStyle = color('--canvas');
     ctx.fillRect(0, 0, w, h);
-    this.drawGrid(color('--grid-minor'), color('--grid-major'), color('--axis-x'), color('--axis-y'));
+    if (!this.printing) this.drawGrid(color('--grid-minor'), color('--grid-major'), color('--axis-x'), color('--axis-y'));
 
     const solids = [...g.solids.values()];
     const normal = solids.filter((s) => !o.preview.has(s.wall.id));
@@ -317,7 +336,7 @@ export class PlanView {
       ctx.fill('nonzero');
     }
     // The registry's kinds (elements/registry.ts), each drawing itself; lit when selected or under the pointer.
-    const family = getComputedStyle(this.canvas).getPropertyValue('--font').trim() || 'sans-serif';
+    const family = (this.printing ? css : getComputedStyle(this.canvas)).getPropertyValue('--font').trim() || 'sans-serif';
     const paint = {
       ctx,
       toScreen: (v: Point2) => this.toScreen(v),
@@ -326,6 +345,8 @@ export class PlanView {
       family,
       font: (weight: string, size: string) => this.font(weight, size),
       line: (point: Point2, dir: Point2, colour: string, width: number, dash: readonly number[]) => this.drawLine(point, dir, colour, width, dash),
+      pen: (role: PenRole) => this.pen(role),
+      detail: this.detail,
     };
     const kinds = [...eachSolid(g.kinds)];
     const shownLit = (id: string) => o.selected.has(id) || o.hover === id;
@@ -367,7 +388,8 @@ export class PlanView {
     // thin line where layers meet (geometry/seams.ts), so they do not depend on colour alone. Narrower,
     // the walls are one colour, as before.
     const thick = (s: (typeof solids)[number]) => s.layers.reduce((t, l) => t + l.thickness, 0);
-    const detail = byLayers(normal.filter((s) => s.layers.length > 0 && s.plan === 'cut').map(thick), this.scale);
+    // And only where the scale draws them (1:50 and larger): at 1:100 a wall is its outline, filled.
+    const detail = this.detail === 'fine' && (this.printing !== null || byLayers(normal.filter((s) => s.layers.length > 0 && s.plan === 'cut').map(thick), this.scale));
     const layered = (s: (typeof solids)[number]) => detail && s.layers.length > 0;
     // Pieces of one colour are filled as one path: the canvas covers a path as a whole, so where two
     // of them meet (a core through an L's mitre) no antialiased seam lets the outline under them show.
@@ -407,7 +429,7 @@ export class PlanView {
     };
     const seams = (list: typeof solids) => {
       ctx.strokeStyle = color('--wall-line');
-      ctx.lineWidth = 1;
+      ctx.lineWidth = this.pen('fine');
       ctx.beginPath();
       for (const s of list) {
         if (!layered(s)) continue;
@@ -446,13 +468,13 @@ export class PlanView {
       ctx.clip('evenodd');
       if (s.plan === 'above') ctx.setLineDash([6, 4]);
       ctx.strokeStyle = color('--wall-line');
-      ctx.lineWidth = 2;
+      ctx.lineWidth = this.pen('seen');
       ctx.beginPath();
       pieces(s);
       ctx.stroke();
       ctx.restore();
     }
-    outline(cut, color('--wall-line'), 3);
+    outline(cut, color('--wall-line'), this.pen('cut'));
     fill(cut, null);
     seams(cut);
     // Hover and selection: the walls' outline in the accent colour over their neighbours. As for the
@@ -721,7 +743,10 @@ export class PlanView {
   /** A grid axis: a dash-dot line between its bubbles, each a circle with its name, past its ends. */
   private font(weight: string, size: string): string {
     const css = getComputedStyle(document.documentElement);
-    return `${weight} ${css.getPropertyValue(size).trim()} ${css.getPropertyValue('--font').trim()}`;
+    // On paper a text keeps its size in millimetres whatever the scale (drawing/schema.ts, TEXT_MM).
+    const p = this.printing;
+    const px = p ? `${(TEXT_MM[size] ?? 2.5) / (PEN_UNIT_MM * scaleFactor(p.den))}px` : css.getPropertyValue(size).trim();
+    return `${weight} ${px} ${css.getPropertyValue('--font').trim()}`;
   }
 
   /** The live measure, off the segment along its normal, and moved further out while it would cover the snap label. */
@@ -797,7 +822,7 @@ export class PlanView {
         ctx.globalAlpha = 1;
       }
       ctx.strokeStyle = colour;
-      ctx.lineWidth = active ? 1.6 : 1;
+      ctx.lineWidth = this.pen('fine') * (active ? 1.6 : 1);
       for (const line of symbolLines(op, op.frame)) (path(line), ctx.stroke());
       if (!op.valid) this.warnSign(this.clearOfHandles(f.start, f.end, o.handles), c.warn, c.canvas);
     }

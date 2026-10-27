@@ -80,7 +80,7 @@ export function drawAxis(p: PlanPaint, start: Point2, end: Point2, name: string,
   const r = GRID_BUBBLE_PX;
   ctx.save();
   ctx.strokeStyle = colour;
-  ctx.lineWidth = 1;
+  ctx.lineWidth = p.pen('annotation');
   ctx.setLineDash([14, 4, 2, 4]);
   ctx.beginPath();
   ctx.moveTo(a.x, a.y);

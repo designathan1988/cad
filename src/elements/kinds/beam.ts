@@ -105,7 +105,7 @@ export const beamKind: ElementKind<Beam, BeamSolid> = {
       ctx.fill();
     }
     ctx.strokeStyle = lit ? p.color('--wall-sel') : p.color('--text-2');
-    ctx.lineWidth = lit ? 2 : 1;
+    ctx.lineWidth = p.pen('fine') * (lit ? 2 : 1);
     ctx.stroke();
     ctx.restore();
   },
