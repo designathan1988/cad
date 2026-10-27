@@ -275,6 +275,8 @@ export class Scene3D {
    * a sharpening, not a jump from the theme's dark background and a black hole in a room with no floor.
    */
   private readonly photoGround = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), this.tracedGround);
+  /** The photorealistic view's ground level (placeGround): the walls' foot, or a terrain's soil. */
+  private stand = 0;
   private traced = { content: -1, camera: '', light: '' };
   /** Bumped whenever an element's meshes are made or dropped: the tracer's scene is built again. */
   private contentVersion = 0;
@@ -626,7 +628,7 @@ export class Scene3D {
       this.scene.background = this.photoSky();
       const size = Math.max(200, this.ground.scale.x * 6);
       this.photoGround.scale.set(size, 1, size);
-      this.photoGround.position.set(this.ground.position.x, this.ground.position.y - 0.002, this.ground.position.z);
+      this.photoGround.position.set(this.ground.position.x, this.stand - 0.002, this.ground.position.z);
       this.photoGround.visible = true;
       this.grid.visible = false;
       this.shadowGround.visible = false;
@@ -851,7 +853,7 @@ export class Scene3D {
     if (!box.isEmpty()) {
       const size = Math.max(200, box.getSize(new THREE.Vector3()).length() * 6);
       const ground = new THREE.Mesh(new THREE.PlaneGeometry(size, size).rotateX(-Math.PI / 2), this.tracedGround);
-      ground.position.set((box.min.x + box.max.x) / 2, box.min.y - 0.004, (box.min.z + box.max.z) / 2);
+      ground.position.set((box.min.x + box.max.x) / 2, Math.max(box.min.y, this.stand) - 0.002, (box.min.z + box.max.z) / 2);
       ground.updateMatrixWorld();
       ground.geometry.applyMatrix4(ground.matrixWorld);
       ground.position.set(0, 0, 0);
@@ -1468,6 +1470,11 @@ export class Scene3D {
     // A terrain's block of soil goes SOIL_DEPTH under its surface's lowest point: the ground under that.
     const spannedBottoms = [...eachSolid(g.kinds)].flatMap((x) => (x.kind.span ? [x.kind.span(x.solid).bottom - (x.kind.key === 'terrains' ? SOIL_DEPTH : 0)] : []));
     const lowest = Math.min(0, ...solids.map((s) => s.bottom), ...spannedBottoms);
+    // The photorealistic view's ground at the walls' foot, floors' slabs sunk in it as built: at the slabs'
+    // bottom, under a room with no floor the sun came in under its walls (bright streaks in their shadow).
+    // On a terrain its soil is the ground.
+    const terrain = [...eachSolid(g.kinds)].some((x) => x.kind.key === 'terrains');
+    this.stand = terrain || solids.length === 0 ? lowest : Math.min(...solids.map((s) => s.bottom));
     this.ground.scale.set(size, size, 1);
     this.ground.position.set((x0 + x1) / 2, lowest - 0.002, -(y0 + y1) / 2);
     // The grid at the ground's height, round the model's middle, a metre a cell.
