@@ -3,6 +3,7 @@
 // derived geometry, moves with collision, where to start.
 
 import type { Point2 } from '../core/vector';
+import { eachSolid } from '../elements/registry';
 import type { DerivedGeometry } from './geometry';
 
 export interface Walker {
@@ -30,13 +31,31 @@ export const MAX_PITCH = 1.4;
 
 type Polygon = readonly Point2[];
 
-/** What stops a walker on a level whose floor is at `floor`: every wall block standing at knee height. */
+/**
+ * Kinds that never stop a walker by their outline: the walls (their blocks above, which leave the
+ * doorways open), the doors and windows (a doorway is walked through, a window's sill is its wall's
+ * block), and what is walked on: the ground, a stair (not climbed, nor shut in by).
+ */
+const NOT_IN_THE_WAY = new Set(['walls', 'openings', 'terrains', 'stairs']);
+
+/**
+ * What stops a walker on a level whose floor is at `floor`: every wall block standing at knee height,
+ * and every other solid of the level that stands a knee high over what it stands on (a table, a bed, a
+ * column, a railing, a curtain wall, a tree): its outline in plan.
+ */
 export function obstaclesOf(g: DerivedGeometry, levelId: string, floor: number): Polygon[] {
   const z = floor + KNEE;
   const out: Polygon[] = [];
   for (const s of g.solids.values()) {
     if (s.wall.levelId !== levelId) continue;
     for (const b of s.blocks) if (b.bottom <= z && b.top >= z) out.push(b.polygon);
+  }
+  for (const x of eachSolid(g.kinds)) {
+    if (x.levelId !== levelId || NOT_IN_THE_WAY.has(x.kind.key) || !x.kind.span) continue;
+    const { bottom, top } = x.kind.span(x.solid);
+    // At knee height over its own base (an object on the terrain stands higher than the floor).
+    const knee = Math.max(floor, bottom) + KNEE;
+    if (bottom <= knee && top >= knee) out.push(...x.kind.outlines(x.solid));
   }
   return out;
 }

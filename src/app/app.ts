@@ -920,6 +920,13 @@ export class App {
     return walking.toggleWalk(this);
   }
 
+  /** Walking through walls and things (C while walking): off, the walker is stopped by them. */
+  walkThrough = false;
+
+  toggleWalkThrough(): void {
+    return walking.toggleWalkThrough(this);
+  }
+
   /** The eyes higher or lower by `step` (m), within EYE_MIN..EYE_MAX; said in the footer. */
   walkEye(step: number): void {
     return walking.walkEye(this, step);

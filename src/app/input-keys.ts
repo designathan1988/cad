@@ -75,6 +75,7 @@ export function wireKeys(app: App, k: KeyContext): void {
         return;
       }
       if (key === 'escape' || key === '3') return app.exitWalk();
+      if (key === 'c') return app.toggleWalkThrough();
       if (key === '+' || key === '=' || key === '-') {
         e.preventDefault();
         return app.walkEye(key === '-' ? -0.1 : 0.1);

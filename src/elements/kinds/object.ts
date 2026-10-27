@@ -6,7 +6,8 @@
 import * as THREE from 'three';
 import type { Doc } from '../../app/document';
 import { insideRing } from '../room/derive';
-import type { ElementKind, KindSolid } from '../contract';
+import type { BaseGeometry, ElementKind, KindSolid } from '../contract';
+import { heightAt } from '../terrain/schema';
 import { evaluateObject, type ObjectEval, type Piece, pieceOutline } from '../object/evaluate';
 import { type ObjectItem, objectFields, words } from '../object/fields';
 import { isObjectInstance } from '../object/valid';
@@ -25,15 +26,30 @@ export interface ObjectSolid extends ObjectItem {
   readonly top: number;
 }
 
-const kept = new WeakMap<ObjectInstance, { defs: readonly ObjectDefinition[]; mats: Doc['materials']; level: unknown; s: ObjectSolid | null }>();
+const kept = new WeakMap<ObjectInstance, { defs: readonly ObjectDefinition[]; mats: Doc['materials']; level: unknown; ground: number | null; s: ObjectSolid | null }>();
 
-function derive(doc: Doc, o: ObjectInstance): ObjectSolid | null {
+/**
+ * What an object stands on out of doors: the terrain of its level under it (its height there), when it
+ * is in no enclosed room and on no floor drawn by its outline; null indoors or off every terrain, where
+ * it stands on its level's floor. A tree, a car, a bench placed on a slope sits on it as it would.
+ */
+export function groundUnder(doc: Doc, g: BaseGeometry, levelId: string, at: { x: number; y: number }): number | null {
+  const terrain = doc.terrains.find((t) => t.levelId === levelId && insideRing(t.outline, at));
+  if (!terrain) return null;
+  for (const r of g.rooms.values()) if (r.room.levelId === levelId && r.enclosed && insideRing(r.outline, at)) return null;
+  for (const f of doc.floors) if (f.levelId === levelId && f.source.kind === 'outline' && insideRing(f.source.points, at)) return null;
+  return heightAt(terrain.spots, at);
+}
+
+function derive(doc: Doc, o: ObjectInstance, g: BaseGeometry): ObjectSolid | null {
   const level = doc.levels.find((l) => l.id === o.levelId);
+  // Out of doors on a terrain: its height there is the object's floor (absolute, as the terrain's).
+  const ground = level ? groundUnder(doc, g, o.levelId, o.at) : null;
   const hit = kept.get(o);
-  if (hit && hit.defs === doc.definitions && hit.mats === doc.materials && hit.level === level) return hit.s;
+  if (hit && hit.defs === doc.definitions && hit.mats === doc.materials && hit.level === level && hit.ground === ground) return hit.s;
   const def = doc.definitions.find((d) => d.id === o.definitionId);
-  const s = def && level ? build(o, def, evaluateObject(def, o, { definitions: doc.definitions, materials: doc.materials }), level.elevation) : null;
-  kept.set(o, { defs: doc.definitions, mats: doc.materials, level, s });
+  const s = def && level ? build(o, def, evaluateObject(def, o, { definitions: doc.definitions, materials: doc.materials }), ground ?? level.elevation) : null;
+  kept.set(o, { defs: doc.definitions, mats: doc.materials, level, ground, s });
   return s;
 }
 
@@ -100,7 +116,7 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
   exportName: 'export.object',
   exportColour: 'structure',
   valid: isObjectInstance,
-  derive: (doc, o) => derive(doc, o),
+  derive: (doc, o, g) => derive(doc, o, g),
   element: (s) => s.object,
   outlines: (s) => [s.outline],
   hit: (s, p, near) => insideRing(s.outline, p) || s.outline.some((v, i) => nearSegment(p, v, s.outline[(i + 1) % s.outline.length]!, near)),

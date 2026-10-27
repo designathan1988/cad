@@ -56,6 +56,22 @@ describe('terrain', () => {
     expect(bottom).toBeCloseTo(400, 6);
   });
 
+  it('an object out of doors stands on the terrain under it; on a floor it stands on its level', () => {
+    const base = newDocument();
+    const def = base.definitions[0]!;
+    const spots = [{ x: 0, y: 0, z: 0 }, { x: 20, y: 20, z: 2 }];
+    const object = { id: 'object_1', levelId: 'lvl_ground', definitionId: def.id, typeId: 'standard', at: { x: 14, y: 12 }, angle: 0, elevation: 0, values: {} };
+    const doc: Doc = { ...base, terrains: [{ id: 'terrain_1', levelId: 'lvl_ground', outline: square(20), spots, interval: 0.5 }], objects: [object] };
+    const floorOf = (d: Doc) => (deriveGeometry(d).kinds.get('objects')?.get('object_1') as { floor: number }).floor;
+    expect(floorOf(doc)).toBeCloseTo(heightAt(spots, object.at), 9);
+    expect(floorOf(doc)).toBeGreaterThan(0.5);
+    // On a floor drawn round it: on its level's floor, the terrain under the slab left alone.
+    const slab = { id: 'floor_1', levelId: 'lvl_ground', source: { kind: 'outline' as const, points: square(20).map((p) => ({ x: p.x * 0.9 + 1, y: p.y * 0.9 + 1 })) }, thickness: 0.12, offset: 0 };
+    expect(floorOf({ ...doc, floors: [slab as never] })).toBe(0);
+    // Off the terrain: its level's floor.
+    expect(floorOf({ ...doc, objects: [{ ...object, at: { x: 30, y: 30 } }] })).toBe(0);
+  });
+
   it('an L-shaped lot: the surface is the L, not its box', () => {
     const l = [
       { x: 0, y: 0 },

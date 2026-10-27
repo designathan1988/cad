@@ -53,6 +53,23 @@ describe('walking through a room', () => {
     expect(end.y).toBeLessThan(3 - 0.075 - BODY_RADIUS + 0.06);
   });
 
+  it('a piece of furniture in the way stops it too; the terrain under it does not', () => {
+    const base = newDocument();
+    const def = base.definitions[0]!;
+    const table = { id: 'object_1', levelId: 'lvl_ground', definitionId: def.id, typeId: 'standard', at: { x: 2, y: 2 }, angle: 0, elevation: 0, values: {} };
+    const terrain = { id: 'terrain_1', levelId: 'lvl_ground', outline: [{ x: -10, y: -10 }, { x: 10, y: -10 }, { x: 10, y: 10 }, { x: -10, y: 10 }], spots: [{ x: -10, y: -10, z: 0 }, { x: 10, y: 10, z: 1 }], interval: 0.5 };
+    const g2 = deriveGeometry({ ...doc, objects: [table], terrains: [terrain] });
+    const solid = g2.kinds.get('objects')!.get('object_1') as { outline: { x: number; y: number }[]; top: number; bottom: number };
+    // Only when it stands a knee high (the first object of the library does).
+    expect(solid.top - solid.bottom).toBeGreaterThan(0.4);
+    const list = obstaclesOf(g2, 'lvl_ground', 0);
+    expect(list.length).toBe(obstacles.length + 1);
+    // From below it, walking up into it: stopped before its outline.
+    const low = Math.min(...solid.outline.map((p) => p.y));
+    const end = moveWithCollision({ x: 2, y: 0.6 }, { x: 0, y: 2 }, list);
+    expect(end.y).toBeLessThan(low);
+  });
+
   it('slanting into a wall: it slides along it instead of stopping', () => {
     // Toward the right wall (x = 4) and up: x stops at the wall, y goes on.
     const end = moveWithCollision({ x: 3, y: 1 }, { x: 2, y: 1 }, obstacles);
