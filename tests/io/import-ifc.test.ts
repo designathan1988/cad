@@ -108,6 +108,55 @@ describe('this app\'s IFC read back', () => {
   });
 });
 
+describe('columns and beams another program wrote (IfcOpenShell, in millimetres)', () => {
+  // A 300 × 500 column turned 30° at (2, 1), 2.80 high; a round one of 150 radius at (4, 1), 3.00 high;
+  // an I beam of 150 × 400 (12 mm flanges) from (0, 3) to (5, 3), its top at 3.00, its own z along it.
+  const r = importIfc(readFileSync(new URL('../fixtures/third-party-structure.ifc', import.meta.url), 'utf8'), ids());
+
+  it('the columns where they stand, turned as they are, their sections, their tops against the level', () => {
+    expect(r.made).toMatchObject({ columns: 2, beams: 1 });
+    expect(r.skipped).toEqual({});
+    const [c1, c2] = r.doc.columns;
+    expect(c1!.at.x).toBeCloseTo(2, 6);
+    expect(c1!.at.y).toBeCloseTo(1, 6);
+    expect(c1!.width).toBeCloseTo(0.3, 6);
+    expect(c1!.depth).toBeCloseTo(0.5, 6);
+    expect(c1!.angle).toBeCloseTo(Math.PI / 6, 6);
+    // Its level's top is 3.00 (the next storey's floor): 20 cm short of it.
+    expect(c1!.topOffset).toBeCloseTo(-0.2, 6);
+    expect(c1!.shape).toBeUndefined();
+    expect(c2).toMatchObject({ shape: 'round', at: { x: expect.closeTo(4, 6), y: expect.closeTo(1, 6) }, width: expect.closeTo(0.3, 6), depth: expect.closeTo(0.3, 6) });
+    expect(c2!.topOffset).toBeUndefined();
+    expect(r.doc.columns.every((c) => c.levelId === r.doc.levels[0]!.id)).toBe(true);
+  });
+
+  it('the beam along its axis, as wide and deep as it is, an I of its flanges, hanging from the level top', () => {
+    const b = r.doc.beams[0]!;
+    expect([b.start.x, b.start.y, b.end.x, b.end.y].map((v) => Math.round(v * 1000) / 1000)).toEqual([0, 3, 5, 3]);
+    expect(b.width).toBeCloseTo(0.15, 6);
+    expect(b.depth).toBeCloseTo(0.4, 6);
+    expect(b.topOffset).toBeUndefined();
+    expect(b).toMatchObject({ shape: 'I', plate: expect.closeTo(0.012, 9), levelId: r.doc.levels[0]!.id });
+  });
+
+  it("this app's own columns and beams read back", () => {
+    const doc: Doc = {
+      ...newDocument(),
+      columns: [{ id: 'column_1', levelId: 'lvl_ground', at: { x: 1, y: 2 }, width: 0.25, depth: 0.4, angle: 0 }],
+      beams: [{ id: 'beam_1', levelId: 'lvl_ground', start: { x: 0, y: 0 }, end: { x: 0, y: 4 }, width: 0.15, depth: 0.5 }],
+    };
+    const text = exportIfc(doc, deriveGeometry(doc), { project: 'P', site: 'S', building: 'B', name: (s) => s, wall: (n) => `W${n}`, material: (m) => m.name || m.id, opening: () => 'X', element: (k, n) => `${k}${n}`, object: (d) => d, category: () => null, zone: (z) => z }, new Date(0));
+    const back = importIfc(text, ids());
+    expect(back.doc.columns).toHaveLength(1);
+    expect(back.doc.columns[0]).toMatchObject({ at: { x: expect.closeTo(1, 6), y: expect.closeTo(2, 6) }, width: expect.closeTo(0.25, 6), depth: expect.closeTo(0.4, 6) });
+    expect(back.doc.columns[0]!.topOffset).toBeUndefined();
+    const b = back.doc.beams[0]!;
+    expect([b.start.x, b.start.y, b.end.x, b.end.y].map((v) => Math.round(v * 1000) / 1000)).toEqual([0, 0, 0, 4]);
+    expect(b.width).toBeCloseTo(0.15, 6);
+    expect(b.depth).toBeCloseTo(0.5, 6);
+  });
+});
+
 describe('a file another program wrote (IfcOpenShell, in millimetres)', () => {
   const text = readFileSync(new URL('../fixtures/third-party.ifc', import.meta.url), 'utf8');
   const r = importIfc(text, ids());

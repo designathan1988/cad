@@ -3,8 +3,9 @@
 // IFC places them), as long, thick and high as their bodies, of a wall type made of their layers (or
 // one of their thickness), their reference line where their layer usage says; doors and windows in the
 // walls whose voids they fill, at their place along them, as wide and high as they are; spaces rooms,
-// with their name and number; slabs floors with their outline. The rest (stairs, roofs, furniture…) has
-// no parametric element to become here: counted, by class, and said. Pure but for the ids it is given.
+// with their name and number; slabs floors with their outline; columns and beams theirs, of a rectangle, a
+// round or an I section. The rest (stairs, roofs, furniture…) has no parametric element to become here:
+// counted, by class, and said. Pure but for the ids it is given.
 
 import { newDocument, type Doc, type DocWall, type Level } from '../app/document';
 import type { Point2 } from '../core/vector';
@@ -13,12 +14,14 @@ import { newOpening, type Opening } from '../elements/opening/schema';
 import { labelPoint, insideRing } from '../elements/room/derive';
 import type { Floor, Room } from '../elements/room/schema';
 import type { LayerFunction, WallLayer, WallType } from '../elements/wall/schema';
+import { type Column, COLUMN_PREFIX } from '../elements/column/schema';
+import { type Beam, BEAM_PREFIX } from '../elements/beam/schema';
 import { isEnum, isRef, isTyped, readStep, type StepEntity, type StepValue } from './step';
 
 export interface IfcImport {
   readonly doc: Doc;
   /** What was made, by kind, and what had nothing to become (by IFC class). */
-  readonly made: Readonly<Record<'levels' | 'walls' | 'wallTypes' | 'doors' | 'windows' | 'rooms' | 'floors', number>>;
+  readonly made: Readonly<Record<'levels' | 'walls' | 'wallTypes' | 'doors' | 'windows' | 'rooms' | 'floors' | 'columns' | 'beams', number>>;
   readonly skipped: Readonly<Record<string, number>>;
 }
 
@@ -168,8 +171,28 @@ export function importIfc(text: string, id: (prefix: string) => string): IfcImpo
         return [p[0], p[1]];
       });
     }
+    // A circle (its 16 points) and an I (its overall box): a round column's, a steel one's.
+    if (e.type === 'IFCCIRCLEPROFILEDEF' || e.type === 'IFCISHAPEPROFILEDEF') {
+      const pos = axis2(get(e.args[2]));
+      const ring: [number, number][] =
+        e.type === 'IFCCIRCLEPROFILEDEF'
+          ? Array.from({ length: 16 }, (_, i) => [num(e.args[3]) * k * Math.cos((i * Math.PI) / 8), num(e.args[3]) * k * Math.sin((i * Math.PI) / 8)])
+          : ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([x, y]) => [(x * num(e.args[3]) * k) / 2, (y * num(e.args[4]) * k) / 2]);
+      return ring.map(([x, y]) => {
+        const p = apply(pos, [x, y, 0]);
+        return [p[0], p[1]];
+      });
+    }
     if (e.type === 'IFCARBITRARYCLOSEDPROFILEDEF' || e.type === 'IFCARBITRARYPROFILEDEFWITHVOIDS') return curvePoints(get(e.args[2]));
     return [];
+  };
+  /** A body's section, when it is an extrusion of a round or an I profile: the column's or beam's shape and its flanges. */
+  const sectionOf = (product: StepEntity): { shape: 'round' | 'I'; plate?: number } | null => {
+    const ex = representationItems(product, 'Body').find((i) => i.type === 'IFCEXTRUDEDAREASOLID');
+    const prof = ex ? get(ex.args[0]) : null;
+    if (prof?.type === 'IFCCIRCLEPROFILEDEF') return { shape: 'round' };
+    if (prof?.type === 'IFCISHAPEPROFILEDEF') return { shape: 'I', plate: num(prof.args[6]) * k };
+    return null;
   };
   const curvePoints = (e: StepEntity | null): [number, number][] => {
     if (!e) return [];
@@ -438,8 +461,86 @@ export function importIfc(text: string, id: (prefix: string) => string): IfcImpo
     floors.push({ id: id('floor'), levelId: lv.id, source: { kind: 'outline', points: closed }, thickness: Math.max(0.01, zTop - zBottom), offset: zTop - lv.elevation });
   }
 
+  // Columns and beams: their bodies' extent along their own level axes (whichever of their placement's
+  // axes lie level), the longer a beam's axis; a column stands on its level's floor up to its top, a
+  // beam hangs from its top. A sloping beam is read level, at its highest.
+  const levelAxes = (f: Frame): Vec[] => [f.x, f.y, f.z].filter((d) => Math.abs(d[2]) < 0.1).map((d) => unit([d[0], d[1], 0]));
+  const spread = (pts: readonly Vec[], d: Vec) => {
+    const s = pts.map((p) => p[0] * d[0] + p[1] * d[1]);
+    return { lo: Math.min(...s), hi: Math.max(...s) };
+  };
+  const columns: Column[] = [];
+  for (const e of byType('IFCCOLUMN')) {
+    const f = worldFrame(e);
+    const pts = bodyPoints(e).map((p) => apply(f, p));
+    const axes = levelAxes(f);
+    if (pts.length === 0 || axes.length < 2) {
+      skip(e);
+      continue;
+    }
+    const [u, v] = [axes[0]!, axes[1]!];
+    const a = spread(pts, u);
+    const b = spread(pts, v);
+    const bottom = Math.min(...pts.map((p) => p[2]));
+    const top = Math.max(...pts.map((p) => p[2]));
+    if (a.hi - a.lo < 1e-3 || b.hi - b.lo < 1e-3 || top - bottom < 1e-3) {
+      skip(e);
+      continue;
+    }
+    const lv = levelFor(e, bottom);
+    const cu = (a.lo + a.hi) / 2;
+    const cv = (b.lo + b.hi) / 2;
+    const section = sectionOf(e);
+    const toTop = top - (lv.elevation + lv.height);
+    columns.push({
+      id: id(COLUMN_PREFIX),
+      levelId: lv.id,
+      at: { x: u[0] * cu + v[0] * cv, y: u[1] * cu + v[1] * cv },
+      width: a.hi - a.lo,
+      depth: b.hi - b.lo,
+      angle: Math.atan2(u[1], u[0]),
+      ...(Math.abs(toTop) > 1e-3 ? { topOffset: toTop } : {}),
+      ...(section ? { shape: section.shape, ...(section.plate ? { plate: section.plate } : {}) } : {}),
+    });
+  }
+  const beams: Beam[] = [];
+  for (const e of byType('IFCBEAM')) {
+    const f = worldFrame(e);
+    const pts = bodyPoints(e).map((p) => apply(f, p));
+    const axes = levelAxes(f);
+    if (pts.length === 0 || axes.length === 0) {
+      skip(e);
+      continue;
+    }
+    // Its axis the level axis it is longest along; across it, square to that in plan.
+    const along = axes.map((d) => ({ d, s: spread(pts, d) })).reduce((m, x) => (x.s.hi - x.s.lo > m.s.hi - m.s.lo ? x : m));
+    const across: Vec = [-along.d[1], along.d[0], 0];
+    const c = spread(pts, across);
+    const bottom = Math.min(...pts.map((p) => p[2]));
+    const top = Math.max(...pts.map((p) => p[2]));
+    if (along.s.hi - along.s.lo < 1e-3 || c.hi - c.lo < 1e-3 || top - bottom < 1e-3) {
+      skip(e);
+      continue;
+    }
+    const lv = levelFor(e, bottom - 0.01);
+    const mid = (c.lo + c.hi) / 2;
+    const at = (s: number): Point2 => ({ x: along.d[0] * s + across[0] * mid, y: along.d[1] * s + across[1] * mid });
+    const section = sectionOf(e);
+    const toTop = top - (lv.elevation + lv.height);
+    beams.push({
+      id: id(BEAM_PREFIX),
+      levelId: lv.id,
+      start: at(along.s.lo),
+      end: at(along.s.hi),
+      width: c.hi - c.lo,
+      depth: top - bottom,
+      ...(Math.abs(toTop) > 1e-3 ? { topOffset: toTop } : {}),
+      ...(section?.shape === 'I' ? { shape: 'I' as const, ...(section.plate ? { plate: section.plate } : {}) } : {}),
+    });
+  }
+
   // What has nothing to become here, by class.
-  const handled = new Set(['IFCWALL', 'IFCWALLSTANDARDCASE', 'IFCDOOR', 'IFCWINDOW', 'IFCSPACE', 'IFCSLAB', 'IFCOPENINGELEMENT', 'IFCBUILDINGSTOREY', 'IFCBUILDING', 'IFCSITE']);
+  const handled = new Set(['IFCWALL', 'IFCWALLSTANDARDCASE', 'IFCDOOR', 'IFCWINDOW', 'IFCSPACE', 'IFCSLAB', 'IFCCOLUMN', 'IFCBEAM', 'IFCOPENINGELEMENT', 'IFCBUILDINGSTOREY', 'IFCBUILDING', 'IFCSITE']);
   const products = ['IFCROOF', 'IFCSTAIR', 'IFCSTAIRFLIGHT', 'IFCRAILING', 'IFCCOLUMN', 'IFCBEAM', 'IFCCURTAINWALL', 'IFCCOVERING', 'IFCFURNITURE', 'IFCFURNISHINGELEMENT', 'IFCSANITARYTERMINAL', 'IFCLIGHTFIXTURE', 'IFCELECTRICAPPLIANCE', 'IFCFLOWTERMINAL', 'IFCBUILDINGELEMENTPROXY', 'IFCPLATE', 'IFCMEMBER', 'IFCRAMP', 'IFCFOOTING', 'IFCGEOGRAPHICELEMENT'];
   for (const e of byType(...products)) if (!handled.has(e.type)) skip(e);
 
@@ -454,10 +555,12 @@ export function importIfc(text: string, id: (prefix: string) => string): IfcImpo
     openings,
     rooms,
     floors,
+    columns,
+    beams,
   };
   return {
     doc,
-    made: { levels: levels.length, walls: walls.length, wallTypes: wallTypes.length, doors, windows, rooms: rooms.length, floors: floors.length },
+    made: { levels: levels.length, walls: walls.length, wallTypes: wallTypes.length, doors, windows, rooms: rooms.length, floors: floors.length, columns: columns.length, beams: beams.length },
     skipped,
   };
 }

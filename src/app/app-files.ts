@@ -7,7 +7,7 @@ import { deriveGeometry } from './geometry';
 import type { KindKey } from '../elements/contract';
 import { words } from '../elements/object/fields';
 import { areaText } from '../ui/units';
-import { markPrefix, materialLabel, name, t } from '../ui/i18n';
+import { markPrefix, materialLabel, type MessageKey, name, t } from '../ui/i18n';
 import { materialIn } from '../elements/material/schema';
 import { planDxf, toCp1252 } from '../io/export-dxf';
 import { anyKinds, kindOfKey } from '../elements/registry';
@@ -231,8 +231,13 @@ export async function openFile(app: App, file: File): Promise<void> {
       // Read as a saved project is, so it is checked the same way.
       source = JSON.stringify({ ...imported.doc, name: imported.doc.name || file.name.replace(/\.ifc$/i, '') });
       const left = Object.entries(imported.skipped).map(([cls, n]) => `${n} ${cls}`).join(', ');
+      // What was made, each count as said (1 viga, 2 pilares), none of a kind left out; what was not.
       const m = imported.made;
-      ifcSaid = t(left ? 'ifc.importedSome' : 'ifc.imported', { walls: m.walls, doors: m.doors, windows: m.windows, rooms: m.rooms, floors: m.floors, levels: m.levels, left });
+      const what = (['levels', 'walls', 'doors', 'windows', 'rooms', 'floors', 'columns', 'beams'] as const)
+        .filter((k) => m[k] > 0)
+        .map((k) => t(`ifc.n.${k}${m[k] === 1 ? 'One' : ''}` as MessageKey, { n: m[k] }))
+        .join(', ');
+      ifcSaid = [t('ifc.read', { what: what || t('ifc.nothing') }), ...(left ? [t('ifc.left', { left })] : [])].join(' ');
     } catch (e) {
       app.ui.error = t('ifc.unreadable', { why: e instanceof Error ? e.message : String(e) });
       return app.renderChrome();
@@ -255,7 +260,7 @@ export async function openFile(app: App, file: File): Promise<void> {
   if (app.db) {
     // A new project of the list: the open one stays there (projects.ts).
     await importAsProject(app, app.db, opened);
-    app.toast(ifcSaid ?? (fixed > 1 ? t('toast.importedFixed', { n: fixed }) : fixed === 1 ? t('toast.importedFixedOne') : t('toast.imported')));
+    app.toast(ifcSaid ? `${ifcSaid} ${t('ifc.keptInList')}` : fixed > 1 ? t('toast.importedFixed', { n: fixed }) : fixed === 1 ? t('toast.importedFixedOne') : t('toast.imported'));
     return;
   }
   // One undo step, like any other change: opening by mistake never loses the project that was open.
@@ -263,5 +268,5 @@ export async function openFile(app: App, file: File): Promise<void> {
   app.framed.plan = false;
   app.framed['3d'] = false;
   app.frameAll();
-  app.toast(ifcSaid ?? (fixed > 1 ? t('toast.openedFixed', { n: fixed }) : fixed === 1 ? t('toast.openedFixedOne') : t('toast.openedUndo')));
+  app.toast(ifcSaid ? `${ifcSaid} ${t('ifc.undoBack')}` : fixed > 1 ? t('toast.openedFixed', { n: fixed }) : fixed === 1 ? t('toast.openedFixedOne') : t('toast.openedUndo'));
 }
