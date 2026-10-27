@@ -6,6 +6,7 @@ import type { LayerSet, RoomOverride, WallOverride } from './layer-sets';
 import type { Separator } from '../elements/separator/schema';
 import type { Cloud } from '../elements/cloud/schema';
 import type { Measure } from '../elements/measure/schema';
+import type { Tag } from '../elements/tag/schema';
 import type { Curtain } from '../elements/curtain/schema';
 import type { Zone } from '../elements/zone/schema';
 import type { SectionMark } from '../elements/section/schema';
@@ -72,7 +73,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 41;
+  readonly version: 42;
   readonly name: string;
   /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
   readonly units: Units;
@@ -120,6 +121,8 @@ export interface Doc {
   readonly clouds: readonly Cloud[];
   /** Angular, radius, diameter, arc length and coordinate dimensions (elements/measure). */
   readonly measures: readonly Measure[];
+  /** Texts by elements with their values (elements/tag). */
+  readonly tags: readonly Tag[];
   /** Curtain walls (elements/curtain). */
   readonly curtains: readonly Curtain[];
   /** Rooms taken together under a name, a category and a colour (elements/zone). */
@@ -177,7 +180,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 41,
+    version: 42,
     name: '',
     units: DEFAULT_UNITS,
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
@@ -233,6 +236,7 @@ export function newDocument(): Doc {
     separators: [],
     clouds: [],
     measures: [],
+    tags: [],
     curtains: [],
     zones: [],
     sections: [],

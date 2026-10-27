@@ -180,7 +180,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
           ],
         },
         { title: 'rib.p.text', items: [tool('note', 'edit.addNote', 'text', 'L'), tool('callout', 'tool.callout', 'text', 'S'), tool('levelMark', 'edit.addLevelMark', 'height', 'S')] },
-        { title: 'rib.p.tags', items: [{ id: 'settings.openingTags', icon: 'tag', size: 'S', pressed: () => ui.openingTags }] },
+        { title: 'rib.p.tags', items: [tool('tag', 'tool.tag', 'tag', 'S'), { id: 'settings.openingTags', icon: 'tag', size: 'S', pressed: () => ui.openingTags }] },
         {
           title: 'rib.p.documents',
           items: [

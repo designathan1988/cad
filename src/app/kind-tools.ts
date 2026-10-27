@@ -44,6 +44,9 @@ import type { App } from './app';
 import { addMeasure } from '../elements/measure/commands';
 import { arcWallAt } from '../elements/measure/place';
 import { MEASURE_PREFIX } from '../elements/measure/schema';
+import { addTag } from '../elements/tag/commands';
+import { TAG_PREFIX } from '../elements/tag/schema';
+import { defaultTagText } from '../elements/kinds/tag';
 
 /** A level mark where the menu was opened (or the middle of the view), selected: it says the level's height. */
 export function addLevelMarkHere(app: App, at?: Point2): void {
@@ -424,4 +427,24 @@ export function markClick(app: App, p: Point2): void {
   const radius = Math.max(0.3, Math.min(distance(vertex, a), distance(vertex, b)) / 2);
   app.store.dispatch(addMeasure({ id: newId(MEASURE_PREFIX), levelId: ui.levelId, type: 'angle', vertex, a, b, radius }));
   done('hint.markMade');
+}
+
+/**
+ * The tag tool: a click on an element takes it (not a tag), the next places the tag's text there, with
+ * the values that element has (elements/kinds/tag.ts: defaultTagText).
+ */
+export function tagClick(app: App, p: Point2, under: string | null): void {
+  const ui = app.ui;
+  if (!ui.tagFor) {
+    if (!under || under.startsWith(`${TAG_PREFIX}_`)) {
+      ui.info = t('hint.tagNone');
+      return app.render();
+    }
+    ui.tagFor = under;
+    return app.render();
+  }
+  app.store.dispatch(addTag({ id: newId(TAG_PREFIX), levelId: ui.levelId, target: ui.tagFor, at: p, text: defaultTagText(ui.tagFor) }));
+  ui.tagFor = null;
+  ui.info = t('hint.tagMade');
+  app.render();
 }

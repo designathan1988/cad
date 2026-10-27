@@ -203,6 +203,8 @@ export interface UiState {
   /** The measure tool (kind-tools.ts: markClick): what it measures, and its points so far. */
   markMode: MarkMode;
   markDraft: Point2[];
+  /** The tag tool's element, once clicked; then the click that places its text (kind-tools.ts: tagClick). */
+  tagFor: string | null;
   /** A simulation's map over the plan (app/sim-map.ts): the Wi-Fi signal, the rooms' daylight or sun; none. */
   simMap: SimMap;
   /** A guide being placed (guide-tool.ts): Alt over a wall or a guide in a drawing tool. */
@@ -350,6 +352,7 @@ export class App {
       mepDraft: [],
       markMode: 'angle',
       markDraft: [],
+      tagFor: null,
       simMap: 'none',
       guide: null,
       view3d: readView3D(prefs.view3d),
@@ -757,6 +760,7 @@ export class App {
     this.ui.railingDraft = [];
     this.ui.mepDraft = [];
     this.ui.markDraft = [];
+    this.ui.tagFor = null;
     this.ui.guide = null;
     this.ui.modify = null;
     this.modifyBefore = null;
@@ -1219,6 +1223,10 @@ export class App {
 
   markClick(p: Point2): void {
     return kindTools.markClick(this, p);
+  }
+
+  tagClick(p: Point2, under: string | null): void {
+    return kindTools.tagClick(this, p, under);
   }
 
   /** The column tool: a click stands a column there, the section of the last one made. */

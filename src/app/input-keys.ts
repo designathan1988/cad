@@ -282,6 +282,11 @@ export function wireKeys(app: App, k: KeyContext): void {
         ui.beamFrom = null;
         return app.render();
       }
+      if (ui.tool === 'tag') {
+        if (!ui.tagFor) return app.setTool('select');
+        ui.tagFor = null;
+        return app.render();
+      }
       if (ui.tool === 'mark') {
         if (ui.markDraft.length === 0) return app.setTool('select');
         ui.markDraft = ui.markDraft.slice(0, -1);

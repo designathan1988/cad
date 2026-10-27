@@ -1000,11 +1000,12 @@ button.project-name:hover {
   font-size: var(--fs-sm);
   pointer-events: none;
 }
+/* A value read, not typed: a field's height for one line, taller when it wraps (a tag's text, its words). */
 .readout {
-  height: var(--field-h);
+  min-height: var(--field-h);
   display: flex;
   align-items: center;
-  padding: 0 var(--sp-2);
+  padding: var(--sp-half) var(--sp-2);
   color: var(--text-2);
 }
 .empty-state {

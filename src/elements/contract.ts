@@ -17,7 +17,7 @@ import type { MessageKey } from '../ui/i18n';
 import type { IconName } from '../ui/icons';
 
 /** The document's lists the registry's kinds keep. */
-export type KindKey = 'measures' | 'clouds' | 'mepPoints' | 'mepRuns' | 'terrains' | 'references' | 'sections' | 'separators' | 'curtains' | 'zones' | 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'objects' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings' | 'walls';
+export type KindKey = 'tags' | 'measures' | 'clouds' | 'mepPoints' | 'mepRuns' | 'terrains' | 'references' | 'sections' | 'separators' | 'curtains' | 'zones' | 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'objects' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings' | 'walls';
 
 /** The derived geometry before the registry's kinds: what a kind held by walls and doors reads. */
 export type BaseGeometry = Omit<DerivedGeometry, 'kinds'>;
