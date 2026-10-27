@@ -6,6 +6,7 @@ import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 import { layerQuantities } from '../../src/app/quantities';
 import { abcOf, budgetOf, cubEstimate, linesFromModel, scheduleOf, searchBase } from '../../src/costs/budget';
+import { breakdownOf } from '../../src/costs/breakdown';
 import { findColumns, guessFromName, itemsFromRows, readNumber } from '../../src/costs/price-base';
 import { type Costs, DEFAULT_COSTS } from '../../src/costs/schema';
 import { newOpening } from '../../src/elements/opening/schema';
@@ -165,6 +166,12 @@ describe('the budget', () => {
     const masonryStage = s.rows.find((r) => r.stage.id === 'stage_masonry')!;
     expect(masonryStage.months[0]).toBeCloseTo((net * 86.37 * 1.2) / 2, 6);
     expect(s.cumulative.at(-1)).toBeCloseTo(direct * 1.2, 6);
+    // By element: the walls and the door carry it all, each wall its share; nothing left unshared.
+    const d = breakdownOf({ ...house, costs }, g, b);
+    expect([...d.byElement.values()].reduce((x, y) => x + y, 0) + d.unshared).toBeCloseTo(direct, 6);
+    expect(d.unshared).toBe(0);
+    expect(d.byElement.get('d')).toBeCloseTo(750, 9);
+    expect(['s', 'e', 'n', 'w'].every((id) => (d.byElement.get(id) ?? 0) > 0)).toBe(true);
   });
 
   it('the CUB estimate: the built area times the CUB', () => {

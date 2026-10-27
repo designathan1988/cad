@@ -1661,15 +1661,25 @@ export class App {
     showApproval(this);
   }
 
-  /** An element as a report names it: a room by its number and name, a wall by its number, the lot. */
+  /**
+   * An element as a report names it, with its level: the same number on two levels read as one. A room
+   * by its number and name, a wall by its number, a door or window by its mark and its wall, the lot.
+   */
   reportTitle(id: string): string {
     if (id === LOT_ELEMENT) return t('lot.title');
     const doc = this.store.get();
+    const level = (levelId: string) => wordsOf(levelOf(doc, levelId)?.name ?? '');
     const room = doc.rooms.find((r) => r.id === id);
-    // With its level: the same number and name on two levels read as one room.
-    if (room) return `${room.number} · ${wordsOf(room.name)} (${wordsOf(levelOf(doc, room.levelId)?.name ?? '')})`;
+    if (room) return `${room.number} · ${wordsOf(room.name)} (${level(room.levelId)})`;
+    const wall = doc.walls.find((w) => w.id === id);
     const n = wallNumber(doc, id);
-    if (n !== null) return t('wall.tag', { n });
+    if (wall && n !== null) return `${t('wall.tag', { n })} (${level(wall.levelId)})`;
+    const o = doc.openings.find((x) => x.id === id);
+    const host = o && doc.walls.find((w) => w.id === o.wallId);
+    if (o && host) {
+      const mark = openingMarks(doc.openings, markPrefix()).get(o.id) ?? this.elementTitle(id);
+      return `${mark} · ${t('wall.tag', { n: wallNumber(doc, host.id) ?? 0 })} (${level(host.levelId)})`;
+    }
     return this.elementTitle(id);
   }
 

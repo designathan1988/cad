@@ -12,12 +12,13 @@ import { guessFromName, itemsFromRows } from '../costs/price-base';
 import { type BudgetLine, costsOf, type Measure, QUANTITY_OFS, type QuantityOf } from '../costs/schema';
 import { readCsv, readXlsx } from '../io/xlsx';
 import { abcRows, type Cell, csvOf, scheduleRows, sheetRows } from '../costs/tables';
+import { breakdownOf } from '../costs/breakdown';
 import { el, numberField, segmented, select } from './controls';
 import { openProjectDialog } from './dialog';
 import { getLang, materialLabel, type MessageKey, num, t } from './i18n';
 import { icon } from './icons';
 
-type Tab = 'cub' | 'sheet' | 'abc' | 'schedule';
+type Tab = 'cub' | 'sheet' | 'abc' | 'elements' | 'schedule';
 
 /** R$ 1.234,56: the thousands grouped, as money is read. */
 export const money = (v: number): string => `R$ ${v.toLocaleString(getLang() === 'pt' ? 'pt-BR' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -70,7 +71,7 @@ export function showBudget(app: App, first: Tab = 'sheet'): void {
     const g = app.geometry;
     const b = budgetOf(doc, g);
     const tabs = segmented(
-      (['cub', 'sheet', 'abc', 'schedule'] as const).map((k) => ({ value: k, label: t(`budget.tab.${k}`) })),
+      (['cub', 'sheet', 'abc', 'elements', 'schedule'] as const).map((k) => ({ value: k, label: t(`budget.tab.${k}`) })),
       tab,
       (k) => {
         tab = k;
@@ -258,6 +259,31 @@ export function showBudget(app: App, first: Tab = 'sheet'): void {
         totals,
       );
       saveBtn = btn(t('schedule.csv'), () => save(t('budget.tab.sheet'), sheetRows(doc, b, say)));
+    } else if (tab === 'elements') {
+      // The cost of each room and each element: its share of the lines it makes (costs/breakdown.ts).
+      const d = breakdownOf(doc, g, b);
+      const factor = 1 + costs.bdi / 100;
+      const rooms = doc.rooms.filter((r) => d.byElement.has(r.id)).map((r) => ({ id: r.id, cost: d.byElement.get(r.id)! * factor }));
+      const others = [...d.byElement.entries()].filter(([id]) => !doc.rooms.some((r) => r.id === id)).map(([id, cost]) => ({ id, cost: cost * factor })).sort((x, y) => y.cost - x.cost);
+      const list = (rows: { id: string; cost: number }[], head: MessageKey) =>
+        el(
+          'table',
+          { class: 'schedule-table' },
+          el('thead', {}, el('tr', {}, el('th', {}, t(head)), el('th', { class: 'num' }, t('budget.withBdi')))),
+          el('tbody', {}, ...rows.map((r) => el('tr', {}, el('td', {}, app.reportTitle(r.id)), el('td', { class: 'num' }, money(r.cost))))),
+        );
+      body = el(
+        'div',
+        { class: 'budget-scroll' },
+        el('h3', {}, t('budget.byRoom')),
+        rooms.length > 0 ? list(rooms, 'memo.room') : el('p', { class: 'tour-empty' }, t('budget.noRoomCosts')),
+        el('h3', {}, t('budget.byElement')),
+        others.length > 0 ? list(others, 'budget.element') : el('p', { class: 'tour-empty' }, t('budget.noPriced')),
+        el('p', { class: 'tour-empty' }, t('budget.unshared', { v: money(d.unshared * factor) })),
+      );
+      saveBtn = btn(t('schedule.csv'), () =>
+        save(t('budget.tab.elements'), [[t('budget.element'), t('budget.withBdi')], ...[...rooms, ...others].map((r) => [app.reportTitle(r.id), r.cost]), [t('budget.unsharedRow'), d.unshared * factor]]),
+      );
     } else if (tab === 'abc') {
       const abc = abcOf(b);
       body = el(
