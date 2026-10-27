@@ -20,6 +20,7 @@ import { openingKind } from './kinds/opening';
 import { railingKind } from './kinds/railing';
 import { roomKind } from './kinds/room';
 import { separatorKind } from './kinds/separator';
+import { cloudKind } from './kinds/cloud';
 import { curtainKind } from './kinds/curtain';
 import { zoneKind } from './kinds/zone';
 import { sectionKind } from './kinds/section';
@@ -31,7 +32,7 @@ import { stairKind } from './kinds/stair';
 import { wallKind } from './kinds/wall';
 
 /** Drawn in this order (later over earlier); the panel shows the first with a selected element. */
-export const KINDS: readonly AnyKind[] = [terrainKind, referenceKind, wallKind, openingKind, stairKind, railingKind, columnKind, roofKind, objectKind, floorKind, zoneKind, roomKind, separatorKind, curtainKind, gridKind, sectionKind, beamKind, guideKind, noteKind, dimensionKind, mepRunKind, mepPointKind];
+export const KINDS: readonly AnyKind[] = [terrainKind, referenceKind, wallKind, openingKind, stairKind, railingKind, columnKind, roofKind, objectKind, floorKind, zoneKind, roomKind, separatorKind, curtainKind, gridKind, sectionKind, beamKind, guideKind, noteKind, dimensionKind, mepRunKind, mepPointKind, cloudKind];
 
 export const kindOfKey = (key: KindKey): AnyKind => KINDS.find((k) => k.key === key)!;
 

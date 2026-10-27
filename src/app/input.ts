@@ -280,7 +280,7 @@ export function wireInput(app: App): void {
             ? ui.gridFrom
             : ui.tool === 'guide'
               ? ui.guideFrom
-            : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain'
+            : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain'
               ? ui.beamFrom
               : ui.tool === 'roof'
                 ? (ui.roofDraft.at(-1) ?? null)
@@ -461,7 +461,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'spot' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'mepPoint' || ui.tool === 'mepRun') {
+    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'spot' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'mepPoint' || ui.tool === 'mepRun') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -625,7 +625,7 @@ export function wireInput(app: App): void {
       app.render();
       return true;
     }
-    if ((ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom) {
+    if ((ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain') && ui.beamFrom) {
       ui.beamFrom = null;
       app.render();
       return true;
@@ -761,6 +761,11 @@ export function wireInput(app: App): void {
     if (ui.tool === 'separator') {
       const at = worldAt(e);
       if (at) app.separatorClick(snapped(e)?.point ?? at.p);
+      return;
+    }
+    if (ui.tool === 'cloud') {
+      const at = worldAt(e);
+      if (at) app.cloudClick(snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'curtain') {

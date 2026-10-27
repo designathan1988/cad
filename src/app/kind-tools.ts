@@ -22,6 +22,8 @@ import { isConvex } from '../elements/roof/geometry';
 import { edgesFor, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, ROOF_PREFIX, ROOF_THICKNESS, type RoofKind } from '../elements/roof/schema';
 import { addBeam } from '../elements/beam/commands';
 import { addSeparator } from '../elements/separator/commands';
+import { addCloud } from '../elements/cloud/commands';
+import { CLOUD_PREFIX, nextRevision } from '../elements/cloud/schema';
 import { addCurtain } from '../elements/curtain/commands';
 import { CURTAIN_DEFAULTS, CURTAIN_PREFIX } from '../elements/curtain/schema';
 import { SEPARATOR_PREFIX } from '../elements/separator/schema';
@@ -179,6 +181,21 @@ export function separatorClick(app: App, p: Point2): void {
   app.store.dispatch(addSeparator({ id: newId(SEPARATOR_PREFIX), levelId: app.ui.levelId, start: from, end: p }));
   app.ui.beamFrom = p;
   app.ui.info = t('hint.separatorMade');
+  app.render();
+}
+
+/** The revision cloud tool: a click at one corner, the next at the opposite one; the next revision's mark. */
+export function cloudClick(app: App, p: Point2): void {
+  const from = app.ui.beamFrom;
+  if (!from) {
+    app.ui.beamFrom = p;
+    return app.render();
+  }
+  if (Math.abs(from.x - p.x) < MIN_WALL_LENGTH || Math.abs(from.y - p.y) < MIN_WALL_LENGTH) return;
+  const doc = app.store.get();
+  app.store.dispatch(addCloud({ id: newId(CLOUD_PREFIX), levelId: app.ui.levelId, a: from, b: p, revision: nextRevision(doc.clouds) }));
+  app.ui.beamFrom = null;
+  app.ui.info = t('hint.cloudMade');
   app.render();
 }
 

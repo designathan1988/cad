@@ -183,6 +183,8 @@ export interface UiState {
   opened: ReadonlySet<string>;
   /** The floor the floor tool's outline goes through as a hole (startFloorHole), or null for a new floor. */
   holeFor: string | null;
+  /** The floor tool making ceilings (a ceiling by a room or by an outline drawn), not floors. */
+  ceilingTool: boolean;
   /** Corners of a roof's outline being drawn. */
   roofDraft: Point2[];
   /** The stair tool's first point (the first step's front), before its direction is clicked. */
@@ -330,6 +332,7 @@ export class App {
       handleDrag: null,
       opened: new Set(),
       holeFor: null,
+      ceilingTool: false,
       roofDraft: [],
       stairFrom: null,
       railingDraft: [],
@@ -589,6 +592,10 @@ export class App {
     return roomsUi.floorFinish(this);
   }
 
+  startCeiling(): void {
+    return roomsUi.startCeiling(this);
+  }
+
   selectedOpenings(): OpeningSolid[] {
     return [...this.ui.selection].filter(isOpeningId).flatMap((id) => this.geometry.openings.get(id) ?? []);
   }
@@ -728,6 +735,7 @@ export class App {
     this.ui.calloutFrom = null;
     this.ui.beamFrom = null;
     this.ui.holeFor = null;
+    this.ui.ceilingTool = false;
     this.ui.roofDraft = [];
     this.ui.stairFrom = null;
     this.ui.railingDraft = [];
@@ -1179,6 +1187,10 @@ export class App {
 
   separatorClick(p: Point2): void {
     return kindTools.separatorClick(this, p);
+  }
+
+  cloudClick(p: Point2): void {
+    return kindTools.cloudClick(this, p);
   }
 
   /** The column tool: a click stands a column there, the section of the last one made. */

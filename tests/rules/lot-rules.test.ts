@@ -83,8 +83,13 @@ describe('room rules', () => {
     expect(w.value).toBeCloseTo((2.4 / (9.8 * 7.8)) * 100, 6);
   });
 
-  it('a room\'s least width', () => {
-    expect(leastWidth(square(0, 0, 4, 3))).toBeCloseTo(3, 12);
+  it('a room\'s least width: the widest circle that fits, to 5 mm; an L by its narrower arm, not its hull', () => {
+    expect(Math.abs(leastWidth(square(0, 0, 4, 3)) - 3)).toBeLessThan(0.005);
+    // An L of 4 × 4 with arms 1.2 m wide: the old hull gave 4.
+    const l = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 1.2 }, { x: 1.2, y: 1.2 }, { x: 1.2, y: 4 }, { x: 0, y: 4 }];
+    // In the corner a circle a little wider than the arms fits, touching the two outer walls and the inner
+    // corner: r·√2 + r = 1.2·√2, a diameter of 2·1.2·√2 / (1 + √2) ≈ 1.406.
+    expect(Math.abs(leastWidth(l) - (2 * 1.2 * Math.SQRT2) / (1 + Math.SQRT2))).toBeLessThan(0.005);
   });
 });
 

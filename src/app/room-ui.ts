@@ -52,6 +52,16 @@ export function floorClick(app: App, p: Point2, mpp: number, typed = false, corn
   const draft = app.ui.floorDraft;
   if (draft.length === 0 && !typed && !app.ui.holeFor) {
     const room = [...app.visibleGeometry().rooms.values()].find((r) => r.enclosed && insideRing(r.outline, p));
+    // Making ceilings: the room's ceiling, or the one it has selected.
+    if (room && app.ui.ceilingTool) {
+      const has = app.store.get().floors.find((f) => f.kind === 'ceiling' && f.source.kind === 'room' && f.source.roomId === room.room.id);
+      if (has) {
+        app.ui.selection = new Set([has.id]);
+        app.ui.info = t('hint.ceilingExists');
+        return app.refresh();
+      }
+      return addCeilingToRoom(app, room.room.id);
+    }
     if (room) {
       const has = app.store.get().floors.find((f) => f.kind !== 'ceiling' && f.source.kind === 'room' && f.source.roomId === room.room.id);
       if (has && !app.ui.holeFor) {
@@ -122,8 +132,23 @@ export function floorFinish(app: App): void {
     return app.refresh();
   }
   const id = newId('floor');
+  // A ceiling by its outline: at its level's height, as a room's is with none of its own.
+  if (app.ui.ceilingTool) {
+    const height = levelOf(app.store.get(), app.ui.levelId)?.height ?? 2.8;
+    app.store.dispatch(addFloor({ id, levelId: app.ui.levelId, source: { kind: 'outline', points }, thickness: CEILING_THICKNESS, offset: height + CEILING_THICKNESS, kind: 'ceiling' }));
+    app.ui.selection = new Set([id]);
+    app.ui.info = t('hint.ceilingOutlineAdded', { n: points.length });
+    return app.refresh();
+  }
   app.store.dispatch(addFloor({ id, levelId: app.ui.levelId, source: { kind: 'outline', points }, ...FLOOR_DEFAULTS }));
   app.ui.selection = new Set([id]);
   app.ui.info = t('hint.floorOutlineAdded', { n: points.length });
   app.refresh();
+}
+
+/** The floor tool making ceilings: a click in a room or an outline drawn. */
+export function startCeiling(app: App): void {
+  app.setTool('floor');
+  app.ui.ceilingTool = true;
+  app.render();
 }

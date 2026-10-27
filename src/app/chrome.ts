@@ -176,7 +176,9 @@ export function renderChrome(app: App): void {
       : ui.tool === 'floor'
         ? ui.holeFor
           ? t('hint.holeStart')
-          : t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
+          : ui.ceilingTool
+            ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.ceilingPlace')
+            : t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
         : ui.tool === 'measure'
           ? app.measureHint()
           : ui.tool === 'dimension'
@@ -201,6 +203,8 @@ export function renderChrome(app: App): void {
                   ? t(ui.beamFrom ? 'hint.beamEnd' : 'hint.beamStart')
                 : ui.tool === 'separator'
                   ? t(ui.beamFrom ? 'hint.separatorEnd' : 'hint.separatorStart')
+                : ui.tool === 'cloud'
+                  ? t(ui.beamFrom ? 'hint.cloudEnd' : 'hint.cloudStart')
                 : ui.tool === 'curtain'
                   ? t(ui.beamFrom ? 'hint.curtainEnd' : 'hint.curtainStart')
                 : ui.tool === 'note'
@@ -269,7 +273,7 @@ export function renderChrome(app: App): void {
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.guideFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'object'
     ? [keyHint(t('key.spaceKey'), t('key.turn90')), snapKey, keyHint('Esc', t('key.exit'))]
-    : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain'
+    : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain'
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
     : ui.tool === 'stair'
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.stairFrom ? 'key.back' : 'key.exit'))]

@@ -61,11 +61,14 @@ export type QuantityOf =
   | 'doors'
   | 'windows'
   | 'built'
+  | 'runs'
+  | 'points'
+  | 'fittings'
   | 'fixed';
 
-export const QUANTITY_OFS: readonly QuantityOf[] = ['masonry', 'mortar', 'faceExterior', 'faceInterior', 'layer', 'floor', 'roomWall', 'ceiling', 'doors', 'windows', 'built', 'fixed'];
+export const QUANTITY_OFS: readonly QuantityOf[] = ['masonry', 'mortar', 'faceExterior', 'faceInterior', 'layer', 'floor', 'roomWall', 'ceiling', 'doors', 'windows', 'built', 'runs', 'points', 'fittings', 'fixed'];
 
-export type Measure = 'area' | 'volume' | 'pieces' | 'count';
+export type Measure = 'area' | 'volume' | 'pieces' | 'count' | 'length';
 
 export interface QuantityRef {
   readonly of: QuantityOf;
@@ -74,6 +77,9 @@ export interface QuantityRef {
   readonly measure: Measure;
   /** A fixed line's quantity. */
   readonly value?: number;
+  /** The services' item it counts (budget.ts): a run's system and diameter "sys_cold@0.025", a point's
+   * kind "socket", a fitting "coldWater|elbow90@0.025"; absent, all of them. */
+  readonly item?: string;
 }
 
 /** A line of the budget: what it is, its quantity from the model, its price, its stage. */
@@ -121,6 +127,7 @@ export const DEFAULT_STAGES: readonly Stage[] = [
   { id: 'stage_frames', name: 'Esquadrias', start: 3, months: 1 },
   { id: 'stage_finishes', name: 'Revestimentos', start: 3, months: 2 },
   { id: 'stage_floors', name: 'Pisos e forros', start: 4, months: 1 },
+  { id: 'stage_services', name: 'Instalações', start: 2, months: 3 },
   { id: 'stage_general', name: 'Geral', start: 1, months: 4 },
 ];
 
@@ -138,7 +145,7 @@ const isCub = (c: unknown): c is CubSettings =>
 const isBase = (b: unknown): b is PriceBase => isObj(b) && text(b.name) && text(b.state) && text(b.month) && typeof b.desonerado === 'boolean' && Array.isArray(b.items) && b.items.every(isPriceItem);
 
 const isRef = (q: unknown): boolean =>
-  isObj(q) && QUANTITY_OFS.includes(q.of as QuantityOf) && ['area', 'volume', 'pieces', 'count'].includes(q.measure as string) && (q.material === undefined || text(q.material)) && (q.value === undefined || finite(q.value));
+  isObj(q) && QUANTITY_OFS.includes(q.of as QuantityOf) && ['area', 'volume', 'pieces', 'count', 'length'].includes(q.measure as string) && (q.material === undefined || text(q.material)) && (q.value === undefined || finite(q.value)) && (q.item === undefined || text(q.item));
 
 const isLine = (l: unknown): l is BudgetLine =>
   isObj(l) && text(l.id) && text(l.code) && text(l.description) && text(l.unit) && isRef(l.quantity) && (l.price === undefined || (finite(l.price) && l.price >= 0)) && text(l.stage);

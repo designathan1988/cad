@@ -1,12 +1,12 @@
 // The budget by element and by room (docs/plano-de-escopo.md, "custo por cômodo e por elemento"): each
 // priced line tied to the model shared among what makes its quantity, by its share of it: a wall layer's
 // lines among the walls, a room finish's among the rooms, the doors' and windows' among them one by
-// one. What is not tied to elements (a typed quantity, the built area) is left as not shared. Pure.
+// one, the services' runs by their length and their points one by one. What is not tied to elements (a typed quantity, the built area) is left as not shared. Pure.
 
 import type { Doc } from '../app/document';
 import type { DerivedGeometry } from '../app/geometry';
 import { finishQuantities, layerQuantities } from '../app/quantities';
-import type { Budget } from './budget';
+import { type Budget, runItem, runLength } from './budget';
 import type { QuantityRef } from './schema';
 
 export interface Breakdown {
@@ -50,6 +50,15 @@ function parts(doc: Doc, layers: ReturnType<typeof layerQuantities>, finishes: R
       for (const o of doc.openings) if (o.kind === kind) add(o.id, ref.measure === 'count' ? 1 : o.width * o.height);
       return out;
     }
+    // The services' runs by their length, their points one each; the fittings belong to no one element.
+    case 'runs':
+      for (const r of doc.mepRuns) if (ref.item === undefined || runItem(r) === ref.item) add(r.id, runLength(r));
+      return out;
+    case 'points':
+      for (const p of doc.mepPoints) if (ref.item === undefined || p.kind === ref.item) add(p.id, 1);
+      return out;
+    case 'fittings':
+      return null;
   }
 }
 

@@ -10,6 +10,8 @@ import type { DerivedGeometry } from '../app/geometry';
 import { lotReport } from '../app/lot-areas';
 import { finishQuantities, layerQuantities } from '../app/quantities';
 import { type BudgetLine, type Costs, costsOf, type Measure, type PriceItem, type QuantityRef, type Stage } from './schema';
+import { type Fitting, fittingsOf } from '../elements/mep/network';
+import { type MepRun, systemIn } from '../elements/mep/schema';
 
 interface Measured {
   readonly layers: ReturnType<typeof layerQuantities>;
@@ -68,8 +70,27 @@ function quantity(doc: Doc, m: Measured, ref: QuantityRef): number {
       const list = doc.openings.filter((o) => o.kind === kind);
       return ref.measure === 'count' ? list.length : sum(list, (o) => o.width * o.height);
     }
+    case 'runs':
+      return sum(
+        doc.mepRuns.filter((r) => ref.item === undefined || runItem(r) === ref.item),
+        runLength,
+      );
+    case 'points':
+      return doc.mepPoints.filter((p) => ref.item === undefined || p.kind === ref.item).length;
+    case 'fittings':
+      return sum(
+        fittingsOf(doc).filter((f) => ref.item === undefined || fittingItem(f) === ref.item),
+        (f) => f.count,
+      );
   }
 }
+
+/** A run's item: its system and diameter. */
+export const runItem = (r: MepRun): string => `${r.systemId}@${r.diameter}`;
+/** A fitting's item: its group, its kind and its diameter. */
+export const fittingItem = (f: Fitting): string => `${f.group}|${f.kind}@${f.diameter}`;
+/** A run's length along its vertices, in space (m). */
+export const runLength = (r: MepRun): number => r.points.reduce((s, v, i) => (i === 0 ? 0 : s + Math.hypot(v.x - r.points[i - 1]!.x, v.y - r.points[i - 1]!.y, v.z - r.points[i - 1]!.z)), 0);
 
 /** The unit price of a code or a line: the office's own, then the line's, then the base's; null when none. */
 export function unitPrice(costs: Costs, line: BudgetLine): { price: number; from: 'own' | 'line' | 'base' } | null {
@@ -164,7 +185,11 @@ export function cubEstimate(doc: Doc, g: DerivedGeometry): { area: number; value
   return { area, value: cub.value, total: area * cub.value };
 }
 
-/** What the model has to price, as lines with their quantity tied to it: one per item and material, the doors and windows, by stage. */
+/**
+ * What the model has to price, as lines with their quantity tied to it: one per item and material, the
+ * doors and windows; the services' runs by system and diameter, their points by kind, their fittings;
+ * by stage.
+ */
 export function linesFromModel(doc: Doc, g: DerivedGeometry, say: { item: (key: string) => string; material: (id: string) => string }): BudgetLine[] {
   const m = measured(doc, g);
   const out: BudgetLine[] = [];
@@ -186,6 +211,17 @@ export function linesFromModel(doc: Doc, g: DerivedGeometry, say: { item: (key: 
   for (const f of m.finishes) add(f.surface === 'wall' ? 'roomWall' : f.surface, f.materialId, 'area', 'm²', f.surface === 'wall' ? 'stage_finishes' : 'stage_floors', say.item(`qty.room.${f.surface}`));
   if (doc.openings.some((o) => o.kind === 'door')) add('doors', undefined, 'count', 'un', 'stage_frames', say.item('budget.doors'));
   if (doc.openings.some((o) => o.kind === 'window')) add('windows', undefined, 'area', 'm²', 'stage_frames', say.item('budget.windows'));
+  // The services: in their own stage when the budget has it (a budget from before them: the general one).
+  const services = costsOf(doc).stages.some((s) => s.id === 'stage_services') ? 'stage_services' : 'stage_general';
+  const service = (of: 'runs' | 'points' | 'fittings', item: string, measure: Measure, unit: string, description: string) => {
+    const key = `${of}/${item}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ id: newId('line'), code: '', description, unit, quantity: { of, measure, item }, stage: services });
+  };
+  for (const r of doc.mepRuns) service('runs', runItem(r), 'length', 'm', `${say.item(`mep.runKind.${r.kind}`)} ${Math.round(r.diameter * 1000)} mm: ${systemIn(doc, r.systemId)?.name ?? r.systemId}`);
+  for (const p of doc.mepPoints) service('points', p.kind, 'count', 'un', say.item(`mep.kind.${p.kind}`));
+  for (const f of fittingsOf(doc)) service('fittings', fittingItem(f), 'count', 'un', `${say.item(`services.fit.${f.kind}`)} ${Math.round(f.diameter * 1000)} mm: ${say.item(`services.group.${f.group}`)}`);
   return out;
 }
 

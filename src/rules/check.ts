@@ -8,7 +8,7 @@ import type { DerivedGeometry } from '../app/geometry';
 import { lotOf } from '../app/lot';
 import { lotReport, type LotReport } from '../app/lot-areas';
 import { roomsBeside } from '../app/quantities';
-import { dot, normalize, perp, type Point2, sub } from '../core/vector';
+import { dot, type Point2, sub } from '../core/vector';
 import type { RailingSolid } from '../elements/kinds/railing';
 import type { StairSolid } from '../elements/stair/geometry';
 import { railingGap } from '../elements/railing/schema';
@@ -47,18 +47,56 @@ export function flightRise(s: StairSolid): number {
   return most * s.riser;
 }
 
-/** A ring's least width: across each of its sides' directions, the narrowest its extent is (its hull's). */
-export function leastWidth(ring: readonly Point2[]): number {
+/** How far p is from a ring's sides, signed: positive inside. */
+function insideDistance(ring: readonly Point2[], p: Point2): number {
+  let inside = false;
   let least = Infinity;
-  for (let i = 0; i < ring.length; i++) {
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const a = ring[i]!;
-    const b = ring[(i + 1) % ring.length]!;
-    if (a.x === b.x && a.y === b.y) continue;
-    const n = perp(normalize(sub(b, a)));
-    const across = ring.map((p) => dot(sub(p, a), n));
-    least = Math.min(least, Math.max(...across) - Math.min(...across));
+    const b = ring[j]!;
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+    const d = sub(b, a);
+    const len2 = dot(d, d);
+    const k = len2 === 0 ? 0 : Math.max(0, Math.min(1, dot(sub(p, a), d) / len2));
+    least = Math.min(least, Math.hypot(p.x - a.x - d.x * k, p.y - a.y - d.y * k));
   }
-  return least === Infinity ? 0 : least;
+  return inside ? least : -least;
+}
+
+/**
+ * A room's least width as the building codes take it: the diameter of the largest circle that fits in
+ * it (a 4 × 3 room: 3; an L: its narrower arm), found by the pole of inaccessibility (Mapbox's
+ * polylabel: cells split while one could hold a wider circle than the best found), to 5 mm.
+ */
+export function leastWidth(ring: readonly Point2[]): number {
+  if (ring.length < 3) return 0;
+  const xs = ring.map((p) => p.x);
+  const ys = ring.map((p) => p.y);
+  const x0 = Math.min(...xs);
+  const y0 = Math.min(...ys);
+  const size = Math.max(Math.max(...xs) - x0, Math.max(...ys) - y0);
+  if (size <= 0) return 0;
+  type Cell = { x: number; y: number; h: number; d: number; max: number };
+  const cell = (x: number, y: number, h: number): Cell => {
+    const d = insideDistance(ring, { x, y });
+    return { x, y, h, d, max: d + h * Math.SQRT2 };
+  };
+  const queue: Cell[] = [];
+  let h = size / 2;
+  for (let x = x0; x < x0 + size; x += size) for (let y = y0; y < y0 + size; y += size) queue.push(cell(x + h, y + h, h));
+  let best = cell(xs.reduce((a, b) => a + b, 0) / xs.length, ys.reduce((a, b) => a + b, 0) / ys.length, 0);
+  const precision = 0.0025;
+  for (let guard = 0; queue.length > 0 && guard < 200000; guard++) {
+    // The cell that could hold the widest circle first.
+    let k = 0;
+    for (let i = 1; i < queue.length; i++) if (queue[i]!.max > queue[k]!.max) k = i;
+    const c = queue.splice(k, 1)[0]!;
+    if (c.d > best.d) best = c;
+    if (c.max - best.d <= precision) continue;
+    h = c.h / 2;
+    queue.push(cell(c.x - h, c.y - h, h), cell(c.x + h, c.y - h, h), cell(c.x - h, c.y + h, h), cell(c.x + h, c.y + h, h));
+  }
+  return Math.max(0, 2 * best.d);
 }
 
 /** Each element's measures, by subject; with the document, the rooms' and the lot's too. */

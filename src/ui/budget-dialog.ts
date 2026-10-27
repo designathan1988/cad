@@ -36,6 +36,9 @@ const MEASURE_OF: Readonly<Record<QuantityOf, Measure>> = {
   doors: 'count',
   windows: 'area',
   built: 'area',
+  runs: 'length',
+  points: 'count',
+  fittings: 'count',
   fixed: 'count',
 };
 
@@ -171,7 +174,7 @@ export function showBudget(app: App, first: Tab = 'sheet'): void {
         const of = select(
           QUANTITY_OFS.map((q) => ({ value: q, label: t(`budget.of.${q}`) })),
           l.quantity.of,
-          (v) => app.store.dispatch(updateLine(l.id, { quantity: { of: v as QuantityOf, measure: MEASURE_OF[v as QuantityOf], ...(v === 'fixed' ? { value: r.quantity } : l.quantity.material ? { material: l.quantity.material } : {}) } })),
+          (v) => app.store.dispatch(updateLine(l.id, { quantity: { of: v as QuantityOf, measure: MEASURE_OF[v as QuantityOf], ...(v === 'fixed' ? { value: r.quantity } : l.quantity.material ? { material: l.quantity.material } : {}), ...(v !== 'fixed' && l.quantity.item ? { item: l.quantity.item } : {}) } })),
         );
         const quantity =
           l.quantity.of === 'fixed'

@@ -86,8 +86,9 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 36: the approval journey (`approval`, approval/schema.ts). Older files have none: São Paulo's.
  * Version 37: building services (`mepPoints`, `mepRuns`, `systems`, elements/mep). Older files have none.
  * Version 38: the simulations' settings (`simulation`, sim/settings.ts) and a material's own physics. Older files have neither.
+ * Version 39: revision clouds (`clouds`, elements/cloud). Older files have none.
  */
-export const CURRENT_VERSION = 38;
+export const CURRENT_VERSION = 39;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {

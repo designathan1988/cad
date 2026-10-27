@@ -82,6 +82,7 @@ export function appActions(app: App, open: Openers): Action[] {
       app.wallEvent({ kind: 'arc' });
     }, { keys: 'W, A' }),
     make('tool.floor', 'tool.floor', tools, () => app.setTool('floor'), { keys: 'L' }),
+    make('tool.ceiling', 'tool.ceiling', tools, () => app.startCeiling(), { keywords: 'forro ceiling teto gesso rebaixo' }),
     make('tool.door', 'tool.door', tools, () => app.setTool('door'), { keys: 'D' }),
     make('tool.window', 'tool.window', tools, () => app.setTool('window'), { keys: 'Shift+W' }),
     make('tool.room', 'tool.room', tools, () => app.setTool('room'), { keys: 'R' }),
@@ -95,6 +96,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('tool.stair', 'tool.stair', tools, () => app.setTool('stair'), { keys: 'E', keywords: 'escada escadas stair stairs degrau caracol rampa ramp' }),
     make('tool.roof', 'tool.roof', tools, () => app.setTool('roof'), { keys: 'T', keywords: 'telhado telhados roof cobertura água águas platibanda' }),
     make('tool.beam', 'tool.beam', tools, () => app.setTool('beam'), { keys: 'B', keywords: 'viga vigas beam estrutura structure' }),
+    make('tool.cloud', 'tool.cloud', tools, () => app.setTool('cloud'), { keywords: 'nuvem de revisão revision cloud revisão alteração mudança change' }),
     make('tool.separator', 'tool.separator', tools, () => app.setTool('separator'), { keywords: 'separador separação cômodo ambiente room separation line' }),
     make('tool.curtain', 'tool.curtain', tools, () => app.setTool('curtain'), { keywords: 'parede-cortina pele de vidro fachada curtain wall glazing facade montante caixilho' }),
     make('tool.guideLine', 'tool.guideLine', tools, () => app.setGuideTool('line'), { keywords: 'guia guide linha line dois pontos two points ângulo angle referência reference' }),

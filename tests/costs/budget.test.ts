@@ -180,3 +180,44 @@ describe('the budget', () => {
     expect(e.total).toBeCloseTo(6.15 * 4.15 * 2686.65, 4);
   });
 });
+
+describe('the services in the budget', () => {
+  // A conduit from a panel up, across 4 m and down to a socket; and a cold pipe of 2 m.
+  const mep: Doc = {
+    ...newDocument(),
+    mepPoints: [
+      { id: 'mepPoint_qd', levelId: 'lvl_ground', at: { x: 0, y: 0 }, height: 1.5, kind: 'panel', systemId: 'sys_power' },
+      { id: 'mepPoint_t', levelId: 'lvl_ground', at: { x: 4, y: 0 }, height: 0.3, kind: 'socket', systemId: 'sys_power' },
+    ],
+    mepRuns: [
+      { id: 'mepRun_e', levelId: 'lvl_ground', systemId: 'sys_power', kind: 'conduit', diameter: 0.025, points: [{ x: 0, y: 0, z: 1.5 }, { x: 0, y: 0, z: 2.7 }, { x: 4, y: 0, z: 2.7 }, { x: 4, y: 0, z: 0.3 }] },
+      { id: 'mepRun_a', levelId: 'lvl_ground', systemId: 'sys_cold', kind: 'pipe', diameter: 0.025, points: [{ x: 0, y: 2, z: 2.7 }, { x: 2, y: 2, z: 2.7 }] },
+    ],
+  };
+  const g = deriveGeometry(mep);
+
+  it('a line per run system and diameter, per point kind, per fitting; measured in space, in their own stage', () => {
+    const lines = linesFromModel(mep, g, { item: (k: string) => k, material: (id: string) => id });
+    const runs = lines.filter((l) => l.quantity.of === 'runs');
+    expect(runs.map((l) => [l.quantity.item, l.unit, l.stage])).toEqual([
+      ['sys_power@0.025', 'm', 'stage_services'],
+      ['sys_cold@0.025', 'm', 'stage_services'],
+    ]);
+    expect(lines.filter((l) => l.quantity.of === 'points').map((l) => l.quantity.item)).toEqual(['panel', 'socket']);
+    // The conduit turns twice: two 90° elbows of 25 mm.
+    expect(lines.filter((l) => l.quantity.of === 'fittings').map((l) => l.quantity.item)).toEqual(['electric|elbow90@0.025']);
+    const priced: Doc = { ...mep, costs: { ...DEFAULT_COSTS, lines: runs.map((l) => ({ ...l, price: 10 })) } };
+    const b = budgetOf(priced, g);
+    expect(b.rows[0]!.quantity).toBeCloseTo(1.2 + 4 + 2.4, 9);
+    expect(b.rows[1]!.quantity).toBeCloseTo(2, 9);
+    // Shared among the runs by their length.
+    const d = breakdownOf(priced, g, b);
+    expect(d.byElement.get('mepRun_e')).toBeCloseTo(76, 9);
+    expect(d.byElement.get('mepRun_a')).toBeCloseTo(20, 9);
+  });
+
+  it('a budget from before the services stage puts them in the general one', () => {
+    const old: Doc = { ...mep, costs: { ...DEFAULT_COSTS, stages: DEFAULT_COSTS.stages.filter((s) => s.id !== 'stage_services') } };
+    expect(new Set(linesFromModel(old, g, { item: (k: string) => k, material: (id: string) => id }).filter((l) => l.quantity.of === 'runs').map((l) => l.stage))).toEqual(new Set(['stage_general']));
+  });
+});
