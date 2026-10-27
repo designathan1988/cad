@@ -4,11 +4,12 @@
 // an id the project already has gets a new one). Laid out as the wall types and the materials.
 
 import type { App } from '../app/app';
+import { copyLibraryLink } from '../app/library-link';
 import { newId } from '../core/id';
 import { addDefinition, definitionDeleteBlocker, deleteDefinition } from '../elements/object/commands';
 import { words } from '../elements/object/fields';
 import { DEFINITION_PREFIX, type ObjectDefinition } from '../elements/object/schema';
-import { isDefinition } from '../elements/object/valid';
+import { libraryOf, mergeLibrary } from '../io/library-file';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { editDefinition } from './definition-editor';
@@ -100,24 +101,31 @@ export function showObjects(app: App, first?: string): void {
     del.setAttribute('aria-label', action);
     del.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;
     del.addEventListener('click', () => def && app.store.dispatch(deleteDefinition(def.id)));
+    // The file: every definition with the materials they use (io/library-file.ts).
     const exportBtn = btn(t('objs.export'), 'export', () => {
-      const text = JSON.stringify({ cad2Library: 1, definitions: app.store.get().definitions }, null, 2);
+      const text = JSON.stringify(libraryOf(app.store.get(), null), null, 2);
       app.download(`${app.fileBase()}-objetos.json`, new Blob([text], { type: 'application/json' }), 'application/json');
     });
     const importBtn = btn(t('objs.import'), 'import', () => fileInput.click());
+    // The chosen one by link: with what it nests and the materials it uses.
+    const linkBtn = btn(t('lib.copyLink'), 'link', () => def && void copyLibraryLink(app, libraryOf(app.store.get(), [def.id])));
+    linkBtn.disabled = !def;
     return el(
       'div',
       { class: 'dialog dialog-wide types-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('objs.title') },
       el('h2', {}, t('objs.title')),
       el('div', { class: 'types-body' }, list, detail),
-      el('div', { class: 'actions' }, add, dup, del, exportBtn, importBtn, fileInput, el('span', { class: 'spacer' }), edit, place, btn(t('help.close'), 'close', close)),
+      el('div', { class: 'actions' }, add, dup, del, exportBtn, importBtn, linkBtn, fileInput, el('span', { class: 'spacer' }), edit, place, btn(t('help.close'), 'close', close)),
     );
   };
   const dialog = openProjectDialog(app, render, () => `def:${chosen}`);
   app.shell.helpBack.querySelector<HTMLElement>(`[data-focus="def:${chosen}"]`)?.focus();
 }
 
-/** A library file read into the project: its valid definitions added (new ids where taken), and what was done. */
+/**
+ * A library file read into the project (io/library-file.ts): its valid definitions and materials added,
+ * new ids where taken, as one undo step; and what was done.
+ */
 async function importLibrary(app: App, file: File): Promise<string> {
   let raw: unknown;
   try {
@@ -125,24 +133,14 @@ async function importLibrary(app: App, file: File): Promise<string> {
   } catch (e) {
     return t('objs.importBad', { error: e instanceof Error ? e.message : String(e) });
   }
-  const list = Array.isArray(raw) ? raw : (raw as { definitions?: unknown })?.definitions;
-  if (!Array.isArray(list)) return t('objs.importBad', { error: t('objs.importNoList') });
-  const doc = app.store.get();
-  const good = list.filter(isDefinition);
-  const taken = new Set(doc.definitions.map((d) => d.id));
-  // A definition whose id the project has gets a new one, and the definitions of the file that nest it follow.
-  const renamed = new Map<string, string>();
-  for (const d of good) {
-    const id = taken.has(d.id) ? newId(DEFINITION_PREFIX) : d.id;
-    taken.add(id);
-    renamed.set(d.id, id);
-  }
-  const added = good.map((d): ObjectDefinition => ({
-    ...d,
-    id: renamed.get(d.id)!,
-    parts: d.parts.map((p) => (p.kind === 'object' && renamed.has(p.definition) ? { ...p, definition: renamed.get(p.definition)! } : p)),
-  }));
-  // One undo step for the whole file.
-  app.store.dispatch({ label: 'cmd.addDefinition', apply: (x) => added.reduce((acc, d) => addDefinition(d).apply(acc), x) });
-  return t('objs.imported', { n: added.length, bad: list.length - good.length });
+  const r = mergeLibrary(app.store.get(), raw);
+  if (!r.ok) return t('objs.importBad', { error: t('objs.importNoList') });
+  app.store.dispatch({
+    label: 'cmd.importLibrary',
+    apply: (doc) => {
+      const x = mergeLibrary(doc, raw);
+      return x.ok ? x.doc : doc;
+    },
+  });
+  return t('lib.imported', { defs: r.definitions, mats: r.materials, bad: r.bad });
 }

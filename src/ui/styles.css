@@ -774,6 +774,8 @@ button.project-name:hover {
   pointer-events: none;
   opacity: 0;
   transition: opacity 160ms;
+  /* Over a dialog's scrim (20): said from a dialog ("CSV saved", "link copied"), it was hidden under it. */
+  z-index: 25;
 }
 .toast.show {
   opacity: 1;

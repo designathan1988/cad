@@ -4,6 +4,8 @@
 // and in 3D. Laid out as the wall types dialog: the list on the left, the chosen one beside it.
 
 import type { App } from '../app/app';
+import { copyLibraryLink } from '../app/library-link';
+import { libraryOf } from '../io/library-file';
 import { newId } from '../core/id';
 import { addMaterial, deleteMaterial, materialDeleteBlocker, materialUses, type MaterialPatch, updateMaterial } from '../elements/material/commands';
 import { CUT_PATTERNS, type CutPattern, type MaterialId } from '../elements/material/schema';
@@ -143,13 +145,16 @@ export function showMaterials(app: App, first?: MaterialId): void {
     const whyNode = why ? el('span', { id: 'mats-why', class: 'sr-only' }, why) : null;
     if (whyNode) del.setAttribute('aria-describedby', 'mats-why');
     del.addEventListener('click', () => mat && app.store.dispatch(deleteMaterial(mat.id)));
+    // The chosen one by link (io/library-file.ts), to bring into another project.
+    const link = btn(t('lib.copyLink'), 'link', () => mat && void copyLibraryLink(app, libraryOf(app.store.get(), [], [mat.id])));
+    link.disabled = !mat;
 
     return el(
       'div',
       { class: 'dialog dialog-wide types-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('mats.title') },
       el('h2', {}, t('mats.title')),
       el('div', { class: 'types-body' }, list, detail),
-      el('div', { class: 'actions' }, add, dup, del, ...(whyNode ? [whyNode] : []), el('span', { class: 'spacer' }), btn(t('help.close'), 'close', close)),
+      el('div', { class: 'actions' }, add, dup, del, ...(whyNode ? [whyNode] : []), link, el('span', { class: 'spacer' }), btn(t('help.close'), 'close', close)),
     );
   };
 

@@ -1,6 +1,7 @@
 import '../ui/styles.css';
 import { App } from './app';
 import { boot } from './boot';
+import { wireLibraryLinks } from './library-link';
 import { wireInput } from './input';
 import { installTooltips } from '../ui/tooltip';
 
@@ -11,4 +12,6 @@ void boot().then((b) => {
   const app = new App(root, b);
   wireInput(app);
   installTooltips();
+  // A library link (#lib=…) brings its objects and materials into the project open.
+  wireLibraryLinks(app);
 });
