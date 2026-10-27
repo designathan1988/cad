@@ -183,6 +183,16 @@ export function creaseEdges(geo: THREE.BufferGeometry, angle = 20): THREE.Buffer
 /** A piece's geometry where it is, in three.js's axes: plan x, y and height z are x, −z and y; a turn in
  * plan (counter-clockwise) is one about y. For the 3D, the GLB and the definition editor alike. */
 export function pieceGeometry(piece: Piece): THREE.BufferGeometry {
+  if (piece.kind === 'revolve') {
+    // Turned about three.js's y (the vertical), its points (r, z) as the lathe's (x, y); closed onto the
+    // axis at its ends so the solid has a bottom and a top.
+    const pts = piece.profile.map((q) => new THREE.Vector2(q.r, q.z));
+    if (pts[0]!.x > 1e-6) pts.unshift(new THREE.Vector2(0, pts[0]!.y));
+    if (pts.at(-1)!.x > 1e-6) pts.push(new THREE.Vector2(0, pts.at(-1)!.y));
+    const g = new THREE.LatheGeometry(pts, 32);
+    g.translate(piece.cx, piece.z, -piece.cy);
+    return g;
+  }
   if (piece.kind === 'profile') {
     // In plan x and y, extruded along +z by h; turned −90° about x: plan y to −z, the extrusion up.
     const shape = new THREE.Shape(piece.points.map((q) => new THREE.Vector2(q.x, q.y)));

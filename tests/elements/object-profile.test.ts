@@ -82,6 +82,17 @@ describe('profile parts', () => {
     expect(volume(wide)).toBeCloseTo((2 * 0.7 + 0.7 * 0.8) * 0.03, 6);
   });
 
+  it('a revolve: a rectangle turned is a cylinder (32 sides), its height and plan outline its own', () => {
+    const vase: ObjectDefinition = { ...counter, id: 'def_v', parts: [{ kind: 'revolve', x: 0, y: 0, z: 0.1, points: [[0.2, 0], [0.2, 1]], material: 'concrete' }] };
+    expect(isDefinition(vase)).toBe(true);
+    const ev = evaluateObject(vase, { id: 'o', levelId: 'lvl_ground', definitionId: vase.id, typeId: 't', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: [vase], materials: doc.materials });
+    const g = pieceGeometry(ev.pieces[0]!);
+    expect(Math.abs(volume(g))).toBeCloseTo(16 * 0.04 * Math.sin((2 * Math.PI) / 32) * 1, 6);
+    const box = new THREE.Box3().setFromBufferAttribute(g.getAttribute('position') as THREE.BufferAttribute);
+    expect([box.min.y, box.max.y]).toEqual([expect.closeTo(0.1, 6), expect.closeTo(1.1, 6)]);
+    expect(pieceOutline(ev.pieces[0]!).every((q) => Math.abs(Math.hypot(q.x, q.y) - 0.2) < 1e-9)).toBe(true);
+  });
+
   it('drawn clockwise, it is turned round: the volume still positive', () => {
     const cw = { ...counter, parts: [{ ...counter.parts[0]!, points: [...(counter.parts[0] as { points: readonly (readonly [string | number, string | number])[] }).points].reverse() } as ObjectDefinition['parts'][number]] };
     const ev = evaluateObject(cw, { id: 'o', levelId: 'lvl_ground', definitionId: cw.id, typeId: 't', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: [cw], materials: doc.materials });

@@ -68,6 +68,11 @@ export type Part =
    * formulas hold its shape as the parameters change (a counter's L, a gable, a chamfered top).
    */
   | (PartCommon & { readonly kind: 'profile'; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly points: readonly (readonly [Expr, Expr])[]; readonly h: Expr })
+  /**
+   * A profile turned about the vertical through x, y: its points as formulas, each (r; z), r out from
+   * the axis, z up from the part's z (a vase, a baluster, a column's base, a lampshade).
+   */
+  | (PartCommon & { readonly kind: 'revolve'; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly points: readonly (readonly [Expr, Expr])[] })
   /** A rounded mass from the centre of its base: r across, h up (a sphere when h is 2r; a tree's crown, a shrub, a lamp's globe). */
   | (PartCommon & { readonly kind: 'sphere'; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly r: Expr; readonly h: Expr })
   /** A mesh of the definition's (a model imported from glTF or OBJ), stretched to fill the box from its

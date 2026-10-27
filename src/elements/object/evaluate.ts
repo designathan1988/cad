@@ -15,6 +15,8 @@ export type Piece = { readonly cut?: boolean } & (
   | { readonly kind: 'cylinder'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly r2: number; readonly h: number; readonly material: Material }
   /** A profile extruded up from z by h: its corners in the world (plan), counter-clockwise. */
   | { readonly kind: 'profile'; readonly cx: number; readonly cy: number; readonly z: number; readonly h: number; readonly points: readonly { readonly x: number; readonly y: number }[]; readonly material: Material }
+  /** A profile turned about the vertical through its base's centre: its points (r out, z up from its base). */
+  | { readonly kind: 'revolve'; readonly cx: number; readonly cy: number; readonly z: number; readonly h: number; readonly r: number; readonly profile: readonly { readonly r: number; readonly z: number }[]; readonly material: Material }
   /** A rounded mass (an ellipsoid) on its base's centre: r across, h up. */
   | { readonly kind: 'sphere'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly h: number; readonly material: Material }
   /** A mesh stretched to its box (centre, size and turn, as a box's). */
@@ -192,6 +194,17 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         if (r === null || h === null || r2 === null || h <= 1e-6 || Math.max(r, r2) <= 1e-6) continue;
         const centre = apply(frame, { x: ox, y: oy, z: oz });
         pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'cylinder', cx: centre.x, cy: centre.y, z: centre.z, r: Math.max(0, r), r2: Math.max(0, r2), h, material: materialOf(part) });
+      } else if (part.kind === 'revolve') {
+        const raw = part.points.map(([pr, pz], k) => ({ r: num(pr, at, `${label} r${k + 1}`), z: num(pz, at, `${label} z${k + 1}`) }));
+        if (raw.some((q) => q.r === null || q.z === null)) continue;
+        // Its base at the lowest point: z from there; r never below the axis.
+        const low = Math.min(...raw.map((q) => q.z!));
+        const profile = raw.map((q) => ({ r: Math.max(0, q.r!), z: q.z! - low }));
+        const h = Math.max(...profile.map((q) => q.z));
+        const r = Math.max(...profile.map((q) => q.r));
+        if (h <= 1e-6 || r <= 1e-6) continue;
+        const centre = apply(frame, { x: ox, y: oy, z: oz + low });
+        pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'revolve', cx: centre.x, cy: centre.y, z: centre.z, h, r, profile, material: materialOf(part) });
       } else if (part.kind === 'profile') {
         const h = num(part.h, at, `${label} height`);
         const local = part.points.map(([px, py], k) => ({ x: num(px, at, `${label} x${k + 1}`), y: num(py, at, `${label} y${k + 1}`) }));
@@ -282,7 +295,7 @@ function placeHandle(h: HandleDef, env: Env, frame: Frame, problems: string[]): 
 /** A piece's outline in plan: a box's four corners, a cylinder's circle as a polygon. */
 export function pieceOutline(p: Piece): { x: number; y: number }[] {
   if (p.kind === 'profile') return p.points.map((q) => ({ x: q.x, y: q.y }));
-  if (p.kind === 'cylinder' || p.kind === 'sphere') {
+  if (p.kind === 'cylinder' || p.kind === 'sphere' || p.kind === 'revolve') {
     const r = p.kind === 'cylinder' ? Math.max(p.r, p.r2) : p.r;
     return Array.from({ length: 24 }, (_, k) => ({ x: p.cx + r * Math.cos((k / 24) * 2 * Math.PI), y: p.cy + r * Math.sin((k / 24) * 2 * Math.PI) }));
   }

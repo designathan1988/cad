@@ -215,9 +215,9 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
             )
           : null;
       const size =
-        p.kind === 'profile'
+        p.kind === 'profile' || p.kind === 'revolve'
           ? [
-              ex('h', t('ed.h')),
+              ...(p.kind === 'profile' ? [ex('h', t('ed.h'))] : []),
               (() => {
                 // One corner a line, its x and y as formulas split by ';' (a formula's own commas stay).
                 const area = el('textarea', { class: 'ed-points', rows: '4', spellcheck: 'false', 'data-focus': `k${i}:points`, 'aria-label': `${t('ed.points')}: ${t('ed.part')} ${i + 1}` }) as HTMLTextAreaElement;
@@ -228,10 +228,10 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
                     .map((line) => line.split(';'))
                     .filter((xy) => xy.length === 2 && xy[0]!.trim() !== '' && xy[1]!.trim() !== '')
                     .map(([a, b]) => [exprOf(a!), exprOf(b!)] as const);
-                  if (points.length >= 3) upd({ points } as Partial<Part>);
+                  if (points.length >= (p.kind === 'revolve' ? 2 : 3)) upd({ points } as Partial<Part>);
                   else area.value = p.points.map(([a, b]) => `${exprText(a)}; ${exprText(b)}`).join('\n');
                 });
-                return el('label', { class: 'ed-cell ed-points-cell' }, el('span', {}, t('ed.points')), area);
+                return el('label', { class: 'ed-cell ed-points-cell' }, el('span', {}, t(p.kind === 'revolve' ? 'ed.revolvePoints' : 'ed.points')), area);
               })(),
             ]
           : p.kind === 'box' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h')), round!] : p.kind === 'mesh' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h'))] : p.kind === 'cylinder' ? [ex('r', t('ed.r')), top!, ex('h', t('ed.h'))] : p.kind === 'sphere' ? [ex('r', t('ed.r')), ex('h', t('ed.h'))] : [ex('angle', t('ed.angle'))];
@@ -280,6 +280,8 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
         ? { kind, name: { pt: 'Caixa', en: 'Box' }, x: 0, y: 0, z: 0, w: 0.2, d: 0.2, h: 0.2 }
         : kind === 'cylinder'
           ? { kind, name: { pt: 'Cilindro', en: 'Cylinder' }, x: 0, y: 0, z: 0, r: 0.1, h: 0.2 }
+          : kind === 'revolve'
+            ? { kind, name: { pt: 'Revolução', en: 'Revolve' }, x: 0, y: 0, z: 0, points: [[0.1, 0], [0.15, 0.1], [0.08, 0.3], [0.12, 0.4]] }
           : kind === 'profile'
             ? { kind, name: { pt: 'Perfil', en: 'Profile' }, x: 0, y: 0, z: 0, points: [[0, 0], [0.4, 0], [0.4, 0.2], [0.2, 0.4], [0, 0.4]], h: 0.1 }
           : kind === 'sphere'
@@ -324,6 +326,7 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
         addButton(t('ed.addCylinder'), 'addCyl', () => set({ ...draft, parts: [...draft.parts, blank('cylinder')] })),
         addButton(t('ed.addSphere'), 'addSphere', () => set({ ...draft, parts: [...draft.parts, blank('sphere')] })),
         addButton(t('ed.addProfile'), 'addProfile', () => set({ ...draft, parts: [...draft.parts, blank('profile')] })),
+        addButton(t('ed.addRevolve'), 'addRevolve', () => set({ ...draft, parts: [...draft.parts, blank('revolve')] })),
         ...(defs.length ? [addButton(t('ed.addObject'), 'addObj', () => set({ ...draft, parts: [...draft.parts, blank('object')] }))] : []),
         ...(light ? [] : [addButton(t('ed.addLight'), 'addLight', () => set({ ...draft, light: { x: 0, y: 0, z: 2, watts: 9, kelvin: 3000 } }))]),
       ),
