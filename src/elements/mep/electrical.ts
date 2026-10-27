@@ -62,6 +62,61 @@ export interface LoadTable {
   readonly hasPanel: boolean;
   /** VA on each phase, and how far apart they are (% of the heavier). */
   readonly phases: { readonly a: number; readonly b: number; readonly imbalance: number };
+  /** The probable demand of the whole (VA): its loads under the utility's demand factors. */
+  readonly demand: Demand;
+}
+
+/**
+ * The probable demand (CELG D CT 04/18, section 10, D = a + b + …; the same residential bands as Eletropaulo's):
+ * a, lighting and general-purpose outlets, band by band (table 2, residences); b, the electric showers by
+ * their number (table 3); the other dedicated outlets whole (no table for an unknown appliance). VA.
+ */
+export interface Demand {
+  readonly general: { readonly load: number; readonly demand: number };
+  readonly showers: { readonly count: number; readonly load: number; readonly factor: number; readonly demand: number };
+  readonly others: { readonly load: number; readonly demand: number };
+  readonly total: number;
+}
+
+/** Table 2, residences: each kW band's factor, 0–1, 1–2 … 9–10 kW, and over 10 kW. */
+export const GENERAL_BANDS: readonly number[] = [0.86, 0.75, 0.66, 0.59, 0.52, 0.45, 0.4, 0.35, 0.31, 0.27];
+export const GENERAL_OVER = 0.24;
+
+/** Lighting and general-purpose outlets' demand (VA) for a load (VA): each kW at its band's factor. */
+export function generalDemand(load: number): number {
+  const kw = load / 1000;
+  let d = 0;
+  GENERAL_BANDS.forEach((f, i) => (d += Math.max(0, Math.min(kw, i + 1) - i) * f));
+  return (d + Math.max(0, kw - GENERAL_BANDS.length) * GENERAL_OVER) * 1000;
+}
+
+/** Table 3, electric showers: the factor for so many (1, 2 … 9, then by ranges; 23 % over 65). */
+export function showerFactor(n: number): number {
+  const first = [1, 0.68, 0.56, 0.48, 0.43, 0.39, 0.36, 0.33, 0.31];
+  if (n <= 0) return 0;
+  if (n <= first.length) return first[n - 1]!;
+  const ranges: readonly (readonly [number, number])[] = [
+    [11, 0.3],
+    [15, 0.29],
+    [20, 0.28],
+    [25, 0.27],
+    [40, 0.26],
+    [55, 0.25],
+    [65, 0.24],
+  ];
+  return ranges.find(([upTo]) => n <= upTo)?.[1] ?? 0.23;
+}
+
+function demandOf(points: readonly MepPoint[]): Demand {
+  const load = (ps: readonly MepPoint[]) => ps.reduce((s, p) => s + pointLoad(p).power, 0);
+  const general = points.filter((p) => kindOf(p) !== 'tue');
+  const showers = points.filter((p) => p.kind === 'shower');
+  const others = points.filter((p) => kindOf(p) === 'tue' && p.kind !== 'shower');
+  const g = { load: load(general), demand: generalDemand(load(general)) };
+  const factor = showerFactor(showers.length);
+  const s = { count: showers.length, load: load(showers), factor, demand: load(showers) * factor };
+  const o = { load: load(others), demand: load(others) };
+  return { general: g, showers: s, others: o, total: g.demand + s.demand + o.demand };
 }
 
 /** The room uses NBR 5410 asks a residual-current device for (with a shower or a bath, kitchens, service areas, garages). */
@@ -159,5 +214,12 @@ export function loadTable(doc: Doc, g?: DerivedGeometry): LoadTable {
   const { phases, a, b } = balance(circuits);
   const placed = circuits.map((c, i) => ({ ...c, phase: phases[i]! }));
   const heavier = Math.max(a, b);
-  return { circuits: placed, total: circuits.reduce((s, c) => s + c.power, 0), unreached, hasPanel: panels.length > 0, phases: { a, b, imbalance: heavier > 0 ? ((heavier - Math.min(a, b)) / heavier) * 100 : 0 } };
+  return {
+    circuits: placed,
+    total: circuits.reduce((s, c) => s + c.power, 0),
+    unreached,
+    hasPanel: panels.length > 0,
+    phases: { a, b, imbalance: heavier > 0 ? ((heavier - Math.min(a, b)) / heavier) * 100 : 0 },
+    demand: demandOf(electric),
+  };
 }

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 import { analyticModel, clashesOf, isometricSvg, waterproofing } from '../../src/elements/mep/coordination';
-import { balance, loadTable, protect, voltageDrop } from '../../src/elements/mep/electrical';
+import { balance, generalDemand, loadTable, protect, showerFactor, voltageDrop } from '../../src/elements/mep/electrical';
 import { fittingsOf, networksOf } from '../../src/elements/mep/network';
 import { GROUP_OF, isMepPoint, isMepRun, type MepPoint, type MepRun } from '../../src/elements/mep/schema';
 import { hazenWilliams, mostUhc, neededDiameter, pressures, probableFlow, rainCapacity, rainDiameter, sewerFalls } from '../../src/elements/mep/water';
@@ -168,6 +168,25 @@ describe('the load table', () => {
     const t = loadTable(lone);
     expect(t.unreached.map((p) => p.id)).toEqual(['t9']);
     expect(t.circuits.find((c) => c.name === 'TUG1')!.length).toBeNull();
+  });
+});
+
+describe('probable demand (CELG D CT 04/18)', () => {
+  it('lighting and general outlets band by band; showers by their number; other dedicated outlets whole', () => {
+    // 7.2 kW: 0.86 + 0.75 + 0.66 + 0.59 + 0.52 + 0.45 + 0.40 + 0.2 × 0.35 = 4.30 kW.
+    expect(generalDemand(7200)).toBeCloseTo(4300, 6);
+    // 12 kW: the ten bands (5.16 kW) and 2 kW at 24 %.
+    expect(generalDemand(12000)).toBeCloseTo(5160 + 480, 6);
+    expect(generalDemand(500)).toBeCloseTo(430, 6);
+    expect([showerFactor(1), showerFactor(2), showerFactor(10), showerFactor(12), showerFactor(70)]).toEqual([1, 0.68, 0.3, 0.29, 0.23]);
+    // The test house: two sockets of 100 VA and a 5500 VA shower.
+    const d = loadTable(house).demand;
+    expect(d.general.load).toBe(200);
+    expect(d.general.demand).toBeCloseTo(172, 6);
+    expect([d.showers.count, d.showers.demand]).toEqual([1, 5500]);
+    // A second shower: 11 000 VA at 68 %.
+    const two: Doc = { ...house, mepPoints: [...house.mepPoints, pt('ch2', 'shower', 4, 3, 2.2, 'sys_power')] };
+    expect(loadTable(two).demand.showers.demand).toBeCloseTo(11000 * 0.68, 6);
   });
 });
 

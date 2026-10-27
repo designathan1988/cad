@@ -131,6 +131,19 @@ export function showServices(app: App, first: Tab = 'systems'): void {
         ),
         el('p', {}, t('services.totalLoad', { va: Math.round(lt.total) })),
         el('p', {}, t('services.phases', { a: Math.round(lt.phases.a), b: Math.round(lt.phases.b), imbalance: num(lt.phases.imbalance, 0) })),
+        // The probable demand: the loads under the utility's factors (electrical.ts: Demand).
+        el('h3', {}, t('services.demand')),
+        table(
+          [t('services.demandOf'), t('services.load'), t('services.factor'), t('services.demandVa')],
+          [
+            [t('services.demandGeneral'), `${Math.round(lt.demand.general.load)} VA`, lt.demand.general.load > 0 ? `${num((lt.demand.general.demand / lt.demand.general.load) * 100, 0)} %` : '—', `${Math.round(lt.demand.general.demand)} VA`],
+            [t('services.demandShowers', { n: lt.demand.showers.count }), `${Math.round(lt.demand.showers.load)} VA`, lt.demand.showers.count > 0 ? `${num(lt.demand.showers.factor * 100, 0)} %` : '—', `${Math.round(lt.demand.showers.demand)} VA`],
+            [t('services.demandOthers'), `${Math.round(lt.demand.others.load)} VA`, lt.demand.others.load > 0 ? '100 %' : '—', `${Math.round(lt.demand.others.demand)} VA`],
+            [t('services.demandTotal'), `${Math.round(lt.total)} VA`, lt.total > 0 ? `${num((lt.demand.total / lt.total) * 100, 0)} %` : '—', `${Math.round(lt.demand.total)} VA`],
+          ],
+          [1, 2, 3],
+        ),
+        note('services.demandNote'),
         ...(lt.unreached.length > 0 ? [el('p', { class: 'services-bad' }, t('services.unreached', { n: lt.unreached.length })), el('div', {}, ...lt.unreached.map((p) => link(app.reportTitle(p.id), p.id)))] : []),
         el('h3', {}, t('services.oneLine')),
         svg,
