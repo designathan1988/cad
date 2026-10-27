@@ -15,8 +15,8 @@ function isPart(p: unknown): p is Part {
   if (p.material !== undefined && typeof p.material !== 'string') return false;
   if (p.repeat !== undefined && !(isObject(p.repeat) && isExpr(p.repeat.count))) return false;
   if (p.cut !== undefined && typeof p.cut !== 'boolean') return false;
-  if (p.kind === 'box') return isExpr(p.w) && isExpr(p.d) && isExpr(p.h) && (p.round === undefined || isExpr(p.round)) && (p.tilt === undefined || isExpr(p.tilt)) && (p.roll === undefined || isExpr(p.roll));
-  if (p.kind === 'cylinder') return (p.tilt === undefined || isExpr(p.tilt)) && (p.roll === undefined || isExpr(p.roll)) && isExpr(p.r) && isExpr(p.h) && (p.r2 === undefined || isExpr(p.r2));
+  if (p.kind === 'box') return isExpr(p.w) && isExpr(p.d) && isExpr(p.h) && (p.round === undefined || isExpr(p.round)) && (p.tilt === undefined || isExpr(p.tilt)) && (p.roll === undefined || isExpr(p.roll)) && (p.turn === undefined || isExpr(p.turn));
+  if (p.kind === 'cylinder') return (p.tilt === undefined || isExpr(p.tilt)) && (p.roll === undefined || isExpr(p.roll)) && (p.turn === undefined || isExpr(p.turn)) && isExpr(p.r) && isExpr(p.h) && (p.r2 === undefined || isExpr(p.r2));
   if (p.kind === 'sphere') return isExpr(p.r) && isExpr(p.h);
   if (p.kind === 'revolve') return Array.isArray(p.points) && p.points.length >= 2 && p.points.every((q) => Array.isArray(q) && q.length === 2 && isExpr(q[0]) && isExpr(q[1]));
   if (p.kind === 'profile') return Array.isArray(p.points) && p.points.length >= 3 && p.points.every((q) => Array.isArray(q) && q.length === 2 && isExpr(q[0]) && isExpr(q[1])) && isExpr(p.h);

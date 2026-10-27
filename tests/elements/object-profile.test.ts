@@ -102,7 +102,7 @@ describe('profile parts', () => {
     const ring = pieceOutline(piece);
     const xs = ring.map((q) => q.x);
     const ys = ring.map((q) => q.y);
-    expect([Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([0, 1, 0, 1]);
+    expect([Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)].map((v) => Math.round(v * 1e6) / 1e6 + 0)).toEqual([0, 1, 0, 1]);
     expect(pieceSpan(piece).bottom).toBeCloseTo(0.4, 9);
     expect(pieceSpan(piece).top).toBeCloseTo(0.5, 9);
     const box = new THREE.Box3().setFromBufferAttribute(pieceGeometry(piece).getAttribute('position') as THREE.BufferAttribute);
@@ -121,12 +121,32 @@ describe('profile parts', () => {
     const ev = evaluateObject(rail, { id: 'o', levelId: 'lvl_ground', definitionId: rail.id, typeId: 't', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: [rail], materials: doc.materials });
     const piece = ev.pieces[0]!;
     const ys = pieceOutline(piece).map((q) => q.y);
-    expect([Math.min(...ys), Math.max(...ys)].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([0, 0.6]);
+    expect([Math.min(...ys), Math.max(...ys)].map((v) => Math.round(v * 1e6) / 1e6 + 0)).toEqual([0, 0.6]);
     expect(pieceSpan(piece).bottom).toBeCloseTo(0.98, 6);
     expect(pieceSpan(piece).top).toBeCloseTo(1.02, 6);
     const box = new THREE.Box3().setFromBufferAttribute(pieceGeometry(piece).getAttribute('position') as THREE.BufferAttribute);
     // three.js's −z is plan y.
     expect([box.min.z, box.max.z, box.min.y, box.max.y]).toEqual([-0.6, 0, 0.98, 1.02].map((v) => expect.closeTo(v, 6)));
+  });
+
+  it('a part turned in plan: a box about its base\'s centre, a lying cylinder\'s direction', () => {
+    const turned: ObjectDefinition = {
+      ...counter,
+      id: 'def_t',
+      parts: [
+        { kind: 'box', x: 0, y: 0, z: 0, w: 1, d: 0.2, h: 0.1, turn: 90, material: 'concrete' },
+        { kind: 'cylinder', x: 0, y: 0, z: 0.5, r: 0.01, h: 0.4, tilt: 90, turn: 90, material: 'metal' },
+      ],
+    };
+    expect(isDefinition(turned)).toBe(true);
+    const ev = evaluateObject(turned, { id: 'o', levelId: 'lvl_ground', definitionId: turned.id, typeId: 't', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: [turned], materials: doc.materials });
+    const span = (ring: { x: number; y: number }[]) => [Math.min(...ring.map((q) => q.x)), Math.max(...ring.map((q) => q.x)), Math.min(...ring.map((q) => q.y)), Math.max(...ring.map((q) => q.y))].map((v) => Math.round(v * 1e6) / 1e6 + 0);
+    // The box's centre (0.5, 0.1) stays; it now runs along y.
+    expect(span(pieceOutline(ev.pieces[0]!))).toEqual([0.4, 0.6, -0.4, 0.6]);
+    // The cylinder lay along +y; a quarter turn counter-clockwise lays it along −x.
+    const rail = span(pieceOutline(ev.pieces[1]!));
+    expect(rail[0]).toBeCloseTo(-0.4, 6);
+    expect(rail[1]).toBeCloseTo(0, 6);
   });
 
   it('drawn clockwise, it is turned round: the volume still positive', () => {

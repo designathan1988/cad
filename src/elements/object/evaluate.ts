@@ -205,9 +205,12 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         const tz = -(d / 2) * Math.sin(tilt);
         const rx = (w / 2) * Math.cos(roll) + tz * Math.sin(roll);
         const rz = -(w / 2) * Math.sin(roll) + tz * Math.cos(roll);
-        const centre = apply(frame, { x: ox + rx, y: oy + ty, z: oz + rz });
+        // Turned in plan about the vertical through its base's centre: its leaning centre's offset from there with it.
+        const turn = ((part.turn === undefined ? 0 : (num(part.turn, at, `${label} turn`) ?? 0)) * Math.PI) / 180;
+        const [ux, uy] = [rx - w / 2, ty - d / 2];
+        const centre = apply(frame, { x: ox + w / 2 + ux * Math.cos(turn) - uy * Math.sin(turn), y: oy + d / 2 + ux * Math.sin(turn) + uy * Math.cos(turn), z: oz + rz });
         const leaning = { ...(Math.abs(tilt) > 1e-9 ? { tilt } : {}), ...(Math.abs(roll) > 1e-9 ? { roll } : {}) };
-        pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'box', cx: centre.x, cy: centre.y, z: centre.z, w, d, h, angle: frame.angle, material: materialOf(part), round: Math.max(0, Math.min(round, Math.min(w, d, h) / 2 - 1e-4)), ...leaning });
+        pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'box', cx: centre.x, cy: centre.y, z: centre.z, w, d, h, angle: frame.angle + turn, material: materialOf(part), round: Math.max(0, Math.min(round, Math.min(w, d, h) / 2 - 1e-4)), ...leaning });
       } else if (part.kind === 'cylinder') {
         const r = num(part.r, at, `${label} radius`);
         const h = num(part.h, at, `${label} height`);
@@ -216,7 +219,8 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         const centre = apply(frame, { x: ox, y: oy, z: oz });
         const tilt = ((part.tilt === undefined ? 0 : (num(part.tilt, at, `${label} tilt`) ?? 0)) * Math.PI) / 180;
         const roll = ((part.roll === undefined ? 0 : (num(part.roll, at, `${label} roll`) ?? 0)) * Math.PI) / 180;
-        const leaning = Math.abs(tilt) > 1e-9 || Math.abs(roll) > 1e-9 ? { tilt, roll, angle: frame.angle } : {};
+        const turn = ((part.turn === undefined ? 0 : (num(part.turn, at, `${label} turn`) ?? 0)) * Math.PI) / 180;
+        const leaning = Math.abs(tilt) > 1e-9 || Math.abs(roll) > 1e-9 ? { tilt, roll, angle: frame.angle + turn } : {};
         pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'cylinder', cx: centre.x, cy: centre.y, z: centre.z, r: Math.max(0, r), r2: Math.max(0, r2), h, material: materialOf(part), ...leaning });
       } else if (part.kind === 'revolve') {
         const raw = part.points.map(([pr, pz], k) => ({ r: num(pr, at, `${label} r${k + 1}`), z: num(pz, at, `${label} z${k + 1}`) }));
