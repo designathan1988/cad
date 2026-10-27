@@ -20,6 +20,27 @@ export interface Beam {
   readonly depth: number;
   /** Its top above (+) or below (−) its level's top (m). */
   readonly topOffset?: number;
+  /** Its top at its end, when it slopes: above (+) or below (−) its level's top (m); its start's when not set. */
+  readonly endOffset?: number;
+  /** Its section: a rectangle (when not set) or an I, its flanges `plate` thick. */
+  readonly shape?: 'rect' | 'I';
+  readonly plate?: number;
+}
+
+/** An I beam's plates when it sets none (m). */
+export const BEAM_PLATE = 0.012;
+
+/**
+ * Its section, across its width (a, from its axis) and down from its top (u ≤ 0), counter-clockwise
+ * seen from its start: a rectangle, or an I with its flanges at its top and bottom.
+ */
+export function beamSection(b: Beam): [number, number][] {
+  const hw = b.width / 2;
+  const d = b.depth;
+  if (b.shape !== 'I') return [[-hw, -d], [hw, -d], [hw, 0], [-hw, 0]];
+  const t = Math.min(b.plate ?? BEAM_PLATE, b.width / 3, d / 3);
+  const h = t / 2;
+  return [[-hw, -d], [hw, -d], [hw, -d + t], [h, -d + t], [h, -t], [hw, -t], [hw, 0], [-hw, 0], [-hw, -t], [-h, -t], [-h, -d + t], [-hw, -d + t]];
 }
 
 export const isBeamId = (id: string): boolean => id.startsWith(`${BEAM_PREFIX}_`);

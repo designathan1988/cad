@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { finite, isObject, isPoint } from '../../core/guards';
 import { updateBeams } from '../beam/commands';
 import { beamFields } from '../beam/fields';
-import { type Beam, BEAM_PREFIX, beamOutline } from '../beam/schema';
+import { type Beam, BEAM_PREFIX, beamOutline, beamSection } from '../beam/schema';
 import type { ElementKind } from '../contract';
 import { insideRing } from '../room/derive';
 import { nearSegment, throughElement, trace } from './paint';
@@ -14,6 +14,40 @@ export interface BeamSolid {
   readonly outline: readonly { x: number; y: number }[];
   readonly bottom: number;
   readonly top: number;
+  /** Its top at its start and at its end (m). */
+  readonly startTop: number;
+  readonly endTop: number;
+}
+
+/**
+ * A section (across, up from the top) swept along a straight axis whose top goes from z0 to z1: its
+ * sides and its two end caps, in three.js coordinates (x, height, −y).
+ */
+function sweep(section: readonly [number, number][], start: { x: number; y: number }, end: { x: number; y: number }, z0: number, z1: number): THREE.BufferGeometry {
+  const l = Math.hypot(end.x - start.x, end.y - start.y) || 1;
+  const n = { x: -(end.y - start.y) / l, y: (end.x - start.x) / l };
+  const at = (p: { x: number; y: number }, z: number, [a, u]: [number, number]) => [p.x + n.x * a, z + u, -(p.y + n.y * a)] as const;
+  const pos: number[] = [];
+  const m = section.length;
+  for (let i = 0; i < m; i++) {
+    const s0 = section[i]!;
+    const s1 = section[(i + 1) % m]!;
+    const a0 = at(start, z0, s0);
+    const b0 = at(start, z0, s1);
+    const a1 = at(end, z1, s0);
+    const b1 = at(end, z1, s1);
+    pos.push(...a0, ...a1, ...b1, ...a0, ...b1, ...b0);
+  }
+  const tris = THREE.ShapeUtils.triangulateShape(section.map(([a, u]) => new THREE.Vector2(a, u)), []);
+  for (const tri of tris) {
+    const [i, j, k] = tri as [number, number, number];
+    pos.push(...at(start, z0, section[i]!), ...at(start, z0, section[k]!), ...at(start, z0, section[j]!));
+    pos.push(...at(end, z1, section[i]!), ...at(end, z1, section[j]!), ...at(end, z1, section[k]!));
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
 }
 
 export const beamKind: ElementKind<Beam, BeamSolid> = {
@@ -37,13 +71,18 @@ export const beamKind: ElementKind<Beam, BeamSolid> = {
     b.width > 0 &&
     finite(b.depth) &&
     b.depth > 0 &&
-    (b.topOffset === undefined || finite(b.topOffset)),
-  // Hanging from its level's top (plus its adjustment), its depth down.
+    (b.topOffset === undefined || finite(b.topOffset)) &&
+    (b.endOffset === undefined || finite(b.endOffset)) &&
+    (b.shape === undefined || b.shape === 'rect' || b.shape === 'I') &&
+    (b.plate === undefined || (finite(b.plate) && b.plate > 0)),
+  // Hanging from its level's top (plus its adjustment), its depth down; sloping when its end's top differs.
   memo: 'level',
   derive: (doc, b) => {
     const level = doc.levels.find((l) => l.id === b.levelId) ?? { elevation: 0, height: 2.8 };
-    const top = level.elevation + level.height + (b.topOffset ?? 0);
-    return { beam: b, outline: beamOutline(b), bottom: top - b.depth, top };
+    const ceiling = level.elevation + level.height;
+    const startTop = ceiling + (b.topOffset ?? 0);
+    const endTop = ceiling + (b.endOffset ?? b.topOffset ?? 0);
+    return { beam: b, outline: beamOutline(b), bottom: Math.min(startTop, endTop) - b.depth, top: Math.max(startTop, endTop), startTop, endTop };
   },
   element: (s) => s.beam,
   outlines: (s) => [s.outline],
@@ -70,11 +109,8 @@ export const beamKind: ElementKind<Beam, BeamSolid> = {
     ctx.stroke();
     ctx.restore();
   },
-  solid: (s) => {
-    const geometry = new THREE.ExtrudeGeometry(new THREE.Shape(s.outline.map((v) => new THREE.Vector2(v.x, v.y))), { depth: s.top - s.bottom, bevelEnabled: false });
-    geometry.rotateX(-Math.PI / 2);
-    return { geometry, y: s.bottom, material: 'side', edges: true };
-  },
+  // Its section swept from its start to its end, each end at its own top.
+  solid: (s) => ({ geometry: sweep(beamSection(s.beam), s.beam.start, s.beam.end, s.startTop, s.endTop), y: 0, material: 'side', edges: true }),
   dxfLayers: [{ name: 'S-BEAM', colour: 8 }],
   dxf: (s, out) => out.polyline('S-BEAM', s.outline, true),
   fields: (items, { dispatch }) => throughElement(beamFields(items.map((s) => s.beam), { updateBeams: (ids, patch) => dispatch(updateBeams(ids, patch)) }), (s: BeamSolid) => s.beam),

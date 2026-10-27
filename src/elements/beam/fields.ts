@@ -4,7 +4,8 @@ import { lengthText } from '../../ui/units';
 import { distance } from '../../core/vector';
 import type { Field } from '../../ui/fields';
 import type { BeamPatch } from './commands';
-import type { Beam } from './schema';
+import { type Beam, BEAM_PLATE } from './schema';
+import { t } from '../../ui/i18n';
 
 export interface BeamFieldActions {
   readonly updateBeams: (ids: readonly string[], patch: BeamPatch) => void;
@@ -24,6 +25,21 @@ export function beamFields(beams: readonly Beam[], act: BeamFieldActions): Field
     },
     { id: 'width', label: 'beam.width', kind: 'number', min: 0.05, get: (b) => b.width, set: (v) => act.updateBeams(ids, { width: v }) },
     { id: 'depth', label: 'beam.depth', icon: 'height', kind: 'number', min: 0.05, get: (b) => b.depth, set: (v) => act.updateBeams(ids, { depth: v }) },
+    {
+      id: 'shape',
+      label: 'beam.shape',
+      kind: 'segmented',
+      labelled: true,
+      options: [
+        { value: 'rect', label: t('beam.shape.rect') },
+        { value: 'I', label: t('beam.shape.I') },
+      ],
+      get: (b) => b.shape ?? 'rect',
+      set: (v) => act.updateBeams(ids, { shape: v === 'I' ? 'I' : 'rect' }),
+    },
+    { id: 'plate', label: 'beam.plate', kind: 'number', sub: true, min: 0.002, decimals: 3, when: (bs) => bs.every((b) => b.shape === 'I'), get: (b) => b.plate ?? BEAM_PLATE, set: (v) => act.updateBeams(ids, { plate: v }) },
     { id: 'topOffset', label: 'beam.topOffset', kind: 'number', get: (b) => b.topOffset ?? 0, set: (v) => act.updateBeams(ids, { topOffset: v }) },
+    // A sloping beam: its end's top, its start's when the same.
+    { id: 'endOffset', label: 'beam.endOffset', kind: 'number', sub: true, get: (b) => b.endOffset ?? b.topOffset ?? 0, set: (v) => act.updateBeams(ids, { endOffset: v }) },
   ];
 }
