@@ -1,6 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import { setVariables } from '../core/measure';
 import type { KeyMap } from './keymap';
 import { arrangeNeeds, arrangeSteps, type ArrangeHow, type Box as ArrangeBox, boxOf } from '../tools/arrange';
 import type { ScreenHandle } from './object-handles';
@@ -1430,6 +1431,7 @@ export class App {
   render(): void {
     // Lengths written and typed in the open project's units, from the first thing drawn.
     setUnits(this.store.get().units);
+    setVariables(this.store.get().variables ?? {});
     this.keepPlanView();
     this.marks = [['start', performance.now()]];
     this.renderFrame();

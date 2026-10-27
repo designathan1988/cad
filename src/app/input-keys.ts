@@ -208,7 +208,9 @@ export function wireKeys(app: App, k: KeyContext): void {
       shell.measure.value = e.key;
       return app.refresh();
     }
-    if (/^[\d.,-]$/.test(e.key) && typing) {
+    // "@" starts a point from the last one (@dx;dy), "=" a measure by a variable's name (=pd-0,10):
+    // what follows goes to the field, not to the shortcuts.
+    if (/^[\d.,\-@=]$/.test(e.key) && typing) {
       e.preventDefault();
       shell.measure.focus();
       shell.measure.value = e.key;

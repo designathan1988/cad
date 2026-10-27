@@ -1,6 +1,7 @@
 // Mouse and keyboard. Plan: wheel zooms at the cursor, middle button pans. 3D: wheel zooms at the
 // cursor, middle pans, Shift + middle or right rotates (OrbitControls). Left button is the tool's.
 
+import { showVariables } from '../ui/variables-dialog';
 import { showKeys } from '../ui/keys-dialog';
 import { wallNumber } from './document';
 import type { MessageKey } from '../ui/i18n';
@@ -64,6 +65,7 @@ export function wireInput(app: App): void {
     print: () => showPrint(app),
     drawing: () => showDrawingSettings(app),
     keys: () => showKeys(app),
+    variables: () => showVariables(app),
   };
   app.openProjects = () => showProjectsDialog(app);
   const palette = () => showPalette(appActions(app, openers));
@@ -106,6 +108,21 @@ export function wireInput(app: App): void {
   };
   let shift = false;
   const gestures = selectGestures(app);
+  // What is being typed in the measure field, beside the pointer (Archicad's tracker): the eyes stay on
+  // the drawing while a length, an angle or a point is typed.
+  const tracker = el('div', { class: 'tracker', 'aria-hidden': 'true' });
+  tracker.hidden = true;
+  shell.viewport.append(tracker);
+  const showTracker = () => {
+    const typing = document.activeElement === shell.measure && shell.measure.value.trim() !== '' && lastMove !== null;
+    tracker.hidden = !typing;
+    if (!typing || !lastMove) return;
+    const r = shell.viewport.getBoundingClientRect();
+    tracker.textContent = shell.measure.value;
+    tracker.style.left = `${lastMove.clientX - r.left + 18}px`;
+    tracker.style.top = `${lastMove.clientY - r.top + 18}px`;
+    tracker.classList.toggle('invalid', ui.error !== null);
+  };
   const marquee = el('div', { class: 'marquee' });
   marquee.hidden = true;
   shell.viewport.append(marquee);
@@ -366,6 +383,7 @@ export function wireInput(app: App): void {
   let boxDrag: { face: BoxFace; box: SectionBox; from: { x: number; y: number }; along: { x: number; y: number } } | null = null;
   const onMove = (e: PointerEvent) => {
     lastMove = e;
+    if (!tracker.hidden) showTracker();
     // Resting on a point a moment acquires it: the next points align with it across or up.
     window.clearTimeout(acquireTimer);
     acquireTimer = window.setTimeout(() => {
@@ -813,7 +831,11 @@ export function wireInput(app: App): void {
   shell.walkStick.addEventListener('pointerup', stickOff);
   shell.walkStick.addEventListener('pointercancel', stickOff);
   // The preview follows what is typed, before Enter: the wall preview is geometry, so refresh it.
-  shell.measure.addEventListener('input', () => app.refresh());
+  shell.measure.addEventListener('input', () => {
+    app.refresh();
+    showTracker();
+  });
+  shell.measure.addEventListener('blur', showTracker);
   shell.measure.addEventListener('keydown', (e) => {
     // Alt over a wall starts a guide from the field too: a value left in it (one the drawing did not
     // take) kept the focus, and Alt did nothing. The field is left; the drawing's keys take Alt.

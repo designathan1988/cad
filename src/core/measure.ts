@@ -13,9 +13,19 @@ export const setBareUnit = (metresPerUnit: number): void => {
   bare = metresPerUnit;
 };
 
+/** The project's named lengths (metres), typed by name in a measure: "pd - 0,10" (phase 9). */
+let variables: Readonly<Record<string, number>> = {};
+export const setVariables = (v: Readonly<Record<string, number>>): void => {
+  variables = v;
+};
+
+/** A name a variable may have: a letter first, then letters, digits or _; not a unit's. */
+export const isVariableName = (name: string): boolean => /^[A-Za-zÀ-ÿ_][A-Za-zÀ-ÿ0-9_]*$/.test(name) && !/^(mm|cm|m|ft|in|x)$/i.test(name);
+
 /** A length in metres, or { ok: false } when the text is not a valid expression. */
 export function parseLength(text: string): Parsed<number> {
-  const p = new Parser(text);
+  // "=" before it says a variable's name comes (typed so its letters are not shortcuts): nothing more.
+  const p = new Parser(text.trim().replace(/^=/, ''));
   const value = p.expression();
   return value !== null && p.done() && Number.isFinite(value) ? { ok: true, value } : { ok: false };
 }
@@ -25,6 +35,18 @@ export function parseNumber(text: string): Parsed<number> {
   const p = new Parser(text, false);
   const value = p.expression();
   return value !== null && p.done() && Number.isFinite(value) ? { ok: true, value } : { ok: false };
+}
+
+/**
+ * "x;y", or "@dx;dy" from the point being drawn from (AutoCAD's relative coordinates): a point in
+ * metres. Without a point to go from, "@" is not one.
+ */
+export function parsePointFrom(text: string, from: { x: number; y: number } | null): Parsed<{ x: number; y: number }> {
+  const t = text.trim();
+  if (!t.startsWith('@')) return parsePoint(t);
+  if (!from) return { ok: false };
+  const d = parsePoint(t.slice(1));
+  return d.ok ? { ok: true, value: { x: from.x + d.value.x, y: from.y + d.value.y } } : d;
 }
 
 /** "x;y": a point in metres, each coordinate a length (units and expressions as parseLength). */
@@ -102,6 +124,12 @@ class Parser {
       if (v === null || this.peek() !== ')') return null;
       this.i++;
       return v;
+    }
+    // A variable of the project, by its name: a length in metres (a number in a plain number).
+    const name = /^[A-Za-zÀ-ÿ_][A-Za-zÀ-ÿ0-9_]*/.exec(this.s.slice(this.i));
+    if (name && isVariableName(name[0]) && name[0] in variables) {
+      this.i += name[0].length;
+      return variables[name[0]]!;
     }
     const m = /^\d+(?:[.,]\d*)?|^[.,]\d+/.exec(this.s.slice(this.i));
     if (!m) return null;

@@ -111,6 +111,8 @@ export interface Doc {
   readonly rules?: readonly Rule[];
   /** The plan's scale and the pens (elements/drawing/schema.ts); the defaults when it sets none. */
   readonly drawing?: DrawingSettings;
+  /** Named lengths (m) typed by name in any measure: the ceiling height, a module (core/measure.ts). */
+  readonly variables?: Readonly<Record<string, number>>;
 }
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */

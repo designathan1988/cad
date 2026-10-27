@@ -41,6 +41,7 @@ export interface Openers {
   readonly print: () => void;
   readonly drawing: () => void;
   readonly keys: () => void;
+  readonly variables: () => void;
 }
 
 export function appActions(app: App, open: Openers): Action[] {
@@ -221,6 +222,7 @@ export function appActions(app: App, open: Openers): Action[] {
       const n = app.arrangeItems().length;
       return ARRANGE_HOWS.map((how) => make(`arrange.${how}`, `arrange.${how}` as MessageKey, edit, () => app.arrange(how), { enabled: n >= arrangeNeeds(how), keywords: 'alinhar align distribuir distribute organizar arrange' }));
     })(),
+    make('settings.variables', 'vars.open', settings, open.variables, { keywords: 'variáveis variables pé-direito módulo module medida measure nome name' }),
     make('settings.keys', 'keys.open', settings, open.keys, { keywords: 'atalhos shortcuts teclado keyboard teclas keys remapear remap desligar' }),
     make('drawing.edit', 'draw.open', edit, open.drawing, { keywords: `${tBoth('draw.title')} 1:50 1:100 pena pen espessura lineweight` }),
     make('help.shortcuts', 'pal.shortcuts', help, open.help, { keys: '?' }),

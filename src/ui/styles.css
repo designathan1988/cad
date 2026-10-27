@@ -1310,6 +1310,25 @@ button.project-name:hover {
 .marquee[hidden] {
   display: none;
 }
+/* The measure being typed, beside the pointer (input.ts, tracker). */
+.tracker {
+  position: absolute;
+  z-index: 4;
+  padding: var(--sp-half) var(--sp-2);
+  border: var(--line) solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: 600 var(--fs-sm) / 1.4 var(--font);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.tracker.invalid {
+  border-color: var(--warn);
+}
+.tracker[hidden] {
+  display: none;
+}
 
 /* Command palette (Ctrl+K) */
 .palette-back {
@@ -1860,6 +1879,24 @@ button.project-name:hover {
 }
 .units-body {
   padding: var(--sp-3) var(--sp-4);
+}
+/* The project's variables (variables-dialog.ts): a name, a length and its remove button a row. */
+.vars-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-1);
+}
+.vars-head {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+/* Its icon beside its word, not over it. */
+.vars-add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
 }
 /* Customising the shortcuts (keys-dialog.ts): the search and what was done, then the list, which alone
    scrolls; each action with its key, Off and Default. */

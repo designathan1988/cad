@@ -1,7 +1,7 @@
 // The wall tool: the wall being drawn and its tags, the measures typed, a chain closing a loop. Functions over the app (app.ts delegates).
 
 import { angleNum, lengthText, typingExamples } from '../ui/units';
-import { parseLength, parseLengthAngle, parseNumber, parsePoint } from '../core/measure';
+import { parseLength, parseLengthAngle, parseNumber, parsePoint, parsePointFrom } from '../core/measure';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
@@ -104,7 +104,7 @@ export function rectCorner(app: App): Point2 {
 export function drawingEnd(app: App): Point2 {
   const w = app.ui.wall;
   if (w.kind !== 'drawing') return w.kind === 'bend' ? w.end : { x: 0, y: 0 };
-  const point = parsePoint(app.shell.measure.value);
+  const point = parsePointFrom(app.shell.measure.value, w.last);
   if (point.ok) return point.value;
   const typed = parseLengthAngle(app.shell.measure.value);
   return typed.ok && typed.value.length >= MIN_WALL_LENGTH ? typedEnd(w, typed.value.length, typed.value.angle) : w.cursor;
@@ -232,7 +232,8 @@ export function submitMeasure(app: App, text: string): boolean {
   }
   // "x;y": a point, as a click there would be: the start or the next point of a wall, a floor's
   // corner, a room's point. So drawing needs no mouse (ref/chat.txt:207, 242).
-  const point = parsePoint(text);
+  // "@dx;dy": from the point being drawn from.
+  const point = parsePointFrom(text, app.ui.drawFrom);
   if (point.ok) {
     const wall = app.ui.tool === 'wall' && app.ui.wall.kind !== 'bend';
     if (!wall && app.ui.tool !== 'floor' && app.ui.tool !== 'room' && app.ui.tool !== 'measure' && app.ui.tool !== 'dimension') {

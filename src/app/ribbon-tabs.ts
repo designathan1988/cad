@@ -192,6 +192,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
             { id: 'units.edit', icon: 'ruler', size: 'S' },
             { id: 'level.edit', icon: 'levelsAll', size: 'S' },
             { id: 'drawing.edit', icon: 'scale', size: 'S' },
+            { id: 'settings.variables', icon: 'hash', size: 'S' },
           ],
         },
         { title: 'rib.p.project', items: [{ id: 'file.projects', icon: 'folder', size: 'L' }, { id: 'view.schedules', icon: 'table', size: 'S' }, { id: 'rules.edit', icon: 'warning', size: 'S' }] },
