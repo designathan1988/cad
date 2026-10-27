@@ -190,6 +190,21 @@ export const mepPointKind: ElementKind<MepPoint, MepPointSolid> = {
             },
           ] as const)
         : []),
+      // A rain drain: the roof or ground it takes, for the pipes' flow and diameters (NBR 10844).
+      ...(items.every((s) => s.discipline === 'rain' && !POINT_KINDS[s.point.kind].source)
+        ? ([
+            {
+              id: 'mepArea',
+              label: 'mep.area',
+              kind: 'number',
+              min: 0,
+              unit: 'm²',
+              decimals: 2,
+              get: (s: MepPointSolid) => s.point.area ?? 0,
+              set: (v: number) => dispatch(updatePoints(ids, { area: v > 0 ? v : undefined })),
+            },
+          ] as const)
+        : []),
       ...(one ? ([{ id: 'mepLabel', label: 'mep.label', kind: 'text', get: (s: MepPointSolid) => s.point.label ?? '', set: (v: string) => dispatch(updatePoints(ids, { label: v.trim() || undefined })) }] as const) : []),
       { id: 'mepAbs', label: 'mep.absolute', kind: 'readout', text: (xs) => same(xs, (s) => `${num(s.z, 2)} m`) },
     ];

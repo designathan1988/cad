@@ -127,6 +127,8 @@ export interface MepPoint {
   readonly weight?: number;
   /** The fixture a sewer point drains (NBR 8160 table 3): its contribution units and least branch. */
   readonly fixture?: Fixture;
+  /** The roof or ground a rain drain takes (m² of contribution area, NBR 10844 5.2). */
+  readonly area?: number;
   readonly label?: string;
 }
 
@@ -205,6 +207,7 @@ export const isMepPoint = (p: unknown): p is MepPoint =>
   (p.circuit === undefined || typeof p.circuit === 'string') &&
   (p.weight === undefined || (finite(p.weight) && p.weight >= 0)) &&
   (p.fixture === undefined || (FIXTURE_LIST as readonly unknown[]).includes(p.fixture)) &&
+  (p.area === undefined || (finite(p.area) && p.area >= 0)) &&
   (p.label === undefined || typeof p.label === 'string');
 
 export const isMepRun = (r: unknown): r is MepRun =>

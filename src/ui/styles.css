@@ -2583,6 +2583,11 @@ button.project-name:hover {
   font-size: var(--fs-sm);
   color: var(--text-2);
 }
+/* The design rain over the rain table: a short number, not the table's width. */
+.services-rain {
+  max-width: var(--types-list-w);
+  margin-bottom: var(--sp-2);
+}
 .lot-num {
   display: flex;
   gap: var(--sp-1);

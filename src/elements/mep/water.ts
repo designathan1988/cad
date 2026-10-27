@@ -146,8 +146,39 @@ export interface SewerStretch {
   readonly ok: boolean;
   /** The fixtures' contribution units it carries (those up it), and the least diameter they ask (m); 0 and null with none. */
   readonly uhc: number;
+  /** The rain's design flow it carries (L/min, NBR 10844: I·A/60 of the drains up it); 0 in the sewer. */
+  readonly flow: number;
   readonly needed: number | null;
   readonly sized: boolean;
+}
+
+/**
+ * NBR 10844 (1989) table 4, n = 0.011 (plastic, fibre cement, steel): a horizontal rain conductor's inner
+ * diameter (m) and its flow (L/min) at a fall of 0.5, 1, 2 and 4 %, the water at 2/3 of the diameter.
+ */
+export const RAIN_CAPACITY: readonly (readonly [number, readonly number[]])[] = [
+  [0.05, [32, 45, 64, 90]],
+  [0.075, [95, 133, 188, 267]],
+  [0.1, [204, 287, 405, 575]],
+  [0.125, [370, 521, 735, 1040]],
+  [0.15, [602, 847, 1190, 1690]],
+  [0.2, [1300, 1820, 2570, 3650]],
+  [0.25, [2350, 3310, 4660, 6620]],
+  [0.3, [3820, 5380, 7590, 10800]],
+];
+/** NBR 10844: 150 mm/h may be taken for a building of up to 100 m² in plan (5.1.4); the least fall of a horizontal conductor (5.7.1). */
+export const DEFAULT_RAIN = 150;
+export const RAIN_LEAST_FALL = 0.5;
+
+/** A rain conductor's flow (L/min) at a fall: the table's at the largest of its falls the stretch reaches; 0 under 0.5 %. */
+export function rainCapacity(d: number, slope: number): number {
+  const col = FALLS.reduce((k, f, i) => (slope >= f - 1e-6 ? i : k), -1);
+  return col < 0 ? 0 : (RAIN_CAPACITY.find(([dn]) => Math.abs(dn - d) < 1e-6)?.[1][col] ?? 0);
+}
+
+/** The least diameter of the table for a flow (L/min) at a fall; null past it. */
+export function rainDiameter(q: number, slope: number): number | null {
+  return RAIN_CAPACITY.find(([d]) => rainCapacity(d, slope) >= q - 1e-9)?.[0] ?? null;
 }
 
 /** NBR 8160 (1999) table 5: a branch's nominal diameter (m) and the most UHC it takes. */
@@ -185,7 +216,11 @@ export function neededDiameter(uhc: number, slope: number, least: number): numbe
 /** The least fall (%) for a sewer pipe's diameter. */
 export const leastFall = (d: number): number => (d <= 0.075 + 1e-9 ? 2 : 1);
 
-/** Each sloping stretch of the sewer (and of the rain), its fall towards its way out; drains no pipe takes away. */
+/**
+ * Each sloping stretch of the sewer (and of the rain), its fall towards its way out; drains no pipe takes
+ * away. The sewer's units and diameters by NBR 8160; the rain's flow (I·A/60 of the drains up it, I the
+ * project's design rain) and diameter by NBR 10844, its least fall 0.5 %.
+ */
 export function sewerFalls(doc: Doc, group: 'sewer' | 'rain' = 'sewer'): { stretches: SewerStretch[]; unreached: MepPoint[]; hasOutlet: boolean; unsized: MepPoint[] } {
   const net: Network | undefined = networksOf(doc).get(group);
   if (!net) return { stretches: [], unreached: [], hasOutlet: false, unsized: [] };
@@ -203,6 +238,15 @@ export function sewerFalls(doc: Doc, group: 'sewer' | 'rain' = 'sewer'): { stret
       branch.set(k, Math.max(branch.get(k) ?? 0, f.dn));
     }
   }
+  // Each rain drain's flow on every edge of its way out.
+  const intensity = doc.simulation?.rain ?? DEFAULT_RAIN;
+  const flows = new Map<number, number>();
+  if (group === 'rain')
+    for (const p of net.points) {
+      const node = net.pointNode.get(p.id);
+      if (!p.area || node === undefined || !dist.has(node)) continue;
+      for (const k of pathTo(net, via, node)) flows.set(k, (flows.get(k) ?? 0) + (intensity * p.area) / 60);
+    }
   const stretches: SewerStretch[] = [];
   for (const [k, e] of net.edges.entries()) {
     if (!e.runId) continue;
@@ -213,13 +257,15 @@ export function sewerFalls(doc: Doc, group: 'sewer' | 'rain' = 'sewer'): { stret
     // Down is the end nearer the way out; with none, the lower end.
     const [up, down] = sources.length > 0 && dist.has(e.a) && dist.has(e.b) ? (dist.get(e.a)! >= dist.get(e.b)! ? [a, b] : [b, a]) : a.z >= b.z ? [a, b] : [b, a];
     const slope = ((up.z - down.z) / plan) * 100;
-    const least = leastFall(e.diameter);
+    const least = group === 'rain' ? RAIN_LEAST_FALL : leastFall(e.diameter);
     const uhc = units.get(k) ?? 0;
-    const needed = uhc > 0 ? neededDiameter(uhc, slope, branch.get(k) ?? 0) : null;
-    stretches.push({ runId: e.runId, slope, least, length: plan, diameter: e.diameter, ok: slope >= least - 1e-6, uhc, needed, sized: needed === null ? uhc === 0 : e.diameter >= needed - 1e-6 });
+    const flow = flows.get(k) ?? 0;
+    const load = group === 'rain' ? flow : uhc;
+    const needed = load <= 0 ? null : group === 'rain' ? rainDiameter(flow, slope) : neededDiameter(uhc, slope, branch.get(k) ?? 0);
+    stretches.push({ runId: e.runId, slope, least, length: plan, diameter: e.diameter, ok: slope >= least - 1e-6, uhc, flow, needed, sized: needed === null ? load === 0 : e.diameter >= needed - 1e-6 });
   }
   const unreached = net.points.filter((p) => !POINT_KINDS[p.kind].source && !dist.has(net.pointNode.get(p.id)!));
-  // The sewer's drains that say no fixture: their units are not counted.
-  const unsized = group === 'sewer' ? net.points.filter((p) => !POINT_KINDS[p.kind].source && !p.fixture) : [];
+  // The sewer's drains that say no fixture, the rain's no area: what they take is not counted.
+  const unsized = net.points.filter((p) => !POINT_KINDS[p.kind].source && (group === 'sewer' ? !p.fixture : !p.area));
   return { stretches, unreached, hasOutlet: sources.length > 0, unsized };
 }

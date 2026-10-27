@@ -8,7 +8,8 @@ import { analyticModel, clashesOf, isometricSvg, waterproofing } from '../../src
 import { balance, loadTable, protect, voltageDrop } from '../../src/elements/mep/electrical';
 import { fittingsOf, networksOf } from '../../src/elements/mep/network';
 import { GROUP_OF, isMepPoint, isMepRun, type MepPoint, type MepRun } from '../../src/elements/mep/schema';
-import { hazenWilliams, mostUhc, neededDiameter, pressures, probableFlow, sewerFalls } from '../../src/elements/mep/water';
+import { hazenWilliams, mostUhc, neededDiameter, pressures, probableFlow, rainCapacity, rainDiameter, sewerFalls } from '../../src/elements/mep/water';
+import { DEFAULT_SIM } from '../../src/sim/settings';
 import { readProject, writeProject } from '../../src/io/project-file';
 import { runVertices } from '../../src/app/mep-ui';
 import { mepPointKind, mepRunKind } from '../../src/elements/kinds/mep';
@@ -199,6 +200,32 @@ describe('water and sewer', () => {
     // No cold pipe to the heater: the heater's own height, as before.
     const alone: Doc = { ...hot, mepRuns: hot.mepRuns.filter((r) => r.id !== 'a2') };
     expect(pressures(alone, 'hotWater')[0]!.head).toBeCloseTo(1.2, 9);
+  });
+
+  it('rain (NBR 10844): Q = I·A/60 down the pipes, the least diameter by table 4, the least fall 0.5 %', () => {
+    // A 100 mm pipe falling 10 cm in 5 m: 2 %.
+    const rain = (area: number | undefined, intensity?: number): Doc => ({
+      ...newDocument(),
+      ...(intensity ? { simulation: { ...DEFAULT_SIM, rain: intensity } } : {}),
+      mepPoints: [pt('ca', 'rainOutlet', 5, 0, -0.4, 'sys_rain'), pt('rp', 'rainDrain', 0, 0, 0, 'sys_rain', area === undefined ? {} : { area })],
+      mepRuns: [run('r1', 'sys_rain', 0.1, [0, 0, -0.2], [5, 0, -0.3], [5, 0, -0.4])],
+    });
+    // 60 m² at 150 mm/h: 150 L/min; a 75 takes 188 at 2 %.
+    const [s] = sewerFalls(rain(60), 'rain').stretches;
+    expect(s!.flow).toBeCloseTo(150, 9);
+    expect([s!.least, s!.ok, s!.needed, s!.sized]).toEqual([0.5, true, 0.075, true]);
+    // 120 m²: 300 L/min, past the 75's 188, within the 100's 405.
+    expect(sewerFalls(rain(120), 'rain').stretches[0]!.needed).toBe(0.1);
+    // 300 m²: 750 L/min, past the 125's 735: a 150, and the 100 drawn does not do.
+    const big = sewerFalls(rain(300), 'rain').stretches[0]!;
+    expect([big.needed, big.sized]).toEqual([0.15, false]);
+    // The project's own design rain: São Paulo (Mirante Santana), 5 years, 172 mm/h.
+    expect(sewerFalls(rain(60, 172), 'rain').stretches[0]!.flow).toBeCloseTo(172, 9);
+    // A drain with no area: no flow, and said.
+    expect(sewerFalls(rain(undefined), 'rain').unsized.map((p) => p.id)).toEqual(['rp']);
+    expect(rainCapacity(0.1, 0.4)).toBe(0);
+    expect(rainCapacity(0.1, 3)).toBe(405);
+    expect(rainDiameter(11000, 4)).toBeNull();
   });
 
   it('UHC and diameters (NBR 8160): a toilet asks a 100 mm branch; 25 units pass a 75; 250 at 1 % pass a 100', () => {

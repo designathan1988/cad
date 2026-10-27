@@ -8,8 +8,9 @@ import { analyticModel, clashesOf, isometricSvg, waterproofing } from '../elemen
 import { loadTable, MAX_DROP } from '../elements/mep/electrical';
 import { fittingsOf, networksOf } from '../elements/mep/network';
 import { GROUP_OF, systemsOf } from '../elements/mep/schema';
-import { MAX_STATIC, MIN_DYNAMIC, pressures, sewerFalls } from '../elements/mep/water';
-import { el, segmented, select } from './controls';
+import { DEFAULT_RAIN, MAX_STATIC, MIN_DYNAMIC, pressures, sewerFalls } from '../elements/mep/water';
+import { simSettingsOf } from '../app/sim-tables';
+import { el, numberField, segmented, select } from './controls';
 import { openProjectDialog } from './dialog';
 import { type MessageKey, num, t } from './i18n';
 
@@ -163,19 +164,33 @@ export function showServices(app: App, first: Tab = 'systems'): void {
           'div',
           {},
           el('h3', {}, t(`services.disc.${group}` as MessageKey)),
+          // The rain: the design rain the flows take, kept with the simulations' premises.
+          ...(group === 'rain'
+            ? [
+                el(
+                  'label',
+                  { class: 'lot-row services-rain' },
+                  el('span', {}, t('services.rainIntensity')),
+                  numberField(doc.simulation?.rain ?? DEFAULT_RAIN, (v) => app.setSimulation({ ...simSettingsOf(doc), rain: Math.max(1, v) }), 1, 0, 'mm/h', 1000),
+                ),
+              ]
+            : []),
           ...(f.stretches.length === 0 ? [note('services.noStretches')] : []),
           ...(f.stretches.length > 0
             ? [
                 table(
-                  [t('services.stretch'), t('services.diameter'), t('services.length'), t('services.fall'), t('services.least'), '', ...(group === 'sewer' ? ['UHC', t('services.neededDn'), ''] : [])],
+                  [t('services.stretch'), t('services.diameter'), t('services.length'), t('services.fall'), t('services.least'), '', group === 'sewer' ? 'UHC' : t('services.flow'), t('services.neededDn'), ''],
                   f.stretches.map((s) => [
                     link(app.reportTitle(s.runId), s.runId),
                     `${Math.round(s.diameter * 1000)} mm`,
                     `${num(s.length, 2)} m`,
                     `${num(s.slope, 2)} %`,
-                    `${num(s.least, 0)} %`,
+                    `${num(s.least, 1)} %`,
                     mark(s.ok),
-                    ...(group === 'sewer' ? [s.uhc > 0 ? num(s.uhc, 0) : '—', s.needed === null ? (s.uhc > 0 ? t('services.pastTables') : '—') : `DN ${Math.round(s.needed * 1000)}`, s.uhc > 0 ? mark(s.sized) : '—'] : []),
+                    ...((load: number, text: string) => [load > 0 ? text : '—', s.needed === null ? (load > 0 ? t('services.pastTables') : '—') : `DN ${Math.round(s.needed * 1000)}`, load > 0 ? mark(s.sized) : '—'])(
+                      group === 'sewer' ? s.uhc : s.flow,
+                      group === 'sewer' ? num(s.uhc, 0) : `${num(s.flow, 0)} L/min`,
+                    ),
                   ]),
                   [1, 2, 3, 4, 6, 7],
                 ),
@@ -183,10 +198,10 @@ export function showServices(app: App, first: Tab = 'systems'): void {
             : []),
           ...(f.stretches.length > 0 && !f.hasOutlet ? [note('services.noOutlet')] : []),
           ...(f.unreached.length > 0 ? [el('p', { class: 'services-bad' }, t('services.drainsLoose', { n: f.unreached.length }))] : []),
-          ...(f.unsized.length > 0 ? [el('p', { class: 'services-bad' }, t('services.unsized', { n: f.unsized.length })), el('div', {}, ...f.unsized.map((p) => link(app.reportTitle(p.id), p.id)))] : []),
+          ...(f.unsized.length > 0 ? [el('p', { class: 'services-bad' }, t(group === 'sewer' ? 'services.unsized' : 'services.rainUnsized', { n: f.unsized.length })), el('div', {}, ...f.unsized.map((p) => link(app.reportTitle(p.id), p.id)))] : []),
         );
       });
-      body = el('div', { class: 'budget-scroll' }, ...blocks, note('services.sewerNote'), note('services.uhcNote'));
+      body = el('div', { class: 'budget-scroll' }, ...blocks, note('services.sewerNote'), note('services.uhcNote'), note('services.rainNote'));
     } else if (tab === 'clashes') {
       const c = clashesOf(doc, g);
       body = el(

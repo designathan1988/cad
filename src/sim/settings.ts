@@ -12,6 +12,8 @@ export interface SimSettings {
   readonly inside: { readonly temperature: number; readonly humidity: number };
   readonly outside: { readonly temperature: number; readonly humidity: number };
   readonly wifi: { readonly band: WifiBand; /** dBm at the antenna. */ readonly power: number };
+  /** The design rain for the rain pipes (mm/h, NBR 10844); none: 150, the norm's figure for up to 100 m². */
+  readonly rain?: number;
 }
 
 /** São Paulo (zone 3), a cold winter night outside a heated room, a common router. */
@@ -29,5 +31,5 @@ export const isSimSettings = (x: unknown): x is SimSettings => {
   if (typeof x !== 'object' || x === null) return false;
   const o = x as Record<string, unknown>;
   const w = o.wifi as Record<string, unknown> | undefined;
-  return finite(o.zone) && Number.isInteger(o.zone) && o.zone >= 1 && o.zone <= 8 && air(o.inside) && air(o.outside) && typeof w === 'object' && w !== null && (w.band === '2.4' || w.band === '5') && finite(w.power);
+  return finite(o.zone) && Number.isInteger(o.zone) && o.zone >= 1 && o.zone <= 8 && air(o.inside) && air(o.outside) && typeof w === 'object' && w !== null && (w.band === '2.4' || w.band === '5') && finite(w.power) && (o.rain === undefined || (finite(o.rain) && o.rain > 0));
 };
