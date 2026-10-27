@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import type { Point2 } from '../core/vector';
 import type { PrismFaces } from '../elements/wall/geometry/faces';
+import { planeAt, type TopPlane } from '../elements/wall/geometry/under-roof';
 
 export const toThree = (p: Point2, z: number) => new THREE.Vector3(p.x, z, -p.y);
 
@@ -29,6 +30,42 @@ export function shownPrism(poly: readonly Point2[], bottom: number, top: number,
   const sides = pos.length / 3;
   for (const c of f.top) for (let i = 1; i < c.length - 1; i++) [toThree(c[0]!, top), toThree(c[i]!, top), toThree(c[i + 1]!, top)].forEach(push);
   for (const c of f.bottom) for (let i = 1; i < c.length - 1; i++) [toThree(c[0]!, bottom), toThree(c[i + 1]!, bottom), toThree(c[i]!, bottom)].forEach(push);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.addGroup(0, sides, 0);
+  g.addGroup(sides, pos.length / 3 - sides, 1);
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * A block whose top follows a plane (a wall under a roof: under-roof.ts), wound and grouped as
+ * shownPrism: the sides that show (f; all without it) cut off under the plane, the top on it.
+ */
+export function slopedPrism(poly: readonly Point2[], bottom: number, plane: TopPlane, f: PrismFaces | undefined): THREE.BufferGeometry {
+  const pos: number[] = [];
+  const push = (v: THREE.Vector3) => pos.push(v.x, v.y, v.z);
+  const n = poly.length;
+  for (let i = 0; i < n; i++) {
+    const a = poly[i]!;
+    const b = poly[(i + 1) % n]!;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len === 0) continue;
+    const at = (t: number) => ({ x: a.x + ((b.x - a.x) * t) / len, y: a.y + ((b.y - a.y) * t) / len });
+    const rects = f ? (f.sides[i] ?? []) : [{ t0: 0, t1: len, z0: bottom, z1: Infinity }];
+    for (const r of rects) {
+      const [p0, p1] = [at(r.t0), at(r.t1)];
+      const h0 = Math.max(r.z0, Math.min(r.z1, planeAt(plane, p0)));
+      const h1 = Math.max(r.z0, Math.min(r.z1, planeAt(plane, p1)));
+      if (h0 - r.z0 < 1e-9 && h1 - r.z0 < 1e-9) continue;
+      const a0 = toThree(p0, r.z0);
+      const b0 = toThree(p1, r.z0);
+      [a0, b0, toThree(p1, h1), a0, toThree(p1, h1), toThree(p0, h0)].forEach(push);
+    }
+  }
+  const sides = pos.length / 3;
+  for (let i = 1; i < n - 1; i++) [poly[0]!, poly[i]!, poly[i + 1]!].map((p) => toThree(p, planeAt(plane, p))).forEach(push);
+  for (const c of f ? f.bottom : [poly]) for (let i = 1; i < c.length - 1; i++) [toThree(c[0]!, bottom), toThree(c[i + 1]!, bottom), toThree(c[i]!, bottom)].forEach(push);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.addGroup(0, sides, 0);

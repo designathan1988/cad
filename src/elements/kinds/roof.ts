@@ -9,6 +9,7 @@ import { type RoofSolid, roofSolid } from '../roof/geometry';
 import { type Roof, ROOF_PREFIX } from '../roof/schema';
 import { insideRing } from '../room/derive';
 import { trace } from './paint';
+import { wallBand, wallTop } from '../../app/document';
 
 export const roofKind: ElementKind<Roof, RoofSolid> = {
   key: 'roofs',
@@ -35,11 +36,20 @@ export const roofKind: ElementKind<Roof, RoofSolid> = {
     r.thickness > 0 &&
     finite(r.baseOffset) &&
     (r.parapet === undefined || finite(r.parapet)),
-  // On its level's top.
-  memo: 'level',
+  // On its level's top; not memoised: a wall put under it (its top on the roof) closes its gable.
   derive: (doc, r) => {
     const level = doc.levels.find((l) => l.id === r.levelId) ?? { elevation: 0, height: 2.8 };
-    return roofSolid(r, level.elevation + level.height);
+    const s = roofSolid(r, level.elevation + level.height);
+    // A gable a wall under the roof already closes (its top on the roof) is that wall: the infill
+    // would lie in its face.
+    const bands = doc.walls.filter((w) => w.levelId === r.levelId && wallTop(doc, w).kind === 'roof').map((w) => wallBand(doc, w));
+    if (bands.length === 0) return s;
+    const closed = (g: (typeof s.gables)[number]) => {
+      const a = g[0]!;
+      const b = g[g.length - 1]!;
+      return bands.some((band) => [a, b, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }].every((p) => insideRing(band, p)));
+    };
+    return { ...s, gables: s.gables.filter((g) => !closed(g)) };
   },
   element: (s) => s.roof,
   outlines: (s) => [s.outline],

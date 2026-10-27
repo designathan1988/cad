@@ -191,3 +191,74 @@ function less(z0: number, z1: number, cuts: readonly [number, number][]): [numbe
   }
   return parts.filter(([a, b]) => b - a > LENGTH_EPS);
 }
+
+/** A block whose top follows a plane (under-roof.ts), with the faces of it that show. */
+export interface SlopedTop {
+  readonly polygon: readonly { readonly x: number; readonly y: number }[];
+  readonly plane: { readonly a: number; readonly b: number; readonly c: number };
+  readonly faces: PrismFaces | undefined;
+}
+
+/**
+ * The lines with sloped tops (walls under a roof): featureEdges sees each such block up to its highest
+ * point, so what it drew above the slope inside the block goes, and the slope's line goes on each side
+ * of the block that shows.
+ */
+export function underSlopes(edges: readonly Edge3[], sloped: readonly SlopedTop[]): Edge3[] {
+  if (sloped.length === 0) return [...edges];
+  const zAt = (s: SlopedTop, x: number, y: number) => s.plane.a * x + s.plane.b * y + s.plane.c;
+  const out: Edge3[] = [];
+  for (const e of edges) {
+    let parts: [number, number][] = [[0, 1]];
+    const at = (t: number) => ({ x: e.a.x + (e.b.x - e.a.x) * t, y: e.a.y + (e.b.y - e.a.y) * t, z: e.a.z + (e.b.z - e.a.z) * t });
+    for (const s of sloped) {
+      // Where the edge is over the block in plan (a hair outside counts) and above its slope: removed.
+      let lo = 0;
+      let hi = 1;
+      // g(t) = g0 + (g1 − g0)·t ≥ 0 kept in [lo, hi].
+      const keep = (g0: number, g1: number) => {
+        if (Math.abs(g1 - g0) < 1e-12) {
+          if (g0 < 0) hi = -1;
+          return;
+        }
+        const t = -g0 / (g1 - g0);
+        if (g1 > g0) lo = Math.max(lo, t);
+        else hi = Math.min(hi, t);
+      };
+      const n = s.polygon.length;
+      for (let i = 0; i < n; i++) {
+        const p = s.polygon[i]!;
+        const q = s.polygon[(i + 1) % n]!;
+        const side = (v: { x: number; y: number }) => (q.x - p.x) * (v.y - p.y) - (q.y - p.y) * (v.x - p.x) + 1e-5 * Math.hypot(q.x - p.x, q.y - p.y);
+        keep(side(e.a), side(e.b));
+      }
+      keep(e.a.z - zAt(s, e.a.x, e.a.y) - 1e-5, e.b.z - zAt(s, e.b.x, e.b.y) - 1e-5);
+      if (hi - lo > 1e-9)
+        parts = parts.flatMap(([a, b]): [number, number][] => [
+          ...(lo > a ? [[a, Math.min(b, lo)] as [number, number]] : []),
+          ...(hi < b ? [[Math.max(a, hi), b] as [number, number]] : []),
+        ]);
+    }
+    for (const [a, b] of parts) if (b - a > 1e-9) out.push({ a: at(a), b: at(b) });
+  }
+  for (const s of sloped) {
+    const n = s.polygon.length;
+    for (let i = 0; i < n; i++) {
+      const rects = s.faces?.sides[i] ?? [];
+      if (s.faces && rects.length === 0) continue;
+      const p = s.polygon[i]!;
+      const q = s.polygon[(i + 1) % n]!;
+      const len = Math.hypot(q.x - p.x, q.y - p.y);
+      if (len < LENGTH_EPS) continue;
+      const t0 = rects.length > 0 ? Math.min(...rects.map((r) => r.t0)) / len : 0;
+      const t1 = rects.length > 0 ? Math.max(...rects.map((r) => r.t1)) / len : 1;
+      const on = (t: number) => {
+        const x = p.x + (q.x - p.x) * t;
+        const y = p.y + (q.y - p.y) * t;
+        return { x, y, z: zAt(s, x, y) };
+      };
+      out.push({ a: on(t0), b: on(t1) });
+    }
+  }
+  return out;
+}

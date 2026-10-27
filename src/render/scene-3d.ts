@@ -10,10 +10,10 @@ import type { WallId } from '../elements/wall/schema';
 import type { Material } from '../elements/material/schema';
 import { blockPaint, type Paint, wallMeshKey } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
-import { prism, shownPrism, toThree } from './prisms';
+import { prism, shownPrism, slopedPrism, toThree } from './prisms';
 import { eachSolid } from '../elements/registry';
 import type { KindSolid } from '../elements/contract';
-import { featureEdges } from '../elements/wall/geometry/edges';
+import { featureEdges, type SlopedTop, underSlopes } from '../elements/wall/geometry/edges';
 import { openingParts } from '../elements/opening/parts';
 import { boxCaps, type SectionBox, type SectionLine, sectionCaps, sectionLooks, type UprightPrism } from '../app/section-box';
 
@@ -298,7 +298,7 @@ export class Scene3D {
     const prisms: UprightPrism[] = [];
     for (const s of src.g.solids.values()) {
       const up = src.lift(s.wall.levelId);
-      for (const b of s.blocks) prisms.push({ polygon: b.polygon, bottom: b.bottom + up, top: b.top + up });
+      for (const b of s.blocks) prisms.push({ polygon: b.polygon, bottom: b.bottom + up, top: b.top + up, ...(b.plane ? { plane: { ...b.plane, c: b.plane.c + up } } : {}) });
     }
     // The registry's kinds that a cut fills (a floor: contract.ts, caps).
     for (const x of eachSolid(src.g.kinds)) {
@@ -647,20 +647,22 @@ export class Scene3D {
       }
       this.edges.clear();
       const faces = this.facesOf(g);
-      const byLevel = new Map<string, { prisms: WallSolid['blocks'][number][]; faces: PrismFaces[] }>();
+      const byLevel = new Map<string, { prisms: WallSolid['blocks'][number][]; faces: PrismFaces[]; sloped: SlopedTop[] }>();
       for (const s of g.solids.values()) {
         const mine = faces.get(s.wall.id) ?? [];
-        const level = byLevel.get(s.wall.levelId) ?? { prisms: [], faces: [] };
+        const level = byLevel.get(s.wall.levelId) ?? { prisms: [], faces: [], sloped: [] };
         s.blocks.forEach((b, i) => {
           if (!mine[i]) return;
           level.prisms.push(b);
           level.faces.push(mine[i]!);
+          // Under a roof: seen up to its highest point, then cut to its slope (edges.ts, underSlopes).
+          if (b.plane) level.sloped.push({ polygon: b.polygon, plane: b.plane, faces: mine[i] });
         });
         byLevel.set(s.wall.levelId, level);
       }
-      for (const [levelId, { prisms, faces: shown }] of byLevel) {
+      for (const [levelId, { prisms, faces: shown, sloped }] of byLevel) {
         const pos: number[] = [];
-        for (const e of featureEdges(prisms, shown)) pos.push(e.a.x, e.a.z, -e.a.y, e.b.x, e.b.z, -e.b.y);
+        for (const e of underSlopes(featureEdges(prisms, shown), sloped)) pos.push(e.a.x, e.a.z, -e.a.y, e.b.x, e.b.z, -e.b.y);
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
         const lines = new THREE.LineSegments(geo, this.edgeMaterial);
@@ -712,7 +714,8 @@ export class Scene3D {
     s.blocks.forEach((b, i) => {
       const { side, top } = blockPaint(s.materials, b.layerIndex, state);
       const f = faces[i];
-      group.add(new THREE.Mesh(f ? shownPrism(b.polygon, b.bottom, b.top, f) : prism(b.polygon, b.bottom, b.top), [material(side), material(top)]));
+      const geo = b.plane ? slopedPrism(b.polygon, b.bottom, b.plane, f) : f ? shownPrism(b.polygon, b.bottom, b.top, f) : prism(b.polygon, b.bottom, b.top);
+      group.add(new THREE.Mesh(geo, [material(side), material(top)]));
     });
     return group;
   }

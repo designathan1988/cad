@@ -24,8 +24,16 @@ export interface WallLayer {
   readonly materialId: MaterialId;
 }
 
-/** Where a wall's top is: its level's height plus an offset, or a fixed height above its base. */
-export type HeightRule = { readonly kind: 'level'; readonly offset: number } | { readonly kind: 'fixed'; readonly height: number };
+/**
+ * Where a wall's top is: its level's height plus an offset; a fixed height above its base; another
+ * level's floor plus an offset (Revit's Top Constraint "up to level"); or the underside of the roofs
+ * over it (Revit's Attach Top: a gable wall rises to the ridge).
+ */
+export type HeightRule =
+  | { readonly kind: 'level'; readonly offset: number }
+  | { readonly kind: 'fixed'; readonly height: number }
+  | { readonly kind: 'toLevel'; readonly levelId: string; readonly offset: number }
+  | { readonly kind: 'roof' };
 
 /**
  * Layers are listed from the exterior face (right of the drawing direction) to the interior. A type

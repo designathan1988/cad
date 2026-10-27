@@ -5,6 +5,7 @@
 // one block. Doors and windows are always cut in plan, as Revit cuts its door and window families
 // whatever the view's cut height.
 
+import type { TopPlane } from '../wall/geometry/under-roof';
 import { add, normalize, perp, type Point2, scale, sub } from '../../core/vector';
 import { arcOf, pointAt, tangentAt } from '../wall/geometry/arc';
 import { clipOut, type ConvexPolygon, type HalfPlane, halfPlaneThrough } from '../wall/geometry/convex';
@@ -25,7 +26,9 @@ export interface Block {
   readonly layerIndex: number;
   readonly polygon: ConvexPolygon;
   readonly bottom: number;
+  /** Its top; under a roof (wall/geometry/under-roof.ts) the highest it reaches, its `plane` the top itself. */
   readonly top: number;
+  readonly plane?: TopPlane;
 }
 
 /** Where the opening is drawn: its jambs on the reference line and the wall's faces there. */

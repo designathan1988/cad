@@ -3,6 +3,7 @@
 // model's; interface state, kept with the 3D view's other choices (view-3d.ts). Pure.
 
 import type { Point2 } from '../core/vector';
+import { clipHalfPlane } from '../elements/wall/geometry/convex';
 
 export interface Point3 {
   readonly x: number;
@@ -90,7 +91,12 @@ export interface UprightPrism {
   readonly polygon: readonly Point2[];
   readonly bottom: number;
   readonly top: number;
+  /** A top that follows a plane, z = a·x + b·y + c (a wall under a roof), `top` its highest. */
+  readonly plane?: { readonly a: number; readonly b: number; readonly c: number };
 }
+
+/** The prism's top over q: its plane's height there, kept between its bottom and top. */
+const topAt = (p: UprightPrism, q: Point2): number => (p.plane ? Math.max(p.bottom, Math.min(p.top, p.plane.a * q.x + p.plane.b * q.y + p.plane.c)) : p.top);
 
 /**
  * Where the box's faces go through the prisms, as flat polygons to fill (Revit fills them as the plan
@@ -112,11 +118,18 @@ export function boxCaps(prisms: readonly UprightPrism[], box: SectionBox): Point
       ] as const) {
         for (const [a, b] of crossings(p.polygon, axis, c)) {
           const at = (s: number, z: number): Point3 => (axis === 'x' ? { x: c, y: s, z } : { x: s, y: c, z });
-          caps.push([at(a, z0), at(b, z0), at(b, z1), at(a, z1)]);
+          // Under a slope, the cap's top follows it.
+          const up = (s: number) => Math.max(z0, Math.min(z1, topAt(p, at(s, 0))));
+          caps.push([at(a, z0), at(b, z0), at(b, up(b)), at(a, up(a))]);
         }
       }
     }
-    for (const z of [box.min.z, box.max.z]) if (z > p.bottom && z < p.top) caps.push(p.polygon.map((q) => ({ x: q.x, y: q.y, z })));
+    for (const z of [box.min.z, box.max.z]) {
+      if (!(z > p.bottom && z < p.top)) continue;
+      // Under a slope, only where the slope is above the box's face.
+      const poly = p.plane ? clipHalfPlane(p.polygon, { normal: { x: -p.plane.a, y: -p.plane.b }, offset: p.plane.c - z }) : p.polygon;
+      if (poly.length >= 3) caps.push(poly.map((q) => ({ x: q.x, y: q.y, z })));
+    }
   }
   return caps;
 }
@@ -170,7 +183,7 @@ export function sectionCaps(prisms: readonly UprightPrism[], s: SectionLine): Po
     at.sort((u, v) => u - v);
     const on = (t: number, z: number): Point3 => ({ x: s.point.x + s.dir.x * t, y: s.point.y + s.dir.y * t, z });
     for (let i = 0; i + 1 < at.length; i += 2) {
-      if (at[i + 1]! - at[i]! > 1e-9) caps.push([on(at[i]!, p.bottom), on(at[i + 1]!, p.bottom), on(at[i + 1]!, p.top), on(at[i]!, p.top)]);
+      if (at[i + 1]! - at[i]! > 1e-9) caps.push([on(at[i]!, p.bottom), on(at[i + 1]!, p.bottom), on(at[i + 1]!, topAt(p, on(at[i + 1]!, 0))), on(at[i]!, topAt(p, on(at[i]!, 0)))]);
     }
   }
   return caps;

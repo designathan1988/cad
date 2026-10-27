@@ -1,7 +1,7 @@
 // Commands on levels. A wall's heights come from its level, so changing a level's elevation or height
 // moves every wall on it without touching the walls.
 
-import type { Doc, Level, LevelId } from '../../app/document';
+import { type Doc, type Level, type LevelId, wallHeights } from '../../app/document';
 import type { Command } from '../../core/store';
 
 /** A new level on top of the highest one, with that one's height and cut height. */
@@ -55,5 +55,14 @@ export function levelOverlaps(doc: Doc): { levelId: LevelId; aboveId: LevelId; b
 
 export const deleteLevel = (id: LevelId): Command<Doc> => ({
   label: 'cmd.deleteLevel',
-  apply: (doc) => (canDeleteLevel(doc, id) ? { ...doc, levels: doc.levels.filter((l) => l.id !== id) } : doc),
+  apply: (doc) => {
+    if (!canDeleteLevel(doc, id)) return doc;
+    // A wall that went up to it keeps its height, now fixed: its top had nothing left to follow.
+    const walls = doc.walls.map((w) => {
+      if (w.top?.kind !== 'toLevel' || w.top.levelId !== id) return w;
+      const h = wallHeights(doc, w);
+      return { ...w, top: { kind: 'fixed' as const, height: h.top - h.bottom } };
+    });
+    return { ...doc, levels: doc.levels.filter((l) => l.id !== id), walls };
+  },
 });

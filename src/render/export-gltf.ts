@@ -15,7 +15,7 @@ import type { DerivedGeometry } from '../app/geometry';
 import { visibleFaces } from '../elements/wall/geometry/faces';
 import type { LayerFunction } from '../elements/wall/schema';
 import type { Material } from '../elements/material/schema';
-import { prism, shownPrism } from './prisms';
+import { prism, shownPrism, slopedPrism } from './prisms';
 import { eachSolid } from '../elements/registry';
 import type { KindKey, KindSolid } from '../elements/contract';
 
@@ -106,7 +106,8 @@ export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): 
       const f = faces[k++];
       const layer = s.materials[b.layerIndex];
       const m = layer ? layerMaterial(layer) : material('structure', naming.material('structure'));
-      node.add(new THREE.Mesh(f ? shownPrism(b.polygon, b.bottom, b.top, f) : prism(b.polygon, b.bottom, b.top), [m, m]));
+      const geo = b.plane ? slopedPrism(b.polygon, b.bottom, b.plane, f) : f ? shownPrism(b.polygon, b.bottom, b.top, f) : prism(b.polygon, b.bottom, b.top);
+      node.add(new THREE.Mesh(geo, [m, m]));
     }
     levelGroup(s.wall.levelId).add(node);
   }

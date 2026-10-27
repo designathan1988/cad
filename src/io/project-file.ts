@@ -54,8 +54,10 @@ import type { DocWall } from '../app/document';
  *   frame, trim, transom, threshold. Older openings have none and are drawn as they were.
  * Version 25: room separators and zones (`separators`, `zones`); a room's finishes; a floor's tiling
  *   and build-up (`tiling`, `layers`). Older files have none.
+ * Version 26: a wall's top up to another level or under the roof (`top` kinds 'toLevel', 'roof').
+ *   Older walls have neither.
  */
-export const CURRENT_VERSION = 25;
+export const CURRENT_VERSION = 26;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
@@ -85,7 +87,12 @@ export const isLevel = (l: unknown): l is Level =>
 
 /** A top rule: the level's height plus an offset, or a fixed height above the base. Absent is fine. */
 const isTop = (r: unknown): boolean =>
-  r === undefined || (isObject(r) && ((r.kind === 'level' && finite(r.offset)) || (r.kind === 'fixed' && finite(r.height) && r.height > 0)));
+  r === undefined ||
+  (isObject(r) &&
+    ((r.kind === 'level' && finite(r.offset)) ||
+      (r.kind === 'fixed' && finite(r.height) && r.height > 0) ||
+      (r.kind === 'toLevel' && typeof r.levelId === 'string' && finite(r.offset)) ||
+      r.kind === 'roof'));
 
 /** A material: a name, a #rrggbb colour, a finish between 0 and 1, a cut pattern. */
 export const isMaterial = (m: unknown): m is Material =>

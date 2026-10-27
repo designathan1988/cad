@@ -23,6 +23,9 @@ import type { Grid } from '../elements/grid/schema';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { Floor, Room } from '../elements/room/schema';
 import type { HeightRule, ReferenceLine, Wall, WallType, WallTypeId } from '../elements/wall/schema';
+import { highestUnder, type RoofCover, roofCovers } from '../elements/wall/geometry/under-roof';
+import { roofSolid } from '../elements/roof/geometry';
+import { toCounterClockwise } from '../elements/wall/geometry/convex';
 
 export type LevelId = string;
 
@@ -53,7 +56,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 25;
+  readonly version: 26;
   readonly name: string;
   /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
   readonly units: Units;
@@ -115,7 +118,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 25,
+    version: 26,
     name: '',
     units: DEFAULT_UNITS,
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
@@ -223,12 +226,63 @@ export function wallOverrides(doc: Doc, wall: DocWall): { top: boolean; baseOffs
   };
 }
 
-/** Bottom and top of a wall, derived from its level and constraints. */
+/**
+ * Bottom and top of a wall, derived from its level and constraints. Up to a level that is gone, or
+ * under no roof, its own level's height. Under a roof, the highest its underside comes over the wall
+ * (the 3D follows the slope: wall/geometry/under-roof.ts).
+ */
 export function wallHeights(doc: Doc, wall: DocWall): { bottom: number; top: number } {
   const level = levelOf(doc, wall.levelId) ?? { elevation: 0, height: 2.8 };
   const bottom = level.elevation + wallBase(doc, wall);
   const top = wallTop(doc, wall);
-  return { bottom, top: top.kind === 'level' ? level.elevation + level.height + top.offset : bottom + top.height };
+  const levelTop = level.elevation + level.height;
+  switch (top.kind) {
+    case 'level':
+      return { bottom, top: levelTop + top.offset };
+    case 'fixed':
+      return { bottom, top: bottom + top.height };
+    case 'toLevel': {
+      const to = levelOf(doc, top.levelId);
+      return { bottom, top: Math.max(bottom + 0.01, to ? to.elevation + top.offset : levelTop) };
+    }
+    case 'roof': {
+      const under = highestUnder(roofCoversOf(doc, wall.levelId), wallBand(doc, wall));
+      return { bottom, top: Math.max(bottom + 0.01, under ?? levelTop) };
+    }
+  }
+}
+
+/** The roofs of a level, from below (under-roof.ts); worked out once per roof. */
+const covers = new WeakMap<Roof, RoofCover>();
+export function roofCoversOf(doc: Doc, levelId: LevelId): RoofCover[] {
+  const level = levelOf(doc, levelId) ?? { elevation: 0, height: 2.8 };
+  return doc.roofs
+    .filter((r) => r.levelId === levelId)
+    .map((r) => {
+      let c = covers.get(r);
+      if (!c) covers.set(r, (c = roofCovers([roofSolid(r, level.elevation + level.height)])[0]!));
+      return c;
+    });
+}
+
+/** Where a wall stands in plan, generously: its line widened by its thickness to both sides. */
+export function wallBand(doc: Doc, wall: DocWall): Point2[] {
+  const t = Math.max(0.01, wallThickness(doc, wall));
+  const dx = wall.end.x - wall.start.x;
+  const dy = wall.end.y - wall.start.y;
+  const l = Math.hypot(dx, dy) || 1;
+  const n = { x: (-dy / l) * t, y: (dx / l) * t };
+  // Past its ends too: a joined corner reaches beyond the wall's line.
+  const u = { x: (dx / l) * t, y: (dy / l) * t };
+  const s = { x: wall.start.x - u.x, y: wall.start.y - u.y };
+  const e = { x: wall.end.x + u.x, y: wall.end.y + u.y };
+  const band = [
+    { x: s.x - n.x, y: s.y - n.y },
+    { x: e.x - n.x, y: e.y - n.y },
+    { x: e.x + n.x, y: e.y + n.y },
+    { x: s.x + n.x, y: s.y + n.y },
+  ];
+  return [...toCounterClockwise(band)];
 }
 
 export const wallThickness = (doc: Doc, wall: Wall): number =>

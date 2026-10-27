@@ -97,7 +97,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     nodes.push(head('wall', title));
     part(selected.length);
     // Built from the wall's fields (elements/wall/fields.ts).
-    const fields = wallFields(doc, act);
+    const fields = wallFields(doc, act, selected);
     const general = fieldsSection(t('panel.general'), true, fields.general, selected);
     const constraints = fieldsSection(t('panel.constraints'), true, fields.constraints, selected);
     const more = fieldsSection(t('panel.more'), false, fields.more, selected);

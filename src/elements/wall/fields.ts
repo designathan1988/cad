@@ -9,7 +9,7 @@ import { name, t, type MessageKey } from '../../ui/i18n';
 import { layerSwatch } from '../../ui/swatch';
 import { referenceLength } from '../opening/derive';
 import { arcOf } from './geometry/arc';
-import type { EndJoin, ReferenceLine } from './schema';
+import type { EndJoin, HeightRule, ReferenceLine } from './schema';
 import { canAlignWalls, canDistributeWalls } from '../../tools/arrange-walls';
 
 export interface WallFieldActions {
@@ -44,9 +44,12 @@ const thickness = (doc: Doc, w: DocWall) => (doc.wallTypes.find((x) => x.id === 
 export function wallFields(
   doc: Doc,
   act: WallFieldActions,
+  /** The walls the fields are for: a new top up to a level takes the one above the first's. */
+  selected: readonly DocWall[] = [],
 ): { general: Field<DocWall>[]; constraints: Field<DocWall>[]; more: Field<DocWall>[]; arrange: Field<DocWall>[] } {
   const top = (w: DocWall) => wallTop(doc, w);
-  const all = (kind: 'level' | 'fixed') => (ws: readonly DocWall[]) => ws.every((w) => top(w).kind === kind);
+  const all = (kind: HeightRule['kind']) => (ws: readonly DocWall[]) => ws.every((w) => top(w).kind === kind);
+  const sel = () => selected;
   const one = (ws: readonly DocWall[]) => ws.length === 1;
   return {
     general: [
@@ -103,14 +106,40 @@ export function wallFields(
         id: 'top',
         label: 'panel.top',
         kind: 'select',
-        options: [
-          { value: 'level', label: t('panel.topLevel') },
-          { value: 'fixed', label: t('panel.topFixed') },
-        ],
+        options: topOptions(doc),
         get: (w) => top(w).kind,
-        set: (v) => act.updateWalls({ top: v === 'level' ? { kind: 'level', offset: 0 } : { kind: 'fixed', height: 2.8 } }),
+        set: (v) => act.updateWalls({ top: topRule(v, levelAbove(doc, sel()[0]?.levelId)) }),
         own: (ws) => ws.some((w) => wallOverrides(doc, w).top),
         reset: () => act.resetToType(['top']),
+      },
+      // Up to a level: which one, and how far above (+) or below (−) its floor.
+      {
+        id: 'topLevelId',
+        label: 'panel.topToWhich',
+        kind: 'select',
+        sub: true,
+        when: all('toLevel'),
+        options: doc.levels.map((l) => ({ value: l.id, label: name(l.name) })),
+        get: (w) => {
+          const r = top(w);
+          return r.kind === 'toLevel' ? r.levelId : '';
+        },
+        set: (v) => act.updateWalls({ top: { kind: 'toLevel', levelId: v, offset: 0 } }),
+      },
+      {
+        id: 'topLevelOffset',
+        label: 'panel.offset',
+        kind: 'number',
+        sub: true,
+        when: (ws) => all('toLevel')(ws) && ws.every((w) => (top(w) as { levelId?: string }).levelId === (top(ws[0]!) as { levelId?: string }).levelId),
+        get: (w) => {
+          const r = top(w);
+          return r.kind === 'toLevel' ? r.offset : 0;
+        },
+        set: (v) => {
+          const r = top(sel()[0]!);
+          if (r.kind === 'toLevel') act.updateWalls({ top: { ...r, offset: v } });
+        },
       },
       {
         id: 'topOffset',
@@ -130,7 +159,7 @@ export function wallFields(
         label: 'panel.height',
         kind: 'readout',
         sub: true,
-        when: all('level'),
+        when: (ws) => all('level')(ws) || all('toLevel')(ws) || all('roof')(ws),
         text: (ws) =>
           sameText(
             ws.map((w) => {
@@ -191,6 +220,30 @@ export function wallFields(
   };
 }
 
+/** The ways to set a top: the level's height, a fixed height, up to a level, under the roof. */
+const topOptions = (doc: Doc) => [
+  { value: 'level', label: t('panel.topLevel') },
+  { value: 'fixed', label: t('panel.topFixed') },
+  // Up to a level only when there is another level.
+  ...(doc.levels.length > 1 ? [{ value: 'toLevel', label: t('panel.topToLevel') }] : []),
+  { value: 'roof', label: t('panel.topRoof') },
+];
+
+/** The level just above a level (by its floor), else the highest other one. */
+function levelAbove(doc: Doc, levelId: string | undefined): string | undefined {
+  const own = doc.levels.find((l) => l.id === levelId);
+  const others = [...doc.levels].filter((l) => l.id !== levelId).sort((a, b) => a.elevation - b.elevation);
+  return (own ? others.find((l) => l.elevation > own.elevation) : undefined)?.id ?? others[others.length - 1]?.id;
+}
+
+/** A new top of the kind chosen; up to a level, the one given (the one above the walls'). */
+function topRule(kind: string, above: string | undefined): HeightRule {
+  if (kind === 'fixed') return { kind: 'fixed', height: 2.8 };
+  if (kind === 'roof') return { kind: 'roof' };
+  if (kind === 'toLevel' && above) return { kind: 'toLevel', levelId: above, offset: 0 };
+  return { kind: 'level', offset: 0 };
+}
+
 /** The text when all agree, else "varies". */
 const sameText = (texts: readonly string[]) => (texts.every((x) => x === texts[0]) ? texts[0]! : t('panel.varies'));
 
@@ -215,12 +268,20 @@ export function nextWallFields(doc: Doc, update: (patch: Partial<WallDefaults>) 
       id: 'top',
       label: 'panel.top',
       kind: 'select',
-      options: [
-        { value: 'level', label: t('panel.topLevel') },
-        { value: 'fixed', label: t('panel.topFixed') },
-      ],
+      // The next walls go on the level shown: up to a level, the highest other one.
+      options: topOptions(doc),
       get: (d) => d.top.kind,
-      set: (v) => update({ top: v === 'level' ? { kind: 'level', offset: 0 } : { kind: 'fixed', height: 2.8 } }),
+      set: (v) => update({ top: topRule(v, levelAbove(doc, undefined)) }),
+    },
+    {
+      id: 'topLevelId',
+      label: 'panel.topToWhich',
+      kind: 'select',
+      sub: true,
+      when: (ds) => ds[0]!.top.kind === 'toLevel',
+      options: doc.levels.map((l) => ({ value: l.id, label: name(l.name) })),
+      get: (d) => (d.top.kind === 'toLevel' ? d.top.levelId : ''),
+      set: (v) => update({ top: { kind: 'toLevel', levelId: v, offset: 0 } }),
     },
     {
       id: 'topOffset',

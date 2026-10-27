@@ -23,7 +23,8 @@ import { deriveRooms, type RoomSolid, type RoomWarning, spacesOf } from '../elem
 import type { RoomId } from '../elements/room/schema';
 import type { Point2 as P } from '../core/vector';
 import { type Material, materialIn } from '../elements/material/schema';
-import { CUT_HEIGHT, cutHeightOf, type Doc, type DocWall, levelOf, wallHeights } from './document';
+import { CUT_HEIGHT, cutHeightOf, type Doc, type DocWall, levelOf, roofCoversOf, wallHeights, wallTop } from './document';
+import { blocksUnder } from '../elements/wall/geometry/under-roof';
 
 export type PlanCut = 'cut' | 'below' | 'above';
 
@@ -152,7 +153,12 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     const { bottom, top } = wallHeights(doc, wall);
     const mine = cuts.get(wall.id) ?? [];
     const layers = types.get(wall.wallTypeId)?.layers ?? [];
-    const blocks = (slices.get(wall.id) ?? []).flatMap((sl) => cutSolid(sl.pieces, sl.bottom, sl.top, mine));
+    const cut = (slices.get(wall.id) ?? []).flatMap((sl) => cutSolid(sl.pieces, sl.bottom, sl.top, mine));
+    // Under the roof: each block cut by the roof's faces, its top on their slope (under-roof.ts).
+    const covers = wallTop(doc, wall).kind === 'roof' ? roofCoversOf(doc, wall.levelId) : [];
+    const level = levelOf(doc, wall.levelId);
+    const bare = level ? level.elevation + level.height : top;
+    const blocks = covers.length > 0 ? cut.flatMap((b) => blocksUnder(b, covers, bare)) : cut;
     const materials = layers.map((l) => materialIn(doc.materials, l.materialId));
     solids.set(wall.id, { wall, pieces: planPieces.get(wall.id)!, plan: plan.get(wall.id)!, blocks, bottom, top, layers, seams: seams.get(wall.id) ?? [], materials });
   }
