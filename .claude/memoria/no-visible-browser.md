@@ -16,4 +16,8 @@ On 2026-10-27, after I opened a second tab (the prototype, a PDF) and resized th
 
 Later on 2026-10-27 I broke this: I resized the page (browser_resize) and reloaded it (browser_navigate) several times to test 1280/880 px, and the user said "PARE DE LANÇAR A JANELA DO CHROME NA MINHA VISTA". Resizing and navigating raise the Chrome window. Never call browser_resize or browser_navigate while the user is working. Test narrow widths only when the user asks for it. Wait for HMR instead of reloading. If a reload is unavoidable, stop and say so in the report.
 
+Viewport: size it from the window itself (window.outerWidth/outerHeight): width − 16, height − 105 (a 1936×1100 window gives 1920×995; maximized 2560×943). A 1080-tall viewport cut the footer off ("NÃO CABE"). After the browser is restarted the viewport comes back at 1920×1080: set it once right after the page loads.
+
+On 2026-10-27 the user rejected a run of my own headless Chromium (scratchpad drive.cjs, minutes of SwiftShader tracing) and said "CONTINUA": verify in the Playwright page, not in a separate headless browser. If that page is lost (about:blank), loading the app again in it is the only way back.
+
 **How to apply:** open the test window once, then drive it with real gestures; refresh by navigating in the same page. A change to .mcp.json args only takes effect after the user reconnects the playwright server (/mcp) or restarts the session. Related: [[commit-push-github]].

@@ -13,4 +13,5 @@ Aprendizados guardados entre sessões, um por arquivo nesta pasta. Este índice 
 - [Terminar antes de começar](finish-before-new.md) — fechar o trabalho em andamento primeiro; o protótipo de interface v72 é modelo de disposição das funções que existem, não lista de funções
 - [Sem heredoc](no-heredoc.md) — NUNCA heredoc no shell; usar Edit/Write ou um script escrito com Write
 - [Plano de escopo](scope-plan.md) — docs/plano-de-escopo.md é a especificação (15 fases, contrato primeiro); construir e testar num projeto novo em branco
+- [Fotorrealista limpo](photoreal-trace.md) — como o traçado evita trava, grão, fireflies, sombra em degraus e luz sob as paredes; nunca FEATURE_MIS 0
 - [Larguras de janela no teste](test-window-sizes.md) — testar também com ~880 e ~1280 px de largura; comparar as capturas para a vista nunca pular ao selecionar
