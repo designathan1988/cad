@@ -31,9 +31,12 @@ const box = (southY = 0): Doc => ({
 const across: SectionMark = { id: 'sec_a', name: 'A', kind: 'section', start: { x: 1, y: -1 }, end: { x: 1, y: 4 }, depth: 5 };
 
 /** The cut's extent along the line and up, per closed outline. */
+// The outlines of what is cut: the walls' over their layers (lines alone), any other group's own; a
+// wall's layers (filled in their materials) are inside them.
 const extents = (d: ReturnType<typeof sectionDrawing>) =>
   d.cuts
-    .flatMap((c) => c.loops)
+    .filter((c) => !c.fill)
+    .flatMap((c) => (c.loops.length > 0 ? c.loops : loopsOf(c.segments)))
     .map((l) => ({ s0: Math.min(...l.map((p) => p.x)), s1: Math.max(...l.map((p) => p.x)), z0: Math.min(...l.map((p) => p.y)), z1: Math.max(...l.map((p) => p.y)) }))
     .sort((a, b) => a.s0 - b.s0);
 
@@ -52,6 +55,20 @@ describe('a section drawn from the model', () => {
       expect(x.z0).toBeCloseTo(0, 6);
       expect(x.z1).toBeCloseTo(2.8, 6);
     }
+  });
+
+  it("a wall's layers cut each in its material: plaster, brick, plaster across the 15 cm, thin lines between", () => {
+    const doc = box();
+    const d = sectionDrawing(doc, modelSolids(doc, deriveGeometry(doc)), across);
+    const layers = d.cuts.filter((c) => c.fill);
+    expect(layers.every((c) => c.pen === 'fine')).toBe(true);
+    // The south wall's three layers, by their widths along the line, each with its material's pattern.
+    const south = layers
+      .flatMap((c) => c.loops.map((l) => ({ s0: Math.min(...l.map((p) => p.x)), s1: Math.max(...l.map((p) => p.x)), pattern: c.fill!.pattern })))
+      .filter((x) => x.s1 < 2)
+      .sort((a, b) => a.s0 - b.s0);
+    expect(south.map((x) => Math.round((x.s1 - x.s0) * 1000) / 1000)).toEqual([0.015, 0.12, 0.015]);
+    expect(south.map((x) => x.pattern)).toEqual([doc.materials.find((m) => m.id === 'plaster')!.cut, doc.materials.find((m) => m.id === 'brick')!.cut, doc.materials.find((m) => m.id === 'plaster')!.cut]);
   });
 
   it('moving a wall moves its cut: the drawing follows the model', () => {

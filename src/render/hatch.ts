@@ -40,6 +40,32 @@ function strokes(pattern: CutPattern): readonly (readonly [number, number][])[] 
   }
 }
 
+/**
+ * A cut's pattern on paper (a section's: app/section-drawing.ts), where a unit is a millimetre: its tile
+ * `mm` wide, drawn at `pxPerMm` (the page's resolution) with lines `pen` mm wide. Not the plan's tiles:
+ * those are a screen pixel wide.
+ */
+export function paperHatch(ctx: CanvasRenderingContext2D, pattern: CutPattern, color: string, mm: number, pxPerMm: number, pen: number): CanvasPattern | null {
+  const lines = strokes(pattern);
+  if (!lines) return null;
+  const tile = document.createElement('canvas');
+  tile.width = tile.height = Math.max(4, Math.round(mm * pxPerMm));
+  const c = tile.getContext('2d');
+  if (!c) return null;
+  c.scale(tile.width / TILE, tile.height / TILE);
+  c.strokeStyle = color;
+  c.lineWidth = (pen * TILE) / mm;
+  c.lineJoin = 'round';
+  for (const line of lines) {
+    c.beginPath();
+    line.forEach(([x, y], i) => (i === 0 ? c.moveTo(x, y) : c.lineTo(x, y)));
+    c.stroke();
+  }
+  const made = ctx.createPattern(tile, 'repeat');
+  made?.setTransform(new DOMMatrix().scale(mm / tile.width));
+  return made;
+}
+
 /** The repeating pattern of a cut, in `color`; null when the pattern has no lines. */
 export function hatchPattern(ctx: CanvasRenderingContext2D, pattern: CutPattern, color: string, dpr: number): CanvasPattern | null {
   const key = `${pattern}|${color}|${dpr}`;

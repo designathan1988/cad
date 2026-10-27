@@ -4,7 +4,8 @@
 // with the cut pen; what lies beyond is drawn far to near (each face filled with paper, so nearer faces
 // hide what is behind them), with only its edges: where a face ends, or turns by more than 20° (as the
 // 3D view's lines, EdgesGeometry's threshold), joints between pieces of one face left out. Levels are
-// marked at their heights. Pure but for the painting.
+// marked at their heights. A wall's layers are cut each in its material's colour and hatch, thin lines
+// between them, the walls' outline with the cut pen. Pure but for the painting.
 
 import * as THREE from 'three';
 import type { Doc } from './document';
@@ -15,12 +16,18 @@ import { eachSolid } from '../elements/registry';
 import type { KindSolid } from '../elements/contract';
 import { openingParts } from '../elements/opening/parts';
 import { lookOf, type SectionMark } from '../elements/section/schema';
+import type { CutPattern } from '../elements/material/schema';
+import { paperHatch } from '../render/hatch';
 
 /** A solid's triangles, in plan coordinates and heights. */
 export interface Solid3 {
-  /** Fills and lines are worked out per group: all the walls together, each element's own. */
+  /** Fills and lines are worked out per group: the walls' layers by material, each element's own. */
   readonly group: string;
   readonly tris: readonly (readonly [Point3, Point3, Point3])[];
+  /** What its cut is filled with: its material's colour and cut pattern (a wall layer's); the cut fill without. */
+  readonly cut?: { readonly color: string; readonly pattern: CutPattern };
+  /** The groups cut together whose outline is drawn with the cut pen (all the walls' layers); its own without. */
+  readonly outline?: string;
 }
 
 /** A face beyond the plane, in the drawing's (along, height) coordinates (m), with its edges to draw. */
@@ -33,8 +40,17 @@ export interface SeenFace {
 export interface SectionDrawing {
   /** Far to near. */
   readonly faces: readonly SeenFace[];
-  /** What the plane cuts, per group: its closed outlines (filled) and every cut segment (outlined). */
-  readonly cuts: readonly { readonly loops: readonly (readonly Point2[])[]; readonly segments: readonly (readonly [Point2, Point2])[] }[];
+  /**
+   * What the plane cuts, per group: its closed outlines (filled) and its cut segments (outlined). A layer
+   * of a wall has its material's fill and a thin line ('fine'); the walls' outline over all their layers
+   * is lines alone with the cut pen; any other group, the cut fill and the cut pen.
+   */
+  readonly cuts: readonly {
+    readonly loops: readonly (readonly Point2[])[];
+    readonly segments: readonly (readonly [Point2, Point2])[];
+    readonly fill?: { readonly color: string; readonly pattern: CutPattern };
+    readonly pen?: 'fine';
+  }[];
   /** Its extent (m): along the line and up. */
   readonly box: { readonly min: Point2; readonly max: Point2 } | null;
   readonly levels: readonly { readonly name: string; readonly z: number }[];
@@ -100,10 +116,18 @@ export function modelSolids(doc: Doc, g: DerivedGeometry, hidden: ReadonlySet<st
   const shown = hideCategories(g, new Set([...hidden, 'guides']) as Parameters<typeof hideCategories>[1]);
   void doc;
   const out: Solid3[] = [];
-  // The walls as one group: where two pieces of a face meet, no line.
-  const walls: [Point3, Point3, Point3][] = [];
-  for (const s of shown.solids.values()) for (const b of s.blocks) walls.push(...prismTriangles(b.polygon, b));
-  if (walls.length > 0) out.push({ group: 'walls', tris: walls });
+  // The walls' layers by material, the walls' outline over them all: where two pieces of one material
+  // meet, no line; between two materials, a thin one.
+  const byMaterial = new Map<string, { tris: [Point3, Point3, Point3][]; color: string; pattern: CutPattern }>();
+  for (const s of shown.solids.values())
+    for (const b of s.blocks) {
+      const m = s.materials[b.layerIndex];
+      const key = m?.id ?? '';
+      const entry = byMaterial.get(key) ?? { tris: [], color: m?.color ?? '', pattern: m?.cut ?? 'solid' };
+      entry.tris.push(...prismTriangles(b.polygon, b));
+      byMaterial.set(key, entry);
+    }
+  for (const [id, e] of byMaterial) out.push({ group: `walls:${id}`, tris: e.tris, ...(e.color ? { cut: { color: e.color, pattern: e.pattern } } : {}), outline: 'walls' });
   for (const o of shown.openings.values()) {
     if (!o.frame) continue;
     openingParts(o, o.frame, false).forEach((part, i) => {
@@ -329,7 +353,9 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
   // Kept: from the line out to its depth, and between its ends.
   const sides: ((v: V) => number)[] = [(v) => m.depth - v.d, (v) => v.s, (v) => len - v.s];
   const faces: SeenFace[] = [];
-  const cuts: { loops: Point2[][]; segments: [Point2, Point2][] }[] = [];
+  const cuts: { loops: Point2[][]; segments: [Point2, Point2][]; fill?: { color: string; pattern: CutPattern }; pen?: 'fine' }[] = [];
+  // The cut segments of the groups outlined together (the walls' layers), for their common outline.
+  const together = new Map<string, [Point2, Point2][]>();
   let min = { x: Infinity, y: Infinity };
   let max = { x: -Infinity, y: -Infinity };
   const grow = (p: Point2) => {
@@ -368,7 +394,17 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
       faces.push({ poly, depth: ring.reduce((sum, r) => sum + r.v.d, 0) / ring.length, edges });
     });
     const outline = outlineOf(cutSegments);
-    if (outline.length > 0) cuts.push({ loops: loopsOf(outline), segments: outline });
+    if (outline.length > 0) {
+      if (solid.outline) {
+        cuts.push({ loops: loopsOf(outline), segments: outline, ...(solid.cut ? { fill: solid.cut } : {}), pen: 'fine' });
+        together.set(solid.outline, [...(together.get(solid.outline) ?? []), ...cutSegments]);
+      } else cuts.push({ loops: loopsOf(outline), segments: outline });
+    }
+  }
+  // Over the layers, the walls' outline: where two layers meet both cut the line, so it is inside.
+  for (const segments of together.values()) {
+    const outline = outlineOf(segments);
+    if (outline.length > 0) cuts.push({ loops: [], segments: outline });
   }
   faces.sort((a, b) => b.depth - a.depth);
   const levels = [...doc.levels].sort((a, b) => a.elevation - b.elevation).map((l) => ({ name: l.name, z: l.elevation }));
@@ -389,7 +425,12 @@ export interface SectionPaint {
   readonly text: number;
   /** A level's name and height as said: "Térreo +0,00". */
   readonly levelText: (name: string, z: number) => string;
+  /** The page's pixels per millimetre: a layer's hatch drawn sharp at it. */
+  readonly pxPerMm?: number;
 }
+
+/** The spacing of a cut's hatch on paper (mm), at any scale, as a section's hatch is drawn by hand. */
+const HATCH_MM = 2;
 
 /** The drawing on a context in paper millimetres. */
 export function paintSection(ctx: CanvasRenderingContext2D, d: SectionDrawing, p: SectionPaint): void {
@@ -425,7 +466,8 @@ export function paintSection(ctx: CanvasRenderingContext2D, d: SectionDrawing, p
     }
     ctx.stroke();
   }
-  // What is cut: filled, then outlined with the cut pen.
+  // What is cut: filled (a layer in its material's colour, its hatch over it), then outlined: a layer's
+  // edges thin, the walls' outline and any other cut with the cut pen.
   for (const c of d.cuts) {
     ctx.beginPath();
     for (const loop of c.loops) {
@@ -436,10 +478,17 @@ export function paintSection(ctx: CanvasRenderingContext2D, d: SectionDrawing, p
       });
       ctx.closePath();
     }
-    ctx.fillStyle = p.cutFill;
-    ctx.fill('evenodd');
+    if (c.loops.length > 0) {
+      ctx.fillStyle = c.fill?.color ?? p.cutFill;
+      ctx.fill('evenodd');
+      const hatch = c.fill ? paperHatch(ctx, c.fill.pattern, p.ink, HATCH_MM, p.pxPerMm ?? 12, p.finePen * 0.7) : null;
+      if (hatch) {
+        ctx.fillStyle = hatch;
+        ctx.fill('evenodd');
+      }
+    }
     ctx.strokeStyle = p.ink;
-    ctx.lineWidth = p.cutPen;
+    ctx.lineWidth = c.pen === 'fine' ? p.finePen : p.cutPen;
     ctx.beginPath();
     for (const [a, b] of c.segments) {
       const s = p.toPaper(a);
