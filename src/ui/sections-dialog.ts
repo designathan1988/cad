@@ -4,7 +4,8 @@
 
 import type { App } from '../app/app';
 import { drawingOf } from '../app/document';
-import { sectionCanvas, sectionOf, sectionViewport } from '../app/sheets';
+import { levelText, sectionCanvas, sectionOf, sectionViewport } from '../app/sheets';
+import { sectionDxf, toCp1252 } from '../io/export-dxf';
 import { newId } from '../core/id';
 import { addViewport, addSheet, sheetsOf } from '../elements/sheet/commands';
 import { nextSheetNumber, SHEET_PREFIX } from '../elements/sheet/schema';
@@ -77,7 +78,14 @@ export function showSections(app: App, first?: string): void {
           close();
           showSheets(app, sheet.id);
         });
-        main = el('div', { class: 'section-main' }, el('div', { class: 'print-page' }, canvas), el('p', { class: 'mat-note' }, t('section.note')), el('div', { class: 'sheet-adds' }, place));
+        const dxf = el('button', { type: 'button', class: 'btn' }, t('section.dxf'));
+        dxf.dataset.focus = 'dxf';
+        dxf.addEventListener('click', () => {
+          const file = `${app.fileBase()} - ${t(mark.kind === 'section' ? 'section.titleOne' : 'section.elevationOne', { name: mark.name })}.dxf`;
+          app.download(file, new Blob([toCp1252(sectionDxf(d, levelText)) as BlobPart], { type: 'application/dxf' }), 'application/dxf');
+          app.toast(t('export.dxfSaved', { file }));
+        });
+        main = el('div', { class: 'section-main' }, el('div', { class: 'print-page' }, canvas), el('p', { class: 'mat-note' }, t('section.note')), el('div', { class: 'sheet-adds' }, place, dxf));
       }
       const done = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
       done.dataset.focus = 'close';

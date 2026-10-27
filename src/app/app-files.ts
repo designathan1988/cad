@@ -121,6 +121,38 @@ export function exportIfc(app: App): void {
   }
 }
 
+/** The model as OBJ (three.js's exporter, the GLB's scene): its groups by element, in metres, y up. */
+export async function exportObj(app: App): Promise<void> {
+  const doc = app.store.get();
+  if (doc.walls.length === 0 && !anyKinds(doc)) {
+    app.ui.info = t('export.nothing');
+    return app.renderChrome();
+  }
+  try {
+    const [{ modelScene }, { OBJExporter }] = await Promise.all([import('../render/export-gltf'), import('three/examples/jsm/exporters/OBJExporter.js')]);
+    const scene = modelScene(doc, app.geometry, {
+      name,
+      wallTag: (n) => t('wall.tag', { n }),
+      door: (n) => t('export.door', { n }),
+      window: (n) => t('export.window', { n }),
+      kindName: (key, n) => t(kindOfKey(key).exportName, { n }),
+      kindMaterial: (key) => t(kindOfKey(key).one),
+      material: (id) => materialLabel(materialIn(doc.materials, id)),
+      glass: t('export.glass'),
+      leaf: t('export.leaf'),
+      frame: t('export.frame'),
+    });
+    const text = new OBJExporter().parse(scene);
+    scene.traverse((o) => (o as { geometry?: { dispose(): void } }).geometry?.dispose());
+    const file = `${app.fileBase()}.obj`;
+    app.download(file, new Blob([text], { type: 'model/obj' }), 'model/obj');
+    app.toast(t('export.objSaved', { file }));
+  } catch (e) {
+    console.error(e);
+    app.toast(t('export.failed', { what: 'OBJ', error: e instanceof Error ? e.message : String(e) }));
+  }
+}
+
 /** The plan of the level shown as DXF R12 (io/export-dxf.ts), for a CAD program. */
 export function exportDxf(app: App): void {
   const doc = app.store.get();

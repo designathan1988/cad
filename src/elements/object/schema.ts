@@ -61,6 +61,9 @@ export type Part =
   | (PartCommon & { readonly kind: 'box'; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly w: Expr; readonly d: Expr; readonly h: Expr })
   /** An upright cylinder from the centre of its base. */
   | (PartCommon & { readonly kind: 'cylinder'; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly r: Expr; readonly h: Expr; /** Its top's radius: a cone, a lampshade (its base's when not set). */ readonly r2?: Expr })
+  /** A mesh of the definition's (a model imported from glTF or OBJ), stretched to fill the box from its
+   * lower corner (x, y, z), w along x, d along y, h up: its proportions are its parameters. */
+  | (PartCommon & { readonly kind: 'mesh'; readonly mesh: string; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly w: Expr; readonly d: Expr; readonly h: Expr })
   /** Another definition inside this one (the handle in the door, the chair at the table), at (x, y, z),
    * turned `angle` degrees, its parameters given by formulas of this one's. */
   | (PartCommon & {
@@ -110,6 +113,20 @@ export interface ObjectDefinition {
   readonly rules?: readonly RuleDef[];
   /** A light it gives (a luminaire): where, how strong (watts of LED, about 100 lm each) and how warm (K). */
   readonly light?: LightDef;
+  /** Meshes its mesh parts draw (io/import-mesh.ts). */
+  readonly meshes?: readonly MeshData[];
+}
+
+/**
+ * A triangle mesh in a unit box: every vertex's x, y and z from 0 to 1 (x along the width, y the depth,
+ * z up), the triangles' corners by index; and its outline in plan (its convex hull, x, y pairs in the
+ * unit square) for the plan to draw.
+ */
+export interface MeshData {
+  readonly id: string;
+  readonly positions: readonly number[];
+  readonly indices: readonly number[];
+  readonly outline: readonly number[];
 }
 
 export interface LightDef {

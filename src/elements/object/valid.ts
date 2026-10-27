@@ -17,7 +17,22 @@ function isPart(p: unknown): p is Part {
   if (p.kind === 'box') return isExpr(p.w) && isExpr(p.d) && isExpr(p.h);
   if (p.kind === 'cylinder') return isExpr(p.r) && isExpr(p.h) && (p.r2 === undefined || isExpr(p.r2));
   if (p.kind === 'object') return typeof p.definition === 'string' && (p.values === undefined || isObject(p.values));
+  if (p.kind === 'mesh') return typeof p.mesh === 'string' && isExpr(p.w) && isExpr(p.d) && isExpr(p.h);
   return false;
+}
+
+/** A mesh: coordinates in the unit box, triangles of its vertices, a closed outline. */
+function isMesh(m: unknown): boolean {
+  if (!isObject(m) || typeof m.id !== 'string' || !Array.isArray(m.positions) || !Array.isArray(m.indices) || !Array.isArray(m.outline)) return false;
+  const n = m.positions.length / 3;
+  return (
+    m.positions.length % 3 === 0 &&
+    m.positions.every((v) => finite(v) && v >= -1e-6 && v <= 1 + 1e-6) &&
+    m.indices.length % 3 === 0 &&
+    m.indices.every((i) => Number.isInteger(i) && (i as number) >= 0 && (i as number) < n) &&
+    m.outline.length % 2 === 0 &&
+    m.outline.every(finite)
+  );
 }
 
 export function isDefinition(d: unknown): d is ObjectDefinition {
@@ -36,7 +51,10 @@ export function isDefinition(d: unknown): d is ObjectDefinition {
     d.types.length > 0 &&
     d.types.every((t) => isObject(t) && typeof t.id === 'string' && isWords(t.name) && isObject(t.values)) &&
     (d.rules === undefined || (Array.isArray(d.rules) && d.rules.every((r) => isObject(r) && typeof r.when === 'string' && isWords(r.message)))) &&
-    (d.light === undefined || (isObject(d.light) && isExpr(d.light.x) && isExpr(d.light.y) && isExpr(d.light.z) && isExpr(d.light.watts) && (d.light.kelvin === undefined || isExpr(d.light.kelvin))))
+    (d.light === undefined || (isObject(d.light) && isExpr(d.light.x) && isExpr(d.light.y) && isExpr(d.light.z) && isExpr(d.light.watts) && (d.light.kelvin === undefined || isExpr(d.light.kelvin)))) &&
+    (d.meshes === undefined || (Array.isArray(d.meshes) && d.meshes.every(isMesh))) &&
+    // A mesh part draws a mesh of its own definition's.
+    d.parts.every((p) => p.kind !== 'mesh' || (Array.isArray(d.meshes) && d.meshes.some((m) => isObject(m) && m.id === p.mesh)))
   );
 }
 

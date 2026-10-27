@@ -6,12 +6,14 @@
 
 import { type Material, materialIn } from '../material/schema';
 import { type Env, evaluateFormula, type Value } from './formula';
-import type { Expr, HandleDef, ObjectDefinition, ObjectInstance, ParamDef, Part, Words } from './schema';
+import type { Expr, HandleDef, MeshData, ObjectDefinition, ObjectInstance, ParamDef, Part, Words } from './schema';
 
 /** A piece in the world: a box (its centre, size and turn) or an upright cylinder (its base's centre). */
 export type Piece =
   | { readonly kind: 'box'; readonly cx: number; readonly cy: number; readonly z: number; readonly w: number; readonly d: number; readonly h: number; readonly angle: number; readonly material: Material }
-  | { readonly kind: 'cylinder'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly r2: number; readonly h: number; readonly material: Material };
+  | { readonly kind: 'cylinder'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly r2: number; readonly h: number; readonly material: Material }
+  /** A mesh stretched to its box (centre, size and turn, as a box's). */
+  | { readonly kind: 'mesh'; readonly cx: number; readonly cy: number; readonly z: number; readonly w: number; readonly d: number; readonly h: number; readonly angle: number; readonly mesh: MeshData; readonly material: Material };
 
 /** A light in the world: where (z above the level's floor), how many lumens, its colour (#rrggbb). */
 export interface PlacedLight {
@@ -156,7 +158,19 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
       const ox = x + dx * i;
       const oy = y + dy * i;
       const oz = z + dz * i;
-      if (part.kind === 'box') {
+      if (part.kind === 'mesh') {
+        const mesh = def.meshes?.find((m) => m.id === part.mesh);
+        const w = num(part.w, at, `${label} width`);
+        const d = num(part.d, at, `${label} depth`);
+        const h = num(part.h, at, `${label} height`);
+        if (!mesh) {
+          problems.push(`${label}: its mesh ${part.mesh} is not in the object`);
+          continue;
+        }
+        if (w === null || d === null || h === null || w <= 1e-6 || d <= 1e-6 || h <= 1e-6) continue;
+        const centre = apply(frame, { x: ox + w / 2, y: oy + d / 2, z: oz });
+        pieces.push({ kind: 'mesh', cx: centre.x, cy: centre.y, z: centre.z, w, d, h, angle: frame.angle, mesh, material: materialOf(part) });
+      } else if (part.kind === 'box') {
         const w = num(part.w, at, `${label} width`);
         const d = num(part.d, at, `${label} depth`);
         const h = num(part.h, at, `${label} height`);
@@ -250,6 +264,16 @@ export function pieceOutline(p: Piece): { x: number; y: number }[] {
   }
   const c = Math.cos(p.angle);
   const s = Math.sin(p.angle);
+  if (p.kind === 'mesh') {
+    // Its hull, from the unit square to its box.
+    const out: { x: number; y: number }[] = [];
+    for (let i = 0; i + 1 < p.mesh.outline.length; i += 2) {
+      const a = (p.mesh.outline[i]! - 0.5) * p.w;
+      const b = (p.mesh.outline[i + 1]! - 0.5) * p.d;
+      out.push({ x: p.cx + a * c - b * s, y: p.cy + a * s + b * c });
+    }
+    return out;
+  }
   return [
     [-p.w / 2, -p.d / 2],
     [p.w / 2, -p.d / 2],

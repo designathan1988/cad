@@ -43,7 +43,7 @@ export function sectionOf(app: App, m: SectionMark): SectionDrawing {
 }
 
 /** A level's height as a level mark says it: "Térreo +0,00". */
-const levelText = (n: string, z: number) => `${name(n)} ${z >= 0 ? '+' : '−'}${num(Math.abs(z), 2)}`;
+export const levelText = (n: string, z: number) => `${name(n)} ${z >= 0 ? '+' : '−'}${num(Math.abs(z), 2)}`;
 
 /** A section or an elevation on a canvas its frame's size at `dpi`. */
 export function sectionCanvas(app: App, m: SectionMark, f: { den: number; wMm: number; hMm: number; center: Point2 }, dpi: number): HTMLCanvasElement {

@@ -4,6 +4,8 @@
 // swing arc) and windows, the rooms' outlines with their names and areas. Pure: text out, and the bytes
 // in the code page an R12 file is read in.
 
+import { hatchLines, patternOf } from './hatch-lines';
+import type { SectionDrawing } from '../app/section-drawing';
 import type { DerivedGeometry } from '../app/geometry';
 import type { Point2 } from '../core/vector';
 import { eachSolid, KINDS } from '../elements/registry';
@@ -16,6 +18,7 @@ import { outerSides } from '../elements/wall/geometry/seams';
 export const DXF_LAYERS = [
   { name: 'A-WALL', colour: 7 }, // wall faces
   { name: 'A-WALL-PATT', colour: 8 }, // lines between a wall's layers
+  { name: 'A-WALL-HATC', colour: 8 }, // the cut layers' hatches (brick, concrete, wood)
   { name: 'A-DOOR', colour: 2 }, // door leaves and swings
   { name: 'A-DOOR-IDEN', colour: 2 }, // door type marks
   { name: 'A-GLAZ', colour: 4 }, // window frame and glass lines
@@ -42,7 +45,17 @@ export interface DxfLabels {
 const TEXT_H = 0.2;
 const MARK_H = 0.15;
 
-export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels): string {
+/** What a DXF's entities are written with. */
+export interface DxfWriter {
+  readonly line: (layer: string, a: Point2, b: Point2) => void;
+  readonly polyline: (layer: string, points: readonly Point2[], closed: boolean) => void;
+  /** A TEXT of `height` centred on `at`, turned `angle` degrees. */
+  readonly text: (layer: string, at: Point2, height: number, value: string, angle?: number) => void;
+  readonly pair: (code: number, value: string | number) => void;
+}
+
+/** A DXF R12 in metres with these layers, its entities what `draw` writes. */
+export function writeDxf(layers: readonly { readonly name: string; readonly colour: number }[], draw: (w: DxfWriter) => void): string {
   const out: string[] = [];
   const pair = (code: number, value: string | number) => out.push(String(code), typeof value === 'number' ? fixed(value) : value);
   const line = (layer: Layer, a: Point2, b: Point2) => {
@@ -115,8 +128,8 @@ export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels):
   pair(0, 'ENDTAB');
   pair(0, 'TABLE');
   pair(2, 'LAYER');
-  out.push('70', String(DXF_LAYERS.length));
-  for (const l of DXF_LAYERS) {
+  out.push('70', String(layers.length));
+  for (const l of layers) {
     pair(0, 'LAYER');
     pair(2, l.name);
     out.push('70', '0', '62', String(l.colour));
@@ -127,42 +140,55 @@ export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels):
 
   pair(0, 'SECTION');
   pair(2, 'ENTITIES');
-  // The walls cut at this level: their outline (the faces, a side shared by two pieces left out) and
-  // the lines between their layers.
-  const cut = [...g.solids.values()].filter((s) => s.wall.levelId === levelId && s.plan === 'cut');
-  for (const side of outerSides(cut.flatMap((s) => s.pieces.map((p) => p.polygon)))) line('A-WALL', side.a, side.b);
-  for (const s of cut) for (const seam of s.seams) line('A-WALL-PATT', seam.a, seam.b);
-  // Doors and windows of those walls: the window's three lines; the door's leaf and its swing, an arc.
-  const walls = new Set(cut.map((s) => s.wall.id));
-  const rooms = [...g.rooms.values()].filter((r) => r.room.levelId === levelId && r.enclosed);
-  const inRoom = (p: Point2) => rooms.some((r) => insideRing(r.outline, p));
-  for (const o of g.openings.values()) {
-    if (!walls.has(o.opening.wallId) || !o.frame) continue;
-    const lines = symbolLines(o, o.frame);
-    const mark = labels.marks?.get(o.opening.id);
-    if (mark) text(o.opening.kind === 'door' ? 'A-DOOR-IDEN' : 'A-GLAZ-IDEN', markPoint(o.frame, o.opening, 0.25, inRoom), MARK_H, mark);
-    if (o.opening.kind === 'window') {
-      for (const l of lines) line('A-GLAZ', l[0]!, l[1]!);
-      continue;
-    }
-    const [leaf, swing] = lines;
-    if (!leaf || !swing) continue;
-    line('A-DOOR', leaf[0]!, leaf[1]!);
-    arc('A-DOOR', leaf[0]!, swing[0]!, swing[swing.length - 1]!, pair);
-  }
-  // The registry's kinds on this level, each writing itself.
-  // An axis (on every level) on each plan.
-  for (const x of eachSolid(g.kinds)) if (x.levelId === null || x.levelId === levelId) x.kind.dxf?.(x.solid, { line, polyline, text });
-  // Rooms: the outline, and the name and area at the plan's label point.
-  for (const r of g.rooms.values()) {
-    if (r.room.levelId !== levelId || !r.enclosed) continue;
-    polyline('A-AREA', r.outline, true);
-    text('A-AREA-IDEN', { x: r.label.x, y: r.label.y + TEXT_H * 0.7 }, TEXT_H, labels.room(r.room.number, r.room.name));
-    text('A-AREA-IDEN', { x: r.label.x, y: r.label.y - TEXT_H * 0.7 }, TEXT_H * 0.8, labels.area(r.area));
-  }
+  draw({ line, polyline, text, pair });
   pair(0, 'ENDSEC');
   pair(0, 'EOF');
   return `${out.join('\r\n')}\r\n`;
+}
+
+export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels): string {
+  return writeDxf(DXF_LAYERS, ({ line, polyline, text, pair }) => {
+    // The walls cut at this level: their outline (the faces, a side shared by two pieces left out) and
+    // the lines between their layers.
+    const cut = [...g.solids.values()].filter((s) => s.wall.levelId === levelId && s.plan === 'cut');
+    for (const side of outerSides(cut.flatMap((s) => s.pieces.map((p) => p.polygon)))) line('A-WALL', side.a, side.b);
+    for (const s of cut) for (const seam of s.seams) line('A-WALL-PATT', seam.a, seam.b);
+    // Each layer's hatch, by its material's cut pattern, as lines (R12 has no hatch).
+    for (const s of cut)
+      for (const piece of s.pieces) {
+        const pat = s.materials[piece.layerIndex] ? patternOf(s.materials[piece.layerIndex]!.cut) : null;
+        if (!pat) continue;
+        for (const angle of pat.angles) for (const [a, b] of hatchLines([piece.polygon], angle, pat.spacing)) line('A-WALL-HATC', a, b);
+      }
+    // Doors and windows of those walls: the window's three lines; the door's leaf and its swing, an arc.
+    const walls = new Set(cut.map((s) => s.wall.id));
+    const rooms = [...g.rooms.values()].filter((r) => r.room.levelId === levelId && r.enclosed);
+    const inRoom = (p: Point2) => rooms.some((r) => insideRing(r.outline, p));
+    for (const o of g.openings.values()) {
+      if (!walls.has(o.opening.wallId) || !o.frame) continue;
+      const lines = symbolLines(o, o.frame);
+      const mark = labels.marks?.get(o.opening.id);
+      if (mark) text(o.opening.kind === 'door' ? 'A-DOOR-IDEN' : 'A-GLAZ-IDEN', markPoint(o.frame, o.opening, 0.25, inRoom), MARK_H, mark);
+      if (o.opening.kind === 'window') {
+        for (const l of lines) line('A-GLAZ', l[0]!, l[1]!);
+        continue;
+      }
+      const [leaf, swing] = lines;
+      if (!leaf || !swing) continue;
+      line('A-DOOR', leaf[0]!, leaf[1]!);
+      arc('A-DOOR', leaf[0]!, swing[0]!, swing[swing.length - 1]!, pair);
+    }
+    // The registry's kinds on this level, each writing itself.
+    // An axis (on every level) on each plan.
+    for (const x of eachSolid(g.kinds)) if (x.levelId === null || x.levelId === levelId) x.kind.dxf?.(x.solid, { line, polyline, text });
+    // Rooms: the outline, and the name and area at the plan's label point.
+    for (const r of g.rooms.values()) {
+      if (r.room.levelId !== levelId || !r.enclosed) continue;
+      polyline('A-AREA', r.outline, true);
+      text('A-AREA-IDEN', { x: r.label.x, y: r.label.y + TEXT_H * 0.7 }, TEXT_H, labels.room(r.room.number, r.room.name));
+      text('A-AREA-IDEN', { x: r.label.x, y: r.label.y - TEXT_H * 0.7 }, TEXT_H * 0.8, labels.area(r.area));
+    }
+  });
 }
 
 /** An arc about `centre` from `from` to `to`, the shorter way round, as DXF draws it: counter-clockwise. */
@@ -207,4 +233,43 @@ export function toCp1252(text: string): Uint8Array {
     bytes[i] = c < 0x80 || (c >= 0xa0 && c <= 0xff) ? c : (extra[c] ?? 0x3f);
   }
   return bytes;
+}
+
+/** A section's or an elevation's layers. */
+export const SECTION_LAYERS = [
+  { name: 'A-SECT-CUT', colour: 7 }, // what the plane cuts: its outline
+  { name: 'A-SECT-PATT', colour: 8 }, // its hatch
+  { name: 'A-SECT-SEEN', colour: 9 }, // the edges seen beyond
+  { name: 'A-SECT-LEVL', colour: 3 }, // the ground and the levels, with their marks
+] as const;
+
+/**
+ * A section or an elevation (app/section-drawing.ts) as DXF: along its line as x, height as y (m). The
+ * cut's outline and a 45° hatch inside it, every edge seen beyond once (painter's order is a screen's:
+ * a CAD drawing shows them all), the ground and each level's line and mark.
+ */
+export function sectionDxf(d: SectionDrawing, levelText: (name: string, z: number) => string): string {
+  return writeDxf(SECTION_LAYERS, ({ line, text }) => {
+    const seen = new Set<string>();
+    const key = (a: Point2, b: Point2) => [a, b].map((q) => `${q.x.toFixed(4)},${q.y.toFixed(4)}`).sort().join('|');
+    for (const f of d.faces)
+      for (const [a, b] of f.edges) {
+        const k = key(a, b);
+        if (seen.has(k) || Math.hypot(b.x - a.x, b.y - a.y) < 1e-6) continue;
+        seen.add(k);
+        line('A-SECT-SEEN', a, b);
+      }
+    for (const c of d.cuts) {
+      for (const [a, b] of c.segments) line('A-SECT-CUT', a, b);
+      for (const [a, b] of hatchLines(c.loops, Math.PI / 4, 0.05)) line('A-SECT-PATT', a, b);
+    }
+    if (!d.box) return;
+    const x0 = d.box.min.x - 0.5;
+    const x1 = d.box.max.x + 0.5;
+    line('A-SECT-LEVL', { x: x0, y: 0 }, { x: x1, y: 0 });
+    for (const l of d.levels) {
+      line('A-SECT-LEVL', { x: d.box.max.x, y: l.z }, { x: x1 + 1.5, y: l.z });
+      text('A-SECT-LEVL', { x: x1 + 1.5, y: l.z + 0.15 }, 0.15, levelText(l.name, l.z));
+    }
+  });
 }

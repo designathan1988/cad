@@ -1,6 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import { pickModel } from './model-import';
 import * as refs from './reference-ui';
 import { onReferenceLoaded } from '../elements/kinds/reference';
 import { autoDimensions } from '../elements/dimension/auto';
@@ -1163,6 +1164,11 @@ export class App {
     return kindTools.sectionEscape(this);
   }
 
+  /** A glTF or OBJ model brought in as a library object (model-import.ts). */
+  pickModel(): void {
+    return pickModel(this);
+  }
+
   /** A picture, a PDF or a DXF put under the plan (reference-ui.ts). */
   pickReference(): void {
     return refs.pickReference(this);
@@ -1474,6 +1480,11 @@ export class App {
    */
   async exportGlb(): Promise<void> {
     return files.exportGlb(this);
+  }
+
+  /** The model as OBJ, for a renderer or another modeller. */
+  exportObj(): Promise<void> {
+    return files.exportObj(this);
   }
 
   /** The whole model as IFC4 (io/export-ifc.ts), for a BIM program. */

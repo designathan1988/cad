@@ -5,6 +5,7 @@
 // as one types. Beside them a live 3D preview turned by dragging, sliders that flex each parameter (the
 // Revit test: does it still hold?), and what does not work out.
 
+import { pieceGeometry } from '../elements/kinds/object';
 import * as THREE from 'three';
 import type { App } from '../app/app';
 import { addDefinition, updateDefinition } from '../elements/object/commands';
@@ -204,7 +205,7 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
             )
           : null;
       const size =
-        p.kind === 'box' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h'))] : p.kind === 'cylinder' ? [ex('r', t('ed.r')), top!, ex('h', t('ed.h'))] : [ex('angle', t('ed.angle'))];
+        p.kind === 'box' || p.kind === 'mesh' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h'))] : p.kind === 'cylinder' ? [ex('r', t('ed.r')), top!, ex('h', t('ed.h'))] : [ex('angle', t('ed.angle'))];
       const rep = p.repeat;
       const repIn = (key: 'count' | 'dx' | 'dy' | 'dz', label: string) =>
         el(
@@ -234,7 +235,7 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
         el('div', { class: 'ed-grid' }, repIn('count', t('ed.count')), repIn('dx', 'dx'), repIn('dy', 'dy'), repIn('dz', 'dz'), ex('when', t('ed.when'))),
       );
     });
-    const blank = (kind: Part['kind']): Part =>
+    const blank = (kind: Exclude<Part['kind'], 'mesh'>): Part =>
       kind === 'box'
         ? { kind, name: { pt: 'Caixa', en: 'Box' }, x: 0, y: 0, z: 0, w: 0.2, d: 0.2, h: 0.2 }
         : kind === 'cylinder'
@@ -506,9 +507,7 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
       }
       const box = new THREE.Box3();
       for (const p of ev.pieces) {
-        const g = p.kind === 'box' ? new THREE.BoxGeometry(p.w, p.h, p.d) : new THREE.CylinderGeometry(p.r2, p.r, p.h, 24);
-        if (p.kind === 'box') g.rotateY(p.angle);
-        g.translate(p.cx, p.z + p.h / 2, -p.cy);
+        const g = pieceGeometry(p);
         const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: p.material.color, roughness: p.material.roughness, metalness: p.material.metalness }));
         const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g, 30), new THREE.LineBasicMaterial({ color: 0x2b2f36, transparent: true, opacity: 0.5 }));
         mesh.add(edges);

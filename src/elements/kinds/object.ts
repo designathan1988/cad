@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import type { Doc } from '../../app/document';
 import { insideRing } from '../room/derive';
 import type { ElementKind, KindSolid } from '../contract';
-import { evaluateObject, type ObjectEval, pieceOutline } from '../object/evaluate';
+import { evaluateObject, type ObjectEval, type Piece, pieceOutline } from '../object/evaluate';
 import { type ObjectItem, objectFields, words } from '../object/fields';
 import { isObjectInstance } from '../object/valid';
 import { OBJECT_PREFIX, type ObjectDefinition, type ObjectInstance } from '../object/schema';
@@ -57,6 +57,31 @@ function build(object: ObjectInstance, def: ObjectDefinition, ev: ObjectEval, fl
   const bottom = floor + (pieces.length ? Math.min(...pieces.map((p) => p.z)) : object.elevation);
   const top = floor + (pieces.length ? Math.max(...pieces.map((p) => p.z + p.h)) : object.elevation + 0.1);
   return { object, def, eval: ev, rings, outline, floor, bottom, top };
+}
+
+/** A piece's geometry where it is, in three.js's axes: plan x, y and height z are x, −z and y; a turn in
+ * plan (counter-clockwise) is one about y. For the 3D, the GLB and the definition editor alike. */
+export function pieceGeometry(piece: Piece): THREE.BufferGeometry {
+  const geometry = piece.kind === 'mesh' ? meshGeometry(piece) : piece.kind === 'box' ? new THREE.BoxGeometry(piece.w, piece.h, piece.d) : new THREE.CylinderGeometry(piece.r2, piece.r, piece.h, 24);
+  if (piece.kind !== 'cylinder') geometry.rotateY(piece.angle);
+  geometry.translate(piece.cx, piece.z + piece.h / 2, -piece.cy);
+  return geometry;
+}
+
+/** A mesh piece's geometry about its box's centre, in three.js's axes (x, height, −y), not yet turned. */
+function meshGeometry(p: Extract<Piece, { kind: 'mesh' }>): THREE.BufferGeometry {
+  const src = p.mesh.positions;
+  const pos = new Float32Array(src.length);
+  for (let i = 0; i + 2 < src.length; i += 3) {
+    pos[i] = (src[i]! - 0.5) * p.w;
+    pos[i + 1] = (src[i + 2]! - 0.5) * p.h;
+    pos[i + 2] = -(src[i + 1]! - 0.5) * p.d;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setIndex([...p.mesh.indices]);
+  g.computeVertexNormals();
+  return g;
 }
 
 export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
@@ -113,11 +138,7 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
   },
   solid: (s) =>
     s.eval.pieces.map((piece, i): KindSolid => {
-      const geometry =
-        piece.kind === 'box' ? new THREE.BoxGeometry(piece.w, piece.h, piece.d) : new THREE.CylinderGeometry(piece.r2, piece.r, piece.h, 24);
-      // Plan x, y and height z are three.js x, −z and y; a turn in plan (counter-clockwise) is one about y.
-      if (piece.kind === 'box') geometry.rotateY(piece.angle);
-      geometry.translate(piece.cx, piece.z + piece.h / 2, -piece.cy);
+      const geometry = pieceGeometry(piece);
       // Its lights go with its first piece (a luminaire's: contract.ts, lights).
       return { geometry, y: s.floor, material: piece.material, edges: true, ...(i === 0 && s.eval.lights.length > 0 ? { lights: s.eval.lights } : {}) };
     }),
