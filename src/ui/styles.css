@@ -599,19 +599,20 @@ button.project-name:hover {
      sideways: that would clip the light's sliders, which open above it. */
   container-type: inline-size;
 }
-/* Narrower: the 3D's lists' captions go (the select keeps its name; the plan's scale, alone on the bar,
-   keeps its); narrower still, the buttons show their icons only, each named and with its tip. */
-@container (max-width: 1260px) {
+/* In rem (the text's size, 13 px): what the bar holds widens with the text. Narrower: the 3D's lists'
+   captions go (the select keeps its name; the plan's scale, alone on the bar, keeps its); narrower
+   still, the buttons show their icons only, each named and with its tip. */
+@container (max-width: 97rem) {
   .view-bar-3d .look-caption {
     display: none;
   }
 }
-@container (max-width: 1150px) {
+@container (max-width: 88.5rem) {
   .view-bar .segmented .label {
     display: none;
   }
 }
-@container (max-width: 760px) {
+@container (max-width: 58.5rem) {
   .view-bar .light-btn .label {
     display: none;
   }
