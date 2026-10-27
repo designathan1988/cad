@@ -107,6 +107,17 @@ export function renderChrome(app: App): void {
   }
   style.select.value = ui.view3d.style;
   quality.select.value = ui.view3d.quality;
+  // The light's sliders, their captions and values (%), the panel open or not.
+  const { light } = shell;
+  light.button.querySelector('.label')!.textContent = t('view3d.light');
+  light.button.title = t('view3d.lightTip');
+  light.brightness.caption.textContent = t('view3d.brightness');
+  light.sun.caption.textContent = t('view3d.sunStrength');
+  for (const [s, v] of [[light.brightness, ui.view3d.brightness], [light.sun, ui.view3d.sun]] as const) {
+    if (document.activeElement !== s.input) s.input.value = String(v);
+    s.value.textContent = `${Math.round(v * 100)} %`;
+  }
+  light.button.setAttribute('aria-expanded', String(!light.panel.hidden));
   const levelKey = JSON.stringify([getLang(), doc.levels.map((l) => [l.id, l.name, l.elevation])]);
   if (shell.level.dataset.key !== levelKey) {
     const sorted = [...doc.levels].sort((a, b) => b.elevation - a.elevation);

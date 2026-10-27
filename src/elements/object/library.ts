@@ -5,6 +5,7 @@
 
 import type { ObjectDefinition, ParamDef } from './schema';
 import { LIBRARY_MORE } from './library-more';
+import { LIBRARY_LIGHTS } from './library-lights';
 
 const len = (name: string, pt: string, en: string, value: number, min: number, max: number, group?: [string, string]): ParamDef => ({
   name,
@@ -263,4 +264,4 @@ export const DINING_SET: ObjectDefinition = {
 };
 
 /** The definitions a new project has, and those an older file gets: one of each category at least (phase 8). */
-export const LIBRARY: readonly ObjectDefinition[] = [TABLE, CHAIR, DINING_SET, BOOKCASE, CABINET, ...LIBRARY_MORE];
+export const LIBRARY: readonly ObjectDefinition[] = [TABLE, CHAIR, DINING_SET, BOOKCASE, CABINET, ...LIBRARY_MORE, ...LIBRARY_LIGHTS];

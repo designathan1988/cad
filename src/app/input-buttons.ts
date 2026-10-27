@@ -80,6 +80,12 @@ export function wireButtons(app: App, palette: () => void): void {
   shell.ortho.addEventListener('click', () => app.setView3D({ ortho: !ui.view3d.ortho }));
   shell.look.style.select.addEventListener('change', () => app.setView3D({ style: shell.look.style.select.value as VisualStyle }));
   shell.look.quality.select.addEventListener('change', () => app.setView3D({ quality: shell.look.quality.select.value as RenderQuality }));
+  shell.light.button.addEventListener('click', () => {
+    shell.light.panel.hidden = !shell.light.panel.hidden;
+    app.renderChrome();
+  });
+  shell.light.brightness.input.addEventListener('input', () => app.setView3D({ brightness: Number(shell.light.brightness.input.value) }));
+  shell.light.sun.input.addEventListener('input', () => app.setView3D({ sun: Number(shell.light.sun.input.value) }));
   shell.tempReset.addEventListener('click', () => app.resetTemporary());
   shell.shortcuts.addEventListener('click', () => showHelp(app));
   shell.commands.addEventListener('click', () => palette());

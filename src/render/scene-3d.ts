@@ -22,6 +22,7 @@ import { eachSolid } from '../elements/registry';
 import type { KindSolid } from '../elements/contract';
 import { featureEdges, type SlopedTop, underSlopes } from '../elements/wall/geometry/edges';
 import { openingParts } from '../elements/opening/parts';
+import { SOIL_DEPTH } from '../elements/kinds/terrain';
 import { boxCaps, type SectionBox, type SectionLine, sectionCaps, sectionLooks, type UprightPrism } from '../app/section-box';
 
 /** The ground's size: this many times the model's extent, at least GROUND_MIN (m) across. */
@@ -190,6 +191,9 @@ export class Scene3D {
   private shadows = false;
   /** The visual style and the quality (view-3d.ts), and what they need: the post-processing, the sky's reflections. */
   private style: VisualStyle = 'shaded';
+  /** The view's brightness and the sun's strength against the sky (view-3d.ts), multiplying the style's lights. */
+  private brightness = 1;
+  private sunScale = 1;
   private quality: RenderQuality = 'medium';
   private composer: { readonly fx: EffectComposer; readonly key: string; readonly passes: { camera: THREE.Camera }[] } | null = null;
   private environment: THREE.Texture | null = null;
@@ -260,6 +264,9 @@ export class Scene3D {
     this.ground.renderOrder = -1;
     this.ground.scale.set(GROUND_MIN, GROUND_MIN, 1);
     this.ground.position.y = -0.002;
+    // Kept as the ground's frame (its middle and size place the sun and the grid), never drawn: the view
+    // stands on a grid, as a CAD viewport does, not on a grey plane the terrain would cut through.
+    this.ground.visible = false;
     this.scene.add(this.ground);
     this.renderer.localClippingEnabled = true;
     for (const m of Object.values(this.materials)) this.prepare(m);
@@ -429,28 +436,38 @@ export class Scene3D {
     }
     const realistic = style === 'realistic';
     this.renderer.toneMapping = realistic ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
-    this.renderer.toneMappingExposure = realistic ? 0.8 : 1;
+    this.renderer.toneMappingExposure = 1;
     if (realistic && !this.environment) {
       const pmrem = new THREE.PMREMGenerator(this.renderer);
       this.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
       pmrem.dispose();
     }
     this.scene.environment = realistic ? this.environment : null;
-    this.scene.environmentIntensity = 0.22;
     this.applyEdges();
     this.applyShadows(recompile);
     this.offsetDirty = true;
     this.invalidate();
   }
 
-  /** The lights as the style has them, from the strengths the sun set. */
+  /** The view's brightness and the sun's strength (view-3d.ts): every light times the first, the sun times both. */
+  setLight(brightness: number, sun: number): void {
+    if (brightness === this.brightness && sun === this.sunScale) return;
+    this.brightness = brightness;
+    this.sunScale = sun;
+    this.applyLights();
+    this.invalidate();
+  }
+
+  /** The lights as the style has them, from the strengths the sun set, times the view's brightness. */
   private applyLights(): void {
     const s = this.style;
+    const b = this.brightness;
     // π: three.js's diffuse is the albedo over π times the light, so π gives each colour as it is.
-    this.ambient.intensity = s === 'consistent' ? Math.PI : 0;
-    this.sun.intensity = s === 'consistent' ? 0 : s === 'realistic' ? this.sunBase * 2.6 : this.sunBase;
-    this.sky.intensity = s === 'consistent' ? 0 : s === 'realistic' ? this.skyBase * 0.05 : this.skyBase;
-    this.fill.intensity = s === 'shaded' || s === 'hidden' ? 0.6 : 0;
+    this.ambient.intensity = s === 'consistent' ? Math.PI * b : 0;
+    this.sun.intensity = (s === 'consistent' ? 0 : s === 'realistic' ? this.sunBase * 2.6 : this.sunBase) * b * this.sunScale;
+    this.sky.intensity = (s === 'consistent' ? 0 : s === 'realistic' ? this.skyBase * 0.05 : this.skyBase) * b;
+    this.fill.intensity = (s === 'shaded' || s === 'hidden' ? 0.6 : 0) * b;
+    this.scene.environmentIntensity = 0.22 * b;
   }
 
   /** Shadows drawn: those the site asks, or Realistic's own while the sun is up; materials compiled again for them. */
@@ -765,8 +782,8 @@ export class Scene3D {
     this.sky.groundColor = c('--3d-ground-light');
     this.sun.color = c('--3d-light');
     this.fill.color = c('--3d-light');
-    // As in the reference captures: a faint ground grid in light, none in dark.
-    this.grid.visible = !dark;
+    // The ground grid in both themes, faint, under everything (placeGround).
+    this.grid.visible = true;
     const lines = this.grid.geometry.getAttribute('color');
     // GridHelper colours its lines per vertex: centre lines one colour, the rest another.
     const major = c('--grid-major');
@@ -780,7 +797,8 @@ export class Scene3D {
     const gm = this.grid.material as THREE.Material | THREE.Material[];
     (Array.isArray(gm) ? gm : [gm]).forEach((x) => {
       x.transparent = true;
-      x.opacity = 0.35;
+      // Lines on a dark canvas read fainter: a little more of them.
+      x.opacity = dark ? 0.5 : 0.35;
       x.needsUpdate = true;
     });
     this.invalidate();
@@ -1078,9 +1096,13 @@ export class Scene3D {
     const ys = points.map((p) => p.y);
     const [x0, x1, y0, y1] = points.length > 0 ? [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)] : [0, 0, 0, 0];
     const size = Math.max(GROUND_MIN, GROUND_SPAN * Math.max(x1 - x0, y1 - y0));
-    const lowest = Math.min(0, ...solids.map((s) => s.bottom), ...spanned.map((f) => f.bottom));
+    // A terrain's block of soil goes SOIL_DEPTH under its surface's lowest point: the ground under that.
+    const spannedBottoms = [...eachSolid(g.kinds)].flatMap((x) => (x.kind.span ? [x.kind.span(x.solid).bottom - (x.kind.key === 'terrains' ? SOIL_DEPTH : 0)] : []));
+    const lowest = Math.min(0, ...solids.map((s) => s.bottom), ...spannedBottoms);
     this.ground.scale.set(size, size, 1);
     this.ground.position.set((x0 + x1) / 2, lowest - 0.002, -(y0 + y1) / 2);
+    // The grid at the ground's height, round the model's middle, a metre a cell.
+    this.grid.position.set(Math.round((x0 + x1) / 2), lowest - 0.001, Math.round(-(y0 + y1) / 2));
     this.placeSun();
     if (this.shadows) this.castShadows();
   }

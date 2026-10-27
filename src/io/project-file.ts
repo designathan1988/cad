@@ -10,6 +10,7 @@ import { isVariableName } from '../core/measure';
 import { isOpeningStyle, operationsOf } from '../elements/opening/style';
 import { LIBRARY } from '../elements/object/library';
 import { LIBRARY_MORE } from '../elements/object/library-more';
+import { LIBRARY_LIGHTS } from '../elements/object/library-lights';
 import { definitionMaterials } from '../elements/object/materials';
 import { isDefinition } from '../elements/object/valid';
 import { objectKind } from '../elements/kinds/object';
@@ -92,7 +93,7 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 42: tags by elements with their values (`tags`, elements/tag). Older files have none.
  * Version 43: a room's interior elevations, marks kept to a level (`levelId`, elements/section). Older marks have none: every level.
  */
-export const CURRENT_VERSION = 43;
+export const CURRENT_VERSION = 44;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -275,7 +276,9 @@ export function repairProject(raw: unknown): ReadResult {
   // The objects' definitions: the file's, or the library for a file from before them; and the
   // materials they use, as the layers' (a definition is data: a material it names is kept with it).
   const kept = raw.definitions === undefined ? [...LIBRARY] : keep(raw.definitions, isDefinition, 'droppedDefinitions');
-  const definitions = raw.version < 29 ? [...kept, ...LIBRARY_MORE.filter((d) => !kept.some((k) => k.id === d.id))] : kept;
+  const since29 = raw.version < 29 ? [...kept, ...LIBRARY_MORE.filter((d) => !kept.some((k) => k.id === d.id))] : kept;
+  // Version 44 brought the lights (library-lights.ts): a file from before gets them.
+  const definitions = raw.version < 44 ? [...since29, ...LIBRARY_LIGHTS.filter((d) => !since29.some((k) => k.id === d.id))] : since29;
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));

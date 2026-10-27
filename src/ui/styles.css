@@ -598,6 +598,53 @@ button.project-name:hover {
 .view-bar[hidden] {
   display: none;
 }
+/* The light (shell.ts): its button, and under the bar's right end its two sliders. */
+.light-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.light-btn:hover,
+.light-btn[aria-expanded='true'] {
+  background: var(--hover);
+  color: var(--text);
+}
+.light-panel {
+  position: absolute;
+  top: calc(100% + var(--sp-1));
+  right: 0;
+  display: grid;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+.light-panel[hidden] {
+  display: none;
+}
+.light-row {
+  display: grid;
+  grid-template-columns: calc(2 * var(--sp-7)) minmax(0, 1fr) calc(1.75 * var(--sp-7));
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: var(--menu-min-w);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.light-value {
+  text-align: right;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
 /* Explode with one level shown: dimmed, still clickable (it says why it does nothing). */
 .view-bar button[aria-disabled='true'] {
   opacity: 0.45;

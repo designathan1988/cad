@@ -159,7 +159,21 @@ export function buildShell(root: HTMLElement) {
     return { box, caption, select };
   };
   const look = { style: lookSelect('cube'), quality: lookSelect('sun') };
-  viewBar.append(levelsBox, togglesBox, look.style.box, look.quality.box);
+  // The light: a button opening the view's brightness and the sun's strength, a slider each.
+  const lightBtn = el('button', { type: 'button', class: 'has-icon light-btn' });
+  lightBtn.innerHTML = icon('sun', 16);
+  lightBtn.append(el('span', { class: 'label' }));
+  lightBtn.setAttribute('aria-expanded', 'false');
+  const lightSlider = () => {
+    const caption = el('span', { class: 'light-caption' });
+    const input = el('input', { type: 'range', min: '0.25', max: '3', step: '0.05' });
+    const value = el('span', { class: 'light-value' });
+    return { row: el('label', { class: 'light-row' }, caption, input, value), caption, input, value };
+  };
+  const light = { button: lightBtn, panel: el('div', { class: 'light-panel', role: 'group' }), brightness: lightSlider(), sun: lightSlider() };
+  light.panel.hidden = true;
+  light.panel.append(light.brightness.row, light.sun.row);
+  viewBar.append(levelsBox, togglesBox, look.style.box, look.quality.box, lightBtn, light.panel);
   viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, viewBar, emptyHint, tempChip, walkStick, tourBar, pointCard, toast, browser);
 
   const panel = el('aside', { class: 'panel', 'aria-label': 'Properties' });
@@ -197,7 +211,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, savedNote, undo, redo, level, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, tabs, fileMenu, ribbon, optBar, strip, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, look, dims, browser, sidebar,
+    panelToggle, tabs, fileMenu, ribbon, optBar, strip, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, look, light, dims, browser, sidebar,
     emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, fitFoot,
   };
 

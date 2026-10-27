@@ -30,9 +30,15 @@ export interface View3D {
   readonly section: SectionLine | null;
   readonly style: VisualStyle;
   readonly quality: RenderQuality;
+  /** How bright the whole view is, and how strong the sun is against the sky (1: as drawn; LIGHT_RANGE). */
+  readonly brightness: number;
+  readonly sun: number;
 }
 
-export const VIEW_3D_DEFAULT: View3D = { levels: 'all', explode: false, cut: false, xray: false, box: null, ortho: false, section: null, style: 'shaded', quality: 'medium' };
+/** The brightness's and the sun's range. */
+export const LIGHT_RANGE = { min: 0.25, max: 3 } as const;
+
+export const VIEW_3D_DEFAULT: View3D = { levels: 'all', explode: false, cut: false, xray: false, box: null, ortho: false, section: null, style: 'shaded', quality: 'medium', brightness: 1, sun: 1 };
 
 /** Between two exploded levels, beyond their own height (m). */
 export const EXPLODE_GAP = 2.5;
@@ -68,6 +74,9 @@ export function cutAt(levels: readonly Level[], current: string, view: View3D): 
   return here.elevation + cutHeightOf(here) + liftOf(levels, here.id, exploding(levels, current, view));
 }
 
+/** A brightness or a sun's strength as stored: within LIGHT_RANGE, else 1. */
+const lightOf = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= LIGHT_RANGE.min && v <= LIGHT_RANGE.max ? v : 1);
+
 /** A stored view, or the default for what is missing or not one of the choices. */
 export function readView3D(raw: unknown): View3D {
   const o = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
@@ -81,5 +90,7 @@ export function readView3D(raw: unknown): View3D {
     section: readSection(o.section),
     style: (VISUAL_STYLES as readonly unknown[]).includes(o.style) ? (o.style as VisualStyle) : 'shaded',
     quality: (RENDER_QUALITIES as readonly unknown[]).includes(o.quality) ? (o.quality as RenderQuality) : 'medium',
+    brightness: lightOf(o.brightness),
+    sun: lightOf(o.sun),
   };
 }
