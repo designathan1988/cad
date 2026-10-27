@@ -74,7 +74,9 @@ export function leafRange(op: Operation): readonly [number, number] {
 export function fitStyle(kind: OpeningKind, s: OpeningStyle): OpeningStyle {
   const operation = operationsOf(kind).includes(s.operation) ? s.operation : operationsOf(kind)[0]!;
   const [lo, hi] = leafRange(operation);
-  return { ...s, operation, leaves: Math.max(lo, Math.min(hi, Math.round(s.leaves))), threshold: kind === 'door' && s.threshold };
+  // A shutter or a grille is a window's.
+  const { screen, ...rest } = s;
+  return { ...rest, ...(kind === 'window' && screen ? { screen } : {}), operation, leaves: Math.max(lo, Math.min(hi, Math.round(s.leaves))), threshold: kind === 'door' && s.threshold };
 }
 
 export const isOpeningStyle = (s: unknown): s is OpeningStyle =>
@@ -92,7 +94,8 @@ export const isOpeningStyle = (s: unknown): s is OpeningStyle =>
   s.casing <= 0.3 &&
   finite(s.transom) &&
   s.transom >= 0 &&
-  typeof s.threshold === 'boolean';
+  typeof s.threshold === 'boolean' &&
+  (s.screen === undefined || s.screen === 'shutter' || s.screen === 'grille');
 
 /** The IFC name of how it opens: IfcDoorTypeOperationEnum for a door, IfcWindowPanelOperationEnum for a window's panes. */
 export function ifcOperation(o: Pick<Opening, 'kind' | 'style' | 'hinge'>): string {

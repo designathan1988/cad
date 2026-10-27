@@ -158,6 +158,22 @@ export function openingParts(o: Placed, f: OpeningFrame, open: boolean): Opening
   }
   // Tilting toward the outside (the exterior face's side) by `angle`, about the level line at `z`.
   const outside = o0 < o1 ? -1 : 1;
+  // Its protection, just outside the exterior face, over the opening between the jambs: a shutter's
+  // slats (5 cm apart, laid back 2 cm), or a grille's bars (12 mm, 12 cm apart, two cross bars). A
+  // shutter is drawn closed, and pushed aside when the window is drawn open (walking); a grille stays.
+  const face = o0 + outside * 0.03;
+  if (s.screen === 'grille') {
+    const bars = Math.max(1, Math.floor(width / 0.12 + 1e-9));
+    for (let i = 1; i < bars; i++) {
+      const t = (i * width) / bars;
+      push(box(t - 0.006, t + 0.006, face - 0.006, face + 0.006), o.bottom, o.top, 'frame');
+    }
+    for (const z of [o.bottom + 0.1, o.top - 0.1]) push(box(0, width, face - 0.006, face + 0.006), z - 0.006, z + 0.006, 'frame');
+  } else if (s.screen === 'shutter' && !open) {
+    push(box(0, 0.03, face - 0.015, face + 0.015), o.bottom, o.top, 'frame');
+    push(box(width - 0.03, width, face - 0.015, face + 0.015), o.bottom, o.top, 'frame');
+    for (let z = o.bottom + 0.03; z + 0.03 <= o.top; z += 0.05) push(box(0.03, width - 0.03, face - 0.01, face + 0.01), z, z + 0.03, 'leaf');
+  }
   const tilt = (z: number, angle: number) => {
     turning = { origin: { ...P(width / 2, mid), z }, axis: along, angle: outside * angle };
   };

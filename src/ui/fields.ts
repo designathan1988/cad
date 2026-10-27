@@ -121,6 +121,7 @@ const FIELD_ICONS: Readonly<Record<string, IconName>> = {
   frame: 'frame',
   casing: 'frame',
   transom: 'window',
+  screen: 'window',
   threshold: 'slab',
 };
 

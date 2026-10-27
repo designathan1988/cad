@@ -13,20 +13,7 @@ import type { Field } from '../../ui/fields';
 import { name, t, type MessageKey } from '../../ui/i18n';
 import { alignCandidates, alignFits, referenceCandidates } from './commands';
 import { fitStyle, leafRange, modelOf, OPENING_MODELS, operationsOf } from './style';
-import {
-  type AlignEdge,
-  type GroupSpacing,
-  hasDistance,
-  OPENING_DEFAULTS,
-  type Opening,
-  type OpeningGroup,
-  type OpeningGroupId,
-  type OpeningId,
-  type OpeningKind,
-  type OpeningStyle,
-  type Operation,
-  type RuleKind,
-} from './schema';
+import { type AlignEdge, type GroupSpacing, hasDistance, OPENING_DEFAULTS, type Opening, type OpeningGroup, type OpeningGroupId, type OpeningId, type OpeningKind, type OpeningStyle, type Operation, type RuleKind, WINDOW_SCREENS, type WindowScreen } from './schema';
 
 export type OpeningSize = { readonly width: number; readonly height: number; readonly sill: number; readonly style?: OpeningStyle | undefined };
 
@@ -376,6 +363,11 @@ function modelField<T>(list: readonly Pick<Opening, 'kind' | 'style'>[], set: (s
  * How the selected doors or windows are made and open (style.ts): the operation, the leaves, the frame,
  * the trim, the transom and a door's threshold. Each change keeps each opening's other properties.
  */
+const withoutScreen = (s: OpeningStyle): OpeningStyle => {
+  const { screen: _gone, ...rest } = s;
+  return rest;
+};
+
 export function styleFields(selected: readonly OpeningSolid[], update: OpeningPanelActions['update']): Field<OpeningSolid>[] {
   const ids = selected.map((s) => s.opening.id);
   const kind = selected[0]?.opening.kind ?? 'door';
@@ -395,6 +387,16 @@ export function styleFields(selected: readonly OpeningSolid[], update: OpeningPa
     { id: 'frame', label: 'panel.frame', kind: 'number', min: 0, get: (x) => style(x).frame, set: (v) => change({ frame: Math.min(0.3, v) }) },
     { id: 'casing', label: 'panel.casing', kind: 'number', min: 0, get: (x) => style(x).casing, set: (v) => change({ casing: Math.min(0.3, v) }) },
     { id: 'transom', label: 'panel.transom', kind: 'number', min: 0, get: (x) => style(x).transom, set: (v) => change({ transom: v }) },
+    {
+      // A window's protection outside: none, a shutter, a grille.
+      id: 'screen',
+      label: 'panel.screen',
+      kind: 'select',
+      when: () => kind === 'window',
+      options: [{ value: '', label: t('screen.none') }, ...WINDOW_SCREENS.map((v) => ({ value: v, label: t(`screen.${v}` as MessageKey) }))],
+      get: (x) => style(x).screen ?? '',
+      set: (v) => update(ids, (o) => (o.style ? { style: fitStyle(o.kind, v === '' ? withoutScreen(o.style) : { ...o.style, screen: v as WindowScreen }) } : {})),
+    },
     {
       id: 'threshold',
       label: 'panel.threshold',

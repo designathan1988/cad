@@ -85,7 +85,12 @@ export interface OpeningStyle {
   readonly casing: number;
   readonly transom: number;
   readonly threshold: boolean;
+  /** A window's protection on its outside face: a shutter (veneziana, slats) or a grille (grade, bars); none when absent. */
+  readonly screen?: WindowScreen;
 }
+
+export type WindowScreen = 'shutter' | 'grille';
+export const WINDOW_SCREENS: readonly WindowScreen[] = ['shutter', 'grille'];
 
 export const OPENING_DEFAULTS: Readonly<Record<OpeningKind, { readonly width: number; readonly height: number; readonly sill: number }>> = {
   door: { width: 0.9, height: 2.1, sill: 0 },
