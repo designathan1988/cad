@@ -16,6 +16,7 @@ import { markPoint, openingMarks } from '../elements/opening/marks';
 import { insideRing } from '../elements/room/derive';
 import { PlanView } from '../render/plan-view';
 import { pdfOfCanvas } from '../io/pdf';
+import type { Point2 } from '../core/vector';
 import { markPrefix, name, t } from '../ui/i18n';
 import { areaText } from '../ui/units';
 
@@ -60,36 +61,60 @@ export function fitOf(g: DerivedGeometry, s: PrintSetup): { readonly fits: boole
   return { fits: need.w <= room.w + 1e-9 && need.h <= room.h + 1e-9, need, room };
 }
 
+/** A plan's frame: a level at 1:den, `wMm` × `hMm` on paper, the model point `center` (m) at its middle. */
+export interface PlanFrame {
+  readonly levelId: string;
+  readonly den: number;
+  readonly wMm: number;
+  readonly hMm: number;
+  readonly center: Point2;
+}
+
 /**
- * The plan on a canvas the paper's size at `dpi`: its middle at the middle of the drawing area, the
- * title (project, level, scale) and a scale bar under it.
+ * Paper's colours: the light theme's, read while it is set (the screen is not painted meanwhile), with
+ * the canvas white. `paint` gets them, and the computed style for the fonts.
  */
-export function printCanvas(app: App, s: PrintSetup, dpi: number): HTMLCanvasElement {
-  const doc = app.store.get();
-  const g = levelPlan(doc, s.levelId, app.ui.hidden);
-  const paper = paperSize(s);
-  // One pen unit on paper (mm): 0.12 mm at 1:100, heavier at a larger scale.
-  const unitMm = PEN_UNIT_MM * scaleFactor(s.den);
-  const canvas = document.createElement('canvas');
-  const view = new PlanView(canvas);
-  const box = boundsOf(g);
-  const mid = box ? { x: (box.min.x + box.max.x) / 2, y: (box.min.y + box.max.y) / 2 } : { x: 0, y: 0 };
-  const w = paper.w / unitMm;
-  const h = paper.h / unitMm;
-  // Units a metre: a metre is 1000/den mm on paper.
-  view.scale = 1000 / s.den / unitMm;
-  // The drawing area's middle is above the paper's by half the title strip.
-  view.center = { x: mid.x, y: mid.y - TITLE_MM / 2 / (1000 / s.den) };
-  view.drawing = drawingOf(doc);
-  view.overrides = app.ui.overridesOn ? overrideColours(doc) : new Map();
-  // The light theme's colours, read while it is set (the screen is not painted meanwhile), on white.
+export function withPaperColours<T>(paint: (color: (name: string) => string, css: CSSStyleDeclaration) => T): T {
   const root = document.documentElement;
   const theme = root.dataset.theme;
   root.dataset.theme = 'light';
   try {
     const css = getComputedStyle(root);
     const white: Record<string, string> = { '--canvas': '#ffffff', '--underlay': '#ffffff', '--bg': '#ffffff' };
-    view.printing = { w, h, ratio: (unitMm * dpi) / 25.4, den: s.den, color: (n) => white[n] ?? css.getPropertyValue(n).trim() };
+    return paint((n) => white[n] ?? css.getPropertyValue(n).trim(), css);
+  } finally {
+    if (theme === undefined) delete root.dataset.theme;
+    else root.dataset.theme = theme;
+  }
+}
+
+/** The middle of a level's plan (m): of its bounds, or the origin when it has nothing. */
+export function planMiddle(app: App, levelId: string): Point2 {
+  const box = boundsOf(levelPlan(app.store.get(), levelId, app.ui.hidden));
+  return box ? { x: (box.min.x + box.max.x) / 2, y: (box.min.y + box.max.y) / 2 } : { x: 0, y: 0 };
+}
+
+/**
+ * A level's plan on a canvas the frame's size at `dpi`, drawn for paper (render/plan-view.ts,
+ * printing): the pens and texts in millimetres for the scale, the detail the scale's. Also a sheet's
+ * plan views (app/sheets.ts): drawn from the model each time, so they follow it.
+ */
+export function planCanvas(app: App, f: PlanFrame, dpi: number): { readonly canvas: HTMLCanvasElement; readonly view: PlanView } {
+  const doc = app.store.get();
+  const g = levelPlan(doc, f.levelId, app.ui.hidden);
+  // One pen unit on paper (mm): 0.12 mm at 1:100, heavier at a larger scale.
+  const unitMm = PEN_UNIT_MM * scaleFactor(f.den);
+  const canvas = document.createElement('canvas');
+  const view = new PlanView(canvas);
+  const w = f.wMm / unitMm;
+  const h = f.hMm / unitMm;
+  // Units a metre: a metre is 1000/den mm on paper.
+  view.scale = 1000 / f.den / unitMm;
+  view.center = f.center;
+  view.drawing = drawingOf(doc);
+  view.overrides = app.ui.overridesOn ? overrideColours(doc) : new Map();
+  withPaperColours((color) => {
+    view.printing = { w, h, ratio: (unitMm * dpi) / 25.4, den: f.den, color };
     const marks = openingMarks(doc.openings, markPrefix());
     const rooms = [...g.rooms.values()];
     const inRoom = (p: { x: number; y: number }) => rooms.some((r) => r.enclosed && insideRing(r.outline, p));
@@ -105,11 +130,22 @@ export function printCanvas(app: App, s: PrintSetup, dpi: number): HTMLCanvasEle
       roomLabels: rooms.map((r) => ({ at: r.label, name: `${r.room.number} · ${name(r.room.name)}`, short: r.room.number, area: areaText(r.area), warn: false, outline: r.outline })),
       openingTags: app.ui.openingTags ? [...g.openings.values()].flatMap((o) => (o.frame ? [{ at: markPoint(o.frame, o.opening, 0.25, inRoom), text: marks.get(o.opening.id) ?? '', width: o.opening.width }] : [])) : [],
     });
-    titleStrip(view, canvas, doc, s, w, h, css);
-  } finally {
-    if (theme === undefined) delete root.dataset.theme;
-    else root.dataset.theme = theme;
-  }
+  });
+  return { canvas, view };
+}
+
+/**
+ * The plan on a canvas the paper's size at `dpi`: its middle at the middle of the drawing area, the
+ * title (project, level, scale) and a scale bar under it.
+ */
+export function printCanvas(app: App, s: PrintSetup, dpi: number): HTMLCanvasElement {
+  const doc = app.store.get();
+  const paper = paperSize(s);
+  const mid = planMiddle(app, s.levelId);
+  // The drawing area's middle is above the paper's by half the title strip.
+  const { canvas, view } = planCanvas(app, { levelId: s.levelId, den: s.den, wMm: paper.w, hMm: paper.h, center: { x: mid.x, y: mid.y - TITLE_MM / 2 / (1000 / s.den) } }, dpi);
+  const unitMm = PEN_UNIT_MM * scaleFactor(s.den);
+  withPaperColours((_c, css) => titleStrip(view, canvas, doc, s, paper.w / unitMm, paper.h / unitMm, css));
   return canvas;
 }
 

@@ -2,6 +2,8 @@
 // The joined outline needs no boolean union: every piece is stroked first, then every piece is
 // filled over the strokes, so lines between joined pieces disappear and only the outside stays.
 
+import { drawSectionMark } from '../elements/kinds/section';
+import type { SectionMark } from '../elements/section/schema';
 import { DEFAULT_DRAWING, type Detail, detailOf, type DrawingSettings, PEN_UNIT_MM, type PenRole, scaleFactor, TEXT_MM } from '../elements/drawing/schema';
 import { drawObjectHandles, type ScreenHandle } from '../app/object-handles';
 import { drawAxis } from '../elements/kinds/grid';
@@ -74,6 +76,8 @@ export interface PlanOverlay {
   /** Grid axes: dash-dot lines with their name in a bubble at each end; the one being drawn has no id. */
   /** The axis being drawn (the grid tool), with the name it will get. */
   readonly gridDraft?: { readonly name: string; readonly start: Point2; readonly end: Point2 } | null;
+  /** The section being drawn with its tool. */
+  readonly sectionDraft?: SectionMark | null;
   /** The guide being placed. */
   readonly guideDraft?: { readonly point: Point2; readonly dir: Point2 } | null;
   /**
@@ -511,6 +515,7 @@ export class PlanView {
     this.drawOpenings(g, o, { line: color('--wall-line'), sel: color('--wall-sel'), selFill: color('--wall-sel-fill'), warn: color('--warn'), canvas: color('--canvas') });
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
     if (o.gridDraft) drawAxis(paint, o.gridDraft.start, o.gridDraft.end, o.gridDraft.name, color('--wall-sel'));
+    if (o.sectionDraft) drawSectionMark(paint, o.sectionDraft, color('--wall-sel'));
     // Guides over the walls, thin (a guide laid on a wall's face is seen there), and texts over all.
     for (const x of kinds) if (x.kind.layer === 'over') x.kind.plan(paint, x.solid, shownLit(x.id));
     if (o.guideDraft) this.drawLine(o.guideDraft.point, o.guideDraft.dir, color('--guide'), 1.6, [10, 4]);

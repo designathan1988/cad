@@ -130,10 +130,11 @@ export function renderFrame(app: App): void {
       preview,
       dimensionDraft: app.dimensionDraft(),
       gridDraft: app.gridDraft(),
+      sectionDraft: app.sectionDraft(),
       guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
       snap:
         // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-        (ui.tool === 'wall' || ui.tool === 'guide' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+        (ui.tool === 'wall' || ui.tool === 'guide' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
           ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null), ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
           : null,
       measure: guideDim
@@ -384,6 +385,7 @@ export function renderFrame(app: App): void {
         app.refresh();
       },
       close: () => app.togglePanel(false),
+      openSection: (id) => app.openSections(id),
       room: {
         updateRoom: (id, patch) => app.store.dispatch(updateRoom(id, patch)),
         updateRooms: (ids, patch) => app.store.dispatch(updateRooms(ids, patch)),

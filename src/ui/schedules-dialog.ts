@@ -11,14 +11,28 @@ import { el, segmented } from './controls';
 import { openProjectDialog } from './dialog';
 import { getLang, markPrefix, materialLabel, type MessageKey, name, num, t } from './i18n';
 
+/** How a schedule names what is in it, in the interface's language (app/schedules.ts: Naming). */
+export const scheduleNaming = (app: App) => ({
+  name,
+  wallTag: (n: number) => t('wall.tag', { n }),
+  outside: t('schedule.outside'),
+  use: (u: RoomUse) => t(`use.${u}`),
+  markPrefix: markPrefix(),
+  model: modelName,
+  material: (id: string) => materialLabel(materialIn(app.store.get().materials, id)),
+});
+
+/** A cell as the table shows it: a dash for nothing, lengths in the project's unit. */
+export const shownCell = (v: Cell, c: ScheduleColumn): string => {
+  if (v === null) return '—';
+  if (typeof v === 'string') return v;
+  return c.unit === 'text' || c.unit === 'count' ? String(v) : c.unit === 'm' ? lengthNum(v) : num(v);
+};
+
 export function showSchedulesDialog(app: App, first: ScheduleKind = 'rooms'): void {
   let kind = first;
-  const naming = { name, wallTag: (n: number) => t('wall.tag', { n }), outside: t('schedule.outside'), use: (u: RoomUse) => t(`use.${u}`), markPrefix: markPrefix(), model: modelName, material: (id: string) => materialLabel(materialIn(app.store.get().materials, id)) };
-  const shown = (v: Cell, c: ScheduleColumn): string => {
-    if (v === null) return '—';
-    if (typeof v === 'string') return v;
-    return c.unit === 'text' || c.unit === 'count' ? String(v) : c.unit === 'm' ? lengthNum(v) : num(v);
-  };
+  const naming = scheduleNaming(app);
+  const shown = shownCell;
   let dialog: { redraw: () => void } | null = null;
   const render = (close: () => void): HTMLElement => {
     const s = schedule(app.store.get(), app.geometry, kind, naming);

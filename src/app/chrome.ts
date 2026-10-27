@@ -182,6 +182,8 @@ export function renderChrome(app: App): void {
             ? t(ui.dimension.kind === 'idle' ? 'hint.dimensionStart' : ui.dimension.kind === 'from' ? 'hint.dimensionEnd' : 'hint.dimensionPlace')
             : ui.tool === 'grid'
               ? t(ui.gridFrom ? 'hint.gridEnd' : 'hint.gridStart')
+              : ui.tool === 'section'
+              ? t(ui.sectionFrom ? 'hint.sectionEnd' : 'hint.sectionStart')
               : ui.tool === 'guide'
                 ? t(ui.guideMode === 'point' ? 'hint.guidePoint' : ui.guideMode === 'circle' ? (ui.guideFrom ? 'hint.guideRadius' : 'hint.guideCentre') : ui.guideFrom ? 'hint.guideSecond' : 'hint.guideFirst')
               : ui.tool === 'column'
@@ -244,6 +246,8 @@ export function renderChrome(app: App): void {
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.dimension.kind === 'idle' ? 'key.exit' : 'key.back'))]
     : ui.tool === 'grid'
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.gridFrom ? 'key.back' : 'key.exit'))]
+    : ui.tool === 'section'
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.sectionFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'column'
     ? [snapKey, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'guide'

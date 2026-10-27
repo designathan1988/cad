@@ -3,6 +3,7 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
+import { isSheet, isViewport } from '../elements/sheet/schema';
 import { isLayerSet, isWallOverride } from '../app/layer-sets';
 import { isVariableName } from '../core/measure';
 import { isOpeningStyle, operationsOf } from '../elements/opening/style';
@@ -68,18 +69,22 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  *   has not (a sofa, a bed, kitchen units, fixtures, appliances, a lamp, plants), with their materials.
  * Version 30: materials' surface patterns (material/pattern.ts). An older file's built-in tiles, wood
  *   and brick get theirs.
+ * Version 31: sections and elevations (`sections`, elements/section) and sheets (`sheets`,
+ *   elements/sheet). Older files have none.
  */
-export const CURRENT_VERSION = 30;
+export const CURRENT_VERSION = 31;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
-  | { readonly kind: 'droppedWalls' | 'droppedOpenings' | 'droppedGroups' | 'droppedMaterials' | 'resetUnits' | 'droppedDefinitions' | 'droppedViews' | 'droppedPoints' | KindFix; readonly count: number }
+  | { readonly kind: Dropped; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number }
   /** Ids without their kind's prefix, renamed with every reference (typed-ids.ts). */
   | { readonly kind: 'typedIds'; readonly count: number };
 
 /** The fix for a registry kind's dropped elements: droppedColumns, droppedBeams and so on. */
 type KindFix = `dropped${Capitalize<KindKey>}`;
+/** What reading left out or put right, counted. */
+type Dropped = 'droppedWalls' | 'droppedOpenings' | 'droppedGroups' | 'droppedMaterials' | 'resetUnits' | 'droppedDefinitions' | 'droppedViews' | 'droppedPoints' | KindFix;
 const kindFix = (k: AnyKind): KindFix => `dropped${k.key[0]!.toUpperCase()}${k.key.slice(1)}` as KindFix;
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -210,7 +215,7 @@ export function repairProject(raw: unknown): ReadResult {
   if (levels.length === 0) return { ok: false, error: 'noLevels' };
   if (wallTypes.length === 0) return { ok: false, error: 'noWallTypes' };
   const fixes: Fix[] = [];
-  const keep = <T>(list: unknown, ok: (x: unknown) => x is T, kind: Extract<Fix, { count: number }>['kind']): T[] => {
+  const keep = <T>(list: unknown, ok: (x: unknown) => x is T, kind: Dropped): T[] => {
     // Lists missing from older versions are empty, not errors.
     if (list === undefined) return [];
     const all = Array.isArray(list) ? list : [];
@@ -257,6 +262,8 @@ export function repairProject(raw: unknown): ReadResult {
     // Its layer combinations and graphic overrides, the bad ones left out.
     ...(Array.isArray(raw.layerSets) && raw.layerSets.some(isLayerSet) ? { layerSets: (raw.layerSets as unknown[]).filter(isLayerSet) } : {}),
     ...(Array.isArray(raw.overrides) && raw.overrides.some(isWallOverride) ? { overrides: (raw.overrides as unknown[]).filter(isWallOverride) } : {}),
+    // Its sheets, the bad ones left out (and on each, the views that are not views).
+    ...(Array.isArray(raw.sheets) ? { sheets: (raw.sheets as unknown[]).flatMap((x): unknown[] => (isObject(x) && Array.isArray(x.viewports) ? [{ ...x, viewports: (x.viewports as unknown[]).filter(isViewport) }] : [])).filter(isSheet) } : {}),
     // Its named lengths, the bad ones left out.
     ...(isObject(raw.variables) ? { variables: Object.fromEntries(Object.entries(raw.variables).filter(([k, v]) => isVariableName(k) && finite(v))) as Record<string, number> } : {}),
     name: typeof raw.name === 'string' ? raw.name : '',

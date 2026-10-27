@@ -1,5 +1,8 @@
 // The tools that place the registry's kinds (elements/registry.ts): guardrails, stairs, roofs, beams, columns, grid axes, dimensions, texts and level marks. Functions over the app (app.ts delegates).
 
+import { addSections } from '../elements/section/commands';
+import { boundsOf, deriveGeometry } from './geometry';
+import { DEPTH_MAX, elevationsAround, lookOf, nextSectionName, SECTION_PREFIX, type SectionMark } from '../elements/section/schema';
 import { addObject } from '../elements/object/commands';
 import { OBJECT_PREFIX } from '../elements/object/schema';
 import { words } from '../elements/object/fields';
@@ -240,6 +243,68 @@ export function gridEscape(app: App): void {
     return app.render();
   }
   app.setTool('select');
+}
+
+/** How deep a new section sees: the far side of the model from its line, and a metre past it; 10 m with nothing. */
+function depthFrom(app: App, start: Point2, end: Point2): number {
+  const box = boundsOf(app.geometry);
+  if (!box) return 10;
+  const look = lookOf({ start, end });
+  const corners = [box.min, box.max, { x: box.min.x, y: box.max.y }, { x: box.max.x, y: box.min.y }];
+  const far = Math.max(...corners.map((c) => (c.x - start.x) * look.x + (c.y - start.y) * look.y));
+  return Math.min(DEPTH_MAX, Math.max(1, far + 1));
+}
+
+/** The section tool: a click starts its line, the next ends it; it looks to the line's left. */
+export function sectionClick(app: App, p: Point2): void {
+  const from = app.ui.sectionFrom;
+  if (!from) {
+    app.ui.sectionFrom = p;
+    return app.render();
+  }
+  if (distance(from, p) < MIN_WALL_LENGTH) return;
+  const doc = app.store.get();
+  const mark: SectionMark = { id: newId(SECTION_PREFIX), name: nextSectionName(doc.sections), kind: 'section', start: from, end: p, depth: depthFrom(app, from, p) };
+  app.store.dispatch(addSections([mark]));
+  app.ui.sectionFrom = null;
+  app.ui.info = t('hint.sectionMade', { name: mark.name });
+  app.render();
+}
+
+/** Esc in the section tool: the line begun is dropped; none begun, the tool is left. */
+export function sectionEscape(app: App): void {
+  if (app.ui.sectionFrom) {
+    app.ui.sectionFrom = null;
+    return app.render();
+  }
+  app.setTool('select');
+}
+
+/** The section being drawn with its tool; plan only. */
+export function sectionDraft(app: App): SectionMark | null {
+  const from = app.ui.view === 'plan' && app.ui.tool === 'section' ? app.ui.sectionFrom : null;
+  const to = app.ui.snap?.point ?? app.ui.cursor;
+  return from && to && distance(from, to) > 0 ? { id: '', name: nextSectionName(app.store.get().sections), kind: 'section', start: from, end: to, depth: 1 } : null;
+}
+
+/** The four elevations round the whole model, 3 m out: those whose side has none yet. */
+export function addElevations(app: App): void {
+  const doc = app.store.get();
+  const box = boundsOf(deriveGeometry(doc));
+  if (!box) {
+    app.toast(t('section.nothing'));
+    return;
+  }
+  const have = new Set(doc.sections.filter((m) => m.kind === 'elevation').map((m) => m.name));
+  const marks = elevationsAround(box, 3)
+    .map((e): SectionMark => ({ id: newId(SECTION_PREFIX), name: t(`section.side.${e.side}`), kind: 'elevation', start: e.start, end: e.end, depth: e.depth }))
+    .filter((m) => !have.has(m.name));
+  if (marks.length === 0) {
+    app.toast(t('section.allMade'));
+    return;
+  }
+  app.store.dispatch(addSections(marks));
+  app.toast(t('section.elevationsMade', { n: marks.length }));
 }
 
 /** The axis being drawn with the grid tool, and the name it will get; plan only. */

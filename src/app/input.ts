@@ -1,6 +1,8 @@
 // Mouse and keyboard. Plan: wheel zooms at the cursor, middle button pans. 3D: wheel zooms at the
 // cursor, middle pans, Shift + middle or right rotates (OrbitControls). Left button is the tool's.
 
+import { showSections } from '../ui/sections-dialog';
+import { showSheets } from '../ui/sheets-dialog';
 import { showOverrides } from '../ui/overrides-dialog';
 import { showVariables } from '../ui/variables-dialog';
 import { showKeys } from '../ui/keys-dialog';
@@ -77,6 +79,8 @@ export function wireInput(app: App): void {
   app.openTour = () => showTourDialog(app);
   app.openPoints = () => showPointsDialog(app);
   app.openSchedules = () => showSchedulesDialog(app);
+  app.openSections = (id) => showSections(app, id);
+  app.openSheets = (id) => showSheets(app, id);
   watchErrors(() => app.debugOpen && app.toggleDebug(true));
   app.openWallTypes = (typeId) => showWallTypes(app, typeId);
   app.openMaterials = () => showMaterials(app);
@@ -449,7 +453,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
+    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -604,6 +608,10 @@ export function wireInput(app: App): void {
       app.gridEscape();
       return true;
     }
+    if (ui.tool === 'section' && ui.sectionFrom) {
+      app.sectionEscape();
+      return true;
+    }
     if ((ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom) {
       ui.beamFrom = null;
       app.render();
@@ -706,6 +714,11 @@ export function wireInput(app: App): void {
     if (ui.tool === 'grid') {
       const at = worldAt(e);
       if (at && ui.view === 'plan') app.gridClick(snapped(e)?.point ?? at.p);
+      return;
+    }
+    if (ui.tool === 'section') {
+      const at = worldAt(e);
+      if (at && ui.view === 'plan') app.sectionClick(snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'column') {

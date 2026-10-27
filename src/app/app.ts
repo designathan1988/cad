@@ -1,6 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import type { SectionMark } from '../elements/section/schema';
 import { deleteLayerSet, nextName, saveLayerSet } from './layer-sets';
 import type { GuideMode } from './guide-ui';
 import { setVariables } from '../core/measure';
@@ -143,6 +144,8 @@ export interface UiState {
   dimension: DimensionToolState;
   /** The grid tool's first point, before the axis is made. */
   gridFrom: Point2 | null;
+  /** The section tool's first point (kind-tools.ts: sectionClick). */
+  sectionFrom: Point2 | null;
   /** The beam tool's first point, before the beam is made. */
   beamFrom: Point2 | null;
   /** The object tool's definition (elements/object), and the turn the next object is placed at (radians). */
@@ -272,6 +275,7 @@ export class App {
       measureMode: 'distance',
       dimension: DIMENSION_IDLE,
       gridFrom: null,
+      sectionFrom: null,
       beamFrom: null,
       objectDef: 'def_table',
       objectAngle: 0,
@@ -668,6 +672,7 @@ export class App {
     this.ui.measure = MEASURE_IDLE;
     this.ui.dimension = DIMENSION_IDLE;
     this.ui.gridFrom = null;
+    this.ui.sectionFrom = null;
     this.ui.beamFrom = null;
     this.ui.holeFor = null;
     this.ui.roofDraft = [];
@@ -1121,6 +1126,26 @@ export class App {
     return kindTools.gridDraft(this);
   }
 
+  /** The section tool: a click starts its line, the next ends it (lettered on from the last). */
+  sectionClick(p: Point2): void {
+    return kindTools.sectionClick(this, p);
+  }
+
+  /** Esc in the section tool: the line begun is dropped; none begun, the tool is left. */
+  sectionEscape(): void {
+    return kindTools.sectionEscape(this);
+  }
+
+  /** The section being drawn with its tool; plan only. */
+  sectionDraft(): SectionMark | null {
+    return kindTools.sectionDraft(this);
+  }
+
+  /** The four elevations round the building, those not made yet (elements/section). */
+  addElevations(): void {
+    return kindTools.addElevations(this);
+  }
+
   /** The axes as drawn now (a move being dragged or the Modify tool taking them): what snapping sees; plan only. */
   shownGrids(): readonly Grid[] {
     return kindTools.shownGrids(this);
@@ -1367,6 +1392,10 @@ export class App {
 
   /** Opens the quantity schedules; set by the input layer. */
   openSchedules: () => void = () => {};
+  /** Opens the sections and elevations (ui/sections-dialog.ts), on one if given; set by the input layer. */
+  openSections: (id?: string) => void = () => {};
+  /** Opens the sheets (ui/sheets-dialog.ts), on one if given; set by the input layer. */
+  openSheets: (id?: string) => void = () => {};
 
   /** The project's file name: its name without what a file name cannot hold. */
   fileBase(): string {

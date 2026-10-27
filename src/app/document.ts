@@ -5,6 +5,8 @@ import type { LayerSet, WallOverride } from './layer-sets';
 import type { Separator } from '../elements/separator/schema';
 import type { Curtain } from '../elements/curtain/schema';
 import type { Zone } from '../elements/zone/schema';
+import type { SectionMark } from '../elements/section/schema';
+import type { Sheet } from '../elements/sheet/schema';
 import type { Rule } from '../rules/schema';
 import { DEFAULT_DRAWING, type DrawingSettings } from '../elements/drawing/schema';
 import { LIBRARY } from '../elements/object/library';
@@ -60,7 +62,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 30;
+  readonly version: 31;
   readonly name: string;
   /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
   readonly units: Units;
@@ -108,6 +110,8 @@ export interface Doc {
   readonly curtains: readonly Curtain[];
   /** Rooms taken together under a name, a category and a colour (elements/zone). */
   readonly zones: readonly Zone[];
+  /** Sections and elevations drawn from the model (elements/section), the same on every level. */
+  readonly sections: readonly SectionMark[];
   /** The norm rules it is checked against (rules/schema.ts); the defaults when it sets none. */
   readonly rules?: readonly Rule[];
   /** The plan's scale and the pens (elements/drawing/schema.ts); the defaults when it sets none. */
@@ -118,6 +122,8 @@ export interface Doc {
   readonly layerSets?: readonly LayerSet[];
   /** Walls of a type filled in plan with a colour of their own (app/layer-sets.ts). */
   readonly overrides?: readonly WallOverride[];
+  /** Sheets: papers with a title block and views placed on them (elements/sheet, app/sheets.ts). */
+  readonly sheets?: readonly Sheet[];
 }
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */
@@ -134,7 +140,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 30,
+    version: 31,
     name: '',
     units: DEFAULT_UNITS,
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
@@ -190,6 +196,7 @@ export function newDocument(): Doc {
     separators: [],
     curtains: [],
     zones: [],
+    sections: [],
   };
 }
 

@@ -197,6 +197,10 @@ export function appActions(app: App, open: Openers): Action[] {
     make('view.tourEdit', 'gtour.edit', views, () => app.openTour()),
     make('view.points', 'poi.dialogOpen', views, () => app.openPoints()),
     make('view.schedules', 'schedule.open', views, () => app.openSchedules(), { keywords: 'schedule quantitativos tabela CSV portas janelas cômodos paredes áreas' }),
+    make('view.sections', 'section.dialogOpen', views, () => app.openSections(), { keywords: 'corte cortes section sections elevação elevações elevation fachada facade' }),
+    make('view.sheets', 'sheet.open', views, () => app.openSheets(), { keywords: 'prancha pranchas sheet sheets carimbo title block folha PDF documentação' }),
+    make('tool.section', 'tool.section', tools, () => app.setTool('section'), { keywords: 'corte section linha de corte cut line' }),
+    make('section.elevations', 'section.makeElevations', views, () => app.addElevations(), { keywords: 'elevação elevações elevation fachadas facades norte sul leste oeste' }),
     make('view.addPoint', 'pal.addPoint', views, () => app.addPointHere()),
     // Tools: the text or the level mark goes where the next click is (it went in the middle of the view).
     make('edit.addNote', 'ctx.addNote', edit, () => app.setTool('note'), { keywords: 'texto text nota note anotação annotation' }),

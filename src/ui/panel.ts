@@ -56,6 +56,8 @@ export interface PanelActions {
   readonly firstWall?: string;
   readonly updateDefaults: (patch: Partial<WallDefaults>) => void;
   readonly close: () => void;
+  /** A section's drawing shown (its panel's button). */
+  readonly openSection?: (id: string) => void;
   readonly opening: OpeningPanelActions;
   readonly room: RoomPanelActions;
   readonly updateOpeningDefaults: (kind: OpeningKind, patch: Partial<OpeningSize>) => void;
@@ -142,7 +144,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     const title = kind.title ? kind.title(items) : { icon: kind.icon, text: n === 1 ? t(kind.one) : t(kind.many, { n }) };
     nodes.push(head(title.icon, title.text));
     part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, { dispatch: act.dispatch, doc, ...(act.room.startFloorHole ? { startFloorHole: act.room.startFloorHole } : {}) }), items));
+    nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, { dispatch: act.dispatch, doc, ...(act.room.startFloorHole ? { startFloorHole: act.room.startFloorHole } : {}), ...(act.openSection ? { openSection: act.openSection } : {}) }), items));
     if (kind.hint) nodes.push(el('div', { class: 'panel-hint' }, t(kind.hint)));
     const problem = kind.warning?.(items, doc) ?? null;
     if (problem) {
