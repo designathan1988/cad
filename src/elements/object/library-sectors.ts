@@ -57,7 +57,9 @@ export const TOY_CHEST: ObjectDefinition = {
     { kind: 'box', name: w('Lateral', 'Side'), repeat: { count: 2, dx: 'largura - 0.018' }, x: '-largura/2', y: '-profundidade/2 + 0.018', z: 0.04, w: 0.018, d: 'profundidade - 0.036', h: 'altura - 0.06', material: 'matCorpo', round: 0.004 },
     { kind: 'box', name: w('Rodapé', 'Plinth'), x: '-largura/2 + 0.03', y: '-profundidade/2 + 0.03', z: 0, w: 'largura - 0.06', d: 'profundidade - 0.06', h: 0.04, material: 'matCorpo' },
     // The lid hinged at the back, raised.
-    { kind: 'box', name: w('Tampa', 'Lid'), x: '-largura/2', y: 'profundidade/2 - 0.02', z: 'altura - 0.02', w: 'largura', d: 'profundidade', h: 0.02, tilt: '-tampa', material: 'matTampa', round: 0.008 },
+    // A box leans about its base's front edge: turned half round and placed at the back edge, it lies on the
+    // box closed (its thickness under that edge) and swings up about the hinge as it opens.
+    { kind: 'box', name: w('Tampa', 'Lid'), x: '-largura/2', y: 'profundidade/2', z: 'altura', w: 'largura', d: 'profundidade', h: 0.02, tilt: '180 + tampa', material: 'matTampa', round: 0.008 },
     // Toys showing over the rim: blocks and a ball.
     ...['lacquerTerracotta', 'lacquerSage', 'brass'].map((material, k) => ({
       kind: 'box' as const,
@@ -462,6 +464,7 @@ export const WHITEBOARD: ObjectDefinition = {
     len('largura', 'Largura', 'Width', 3, 0.9, 6),
     len('altura', 'Altura', 'Height', 1.2, 0.6, 1.5),
     len('base', 'Altura da borda inferior', 'Lower edge height', 0.9, 0.6, 1.1),
+    yes('cavalete', 'Cavalete móvel com rodízios (sem ele, na parede)', 'Mobile stand on castors (without it, on the wall)', 0),
     mat('matMoldura', 'Moldura', 'Frame', 'aluminium'),
   ],
   parts: [
@@ -470,10 +473,17 @@ export const WHITEBOARD: ObjectDefinition = {
     { kind: 'box', name: w('Bandeja', 'Tray'), x: '-largura/2 + 0.1', y: -0.1, z: 'base - 0.02', w: 'largura - 0.2', d: 0.08, h: 0.02, material: 'matMoldura' },
     ...['lacquerTerracotta', 'lacquerBlack', 'velvet'].map((material, k) => ({ kind: 'cylinder' as const, name: w('Marcador', 'Marker'), x: `-largura/2 + 0.3 + ${k} * 0.06`, y: -0.07, z: 'base + 0.01', r: 0.009, h: 0.13, roll: 90, material })),
     { kind: 'box', name: w('Apagador', 'Eraser'), x: 'largura/2 - 0.4', y: -0.09, z: 'base', w: 0.15, d: 0.05, h: 0.035, material: 'plasticBlack', round: 0.006 },
+    // The mobile stand: an upright each side up past the board, a foot across under each on two castors,
+    // a rail between the uprights low down.
+    { kind: 'box', name: w('Montante', 'Upright'), when: 'cavalete', repeat: { count: 2, dx: 'largura + 0.04' }, x: '-largura/2 - 0.04', y: -0.035, z: 0.1, w: 0.04, d: 0.04, h: 'base + altura - 0.05', material: 'matMoldura', round: 0.006 },
+    { kind: 'box', name: w('Pé', 'Foot'), when: 'cavalete', repeat: { count: 2, dx: 'largura + 0.04' }, x: '-largura/2 - 0.045', y: -0.33, z: 0.06, w: 0.05, d: 0.6, h: 0.04, material: 'matMoldura', round: 0.008 },
+    { kind: 'sphere', name: w('Rodízio', 'Castor'), when: 'cavalete', repeat: { count: 4 }, x: 'if(i % 2 == 0, -largura/2 - 0.02, largura/2 + 0.02)', y: 'if(i < 2, -0.6, -0.06)', z: 0, r: 0.03, h: 0.06, material: 'rubber' },
+    { kind: 'box', name: w('Travessa', 'Rail'), when: 'cavalete', x: '-largura/2', y: -0.03, z: 0.3, w: 'largura', d: 0.03, h: 0.03, material: 'matMoldura', round: 0.006 },
   ],
   handles: [{ param: 'largura', axis: 'x', at: ['largura/2', 0, 'base + altura/2'], shift: 0.5 }],
   types: [
     { id: 'white', name: w('Quadro branco 3 m', 'Whiteboard 3 m'), values: {} },
+    { id: 'mobile', name: w('Quadro branco móvel 1,8 m', 'Mobile whiteboard 1.8 m'), values: { cavalete: 1, largura: 1.8, altura: 1, base: 0.85 } },
     { id: 'chalk', name: w('Lousa verde 4 m, moldura de madeira', 'Chalkboard 4 m, timber frame'), values: { tipo: 1, largura: 4, matMoldura: 'oak' } },
   ],
 };

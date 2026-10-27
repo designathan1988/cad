@@ -1,0 +1,65 @@
+// The sectors' families (children, commerce, health, school) at the ends of every parameter's range: each
+// still closes and stays on the floor; the toy chest's lid turns about its hinge (closed it lies on the box,
+// open it stands at the back); the mobile whiteboard stands on its castors.
+
+import { describe, expect, it } from 'vitest';
+import { BUILT_IN_MATERIALS } from '../../src/elements/material/schema';
+import { boxCorners, evaluateObject, pieceSpan, type Piece } from '../../src/elements/object/evaluate';
+import { LIBRARY } from '../../src/elements/object/library';
+import { LIBRARY_SECTORS, TOY_CHEST, WHITEBOARD } from '../../src/elements/object/library-sectors';
+import type { ObjectDefinition } from '../../src/elements/object/schema';
+
+const context = { definitions: LIBRARY, materials: BUILT_IN_MATERIALS };
+const at = (def: ObjectDefinition, typeId: string, values: Record<string, number | string>) =>
+  evaluateObject(def, { id: 'o', levelId: 'l', definitionId: def.id, typeId, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values }, context);
+const low = (pieces: readonly Piece[]) => Math.min(...pieces.filter((p) => !p.cut).map((p) => pieceSpan(p).bottom));
+const tilted = (pieces: readonly Piece[]) => pieces.filter((p): p is Extract<Piece, { kind: 'box' }> => p.kind === 'box' && p.material.id === 'lacquerSage' && p.w > 0.5);
+
+describe('the sectors at the ends of their ranges', () => {
+  for (const def of LIBRARY_SECTORS) {
+    it(`${def.name.en}: every parameter at its least and most`, () => {
+      for (const p of def.params) {
+        if (p.formula !== undefined || (p.kind !== 'length' && p.kind !== 'number' && p.kind !== 'integer')) continue;
+        for (const v of [p.min, p.max]) {
+          if (v === undefined) continue;
+          for (const type of def.types) {
+            const ev = at(def, type.id, { [p.name]: v });
+            expect(ev.problems, `${type.id}, ${p.name} = ${v}`).toEqual([]);
+            expect(ev.pieces.length, `${type.id}, ${p.name} = ${v}`).toBeGreaterThan(0);
+            expect(low(ev.pieces), `${type.id}, ${p.name} = ${v}: lowest point`).toBeGreaterThan(-0.005);
+          }
+        }
+      }
+    });
+  }
+});
+
+describe('the toy chest lid turns about its hinge', () => {
+  it('closed, it lies on the box', () => {
+    const ev = at(TOY_CHEST, 'open', { tampa: 0, matTampa: 'lacquerSage' });
+    const [lid] = tilted(ev.pieces);
+    const corners = boxCorners(lid!);
+    expect(Math.min(...corners.map((q) => q.y))).toBeCloseTo(-0.21, 3);
+    expect(Math.max(...corners.map((q) => q.y))).toBeCloseTo(0.21, 3);
+    expect(Math.max(...corners.map((q) => q.z))).toBeCloseTo(0.45, 3);
+  });
+
+  it('open, it stands up from the back edge', () => {
+    const ev = at(TOY_CHEST, 'open', { tampa: 90 });
+    const [lid] = tilted(ev.pieces);
+    const corners = boxCorners(lid!);
+    // Standing on the back edge: no corner in front of the back, none below the rim, up a lid's depth.
+    expect(Math.min(...corners.map((q) => q.y))).toBeGreaterThan(0.21 - 0.03);
+    expect(Math.min(...corners.map((q) => q.z))).toBeGreaterThan(0.45 - 0.03);
+    expect(Math.max(...corners.map((q) => q.z))).toBeCloseTo(0.45 + 0.42, 2);
+  });
+});
+
+describe('the mobile whiteboard', () => {
+  it('stands on its castors', () => {
+    expect(low(at(WHITEBOARD, 'mobile', {}).pieces)).toBeCloseTo(0, 3);
+  });
+  it('on the wall it has no stand', () => {
+    expect(at(WHITEBOARD, 'white', {}).pieces.length).toBeLessThan(at(WHITEBOARD, 'mobile', {}).pieces.length);
+  });
+});
