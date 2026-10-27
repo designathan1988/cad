@@ -148,10 +148,18 @@ export async function exportObj(app: App): Promise<void> {
       leaf: t('export.leaf'),
       frame: t('export.frame'),
     });
-    const text = new OBJExporter().parse(scene);
+    // The OBJ and its materials (.mtl) in one ZIP: the OBJ alone opened all grey elsewhere.
+    const [{ mtlName, objWithMtl }, { zipFiles }] = await Promise.all([import('../io/export-obj'), import('../io/zip')]);
+    // The files inside named without spaces: mtllib names its file, and readers cut it at a space.
+    const base = mtlName(app.fileBase());
+    const { obj, mtl } = objWithMtl(scene, base, (s) => new OBJExporter().parse(s));
     scene.traverse((o) => (o as { geometry?: { dispose(): void } }).geometry?.dispose());
-    const file = `${app.fileBase()}.obj`;
-    app.download(file, new Blob([text], { type: 'model/obj' }), 'model/obj');
+    const zip = await zipFiles([
+      { name: `${base}.obj`, data: obj },
+      { name: `${base}.mtl`, data: mtl },
+    ]);
+    const file = `${app.fileBase()} - OBJ.zip`;
+    app.download(file, new Blob([zip as BlobPart], { type: 'application/zip' }), 'application/zip');
     app.toast(t('export.objSaved', { file }));
   } catch (e) {
     console.error(e);
