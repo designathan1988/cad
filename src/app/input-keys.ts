@@ -239,6 +239,11 @@ export function wireKeys(app: App, k: KeyContext): void {
       if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'grid') return app.gridEscape();
       if (ui.tool === 'section') return app.sectionEscape();
+      if (ui.tool === 'callout') {
+        if (!ui.calloutFrom) return app.setTool('select');
+        ui.calloutFrom = null;
+        return app.render();
+      }
       if (ui.tool === 'column' || ui.tool === 'object' || ui.tool === 'note' || ui.tool === 'levelMark') return app.setTool('select');
       if (ui.tool === 'guide') {
         if (!ui.guideFrom) return app.setTool('select');

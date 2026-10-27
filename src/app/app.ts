@@ -151,6 +151,8 @@ export interface UiState {
   gridFrom: Point2 | null;
   /** The section tool's first point (kind-tools.ts: sectionClick). */
   sectionFrom: Point2 | null;
+  /** The callout tool's arrow point (kind-tools.ts: calloutClick). */
+  calloutFrom: Point2 | null;
   /** The beam tool's first point, before the beam is made. */
   beamFrom: Point2 | null;
   /** The object tool's definition (elements/object), and the turn the next object is placed at (radians). */
@@ -293,6 +295,7 @@ export class App {
       dimension: DIMENSION_IDLE,
       gridFrom: null,
       sectionFrom: null,
+      calloutFrom: null,
       beamFrom: null,
       objectDef: 'def_table',
       objectAngle: 0,
@@ -690,6 +693,7 @@ export class App {
     this.ui.dimension = DIMENSION_IDLE;
     this.ui.gridFrom = null;
     this.ui.sectionFrom = null;
+    this.ui.calloutFrom = null;
     this.ui.beamFrom = null;
     this.ui.holeFor = null;
     this.ui.roofDraft = [];
@@ -1151,6 +1155,18 @@ export class App {
   /** Esc in the section tool: the line begun is dropped; none begun, the tool is left. */
   sectionEscape(): void {
     return kindTools.sectionEscape(this);
+  }
+
+  /** The callout tool: a click puts the arrow's point, the next the text, ready to type. */
+  calloutClick(p: Point2): void {
+    return kindTools.calloutClick(this, p);
+  }
+
+  /** The callout being placed: its arrow's point and the pointer; plan only. */
+  calloutDraft(): { from: Point2; to: Point2 } | null {
+    const from = this.ui.view === 'plan' && this.ui.tool === 'callout' ? this.ui.calloutFrom : null;
+    const to = this.ui.snap?.point ?? this.ui.cursor;
+    return from && to ? { from, to } : null;
   }
 
   /** The section being drawn with its tool; plan only. */

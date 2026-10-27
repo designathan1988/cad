@@ -5,6 +5,7 @@ import type { Note } from './schema';
 
 export interface NoteFieldActions {
   readonly updateNotes: (ids: readonly string[], patch: { readonly text?: string; readonly height?: number; readonly offset?: number }) => void;
+  readonly dropLeaders: (ids: readonly string[]) => void;
 }
 
 export function noteFields(notes: readonly Note[], act: NoteFieldActions): Field<Note>[] {
@@ -21,5 +22,7 @@ export function noteFields(notes: readonly Note[], act: NoteFieldActions): Field
         ]
       : []),
     { id: 'height', label: 'note.height', kind: 'number', min: 0.02, get: (n) => n.height, set: (v) => act.updateNotes(ids, { height: v }) },
+    // A callout's arrow taken off, the text kept.
+    { id: 'leader', label: 'note.dropLeader', kind: 'action', when: (items) => items.some((n) => n.leader), run: () => act.dropLeaders(ids) },
   ];
 }

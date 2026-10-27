@@ -6,6 +6,7 @@
 // paper's colours are the light theme's on white; no grid, no guides, nothing selected. A title and a
 // scale bar along the bottom. As a PDF of one page (io/pdf.ts).
 
+import { roomTagText } from './room-tag';
 import { overrideColours } from './layer-sets';
 import { drawingOf, type Doc } from './document';
 import { boundsOf, deriveGeometry, type DerivedGeometry, hideCategories } from './geometry';
@@ -18,7 +19,6 @@ import { PlanView } from '../render/plan-view';
 import { pdfOfCanvas } from '../io/pdf';
 import type { Point2 } from '../core/vector';
 import { markPrefix, name, t } from '../ui/i18n';
-import { areaText } from '../ui/units';
 
 export interface PrintSetup {
   readonly levelId: string;
@@ -127,7 +127,7 @@ export function planCanvas(app: App, f: PlanFrame, dpi: number): { readonly canv
       axis: null,
       handles: { squares: [], arrows: [], rotate: null, bulge: null, flips: [] },
       draft: null,
-      roomLabels: rooms.map((r) => ({ at: r.label, name: `${r.room.number} · ${name(r.room.name)}`, short: r.room.number, area: areaText(r.area), warn: false, outline: r.outline })),
+      roomLabels: rooms.map((r) => ({ at: r.label, ...roomTagText(r.room, r.area, doc.levels.find((l) => l.id === r.room.levelId)?.height ?? 0, drawingOf(doc).roomTag), warn: false, outline: r.outline })),
       openingTags: app.ui.openingTags ? [...g.openings.values()].flatMap((o) => (o.frame ? [{ at: markPoint(o.frame, o.opening, 0.25, inRoom), text: marks.get(o.opening.id) ?? '', width: o.opening.width }] : [])) : [],
     });
   });

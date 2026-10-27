@@ -101,7 +101,7 @@ export function layoutRoomTags(
     if (t.x < 0 || t.x > view.w || t.y < 0 || t.y > view.h) continue;
     const fits = (rows: string[]) => Math.max(...rows.map(measure)) + PAD <= t.width;
     // A warning too long for its room keeps a few words of it: a lone orange number said nothing.
-    const text = [[t.name, t.area], [t.short, t.area], ...(t.brief ? [[t.short, t.brief]] : [])].find(fits) ?? [t.short];
+    const text = ([[t.name, t.area], [t.short, t.area], ...(t.brief ? [[t.short, t.brief]] : [])].map((rows) => rows.filter((r) => r !== '')).find(fits) ?? [t.short]).filter((r, i) => r !== '' || i === 0);
     const w = Math.max(...text.map(measure)) + PAD;
     const h = text.length * LINE;
     let box = { x: t.x - w / 2, y: t.y - LINE + 1, w, h };

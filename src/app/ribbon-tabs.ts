@@ -103,7 +103,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
       panels: [
         select,
         { title: 'rib.p.dims', items: [tool('dimension', 'tool.dimension', 'dimension', 'L'), { id: 'dim.auto', icon: 'dimension', size: 'S' }, tool('measure', 'tool.measure', 'ruler', 'L')] },
-        { title: 'rib.p.text', items: [tool('note', 'edit.addNote', 'text', 'L'), tool('levelMark', 'edit.addLevelMark', 'height', 'S')] },
+        { title: 'rib.p.text', items: [tool('note', 'edit.addNote', 'text', 'L'), tool('callout', 'tool.callout', 'text', 'S'), tool('levelMark', 'edit.addLevelMark', 'height', 'S')] },
         { title: 'rib.p.tags', items: [{ id: 'settings.openingTags', icon: 'tag', size: 'S', pressed: () => ui.openingTags }] },
         {
           title: 'rib.p.documents',

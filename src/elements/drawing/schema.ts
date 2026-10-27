@@ -11,11 +11,17 @@
 export type PenRole = 'cut' | 'seen' | 'fine' | 'annotation';
 export const PEN_ROLES: readonly PenRole[] = ['cut', 'seen', 'fine', 'annotation'];
 
+/** What a room's tag says: its number and name, its name, its number, or its number and name with its ceiling height; the area under each but the number alone. */
+export type RoomTagContent = 'numberName' | 'name' | 'number' | 'numberNameHeight';
+export const ROOM_TAGS: readonly RoomTagContent[] = ['numberName', 'name', 'number', 'numberNameHeight'];
+
 export interface DrawingSettings {
   /** The plan's scale: 1 : scale. */
   readonly scale: number;
   /** Each pen's width on paper at 1:100 (mm). */
   readonly pens: Readonly<Record<PenRole, number>>;
+  /** What the rooms' tags say; number and name with the area when not set. */
+  readonly roomTag?: RoomTagContent;
 }
 
 /** The scales offered, 1:20 to 1:500. */
@@ -60,5 +66,11 @@ export const isDrawingSettings = (d: unknown): d is DrawingSettings => {
   if (typeof d !== 'object' || d === null) return false;
   const x = d as Record<string, unknown>;
   const pens = x.pens as Record<string, unknown> | undefined;
-  return SCALES.includes(x.scale as number) && typeof pens === 'object' && pens !== null && PEN_ROLES.every((r) => finite(pens[r]) && pens[r] >= PEN_MIN && pens[r] <= PEN_MAX);
+  return (
+    SCALES.includes(x.scale as number) &&
+    typeof pens === 'object' &&
+    pens !== null &&
+    PEN_ROLES.every((r) => finite(pens[r]) && pens[r] >= PEN_MIN && pens[r] <= PEN_MAX) &&
+    (x.roomTag === undefined || ROOM_TAGS.includes(x.roomTag as RoomTagContent))
+  );
 };

@@ -57,10 +57,10 @@ export function addLevelMarkHere(app: App, at?: Point2): void {
 }
 
 /** A text note where the menu was opened (or the middle of the view), selected, its text ready to type in the panel. */
-export function addNoteHere(app: App, at?: Point2): void {
+export function addNoteHere(app: App, at?: Point2, leader?: Point2): void {
   const p = at ?? app.plan.center;
   const id = newId(NOTE_PREFIX);
-  app.store.dispatch(addNote({ id, levelId: app.ui.levelId, at: { x: p.x, y: p.y }, text: t('note.default'), height: NOTE_HEIGHT }));
+  app.store.dispatch(addNote({ id, levelId: app.ui.levelId, at: { x: p.x, y: p.y }, text: t('note.default'), height: NOTE_HEIGHT, ...(leader ? { leader: { x: leader.x, y: leader.y } } : {}) }));
   if (app.ui.view !== 'plan') app.setView('plan');
   app.setTool('select');
   app.ui.selection = new Set([id]);
@@ -269,6 +269,18 @@ export function sectionClick(app: App, p: Point2): void {
   app.ui.sectionFrom = null;
   app.ui.info = t('hint.sectionMade', { name: mark.name });
   app.render();
+}
+
+/** The callout tool: a click puts the arrow's point; the next puts the text there, selected to type. */
+export function calloutClick(app: App, p: Point2): void {
+  const from = app.ui.calloutFrom;
+  if (!from) {
+    app.ui.calloutFrom = p;
+    return app.render();
+  }
+  if (distance(from, p) < MIN_WALL_LENGTH) return;
+  app.ui.calloutFrom = null;
+  addNoteHere(app, p, from);
 }
 
 /** Esc in the section tool: the line begun is dropped; none begun, the tool is left. */

@@ -1,5 +1,6 @@
 // One frame of the views: the plan's overlay (selection, previews, snaps, tags, temporary dimensions and their value fields) or the 3D's, and the panel. Functions over the app (app.ts delegates).
 
+import { roomTagText } from './room-tag';
 import { overrideColours } from './layer-sets';
 import { findingText } from '../ui/rules-dialog';
 import { keepSelectionInView3d } from './view-ui';
@@ -131,10 +132,11 @@ export function renderFrame(app: App): void {
       dimensionDraft: app.dimensionDraft(),
       gridDraft: app.gridDraft(),
       sectionDraft: app.sectionDraft(),
+      calloutDraft: app.calloutDraft(),
       guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
       snap:
         // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-        (ui.tool === 'wall' || ui.tool === 'guide' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+        (ui.tool === 'wall' || ui.tool === 'guide' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
           ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null), ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
           : null,
       measure: guideDim
@@ -175,25 +177,28 @@ export function renderFrame(app: App): void {
       hotHandle: app.hotHandle,
       anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
       wallTags: app.wallTags(),
-      roomLabels: [...app.visibleGeometry().rooms.values()].map((r) => ({
-        at: r.label,
-        name: `${r.room.number} · ${name(r.room.name)}`,
-        short: r.room.number,
-        // A room sharing its space with another says so on its tag: the two tags fell on one another
-        // and one name was simply not seen.
-        area: !r.enclosed
-          ? t('warn.roomNotEnclosed')
-          : r.sharing.length > 0
-            ? t('warn.roomShared', { rooms: r.sharing.map((id) => app.store.get().rooms.find((x) => x.id === id)).flatMap((x) => (x ? [`${x.number} · ${name(x.name)}`] : [])).join(', ') })
-            : areaText(r.area),
-        ...(!r.enclosed
-          ? { brief: t('warn.roomNotEnclosedBrief') }
-          : r.sharing.length > 0
-            ? { brief: t('warn.roomSharedBrief', { rooms: r.sharing.flatMap((id) => app.store.get().rooms.find((x) => x.id === id)?.number ?? []).join(', ') }) }
-            : {}),
-        warn: !r.enclosed || r.sharing.length > 0,
-        outline: r.outline,
-      })),
+      roomLabels: [...app.visibleGeometry().rooms.values()].map((r) => {
+        const said = roomTagText(r.room, r.area, levelOf(app.store.get(), r.room.levelId)?.height ?? 0, drawingOf(app.store.get()).roomTag);
+        return {
+          at: r.label,
+          name: said.name,
+          short: said.short,
+          // A room sharing its space with another says so on its tag: the two tags fell on one another
+          // and one name was simply not seen.
+          area: !r.enclosed
+            ? t('warn.roomNotEnclosed')
+            : r.sharing.length > 0
+              ? t('warn.roomShared', { rooms: r.sharing.map((id) => app.store.get().rooms.find((x) => x.id === id)).flatMap((x) => (x ? [`${x.number} · ${name(x.name)}`] : [])).join(', ') })
+              : said.area,
+          ...(!r.enclosed
+            ? { brief: t('warn.roomNotEnclosedBrief') }
+            : r.sharing.length > 0
+              ? { brief: t('warn.roomSharedBrief', { rooms: r.sharing.flatMap((id) => app.store.get().rooms.find((x) => x.id === id)?.number ?? []).join(', ') }) }
+              : {}),
+          warn: !r.enclosed || r.sharing.length > 0,
+          outline: r.outline,
+        };
+      }),
       // A floor's outline being drawn, or a beam from its first point to where the next click lands.
       draft:
         chainLine && chainLine.length >= 2

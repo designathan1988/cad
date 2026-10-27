@@ -24,6 +24,18 @@ export interface Note {
   readonly height: number;
   /** A level mark: says its level's elevation plus `offset` (m), not its text. */
   readonly elevation?: { readonly offset: number };
+  /** A callout's leader (chamada): the point its arrow points at, the line from the text's edge to it. */
+  readonly leader?: Point2;
+}
+
+/** Where a leader leaves the text: the point of its box's edge on the way from its middle to the arrow. */
+export function leaderStart(box: { x0: number; y0: number; x1: number; y1: number }, to: Point2): Point2 {
+  const c = { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2 };
+  const d = { x: to.x - c.x, y: to.y - c.y };
+  const hw = (box.x1 - box.x0) / 2;
+  const hh = (box.y1 - box.y0) / 2;
+  const k = Math.min(Math.abs(d.x) > 1e-12 ? hw / Math.abs(d.x) : Infinity, Math.abs(d.y) > 1e-12 ? hh / Math.abs(d.y) : Infinity, 1);
+  return { x: c.x + d.x * k, y: c.y + d.y * k };
 }
 
 /** What a level mark says: the height with its sign, "+2,80", "−0,15", "±0,00". */

@@ -6,7 +6,7 @@ import type { App } from '../app/app';
 import { type Doc, drawingOf } from '../app/document';
 import { downloadPlanPdf, fitOf, levelPlan, paperSize, type PrintSetup, printCanvas } from '../app/print';
 import type { Command } from '../core/store';
-import { type DrawingSettings, isDrawingSettings, PAPERS, PEN_MAX, PEN_MIN, PEN_ROLES, type PenRole, SCALES } from '../elements/drawing/schema';
+import { type DrawingSettings, isDrawingSettings, PAPERS, PEN_MAX, PEN_MIN, PEN_ROLES, type PenRole, ROOM_TAGS, SCALES } from '../elements/drawing/schema';
 import { el, numberField, segmented, select } from './controls';
 import { openProjectDialog } from './dialog';
 import { type MessageKey, name, num, t } from './i18n';
@@ -129,6 +129,11 @@ export function showDrawingSettings(app: App): void {
       String(d.scale),
       (v) => change({ ...d, scale: Number(v) }),
     );
+    const tag = select(
+      ROOM_TAGS.map((x) => ({ value: x, label: t(`draw.roomTag.${x}` as MessageKey) })),
+      d.roomTag ?? 'numberName',
+      (v) => change({ ...d, roomTag: v }),
+    );
     const pen = (role: PenRole) => row(t(`draw.pen.${role}` as MessageKey), numberField(d.pens[role], (v) => change({ ...d, pens: { ...d.pens, [role]: v } }), PEN_MIN, 2, 'mm', PEN_MAX), `pen:${role}`);
     const done = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
     done.dataset.focus = 'close';
@@ -137,7 +142,7 @@ export function showDrawingSettings(app: App): void {
       'div',
       { class: 'dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('draw.title') },
       el('h2', {}, t('draw.title')),
-      el('div', { class: 'units-body' }, row(t('draw.scale'), scale, 'scale'), ...PEN_ROLES.map(pen), el('p', { class: 'mat-note' }, t('draw.note'))),
+      el('div', { class: 'units-body' }, row(t('draw.scale'), scale, 'scale'), ...PEN_ROLES.map(pen), row(t('draw.roomTag'), tag, 'roomTag'), el('p', { class: 'mat-note' }, t('draw.note'))),
       el('div', { class: 'actions' }, el('span', { class: 'spacer' }), done),
     );
   });

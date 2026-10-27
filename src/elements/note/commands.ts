@@ -4,6 +4,22 @@ import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
 import type { Note } from './schema';
 
+/** The notes' leaders taken off: plain texts again. */
+export const dropLeaders = (ids: readonly string[]): Command<Doc> => ({
+  label: 'cmd.updateNote',
+  apply: (doc) =>
+    !doc.notes.some((n) => ids.includes(n.id) && n.leader)
+      ? doc
+      : {
+          ...doc,
+          notes: doc.notes.map((n) => {
+            if (!ids.includes(n.id) || !n.leader) return n;
+            const { leader: _, ...rest } = n;
+            return rest;
+          }),
+        },
+});
+
 export const addNote = (note: Note): Command<Doc> => ({
   label: 'cmd.addNote',
   apply: (doc) => ({ ...doc, notes: [...doc.notes, note] }),

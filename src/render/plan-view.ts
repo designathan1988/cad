@@ -2,6 +2,7 @@
 // The joined outline needs no boolean union: every piece is stroked first, then every piece is
 // filled over the strokes, so lines between joined pieces disappear and only the outside stays.
 
+import { drawLeader } from '../elements/kinds/note';
 import { drawSectionMark } from '../elements/kinds/section';
 import type { SectionMark } from '../elements/section/schema';
 import { DEFAULT_DRAWING, type Detail, detailOf, type DrawingSettings, PEN_UNIT_MM, type PenRole, scaleFactor, TEXT_MM } from '../elements/drawing/schema';
@@ -78,6 +79,8 @@ export interface PlanOverlay {
   readonly gridDraft?: { readonly name: string; readonly start: Point2; readonly end: Point2 } | null;
   /** The section being drawn with its tool. */
   readonly sectionDraft?: SectionMark | null;
+  /** The callout being placed: its arrow's point, and the pointer where its text will go. */
+  readonly calloutDraft?: { readonly from: Point2; readonly to: Point2 } | null;
   /** The guide being placed. */
   readonly guideDraft?: { readonly point: Point2; readonly dir: Point2 } | null;
   /**
@@ -516,6 +519,7 @@ export class PlanView {
     if (o.axis) this.dashed(o.axis.start, o.axis.end, color('--snap'));
     if (o.gridDraft) drawAxis(paint, o.gridDraft.start, o.gridDraft.end, o.gridDraft.name, color('--wall-sel'));
     if (o.sectionDraft) drawSectionMark(paint, o.sectionDraft, color('--wall-sel'));
+    if (o.calloutDraft) drawLeader(paint, o.calloutDraft.to, o.calloutDraft.from, color('--wall-sel'));
     // Guides over the walls, thin (a guide laid on a wall's face is seen there), and texts over all.
     for (const x of kinds) if (x.kind.layer === 'over') x.kind.plan(paint, x.solid, shownLit(x.id));
     if (o.guideDraft) this.drawLine(o.guideDraft.point, o.guideDraft.dir, color('--guide'), 1.6, [10, 4]);

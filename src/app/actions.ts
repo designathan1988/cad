@@ -200,6 +200,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('view.sections', 'section.dialogOpen', views, () => app.openSections(), { keywords: 'corte cortes section sections elevação elevações elevation fachada facade' }),
     make('view.sheets', 'sheet.open', views, () => app.openSheets(), { keywords: 'prancha pranchas sheet sheets carimbo title block folha PDF documentação' }),
     make('tool.section', 'tool.section', tools, () => app.setTool('section'), { keywords: 'corte section linha de corte cut line' }),
+    make('tool.callout', 'tool.callout', tools, () => app.setTool('callout'), { keywords: 'chamada callout seta leader texto com seta nota anotação' }),
     make('dim.auto', 'dim.auto', tools, () => app.autoDimension(), { keywords: 'cotagem automática auto dimension cotar paredes cotas fachada exterior' }),
     make('section.elevations', 'section.makeElevations', views, () => app.addElevations(), { keywords: 'elevação elevações elevation fachadas facades norte sul leste oeste' }),
     make('view.addPoint', 'pal.addPoint', views, () => app.addPointHere()),

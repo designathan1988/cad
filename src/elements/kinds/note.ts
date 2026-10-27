@@ -4,9 +4,10 @@
 import { finite, isObject, isPoint } from '../../core/guards';
 import { num, t } from '../../ui/i18n';
 import type { ElementKind, PlanPaint } from '../contract';
-import { updateNotes } from '../note/commands';
+import { dropLeaders, updateNotes } from '../note/commands';
 import { noteFields } from '../note/fields';
-import { elevationText, type Note, NOTE_PREFIX, noteBox, shownHeight } from '../note/schema';
+import { elevationText, leaderStart, type Note, NOTE_PREFIX, noteBox, shownHeight } from '../note/schema';
+import { nearSegment } from './paint';
 
 /** The box of a note as drawn at `scale` px a metre (its letters never smaller than they read). */
 const boxAt = (n: Note, scale?: number) => noteBox(n, scale ? shownHeight(n, scale) : n.height);
@@ -39,7 +40,8 @@ export const noteKind: ElementKind<Note, Note> = {
     finite(n.height) &&
     n.height > 0 &&
     // A level mark says a height, so it needs no text; a note does.
-    (n.elevation === undefined ? n.text.trim() !== '' : isObject(n.elevation) && finite(n.elevation.offset)),
+    (n.elevation === undefined ? n.text.trim() !== '' : isObject(n.elevation) && finite(n.elevation.offset)) &&
+    (n.leader === undefined || isPoint(n.leader)),
   // A level mark says its level's height plus its own: as its text, so it is drawn, boxed and picked as one.
   derive: (doc, n) => {
     if (!n.elevation) return n;
@@ -60,13 +62,19 @@ export const noteKind: ElementKind<Note, Note> = {
   },
   hit: (n, p, near, scale) => {
     const b = boxAt(n, scale);
-    return p.x >= b.x0 - near && p.x <= b.x1 + near && p.y >= b.y0 - near && p.y <= b.y1 + near;
+    if (p.x >= b.x0 - near && p.x <= b.x1 + near && p.y >= b.y0 - near && p.y <= b.y1 + near) return true;
+    return n.leader !== undefined && nearSegment(p, leaderStart(b, n.leader), n.leader, near);
+  },
+  // Framed with its arrow.
+  extent: (n) => {
+    const b = noteBox(n);
+    return [{ x: b.x0, y: b.y0 }, { x: b.x1, y: b.y1 }, ...(n.leader ? [n.leader] : [])];
   },
   // Over everything it is written on.
   pick: 'beforeWalls',
-  moved: (n, d) => ({ ...n, at: { x: n.at.x + d.x, y: n.at.y + d.y } }),
+  moved: (n, d) => ({ ...n, at: { x: n.at.x + d.x, y: n.at.y + d.y }, ...(n.leader ? { leader: { x: n.leader.x + d.x, y: n.leader.y + d.y } } : {}) }),
   // Notes keep reading upright: only their point goes (a turn, a mirror), their letters as they are.
-  mapped: (n, t, id) => ({ ...n, id, at: t.map(n.at) }),
+  mapped: (n, t, id) => ({ ...n, id, at: t.map(n.at), ...(n.leader ? { leader: t.map(n.leader) } : {}) }),
   similar: (a, b) => Math.abs(a.height - b.height) < 1e-6,
   // Their letters as tall as they are at this scale, a line each; a selected one boxed.
   plan: (p, n, lit) => {
@@ -79,6 +87,7 @@ export const noteKind: ElementKind<Note, Note> = {
     ctx.strokeStyle = colour;
     ctx.font = `${Math.max(2, px)}px ${p.family}`;
     ctx.textBaseline = 'middle';
+    if (n.leader) drawLeader(p, leaderStart(boxAt(n, p.scale), n.leader), n.leader, colour);
     if (n.elevation) levelMark(p, c, px, n.text);
     else {
       const lines = n.text.split('\n');
@@ -108,9 +117,43 @@ export const noteKind: ElementKind<Note, Note> = {
     }
     const lines = n.text.split('\n');
     lines.forEach((l, i) => out.text('A-ANNO-TEXT', { x: n.at.x, y: n.at.y - (i - (lines.length - 1) / 2) * n.height * 1.3 }, n.height, l));
+    if (n.leader) {
+      // The leader and its arrowhead's two sides.
+      const from = leaderStart(noteBox(n), n.leader);
+      out.line('A-ANNO-TEXT', from, n.leader);
+      const len = Math.hypot(n.leader.x - from.x, n.leader.y - from.y) || 1;
+      const u = { x: (n.leader.x - from.x) / len, y: (n.leader.y - from.y) / len };
+      const k = n.height * 0.6;
+      for (const s of [1, -1]) out.line('A-ANNO-TEXT', n.leader, { x: n.leader.x - u.x * k - u.y * k * 0.35 * s, y: n.leader.y - u.y * k + u.x * k * 0.35 * s });
+    }
   },
-  fields: (items, { dispatch }) => noteFields(items, { updateNotes: (ids, patch) => dispatch(updateNotes(ids, patch)) }),
+  fields: (items, { dispatch }) => noteFields(items, { updateNotes: (ids, patch) => dispatch(updateNotes(ids, patch)), dropLeaders: (ids) => dispatch(dropLeaders(ids)) }),
 };
+
+/** A callout's leader: a line from the text's edge to its point, a filled arrowhead there. */
+export function drawLeader(p: PlanPaint, from: { x: number; y: number }, to: { x: number; y: number }, colour: string): void {
+  const { ctx } = p;
+  const a = p.toScreen(from);
+  const b = p.toScreen(to);
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
+  if (len < 1) return;
+  const u = { x: (b.x - a.x) / len, y: (b.y - a.y) / len };
+  ctx.save();
+  ctx.strokeStyle = colour;
+  ctx.fillStyle = colour;
+  ctx.lineWidth = p.pen('annotation');
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x - u.x * 6, b.y - u.y * 6);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(b.x, b.y);
+  ctx.lineTo(b.x - u.x * 9 - u.y * 3.5, b.y - u.y * 9 + u.x * 3.5);
+  ctx.lineTo(b.x - u.x * 9 + u.y * 3.5, b.y - u.y * 9 - u.x * 3.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
 
 /** A level mark: the plan's level symbol (a circle with two opposite quarters filled, crossed) at c, and the height it says to its right. */
 function levelMark(p: PlanPaint, c: { x: number; y: number }, px: number, text: string): void {
