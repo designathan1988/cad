@@ -377,6 +377,9 @@ export class App {
     this.scene.onTracePreparing = (on) => {
       this.shell.look.preparing.hidden = !on;
       this.shell.look.preparing.textContent = t('view3d.preparing');
+      this.shell.look.preparing.title = t('view3d.preparingTip');
+      // It takes room on the view's bar: what is there gives way if it no longer fits.
+      this.shell.fitViewBar(true);
     };
     this.overlay3d = new Overlay3D(this.shell.overlay3d);
     this.cube = new ViewCube(

@@ -233,7 +233,9 @@ export function buildShell(root: HTMLElement) {
   // a tool's way out shown).
   let barKey = '';
   const fitViewBar = (force = false) => {
-    const key = [...viewBar.querySelectorAll<HTMLElement>(':scope > *, .view-bar-group')].map((x) => (x.hidden ? '0' : '1') + x.textContent).join('|');
+    // Its width too: a narrower window is noticed when the chrome is drawn, not only by the observer
+    // (which waits for a frame, rare while the window is behind others).
+    const key = [viewBar.clientWidth, ...[...viewBar.querySelectorAll<HTMLElement>(':scope > *, .view-bar-group')].map((x) => (x.hidden ? '0' : '1') + x.textContent)].join('|');
     if (!force && key === barKey) return;
     barKey = key;
     viewBar.classList.remove('fit-1', 'fit-2', 'fit-3');

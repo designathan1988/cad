@@ -281,6 +281,8 @@ export class Scene3D {
   /** The tracer's scene while it is being built (in a worker), until it is ready. */
   private traceBuild: Promise<void> | null = null;
   private readonly tracedPatterns = new WeakMap<THREE.Material, THREE.MeshStandardMaterial>();
+  /** The traced view's glass: clear, transmitting, of window glass's index (1.5). */
+  private readonly tracedGlass = new THREE.MeshPhysicalMaterial({ color: 0xf2f8fa, roughness: 0.02, metalness: 0, transmission: 1, ior: 1.5, thickness: 0.006, side: THREE.DoubleSide });
   private traced = { content: -1, camera: '', light: '' };
   /** Bumped whenever an element's meshes are made or dropped: the tracer's scene is built again. */
   private contentVersion = 0;
@@ -496,6 +498,11 @@ export class Scene3D {
     // three.js 0.186 has only PCF left of the filtered shadows (PCFSoft was removed): its edges softened by the radius.
     const recompile = style !== this.style;
     this.style = style;
+    // Out of the photorealistic style, nothing is being prepared: said now, not at the next frame.
+    if (style !== 'photo' && this.preparing) {
+      this.preparing = false;
+      this.onTracePreparing(false);
+    }
     this.quality = quality;
     this.renderer.setPixelRatio(Math.min((window.devicePixelRatio || 1) * q.ratio, q.max));
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -738,7 +745,9 @@ export class Scene3D {
           // Where it stands, in the world's metres: a pattern is laid in them.
           geometry.applyMatrix4(mesh.matrixWorld);
           const pattern = (material.userData.pattern as PatternUniforms | undefined)?.uPatMap.value ? (material.userData.pattern as PatternUniforms) : null;
-          out.add(new THREE.Mesh(pattern ? patternUv(geometry, pattern) : geometry, pattern ? this.tracedPattern(material as THREE.MeshStandardMaterial) : material));
+          // Glass as glass (light through it, bent and reflected), not as a see-through surface.
+          const glass = material === this.materials.glass || material.userData.clear === true;
+          out.add(new THREE.Mesh(pattern ? patternUv(geometry, pattern) : geometry, glass ? this.tracedGlass : pattern ? this.tracedPattern(material as THREE.MeshStandardMaterial) : material));
         }
       });
     // The luminaires' lights, where they are.
