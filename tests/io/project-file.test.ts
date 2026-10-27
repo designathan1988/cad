@@ -177,7 +177,12 @@ describe('version 5', () => {
     const doc = newDocument();
     const sofa = doc.definitions.find((d) => d.id === 'def_sofa')!;
     const bed = doc.definitions.find((d) => d.id === 'def_bed')!;
-    const square = (d: typeof sofa) => ({ ...d, parts: d.parts.map((p) => (p.kind === 'box' ? (({ round: _, ...rest }) => rest)(p) : p)) });
+    // As a version 45 file has them: square, and the furniture in the floor's wood (before version 47).
+    const square = (d: typeof sofa) => ({
+      ...d,
+      params: d.params.map((p) => (p.kind === 'material' && p.default === 'woodVeneer' ? { ...p, default: 'wood' } : p)),
+      parts: d.parts.map((p) => (p.kind === 'box' ? (({ round: _, ...rest }) => rest)(p) : p)),
+    });
     expect(sofa.parts.some((p) => p.kind === 'box' && p.round !== undefined)).toBe(true);
     const changedBed = { ...square(bed), name: { pt: 'Minha cama', en: 'My bed' } };
     const old = { ...doc, version: 45, definitions: doc.definitions.map((d) => (d.id === sofa.id ? square(d) : d.id === bed.id ? changedBed : d)) };
@@ -186,5 +191,29 @@ describe('version 5', () => {
     if (!r.ok) return;
     expect(r.doc.definitions.find((d) => d.id === sofa.id)).toEqual(sofa);
     expect(r.doc.definitions.find((d) => d.id === bed.id)).toEqual(changedBed);
+  });
+
+  it("a version 46 file's furniture, as it came, gets the furniture wood; its chair of one board gets the open back", () => {
+    const doc = newDocument();
+    const table = doc.definitions.find((d) => d.id === 'def_table')!;
+    const chair = doc.definitions.find((d) => d.id === 'def_chair')!;
+    const woodOf = (d: typeof table) => ({ ...d, params: d.params.map((p) => (p.kind === 'material' && p.default === 'woodVeneer' ? { ...p, default: 'wood' } : p)) });
+    expect(table.params.some((p) => p.kind === 'material' && p.default === 'woodVeneer')).toBe(true);
+    // The chair as it was: seat, a back of one board from the seat up, four legs to the seat.
+    const oneBoard = {
+      ...woodOf(chair),
+      parts: [
+        { kind: 'box', name: { pt: 'Assento', en: 'Seat' }, x: '-largura/2', y: '-profundidade/2', z: 'assento - 0.03', w: 'largura', d: 'profundidade', h: 0.03, material: 'matAssento' },
+        { kind: 'box', name: { pt: 'Encosto', en: 'Back' }, x: '-largura/2', y: 'profundidade/2 - 0.025', z: 'assento', w: 'largura', d: 0.025, h: 'encosto - assento', material: 'matAssento' },
+        { kind: 'box', name: { pt: 'Pé', en: 'Leg' }, repeat: { count: 4 }, x: 0, y: 0, z: 0, w: 'pe', d: 'pe', h: 'assento - 0.03', material: 'matPes' },
+      ],
+    };
+    const old = { ...doc, version: 46, definitions: doc.definitions.map((d) => (d.id === table.id ? woodOf(d) : d.id === chair.id ? oneBoard : d)) };
+    const r = readProject(JSON.stringify(old));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.doc.definitions.find((d) => d.id === table.id)).toEqual(table);
+    expect(r.doc.definitions.find((d) => d.id === chair.id)).toEqual(chair);
+    expect(r.doc.materials.some((m) => m.id === 'woodVeneer')).toBe(true);
   });
 });

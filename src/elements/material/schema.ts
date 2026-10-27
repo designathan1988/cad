@@ -40,6 +40,8 @@ export const BUILT_IN_MATERIALS: readonly Material[] = [
   { id: 'insulation', name: '', color: '#f1d36e', roughness: 0.95, metalness: 0, cut: 'insulation' },
   // What the objects of the library are made of (elements/object/library.ts).
   { id: 'wood', name: '', color: '#a87a52', roughness: 0.7, metalness: 0, cut: 'wood', pattern: PATTERN_DEFAULTS.wood },
+  // Furniture's: a panel's grain, no boards (the wood above is a floor's, boards of 90 × 12 cm).
+  { id: 'woodVeneer', name: '', color: '#9c6f4a', roughness: 0.55, metalness: 0, cut: 'wood', pattern: { kind: 'wood', layout: 'stack', length: 2.4, width: 0.4, joint: 0, jointColor: '#9c6f4a', variation: 0.05, angle: 0 } },
   { id: 'mdfWhite', name: '', color: '#eeece6', roughness: 0.6, metalness: 0, cut: 'solid' },
   { id: 'metal', name: '', color: '#8e949b', roughness: 0.35, metalness: 0.8, cut: 'solid' },
   { id: 'glass', name: '', color: '#bfd9e8', roughness: 0.05, metalness: 0, cut: 'none' },

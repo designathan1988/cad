@@ -8,13 +8,19 @@ import { isSheet, isViewport } from '../elements/sheet/schema';
 import { isLayerSet, isRoomOverride, isWallOverride } from '../app/layer-sets';
 import { isVariableName } from '../core/measure';
 import { isOpeningStyle, operationsOf } from '../elements/opening/style';
-import { LIBRARY } from '../elements/object/library';
+import { CHAIR, LIBRARY } from '../elements/object/library';
 import { BED, COOKER, FRIDGE, LIBRARY_MORE, POT_PLANT, SOFA, TOILET, TREE } from '../elements/object/library-more';
 import type { ObjectDefinition } from '../elements/object/schema';
 
 /** The library's definitions that version 46 gave rounded edges, and one as it was before. */
 const ROUNDED = [SOFA, BED, TOILET, FRIDGE, COOKER];
 const unrounded = (d: ObjectDefinition): ObjectDefinition => ({ ...d, parts: d.parts.map((p) => (p.kind === 'box' && p.round !== undefined ? (({ round: _, ...rest }) => rest)(p) : p)) });
+/** A library definition as version 46 had it: the furniture's wood was the floor's (version 47 gave
+ * it its own, woodVeneer). */
+const before47 = (d: ObjectDefinition): ObjectDefinition => ({ ...d, params: d.params.map((p) => (p.kind === 'material' && p.default === 'woodVeneer' ? { ...p, default: 'wood' } : p)) });
+/** The library's chair before version 47, its back one board: three boxes, the back from the seat up. */
+const isOldChair = (d: ObjectDefinition) => d.parts.length === 3 && d.parts.every((p) => p.kind === 'box') && d.parts.some((p) => p.kind === 'box' && p.h === 'encosto - assento');
+const LIBRARY_NOW = [...LIBRARY, ...LIBRARY_MORE];
 
 /** The library's tree and potted plant as they were before version 45 (cones), by their parts. */
 const isOldTree = (d: ObjectDefinition) => d.parts.length === 3 && d.parts.every((p) => p.kind === 'cylinder');
@@ -102,7 +108,7 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 42: tags by elements with their values (`tags`, elements/tag). Older files have none.
  * Version 43: a room's interior elevations, marks kept to a level (`levelId`, elements/section). Older marks have none: every level.
  */
-export const CURRENT_VERSION = 46;
+export const CURRENT_VERSION = 47;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -293,7 +299,13 @@ export function repairProject(raw: unknown): ReadResult {
   const since45 = raw.version < 45 ? since44.map((d) => (d.id === TREE.id && isOldTree(d) ? TREE : d.id === POT_PLANT.id && isOldPotPlant(d) ? POT_PLANT : d)) : since44;
   // Version 46 rounded the edges of the upholstery, the mattress, the china and the appliances: the
   // library's own, still as they came (the same but for the rounding), take the rounded ones.
-  const definitions = raw.version < 46 ? since45.map((d) => ROUNDED.find((r) => r.id === d.id && JSON.stringify(unrounded(r)) === JSON.stringify(d)) ?? d) : since45;
+  const since46 = raw.version < 46 ? since45.map((d) => ROUNDED.find((r) => r.id === d.id && JSON.stringify(unrounded(before47(r))) === JSON.stringify(d)) ?? d) : since45;
+  // Version 47 gave the furniture its own wood and the chair an open back: the library's own, still
+  // as they came, take the new ones (the chair by its parts, as the tree above).
+  const definitions =
+    raw.version < 47
+      ? since46.map((d) => LIBRARY_NOW.find((l) => l.id === d.id && JSON.stringify(before47(l)) === JSON.stringify(d)) ?? (d.id === CHAIR.id && isOldChair(d) ? CHAIR : d))
+      : since46;
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));

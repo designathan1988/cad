@@ -39,7 +39,7 @@ export const SOFA: ObjectDefinition = {
     len('braco', 'Largura do braço', 'Arm width', 0.18, 0, 0.35, BUILD),
     { name: 'lugares', label: { pt: 'Lugares', en: 'Seats' }, kind: 'integer', default: 3, formula: 'max(1, round((largura - 2 * braco) / 0.6))', group: { pt: 'Construção', en: 'Construction' } },
     mat('matEstofado', 'Estofado', 'Upholstery', 'fabric'),
-    mat('matPes', 'Pés', 'Legs', 'wood'),
+    mat('matPes', 'Pés', 'Legs', 'woodVeneer'),
   ],
   parts: [
     { kind: 'box', name: { pt: 'Base', en: 'Base' }, x: '-largura/2', y: '-profundidade/2', z: 0.08, w: 'largura', d: 'profundidade', h: 'assento - 0.2', material: 'matEstofado', round: 0.03 },
@@ -77,7 +77,7 @@ export const BED: ObjectDefinition = {
     len('altura', 'Altura do colchão', 'Mattress top', 0.55, 0.3, 0.8),
     len('cabeceira', 'Altura da cabeceira', 'Headboard height', 1.1, 0, 1.6, BUILD),
     { name: 'travesseiros', label: { pt: 'Travesseiros', en: 'Pillows' }, kind: 'integer', default: 2, formula: 'if(largura > 1.2, 2, 1)', group: { pt: 'Construção', en: 'Construction' } },
-    mat('matEstrutura', 'Estrutura', 'Frame', 'wood'),
+    mat('matEstrutura', 'Estrutura', 'Frame', 'woodVeneer'),
     mat('matColchao', 'Colchão', 'Mattress', 'fabric'),
   ],
   parts: [
@@ -124,7 +124,7 @@ export const KITCHEN: ObjectDefinition = {
     { name: 'aereo', label: { pt: 'Com armário aéreo', en: 'With wall units' }, kind: 'bool', default: 1, group: { pt: 'Construção', en: 'Construction' } },
     { name: 'modulos', label: { pt: 'Módulos', en: 'Units' }, kind: 'integer', default: 3, formula: 'max(1, ceil(largura / moduloMax))', group: { pt: 'Construção', en: 'Construction' } },
     mat('matCorpo', 'Corpo', 'Body', 'mdfWhite'),
-    mat('matPortas', 'Portas', 'Doors', 'wood'),
+    mat('matPortas', 'Portas', 'Doors', 'woodVeneer'),
     mat('matBancada', 'Bancada', 'Worktop', 'concrete'),
   ],
   parts: [
@@ -207,7 +207,7 @@ export const WASHBASIN: ObjectDefinition = {
     mat('matBancada', 'Bancada', 'Counter', 'concrete'),
     mat('matLouca', 'Cuba', 'Basin', 'ceramic'),
     mat('matMetal', 'Torneira', 'Tap', 'metal'),
-    mat('matGabinete', 'Gabinete', 'Cabinet', 'wood'),
+    mat('matGabinete', 'Gabinete', 'Cabinet', 'woodVeneer'),
   ],
   parts: [
     { kind: 'box', name: { pt: 'Bancada', en: 'Counter' }, x: '-largura/2', y: '-profundidade/2', z: 'altura - 0.03', w: 'largura', d: 'profundidade', h: 0.03, material: 'matBancada' },

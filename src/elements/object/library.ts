@@ -32,7 +32,7 @@ export const TABLE: ObjectDefinition = {
     len('tampo', 'Espessura do tampo', 'Top thickness', 0.03, 0.012, 0.1, BUILD),
     len('pe', 'Seção do pé', 'Leg size', 0.06, 0.02, 0.2, BUILD),
     len('recuo', 'Recuo dos pés', 'Leg inset', 0.05, 0, 0.5, BUILD),
-    mat('matTampo', 'Tampo', 'Top', 'wood'),
+    mat('matTampo', 'Tampo', 'Top', 'woodVeneer'),
     mat('matPes', 'Pés', 'Legs', 'metal'),
   ],
   parts: [
@@ -129,7 +129,7 @@ export const CABINET: ObjectDefinition = {
     { name: 'portas', label: { pt: 'Portas', en: 'Doors' }, kind: 'integer', default: 1, formula: 'max(1, ceil((largura - 2 * espessura) / portaMax))', group: { pt: 'Construção', en: 'Construction' } },
     { name: 'larguraPorta', label: { pt: 'Largura de cada porta', en: 'Each door’s width' }, kind: 'length', default: 0.6, formula: '(largura - 0.003 * (portas + 1)) / portas', group: { pt: 'Construção', en: 'Construction' } },
     mat('matCorpo', 'Corpo', 'Body', 'mdfWhite'),
-    mat('matPortas', 'Portas', 'Doors', 'wood'),
+    mat('matPortas', 'Portas', 'Doors', 'woodVeneer'),
     mat('matPuxador', 'Puxadores', 'Handles', 'metal'),
   ],
   parts: [
@@ -189,12 +189,14 @@ export const CHAIR: ObjectDefinition = {
     len('assento', 'Altura do assento', 'Seat height', 0.45, 0.3, 0.8, DIM),
     len('encosto', 'Altura do encosto', 'Back height', 0.9, 0.5, 1.3, DIM),
     len('pe', 'Seção do pé', 'Leg size', 0.035, 0.015, 0.08, BUILD),
-    mat('matAssento', 'Assento e encosto', 'Seat and back', 'wood'),
-    mat('matPes', 'Pés', 'Legs', 'wood'),
+    mat('matAssento', 'Assento e encosto', 'Seat and back', 'woodVeneer'),
+    mat('matPes', 'Pés', 'Legs', 'woodVeneer'),
   ],
   parts: [
-    { kind: 'box', name: { pt: 'Assento', en: 'Seat' }, x: '-largura/2', y: '-profundidade/2', z: 'assento - 0.03', w: 'largura', d: 'profundidade', h: 0.03, material: 'matAssento' },
-    { kind: 'box', name: { pt: 'Encosto', en: 'Back' }, x: '-largura/2', y: 'profundidade/2 - 0.025', z: 'assento', w: 'largura', d: 0.025, h: 'encosto - assento', material: 'matAssento' },
+    { kind: 'box', name: { pt: 'Assento', en: 'Seat' }, x: '-largura/2', y: '-profundidade/2', z: 'assento - 0.03', w: 'largura', d: 'profundidade', h: 0.03, material: 'matAssento', round: 0.008 },
+    // The back between the rear legs, which rise as its posts: a backrest at the top, a rail below it.
+    { kind: 'box', name: { pt: 'Encosto', en: 'Back' }, x: '-largura/2 + pe', y: 'profundidade/2 - pe/2 - 0.01', z: 'encosto - (encosto - assento) * 0.38', w: 'largura - 2 * pe', d: 0.02, h: '(encosto - assento) * 0.34', material: 'matAssento', round: 0.006 },
+    { kind: 'box', name: { pt: 'Travessa do encosto', en: 'Back rail' }, x: '-largura/2 + pe', y: 'profundidade/2 - pe/2 - 0.01', z: 'assento + (encosto - assento) * 0.22', w: 'largura - 2 * pe', d: 0.02, h: 0.05, material: 'matAssento', round: 0.006 },
     {
       kind: 'box',
       name: { pt: 'Pé', en: 'Leg' },
@@ -204,7 +206,7 @@ export const CHAIR: ObjectDefinition = {
       z: 0,
       w: 'pe',
       d: 'pe',
-      h: 'assento - 0.03',
+      h: 'if(i < 2, assento - 0.03, encosto)',
       material: 'matPes',
     },
   ],
@@ -226,7 +228,7 @@ export const DINING_SET: ObjectDefinition = {
     len('espaco', 'Espaço por cadeira', 'Room per chair', 0.6, 0.45, 0.9, DIM),
     { name: 'cabeceiras', label: { pt: 'Cadeiras nas cabeceiras', en: 'Chairs at the ends' }, kind: 'bool', default: 0, group: { pt: 'Cadeiras', en: 'Chairs' } },
     { name: 'porLado', label: { pt: 'Cadeiras por lado', en: 'Chairs per side' }, kind: 'integer', default: 2, formula: 'max(1, floor((largura + 0.1) / espaco))', group: { pt: 'Cadeiras', en: 'Chairs' } },
-    mat('matTampo', 'Tampo', 'Top', 'wood'),
+    mat('matTampo', 'Tampo', 'Top', 'woodVeneer'),
   ],
   parts: [
     { kind: 'object', name: { pt: 'Mesa', en: 'Table' }, definition: 'def_table', x: 0, y: 0, z: 0, values: { largura: 'largura', profundidade: 'profundidade', matTampo: 'matTampo' } },
