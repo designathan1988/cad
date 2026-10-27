@@ -64,7 +64,8 @@ import { type Grid } from '../elements/grid/schema';
 import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState } from '../tools/dimension-tool';
 import { geometryOf, keepRooms, moveRooms } from './carry';
 import { keepOpenings } from './keep-openings';
-import { type Doc, type DocWall, elementIds, levelOf, startLevel, type WallDefaults, wallNumber } from './document';
+import { type Doc, type DocWall, drawingOf, elementIds, levelOf, startLevel, type WallDefaults, wallNumber } from './document';
+import type { DrawingSettings } from '../elements/drawing/schema';
 
 /** The snap labels that name their wall. */
 export const SNAP_OF = {
@@ -203,6 +204,8 @@ export interface UiState {
   /** The measure tool (kind-tools.ts: markClick): what it measures, and its points so far. */
   markMode: MarkMode;
   markDraft: Point2[];
+  /** The drawing scale of the saved plan view gone to (views-ui.ts), shown instead of the project's until another level or scale is chosen. */
+  viewDen: number | null;
   /** The tag tool's element, once clicked; then the click that places its text (kind-tools.ts: tagClick). */
   tagFor: string | null;
   /** A simulation's map over the plan (app/sim-map.ts): the Wi-Fi signal, the rooms' daylight or sun; none. */
@@ -353,6 +356,7 @@ export class App {
       markMode: 'angle',
       markDraft: [],
       tagFor: null,
+      viewDen: null,
       simMap: 'none',
       guide: null,
       view3d: readView3D(prefs.view3d),
@@ -1214,6 +1218,12 @@ export class App {
     return kindTools.cloudClick(this, p);
   }
 
+  /** The drawing settings the plan is drawn with now: the project's, at a saved view's own scale while it is shown. */
+  drawingNow(): DrawingSettings {
+    const d = drawingOf(this.store.get());
+    return this.ui.viewDen === null ? d : { ...d, scale: this.ui.viewDen };
+  }
+
   /** The measure tool, measuring an angle, an arc wall or a point's coordinates. */
   setMarkMode(mode: MarkMode): void {
     this.setTool('mark');
@@ -1420,6 +1430,8 @@ export class App {
   /** Shows another level in plan; the selection, which belonged to the old one, is cleared. */
   setLevel(id: string): void {
     if (!this.store.get().levels.some((l) => l.id === id)) return;
+    // A saved view's own scale was its level's: another level is drawn at the project's.
+    if (id !== this.ui.levelId) this.ui.viewDen = null;
     this.ui.levelId = id;
     savePrefs({ levelId: id });
     this.ui.selection.clear();

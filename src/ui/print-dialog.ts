@@ -30,8 +30,7 @@ const size = (s: { w: number; h: number }) => `${num(s.w, 2)} × ${num(s.h, 2)} 
 const PREVIEW_DPI = 36;
 
 export function showPrint(app: App): void {
-  const doc0 = app.store.get();
-  let setup: PrintSetup = { levelId: app.ui.levelId, den: drawingOf(doc0).scale, paper: 'A3', landscape: true };
+  let setup: PrintSetup = { levelId: app.ui.levelId, den: app.drawingNow().scale, paper: 'A3', landscape: true };
   let busy = false;
   const dialog = openProjectDialog(app, (close) => {
     const doc = app.store.get();
@@ -124,10 +123,14 @@ export function showDrawingSettings(app: App): void {
   openProjectDialog(app, (close) => {
     const d = drawingOf(app.store.get());
     const change = (next: DrawingSettings) => app.store.dispatch(setDrawing(next));
+    // The scale shown (a saved view's own while it is shown); a new one is the project's, for every view without one.
     const scale = select(
       SCALES.map((x) => ({ value: String(x), label: `1:${x}` })),
-      String(d.scale),
-      (v) => change({ ...d, scale: Number(v) }),
+      String(app.drawingNow().scale),
+      (v) => {
+        app.ui.viewDen = null;
+        change({ ...d, scale: Number(v) });
+      },
     );
     const tag = select(
       ROOM_TAGS.map((x) => ({ value: x, label: t(`draw.roomTag.${x}` as MessageKey) })),

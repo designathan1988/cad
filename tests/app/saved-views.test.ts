@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/app/document';
 import { deleteView, isSavedView, moveView, nextViewName, type SavedView, saveView, updateView } from '../../src/app/saved-views';
 import { VIEW_3D_DEFAULT } from '../../src/app/view-3d';
+import { detailOf } from '../../src/elements/drawing/schema';
 import { readProject, writeProject } from '../../src/io/project-file';
 
 const v3d: SavedView = { id: 'view_a', name: '3D 1', kind: '3d', levelId: 'lvl_ground', position: [10, 8, 12], target: [4, 1.4, -3], view3d: { ...VIEW_3D_DEFAULT, xray: true } };
@@ -59,5 +60,16 @@ describe('saved views', () => {
     expect(moveView('view_a', 1).apply(d).views.map((v) => v.id)).toEqual(['view_b', 'view_a', 'view_c']);
     expect(moveView('view_a', -1).apply(d)).toBe(d);
     expect(isSavedView({ ...v3d, caption: 3 })).toBe(false);
+  });
+
+  it('a plan view keeps a drawing scale of its own, and with it its detail; the file keeps it', () => {
+    const at50: SavedView = { ...vPlan, den: 50 };
+    expect(isSavedView(at50)).toBe(true);
+    expect(isSavedView({ ...vPlan, den: 0 })).toBe(false);
+    expect(isSavedView({ ...vPlan, den: 'x' })).toBe(false);
+    expect(detailOf(50)).toBe('fine');
+    expect(detailOf(200)).toBe('coarse');
+    const r = readProject(writeProject(saveView(at50).apply(newDocument())));
+    expect(r.ok && r.doc.views[0]).toMatchObject({ den: 50 });
   });
 });

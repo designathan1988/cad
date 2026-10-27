@@ -130,7 +130,7 @@ export function renderFrame(app: App): void {
       : null;
   const guideDim = ui.guide && guideOff !== null ? guideMeasure(ui.guide, guideOff) : null;
   if (plan) {
-    app.plan.drawing = drawingOf(app.store.get());
+    app.plan.drawing = app.drawingNow();
     app.plan.overrides = ui.overridesOn ? overrideColours(app.store.get()) : new Map();
     app.plan.roomOverrides = ui.overridesOn ? roomOverrideColours(app.store.get()) : new Map();
     app.plan.draw(app.visibleGeometry(), {

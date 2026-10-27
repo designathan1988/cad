@@ -38,6 +38,8 @@ export type SavedView = Shows &
       /** Pixels per metre, and the plan point in the middle. */
       readonly scale: number;
       readonly center: Point2;
+      /** Its drawing scale (1 : den), and with it how much detail it shows (drawing/schema.ts: detailOf); the project's when absent. */
+      readonly den?: number;
     }
   );
 
@@ -113,7 +115,7 @@ export function isSavedView(v: unknown): v is SavedView {
   }
   if (o.kind === 'plan') {
     const c = o.center as Record<string, unknown> | undefined;
-    return finite(o.scale) && o.scale > 0 && typeof c === 'object' && c !== null && finite(c.x) && finite(c.y);
+    return finite(o.scale) && o.scale > 0 && typeof c === 'object' && c !== null && finite(c.x) && finite(c.y) && (o.den === undefined || (finite(o.den) && o.den > 0));
   }
   return false;
 }

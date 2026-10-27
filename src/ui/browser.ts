@@ -33,12 +33,12 @@ function item(label: string, onClick: () => void, extra: { pressed?: boolean; cu
 }
 
 /** A saved view's row: its name, which goes to it, and a button that deletes it. */
-function savedItem(label: string, kind: '3d' | 'plan', go: () => void, remove: () => void): HTMLElement {
+function savedItem(label: string, kind: '3d' | 'plan', go: () => void, remove: () => void, trail?: string): HTMLElement {
   const del = el('button', { type: 'button', class: 'icon-btn', title: t('views.delete', { name: label }), 'aria-label': t('views.delete', { name: label }) });
   del.innerHTML = icon('close', 14);
   del.addEventListener('click', remove);
   // section() unwraps a row into its grid: the name and the button stay together in one flex row.
-  const row = el('div', { class: 'browser-row' }, ...([...item(label, go, { lead: icon(kind === '3d' ? 'cube' : 'map', 16) }).childNodes] as HTMLElement[]), del);
+  const row = el('div', { class: 'browser-row' }, ...([...item(label, go, { lead: icon(kind === '3d' ? 'cube' : 'map', 16), ...(trail ? { trail } : {}) }).childNodes] as HTMLElement[]), del);
   return el('div', {}, row);
 }
 
@@ -74,7 +74,8 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
       item(t('view.plan'), () => app.setView('plan'), { current: ui.view === 'plan', lead: icon('map', 16), ...(ui.view === 'plan' ? { trail: t('browser.current') } : {}) }),
       item(t('view.walk'), () => app.toggleWalk(), { current: app.walker !== null, lead: icon('walk', 16), ...(app.walker ? { trail: t('browser.current') } : {}) }),
       // Saved views: a click goes back to one; × deletes it (one undo step).
-      ...doc.views.map((v) => savedItem(name(v.name), v.kind, () => app.goToView(v.id), () => app.deleteSavedView(v.id))),
+      // A plan view with a scale of its own says it.
+      ...doc.views.map((v) => savedItem(name(v.name), v.kind, () => app.goToView(v.id), () => app.deleteSavedView(v.id), v.kind === 'plan' && v.den ? `1:${v.den}` : undefined)),
       item(t('views.save'), () => app.saveCurrentView(), { lead: icon('plus', 16) }),
       item(t('gtour.edit'), () => app.openTour(), {}),
       item(t('poi.dialogOpen'), () => app.openPoints(), { lead: icon('pin', 16) }),

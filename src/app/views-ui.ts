@@ -6,6 +6,7 @@ import { deleteView, nextViewName, type SavedView, saveView } from './saved-view
 import { readView3D } from './view-3d';
 import { newId } from '../core/id';
 import type { App } from './app';
+import { drawingOf } from './document';
 
 /**
  * The view as it is now, saved in the project under the next free name ("3D 1", "Térreo 1"): the 3D
@@ -22,7 +23,8 @@ export function saveCurrentView(app: App): void {
     view = { id, kind: '3d', name: nextViewName(doc.views, '3D'), levelId: app.ui.levelId, position: [p.x, p.y, p.z], target: [q.x, q.y, q.z], view3d: app.ui.view3d };
   } else {
     const c = app.plan.center;
-    view = { id, kind: 'plan', name: nextViewName(doc.views, level ? name(level.name) : t('view.plan')), levelId: app.ui.levelId, scale: app.plan.scale, center: { x: c.x, y: c.y } };
+    // Its drawing scale as it is shown now: a saved view's own, else the project's.
+    view = { id, kind: 'plan', name: nextViewName(doc.views, level ? name(level.name) : t('view.plan')), levelId: app.ui.levelId, scale: app.plan.scale, center: { x: c.x, y: c.y }, den: app.ui.viewDen ?? drawingOf(doc).scale };
   }
   // What it shows goes with it: a view template (the categories hidden, the overrides on).
   app.store.dispatch(saveView({ ...view, hidden: [...app.ui.hidden], overrides: app.ui.overridesOn }));
@@ -53,6 +55,8 @@ export function goToView(app: App, id: string): void {
     app.framed.plan = true;
     app.plan.scale = v.scale;
     app.plan.center = { x: v.center.x, y: v.center.y };
+    // Its own drawing scale and detail, for as long as it is the one shown (app.ts: drawingNow).
+    app.ui.viewDen = v.den ?? null;
   }
   app.refresh();
 }
