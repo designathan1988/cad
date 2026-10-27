@@ -128,7 +128,7 @@ export function showFloors(app: App): void {
       const list = el('ol', { class: 'flstore-layers' });
       for (const l of layers) list.append(el('li', {}, el('span', {}, materialLabel(materialIn(doc.materials, l.materialId))), el('span', { class: 'flstore-t' }, lengthText(l.thickness))));
       side.append(el('div', { class: 'objs-label' }, t('flstore.layers')), list);
-      const go = el('button', { type: 'button', class: 'objs-place' }, selected.length > 0 ? t('flstore.apply', { n: selected.length }) : t('flstore.draw'));
+      const go = el('button', { type: 'button', class: 'objs-place' }, selected.length === 1 ? t('flstore.applyOne') : selected.length > 1 ? t('flstore.apply', { n: selected.length }) : t('flstore.draw'));
       go.dataset.focus = 'place';
       go.addEventListener('click', () => {
         close();

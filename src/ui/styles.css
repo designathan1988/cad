@@ -3632,7 +3632,8 @@ textarea.text-field {
   flex-direction: column;
   overflow: hidden;
   width: min(var(--objs-dialog-w), calc(100vw - 2 * var(--sp-4)));
-  height: min(var(--objs-dialog-h), calc(100vh - 2 * var(--sp-4)));
+  /* Below the dialogs' own top margin: at 943 px tall the bottom row of cards and the main button fell off the screen. */
+  height: min(var(--objs-dialog-h), calc(100vh - var(--dialog-top) - var(--sp-4)));
   max-height: none;
 }
 .objs-head {
