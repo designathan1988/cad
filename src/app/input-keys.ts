@@ -25,6 +25,8 @@ export interface KeyContext {
   guideTools(): boolean;
   palette(): void;
   showMarquee(): void;
+  /** Tab: the next snap under the pointer; false when no tool is snapping there. */
+  nextSnap(): boolean;
 }
 
 export function wireKeys(app: App, k: KeyContext): void {
@@ -77,6 +79,11 @@ export function wireKeys(app: App, k: KeyContext): void {
         return app.walkLevel(key === 'pageup' ? 1 : -1);
       }
       // Everything else waits: walking is not editing.
+      return;
+    }
+    // Tab, drawing: what is under the pointer besides the snap offered (a wall's end under a door's).
+    if (key === 'tab' && !ctrl && !e.altKey && !e.shiftKey && k.nextSnap()) {
+      e.preventDefault();
       return;
     }
     if (ctrl && key === 'z') {

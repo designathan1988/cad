@@ -3,6 +3,7 @@
 // height of the level, so it reads in depth), the line being drawn with its length, its start, and a
 // floor outline being drawn. Screen space, on a canvas laid over the WebGL one; it takes no pointer.
 
+import { snapMark } from './plan-view';
 import { drawObjectHandles, type ScreenHandle } from '../app/object-handles';
 import type { Point2 } from '../core/vector';
 import { BOX_FACES, type BoxFace, boxEdges, faceCenter, type SectionBox } from '../app/section-box';
@@ -14,7 +15,7 @@ export interface Overlay3DState {
   /** The level's floor and the height of the level above it. */
   readonly floor: number;
   readonly height: number;
-  readonly snap: { readonly point: Point2; readonly label: string | null } | null;
+  readonly snap: { readonly point: Point2; readonly label: string | null; readonly kind?: string } | null;
   /** The line being drawn (a wall's reference line, the tape) and its length, at its middle. */
   readonly axis: { readonly start: Point2; readonly end: Point2 } | null;
   readonly measure: { readonly at: Point2; readonly text: string } | null;
@@ -103,10 +104,10 @@ export class Overlay3D {
       ctx.save();
       ctx.strokeStyle = color('--bg');
       ctx.lineWidth = 4;
-      this.cross(p);
+      this.mark(p, s.snap.kind ?? '');
       ctx.strokeStyle = snapColour;
       ctx.lineWidth = 1.8;
-      this.cross(p);
+      this.mark(p, s.snap.kind ?? '');
       ctx.restore();
       if (s.snap.label) this.tag(p, s.snap.label, snapColour, color('--bg'), { x: 14, y: -12 });
     }
@@ -145,13 +146,11 @@ export class Overlay3D {
     ctx.restore();
   }
 
-  private cross(p: Point2): void {
+  /** The snap's mark, by what it snapped to, as the plan draws it (plan-view.ts, snapMark). */
+  private mark(p: Point2, kind: string): void {
     const { ctx } = this;
     ctx.beginPath();
-    ctx.moveTo(p.x - 6, p.y - 6);
-    ctx.lineTo(p.x + 6, p.y + 6);
-    ctx.moveTo(p.x + 6, p.y - 6);
-    ctx.lineTo(p.x - 6, p.y + 6);
+    snapMark(ctx, kind, p);
     ctx.stroke();
   }
 

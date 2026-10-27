@@ -14,6 +14,9 @@ export type SnapKind =
   | 'intersection'
   | 'origin'
   | 'midpoint'
+  | 'division'
+  | 'center'
+  | 'node'
   | 'onWall'
   | 'onFace'
   | 'onGuide'
@@ -65,6 +68,16 @@ export interface SnapInput {
    * point where one crosses another or a wall's line, and else the guide itself.
    */
   readonly guides?: readonly GuideLine[];
+  /**
+   * The elements' own points on the level (app/input.ts): a door's or a window's ends and middle, an
+   * object's or a column's corners (`node`) and middle (`center`). An arc wall's centre is taken from
+   * its segment.
+   */
+  readonly points?: readonly { readonly point: Point2; readonly kind: 'center' | 'node' }[];
+  /** Into how many parts a segment is divided besides its middle (division points): 3 when not set. */
+  readonly parts?: number;
+  /** Points already offered under the pointer (Tab, app/input.ts): passed over for the next one. */
+  readonly skip?: readonly Point2[];
 }
 
 /** A line without ends: a point of it and its unit direction. */
@@ -98,6 +111,9 @@ export const snapLabel: Readonly<Record<SnapKind, MessageKey | null>> = {
   parallel: 'snap.parallel',
   origin: 'snap.origin',
   midpoint: 'snap.midpoint',
+  division: 'snap.division',
+  center: 'snap.center',
+  node: 'snap.node',
   onWall: 'snap.onWall',
   onFace: 'snap.onFace',
   onGuide: 'snap.onGuide',
@@ -114,8 +130,11 @@ export function snap(input: SnapInput): Snap {
   const guides = input.guides ?? [];
   if (from && input.orthogonal) return orthogonal(cursor, from, input.enabled, guides, r);
   if (!input.enabled) return { point: cursor, kind: 'none' };
+  // What Tab has already offered here is passed over: the next candidate, in the same order.
+  const skip = input.skip ?? [];
+  const fresh = (p: Point2) => skip.every((q) => distance(p, q) > 1e-6);
 
-  if (input.chainStart && from && distance(cursor, input.chainStart) <= r) return { point: input.chainStart, kind: 'start' };
+  if (input.chainStart && from && distance(cursor, input.chainStart) <= r && fresh(input.chainStart)) return { point: input.chainStart, kind: 'start' };
   const ends = input.segments.flatMap((s) => [s.start, s.end]);
   // Which wall an end (index in `ends`) or a middle (index in `mids`) belongs to.
   const of = (i: number): { wallId?: string } => {
@@ -124,11 +143,27 @@ export function snap(input: SnapInput): Snap {
   };
   // The corners of the end's square of body are reach·√2 from it, at any angle of the wall.
   const reaches = input.segments.flatMap((s) => [(s.reach ?? 0) * Math.SQRT2, (s.reach ?? 0) * Math.SQRT2]);
-  const nearEnd = closest(ends, cursor, r, reaches);
+  const nearEnd = closest(ends, cursor, r, reaches, fresh);
   if (nearEnd) {
     const i = Math.floor(ends.indexOf(nearEnd) / 2);
     return { point: nearEnd, kind: input.segments[i]?.face ? 'corner' : 'endpoint', ...of(i) };
   }
+  // The elements' points, and an arc wall's centre: as strong as a wall's end.
+  const marks = [
+    ...(input.points ?? []),
+    ...input.segments.flatMap((s) => {
+      const arc = s.bulge ? arcOf({ start: s.start, end: s.end, bulge: s.bulge }) : null;
+      return arc ? [{ point: arc.center, kind: 'center' as const }] : [];
+    }),
+  ];
+  const nearMark = closest(
+    marks.map((m) => m.point),
+    cursor,
+    r,
+    [],
+    fresh,
+  );
+  if (nearMark) return { point: nearMark, kind: marks.find((m) => m.point === nearMark)!.kind };
   // Where a guide crosses another guide or a wall's line: what guides are set for (a corridor's wall
   // starts where its guide meets the wall across).
   const crossings = guides.flatMap((g, k) => [
@@ -142,7 +177,7 @@ export function snap(input: SnapInput): Snap {
       return p && dot(sub(p, s.start), sub(p, s.end)) <= 1e-12 ? [p] : [];
     }),
   ]);
-  const nearCross = closest(crossings, cursor, r);
+  const nearCross = closest(crossings, cursor, r, [], fresh);
   if (nearCross) return { point: nearCross, kind: 'guideCross' };
   // Where two walls' lines cross near the cursor, on them or on their extensions (Revit's SI): a wall
   // drawn to where two others would meet. Straight walls whose lines pass within reach of the cursor.
@@ -151,11 +186,11 @@ export function snap(input: SnapInput): Snap {
   for (let a = 0; a < nearLine.length; a++) {
     for (let b = a + 1; b < nearLine.length; b++) {
       const p = lineCrossing(nearLine[a]!.s.start, normalize(sub(nearLine[a]!.s.end, nearLine[a]!.s.start)), nearLine[b]!.s.start, normalize(sub(nearLine[b]!.s.end, nearLine[b]!.s.start)));
-      if (p && distance(p, cursor) <= r) return { point: p, kind: 'intersection', ...of(nearLine[a]!.i) };
+      if (p && distance(p, cursor) <= r && fresh(p)) return { point: p, kind: 'intersection', ...of(nearLine[a]!.i) };
     }
   }
   // The crossing of the axes drawn on the plan: where a project is usually started.
-  if (distance(cursor, ORIGIN) <= r) return { point: ORIGIN, kind: 'origin' };
+  if (distance(cursor, ORIGIN) <= r && fresh(ORIGIN)) return { point: ORIGIN, kind: 'origin' };
   // A face's edges are pieces of a wall's body, cut where other walls and openings meet it: their
   // middles mean nothing, and would catch the tape halfway across a room.
   const mids = input.segments.flatMap((s, i) => (s.face ? [] : [{ i, p: s.bulge ? arcMiddle(s.start, s.end, s.bulge) : scale(add(s.start, s.end), 0.5) }]));
@@ -163,8 +198,28 @@ export function snap(input: SnapInput): Snap {
     mids.map((m) => m.p),
     cursor,
     r,
+    [],
+    fresh,
   );
   if (nearMid) return { point: nearMid, kind: 'midpoint', ...of(mids.find((m) => m.p === nearMid)!.i) };
+  // A segment divided into parts (thirds unless said otherwise), its middle being the one above.
+  const n = Math.max(2, Math.round(input.parts ?? 3));
+  const divisions = input.segments.flatMap((s, i) => {
+    if (s.face) return [];
+    const arc = s.bulge ? arcOf({ start: s.start, end: s.end, bulge: s.bulge }) : null;
+    const at = (t: number) => (arc ? pointAt(arc, arc.startAngle + arc.sweep * t) : add(s.start, scale(sub(s.end, s.start), t)));
+    return Array.from({ length: n - 1 }, (_, k) => k + 1)
+      .filter((k) => 2 * k !== n)
+      .map((k) => ({ i, p: at(k / n) }));
+  });
+  const nearDivision = closest(
+    divisions.map((d) => d.p),
+    cursor,
+    r,
+    [],
+    fresh,
+  );
+  if (nearDivision) return { point: nearDivision, kind: 'division', ...of(divisions.find((d) => d.p === nearDivision)!.i) };
   // Angle from the last point in 15° steps, or along a wall's own direction (parallel to it, or square
   // to it, as SketchUp's and ArchiCAD's do), whichever is nearest; the length on the 5 cm grid.
   let best: Snap | null = null;
@@ -207,7 +262,7 @@ export function snap(input: SnapInput): Snap {
       const t = dot(sub(foot, s.start), u);
       if (t <= 0 || t >= distance(s.start, s.end) || distance(foot, from) < MIN_SNAP_RUN) continue;
       const d = distance(foot, cursor);
-      if (d <= r && (near === null || d < near.d)) near = { foot, d, i };
+      if (d <= r && fresh(foot) && (near === null || d < near.d)) near = { foot, d, i };
     }
     if (near) return { point: near.foot, kind: 'perpendicular', ...of(near.i) };
   }
@@ -229,7 +284,9 @@ export function snap(input: SnapInput): Snap {
               .filter((p) => dot(sub(p, from), ray!) > 0 && arcFoot(arc, p, 0) !== null && distance(p, cursor) <= slack)
               .sort((a, b) => distance(a, cursor) - distance(b, cursor))[0]
           : undefined;
-      return { point: cut ?? arcFoot(arc, cursor, GRID_STEP)!, kind: 'onWall', ...of(i) };
+      const q = cut ?? arcFoot(arc, cursor, GRID_STEP)!;
+      if (!fresh(q)) continue;
+      return { point: q, kind: 'onWall', ...of(i) };
     }
     // Anywhere on its drawn body (half its thickness each side of the axis) plus the radius.
     const foot = projectOnSegment(cursor, s.start, s.end);
@@ -240,6 +297,7 @@ export function snap(input: SnapInput): Snap {
     const crossing = ray && from ? rayOnSegment(from, ray, s.start, s.end) : null;
     const onRay = crossing && distance(crossing, cursor) <= slack ? crossing : null;
     const p = onRay ?? projectOnSegment(cursor, s.start, s.end, GRID_STEP) ?? foot;
+    if (!fresh(p)) continue;
     return { point: p, kind: s.face ? 'onFace' : 'onWall', ...of(i) };
   }
 
@@ -252,7 +310,9 @@ export function snap(input: SnapInput): Snap {
     const crossing = ray && from ? lineCrossing(from, ray, g.point, g.dir) : null;
     const onRay = crossing && dot(sub(crossing, from!), ray!) > 0 && distance(crossing, cursor) <= slack ? crossing : null;
     const along = Math.round(dot(sub(cursor, g.point), g.dir) / GRID_STEP) * GRID_STEP;
-    return { point: onRay ?? add(g.point, scale(g.dir, along)), kind: 'onGuide' };
+    const q = onRay ?? add(g.point, scale(g.dir, along));
+    if (!fresh(q)) continue;
+    return { point: q, kind: 'onGuide' };
   }
 
   // On a wall's line past its end (SketchUp's extension, ArchiCAD's): within the radius of it and a
@@ -269,6 +329,7 @@ export function snap(input: SnapInput): Snap {
     const cut = ray && from ? lineCrossing(from, ray, s.start, u) : null;
     const slack = from ? r + distance(cursor, from) * Math.tan((ANGLE_TOL_DEG * Math.PI) / 180) : r;
     const p = cut && distance(cut, cursor) <= slack ? cut : add(s.start, scale(u, Math.round(t / GRID_STEP) * GRID_STEP));
+    if (!fresh(p)) continue;
     return { point: p, kind: 'extension', guideFrom: end, ...of(i) };
   }
 
@@ -284,14 +345,14 @@ export function snap(input: SnapInput): Snap {
     const kind: SnapKind = k === targets.length - 1 ? 'axis' : 'aligned';
     if (Math.abs(base.x - e.x) <= r) {
       const p = dir && from ? (Math.abs(dir.x) > 1e-9 ? add(from, scale(dir, (e.x - from.x) / dir.x)) : null) : vec(e.x, base.y);
-      if (p) return { point: p, kind, guideFrom: e, ...wall };
+      if (p && fresh(p)) return { point: p, kind, guideFrom: e, ...wall };
     }
     if (Math.abs(base.y - e.y) <= r) {
       const p = dir && from ? (Math.abs(dir.y) > 1e-9 ? add(from, scale(dir, (e.y - from.y) / dir.y)) : null) : vec(base.x, e.y);
-      if (p) return { point: p, kind, guideFrom: e, ...wall };
+      if (p && fresh(p)) return { point: p, kind, guideFrom: e, ...wall };
     }
   }
-  if (best) return best;
+  if (best && fresh(best.point)) return best;
   return { point: onGrid(cursor), kind: 'grid' };
 }
 
@@ -349,11 +410,12 @@ function lineCrossing(p: Point2, u: Point2, q: Point2, v: Point2): Point2 | null
 export const onGrid = (p: Point2): Point2 =>
   vec(Math.round(p.x / GRID_STEP) * GRID_STEP, Math.round(p.y / GRID_STEP) * GRID_STEP);
 
-/** The nearest point within r (plus, per point, its reach: d − reach is what is compared). */
-function closest(points: readonly Point2[], p: Point2, r: number, reaches: readonly number[] = []): Point2 | null {
+/** The nearest point within r (plus, per point, its reach: d − reach is what is compared), of those `ok` takes. */
+function closest(points: readonly Point2[], p: Point2, r: number, reaches: readonly number[] = [], ok: (q: Point2) => boolean = () => true): Point2 | null {
   let best: Point2 | null = null;
   let bestD = r;
   points.forEach((q, i) => {
+    if (!ok(q)) return;
     const d = distance(p, q) - (reaches[i] ?? 0);
     if (d <= bestD) {
       best = q;

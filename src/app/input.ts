@@ -1,6 +1,7 @@
 // Mouse and keyboard. Plan: wheel zooms at the cursor, middle button pans. 3D: wheel zooms at the
 // cursor, middle pans, Shift + middle or right rotates (OrbitControls). Left button is the tool's.
 
+import { geometryOf } from './carry';
 import { showObjects } from '../ui/objects-dialog';
 import { endHandleDrag, moveHandleDrag, objectHandleAt, startHandleDrag } from './object-handles';
 import { showUnits } from '../ui/units-dialog';
@@ -124,6 +125,7 @@ export function wireInput(app: App): void {
       enabled: ui.snaps,
       orthogonal: false,
       guides: app.levelGuides(),
+      parts: ui.snapParts,
     });
   /**
    * A guide (guide-tool.ts), in the tools that draw by points, in plan: Alt over a wall or a guide
@@ -187,6 +189,36 @@ export function wireInput(app: App): void {
     }
     return belowCache.faces;
   };
+  /** The last pointer move over the drawing, and where Tab was last pressed (snap.ts, skip). */
+  let lastMove: PointerEvent | null = null;
+  let tabAt: { x: number; y: number } | null = null;
+  // The elements' own points on the level, to snap to: a door's or a window's jambs and middle, an
+  // object's or a column's corners and centre. Of the document as it is (not a preview: an object
+  // being placed would catch its own centre), on the level shown. Once per document and level.
+  let pointCache: { doc: unknown; levelId: string; points: { point: Point2; kind: 'center' | 'node' }[] } | null = null;
+  const elementPoints = () => {
+    const doc = app.store.get();
+    if (!pointCache || pointCache.doc !== doc || pointCache.levelId !== ui.levelId) {
+      const g = geometryOf(doc);
+      const points: { point: Point2; kind: 'center' | 'node' }[] = [];
+      const walls = new Set(doc.walls.filter((w) => w.levelId === ui.levelId).map((w) => w.id));
+      for (const o of g.openings.values()) {
+        const f = o.frame;
+        if (!f || !walls.has(o.opening.wallId)) continue;
+        points.push({ point: f.start, kind: 'node' }, { point: f.end, kind: 'node' }, { point: { x: (f.start.x + f.end.x) / 2, y: (f.start.y + f.end.y) / 2 }, kind: 'center' });
+      }
+      for (const x of eachSolid(g.kinds)) {
+        if ((x.kind.key !== 'objects' && x.kind.key !== 'columns') || x.levelId !== ui.levelId) continue;
+        for (const ring of x.kind.outlines(x.solid)) {
+          if (ring.length === 0) continue;
+          for (const v of ring) points.push({ point: v, kind: 'node' });
+          points.push({ point: { x: ring.reduce((t, v) => t + v.x, 0) / ring.length, y: ring.reduce((t, v) => t + v.y, 0) / ring.length }, kind: 'center' });
+        }
+      }
+      pointCache = { doc, levelId: ui.levelId, points };
+    }
+    return pointCache.points;
+  };
   /** Half a wall's thickness: its ends snap from anywhere on its body near them (snap.ts: reach). */
   const halfOf = (id: string) => (app.geometry.solids.get(id)?.layers.reduce((t, l) => t + l.thickness, 0) ?? 0) / 2;
   const snapped = (e: PointerEvent | MouseEvent) => {
@@ -238,6 +270,9 @@ export function wireInput(app: App): void {
       chainStart: draft ? (draft.length >= 3 ? draft[0]! : null) : (w.kind === 'drawing' && w.count >= 2) || w.kind === 'bend' ? w.start : null,
       enabled: ui.snaps,
       orthogonal: shift,
+      points: elementPoints(),
+      parts: ui.snapParts,
+      skip: ui.snapSkip,
       // The axes as lines to snap onto, as guides are, and where they cross.
       guides: [...app.levelGuides(), ...app.shownGrids().flatMap((g) => (distance(g.start, g.end) > 0 ? [{ point: g.start, dir: normalize(sub(g.end, g.start)) }] : []))],
     });
@@ -300,6 +335,12 @@ export function wireInput(app: App): void {
   /** A section box face being dragged by its handle: the box and the pointer as it was pressed. */
   let boxDrag: { face: BoxFace; box: SectionBox; from: { x: number; y: number }; along: { x: number; y: number } } | null = null;
   const onMove = (e: PointerEvent) => {
+    lastMove = e;
+    // Moved on from where Tab was pressed: the snaps start over.
+    if (tabAt && Math.hypot(e.clientX - tabAt.x, e.clientY - tabAt.y) > 4) {
+      tabAt = null;
+      ui.snapSkip = [];
+    }
     if (app.walker) {
       if (looking) {
         app.walkLook(e.clientX - looking.x, e.clientY - looking.y);
@@ -811,6 +852,15 @@ export function wireInput(app: App): void {
     guideTools,
     palette,
     showMarquee,
+    // The snap offered is passed over and the pointer's place taken again: the next candidate.
+    nextSnap: () => {
+      const s = ui.snap;
+      if (!s || !lastMove || ui.tool === 'select' || ui.drag) return false;
+      ui.snapSkip = s.kind === 'grid' || s.kind === 'none' || s.kind === 'angle' ? [] : [...ui.snapSkip, s.point];
+      tabAt = { x: lastMove.clientX, y: lastMove.clientY };
+      onMove(lastMove);
+      return true;
+    },
   });
 }
 

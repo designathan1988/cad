@@ -159,8 +159,10 @@ describe('snaps on an arc wall', () => {
     expect(snap(input([2.003, 0.002], arc)).kind).not.toBe('midpoint');
   });
 
+  // (3, −√3) is the arc's two-thirds point (a division point since phase 9): the body is tested away
+  // from its thirds, at 315° about the centre.
   it('on its body: the foot on the arc, 2 m from the centre', () => {
-    const s = snap(input([3.004, -1.733], arc));
+    const s = snap(input([2 + Math.SQRT2 + 0.004, -Math.SQRT2 - 0.003], arc));
     expect(s.kind).toBe('onWall');
     expect(Math.hypot(s.point.x - 2, s.point.y)).toBeCloseTo(2, 9);
   });
@@ -169,11 +171,52 @@ describe('snaps on an arc wall', () => {
     expect(snap(input([2.002, 2.001], arc)).kind).not.toBe('onWall');
   });
 
-  it('drawing straight down from (3, 1), the point is where that direction cuts the arc: (3, −√3)', () => {
-    const s = snap(input([3.004, -1.74], { ...arc, from: vec(3, 1) }));
+  it('drawing straight down from (3.5, 1), the point is where that direction cuts the arc: (3.5, −√1.75)', () => {
+    const s = snap(input([3.504, -1.33], { ...arc, from: vec(3.5, 1) }));
     expect(s.kind).toBe('onWall');
-    expect(s.point.x).toBeCloseTo(3, 9);
-    expect(s.point.y).toBeCloseTo(-Math.sqrt(3), 9);
+    expect(s.point.x).toBeCloseTo(3.5, 9);
+    expect(s.point.y).toBeCloseTo(-Math.sqrt(1.75), 9);
+  });
+
+  it('its centre is a point to snap to, and its thirds are division points', () => {
+    expect(snap(input([2.004, 0.003], arc))).toMatchObject({ kind: 'center', point: { x: 2, y: 0 } });
+    const third = snap(input([3.004, -1.733], arc));
+    expect(third.kind).toBe('division');
+    expect(third.point.x).toBeCloseTo(3, 9);
+    expect(third.point.y).toBeCloseTo(-Math.sqrt(3), 9);
+  });
+});
+
+describe('division points, element points and Tab (phase 9)', () => {
+  const wall = { segments: [{ start: vec(0, 0), end: vec(6, 0) }] };
+
+  it('a segment in thirds by default, in n parts when asked; its middle stays the midpoint', () => {
+    expect(snap(input([2.004, 0.003], wall))).toMatchObject({ kind: 'division', point: { x: 2, y: 0 } });
+    expect(snap(input([4.004, 0.003], wall))).toMatchObject({ kind: 'division', point: { x: 4, y: 0 } });
+    expect(snap(input([3.004, 0.003], wall)).kind).toBe('midpoint');
+    expect(snap(input([1.504, 0.003], { ...wall, parts: 4 }))).toMatchObject({ kind: 'division', point: { x: 1.5, y: 0 } });
+    // In quarters the middle is still the midpoint, not a division.
+    expect(snap(input([3.004, 0.003], { ...wall, parts: 4 })).kind).toBe('midpoint');
+    expect(snap(input([2.004, 0.003], { ...wall, parts: 4 })).kind).not.toBe('division');
+  });
+
+  it("an element's points come before the wall's body", () => {
+    const s = snap(input([1.004, 0.003], { ...wall, points: [{ point: vec(1, 0), kind: 'node' }] }));
+    expect(s).toMatchObject({ kind: 'node', point: { x: 1, y: 0 } });
+  });
+
+  it('Tab passes over what was offered: the next candidate under the pointer, then the next', () => {
+    const at = input([2.004, 0.003], { ...wall, points: [{ point: vec(2.01, 0), kind: 'node' }] });
+    const first = snap(at);
+    expect(first.kind).toBe('node');
+    const second = snap({ ...at, skip: [first.point] });
+    expect(second.kind).toBe('division');
+    // The wall's body there, on the 5 cm grid, is (2, 0): the division already offered. So the next
+    // is another point (the alignment with the wall's line at the pointer), never one offered before.
+    const third = snap({ ...at, skip: [first.point, second.point] });
+    expect(['node', 'division']).not.toContain(third.kind);
+    expect(third.point).not.toEqual(first.point);
+    expect(third.point).not.toEqual(second.point);
   });
 });
 

@@ -100,6 +100,10 @@ export interface UiState {
   /** Elements hidden or isolated for a while (Shift+H, Shift+I): in the views only, never saved. */
   temp: TemporaryView | null;
   snaps: boolean;
+  /** Into how many parts segments are divided for snapping (snap.ts, division points). */
+  snapParts: number;
+  /** Snap points Tab has passed over under the pointer (snap.ts, skip); emptied once it moves on. */
+  snapSkip: Point2[];
   defaults: WallDefaults;
   wall: WallToolState;
   opening: OpeningToolState;
@@ -225,6 +229,8 @@ export class App {
       hidden: new Set(),
       temp: null,
       snaps: prefs.snaps !== false,
+      snapParts: prefs.snapParts ?? 3,
+      snapSkip: [],
       defaults: { wallTypeId: doc.wallTypes[0]!.id, referenceLine: 'centerline', baseOffset: 0, top: { kind: 'level', offset: 0 } },
       wall: IDLE,
       opening: OPENING_IDLE,
@@ -1096,6 +1102,14 @@ export class App {
   /** Everything hidden or isolated for a while shows again. */
   resetTemporary(): void {
     return selecting.resetTemporary(this);
+  }
+
+  /** Division points cut segments into n parts (2 to 10): kept with the preferences. */
+  setSnapParts(n: number): void {
+    this.ui.snapParts = Math.min(10, Math.max(2, Math.round(n)));
+    savePrefs({ snapParts: this.ui.snapParts });
+    this.toast(t('toast.snapParts', { n: this.ui.snapParts }));
+    this.render();
   }
 
   toggleSnaps(): void {

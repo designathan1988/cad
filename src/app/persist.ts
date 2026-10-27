@@ -30,6 +30,8 @@ export interface Prefs {
   openingTags?: boolean;
   /** Points snap (S): off, it stays off. */
   snaps?: boolean;
+  /** Into how many parts a segment's division points cut it (snap.ts): 3 when not set. */
+  snapParts?: number;
   /** Where the plan was looking (pixels per metre, world point at the centre): a reload framed it all again. */
   planView?: { scale: number; center: { x: number; y: number } };
   /** Walking: the eyes' height above the floor (m). */

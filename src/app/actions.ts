@@ -203,6 +203,9 @@ export function appActions(app: App, open: Openers): Action[] {
     make('material.edit', 'mats.edit', edit, open.materials, { keywords: tBoth('mats.title') }),
     make('objects.edit', 'objs.open', edit, open.objects, { keywords: `${tBoth('objs.title')} biblioteca library família family editor` }),
     make('units.edit', 'units.edit', edit, open.units, { keywords: `${tBoth('units.title')} ${tBoth('units.cm')} ${tBoth('units.mm')}` }),
+    ...[2, 3, 4, 5, 6, 8, 10].map((n) =>
+      make(`snap.parts.${n}`, 'pal.snapParts', settings, () => app.setSnapParts(n), { enabled: ui.snapParts !== n, keywords: `${n} encaixe snap divisão division terços thirds partes parts` }),
+    ).map((a, i) => ({ ...a, label: t('pal.snapParts', { n: [2, 3, 4, 5, 6, 8, 10][i]! }) })),
     make('drawing.edit', 'draw.open', edit, open.drawing, { keywords: `${tBoth('draw.title')} 1:50 1:100 pena pen espessura lineweight` }),
     make('help.shortcuts', 'pal.shortcuts', help, open.help, { keys: '?' }),
     make('help.tour', 'pal.tour', help, open.tour),

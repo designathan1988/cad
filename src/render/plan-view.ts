@@ -86,7 +86,7 @@ export interface PlanOverlay {
   /** The reference of an angle or a scale being set (Rotate, Scale), dashed from its base. */
   readonly ray?: { readonly start: Point2; readonly end: Point2 } | null;
   /** `away`: the direction the segment being drawn arrives from, so the label goes beyond its end. */
-  readonly snap: { readonly point: Point2; readonly label: string | null; readonly guideFrom?: Point2; readonly away?: Point2 } | null;
+  readonly snap: { readonly point: Point2; readonly label: string | null; readonly guideFrom?: Point2; readonly away?: Point2; readonly kind?: string } | null;
   /**
    * Live measure of the segment being drawn. With `normal` (unit, world) it is set off the segment on
    * that side, `clear` metres plus a gap, so it never sits on the wall.
@@ -995,10 +995,7 @@ export class PlanView {
     ctx.strokeStyle = colour;
     ctx.lineWidth = 1.6;
     ctx.beginPath();
-    ctx.moveTo(p.x - 5, p.y - 5);
-    ctx.lineTo(p.x + 5, p.y + 5);
-    ctx.moveTo(p.x + 5, p.y - 5);
-    ctx.lineTo(p.x - 5, p.y + 5);
+    snapMark(ctx, s.kind ?? '', p);
     ctx.stroke();
     if (!s.label) return null;
     // Beyond the end of the segment, never back over it: to the left when it arrives going left.
@@ -1093,4 +1090,79 @@ export function drawPointDisc(ctx: CanvasRenderingContext2D, at: Point2, n: numb
   ctx.textBaseline = 'middle';
   ctx.fillText(String(n), at.x, at.y + 0.5);
   ctx.restore();
+}
+
+/**
+ * A snap's mark, its shape saying what it is (as CAD programs draw them): a square at an end or a
+ * corner, a triangle at a middle, a diamond at a division, a circle at a centre, a circle with a dot
+ * at an element's point, a cross where lines cross, ⊥ square to a wall, an hourglass on a wall or a
+ * guide, a plus along a direction or an alignment, a dot on the grid.
+ */
+export function snapMark(ctx: CanvasRenderingContext2D, kind: string, p: Point2): void {
+  const r = 5;
+  switch (kind) {
+    case 'endpoint':
+    case 'corner':
+    case 'start':
+      ctx.rect(p.x - r, p.y - r, 2 * r, 2 * r);
+      return;
+    case 'midpoint':
+      ctx.moveTo(p.x, p.y - r - 1);
+      ctx.lineTo(p.x + r + 1, p.y + r);
+      ctx.lineTo(p.x - r - 1, p.y + r);
+      ctx.closePath();
+      return;
+    case 'division':
+      ctx.moveTo(p.x, p.y - r - 1);
+      ctx.lineTo(p.x + r + 1, p.y);
+      ctx.lineTo(p.x, p.y + r + 1);
+      ctx.lineTo(p.x - r - 1, p.y);
+      ctx.closePath();
+      return;
+    case 'center':
+      ctx.moveTo(p.x + r + 1, p.y);
+      ctx.arc(p.x, p.y, r + 1, 0, Math.PI * 2);
+      return;
+    case 'node':
+      ctx.moveTo(p.x + r + 1, p.y);
+      ctx.arc(p.x, p.y, r + 1, 0, Math.PI * 2);
+      ctx.moveTo(p.x + 1.5, p.y);
+      ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+      return;
+    case 'perpendicular':
+      ctx.moveTo(p.x - r, p.y + r);
+      ctx.lineTo(p.x + r, p.y + r);
+      ctx.moveTo(p.x, p.y + r);
+      ctx.lineTo(p.x, p.y - r);
+      return;
+    case 'onWall':
+    case 'onFace':
+    case 'onGuide':
+      ctx.moveTo(p.x - r, p.y - r);
+      ctx.lineTo(p.x + r, p.y - r);
+      ctx.lineTo(p.x - r, p.y + r);
+      ctx.lineTo(p.x + r, p.y + r);
+      ctx.closePath();
+      return;
+    case 'extension':
+    case 'aligned':
+    case 'axis':
+    case 'parallel':
+    case 'angle':
+      ctx.moveTo(p.x - r, p.y);
+      ctx.lineTo(p.x + r, p.y);
+      ctx.moveTo(p.x, p.y - r);
+      ctx.lineTo(p.x, p.y + r);
+      return;
+    case 'grid':
+      ctx.moveTo(p.x + 2, p.y);
+      ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+      return;
+    default:
+      // Where lines cross (two walls, guides, the origin), and anything else: a cross.
+      ctx.moveTo(p.x - r, p.y - r);
+      ctx.lineTo(p.x + r, p.y + r);
+      ctx.moveTo(p.x + r, p.y - r);
+      ctx.lineTo(p.x - r, p.y + r);
+  }
 }
