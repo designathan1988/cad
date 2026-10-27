@@ -13,6 +13,8 @@ import type { ObjectDefinition } from '../elements/object/schema';
 
 type Stage = { renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; group: THREE.Group };
 let stage: Stage | null = null;
+/** Each picture drawn at this many times its size (see meshSnapshot). */
+const SUPERSAMPLE = 2;
 
 /** The stage, or null where the browser has no WebGL (the picture is then left out). */
 function stageOf(): Stage | null {
@@ -21,6 +23,9 @@ function stageOf(): Stage | null {
   if (!canvas.getContext('webgl2')) return null;
   // Read back as an image right after drawing: the buffer kept until then.
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+  // Lit as the realistic 3D view: filmic tone mapping, so whites are not flat and blown out.
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
   const scene = new THREE.Scene();
   // A room's light around it, as the realistic 3D has: what metals, mirrors and glazes reflect.
   const pmrem = new THREE.PMREMGenerator(renderer);
@@ -64,7 +69,9 @@ export function meshSnapshot(meshes: readonly THREE.Mesh[], w: number, h: number
   }
   const centre = box.getCenter(new THREE.Vector3());
   const radius = Math.max(0.2, box.getSize(new THREE.Vector3()).length() / 2);
-  s.renderer.setSize(w, h, false);
+  // Drawn at twice the size and scaled down by the image: edges smooth even where the browser gives no
+  // multisampling (it read stepped at 1:1), and sharp on a high-density screen.
+  s.renderer.setSize(w * SUPERSAMPLE, h * SUPERSAMPLE, false);
   s.camera.aspect = w / h;
   const dist = (radius / Math.sin((s.camera.fov * Math.PI) / 360)) * 1.05;
   s.camera.position.set(centre.x + dist * Math.cos(pitch) * Math.sin(yaw), centre.y + dist * Math.sin(pitch), centre.z + dist * Math.cos(pitch) * Math.cos(yaw));
