@@ -20,9 +20,10 @@
   --tabs-h: 30px;
   --ribbon-h: 92px;
   --strip-h: 36px;
+  --opt-h: 30px;
   --foot-h: 36px;
   /* Where the drawing starts under the frame: a panel over the drawing (narrow windows) starts there. */
-  --chrome-top: calc(var(--top-h) + var(--tabs-h) + var(--ribbon-h) + var(--strip-h));
+  --chrome-top: calc(var(--top-h) + var(--tabs-h) + var(--ribbon-h) + var(--opt-h) + var(--strip-h));
   --rb-large-w: 64px;
   --rb-small-h: 24px;
   --search-w: 300px;
@@ -256,7 +257,7 @@ textarea {
 #app {
   display: grid;
   /* minmax(0, 1fr): the middle row never grows past the window, so the footer stays visible. */
-  grid-template-rows: var(--top-h) var(--tabs-h) var(--ribbon-h) var(--strip-h) minmax(0, 1fr) var(--foot-h);
+  grid-template-rows: var(--top-h) var(--tabs-h) var(--ribbon-h) var(--opt-h) var(--strip-h) minmax(0, 1fr) var(--foot-h);
   grid-template-columns: minmax(0, 1fr) auto;
   height: 100%;
 }
@@ -1294,6 +1295,7 @@ button.project-name:hover {
     --top-h: 48px;
     --tabs-h: 40px;
     --strip-h: 48px;
+    --opt-h: 40px;
     --rb-small-h: 44px;
     --ribbon-h: 128px;
     --foot-h: 52px;
@@ -2967,6 +2969,42 @@ textarea.text-field {
   background: var(--accent-strong);
 }
 
+/* The options bar (shell.ts): the tool in use or what is selected, a rule between its parts, the way
+   out of the tool at its end. One line; what does not fit is cut, not wrapped. */
+.opt-bar {
+  grid-row: 4;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  padding: 0 var(--sp-3);
+  overflow: hidden;
+  white-space: nowrap;
+  background: var(--bg);
+  border-bottom: var(--line) solid var(--border);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+.opt-title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  color: var(--text);
+  font-weight: 600;
+}
+.opt-sep {
+  align-self: stretch;
+  margin: var(--sp-1) 0;
+  border-left: var(--line) solid var(--border);
+}
+.opt-bar .spacer {
+  flex: 1;
+}
+.opt-bar .btn {
+  height: calc(var(--opt-h) - 2 * var(--sp-1));
+}
+
 /* The ribbon: panels side by side, each with its title under it; what does not fit scrolls sideways. */
 .ribbon {
   grid-row: 3;
@@ -3103,7 +3141,7 @@ textarea.text-field {
 
 /* The views' strip: the level, the views as tabs, the project browser's button. */
 .view-strip {
-  grid-row: 4;
+  grid-row: 5;
   grid-column: 1;
   display: flex;
   align-items: stretch;
@@ -3157,15 +3195,15 @@ textarea.text-field {
   padding: 0 var(--sp-2);
 }
 .viewport {
-  grid-row: 5;
+  grid-row: 6;
   grid-column: 1;
 }
 .panel {
-  grid-row: 4 / 6;
+  grid-row: 5 / 7;
   grid-column: 2;
 }
 .foot {
-  grid-row: 6;
+  grid-row: 7;
   grid-column: 1 / -1;
 }
 @media (pointer: coarse) {

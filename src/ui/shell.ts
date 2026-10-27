@@ -1,6 +1,6 @@
 // The window layout, as the interface model (Revit's): a dark title bar (the projects, quick access,
 // the project's name, the command search), the ribbon's tabs and the ribbon (ui/ribbon.ts, filled by
-// app/chrome.ts), the views' strip over the drawing (level, Plan, 3D, Walk, the project browser), the
+// app/chrome.ts), the options bar, the views' strip over the drawing (level, Plan, 3D, Walk, the project browser), the
 // drawing, the properties on the right and the status bar. Builds the DOM once and exposes the parts the
 // app updates; texts are refreshed by relabel() when the language changes.
 
@@ -53,6 +53,9 @@ export function buildShell(root: HTMLElement) {
   const fileMenu = el('button', { type: 'button', class: 'rb-tab rb-file' });
   fileMenu.setAttribute('aria-haspopup', 'menu');
   const ribbon = el('div', { class: 'ribbon', role: 'toolbar' });
+  // The options bar under the ribbon (the interface model's): the tool in use, or what is selected, and
+  // the way out of the tool. Filled by app/chrome.ts.
+  const optBar = el('div', { class: 'opt-bar', role: 'toolbar' });
 
   // The views' strip, over the drawing: the level, Plan, 3D and Walk as tabs, and the project browser.
   const strip = el('div', { class: 'view-strip' });
@@ -162,7 +165,7 @@ export function buildShell(root: HTMLElement) {
 
   const helpBack = el('div', { class: 'dialog-back' });
   helpBack.hidden = true;
-  root.append(top, tabs, ribbon, strip, viewport, panel, foot, helpBack);
+  root.append(top, tabs, ribbon, optBar, strip, viewport, panel, foot, helpBack);
 
   // The footer's tip comes first: the key hints that leave it no room go, the first ones first (Esc,
   // last, is the one most needed). At 1280 px the wall tool's tip was cut after a few words. The keys
@@ -183,7 +186,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, savedNote, undo, redo, level, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, tabs, fileMenu, ribbon, strip, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, dims, browser, sidebar,
+    panelToggle, tabs, fileMenu, ribbon, optBar, strip, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, dims, browser, sidebar,
     emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, fitFoot,
   };
 
@@ -210,6 +213,7 @@ export function buildShell(root: HTMLElement) {
     fileMenu.textContent = t('rib.file');
     tabs.setAttribute('aria-label', t('rib.tabs'));
     ribbon.setAttribute('aria-label', t('rib.ribbon'));
+    optBar.setAttribute('aria-label', t('opt.bar'));
     strip.setAttribute('aria-label', t('rib.views'));
     browser.setAttribute('aria-label', t('browser.title'));
     view3d.querySelector('.label')!.textContent = t('view.3d');

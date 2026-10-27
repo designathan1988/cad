@@ -11,12 +11,13 @@ import { angleAt, chainArea, chainLength, reading } from '../tools/measure-tool'
 import { OPENING_PREVIEW_ID, ruleText } from './opening-ui';
 import { getLang, name, num, t, type MessageKey } from '../ui/i18n';
 import { icon } from '../ui/icons';
+import { el } from '../ui/controls';
 import { keyHint } from '../ui/shell';
 import { kindOfId, levelOfSolid } from '../elements/registry';
 import { elementIds, wallNumber } from './document';
 import { boundsOf, openingOutline } from './geometry';
 import { renderBrowser } from '../ui/browser';
-import { renderRibbonTab, renderRibbonTabs } from '../ui/ribbon';
+import { type RibbonItem, renderRibbonTab, renderRibbonTabs } from '../ui/ribbon';
 import { ribbonTabs } from './ribbon-tabs';
 import { exploding, shownLevels } from './view-3d';
 import { contextEntries } from './context-menu';
@@ -519,6 +520,7 @@ export function renderRibbon(app: App): void {
   const tabs = ribbonTabs(app);
   if (!tabs.some((x) => x.id === app.ribbonTab)) app.ribbonTab = tabs[0]!.id;
   const tab = tabs.find((x) => x.id === app.ribbonTab)!;
+  renderOptBar(app, tabs, actions);
   const states = tab.panels.flatMap((p) => p.items.map((i) => {
     const a = actions.get(i.id);
     return a ? [i.id, a.label, a.keys ?? '', a.enabled, i.pressed?.() ?? null] : [i.id];
@@ -531,6 +533,42 @@ export function renderRibbon(app: App): void {
   renderRibbonTabs(shell.tabs, tabs, app.ribbonTab, (id) => app.chooseRibbonTab(id), shell.fileMenu);
   renderRibbonTab(shell.ribbon, tab, actions);
   if (focused) shell.ribbon.querySelector<HTMLElement>(`[data-action="${focused}"]`)?.focus();
+}
+
+/** The ribbon's buttons that say a tool (not a view or a setting shown): what the options bar names. */
+const TOOL_BUTTON = /^(tool|edit|mep|mark|objects)\./;
+
+/**
+ * The options bar (the interface model's): the tool in use named as its ribbon button names it, with
+ * its icon, and Finish (Esc); with Select, how many elements are selected. Drawn again when that changes.
+ */
+function renderOptBar(app: App, tabs: ReturnType<typeof ribbonTabs>, actions: ReadonlyMap<string, ReturnType<App['actionList']>[number]>): void {
+  const { shell, ui } = app;
+  // The pressed button of the tool, a list's own item before its button (the object, not "Object").
+  let found: { item: RibbonItem; label: string } | null = null;
+  if (ui.tool !== 'select')
+    for (const tab of tabs)
+      for (const p of tab.panels)
+        for (const item of p.items)
+          for (const it of [...(item.menu?.() ?? []), item]) {
+            if (found || !TOOL_BUTTON.test(it.id) || !it.pressed?.()) continue;
+            const a = actions.get(it.id);
+            if (a) found = { item: it, label: it.text ?? a.label };
+          }
+  const n = ui.selection.size;
+  const key = JSON.stringify([getLang(), ui.tool, found?.item.id ?? null, found?.label ?? '', n]);
+  if (key === shell.optBar.dataset.key) return;
+  shell.optBar.dataset.key = key;
+  const title = el('span', { class: 'opt-title' });
+  title.innerHTML = icon(found ? found.item.icon : 'pointer', 16);
+  title.append(found ? found.label.replace(/[.…]+$/, '') : t('tool.select'));
+  if (!found) {
+    shell.optBar.replaceChildren(title, el('span', { class: 'opt-sep' }), el('span', {}, n === 1 ? t('opt.selectedOne') : t('opt.selected', { n })));
+    return;
+  }
+  const finish = el('button', { type: 'button', class: 'btn' }, t('opt.finish'), ' ', el('span', { class: 'kbd' }, 'Esc'));
+  finish.addEventListener('click', () => actions.get('tool.select')?.run());
+  shell.optBar.replaceChildren(title, el('span', { class: 'spacer' }), finish);
 }
 
 /** The object tool's definition, named in the interface's language. */

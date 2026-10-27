@@ -1,4 +1,4 @@
-// What the ribbon holds (ui/ribbon.ts), by tab, as in the interface model (prototype v72): Architecture,
+// What the ribbon holds (ui/ribbon.ts), by tab, as in the interface model (prototype v72): Home, Architecture,
 // Structure, Services, Site, Annotate, Analyze, View, Manage, Approval and Edit, and the File menu.
 // Only actions the app has (app/actions.ts); what is built
 // later gets a place here when it gets its action. Pressed states read the app's own.
@@ -72,6 +72,47 @@ function tabsOf(app: App): readonly RibbonTab[] {
     ],
   };
   return [
+    // Home (as AutoCAD's Home and Office's Página Inicial): the commands used most, from the other tabs,
+    // so a day's drawing rarely needs to leave it.
+    {
+      id: 'home',
+      title: 'rib.tab.home',
+      panels: [
+        select,
+        { title: 'rib.p.clipboard', items: [{ id: 'edit.paste', icon: 'plus', size: 'L' }, { id: 'edit.copyClip', icon: 'copy', size: 'S' }] },
+        {
+          title: 'rib.p.draw',
+          items: [
+            tool('wall', 'tool.wall', 'wall', 'L'),
+            tool('door', 'tool.door', 'door', 'L'),
+            tool('window', 'tool.window', 'window', 'L'),
+            objects,
+            { ...tool('floor', 'tool.floor', 'slab', 'S'), pressed: () => ui.tool === 'floor' && !ui.ceilingTool },
+            tool('roof', 'tool.roof', 'roof', 'S'),
+            tool('stair', 'tool.stair', 'stair', 'S'),
+            tool('room', 'tool.room', 'room', 'S'),
+            tool('column', 'tool.column', 'column', 'S'),
+            tool('railing', 'tool.railing', 'railing', 'S'),
+          ],
+        },
+        {
+          title: 'rib.p.modify',
+          items: [modify('move', 'move'), { ...modify('copy', 'copy'), short: 'rib.s.duplicate' }, modify('rotate', 'rotate'), modify('mirror', 'mirror'), modify('scale', 'scale'), modify('offset', 'offset'), tool('split', 'edit.split', 'split', 'S'), tool('corner', 'edit.corner', 'corner', 'S'), { id: 'edit.delete', icon: 'trash', size: 'S' }],
+        },
+        { title: 'rib.p.annotation', items: [tool('dimension', 'tool.dimension', 'dimension', 'L'), tool('note', 'edit.addNote', 'text', 'S'), tool('tag', 'tool.tag', 'tag', 'S'), tool('measure', 'tool.measure', 'ruler', 'S')] },
+        {
+          title: 'rib.p.views',
+          items: [
+            { id: 'view.plan', icon: 'map', size: 'L', pressed: () => ui.view === 'plan' && app.walker === null },
+            { id: 'view.3d', icon: 'cube', size: 'L', pressed: () => ui.view === '3d' && app.walker === null },
+            { id: 'view.walk', icon: 'walk', size: 'S', pressed: () => app.walker !== null },
+            tool('section', 'tool.section', 'cut', 'S'),
+            { id: 'view.sheets', icon: 'frame', size: 'S' },
+          ],
+        },
+        { title: 'rib.p.visibility', items: [{ id: 'view.tempHide', icon: 'flip', size: 'S' }, { id: 'view.tempIsolate', icon: 'center', size: 'S' }, { id: 'view.tempReset', icon: 'close', size: 'S' }] },
+      ],
+    },
     {
       id: 'arch',
       title: 'rib.tab.arch',

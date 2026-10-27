@@ -2137,7 +2137,7 @@ export class App {
   /** Every action by name (app/actions.ts), set by the input layer: the ribbon and the File menu run them. */
   actionList: () => Action[] = () => [];
   /** The ribbon's tab shown, kept between visits, and what it was last drawn from (chrome.ts). */
-  ribbonTab = loadPrefs().ribbonTab ?? 'arch';
+  ribbonTab = loadPrefs().ribbonTab ?? 'home';
   ribbonKey = '';
   chooseRibbonTab(id: string): void {
     this.ribbonTab = id;
