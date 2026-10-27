@@ -1,8 +1,8 @@
 // The building in the sun and the sky (docs/plano-de-escopo.md, phase 14, the quick level): its
 // exterior faces and windows, each with the way it faces; the hours of direct sun each gets on the
-// solstices and the equinox (the sun by NOAA's equations, app/sun.ts), the building's own walls
-// casting shade; and each room's average daylight factor through its windows (the BRE formula).
-// Estimates, with their premises: the roofs' eaves and the neighbours cast no shade here. Pure.
+// solstices and the equinox (the sun by NOAA's equations, app/sun.ts), the building's own walls and
+// roofs (their eaves too) casting shade; and each room's average daylight factor through its windows
+// (the BRE formula). Estimates, with their premises: the neighbours cast no shade here. Pure.
 
 import type { Doc, DocWall } from '../app/document';
 import { levelOf, wallThickness } from '../app/document';
@@ -11,6 +11,7 @@ import { roomsBeside } from '../app/quantities';
 import { DEFAULT_SITE, northOf, type Site, sunDirection } from '../app/sun';
 import { add, dot, normalize, type Point2, scale, sub } from '../core/vector';
 import { insideRing } from '../elements/room/derive';
+import type { RoofSolid } from '../elements/roof/geometry';
 import { exteriorOffset } from '../elements/wall/geometry/shape';
 import { roomFace } from '../tools/edit';
 
@@ -109,6 +110,17 @@ function shaded(doc: Doc, g: DerivedGeometry, p: Point2, z: number, sun: { x: nu
     if (k <= 0.05 || m < 0 || m > 1) continue;
     const height = z + k * rise;
     if (height >= s.bottom && height <= s.top) return true;
+  }
+  // The roofs' faces, their eaves too: where the way to the sun meets a face's plane inside its outline.
+  for (const r of (g.kinds.get('roofs')?.values() ?? []) as Iterable<RoofSolid>) {
+    for (const f of r.faces) {
+      const z0 = f.z(p);
+      const dz = f.z({ x: p.x + u.x, y: p.y + u.y }) - z0;
+      const den = rise - dz;
+      if (Math.abs(den) < 1e-12) continue;
+      const k = (z0 - z) / den;
+      if (k > 0.05 && insideRing(f.polygon, { x: p.x + u.x * k, y: p.y + u.y * k })) return true;
+    }
   }
   return false;
 }

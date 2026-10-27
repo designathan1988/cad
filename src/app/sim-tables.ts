@@ -5,7 +5,9 @@
 
 import { type MessageKey, materialLabel, name, num, t } from '../ui/i18n';
 import { materialIn } from '../elements/material/schema';
-import { acousticOf, glaserOf, R_SE, R_SI, thermalOf } from '../sim/envelope';
+import { acousticOf, glaserOf, R_SE, R_SI, reverberationOf, thermalOf } from '../sim/envelope';
+import { roomsBeside } from './quantities';
+import { levelOf } from './document';
 import { DAYLIGHT, daylightOf, exteriorFaces, GLAZED, hoursOf, octant, roomSun, sunDays, sunSlots } from '../sim/exposure';
 import { RISK_LIMITS, risksOf } from '../sim/risks';
 import { DEFAULT_SIM, type SimSettings } from '../sim/settings';
@@ -134,10 +136,30 @@ export function simBlock(section: SimSection, doc: Doc, g: DerivedGeometry, titl
       if (r.missing.length > 0) return [typeName(doc, id), t('sim.missing', { what: r.missing.map((m) => matName(doc, m)).join(', ') }), '', ''];
       return [typeName(doc, id), `${num(r.mass!, 0)} kg/m²`, r.rw === null ? t('sim.light') : `${num(r.rw, 0)} dB`, `${num(r.r500!, 0)} dB`];
     });
+    // Each room's reverberation, empty, by its finishes and its openings.
+    const holes = new Map<string, { windows: number; doors: number }>();
+    for (const o of doc.openings) {
+      const w = doc.walls.find((x) => x.id === o.wallId);
+      if (!w || !g.openings.get(o.id)?.valid) continue;
+      for (const r of new Set(roomsBeside(g, o.id, w.levelId).flatMap((x) => (x ? [x.id] : [])))) {
+        const h = holes.get(r) ?? { windows: 0, doors: 0 };
+        holes.set(r, o.kind === 'window' ? { ...h, windows: h.windows + o.width * o.height } : { ...h, doors: h.doors + o.width * o.height });
+      }
+    }
+    const rooms = doc.rooms.flatMap((r) => {
+      const x = g.rooms.get(r.id);
+      return x?.enclosed ? [{ id: r.id, area: x.area, perimeter: x.perimeter, height: r.height ?? levelOf(doc, r.levelId)?.height ?? 2.8, ...(r.finishes ? { finishes: r.finishes } : {}) }] : [];
+    });
+    const reverb: SimTable = {
+      title: t('sim.reverb'),
+      head: [t('memo.room'), t('sim.volume'), t('sim.absorption'), t('sim.t60')],
+      rows: reverberationOf(rooms, (id) => holes.get(id) ?? { windows: 0, doors: 0 }).map((r) => [{ text: title(r.roomId), id: r.roomId }, `${num(r.volume, 1)} m³`, `${num(r.absorption, 2)} m²`, `${num(r.time, 2)} s`]),
+      numeric: [1, 2, 3],
+    };
     return {
-      tables: rows.length > 0 ? [{ head: [t('sim.type'), t('sim.mass'), 'Rw', 'R 500 Hz'], rows, numeric: [1, 2, 3] }] : [],
+      tables: [...(rows.length > 0 ? [{ head: [t('sim.type'), t('sim.mass'), 'Rw', 'R 500 Hz'], rows, numeric: [1, 2, 3] }] : []), ...(reverb.rows.length > 0 ? [reverb] : [])],
       empty: t('sim.noWalls'),
-      premises: [t('sim.acousticPremise'), t('sim.acousticReference')],
+      premises: [t('sim.acousticPremise'), t('sim.acousticReference'), t('sim.reverbPremise')],
     };
   }
   if (section === 'wifi') {

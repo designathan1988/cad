@@ -32,7 +32,18 @@ export interface Lot {
   readonly back?: number;
   /** Most height of the building above its lowest floor (m). */
   readonly maxHeight?: number;
+  /** Who it is for and who answers for it, as the sheets' title block says them: the owner, the office,
+   * the professional in charge, their registration (CAU, CREA) and the record of their responsibility
+   * (RRT, ART). */
+  readonly owner?: string;
+  readonly firm?: string;
+  readonly responsible?: string;
+  readonly license?: string;
+  readonly record?: string;
 }
+
+/** The title block's fields of the lot: who it is for and who answers for it. */
+export const OFFICE_FIELDS = ['owner', 'firm', 'responsible', 'license', 'record'] as const;
 
 export const DEFAULT_LOT: Lot = { address: '', city: '', state: '', registry: '', taxNumber: '', zone: '', law: 'Lei 16.402/2016 (LPUOS), Quadro 3', frontEdge: 0 };
 
@@ -47,7 +58,8 @@ export const isLot = (l: unknown): l is Lot => {
     typeof x.frontEdge === 'number' &&
     Number.isInteger(x.frontEdge) &&
     x.frontEdge >= 0 &&
-    ['area', 'maxOccupancy', 'maxFloorRatio', 'minPermeability', 'front', 'side', 'back', 'maxHeight'].every((k) => opt(x[k]))
+    ['area', 'maxOccupancy', 'maxFloorRatio', 'minPermeability', 'front', 'side', 'back', 'maxHeight'].every((k) => opt(x[k])) &&
+    OFFICE_FIELDS.every((k) => x[k] === undefined || text(x[k]))
   );
 };
 

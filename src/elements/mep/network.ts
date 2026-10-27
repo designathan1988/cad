@@ -168,3 +168,59 @@ export function pathTo(net: Network, via: ReadonlyMap<number, number>, node: num
 
 /** The source nodes of a network: its points of a kind that feeds the rest. */
 export const sourcesOf = (net: Network): number[] => net.points.filter((p) => POINT_KINDS[p.kind].source).map((p) => net.pointNode.get(p.id)!);
+
+export type FittingKind = 'elbow90' | 'elbow45' | 'tee' | 'cross';
+
+export interface Fitting {
+  readonly group: string;
+  readonly kind: FittingKind;
+  /** m: the largest of the pipes it joins. */
+  readonly diameter: number;
+  readonly count: number;
+}
+
+/**
+ * The fittings the networks need, from their geometry: where two pieces meet turning, an elbow (90°
+ * from a turn of 67.5° on, else 45°, adopted); three, a tee; four or more, a cross. A point's drop
+ * counts as a piece (the branch to a socket off a passing conduit is a tee). Counted by group and
+ * diameter; a point at a run's end needs none.
+ */
+export function fittingsOf(doc: Doc): Fitting[] {
+  const counts = new Map<string, Fitting>();
+  const add = (group: string, kind: FittingKind, diameter: number) => {
+    const key = `${group}|${kind}|${diameter}`;
+    const f = counts.get(key);
+    counts.set(key, { group, kind, diameter, count: (f?.count ?? 0) + 1 });
+  };
+  for (const net of networksOf(doc).values()) {
+    const at = new Map<number, number[]>();
+    net.edges.forEach((e, k) => {
+      if (e.length < 1e-9) return;
+      (at.get(e.a) ?? at.set(e.a, []).get(e.a)!).push(k);
+      (at.get(e.b) ?? at.set(e.b, []).get(e.b)!).push(k);
+    });
+    for (const [node, ks] of at) {
+      if (ks.length < 2) continue;
+      const diameter = Math.max(...ks.map((k) => net.edges[k]!.diameter));
+      if (ks.length >= 4) add(net.group, 'cross', diameter);
+      else if (ks.length === 3) add(net.group, 'tee', diameter);
+      else {
+        const n = net.nodes[node]!;
+        const dir = (k: number) => {
+          const e = net.edges[k]!;
+          const o = net.nodes[e.a === node ? e.b : e.a]!;
+          const v = { x: o.x - n.x, y: o.y - n.y, z: o.z - n.z };
+          const l = Math.hypot(v.x, v.y, v.z);
+          return { x: v.x / l, y: v.y / l, z: v.z / l };
+        };
+        const u = dir(ks[0]!);
+        const w = dir(ks[1]!);
+        // Straight on: the two ways out are opposite. The turn is how far they are from that.
+        const turn = 180 - (Math.acos(Math.max(-1, Math.min(1, u.x * w.x + u.y * w.y + u.z * w.z))) * 180) / Math.PI;
+        if (turn >= 67.5) add(net.group, 'elbow90', diameter);
+        else if (turn >= 22.5) add(net.group, 'elbow45', diameter);
+      }
+    }
+  }
+  return [...counts.values()].sort((a, b) => a.group.localeCompare(b.group) || a.kind.localeCompare(b.kind) || a.diameter - b.diameter);
+}

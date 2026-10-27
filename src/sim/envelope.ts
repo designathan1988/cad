@@ -139,6 +139,56 @@ export interface Acoustic {
   readonly missing: readonly string[];
 }
 
+/**
+ * Sound absorption coefficients at 500 Hz by material (typical values of building acoustics tables,
+ * adopted): what a surface of it takes of the sound that falls on it. One not listed: 0.05.
+ */
+export const ABSORPTION: Readonly<Record<string, number>> = {
+  plaster: 0.02,
+  brick: 0.03,
+  concrete: 0.02,
+  gypsum: 0.05,
+  insulation: 0.8,
+  wood: 0.1,
+  mdfWhite: 0.1,
+  metal: 0.02,
+  glass: 0.18,
+  tile: 0.01,
+  screed: 0.02,
+  fabric: 0.3,
+  ceramic: 0.01,
+};
+const OTHER_ABSORPTION = 0.05;
+const absorptionOf = (id: string | undefined, fallback: string) => ABSORPTION[id ?? fallback] ?? OTHER_ABSORPTION;
+
+export interface Reverberation {
+  readonly roomId: string;
+  /** m³. */
+  readonly volume: number;
+  /** m² of open window equivalent: Σ S·α. */
+  readonly absorption: number;
+  /** s, Sabine's: 0.161·V / A, the room empty. */
+  readonly time: number;
+}
+
+/**
+ * Each room's reverberation time at 500 Hz, empty (Sabine): its floor, ceiling and walls by their
+ * finishes (plaster for walls and ceiling, screed for the floor when none is set), its windows'
+ * glass and its doors' wood taken off the walls.
+ */
+export function reverberationOf(
+  rooms: readonly { id: string; area: number; perimeter: number; height: number; finishes?: { floor?: string; wall?: string; ceiling?: string } }[],
+  openings: (roomId: string) => { windows: number; doors: number },
+): Reverberation[] {
+  return rooms.map((r) => {
+    const { windows, doors } = openings(r.id);
+    const walls = Math.max(0, r.perimeter * r.height - windows - doors);
+    const absorption = r.area * absorptionOf(r.finishes?.floor, 'screed') + r.area * absorptionOf(r.finishes?.ceiling, 'plaster') + walls * absorptionOf(r.finishes?.wall, 'plaster') + windows * ABSORPTION.glass! + doors * ABSORPTION.wood!;
+    const volume = r.area * r.height;
+    return { roomId: r.id, volume, absorption, time: absorption > 0 ? (0.161 * volume) / absorption : 0 };
+  });
+}
+
 export function acousticOf(type: WallType, materials: readonly Material[]): Acoustic {
   const layers = layersOf(type, materials);
   const missing = [...new Set(layers.filter((l) => !l.physics).map((l) => l.materialId))];

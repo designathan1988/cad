@@ -5,7 +5,7 @@
 
 import type { App } from '../app/app';
 import { areasTable } from '../app/documents';
-import { type Lot, lotOf } from '../app/lot';
+import { type Lot, lotOf, OFFICE_FIELDS } from '../app/lot';
 import { lotReport } from '../app/lot-areas';
 import type { Command } from '../core/store';
 import type { Doc } from '../app/document';
@@ -68,7 +68,8 @@ export function showLot(app: App): void {
   const render = (close: () => void): HTMLElement => {
     const doc = app.store.get();
     const lot = lotOf(doc);
-    const set = (patch: Partial<Lot>) => app.store.dispatch(setLot(patch));
+    // An emptied field is no field: the title block leaves it out.
+    const set = (patch: Partial<Lot>) => app.store.dispatch(setLot(Object.fromEntries(Object.entries(patch).map(([k, v]) => [k, v === '' && (OFFICE_FIELDS as readonly string[]).includes(k) ? undefined : v])) as Partial<Lot>));
     const text = (key: keyof Lot, label: MessageKey) => row(t(label), textField((lot[key] as string) ?? '', (v) => set({ [key]: v })));
     const numeric = (key: keyof Lot, label: MessageKey, unit: string) => row(t(label), optionalNumber(lot[key] as number | undefined, unit, (v) => set({ [key]: v })));
     const outline = doc.terrains[0]?.outline;
@@ -98,6 +99,16 @@ export function showLot(app: App): void {
       numeric('back', 'lot.setBack', 'm'),
       numeric('maxHeight', 'lot.maxHeight', 'm'),
     );
+    // Who it is for and who answers for it: the sheets' title block (app/sheets.ts).
+    const office = el(
+      'div',
+      { class: 'lot-grid' },
+      text('owner', 'lot.owner'),
+      text('firm', 'lot.firm'),
+      text('responsible', 'lot.responsible'),
+      text('license', 'lot.license'),
+      text('record', 'lot.record'),
+    );
     const table = el('div', { class: 'lot-areas' });
     table.innerHTML = areasTable(doc, lotReport(doc, app.geometry));
     const closeBtn = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
@@ -107,7 +118,7 @@ export function showLot(app: App): void {
       'div',
       { class: 'dialog dialog-wide', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('lot.title') },
       el('h2', {}, t('lot.title')),
-      el('div', { class: 'lot-body' }, el('h3', {}, t('lot.where')), where, el('h3', {}, t('lot.params')), el('p', { class: 'tour-empty' }, t('lot.paramsNote')), zone, front, el('h3', {}, t('areas.title')), table),
+      el('div', { class: 'lot-body' }, el('h3', {}, t('lot.where')), where, el('h3', {}, t('lot.office')), el('p', { class: 'tour-empty' }, t('lot.officeNote')), office, el('h3', {}, t('lot.params')), el('p', { class: 'tour-empty' }, t('lot.paramsNote')), zone, front, el('h3', {}, t('areas.title')), table),
       el('div', { class: 'actions' }, el('span', { class: 'spacer' }), closeBtn),
     );
   };

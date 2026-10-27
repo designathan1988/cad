@@ -4,9 +4,14 @@
 // in the edition in force: the least sections (1,5 mm² for lighting, 2,5 mm² for the rest), the current
 // a copper wire with PVC insulation carries in conduit in a wall (method B1, two loaded conductors), and
 // a drop of at most 4 % in a final circuit. A point with no circuit of its own goes in its kind's and
-// level's: lighting (IL), general sockets (TUG), each shower its own (TUE). Pure.
+// level's: lighting (IL), general sockets (TUG), each shower its own (TUE). With the rooms (the geometry),
+// a circuit serving a wet room or the outside asks for a 30 mA residual-current device (NBR 5410
+// 5.1.3.2.2, to confirm); the circuits are spread over the two phases of a 127/220 V supply, the 127 V
+// ones each on the lighter phase, the 220 V ones across both. Pure.
 
 import type { Doc } from '../../app/document';
+import type { DerivedGeometry } from '../../app/geometry';
+import { insideRing } from '../room/derive';
 import { fromSources, type Network, networksOf } from './network';
 import { type MepPoint, POINT_KINDS, pointLoad, systemIn } from './schema';
 
@@ -43,6 +48,10 @@ export interface Circuit {
   /** The way from the panel to its farthest point (m), and the drop there (%); null when it is not connected. */
   readonly length: number | null;
   readonly drop: number | null;
+  /** Why it asks for a 30 mA residual-current device (a wet room's use, or 'outside'); null when it does not, or the rooms are not known. */
+  readonly dr: string | null;
+  /** The phase it is on: A, B, or both (a 220 V circuit). */
+  readonly phase: 'A' | 'B' | 'AB';
 }
 
 export interface LoadTable {
@@ -51,6 +60,43 @@ export interface LoadTable {
   /** Points with a load that no conduit reaches from a panel. */
   readonly unreached: readonly MepPoint[];
   readonly hasPanel: boolean;
+  /** VA on each phase, and how far apart they are (% of the heavier). */
+  readonly phases: { readonly a: number; readonly b: number; readonly imbalance: number };
+}
+
+/** The room uses NBR 5410 asks a residual-current device for (with a shower or a bath, kitchens, service areas, garages). */
+export const DR_USES: readonly string[] = ['bathroom', 'kitchen', 'service', 'garage'];
+
+/** Where a point is: the use of the room it is in, 'outside' in none, null without the geometry. */
+function placeOf(g: DerivedGeometry | undefined, p: MepPoint): string | null {
+  if (!g) return null;
+  const room = [...g.rooms.values()].find((r) => r.room.levelId === p.levelId && r.enclosed && insideRing(r.outline, p.at));
+  return room ? (room.room.use ?? 'other') : 'outside';
+}
+
+/** The circuits over two phases: the heaviest 127 V ones first, each on the lighter phase; a 220 V one on both, half on each. */
+export function balance(circuits: readonly { power: number; voltage: number }[]): { phases: ('A' | 'B' | 'AB')[]; a: number; b: number } {
+  let a = 0;
+  let b = 0;
+  const phases: ('A' | 'B' | 'AB')[] = circuits.map(() => 'A');
+  circuits.forEach((c, i) => {
+    if (c.voltage >= 200) {
+      phases[i] = 'AB';
+      a += c.power / 2;
+      b += c.power / 2;
+    }
+  });
+  const single = circuits.map((c, i) => ({ c, i })).filter((x) => x.c.voltage < 200).sort((x, y) => y.c.power - x.c.power || x.i - y.i);
+  for (const { c, i } of single) {
+    if (a <= b) {
+      phases[i] = 'A';
+      a += c.power;
+    } else {
+      phases[i] = 'B';
+      b += c.power;
+    }
+  }
+  return { phases, a, b };
 }
 
 const kindOf = (p: MepPoint): CircuitKind => (p.kind === 'shower' ? 'tue' : POINT_KINDS[p.kind].discipline === 'lighting' ? 'lighting' : 'tug');
@@ -78,7 +124,7 @@ export function protect(current: number, kind: CircuitKind): { breaker: number |
 /** The drop (%) along a length (m) of a two-wire circuit carrying a current at a voltage over a section. */
 export const voltageDrop = (length: number, current: number, section: number, voltage: number): number => ((2 * RESISTIVITY * length * current) / section / voltage) * 100;
 
-export function loadTable(doc: Doc): LoadTable {
+export function loadTable(doc: Doc, g?: DerivedGeometry): LoadTable {
   const electric = doc.mepPoints.filter((p) => {
     const d = systemIn(doc, p.systemId)?.discipline ?? POINT_KINDS[p.kind].discipline;
     return (d === 'power' || d === 'lighting') && pointLoad(p).power > 0;
@@ -106,7 +152,12 @@ export function loadTable(doc: Doc): LoadTable {
       const known = lengths.filter((x): x is number => x !== undefined);
       const length = known.length === points.length && known.length > 0 ? Math.max(...known) : null;
       const drop = length !== null && section !== null ? voltageDrop(length, current, section, voltage) : null;
-      return { name, kind, points, power, voltage, current, breaker, section, length, drop };
+      const places = points.map((x) => placeOf(g, x));
+      const dr = places.find((x) => x === 'outside') ?? places.find((x) => x !== null && DR_USES.includes(x)) ?? null;
+      return { name, kind, points, power, voltage, current, breaker, section, length, drop, dr, phase: 'A' as const };
     });
-  return { circuits, total: circuits.reduce((s, c) => s + c.power, 0), unreached, hasPanel: panels.length > 0 };
+  const { phases, a, b } = balance(circuits);
+  const placed = circuits.map((c, i) => ({ ...c, phase: phases[i]! }));
+  const heavier = Math.max(a, b);
+  return { circuits: placed, total: circuits.reduce((s, c) => s + c.power, 0), unreached, hasPanel: panels.length > 0, phases: { a, b, imbalance: heavier > 0 ? ((heavier - Math.min(a, b)) / heavier) * 100 : 0 } };
 }

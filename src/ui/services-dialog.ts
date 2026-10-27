@@ -6,7 +6,7 @@
 import type { App } from '../app/app';
 import { analyticModel, clashesOf, isometricSvg, waterproofing } from '../elements/mep/coordination';
 import { loadTable, MAX_DROP } from '../elements/mep/electrical';
-import { networksOf } from '../elements/mep/network';
+import { fittingsOf, networksOf } from '../elements/mep/network';
 import { GROUP_OF, systemsOf } from '../elements/mep/schema';
 import { MAX_STATIC, MIN_DYNAMIC, pressures, sewerFalls } from '../elements/mep/water';
 import { el, segmented, select } from './controls';
@@ -73,6 +73,7 @@ export function showServices(app: App, first: Tab = 'systems'): void {
         const r = s as { run: { systemId: string }; length: number };
         runs.set(r.run.systemId, (runs.get(r.run.systemId) ?? 0) + r.length);
       }
+      const fittings = fittingsOf(doc);
       body = el(
         'div',
         { class: 'budget-scroll' },
@@ -86,9 +87,20 @@ export function showServices(app: App, first: Tab = 'systems'): void {
           [2, 3],
         ),
         note('services.systemsNote'),
+        ...(fittings.length > 0
+          ? [
+              el('h3', {}, t('services.fittings')),
+              table(
+                [t('services.groupCol'), t('services.fitting'), t('services.diameter'), t('services.quantity')],
+                fittings.map((f) => [t(`services.group.${f.group}` as MessageKey), t(`services.fit.${f.kind}` as MessageKey), `${Math.round(f.diameter * 1000)} mm`, String(f.count)]),
+                [2, 3],
+              ),
+              note('services.fittingsNote'),
+            ]
+          : []),
       );
     } else if (tab === 'loads') {
-      const lt = loadTable(doc);
+      const lt = loadTable(doc, g);
       const rows = lt.circuits.map((c) => [
         c.name,
         t(`services.circuit.${c.kind}` as MessageKey),
@@ -101,6 +113,8 @@ export function showServices(app: App, first: Tab = 'systems'): void {
         c.length === null ? '—' : `${num(c.length, 2)} m`,
         c.drop === null ? '—' : `${num(c.drop, 2)} %`,
         c.drop === null ? '—' : mark(c.drop <= MAX_DROP),
+        c.phase,
+        c.dr === null ? '—' : t('services.drFor', { where: c.dr === 'outside' ? t('services.outside') : t(`use.${c.dr}` as MessageKey) }),
       ]);
       const svg = el('div', { class: 'services-diagram' });
       svg.innerHTML = oneLine(lt.circuits);
@@ -109,15 +123,17 @@ export function showServices(app: App, first: Tab = 'systems'): void {
         { class: 'budget-scroll' },
         ...(lt.hasPanel ? [] : [note('services.noPanel')]),
         table(
-          [t('services.circuitName'), t('services.circuitKind'), t('services.points'), t('services.load'), t('services.voltage'), t('services.current'), t('services.breaker'), t('services.section'), t('services.way'), t('services.drop'), ''],
+          [t('services.circuitName'), t('services.circuitKind'), t('services.points'), t('services.load'), t('services.voltage'), t('services.current'), t('services.breaker'), t('services.section'), t('services.way'), t('services.drop'), '', t('services.phase'), t('services.dr')],
           rows,
           [2, 3, 4, 5, 6, 7, 8, 9],
         ),
         el('p', {}, t('services.totalLoad', { va: Math.round(lt.total) })),
+        el('p', {}, t('services.phases', { a: Math.round(lt.phases.a), b: Math.round(lt.phases.b), imbalance: num(lt.phases.imbalance, 0) })),
         ...(lt.unreached.length > 0 ? [el('p', { class: 'services-bad' }, t('services.unreached', { n: lt.unreached.length })), el('div', {}, ...lt.unreached.map((p) => link(app.reportTitle(p.id), p.id)))] : []),
         el('h3', {}, t('services.oneLine')),
         svg,
         note('services.loadsNote', { drop: MAX_DROP }),
+        note('services.protectionNote'),
       );
     } else if (tab === 'water') {
       const all = [...pressures(doc, 'coldWater'), ...pressures(doc, 'hotWater')];

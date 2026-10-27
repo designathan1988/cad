@@ -12,6 +12,7 @@ import { levelPlan, planCanvas, planMiddle, withPaperColours } from './print';
 import { schedule, type ScheduleKind } from './schedules';
 import { modelSolids, paintSection, sectionDrawing, type SectionDrawing, type Solid3 } from './section-drawing';
 import { drawingOf } from './document';
+import { lotOf } from './lot';
 import { SCALES, scaleFactor } from '../elements/drawing/schema';
 import type { SectionMark } from '../elements/section/schema';
 import { sheetsOf } from '../elements/sheet/commands';
@@ -368,8 +369,39 @@ function titleBlock(ctx: CanvasRenderingContext2D, doc: Doc, s: Sheet, w: number
   ctx.textAlign = 'left';
   label(t('sheet.page'), split + 3, y0 + rowH * 2 + 3.5);
   fit(`${page.n} / ${page.of}`, split + 3, y0 + TITLE_H - 2.2, TEXT.cell + 0.5, '400', 44);
+  // Who it is for and who answers for it (the lot dialog), in a block to the title block's left, when set.
+  const lot = lotOf(doc);
+  const rows = [
+    [t('sheet.owner'), lot.owner],
+    [t('sheet.responsible'), [lot.responsible, lot.license].filter(Boolean).join(' · ')],
+    [t('sheet.firm'), [lot.firm, lot.record].filter(Boolean).join(' · ')],
+  ] as const;
+  // As wide as the paper leaves beside the title block (none on an upright A4).
+  const bw = Math.min(OFFICE_W, x0 - m);
+  if (rows.some(([, v]) => v) && bw >= 40) {
+    const bx = x0 - bw;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(bx, y0, bw, TITLE_H);
+    ctx.fillStyle = ink;
+    ctx.lineWidth = 0.35;
+    ctx.strokeRect(bx, y0, bw, TITLE_H);
+    ctx.lineWidth = 0.18;
+    ctx.beginPath();
+    for (const k of [1, 2]) {
+      ctx.moveTo(bx, y0 + rowH * k);
+      ctx.lineTo(x0, y0 + rowH * k);
+    }
+    ctx.stroke();
+    rows.forEach(([name, value], i) => {
+      label(name, bx + 3, y0 + rowH * i + 3.5);
+      fit(value || '—', bx + 3, y0 + rowH * (i + 1) - 2.2, TEXT.cell + 0.5, '600', bw - 6);
+    });
+  }
   ctx.restore();
 }
+
+/** The office block's width beside the title block (mm). */
+const OFFICE_W = 90;
 
 /** A PDF's resolution for a paper: 300 dpi on A4 and A3, 200 on A2, 150 on A1 and A0. */
 export const sheetDpi = (paper: string): number => (paper === 'A4' || paper === 'A3' ? 300 : paper === 'A2' ? 200 : 150);

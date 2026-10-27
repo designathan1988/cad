@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 import { lotReport } from '../../src/app/lot-areas';
+import { DEFAULT_LOT, isLot } from '../../src/app/lot';
 import { newOpening } from '../../src/elements/opening/schema';
 import { checkRules, complianceReport, leastWidth, LOT_ELEMENT } from '../../src/rules/check';
 import { importPacks } from '../../src/rules/commands';
@@ -119,5 +120,14 @@ describe('packs and older files', () => {
     expect(doc.rulePacks!.find((p) => p.id === 'pack_sp')!.name).toBe('SP 2026');
     expect(doc.rules!.filter((r) => r.pack === 'pack_sp').map((r) => r.id)).toEqual(['rule_x']);
     expect(doc.rules!.some((r) => r.id === 'rule_riser')).toBe(true);
+  });
+});
+
+describe('who it is for and who answers for it', () => {
+  it('the owner, the office and the professional with their registration are kept in the file; a number is not a name', () => {
+    const lot = { ...DEFAULT_LOT, owner: 'Maria', firm: 'Estúdio', responsible: 'Ana', license: 'CAU A12345-6', record: 'RRT 1234567' };
+    const r = readProject(writeProject({ ...newDocument(), lot }));
+    expect(r.ok && r.doc.lot).toEqual(lot);
+    expect(isLot({ ...DEFAULT_LOT, owner: 7 })).toBe(false);
   });
 });

@@ -129,3 +129,24 @@ describe('a small house in IFC4', () => {
     expect(Math.max(...refs)).toBe(n);
   });
 });
+
+describe('services in IFC4', () => {
+  it('each system with points or runs as an IfcDistributionSystem, its members assigned to it', () => {
+    const withMep: Doc = {
+      ...house,
+      mepPoints: [
+        { id: 'mepPoint_qd', levelId: 'lvl_ground', at: { x: 0.5, y: 0.5 }, height: 1.5, kind: 'panel', systemId: 'sys_power' },
+        { id: 'mepPoint_t', levelId: 'lvl_ground', at: { x: 3, y: 0.5 }, height: 0.3, kind: 'socket', systemId: 'sys_power' },
+      ],
+      mepRuns: [{ id: 'mepRun_1', levelId: 'lvl_ground', systemId: 'sys_power', kind: 'conduit', diameter: 0.025, points: [{ x: 0.5, y: 0.5, z: 2.7 }, { x: 3, y: 0.5, z: 2.7 }] }],
+    };
+    const text = exportIfc(withMep, deriveGeometry(withMep), naming, new Date('2026-10-27T10:00:00Z'));
+    expect(count(text, 'IFCDISTRIBUTIONSYSTEM')).toBe(1);
+    const sys = text.split('\n').find((l) => l.includes('=IFCDISTRIBUTIONSYSTEM('))!;
+    expect(sys).toContain('.ELECTRICAL.');
+    const id = sys.split('=')[0]!;
+    const rel = text.split('\n').find((l) => l.includes('IFCRELASSIGNSTOGROUP') && l.endsWith(`${id});`))!;
+    // The panel, the socket and the conduit.
+    expect((rel.match(/\(([^()]*)\),\$,#\d+\);$/)![1]!.split(',')).length).toBe(3);
+  });
+});

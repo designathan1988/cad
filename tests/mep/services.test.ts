@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 import { analyticModel, clashesOf, isometricSvg, waterproofing } from '../../src/elements/mep/coordination';
-import { loadTable, protect, voltageDrop } from '../../src/elements/mep/electrical';
-import { networksOf } from '../../src/elements/mep/network';
-import { isMepPoint, isMepRun, type MepPoint, type MepRun } from '../../src/elements/mep/schema';
+import { balance, loadTable, protect, voltageDrop } from '../../src/elements/mep/electrical';
+import { fittingsOf, networksOf } from '../../src/elements/mep/network';
+import { GROUP_OF, isMepPoint, isMepRun, type MepPoint, type MepRun } from '../../src/elements/mep/schema';
 import { hazenWilliams, pressures, probableFlow, sewerFalls } from '../../src/elements/mep/water';
 import { readProject, writeProject } from '../../src/io/project-file';
 import { runVertices } from '../../src/app/mep-ui';
@@ -96,6 +96,16 @@ describe('networks', () => {
     ]);
   });
 
+  it('the fittings from the geometry: tees where a branch leaves, elbows where it turns', () => {
+    const f = fittingsOf(house).map((x) => [x.group, x.kind, x.diameter, x.count]);
+    expect(f).toEqual([
+      [GROUP_OF.coldWater, 'elbow90', 0.025, 2],
+      [GROUP_OF.power, 'elbow90', 0.025, 2],
+      [GROUP_OF.power, 'tee', 0.025, 2],
+      [GROUP_OF.sewer, 'elbow90', 0.1, 2],
+    ].sort((a, b) => String(a[0]).localeCompare(String(b[0])) || String(a[1]).localeCompare(String(b[1]))));
+  });
+
   it('kept in the file', () => {
     expect(house.mepPoints.every(isMepPoint) && house.mepRuns.every(isMepRun)).toBe(true);
     const r = readProject(writeProject(house));
@@ -117,6 +127,32 @@ describe('the load table', () => {
     expect([tue.power, tue.voltage, tue.current, tue.breaker, tue.section]).toEqual([5500, 220, 25, 25, 4]);
     expect(tue.length).toBeCloseTo(1.2 + 3 + 0.5, 9);
     expect(t.total).toBe(5700);
+  });
+
+  it('the phases: the 220 V shower across both, the 127 V circuits each on the lighter one', () => {
+    expect(balance([{ power: 1000, voltage: 127 }, { power: 5500, voltage: 220 }, { power: 600, voltage: 127 }, { power: 500, voltage: 127 }])).toEqual({ phases: ['A', 'AB', 'B', 'B'], a: 3750, b: 3850 });
+    const t = loadTable(house);
+    expect(t.circuits.map((c) => [c.name, c.phase])).toEqual([
+      ['TUE1', 'AB'],
+      ['TUG1', 'A'],
+    ]);
+    expect(t.phases).toEqual({ a: 2950, b: 2750, imbalance: (200 / 2950) * 100 });
+  });
+
+  it('a residual-current device for the circuits of a wet room or the outside, with the rooms known', () => {
+    const wall = (id: string, a: [number, number], b: [number, number]) => ({ id, wallTypeId: 'wt_masonry15', start: { x: a[0], y: a[1] }, end: { x: b[0], y: b[1] }, referenceLine: 'centerline' as const, levelId: 'lvl_ground', baseOffset: 0, top: { kind: 'level' as const, offset: 0 } });
+    // A bathroom from (−1, −1) to (2, 5): the panel, the shower and the socket at (4, 0) is outside it.
+    const withRoom: Doc = {
+      ...house,
+      walls: [wall('a', [-1, -1], [2, -1]), wall('b', [2, -1], [2, 5]), wall('c', [2, 5], [-1, 5]), wall('d', [-1, 5], [-1, -1])],
+      rooms: [{ id: 'bath', levelId: 'lvl_ground', seed: { x: 0.5, y: 2 }, name: 'Bath', number: '1', use: 'bathroom' }],
+    };
+    const t = loadTable(withRoom, deriveGeometry(withRoom));
+    expect(t.circuits.map((c) => [c.name, c.dr])).toEqual([
+      ['TUE1', 'bathroom'],
+      ['TUG1', 'outside'],
+    ]);
+    expect(loadTable(house).circuits.every((c) => c.dr === null)).toBe(true);
   });
 
   it('breakers and sections by the current', () => {

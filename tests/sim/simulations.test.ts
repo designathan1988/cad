@@ -6,7 +6,7 @@ import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 import { DEFAULT_SITE } from '../../src/app/sun';
 import { newOpening } from '../../src/elements/opening/schema';
-import { acousticOf, glaserOf, limitsFor, saturation, thermalOf } from '../../src/sim/envelope';
+import { acousticOf, glaserOf, limitsFor, reverberationOf, saturation, thermalOf } from '../../src/sim/envelope';
 import { daylightOf, exteriorWindows, hoursOf, roomSun, sunDays, sunSlots } from '../../src/sim/exposure';
 import { absorptanceOf } from '../../src/sim/physics';
 import { risksOf } from '../../src/sim/risks';
@@ -62,6 +62,16 @@ describe('the envelope', () => {
     expect(m.mould).toBe(true);
   });
 
+  it('Sabine: a 4 × 4 × 2.8 m room of plaster and screed, with a window and a door, empty', () => {
+    const [r] = reverberationOf([{ id: 'r', area: 16, perimeter: 16, height: 2.8 }], () => ({ windows: 1.44, doors: 1.68 }));
+    const a = 16 * 0.02 + 16 * 0.02 + (16 * 2.8 - 1.44 - 1.68) * 0.02 + 1.44 * 0.18 + 1.68 * 0.1;
+    expect(r!.absorption).toBeCloseTo(a, 9);
+    expect(r!.time).toBeCloseTo((0.161 * 16 * 2.8) / a, 9);
+    // Wood on the floor takes it down.
+    const [w] = reverberationOf([{ id: 'r', area: 16, perimeter: 16, height: 2.8, finishes: { floor: 'wood' } }], () => ({ windows: 1.44, doors: 1.68 }));
+    expect(w!.time).toBeLessThan(r!.time);
+  });
+
   it('the mass law: Rw for heavy walls, only R at 500 Hz for a light one', () => {
     const c = acousticOf(type('wt_concrete20'), doc0.materials);
     expect(c.mass).toBeCloseTo(460, 9);
@@ -105,6 +115,21 @@ describe('sun and daylight', () => {
     const free = hoursOf(sunSlots(room, g0, exteriorWindows(room, g0)[0]!, june));
     const behind = hoursOf(sunSlots(shaded, g1, exteriorWindows(shaded, g1)[0]!, june));
     expect(behind).toBeLessThan(free - 3);
+  });
+
+  it('a deep eave over the window takes the high sun; a short one hardly any', () => {
+    const roof = (overhang: number): Doc => ({
+      ...room,
+      roofs: [{ id: 'roof_1', levelId: 'lvl_ground', outline: [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 }], edges: [0, 1, 2, 3].map((i) => ({ grade: i % 2 === 0 ? 30 : null, overhang: i === 2 ? overhang : 0.3 })), kind: 'gable', thickness: 0.12, baseOffset: 0 }],
+    });
+    const june = sunDays(DEFAULT_SITE)[0]!;
+    const hours = (d: Doc) => {
+      const g = deriveGeometry(d);
+      return hoursOf(sunSlots(d, g, exteriorWindows(d, g)[0]!, june));
+    };
+    const open = hours(room);
+    expect(hours(roof(0.3))).toBeGreaterThan(open - 1);
+    expect(hours(roof(2))).toBeLessThan(open - 3);
   });
 
   it('the average daylight factor: T·Aw·θ / (A·(1 − R²))', () => {

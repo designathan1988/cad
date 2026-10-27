@@ -19,6 +19,7 @@ import type { Material } from '../elements/material/schema';
 import { materialIn } from '../elements/material/schema';
 import { openingParts } from '../elements/opening/parts';
 import { eachSolid } from '../elements/registry';
+import { type Discipline, systemsOf } from '../elements/mep/schema';
 
 /** How the file names what it holds, in the interface's language. */
 export interface IfcNaming {
@@ -341,6 +342,7 @@ export function exportIfc(doc: Doc, g: DerivedGeometry, naming: IfcNaming, now: 
 
   // The registry's kinds that have a body: each its IFC class, as triangles in its materials' colours.
   const counts = new Map<string, number>();
+  const inSystem = new Map<string, string[]>();
   for (const x of eachSolid(g.kinds)) {
     const cls = ifcClassOf(x.kind.key, x.kind.key === 'objects' ? naming.category((x.kind.element(x.solid) as { definitionId: string }).definitionId) : null, x.solid);
     if (!cls || !x.kind.solid) continue;
@@ -358,6 +360,18 @@ export function exportIfc(doc: Doc, g: DerivedGeometry, naming: IfcNaming, now: 
     const label = x.kind.key === 'objects' ? naming.object((x.kind.element(x.solid) as { definitionId: string }).definitionId) : naming.element(x.kind.key, n);
     const e = s.add(`${cls.entity}(${guid(x.id)},$,${stepString(label)},$,$,${placement()},${shape(items, 'Tessellation')},${stepString(x.id)},${cls.type})`);
     contain(x.levelId, e);
+    // A services' point or run goes in its system (below).
+    if (x.kind.key === 'mepPoints' || x.kind.key === 'mepRuns') {
+      const systemId = (x.kind.element(x.solid) as { systemId: string }).systemId;
+      inSystem.set(systemId, [...(inSystem.get(systemId) ?? []), e]);
+    }
+  }
+  // Each system with something in it as an IfcDistributionSystem, its points and runs assigned to it.
+  for (const sys of systemsOf(doc)) {
+    const members = inSystem.get(sys.id) ?? [];
+    if (members.length === 0) continue;
+    const group = s.add(`IFCDISTRIBUTIONSYSTEM(${guid(sys.id)},$,${stepString(sys.name)},$,$,$,.${SYSTEM_TYPES[sys.discipline]}.)`);
+    s.add(`IFCRELASSIGNSTOGROUP(${guid(`rel:system:${sys.id}`)},$,$,$,${list(members)},$,${group})`);
   }
 
   for (const [type, objects] of typed) s.add(`IFCRELDEFINESBYTYPE(${guid(`rel:type:${type}`)},$,$,$,${list(objects)},${type})`);
@@ -375,6 +389,22 @@ export function exportIfc(doc: Doc, g: DerivedGeometry, naming: IfcNaming, now: 
   ];
   return `${[...header, ...s.lines.map((l, i) => `#${i + 1}=${l};`), 'ENDSEC;', 'END-ISO-10303-21;'].join('\n')}\n`;
 }
+
+/** Each discipline's IFC4 distribution system type (IfcDistributionSystemEnum). */
+const SYSTEM_TYPES: Readonly<Record<Discipline, string>> = {
+  power: 'ELECTRICAL',
+  lighting: 'LIGHTING',
+  data: 'DATA',
+  automation: 'CONTROL',
+  coldWater: 'DOMESTICCOLDWATER',
+  hotWater: 'DOMESTICHOTWATER',
+  sewer: 'SEWAGE',
+  rain: 'STORMWATER',
+  gas: 'GAS',
+  fire: 'FIREPROTECTION',
+  hvac: 'AIRCONDITIONING',
+  solar: 'POWERGENERATION',
+};
 
 /** A wall is external when a room lies on one side of it only (its middle, a little past each face). */
 function isExternal(g: DerivedGeometry, wallId: string): boolean {
