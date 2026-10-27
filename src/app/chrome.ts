@@ -27,6 +27,9 @@ import { signedArea } from '../elements/room/derive';
 import type { App } from './app';
 import { EDIT_LEVELS } from './app';
 
+/** The parts the snaps divide a segment into, as the palette's (actions.ts). */
+const SNAP_PARTS = [2, 3, 4, 5, 6, 8, 10];
+
 export function renderBrowserDrawer(app: App): void {
   const { ui, shell } = app;
   shell.browser.hidden = !ui.browserOpen;
@@ -81,6 +84,14 @@ export function renderChrome(app: App): void {
     shell.theme.dataset.icon = themeIcon;
   }
   shell.snapBtn.setAttribute('aria-pressed', String(ui.snaps));
+  if (shell.snapParts.dataset.lang !== getLang()) {
+    shell.snapParts.dataset.lang = getLang();
+    shell.snapParts.replaceChildren(...SNAP_PARTS.map((n) => new Option(t('foot.parts', { n }), String(n))));
+    shell.snapParts.title = t('foot.partsTip');
+    shell.snapParts.setAttribute('aria-label', t('foot.partsTip'));
+  }
+  shell.snapParts.value = String(ui.snapParts);
+  shell.snapParts.disabled = !ui.snaps;
   // The view's control bar: the 3D's groups in 3D, the plan's scale in plan; visibility in both.
   shell.only3d.hidden = ui.view !== '3d';
   shell.onlyPlan.hidden = ui.view === '3d';

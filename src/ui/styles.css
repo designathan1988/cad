@@ -1192,6 +1192,23 @@ button.project-name:hover {
   outline: none;
   background: var(--bg);
 }
+/* The snaps' toggle and the parts they divide into, together. */
+.snap-box {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.snap-parts {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--sp-1);
+}
+.snap-parts:disabled {
+  color: var(--text-3);
+}
 .coords {
   color: var(--text-3);
   white-space: nowrap;

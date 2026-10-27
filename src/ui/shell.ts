@@ -196,8 +196,11 @@ export function buildShell(root: HTMLElement) {
   const measure = el('input', { id: 'measure', type: 'text', autocomplete: 'off', spellcheck: 'false' });
   const measureBox = el('div', { class: 'measure' }, measureLabel, measure);
   const snapBtn = iconButton('magnet');
+  // The snaps' division of segments (app.setSnapParts), beside their toggle.
+  const snapParts = el('select', { class: 'snap-parts' });
+  const snapBox = el('div', { class: 'snap-box' }, snapBtn, snapParts);
   const coords = el('div', { class: 'coords' });
-  foot.append(instr, keys, measureBox, snapBtn, coords);
+  foot.append(instr, keys, measureBox, snapBox, coords);
 
   const helpBack = el('div', { class: 'dialog-back' });
   helpBack.hidden = true;
@@ -223,7 +226,7 @@ export function buildShell(root: HTMLElement) {
   const parts = {
     homeBtn, projectName, savedNote, undo, redo, level, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
     panelToggle, tabs, fileMenu, ribbon, optBar, strip, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, look, light, only3d, onlyPlan, planScale, visBtn, shownReset: shown.reset, dims, browser, sidebar,
-    emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, fitFoot,
+    emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, snapParts, coords, helpBack, fitFoot,
   };
 
   const relabel = () => {
