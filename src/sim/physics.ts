@@ -41,6 +41,8 @@ export const DEFAULT_PHYSICS: Readonly<Record<string, MaterialPhysics & { readon
   glass: { conductivity: 1.0, density: 2500, specificHeat: 0.84, vapour: 1e6, wifiLoss: 3, source: 'NBR 15220-2 B.3: vidro comum' },
   // Tijolos e telhas de barro, 1800–2000 kg/m³ (a fired tile): λ 1,05, c 0,92.
   tile: { conductivity: 1.05, density: 1900, specificHeat: 0.92, vapour: 200, wifiLoss: 2, source: 'NBR 15220-2 B.3: barro 1800–2000 kg/m³' },
+  // A roof's clay tile: the same fired clay (NBR 15220-3 table D.4's roofs take λ 1,05).
+  clayTile: { conductivity: 1.05, density: 1900, specificHeat: 0.92, vapour: 200, wifiLoss: 2, source: 'NBR 15220-2 B.3: barro 1800–2000 kg/m³' },
   // A screed is argamassa comum.
   screed: { conductivity: 1.15, density: 2000, specificHeat: 1.0, vapour: 10, wifiLoss: 2, source: 'NBR 15220-2 B.3: argamassa comum' },
 };

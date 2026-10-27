@@ -27,7 +27,18 @@ export interface Roof {
   readonly baseOffset: number;
   /** A flat roof's parapet height above the roof (m); none without. */
   readonly parapet?: number;
+  /** What it is covered with, for the envelope's thermal check (sim/envelope.ts): absent, a clay tile. */
+  readonly covering?: RoofCovering;
 }
+
+/** A roof's covering: its material and thickness (m). */
+export interface RoofCovering {
+  readonly materialId: string;
+  readonly thickness: number;
+}
+
+/** A roof's covering when it names none: clay tile, 1 cm (NBR 15220-3 table D.4's). */
+export const ROOF_COVERING: RoofCovering = { materialId: 'clayTile', thickness: 0.01 };
 
 /** A new roof's slope (%), overhang, thickness and a flat roof's parapet (m). */
 export const ROOF_GRADE = 30;

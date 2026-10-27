@@ -2,7 +2,7 @@
 
 import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
-import { edgesFor, type Roof, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, type RoofKind } from './schema';
+import { edgesFor, type Roof, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, type RoofKind, ROOF_COVERING } from './schema';
 
 export const addRoof = (roof: Roof): Command<Doc> => ({
   label: 'cmd.addRoof',
@@ -20,6 +20,7 @@ export type RoofPatch = {
   readonly thickness?: number;
   readonly baseOffset?: number;
   readonly parapet?: number;
+  readonly covering?: { readonly materialId?: string; readonly thickness?: number };
 };
 
 /** The slope a roof's sloped sides have (the first's), or the default when none slopes. */
@@ -50,6 +51,11 @@ export const updateRoofs = (ids: readonly string[], patch: RoofPatch): Command<D
       if (patch.thickness !== undefined) next = { ...next, thickness: patch.thickness };
       if (patch.baseOffset !== undefined) next = { ...next, baseOffset: patch.baseOffset };
       if (patch.parapet !== undefined) next = { ...next, parapet: Math.max(0, patch.parapet) };
+      if (patch.covering) {
+        const c = { ...(next.covering ?? ROOF_COVERING), ...patch.covering };
+        if (!(c.thickness > 0) || !Number.isFinite(c.thickness)) return r;
+        next = { ...next, covering: c };
+      }
       if (JSON.stringify(next) === JSON.stringify(r)) return r;
       changed = true;
       return next;

@@ -1,5 +1,6 @@
 // Roofs in the registry (contract.ts): elements/roof holds the element and its faces.
 
+import { materialLabel } from '../../ui/i18n';
 import { finite, isObject, isPoint } from '../../core/guards';
 import { roofGeometry } from '../../render/prisms';
 import type { ElementKind } from '../contract';
@@ -35,7 +36,8 @@ export const roofKind: ElementKind<Roof, RoofSolid> = {
     finite(r.thickness) &&
     r.thickness > 0 &&
     finite(r.baseOffset) &&
-    (r.parapet === undefined || finite(r.parapet)),
+    (r.parapet === undefined || finite(r.parapet)) &&
+    (r.covering === undefined || (isObject(r.covering) && typeof r.covering.materialId === 'string' && finite(r.covering.thickness) && r.covering.thickness > 0)),
   // On its level's top; not memoised: a wall put under it (its top on the roof) closes its gable.
   derive: (doc, r) => {
     const level = doc.levels.find((l) => l.id === r.levelId) ?? { elevation: 0, height: 2.8 };
@@ -99,5 +101,5 @@ export const roofKind: ElementKind<Roof, RoofSolid> = {
     out.polyline('A-ROOF', s.outline, true);
     if (s.faces.length > 1) for (const f of s.faces) out.polyline('A-ROOF', f.polygon, true);
   },
-  fields: (items, { dispatch }) => roofFields(items, { updateRoofs: (ids, patch) => dispatch(updateRoofs(ids, patch)) }),
+  fields: (items, { dispatch, doc }) => roofFields(items, { updateRoofs: (ids, patch) => dispatch(updateRoofs(ids, patch)), materials: doc.materials.map((m) => ({ id: m.id, label: materialLabel(m) })) }),
 };

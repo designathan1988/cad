@@ -163,6 +163,70 @@ export function thermalOf(type: WallType, materials: readonly Material[], s: Sim
   };
 }
 
+/**
+ * NBR 15220-2's surface resistances for a roof: heat flowing down (NBR 15220-3 table C.2 note 3: a roof,
+ * "telhado mais ático mais forro", is checked for the downward flow), m²·K/W (Tabela 7).
+ */
+export const R_SI_DOWN = 0.17;
+/** An attic, the air between the roof and a ceiling, flow down (NBR 15220-3 table D.4's roofs are figured with it). */
+export const R_ATTIC = 0.21;
+
+/** NBR 15220-3 (2005) table C.2: the roof each zone asks for (zones 1 to 6 light insulated, 7 heavy, 8 light reflective). */
+export type RoofClass = 'lightInsulated' | 'lightReflective' | 'heavy';
+export const ROOF_CLASSES: Readonly<Record<RoofClass, { readonly u: number; readonly lagMax: number | null; readonly lagMin: number | null; readonly fso: number }>> = {
+  lightInsulated: { u: 2.0, lagMax: 3.3, lagMin: null, fso: 6.5 },
+  // U ≤ 2,30·FT: FT is 1 without a ceiling or with an attic not ventilated (its note), as taken here.
+  lightReflective: { u: 2.3, lagMax: 3.3, lagMin: null, fso: 6.5 },
+  heavy: { u: 2.0, lagMax: null, lagMin: 6.5, fso: 6.5 },
+};
+export const zoneRoof = (zone: number): RoofClass => (zoneIndex(zone) === 6 ? 'heavy' : zoneIndex(zone) === 7 ? 'lightReflective' : 'lightInsulated');
+
+export interface RoofThermal {
+  /** W/(m²·K), flow down; null when a layer has no physics. */
+  readonly transmittance: number | null;
+  readonly capacity: number | null;
+  readonly lag: number | null;
+  readonly absorptance: number;
+  readonly solarFactor: number | null;
+  readonly missing: readonly string[];
+  /** Against the zone's class: each criterion, null while a layer has no physics. */
+  readonly u: boolean | null;
+  readonly lagOk: boolean | null;
+  readonly fso: boolean | null;
+}
+
+/**
+ * A roof's thermal behaviour (NBR 15220-2, flow down): its covering, and under it, when the level has a
+ * ceiling, the attic and the ceiling's layers. Its solar factor from the covering's colour.
+ */
+export function roofThermalOf(covering: { readonly materialId: string; readonly thickness: number }, ceiling: readonly { readonly materialId: string; readonly thickness: number }[] | null, materials: readonly Material[], zone: number): RoofThermal {
+  const layers = [covering, ...(ceiling ?? [])].map((l) => ({ materialId: l.materialId, thickness: l.thickness, physics: physicsOf(materialIn(materials, l.materialId)) }));
+  const missing = [...new Set(layers.filter((l) => !l.physics).map((l) => l.materialId))];
+  const absorptance = absorptanceOf(materialIn(materials, covering.materialId).color);
+  if (missing.length > 0) return { transmittance: null, capacity: null, lag: null, absorptance, solarFactor: null, missing, u: null, lagOk: null, fso: null };
+  const solids = layers.reduce((t, l) => t + l.thickness / l.physics!.conductivity, 0);
+  const air = ceiling ? R_ATTIC : 0;
+  const transmittance = 1 / (R_SI_DOWN + solids + air + R_SE);
+  const capacity = layers.reduce((t, l) => t + l.thickness * l.physics!.specificHeat * l.physics!.density, 0);
+  const one = new Set(layers.map((l) => l.materialId)).size === 1 && !ceiling;
+  const ext = layers[0]!;
+  const e = ext.physics!;
+  const lag = lagOf(solids + air, capacity, one ? null : { ct: ext.thickness * e.specificHeat * e.density, r: ext.thickness / e.conductivity, lrc: e.conductivity * e.density * e.specificHeat });
+  const solarFactor = 4 * transmittance * absorptance;
+  const c = ROOF_CLASSES[zoneRoof(zone)];
+  return {
+    transmittance,
+    capacity,
+    lag,
+    absorptance,
+    solarFactor,
+    missing,
+    u: transmittance <= c.u + 1e-9,
+    lagOk: (c.lagMax === null || lag <= c.lagMax + 1e-9) && (c.lagMin === null || lag >= c.lagMin - 1e-9),
+    fso: solarFactor <= c.fso + 1e-9,
+  };
+}
+
 /** Saturation pressure of water vapour (Pa) at θ °C (ISO 13788 annex E: over water, over ice below 0). */
 export function saturation(theta: number): number {
   return theta >= 0 ? 610.5 * Math.exp((17.269 * theta) / (237.3 + theta)) : 610.5 * Math.exp((21.875 * theta) / (265.5 + theta));

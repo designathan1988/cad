@@ -5,7 +5,9 @@
 
 import { type MessageKey, materialLabel, name, num, t } from '../ui/i18n';
 import { materialIn } from '../elements/material/schema';
-import { acousticOf, glaserOf, guidelineOf, openableShare, R_SE, R_SI, reverberationOf, thermalOf, VENT_SIZES, ventVerdict, WALL_CLASSES, zoneShading, zoneVents, zoneWall } from '../sim/envelope';
+import { acousticOf, glaserOf, guidelineOf, openableShare, R_ATTIC, R_SE, R_SI, R_SI_DOWN, reverberationOf, ROOF_CLASSES, roofThermalOf, thermalOf, VENT_SIZES, ventVerdict, WALL_CLASSES, zoneRoof, zoneShading, zoneVents, zoneWall } from '../sim/envelope';
+import { ROOF_COVERING } from '../elements/roof/schema';
+import { CEILING_THICKNESS } from '../elements/room/schema';
 import { roomsBeside } from './quantities';
 import { levelOf } from './document';
 import { DAYLIGHT, daylightOf, exteriorFaces, GLAZED, hoursOf, octant, roomSun, sunDays, sunSlots } from '../sim/exposure';
@@ -155,10 +157,44 @@ export function simBlock(section: SimSection, doc: Doc, g: DerivedGeometry, titl
       }),
       numeric: [1, 2, 3],
     };
+    // The roofs against the roof NBR 15220-3 asks for the zone (table C.2), flow down: the covering, and
+    // under it, where its level has a ceiling, the attic and the ceiling (a board of its thickness when
+    // it has no layers).
+    const roofClass = zoneRoof(s.zone);
+    const rc = ROOF_CLASSES[roofClass];
+    const roofs: SimTable = {
+      title: t('sim.roofTitle', {
+        zone: s.zone,
+        roof: t(`sim.roof.${roofClass}` as MessageKey),
+        limits: `U ≤ ${num(rc.u, 1)}; φ ${rc.lagMax !== null ? `≤ ${num(rc.lagMax, 1)}` : `≥ ${num(rc.lagMin!, 1)}`} h; FSo ≤ ${num(rc.fso, 1)} %`,
+      }),
+      head: [t('roof.title'), t('roof.covering'), t('sim.ceiling'), 'U', 'CT', 'φ', 'FSo', t('sim.status')],
+      rows: doc.roofs.map((roof, i) => {
+        const covering = roof.covering ?? ROOF_COVERING;
+        const ceil = doc.floors.find((x) => x.kind === 'ceiling' && x.levelId === roof.levelId);
+        const layers = ceil ? (ceil.layers ?? [{ materialId: 'gypsum', thickness: ceil.thickness || CEILING_THICKNESS }]) : null;
+        const r = roofThermalOf(covering, layers, doc.materials, s.zone);
+        const name = `${t('roof.title')} ${i + 1}`;
+        const cover = `${matName(doc, covering.materialId)} ${num(covering.thickness * 100, 1)} cm`;
+        const under = layers ? layers.map((l) => `${matName(doc, l.materialId)} ${num(l.thickness * 100, 1)} cm`).join(' + ') : t('sim.no');
+        if (r.missing.length > 0) return [{ text: name, id: roof.id }, cover, under, t('sim.missing', { what: r.missing.map((m) => matName(doc, m)).join(', ') }), '', '', '', ''];
+        return [
+          { text: name, id: roof.id },
+          cover,
+          under,
+          { text: `${num(r.transmittance!, 2)} W/m²K`, ok: r.u === true },
+          `${num(r.capacity!, 0)} kJ/m²K`,
+          { text: `${num(r.lag!, 1)} h`, ok: r.lagOk === true },
+          { text: `${num(r.solarFactor!, 1)} %`, ok: r.fso === true },
+          mark(r.u === true && r.lagOk === true && r.fso === true),
+        ];
+      }),
+      numeric: [3, 4, 5, 6],
+    };
     return {
-      tables: [...(rows.length > 0 ? [{ head: [t('sim.type'), t('sim.exterior'), 'U', t('sim.limit'), 'CT', t('sim.limit'), 'α', 'φ', 'FSo', t('sim.status')], rows, numeric: [2, 3, 4, 5, 6, 7, 8] }, ...(guide.rows.length > 0 ? [guide] : [])] : []), ...(vents.rows.length > 0 ? [vents] : [])],
+      tables: [...(rows.length > 0 ? [{ head: [t('sim.type'), t('sim.exterior'), 'U', t('sim.limit'), 'CT', t('sim.limit'), 'α', 'φ', 'FSo', t('sim.status')], rows, numeric: [2, 3, 4, 5, 6, 7, 8] }, ...(guide.rows.length > 0 ? [guide] : [])] : []), ...(roofs.rows.length > 0 ? [roofs] : []), ...(vents.rows.length > 0 ? [vents] : [])],
       empty: t('sim.noWalls'),
-      premises: [t('sim.thermalPremise', { rsi: num(R_SI, 2), rse: num(R_SE, 2), zone: s.zone }), t('sim.thermalLimits'), t('sim.absorptance'), t('sim.lagPremise'), t('sim.guidePremise'), t('sim.ventPremise')],
+      premises: [t('sim.thermalPremise', { rsi: num(R_SI, 2), rse: num(R_SE, 2), zone: s.zone }), t('sim.thermalLimits'), t('sim.absorptance'), t('sim.lagPremise'), t('sim.guidePremise'), ...(doc.roofs.length > 0 ? [t('sim.roofPremise', { rsi: num(R_SI_DOWN, 2), rse: num(R_SE, 2), attic: num(R_ATTIC, 2) })] : []), t('sim.ventPremise')],
     };
   }
   if (section === 'condensation') {

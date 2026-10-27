@@ -54,6 +54,8 @@ export const BUILT_IN_MATERIALS: readonly Material[] = [
   { id: 'ceramic', name: '', color: '#f3f2ee', roughness: 0.15, metalness: 0, cut: 'solid' },
   { id: 'foliage', name: '', color: '#5e8a4c', roughness: 0.9, metalness: 0, cut: 'none' },
   { id: 'bark', name: '', color: '#96765a', roughness: 0.95, metalness: 0, cut: 'wood' },
+  // What the roofs are covered with (roof/schema.ts ROOF_COVERING).
+  { id: 'clayTile', name: '', color: '#b4644a', roughness: 0.8, metalness: 0, cut: 'solid' },
 ];
 
 /** A material for a name an older file used and the built-in ones do not have: grey, plain. */
