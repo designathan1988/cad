@@ -74,7 +74,7 @@ export type Part =
    */
   | (PartCommon & { readonly kind: 'revolve'; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly points: readonly (readonly [Expr, Expr])[] })
   /** A rounded mass from the centre of its base: r across, h up (a sphere when h is 2r; a tree's crown, a shrub, a lamp's globe). */
-  | (PartCommon & { readonly kind: 'sphere'; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly r: Expr; readonly h: Expr })
+  | (PartCommon & { readonly kind: 'sphere'; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly r: Expr; readonly h: Expr; /** Its radius along y, another than along x: an ellipsoid (a leaf, a pebble, a cushion); r when not set. */ readonly d?: Expr; /** Leaning and turned as a cylinder is, about its base's centre. */ readonly tilt?: Expr; readonly roll?: Expr; readonly turn?: Expr })
   /** A mesh of the definition's (a model imported from glTF or OBJ), stretched to fill the box from its
    * lower corner (x, y, z), w along x, d along y, h up: its proportions are its parameters. */
   | (PartCommon & { readonly kind: 'mesh'; readonly mesh: string; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly w: Expr; readonly d: Expr; readonly h: Expr })

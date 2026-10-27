@@ -18,7 +18,7 @@ export type Piece = { readonly cut?: boolean } & (
   /** A profile turned about the vertical through its base's centre: its points (r out, z up from its base). */
   | { readonly kind: 'revolve'; readonly cx: number; readonly cy: number; readonly z: number; readonly h: number; readonly r: number; readonly profile: readonly { readonly r: number; readonly z: number }[]; readonly material: Material }
   /** A rounded mass (an ellipsoid) on its base's centre: r across, h up. */
-  | { readonly kind: 'sphere'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly h: number; readonly material: Material }
+  | { readonly kind: 'sphere'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly h: number; readonly material: Material; /** Its radius along its own y (an ellipsoid), r when absent; its leaning and turn as a cylinder's. */ readonly ry?: number; readonly tilt?: number; readonly roll?: number; readonly angle?: number }
   /** A mesh stretched to its box (centre, size and turn, as a box's). */
   | { readonly kind: 'mesh'; readonly cx: number; readonly cy: number; readonly z: number; readonly w: number; readonly d: number; readonly h: number; readonly angle: number; readonly mesh: MeshData; readonly material: Material });
 
@@ -249,7 +249,12 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         const h = num(part.h, at, `${label} height`);
         if (r === null || h === null || h <= 1e-6 || r <= 1e-6) continue;
         const centre = apply(frame, { x: ox, y: oy, z: oz });
-        pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'sphere', cx: centre.x, cy: centre.y, z: centre.z, r, h, material: materialOf(part) });
+        const ry = part.d === undefined ? r : (num(part.d, at, `${label} radius along y`) ?? r);
+        const deg = (e: Expr | undefined, what: string) => ((e === undefined ? 0 : (num(e, at, `${label} ${what}`) ?? 0)) * Math.PI) / 180;
+        const [tilt, roll, turn] = [deg(part.tilt, 'tilt'), deg(part.roll, 'roll'), deg(part.turn, 'turn')];
+        // An ellipsoid or a leaning one keeps its shape's own axes; a plain one is as it was.
+        const shaped = Math.abs(ry - r) > 1e-9 || Math.abs(tilt) > 1e-9 || Math.abs(roll) > 1e-9 || Math.abs(turn) > 1e-9 ? { ry: Math.max(1e-4, ry), tilt, roll, angle: frame.angle + turn } : {};
+        pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'sphere', cx: centre.x, cy: centre.y, z: centre.z, r, h, material: materialOf(part), ...shaped });
       } else {
         const inner = c.definitions.find((d) => d.id === part.definition);
         if (!inner) {
@@ -377,6 +382,20 @@ function cylinderRims(p: Extract<Piece, { kind: 'cylinder' }>): { x: number; y: 
   }));
 }
 
+/** An ellipsoid's surface, sampled (three rings and its poles), in the world. */
+function ellipsoidPoints(p: Extract<Piece, { kind: 'sphere' }>): { x: number; y: number; z: number }[] {
+  const ry = p.ry ?? p.r;
+  const out: { x: number; y: number; z: number }[] = [];
+  for (const v of [-0.7, 0, 0.7])
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * 2 * Math.PI;
+      const c = Math.cos(Math.asin(v));
+      out.push(leant(p, p.r * c * Math.cos(a), ry * c * Math.sin(a), (p.h / 2) * (1 + v)));
+    }
+  out.push(leant(p, 0, 0, 0), leant(p, 0, 0, p.h));
+  return out;
+}
+
 /** The convex hull of points in plan, counter-clockwise (Andrew's monotone chain). */
 function hull(points: readonly { x: number; y: number }[]): { x: number; y: number }[] {
   const ps = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
@@ -395,6 +414,10 @@ function hull(points: readonly { x: number; y: number }[]): { x: number; y: numb
 
 /** A piece's lowest and highest point above the level's floor (a leaning box's by its corners). */
 export function pieceSpan(p: Piece): { readonly bottom: number; readonly top: number } {
+  if (p.kind === 'sphere' && p.ry !== undefined) {
+    const zs = ellipsoidPoints(p).map((q) => q.z);
+    return { bottom: Math.min(...zs), top: Math.max(...zs) };
+  }
   if ((p.kind === 'box' || p.kind === 'cylinder') && (p.tilt || p.roll)) {
     const zs = (p.kind === 'box' ? boxCorners(p) : cylinderRims(p)).map((q) => q.z);
     return { bottom: Math.min(...zs), top: Math.max(...zs) };
@@ -405,6 +428,7 @@ export function pieceSpan(p: Piece): { readonly bottom: number; readonly top: nu
 export function pieceOutline(p: Piece): { x: number; y: number }[] {
   if (p.kind === 'box' && (p.tilt || p.roll)) return hull(boxCorners(p));
   if (p.kind === 'cylinder' && (p.tilt || p.roll)) return hull(cylinderRims(p));
+  if (p.kind === 'sphere' && p.ry !== undefined) return hull(ellipsoidPoints(p));
   if (p.kind === 'profile') return p.points.map((q) => ({ x: q.x, y: q.y }));
   if (p.kind === 'cylinder' || p.kind === 'sphere' || p.kind === 'revolve') {
     const r = p.kind === 'cylinder' ? Math.max(p.r, p.r2) : p.r;

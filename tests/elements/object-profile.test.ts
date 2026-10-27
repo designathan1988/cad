@@ -149,6 +149,18 @@ describe('profile parts', () => {
     expect(rail[1]).toBeCloseTo(0, 6);
   });
 
+  it('an ellipsoid: its own radius along y, turned with it; its height its own', () => {
+    const leaf: ObjectDefinition = { ...counter, id: 'def_leaf', parts: [{ kind: 'sphere', x: 0, y: 0, z: 1, r: 0.05, d: 0.2, h: 0.01, turn: 90, material: 'foliage' }] };
+    expect(isDefinition(leaf)).toBe(true);
+    const ev = evaluateObject(leaf, { id: 'o', levelId: 'lvl_ground', definitionId: leaf.id, typeId: 't', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: [leaf], materials: doc.materials });
+    const ring = pieceOutline(ev.pieces[0]!);
+    // Turned a quarter: its 0.2 m radius along x now, its 0.05 m along y.
+    expect(Math.max(...ring.map((q) => q.x))).toBeCloseTo(0.2, 6);
+    expect(Math.max(...ring.map((q) => q.y))).toBeCloseTo(0.05, 6);
+    expect(pieceSpan(ev.pieces[0]!).bottom).toBeCloseTo(1, 6);
+    expect(pieceSpan(ev.pieces[0]!).top).toBeCloseTo(1.01, 6);
+  });
+
   it('drawn clockwise, it is turned round: the volume still positive', () => {
     const cw = { ...counter, parts: [{ ...counter.parts[0]!, points: [...(counter.parts[0] as { points: readonly (readonly [string | number, string | number])[] }).points].reverse() } as ObjectDefinition['parts'][number]] };
     const ev = evaluateObject(cw, { id: 'o', levelId: 'lvl_ground', definitionId: cw.id, typeId: 't', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: [cw], materials: doc.materials });

@@ -207,7 +207,7 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
           : null;
       // A box's edges' radius: empty, square; another, a cushion's or an appliance's rounded ones.
       // A box's optional edges' radius and leaning: empty, none (square, upright).
-      const optional = (key: 'round' | 'tilt' | 'roll' | 'turn', label: string) =>
+      const optional = (key: 'round' | 'tilt' | 'roll' | 'turn' | 'd', label: string) =>
         el(
           'label',
           { class: 'ed-cell' },
@@ -235,7 +235,7 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
                 return el('label', { class: 'ed-cell ed-points-cell' }, el('span', {}, t(p.kind === 'revolve' ? 'ed.revolvePoints' : 'ed.points')), area);
               })(),
             ]
-          : p.kind === 'box' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h')), round!, optional('tilt', t('ed.tilt')), optional('roll', t('ed.roll')), optional('turn', t('ed.turn'))] : p.kind === 'mesh' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h'))] : p.kind === 'cylinder' ? [ex('r', t('ed.r')), top!, ex('h', t('ed.h')), optional('tilt', t('ed.tilt')), optional('roll', t('ed.roll')), optional('turn', t('ed.turn'))] : p.kind === 'sphere' ? [ex('r', t('ed.r')), ex('h', t('ed.h'))] : [ex('angle', t('ed.angle'))];
+          : p.kind === 'box' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h')), round!, optional('tilt', t('ed.tilt')), optional('roll', t('ed.roll')), optional('turn', t('ed.turn'))] : p.kind === 'mesh' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h'))] : p.kind === 'cylinder' ? [ex('r', t('ed.r')), top!, ex('h', t('ed.h')), optional('tilt', t('ed.tilt')), optional('roll', t('ed.roll')), optional('turn', t('ed.turn'))] : p.kind === 'sphere' ? [ex('r', t('ed.r')), optional('d', t('ed.ry')), ex('h', t('ed.h')), optional('tilt', t('ed.tilt')), optional('roll', t('ed.roll')), optional('turn', t('ed.turn'))] : [ex('angle', t('ed.angle'))];
       const rep = p.repeat;
       const repIn = (key: 'count' | 'dx' | 'dy' | 'dz', label: string) =>
         el(

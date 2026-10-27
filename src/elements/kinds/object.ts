@@ -211,6 +211,16 @@ export function pieceGeometry(piece: Piece): THREE.BufferGeometry {
         : piece.kind === 'sphere'
           ? new THREE.SphereGeometry(1, 28, 18).scale(piece.r, piece.h / 2, piece.r)
           : new THREE.CylinderGeometry(piece.r2, piece.r, piece.h, 24);
+  if (piece.kind === 'sphere' && piece.ry !== undefined) {
+    // An ellipsoid: r along its x, ry along its y (three.js's −z), h tall; leaning and turned about its base's centre.
+    const g = new THREE.SphereGeometry(1, 28, 18).scale(piece.r, piece.h / 2, piece.ry);
+    g.translate(0, piece.h / 2, 0);
+    g.rotateX(-(piece.tilt ?? 0));
+    g.rotateZ(-(piece.roll ?? 0));
+    g.rotateY(piece.angle ?? 0);
+    g.translate(piece.cx, piece.z, -piece.cy);
+    return g;
+  }
   if (piece.kind === 'cylinder' && (piece.tilt || piece.roll)) {
     // As a box leans (below), about its base's centre.
     geometry.translate(0, piece.h / 2, 0);
