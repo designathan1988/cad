@@ -7,7 +7,7 @@
 
 import type { App } from './app';
 import type { Doc } from './document';
-import { boundsOf, deriveGeometry } from './geometry';
+import { boundsOf, type DerivedGeometry, deriveGeometry } from './geometry';
 import { levelPlan, planCanvas, planMiddle, withPaperColours } from './print';
 import { schedule, type ScheduleKind } from './schedules';
 import { modelSolids, paintSection, sectionDrawing, type SectionDrawing, type Solid3 } from './section-drawing';
@@ -27,20 +27,24 @@ import type { Point2 } from '../core/vector';
 /** Texts on a sheet (mm): small labels, cells, view titles, the project's name, the sheet's number. */
 const TEXT = { label: 1.8, cell: 2, title: 3, project: 4, number: 8 } as const;
 
-/** The model's solids as triangles, once a document (a section drawn again is drawn from them). */
-const solidsCache = new WeakMap<Doc, Solid3[]>();
-const drawingCache = new WeakMap<Solid3[], Map<string, SectionDrawing>>();
+/** The model's solids as triangles and its rooms shown, once a document (a section drawn again is drawn from them). */
+type Model = { readonly solids: Solid3[]; readonly rooms: DerivedGeometry['rooms'] };
+const modelCache = new WeakMap<Doc, Model>();
+const drawingCache = new WeakMap<Model, Map<string, SectionDrawing>>();
 
 /** A section's or an elevation's drawing as the model is now. */
 export function sectionOf(app: App, m: SectionMark): SectionDrawing {
   const doc = app.store.get();
-  let solids = solidsCache.get(doc);
-  if (!solids) solidsCache.set(doc, (solids = modelSolids(doc, deriveGeometry(doc), app.ui.hidden)));
-  let drawings = drawingCache.get(solids);
-  if (!drawings) drawingCache.set(solids, (drawings = new Map()));
+  let model = modelCache.get(doc);
+  if (!model) {
+    const g = deriveGeometry(doc);
+    modelCache.set(doc, (model = { solids: modelSolids(doc, g, app.ui.hidden), rooms: app.ui.hidden.has('rooms') ? new Map() : g.rooms }));
+  }
+  let drawings = drawingCache.get(model);
+  if (!drawings) drawingCache.set(model, (drawings = new Map()));
   const key = JSON.stringify(m);
   let d = drawings.get(key);
-  if (!d) drawings.set(key, (d = sectionDrawing(doc, solids, m)));
+  if (!d) drawings.set(key, (d = sectionDrawing(doc, model.solids, m, model.rooms)));
   return d;
 }
 
@@ -75,6 +79,7 @@ export function sectionCanvas(app: App, m: SectionMark, f: { den: number; wMm: n
       levelText,
       pxPerMm: k,
       lengthText: (m) => num(m, 2),
+      roomText: (n, s) => `${n} · ${name(s)}`,
     });
   });
   return canvas;

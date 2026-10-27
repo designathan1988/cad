@@ -13,6 +13,7 @@ import { flipSections, renameSection, setSectionDepth } from '../../src/elements
 import { addSheet, addViewport, deleteSheet, moveSheet, sheetsOf, updateSheet, updateViewport } from '../../src/elements/sheet/commands';
 import { drawingArea, frameOf, isSheet, isViewport, nextSheetNumber, type Sheet } from '../../src/elements/sheet/schema';
 import { readProject, writeProject } from '../../src/io/project-file';
+import { newOpening } from '../../src/elements/opening/schema';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -114,6 +115,32 @@ describe('a section drawn from the model', () => {
     // The east wall's west face: 4 − 0.075 − 1 = 2.925 m beyond the line.
     expect(back.faces.some((f) => Math.abs(f.depth - 2.925) < 1e-6)).toBe(true);
     expect(back.faces.some((f) => Math.abs(f.depth - 0.925) < 1e-6)).toBe(false);
+  });
+
+  it('dimensions the doors and windows it cuts and names the rooms it crosses', () => {
+    // A window in the south wall from x 0.4 to 1.6 (sill 1, 1.2 high) and a door in the north one from
+    // x 1.4 to 0.5 (2.1 high): the line at x = 1 cuts both. The room is the inside, faces 0.075 in.
+    const doc: Doc = {
+      ...box(),
+      openings: [newOpening('opening_w', 'w1', 'window', { kind: 'fromStart', distance: 0.4 }), newOpening('opening_d', 'w3', 'door', { kind: 'fromEnd', distance: 0.5 })],
+      rooms: [{ id: 'room_1', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Sala', number: '1' }],
+    };
+    const g = deriveGeometry(doc);
+    const d = sectionDrawing(doc, modelSolids(doc, g), across, g.rooms);
+    expect(d.openings).toHaveLength(2);
+    const [w, door] = d.openings;
+    // The window's cut ends at the south wall's inside face at most (y 0.075, 1.075 along); the door's in the north wall.
+    expect(w!.at).toBeGreaterThan(0.925);
+    expect(w!.at).toBeLessThanOrEqual(1.075 + 1e-6);
+    expect(w).toMatchObject({ floor: expect.closeTo(0, 6), bottom: expect.closeTo(1, 6), top: expect.closeTo(2.2, 6) });
+    expect(door!.at).toBeGreaterThan(3.925 - 1e-6);
+    expect(door).toMatchObject({ floor: expect.closeTo(0, 6), bottom: expect.closeTo(0, 6), top: expect.closeTo(2.1, 6) });
+    // The room from y 0.075 to 2.925, so 1.075 to 3.925 along the line: its name in the middle, half its 2.8 up.
+    expect(d.rooms).toEqual([{ id: 'room_1', number: '1', name: 'Sala', at: { x: expect.closeTo(2.5, 6), y: expect.closeTo(1.4, 6) } }]);
+    // A section beside the house crosses no room and cuts no opening.
+    const beside = sectionDrawing(doc, modelSolids(doc, g), { ...across, start: { x: 6, y: -1 }, end: { x: 6, y: 4 } }, g.rooms);
+    expect(beside.rooms).toEqual([]);
+    expect(beside.openings).toEqual([]);
   });
 
   it('marks every level at its height', () => {

@@ -5,16 +5,18 @@
 // hide what is behind them), with only its edges: where a face ends, or turns by more than 20° (as the
 // 3D view's lines, EdgesGeometry's threshold), joints between pieces of one face left out. Levels are
 // marked at their heights. A wall's layers are cut each in its material's colour and hatch, thin lines
-// between them, the walls' outline with the cut pen. Pure but for the painting.
+// between them, the walls' outline with the cut pen. The doors and windows it cuts get their sill and
+// head dimensioned, the rooms it crosses their names. Pure but for the painting.
 
 import * as THREE from 'three';
-import type { Doc } from './document';
+import { type Doc, levelOf } from './document';
 import { type DerivedGeometry, hideCategories } from './geometry';
-import type { Point2 } from '../core/vector';
+import { type Point2, sub } from '../core/vector';
 import type { Point3 } from './section-box';
 import { eachSolid } from '../elements/registry';
 import type { KindSolid } from '../elements/contract';
 import { openingParts } from '../elements/opening/parts';
+import { insideRing, type RoomSolid } from '../elements/room/derive';
 import { lookOf, type SectionMark } from '../elements/section/schema';
 import type { CutPattern } from '../elements/material/schema';
 import { paperHatch } from '../render/hatch';
@@ -30,6 +32,8 @@ export interface Solid3 {
   readonly outline?: string;
   /** The ground (a terrain): drawn, but not the building the dimensions measure. */
   readonly ground?: true;
+  /** A door's or window's part: its opening's floor, bottom and head (absolute heights), dimensioned where the plane cuts it. */
+  readonly opening?: { readonly id: string; readonly floor: number; readonly bottom: number; readonly top: number };
 }
 
 /** A face beyond the plane, in the drawing's (along, height) coordinates (m), with its edges to draw. */
@@ -59,6 +63,10 @@ export interface SectionDrawing {
   /** The extent of what its plane cuts (the building, not the ground beyond it); null when it cuts nothing. */
   readonly cutBox?: { readonly min: Point2; readonly max: Point2 } | null;
   readonly levels: readonly { readonly name: string; readonly z: number }[];
+  /** The doors and windows its plane cuts: the far side of their cut along the line, their floor, sill and head. */
+  readonly openings: readonly { readonly at: number; readonly floor: number; readonly bottom: number; readonly top: number }[];
+  /** The rooms its line crosses: each name in the middle of its longest stretch, half the room's height up. */
+  readonly rooms: readonly { readonly id: string; readonly number: string; readonly name: string; readonly at: Point2 }[];
   /** The line's length (m). */
   readonly length: number;
 }
@@ -141,7 +149,7 @@ export function modelSolids(doc: Doc, g: DerivedGeometry, hidden: ReadonlySet<st
         const { origin, axis, angle } = part.turn;
         tris = tris.map((t) => t.map((p) => turned(p, origin, axis, angle)) as [Point3, Point3, Point3]);
       }
-      out.push({ group: `${o.opening.id}:${i}`, tris });
+      out.push({ group: `${o.opening.id}:${i}`, tris, opening: { id: o.opening.id, floor: o.bottom - o.opening.sill, bottom: o.bottom, top: o.top } });
     });
   }
   for (const x of eachSolid(shown.kinds)) {
@@ -345,8 +353,35 @@ export function loopsOf(segments: readonly (readonly [Point2, Point2])[]): Point
   return loops;
 }
 
-/** The section or elevation as a drawing: its faces beyond, what it cuts, its extent and the levels. */
-export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMark): SectionDrawing {
+/** The stretches (from, to along the line) of a line from `start` along `dir` for `len` inside a ring; the longest. */
+function longestInside(ring: readonly Point2[], start: Point2, dir: Point2, len: number): [number, number] | null {
+  const ts = [0, len];
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i]!;
+    const e = sub(ring[(i + 1) % ring.length]!, a);
+    const den = dir.x * e.y - dir.y * e.x;
+    if (Math.abs(den) < 1e-12) continue;
+    const q = sub(a, start);
+    const t = (q.x * e.y - q.y * e.x) / den;
+    const u = (q.x * dir.y - q.y * dir.x) / den;
+    if (u >= 0 && u <= 1 && t > 0 && t < len) ts.push(t);
+  }
+  ts.sort((x, y) => x - y);
+  let best: [number, number] | null = null;
+  let run: [number, number] | null = null;
+  for (let i = 1; i < ts.length; i++) {
+    const t0 = ts[i - 1]!;
+    const t1 = ts[i]!;
+    if (t1 - t0 < 1e-9) continue;
+    const mid = (t0 + t1) / 2;
+    run = insideRing(ring, { x: start.x + dir.x * mid, y: start.y + dir.y * mid }) ? [run?.[0] ?? t0, t1] : null;
+    if (run && (!best || run[1] - run[0] > best[1] - best[0])) best = run;
+  }
+  return best;
+}
+
+/** The section or elevation as a drawing: its faces beyond, what it cuts, its extent, the levels, the openings it cuts and the rooms it crosses. */
+export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMark, rooms: ReadonlyMap<string, RoomSolid> = new Map()): SectionDrawing {
   const look = lookOf(m);
   const len = Math.hypot(m.end.x - m.start.x, m.end.y - m.start.y);
   const along = { x: (m.end.x - m.start.x) / len, y: (m.end.y - m.start.y) / len };
@@ -361,7 +396,8 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
   const cuts: { loops: Point2[][]; segments: [Point2, Point2][]; fill?: { color: string; pattern: CutPattern }; pen?: 'fine'; ground?: true }[] = [];
   // The cut segments of the groups outlined together (the walls' layers), for their common outline.
   const together = new Map<string, [Point2, Point2][]>();
-  let min = { x: Infinity, y: Infinity };
+  const openings = new Map<string, { at: number; floor: number; bottom: number; top: number }>();
+  let min ={ x: Infinity, y: Infinity };
   let max = { x: -Infinity, y: -Infinity };
   const grow = (p: Point2) => {
     min = { x: Math.min(min.x, p.x), y: Math.min(min.y, p.y) };
@@ -399,6 +435,11 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
       faces.push({ poly, depth: ring.reduce((sum, r) => sum + r.v.d, 0) / ring.length, edges });
     });
     const outline = outlineOf(cutSegments);
+    if (outline.length > 0 && solid.opening) {
+      const { id, ...heights } = solid.opening;
+      const at = Math.max(...outline.flat().map((p) => p.x), openings.get(id)?.at ?? -Infinity);
+      openings.set(id, { at, ...heights });
+    }
     if (outline.length > 0) {
       if (solid.outline) {
         cuts.push({ loops: loopsOf(outline), segments: outline, ...(solid.cut ? { fill: solid.cut } : {}), pen: 'fine' });
@@ -418,7 +459,15 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
     cutPoints.length > 0
       ? { min: { x: Math.min(...cutPoints.map((p) => p.x)), y: Math.min(...cutPoints.map((p) => p.y)) }, max: { x: Math.max(...cutPoints.map((p) => p.x)), y: Math.max(...cutPoints.map((p) => p.y)) } }
       : null;
-  return { faces, cuts, box: Number.isFinite(min.x) ? { min, max } : null, cutBox, levels, length: len };
+  const crossed: SectionDrawing['rooms'][number][] = [];
+  for (const [id, r] of rooms) {
+    const level = levelOf(doc, r.room.levelId);
+    if (!r.enclosed || r.outline.length < 3 || !level) continue;
+    const stretch = longestInside(r.outline, m.start, along, len);
+    if (!stretch) continue;
+    crossed.push({ id, number: r.room.number, name: r.room.name, at: { x: (stretch[0] + stretch[1]) / 2, y: level.elevation + (r.room.height ?? level.height) / 2 } });
+  }
+  return { faces, cuts, box: Number.isFinite(min.x) ? { min, max } : null, cutBox, levels, openings: [...openings.values()].sort((a, b) => a.at - b.at), rooms: crossed, length: len };
 }
 
 /**
@@ -452,6 +501,8 @@ export interface SectionPaint {
   readonly pxPerMm?: number;
   /** A length as dimensions write it ("2,80"); none: no dimensions drawn. */
   readonly lengthText?: (m: number) => string;
+  /** A room's name as the plan writes it ("3 · Sala"); none: no names drawn. */
+  readonly roomText?: (number: string, name: string) => string;
 }
 
 /** The spacing of a cut's hatch on paper (mm), at any scale, as a section's hatch is drawn by hand. */
@@ -557,8 +608,65 @@ export function paintSection(ctx: CanvasRenderingContext2D, d: SectionDrawing, p
       ctx.fillText(p.levelText(l.name, l.z), x + 2, at.y - 0.4);
     }
   }
-  const dims = p.lengthText ? sectionDims(d) : null;
-  if (dims && p.lengthText) paintDims(ctx, dims, p, p.lengthText);
+  // The rooms' names inside, on a hair of paper so the lines beyond do not cross them.
+  if (p.roomText) {
+    ctx.font = `400 ${p.text}px ${p.family}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    for (const r of d.rooms) {
+      const at = p.toPaper(r.at);
+      const s = p.roomText(r.number, r.name);
+      ctx.strokeStyle = p.paper;
+      ctx.lineWidth = p.text * 0.4;
+      ctx.strokeText(s, at.x, at.y);
+      ctx.fillStyle = p.ink;
+      ctx.fillText(s, at.x, at.y);
+    }
+  }
+  if (p.lengthText) {
+    const dims = sectionDims(d);
+    if (dims) paintDims(ctx, dims, p, p.lengthText);
+    // Each door and window it cuts: up its far side, 3 mm out, from its floor to its sill (a window's) and its head.
+    for (const o of d.openings) {
+      const zs = [o.floor, ...(o.bottom - o.floor > 1e-6 ? [o.bottom] : []), o.top];
+      upChain(ctx, p.toPaper({ x: o.at, y: 0 }).x + 3, zs, p, p.lengthText, [-2.5, 0.5]);
+    }
+  }
+  ctx.restore();
+}
+
+/**
+ * A chain of heights up the paper line at x: a tick at 45° at each, each stretch's value beside it on its
+ * left, turned to read upward, and an extension line at each height from x + ext[0] to x + ext[1] (mm).
+ */
+function upChain(ctx: CanvasRenderingContext2D, x: number, zs: readonly number[], p: SectionPaint, text: (m: number) => string, ext: readonly [number, number]): void {
+  const tick = 1;
+  const ys = zs.map((z) => p.toPaper({ x: 0, y: z }).y);
+  ctx.save();
+  ctx.strokeStyle = p.ink;
+  ctx.fillStyle = p.ink;
+  ctx.lineWidth = p.finePen;
+  ctx.font = `400 ${p.text}px ${p.family}`;
+  ctx.beginPath();
+  ctx.moveTo(x, ys[0]!);
+  ctx.lineTo(x, ys.at(-1)!);
+  for (const y of ys) {
+    ctx.moveTo(x - tick, y + tick);
+    ctx.lineTo(x + tick, y - tick);
+    ctx.moveTo(x + ext[0], y);
+    ctx.lineTo(x + ext[1], y);
+  }
+  ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  for (let i = 1; i < ys.length; i++) {
+    ctx.save();
+    ctx.translate(x - 0.8, (ys[i - 1]! + ys[i]!) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(text(zs[i]! - zs[i - 1]!), 0, 0);
+    ctx.restore();
+  }
   ctx.restore();
 }
 
@@ -571,27 +679,7 @@ function paintDims(ctx: CanvasRenderingContext2D, dims: { heights: number[]; alo
   ctx.lineWidth = p.finePen;
   ctx.font = `400 ${p.text}px ${p.family}`;
   // Up the left side, 8 mm out from the drawing.
-  const x = p.toPaper({ x: dims.along[0], y: 0 }).x - 8;
-  const ys = dims.heights.map((z) => p.toPaper({ x: dims.along[0], y: z }).y);
-  ctx.beginPath();
-  ctx.moveTo(x, ys[0]!);
-  ctx.lineTo(x, ys.at(-1)!);
-  for (const y of ys) {
-    ctx.moveTo(x - tick, y + tick);
-    ctx.lineTo(x + tick, y - tick);
-    ctx.moveTo(x + 1.5, y);
-    ctx.lineTo(x + 4, y);
-  }
-  ctx.stroke();
-  for (let i = 1; i < ys.length; i++) {
-    ctx.save();
-    ctx.translate(x - 0.8, (ys[i - 1]! + ys[i]!) / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(text(dims.heights[i]! - dims.heights[i - 1]!), 0, 0);
-    ctx.restore();
-  }
+  upChain(ctx, p.toPaper({ x: dims.along[0], y: 0 }).x - 8, dims.heights, p, text, [1.5, 4]);
   // Under the ground line, 8 mm down: the whole length.
   const a = p.toPaper({ x: dims.along[0], y: 0 });
   const b = p.toPaper({ x: dims.along[1], y: 0 });
