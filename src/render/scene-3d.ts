@@ -36,11 +36,13 @@ const WALK_FOV = 65;
  * `max`; over 1 drawn larger and shown smaller, which smooths the edges), the sun's shadow map (px a
  * side) and whether its edges are soft, and ambient occlusion with multisampling (a post-processing pass).
  */
-const QUALITY: Readonly<Record<RenderQuality, { readonly ratio: number; readonly max: number; readonly shadow: number; readonly soft: boolean; readonly ao: boolean }>> = {
-  low: { ratio: 0.75, max: 1, shadow: 1024, soft: false, ao: false },
-  medium: { ratio: 1, max: 2, shadow: 2048, soft: true, ao: false },
-  high: { ratio: 1, max: 2, shadow: 4096, soft: true, ao: true },
-  ultra: { ratio: 2, max: 3, shadow: 4096, soft: true, ao: true },
+// Each a step that shows: low, coarse pixels and hard shadows; medium, soft shadows and a light ambient
+// occlusion; high, a full one; ultra, drawn at twice the pixels (edges supersampled), the occlusion finer.
+const QUALITY: Readonly<Record<RenderQuality, { readonly ratio: number; readonly max: number; readonly shadow: number; readonly soft: boolean; readonly ao: boolean; readonly aoSamples: number; readonly aoBlend: number }>> = {
+  low: { ratio: 0.75, max: 1, shadow: 1024, soft: false, ao: false, aoSamples: 0, aoBlend: 0 },
+  medium: { ratio: 1, max: 2, shadow: 2048, soft: true, ao: true, aoSamples: 8, aoBlend: 0.5 },
+  high: { ratio: 1, max: 2, shadow: 4096, soft: true, ao: true, aoSamples: 16, aoBlend: 0.8 },
+  ultra: { ratio: 2, max: 3, shadow: 4096, soft: true, ao: true, aoSamples: 24, aoBlend: 0.9 },
 };
 /** How much of a wall shows in x-ray. */
 const XRAY_OPACITY = 0.28;
@@ -495,7 +497,7 @@ export class Scene3D {
    */
   private effects(w: number, h: number): EffectComposer | null {
     const ao = QUALITY[this.quality].ao && (this.style === 'shaded' || this.style === 'realistic') && this.clip.length === 0 && !this.xrayOn;
-    const key = ao ? `ao|${this.orthoOn}` : '';
+    const key = ao ? `ao|${this.orthoOn}|${this.quality}` : '';
     if (this.composer?.key !== key) {
       this.composer?.fx.dispose();
       this.composer = null;
@@ -506,7 +508,8 @@ export class Scene3D {
         fx.setSize(w, h);
         const first = new RenderPass(this.scene, this.camera);
         const gtao = new GTAOPass(this.scene, this.camera, w, h);
-        gtao.blendIntensity = 0.8;
+        gtao.blendIntensity = QUALITY[this.quality].aoBlend;
+        gtao.updateGtaoMaterial({ samples: QUALITY[this.quality].aoSamples });
         fx.addPass(first);
         fx.addPass(gtao);
         fx.addPass(new OutputPass());
