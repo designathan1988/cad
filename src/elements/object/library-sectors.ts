@@ -213,7 +213,8 @@ export const GONDOLA: ObjectDefinition = {
       z: '0.12 + floor(floor(i / floor(largura / 0.12)) / 2) * (altura - 0.15) / (prateleiras + 0.3) + if(floor(i / floor(largura / 0.12)) < 2, 0, 0.02)',
       w: '0.09 + ((i * 7) % 3) * 0.008',
       d: 'profundidade/2 - 0.12',
-      h: '0.14 + ((i * 5) % 4) * 0.03',
+      // No taller than the gap to the shelf above, nor, on the top shelf, than the frame.
+      h: 'min(0.14 + ((i * 5) % 4) * 0.03, (altura - 0.15) / (prateleiras + 0.3) - 0.05, altura - 0.15 - floor(floor(i / floor(largura / 0.12)) / 2) * (altura - 0.15) / (prateleiras + 0.3))',
       material: ['lacquerTerracotta', 'lacquerSage', 'plasticWhite'][k]!,
       round: 0.006,
     })),
@@ -274,22 +275,20 @@ export const CLOTHES_RACK: ObjectDefinition = {
     { kind: 'cylinder', name: w('Montante', 'Upright'), repeat: { count: 2, dx: 'largura' }, x: '-largura/2', y: 0, z: 0, r: 0.012, h: 'altura', material: 'matMetal' },
     { kind: 'box', name: w('Pé', 'Foot'), repeat: { count: 2, dx: 'largura' }, x: '-largura/2 - 0.012', y: -0.22, z: 0, w: 0.024, d: 0.44, h: 0.02, material: 'matMetal', round: 0.008 },
     { kind: 'cylinder', name: w('Barra', 'Rail'), x: '-largura/2', y: 0, z: 'altura - 0.01', r: 0.011, h: 'largura', roll: 90, material: 'matMetal' },
-    // Garments on hangers: a hook, a shoulder, the garment hanging (long and short, three colours).
-    { kind: 'box', name: w('Cabide', 'Hanger'), repeat: { count: 'pecas', dx: 0.07 }, x: '-largura/2 + 0.05', y: -0.2, z: 'altura - 0.1', w: 0.006, d: 0.4, h: 0.02, material: 'oak', round: 0.003 },
-    ...[0, 1, 2].map((k) => ({
-      kind: 'box' as const,
-      name: w('Peça', 'Garment'),
-      when: `i % 3 == ${k}`,
-      repeat: { count: 'pecas', dx: 0.07 },
-      x: '-largura/2 + 0.035',
-      y: -0.21,
-      z: 'altura - 0.11 - (0.55 + ((i * 7) % 4) * 0.12)',
-      w: 0.035,
-      d: 0.42,
-      h: '0.55 + ((i * 7) % 4) * 0.12',
-      material: ['linen', 'lacquerTerracotta', 'velvet'][k]!,
-      round: 0.012,
-    })),
+    // Garments on hangers: the hook over the rail, the hanger's two sloping arms, the garment's rounded
+    // shoulders, its body and its two sleeves hanging at the sides (long and short, three colours).
+    { kind: 'cylinder', name: w('Gancho', 'Hook'), repeat: { count: 'pecas', dx: 0.07 }, x: '-largura/2 + 0.0525', y: 0, z: 'altura - 0.075', r: 0.003, h: 0.075, material: 'chrome' },
+    { kind: 'box', name: w('Braço do cabide', 'Hanger arm'), repeat: { count: 'pecas * 2' }, x: '-largura/2 + 0.0495 + floor(i / 2) * 0.07', y: 'if(i % 2 == 0, -0.2, 0)', z: 'altura - 0.1 + if(i % 2 == 0, 0, 0.018)', w: 0.006, d: 0.2, h: 0.012, tilt: 'if(i % 2 == 0, -5, 5)', material: 'oak', round: 0.003 },
+    ...[0, 1, 2].flatMap((k) => {
+      const material = ['linen', 'lacquerTerracotta', 'velvet'][k]!;
+      const when = `i % 3 == ${k}`;
+      const long = '(0.55 + ((i * 7) % 4) * 0.12)';
+      return [
+        { kind: 'sphere' as const, name: w('Ombros', 'Shoulders'), when, repeat: { count: 'pecas', dx: 0.07 }, x: '-largura/2 + 0.0525', y: 0, z: 'altura - 0.2', r: 0.017, d: 0.2, h: 0.1, material },
+        { kind: 'box' as const, name: w('Peça', 'Garment'), when, repeat: { count: 'pecas', dx: 0.07 }, x: '-largura/2 + 0.037', y: -0.17, z: `altura - 0.15 - ${long}`, w: 0.031, d: 0.34, h: `${long} - 0.02`, material, round: 0.012 },
+        { kind: 'box' as const, name: w('Manga', 'Sleeve'), when: `floor(i / 2) % 3 == ${k}`, repeat: { count: 'pecas * 2' }, x: '-largura/2 + 0.04 + floor(i / 2) * 0.07', y: 'if(i % 2 == 0, -0.215, 0.155)', z: `altura - 0.17 - ${long} * 0.55`.replace(/\bi\b/g, 'floor(i / 2)'), w: 0.025, d: 0.06, h: `${long} * 0.55`.replace(/\bi\b/g, 'floor(i / 2)'), tilt: 'if(i % 2 == 0, -3, 3)', material, round: 0.01 },
+      ];
+    }),
   ],
   handles: [{ param: 'largura', axis: 'x', at: ['largura/2', 0, 'altura'], shift: 0.5 }],
   types: [
@@ -326,7 +325,9 @@ export const HOSPITAL_BED: ObjectDefinition = {
     // Head and foot boards, the side rails.
     { kind: 'box', name: w('Cabeceira', 'Headboard'), x: '-largura/2', y: 'profundidade/2 - 0.05', z: 'altura - 0.2', w: 'largura', d: 0.04, h: 0.6, material: 'matEstrutura', round: 0.015 },
     { kind: 'box', name: w('Peseira', 'Footboard'), x: '-largura/2', y: '-profundidade/2', z: 'altura - 0.2', w: 'largura', d: 0.04, h: 0.45, material: 'matEstrutura', round: 0.015 },
-    { kind: 'box', name: w('Grade', 'Side rail'), when: 'grades', repeat: { count: 2, dx: 'largura + 0.01' }, x: '-largura/2 - 0.03', y: '-profundidade/2 + profundidade * 0.5', z: 'altura - 0.04', w: 0.02, d: 'profundidade * 0.4', h: 0.3, material: 'matEstrutura', round: 0.008 },
+    // Side rails as frames each side: two posts and three tubes between them.
+    { kind: 'box', name: w('Montante da grade', 'Side rail post'), when: 'grades', repeat: { count: 4 }, x: 'if(i % 2 == 0, -largura/2 - 0.03, largura/2 + 0.01)', y: '-profundidade/2 + profundidade * 0.5 + floor(i / 2) * (profundidade * 0.4 - 0.025)', z: 'altura - 0.12', w: 0.02, d: 0.025, h: 0.4, material: 'matEstrutura', round: 0.008 },
+    { kind: 'box', name: w('Tubo da grade', 'Side rail tube'), when: 'grades', repeat: { count: 6 }, x: 'if(i % 2 == 0, -largura/2 - 0.03, largura/2 + 0.01)', y: '-profundidade/2 + profundidade * 0.5', z: 'altura + 0.02 + floor(i / 2) * 0.11', w: 0.02, d: 'profundidade * 0.4', h: 0.02, material: 'matEstrutura', round: 0.009 },
     // The IV pole at the head, its hooks.
     { kind: 'cylinder', name: w('Suporte de soro', 'IV pole'), when: 'suporte', x: 'largura/2 - 0.02', y: 'profundidade/2 - 0.03', z: 'altura - 0.2', r: 0.01, h: 1.4, material: 'stainless' },
     { kind: 'box', name: w('Gancho', 'Hook'), when: 'suporte', x: 'largura/2 - 0.12', y: 'profundidade/2 - 0.035', z: 'altura + 1.18', w: 0.2, d: 0.01, h: 0.01, material: 'stainless' },
@@ -358,8 +359,12 @@ export const EXAM_COUCH: ObjectDefinition = {
     { kind: 'box', name: w('Travessa', 'Stretcher'), repeat: { count: 2, dx: 'largura - 0.07' }, x: '-largura/2 + 0.02', y: '-profundidade/2 + 0.05', z: 0.15, w: 0.03, d: 'profundidade - 0.1', h: 0.03, material: 'matEstrutura' },
     { kind: 'box', name: w('Estofado', 'Pad'), x: '-largura/2', y: '-profundidade/2', z: 'altura - 0.08', w: 'largura', d: 'profundidade * 0.7', h: 0.08, material: 'matEstofado', round: 0.02 },
     { kind: 'box', name: w('Cabeceira', 'Head section'), x: '-largura/2', y: '-profundidade/2 + profundidade * 0.7', z: 'altura - 0.08', w: 'largura', d: 0.08, h: 'profundidade * 0.3', tilt: '90 - cabeceira', material: 'matEstofado', round: 0.02 },
-    { kind: 'box', name: w('Degrau', 'Step'), when: 'escada', repeat: { count: 2, dz: 0.2 }, x: -0.2, y: '-profundidade/2 - 0.45 + i * 0.15', z: 0.18, w: 0.4, d: '0.3 - i * 0.15', h: 0.025, material: 'rubber' },
-    { kind: 'box', name: w('Estrutura da escada', 'Stool frame'), when: 'escada', repeat: { count: 2, dx: 0.38 }, x: -0.2, y: '-profundidade/2 - 0.45', z: 0, w: 0.02, d: 0.3, h: 0.4, material: 'matEstrutura' },
+    // A two-step stool at the foot: the low step out in front on short legs, the high step behind it on
+    // tall legs, each a frame with a rubber tread; rails tie the legs low down.
+    { kind: 'box', name: w('Degrau', 'Step'), when: 'escada', repeat: { count: 2, dz: 0.2 }, x: -0.2, y: '-profundidade/2 - 0.47 + i * 0.16', z: 0.18, w: 0.4, d: 0.16, h: 0.025, material: 'matEstrutura', round: 0.006 },
+    { kind: 'box', name: w('Piso do degrau', 'Tread'), when: 'escada', repeat: { count: 2, dz: 0.2 }, x: -0.185, y: '-profundidade/2 - 0.46 + i * 0.16', z: 0.205, w: 0.37, d: 0.14, h: 0.006, material: 'rubber' },
+    { kind: 'box', name: w('Pé da escada', 'Stool leg'), when: 'escada', repeat: { count: 6 }, x: 'if(i % 2 == 0, -0.2, 0.18)', y: '-profundidade/2 - 0.47 + floor(i / 2) * 0.14', z: 0, w: 0.02, d: 0.02, h: 'if(floor(i / 2) == 0, 0.18, 0.38)', material: 'matEstrutura' },
+    { kind: 'box', name: w('Travessa da escada', 'Stool rail'), when: 'escada', repeat: { count: 2, dx: 0.38 }, x: -0.2, y: '-profundidade/2 - 0.47', z: 0.06, w: 0.02, d: 0.3, h: 0.02, material: 'matEstrutura' },
   ],
   handles: boxHandles('altura'),
   types: [
