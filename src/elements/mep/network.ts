@@ -169,7 +169,14 @@ export function pathTo(net: Network, via: ReadonlyMap<number, number>, node: num
 /** The source nodes of a network: its points of a kind that feeds the rest. */
 export const sourcesOf = (net: Network): number[] => net.points.filter((p) => POINT_KINDS[p.kind].source).map((p) => net.pointNode.get(p.id)!);
 
-export type FittingKind = 'elbow90' | 'elbow45' | 'tee' | 'cross';
+export type FittingKind = 'elbow90' | 'elbow45' | 'tee' | 'cross' | 'reducer' | 'coupling' | 'cap';
+
+/** The pipe bar's length (m): PVC water, sewer and rain pipe is sold in 6 m bars, joined by a coupling. */
+export const PIPE_BAR = 6;
+/** The groups whose pipe comes in bars (the conduits are flexible: no couplings). */
+const IN_BARS = new Set(['coldWater', 'hotWater', 'sewer', 'rain']);
+/** The groups that carry a fluid: an open end of theirs is closed with a cap (a cable's or a duct's is not). */
+const PIPED = new Set(['coldWater', 'hotWater', 'sewer', 'rain', 'gas', 'fire', 'solar']);
 
 export interface Fitting {
   readonly group: string;
@@ -182,8 +189,10 @@ export interface Fitting {
 /**
  * The fittings the networks need, from their geometry: where two pieces meet turning, an elbow (90°
  * from a turn of 67.5° on, else 45°, adopted); three, a tee; four or more, a cross. A point's drop
- * counts as a piece (the branch to a socket off a passing conduit is a tee). Counted by group and
- * diameter; a point at a run's end needs none.
+ * counts as a piece (the branch to a socket off a passing conduit is a tee). Where two pieces of other
+ * diameters meet straight on, a reducer; an open end that reaches no point, a cap; along a pipe that
+ * comes in bars, a coupling every bar (6 m). Counted by group and diameter; a point at a run's end
+ * needs none.
  */
 export function fittingsOf(doc: Doc): Fitting[] {
   const counts = new Map<string, Fitting>();
@@ -199,8 +208,15 @@ export function fittingsOf(doc: Doc): Fitting[] {
       (at.get(e.a) ?? at.set(e.a, []).get(e.a)!).push(k);
       (at.get(e.b) ?? at.set(e.b, []).get(e.b)!).push(k);
     });
+    const atPoint = new Set(net.pointNode.values());
+    // Along a piece longer than a bar, a coupling between each two.
+    if (IN_BARS.has(net.group)) for (const e of net.edges) if (e.length > PIPE_BAR + 1e-9) for (let i = 1; i < Math.ceil(e.length / PIPE_BAR - 1e-9); i++) add(net.group, 'coupling', e.diameter);
     for (const [node, ks] of at) {
-      if (ks.length < 2) continue;
+      if (ks.length === 1) {
+        // An open end: closed with a cap, unless a point is there (it ends at the fixture).
+        if (!atPoint.has(node) && PIPED.has(net.group)) add(net.group, 'cap', net.edges[ks[0]!]!.diameter);
+        continue;
+      }
       const diameter = Math.max(...ks.map((k) => net.edges[k]!.diameter));
       if (ks.length >= 4) add(net.group, 'cross', diameter);
       else if (ks.length === 3) add(net.group, 'tee', diameter);
@@ -219,6 +235,8 @@ export function fittingsOf(doc: Doc): Fitting[] {
         const turn = 180 - (Math.acos(Math.max(-1, Math.min(1, u.x * w.x + u.y * w.y + u.z * w.z))) * 180) / Math.PI;
         if (turn >= 67.5) add(net.group, 'elbow90', diameter);
         else if (turn >= 22.5) add(net.group, 'elbow45', diameter);
+        // Straight on, from one diameter to another.
+        else if (net.edges[ks[0]!]!.diameter !== net.edges[ks[1]!]!.diameter) add(net.group, 'reducer', diameter);
       }
     }
   }

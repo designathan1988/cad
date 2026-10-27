@@ -11,6 +11,7 @@ import { findColumns, guessFromName, itemsFromRows, readNumber } from '../../src
 import { type Costs, DEFAULT_COSTS } from '../../src/costs/schema';
 import { newOpening } from '../../src/elements/opening/schema';
 import { readCsv, readXlsx } from '../../src/io/xlsx';
+import { fittingsOf } from '../../src/elements/mep/network';
 
 /** A ZIP of these files, stored or deflated (the reader does not check the CRC: it is left 0). */
 async function zip(files: Record<string, string>, deflate: boolean): Promise<Uint8Array> {
@@ -204,8 +205,13 @@ describe('the services in the budget', () => {
       ['sys_cold@0.025', 'm', 'stage_services'],
     ]);
     expect(lines.filter((l) => l.quantity.of === 'points').map((l) => l.quantity.item)).toEqual(['panel', 'socket']);
-    // The conduit turns twice: two 90° elbows of 25 mm.
-    expect(lines.filter((l) => l.quantity.of === 'fittings').map((l) => l.quantity.item)).toEqual(['electric|elbow90@0.025']);
+    // The conduit turns twice: two 90° elbows of 25 mm; it ends at the board and the socket, no caps. The
+    // cold water pipe reaches no point at either end: two caps.
+    expect(lines.filter((l) => l.quantity.of === 'fittings').map((l) => l.quantity.item)).toEqual(['coldWater|cap@0.025', 'electric|elbow90@0.025']);
+    expect(fittingsOf(mep).map((f) => [f.group, f.kind, f.count])).toEqual([
+      ['coldWater', 'cap', 2],
+      ['electric', 'elbow90', 2],
+    ]);
     const priced: Doc = { ...mep, costs: { ...DEFAULT_COSTS, lines: runs.map((l) => ({ ...l, price: 10 })) } };
     const b = budgetOf(priced, g);
     expect(b.rows[0]!.quantity).toBeCloseTo(1.2 + 4 + 2.4, 9);
@@ -214,6 +220,26 @@ describe('the services in the budget', () => {
     const d = breakdownOf(priced, g, b);
     expect(d.byElement.get('mepRun_e')).toBeCloseTo(76, 9);
     expect(d.byElement.get('mepRun_a')).toBeCloseTo(20, 9);
+  });
+
+  it('a reducer where two diameters meet straight on, a coupling every 6 m bar, none on a conduit', () => {
+    const pipes: Doc = {
+      ...mep,
+      mepPoints: [],
+      mepRuns: [
+        // 14 m of 25 mm then 3 m of 20 mm, in line: two couplings on the long piece, a reducer, two caps.
+        { id: 'mepRun_l', levelId: 'lvl_ground', systemId: 'sys_cold', kind: 'pipe', diameter: 0.025, points: [{ x: 0, y: 0, z: 2.7 }, { x: 14, y: 0, z: 2.7 }] },
+        { id: 'mepRun_s', levelId: 'lvl_ground', systemId: 'sys_cold', kind: 'pipe', diameter: 0.02, points: [{ x: 14, y: 0, z: 2.7 }, { x: 17, y: 0, z: 2.7 }] },
+        // A conduit of 14 m: flexible, no couplings; its open ends no caps (it carries cables).
+        { id: 'mepRun_c', levelId: 'lvl_ground', systemId: 'sys_power', kind: 'conduit', diameter: 0.025, points: [{ x: 0, y: 5, z: 2.7 }, { x: 14, y: 5, z: 2.7 }] },
+      ],
+    };
+    expect(fittingsOf(pipes).map((f) => [f.group, f.kind, f.diameter, f.count])).toEqual([
+      ['coldWater', 'cap', 0.02, 1],
+      ['coldWater', 'cap', 0.025, 1],
+      ['coldWater', 'coupling', 0.025, 2],
+      ['coldWater', 'reducer', 0.025, 1],
+    ]);
   });
 
   it('a budget from before the services stage puts them in the general one', () => {
