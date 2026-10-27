@@ -9,6 +9,14 @@ import { readBox, readSection, type SectionBox, type SectionLine } from './secti
 
 export type LevelsShown = 'all' | 'below' | 'current';
 
+/** How the 3D view draws (Revit's visual styles): white faces and their lines; shaded by the light; each
+ * material's own colour, unlit; realistic (tone mapping, the sky's reflections, shadows, ambient occlusion). */
+export const VISUAL_STYLES = ['hidden', 'shaded', 'consistent', 'realistic'] as const;
+export type VisualStyle = (typeof VISUAL_STYLES)[number];
+/** How finely: the resolution, the shadows' map, ambient occlusion and supersampling (render/scene-3d.ts). */
+export const RENDER_QUALITIES = ['low', 'medium', 'high', 'ultra'] as const;
+export type RenderQuality = (typeof RENDER_QUALITIES)[number];
+
 export interface View3D {
   readonly levels: LevelsShown;
   readonly explode: boolean;
@@ -20,9 +28,11 @@ export interface View3D {
   readonly ortho: boolean;
   /** A vertical section through a line in plan (section-box.ts); null when none. */
   readonly section: SectionLine | null;
+  readonly style: VisualStyle;
+  readonly quality: RenderQuality;
 }
 
-export const VIEW_3D_DEFAULT: View3D = { levels: 'all', explode: false, cut: false, xray: false, box: null, ortho: false, section: null };
+export const VIEW_3D_DEFAULT: View3D = { levels: 'all', explode: false, cut: false, xray: false, box: null, ortho: false, section: null, style: 'shaded', quality: 'medium' };
 
 /** Between two exploded levels, beyond their own height (m). */
 export const EXPLODE_GAP = 2.5;
@@ -69,5 +79,7 @@ export function readView3D(raw: unknown): View3D {
     box: readBox(o.box),
     ortho: o.ortho === true,
     section: readSection(o.section),
+    style: (VISUAL_STYLES as readonly unknown[]).includes(o.style) ? (o.style as VisualStyle) : 'shaded',
+    quality: (RENDER_QUALITIES as readonly unknown[]).includes(o.quality) ? (o.quality as RenderQuality) : 'medium',
   };
 }

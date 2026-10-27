@@ -148,7 +148,18 @@ export function buildShell(root: HTMLElement) {
   const xray = barButton(togglesBox, 'xray');
   const box = barButton(togglesBox, 'box');
   const ortho = barButton(togglesBox, 'ortho');
-  viewBar.append(levelsBox, togglesBox);
+  // The visual style and the quality (view-3d.ts), as the model's view control bar has them: a list each.
+  const lookSelect = (ic: IconName) => {
+    const box = el('label', { class: 'select look-select' });
+    box.insertAdjacentHTML('afterbegin', icon(ic, 16));
+    const caption = el('span', { class: 'look-caption' });
+    const select = el('select');
+    box.append(caption, select);
+    box.insertAdjacentHTML('beforeend', icon('chevronDown', 14));
+    return { box, caption, select };
+  };
+  const look = { style: lookSelect('cube'), quality: lookSelect('sun') };
+  viewBar.append(levelsBox, togglesBox, look.style.box, look.quality.box);
   viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, viewBar, emptyHint, tempChip, walkStick, tourBar, pointCard, toast, browser);
 
   const panel = el('aside', { class: 'panel', 'aria-label': 'Properties' });
@@ -186,7 +197,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, savedNote, undo, redo, level, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, tabs, fileMenu, ribbon, optBar, strip, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, dims, browser, sidebar,
+    panelToggle, tabs, fileMenu, ribbon, optBar, strip, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, look, dims, browser, sidebar,
     emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, fitFoot,
   };
 

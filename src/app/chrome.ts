@@ -19,7 +19,7 @@ import { boundsOf, openingOutline } from './geometry';
 import { renderBrowser } from '../ui/browser';
 import { type RibbonItem, renderRibbonTab, renderRibbonTabs } from '../ui/ribbon';
 import { ribbonTabs } from './ribbon-tabs';
-import { exploding, shownLevels } from './view-3d';
+import { exploding, RENDER_QUALITIES, shownLevels, VISUAL_STYLES } from './view-3d';
 import { contextEntries } from './context-menu';
 import { placeBarY } from '../ui/bar-place';
 import { signedArea } from '../elements/room/derive';
@@ -94,6 +94,19 @@ export function renderChrome(app: App): void {
   shell.ortho.setAttribute('aria-pressed', String(ui.view3d.ortho && app.walker === null));
   shell.explode.setAttribute('aria-disabled', String(alone));
   shell.cut.setAttribute('aria-pressed', String(ui.view3d.cut));
+  // The visual style and the quality: their lists filled in the interface's language, set to the view's.
+  const { style, quality } = shell.look;
+  if (style.select.dataset.lang !== getLang()) {
+    style.select.dataset.lang = getLang();
+    style.caption.textContent = t('view3d.styleLabel');
+    quality.caption.textContent = t('view3d.qualityLabel');
+    style.box.title = t('view3d.styleTip');
+    quality.box.title = t('view3d.qualityTip');
+    style.select.replaceChildren(...VISUAL_STYLES.map((v) => new Option(t(`view3d.style.${v}` as MessageKey), v)));
+    quality.select.replaceChildren(...RENDER_QUALITIES.map((v) => new Option(t(`view3d.quality.${v}` as MessageKey), v)));
+  }
+  style.select.value = ui.view3d.style;
+  quality.select.value = ui.view3d.quality;
   const levelKey = JSON.stringify([getLang(), doc.levels.map((l) => [l.id, l.name, l.elevation])]);
   if (shell.level.dataset.key !== levelKey) {
     const sorted = [...doc.levels].sort((a, b) => b.elevation - a.elevation);

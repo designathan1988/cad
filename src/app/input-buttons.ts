@@ -7,7 +7,7 @@ import { EDIT_LEVELS } from './app';
 import { showLevels } from '../ui/levels-dialog';
 import { type MenuItem, showMenu } from '../ui/menu';
 import { FILE_MENU } from './ribbon-tabs';
-import type { LevelsShown } from './view-3d';
+import type { LevelsShown, RenderQuality, VisualStyle } from './view-3d';
 import { renameInPlace, showHelp } from './input';
 
 export function wireButtons(app: App, palette: () => void): void {
@@ -78,6 +78,8 @@ export function wireButtons(app: App, palette: () => void): void {
   shell.xray.addEventListener('click', () => app.setView3D({ xray: !ui.view3d.xray }));
   shell.box.addEventListener('click', () => app.toggleBox());
   shell.ortho.addEventListener('click', () => app.setView3D({ ortho: !ui.view3d.ortho }));
+  shell.look.style.select.addEventListener('change', () => app.setView3D({ style: shell.look.style.select.value as VisualStyle }));
+  shell.look.quality.select.addEventListener('change', () => app.setView3D({ quality: shell.look.quality.select.value as RenderQuality }));
   shell.tempReset.addEventListener('click', () => app.resetTemporary());
   shell.shortcuts.addEventListener('click', () => showHelp(app));
   shell.commands.addEventListener('click', () => palette());

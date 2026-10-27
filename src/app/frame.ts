@@ -264,6 +264,7 @@ export function renderFrame(app: App): void {
     app.scene.setDoorsOpen(app.walker !== null, ui.opened);
     app.scene.setBox(ui.view3d.box);
     app.scene.setOrtho(ui.view3d.ortho);
+    app.scene.setLook(ui.view3d.style, ui.view3d.quality);
     app.scene.setSection(ui.view3d.section);
     app.scene.sync(shown, ui.selection, preview, (id) => app.lift(id));
     const site = app.store.get().site;

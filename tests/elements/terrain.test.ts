@@ -7,6 +7,7 @@ import { earthworksOf } from '../../src/elements/terrain/earthworks';
 import { deriveTerrain } from '../../src/elements/terrain/derive';
 import { heightAt, isTerrain, type Terrain } from '../../src/elements/terrain/schema';
 import { readProject, writeProject } from '../../src/io/project-file';
+import { SOIL_DEPTH, soilBlock } from '../../src/elements/kinds/terrain';
 
 const square = (w: number) => [
   { x: 0, y: 0 },
@@ -35,6 +36,24 @@ describe('terrain', () => {
     expect(area(s.tris)).toBeCloseTo(400, 6);
     expect(s.bottom).toBe(0);
     expect(s.top).toBe(0);
+  });
+
+  it('in 3D a block of soil under it: its sides down from its border to 1.50 m under its lowest point, its bottom its outline', () => {
+    const t: Terrain = { id: 'terrain_1', levelId: 'lvl_ground', outline: square(20), spots: [{ x: 0, y: 0, z: 0 }, { x: 20, y: 20, z: 2 }], interval: 0.5 };
+    const s = deriveTerrain(t);
+    const pos = soilBlock(s).getAttribute('position');
+    const ys = Array.from({ length: pos.count }, (_, i) => pos.getY(i));
+    expect(Math.min(...ys)).toBeCloseTo(s.bottom - SOIL_DEPTH, 9);
+    // Its top: the border's own heights, never over the surface.
+    expect(Math.max(...ys)).toBeLessThanOrEqual(s.top + 1e-9);
+    // Its bottom (the triangles all at the base): the outline's 400 m².
+    let bottom = 0;
+    for (let i = 0; i < pos.count; i += 3) {
+      if ([0, 1, 2].some((k) => Math.abs(pos.getY(i + k) - (s.bottom - SOIL_DEPTH)) > 1e-9)) continue;
+      const [ax, az, bx, bz, cx, cz] = [pos.getX(i), pos.getZ(i), pos.getX(i + 1), pos.getZ(i + 1), pos.getX(i + 2), pos.getZ(i + 2)];
+      bottom += Math.abs((bx - ax) * (cz - az) - (cx - ax) * (bz - az)) / 2;
+    }
+    expect(bottom).toBeCloseTo(400, 6);
   });
 
   it('an L-shaped lot: the surface is the L, not its box', () => {

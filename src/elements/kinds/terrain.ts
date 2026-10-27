@@ -14,6 +14,51 @@ import { isTerrain, type Terrain, TERRAIN_PREFIX } from '../terrain/schema';
 
 /** The ground's colour in 3D. */
 const GRASS: Material = { id: 'terrain', name: '', color: '#8ea86a', roughness: 0.95, metalness: 0, cut: 'solid' };
+/** The soil under it: its sides and its bottom, as a site model's block of earth. */
+const SOIL: Material = { id: 'terrain-soil', name: '', color: '#7a5a3c', roughness: 1, metalness: 0, cut: 'solid' };
+/** How far under its lowest point the soil block goes (m). */
+export const SOIL_DEPTH = 1.5;
+
+/**
+ * The block of earth under a terrain's surface: down from each edge of the surface that no other
+ * triangle shares (its border, at its heights) to SOIL_DEPTH under its lowest point, and the bottom
+ * there under its outline. In three.js's axes (x, height, −y), as the surface.
+ */
+export function soilBlock(s: TerrainSolid): THREE.BufferGeometry {
+  const base = s.bottom - SOIL_DEPTH;
+  const key = (x: number, y: number) => `${Math.round(x * 1000)},${Math.round(y * 1000)}`;
+  const edges = new Map<string, { a: [number, number, number]; b: [number, number, number]; n: number }>();
+  for (const r of s.tris)
+    for (let k = 0; k < 3; k++) {
+      const a: [number, number, number] = [r[k * 3]!, r[k * 3 + 1]!, r[k * 3 + 2]!];
+      const j = ((k + 1) % 3) * 3;
+      const b: [number, number, number] = [r[j]!, r[j + 1]!, r[j + 2]!];
+      const ka = key(a[0], a[1]);
+      const kb = key(b[0], b[1]);
+      const id = ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+      const e = edges.get(id);
+      if (e) e.n++;
+      else edges.set(id, { a, b, n: 1 });
+    }
+  const pos: number[] = [];
+  const v = (x: number, y: number, z: number) => pos.push(x, z, -y);
+  for (const { a, b, n } of edges.values()) {
+    if (n !== 1) continue;
+    // A side: the edge at its heights over the same edge at the base, two triangles.
+    v(a[0], a[1], a[2]);
+    v(b[0], b[1], base);
+    v(b[0], b[1], b[2]);
+    v(a[0], a[1], a[2]);
+    v(a[0], a[1], base);
+    v(b[0], b[1], base);
+  }
+  const outline = s.terrain.outline.map((p) => new THREE.Vector2(p.x, p.y));
+  for (const [i, j, k] of THREE.ShapeUtils.triangulateShape(outline, [])) for (const q of [i, k, j]) v(outline[q!]!.x, outline[q!]!.y, base);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
 
 const setTerrains = (ids: readonly string[], change: (t: Terrain) => Terrain, label: string) => ({
   label,
@@ -70,7 +115,10 @@ export const terrainKind: ElementKind<Terrain, TerrainSolid> = {
     geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geometry.computeVertexNormals();
     // A hair under its heights: where the ground floor's slab stands on it, the slab shows, not both.
-    return { geometry, y: -0.005, material: GRASS, edges: false };
+    return [
+      { geometry, y: -0.005, material: GRASS, edges: false },
+      { geometry: soilBlock(s), y: -0.005, material: SOIL, edges: false },
+    ];
   },
   dxfLayers: [{ name: 'C-TOPO', colour: 3 }],
   dxf: (s, out) => {

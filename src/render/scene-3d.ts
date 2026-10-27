@@ -5,6 +5,12 @@
 import * as THREE from 'three';
 import { patternTexture } from './pattern-texture';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import type { RenderQuality, VisualStyle } from '../app/view-3d';
 import type { Point2 } from '../core/vector';
 import type { DerivedGeometry, OpeningSolid, WallSolid } from '../app/geometry';
 import type { WallId } from '../elements/wall/schema';
@@ -24,6 +30,17 @@ const GROUND_MIN = 60;
 /** Vertical field of view (degrees): the overview's, and a walker's. */
 const VIEW_FOV = 40;
 const WALK_FOV = 65;
+/**
+ * Each quality's settings: the resolution against the screen's (`ratio` times its pixel ratio, at most
+ * `max`; over 1 drawn larger and shown smaller, which smooths the edges), the sun's shadow map (px a
+ * side) and whether its edges are soft, and ambient occlusion with multisampling (a post-processing pass).
+ */
+const QUALITY: Readonly<Record<RenderQuality, { readonly ratio: number; readonly max: number; readonly shadow: number; readonly soft: boolean; readonly ao: boolean }>> = {
+  low: { ratio: 0.75, max: 1, shadow: 1024, soft: false, ao: false },
+  medium: { ratio: 1, max: 2, shadow: 2048, soft: true, ao: false },
+  high: { ratio: 1, max: 2, shadow: 4096, soft: true, ao: true },
+  ultra: { ratio: 2, max: 3, shadow: 4096, soft: true, ao: true },
+};
 /** How much of a wall shows in x-ray. */
 const XRAY_OPACITY = 0.28;
 /** How much the project's glass hides what is behind it. */
@@ -161,9 +178,23 @@ export class Scene3D {
   private readonly sky = new THREE.HemisphereLight(undefined, undefined, 2.7);
   private readonly sun = new THREE.DirectionalLight(undefined, 1.5);
   private readonly fill = new THREE.DirectionalLight(undefined, 0.6);
+  /** The only light of Consistent colours: each material's own colour, as it is. */
+  private readonly ambient = new THREE.AmbientLight(0xffffff, 0);
+  /** The sun's and the sky's strength as the site's sun sets them (placeSun), before the style's. */
+  private sunBase = 1.5;
+  private skyBase = 2.7;
   /** The site's sun (app/sun.ts): the way to it, and whether it casts shadows; null for the fixed light. */
   private sunWay: { readonly x: number; readonly y: number; readonly z: number } | null = null;
+  /** Shadows asked for by the site; `shadows`: drawn now (the site's, or Realistic's own). */
+  private siteShadows = false;
   private shadows = false;
+  /** The visual style and the quality (view-3d.ts), and what they need: the post-processing, the sky's reflections. */
+  private style: VisualStyle = 'shaded';
+  private quality: RenderQuality = 'medium';
+  private composer: { readonly fx: EffectComposer; readonly key: string; readonly passes: { camera: THREE.Camera }[] } | null = null;
+  private environment: THREE.Texture | null = null;
+  /** Hidden lines: every surface white, unlit, behind its edges. */
+  private readonly hiddenFace = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
   /** Shadows on the ground, where nothing else stands to take them. */
   private readonly shadowGround = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.28 }));
   private covered = { right: 0, bottom: 0, left: 0 };
@@ -219,6 +250,8 @@ export class Scene3D {
     this.scene.add(this.shadowGround);
     this.fill.position.set(10, 6, -8);
     this.scene.add(this.fill);
+    this.scene.add(this.ambient);
+    this.prepare(this.hiddenFace);
     this.grid = new THREE.GridHelper(200, 200);
     this.grid.position.y = -0.001;
     this.scene.add(this.grid);
@@ -364,8 +397,130 @@ export class Scene3D {
     if (faint[0]!.transparent === on && (on ? faint[0]!.opacity === XRAY_OPACITY : true)) return;
     this.xrayOn = on;
     for (const m of faint) this.faint(m, on);
-    this.edgeMaterial.opacity = on ? 0.9 : 0.55;
+    this.applyEdges();
     this.invalidate();
+  }
+
+  /** The edges' lines as the style draws them: full in hidden lines, none in realistic (but in x-ray). */
+  private applyEdges(): void {
+    this.edgeMaterial.visible = this.style !== 'realistic' || this.xrayOn;
+    this.edgeMaterial.opacity = this.style === 'hidden' || this.xrayOn ? 0.9 : 0.55;
+  }
+
+  /**
+   * The visual style and the quality (view-3d.ts): the lights, tone mapping and the sky's reflections a
+   * style draws with, the resolution, shadow map and ambient occlusion a quality asks.
+   */
+  setLook(style: VisualStyle, quality: RenderQuality): void {
+    if (style === this.style && quality === this.quality) return;
+    const q = QUALITY[quality];
+    // three.js 0.186 has only PCF left of the filtered shadows (PCFSoft was removed): its edges softened by the radius.
+    const recompile = style !== this.style;
+    this.style = style;
+    this.quality = quality;
+    this.renderer.setPixelRatio(Math.min((window.devicePixelRatio || 1) * q.ratio, q.max));
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    const shadow = this.sun.shadow;
+    shadow.radius = q.soft ? 3 : 1;
+    if (shadow.mapSize.x !== q.shadow) {
+      shadow.mapSize.set(q.shadow, q.shadow);
+      shadow.map?.dispose();
+      shadow.map = null;
+    }
+    const realistic = style === 'realistic';
+    this.renderer.toneMapping = realistic ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+    this.renderer.toneMappingExposure = realistic ? 0.8 : 1;
+    if (realistic && !this.environment) {
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      this.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      pmrem.dispose();
+    }
+    this.scene.environment = realistic ? this.environment : null;
+    this.scene.environmentIntensity = 0.22;
+    this.applyEdges();
+    this.applyShadows(recompile);
+    this.offsetDirty = true;
+    this.invalidate();
+  }
+
+  /** The lights as the style has them, from the strengths the sun set. */
+  private applyLights(): void {
+    const s = this.style;
+    // π: three.js's diffuse is the albedo over π times the light, so π gives each colour as it is.
+    this.ambient.intensity = s === 'consistent' ? Math.PI : 0;
+    this.sun.intensity = s === 'consistent' ? 0 : s === 'realistic' ? this.sunBase * 2.6 : this.sunBase;
+    this.sky.intensity = s === 'consistent' ? 0 : s === 'realistic' ? this.skyBase * 0.05 : this.skyBase;
+    this.fill.intensity = s === 'shaded' || s === 'hidden' ? 0.6 : 0;
+  }
+
+  /** Shadows drawn: those the site asks, or Realistic's own while the sun is up; materials compiled again for them. */
+  private applyShadows(recompile = false): void {
+    const up = this.sunWay === null || this.sunWay.z > 0;
+    const on = (this.siteShadows && this.sunWay !== null && this.sunWay.z > 0) || (this.style === 'realistic' && up);
+    const changed = on !== this.shadows;
+    this.shadows = on;
+    this.renderer.shadowMap.enabled = on;
+    this.sun.castShadow = on;
+    this.shadowGround.visible = on;
+    this.placeSun();
+    this.castShadows();
+    if (changed || recompile)
+      this.scene.traverse((o) => {
+        const m = (o as THREE.Mesh).material;
+        for (const x of Array.isArray(m) ? m : m ? [m] : []) x.needsUpdate = true;
+      });
+  }
+
+  /**
+   * The post-processing the look needs (ambient occlusion, multisampled), built when that changes; none
+   * when the quality asks none, in hidden lines and consistent colours, and while a cut or a box clips
+   * (the occlusion's own pass would see what is clipped away).
+   */
+  private effects(w: number, h: number): EffectComposer | null {
+    const ao = QUALITY[this.quality].ao && (this.style === 'shaded' || this.style === 'realistic') && this.clip.length === 0 && !this.xrayOn;
+    const key = ao ? `ao|${this.orthoOn}` : '';
+    if (this.composer?.key !== key) {
+      this.composer?.fx.dispose();
+      this.composer = null;
+      if (ao) {
+        const target = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: 4 });
+        const fx = new EffectComposer(this.renderer, target);
+        fx.setPixelRatio(this.renderer.getPixelRatio());
+        fx.setSize(w, h);
+        const first = new RenderPass(this.scene, this.camera);
+        const gtao = new GTAOPass(this.scene, this.camera, w, h);
+        gtao.blendIntensity = 0.8;
+        fx.addPass(first);
+        fx.addPass(gtao);
+        fx.addPass(new OutputPass());
+        this.composer = { fx, key, passes: [first, gtao] };
+      }
+    }
+    if (!this.composer) return null;
+    for (const p of this.composer.passes) p.camera = this.camera;
+    return this.composer.fx;
+  }
+
+  /** One frame as the look draws it: hidden lines with every surface white for the frame, then put back. */
+  private draw(w: number, h: number, resized: boolean): void {
+    const swapped: [THREE.Mesh, THREE.Material | THREE.Material[]][] = [];
+    if (this.style === 'hidden')
+      for (const { group } of this.walls.values())
+        group.traverse((o) => {
+          const mesh = o as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          swapped.push([mesh, mesh.material]);
+          mesh.material = this.hiddenFace;
+        });
+    const fx = this.effects(w, h);
+    if (fx) {
+      if (resized) {
+        fx.setPixelRatio(this.renderer.getPixelRatio());
+        fx.setSize(w, h);
+      }
+      fx.render();
+    } else this.renderer.render(this.scene, this.camera);
+    for (const [mesh, m] of swapped) mesh.material = m;
   }
 
   /**
@@ -655,7 +810,7 @@ export class Scene3D {
       this.camera.updateProjectionMatrix();
       this.offsetDirty = false;
     }
-    this.renderer.render(this.scene, this.camera);
+    this.draw(w, h, resized);
     // The projection changed (first frame, new size, panel): what is placed over the view by
     // projecting through the camera (the floating bar, the cube) must be placed again.
     if (resized) this.onChange();
@@ -691,7 +846,7 @@ export class Scene3D {
       shadow.map = null;
     };
     if (this.shadows && fine > screenMap) remap(fine);
-    this.renderer.render(this.scene, this.camera);
+    this.draw(W, H, true);
     // Taken now, before the next frame clears the drawing buffer.
     const blob = new Promise<Blob | null>((done) => this.canvas.toBlob(done, 'image/png'));
     if (shadow.mapSize.x !== screenMap) remap(screenMap);
@@ -860,20 +1015,11 @@ export class Scene3D {
    */
   setSun(way: { readonly x: number; readonly y: number; readonly z: number } | null, shadows: boolean): void {
     const key = JSON.stringify([way, shadows]);
-    if (key === JSON.stringify([this.sunWay, this.shadows])) return;
+    if (key === JSON.stringify([this.sunWay, this.siteShadows])) return;
     this.sunWay = way;
-    this.shadows = shadows && way !== null && way.z > 0;
-    this.renderer.shadowMap.enabled = this.shadows;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
-    this.sun.castShadow = this.shadows;
-    this.shadowGround.visible = this.shadows;
-    this.placeSun();
-    this.castShadows();
-    // Materials compiled without shadows are compiled again with them.
-    this.scene.traverse((o) => {
-      const m = (o as THREE.Mesh).material;
-      for (const x of Array.isArray(m) ? m : m ? [m] : []) x.needsUpdate = true;
-    });
+    this.siteShadows = shadows;
+    // Materials compiled without shadows are compiled again with them (applyShadows).
+    this.applyShadows();
     this.invalidate();
   }
 
@@ -882,20 +1028,23 @@ export class Scene3D {
     const c = this.ground.position;
     const reach = Math.max(10, this.ground.scale.x / GROUND_SPAN);
     if (!this.sunWay) {
-      this.sun.position.set(c.x - 8, 14, c.z + 10);
+      // The view's fixed light: up and to the left, far enough over the model to cast its shadows.
+      const fixed = new THREE.Vector3(-8, 14, 10).normalize().multiplyScalar(reach * 2);
+      this.sun.position.set(c.x + fixed.x, c.y + fixed.y, c.z + fixed.z);
       this.sun.target.position.copy(c);
-      this.sun.intensity = 1.5;
-      this.sky.intensity = 2.7;
-      return;
+      this.sunBase = 1.5;
+      this.skyBase = 2.7;
+    } else {
+      const w = this.sunWay;
+      // Plan (x, y, up) to three.js (x, up, −y).
+      this.sun.position.set(c.x + w.x * reach * 2, Math.max(0, c.y) + w.z * reach * 2, c.z - w.y * reach * 2);
+      this.sun.target.position.copy(c);
+      // Below the horizon no sun; low, a weaker one; the sky darker at night.
+      const up = Math.max(0, w.z);
+      this.sunBase = up > 0 ? 0.6 + 1.6 * Math.min(1, up * 2) : 0;
+      this.skyBase = 0.8 + 1.9 * Math.min(1, up * 3);
     }
-    const w = this.sunWay;
-    // Plan (x, y, up) to three.js (x, up, −y).
-    this.sun.position.set(c.x + w.x * reach * 2, Math.max(0, c.y) + w.z * reach * 2, c.z - w.y * reach * 2);
-    this.sun.target.position.copy(c);
-    // Below the horizon no sun; low, a weaker one; the sky darker at night.
-    const up = Math.max(0, w.z);
-    this.sun.intensity = up > 0 ? 0.6 + 1.6 * Math.min(1, up * 2) : 0;
-    this.sky.intensity = 0.8 + 1.9 * Math.min(1, up * 3);
+    this.applyLights();
     const cam = this.sun.shadow.camera;
     cam.left = -reach * 1.5;
     cam.right = reach * 1.5;

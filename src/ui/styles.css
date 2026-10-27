@@ -423,6 +423,22 @@ button.project-name:hover {
 .level-select {
   width: var(--level-w);
 }
+/* The 3D view's style and quality (shell.ts): its icon and caption, then the list. */
+.look-select {
+  gap: var(--sp-1);
+  padding-left: var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.look-select > .icon:first-child {
+  position: static;
+}
+.look-select select {
+  width: auto;
+  color: var(--text);
+  font-weight: 600;
+}
 
 .segmented {
   display: inline-flex;
