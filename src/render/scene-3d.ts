@@ -158,6 +158,11 @@ export class Scene3D {
   private readonly sky = new THREE.HemisphereLight(undefined, undefined, 2.7);
   private readonly sun = new THREE.DirectionalLight(undefined, 1.5);
   private readonly fill = new THREE.DirectionalLight(undefined, 0.6);
+  /** The site's sun (app/sun.ts): the way to it, and whether it casts shadows; null for the fixed light. */
+  private sunWay: { readonly x: number; readonly y: number; readonly z: number } | null = null;
+  private shadows = false;
+  /** Shadows on the ground, where nothing else stands to take them. */
+  private readonly shadowGround = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.28 }));
   private covered = { right: 0, bottom: 0, left: 0 };
   /**
    * How far the view's centre is shifted (px), set when the view is framed from what the panels
@@ -201,6 +206,14 @@ export class Scene3D {
     this.scene.add(this.sky);
     this.sun.position.set(-8, 14, 10);
     this.scene.add(this.sun);
+    this.scene.add(this.sun.target);
+    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.bias = -0.0005;
+    this.sun.shadow.normalBias = 0.02;
+    this.shadowGround.rotation.x = -Math.PI / 2;
+    this.shadowGround.receiveShadow = true;
+    this.shadowGround.visible = false;
+    this.scene.add(this.shadowGround);
     this.fill.position.set(10, 6, -8);
     this.scene.add(this.fill);
     this.grid = new THREE.GridHelper(200, 200);
@@ -767,6 +780,71 @@ export class Scene3D {
     for (const [levelId, l] of this.edges) l.position.y = lift(levelId);
   }
 
+  /**
+   * The sun of the site (app/sun.ts): `way` to it in plan and height (unit), null for the view's fixed
+   * light; below the horizon it gives no light. With `shadows`, every solid casts and takes them.
+   */
+  setSun(way: { readonly x: number; readonly y: number; readonly z: number } | null, shadows: boolean): void {
+    const key = JSON.stringify([way, shadows]);
+    if (key === JSON.stringify([this.sunWay, this.shadows])) return;
+    this.sunWay = way;
+    this.shadows = shadows && way !== null && way.z > 0;
+    this.renderer.shadowMap.enabled = this.shadows;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.sun.castShadow = this.shadows;
+    this.shadowGround.visible = this.shadows;
+    this.placeSun();
+    this.castShadows();
+    // Materials compiled without shadows are compiled again with them.
+    this.scene.traverse((o) => {
+      const m = (o as THREE.Mesh).material;
+      for (const x of Array.isArray(m) ? m : m ? [m] : []) x.needsUpdate = true;
+    });
+    this.invalidate();
+  }
+
+  /** The sun where its way points, far over the model's middle, its shadow camera round the model. */
+  private placeSun(): void {
+    const c = this.ground.position;
+    const reach = Math.max(10, this.ground.scale.x / GROUND_SPAN);
+    if (!this.sunWay) {
+      this.sun.position.set(c.x - 8, 14, c.z + 10);
+      this.sun.target.position.copy(c);
+      this.sun.intensity = 1.5;
+      this.sky.intensity = 2.7;
+      return;
+    }
+    const w = this.sunWay;
+    // Plan (x, y, up) to three.js (x, up, −y).
+    this.sun.position.set(c.x + w.x * reach * 2, Math.max(0, c.y) + w.z * reach * 2, c.z - w.y * reach * 2);
+    this.sun.target.position.copy(c);
+    // Below the horizon no sun; low, a weaker one; the sky darker at night.
+    const up = Math.max(0, w.z);
+    this.sun.intensity = up > 0 ? 0.6 + 1.6 * Math.min(1, up * 2) : 0;
+    this.sky.intensity = 0.8 + 1.9 * Math.min(1, up * 3);
+    const cam = this.sun.shadow.camera;
+    cam.left = -reach * 1.5;
+    cam.right = reach * 1.5;
+    cam.top = reach * 1.5;
+    cam.bottom = -reach * 1.5;
+    cam.near = 0.5;
+    cam.far = reach * 6;
+    cam.updateProjectionMatrix();
+    this.shadowGround.position.set(c.x, c.y + 0.001, c.z);
+    this.shadowGround.scale.set(this.ground.scale.x, this.ground.scale.y, 1);
+  }
+
+  /** Every solid casts and takes shadows while they are on. */
+  private castShadows(): void {
+    for (const { group } of this.walls.values())
+      group.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) {
+          o.castShadow = this.shadows;
+          o.receiveShadow = this.shadows;
+        }
+      });
+  }
+
   /** The ground centred under the walls and floors shown, GROUND_SPAN times as wide, just under the lowest of them. */
   private placeGround(g: DerivedGeometry): void {
     const solids = [...g.solids.values()];
@@ -780,6 +858,8 @@ export class Scene3D {
     const lowest = Math.min(0, ...solids.map((s) => s.bottom), ...spanned.map((f) => f.bottom));
     this.ground.scale.set(size, size, 1);
     this.ground.position.set((x0 + x1) / 2, lowest - 0.002, -(y0 + y1) / 2);
+    this.placeSun();
+    if (this.shadows) this.castShadows();
   }
 
   /**

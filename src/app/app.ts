@@ -1466,6 +1466,8 @@ export class App {
   openSchedules: () => void = () => {};
   /** Opens the sections and elevations (ui/sections-dialog.ts), on one if given; set by the input layer. */
   openSections: (id?: string) => void = () => {};
+  /** Opens the site and its sun (ui/site-dialog.ts); set by the input layer. */
+  openSite: () => void = () => {};
   /** Opens the sheets (ui/sheets-dialog.ts), on one if given; set by the input layer. */
   openSheets: (id?: string) => void = () => {};
 

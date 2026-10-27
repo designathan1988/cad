@@ -1,6 +1,7 @@
 // The project document: only what the user decided. Thickness, heights, joins and geometry are
 // always derived from it.
 
+import type { Site } from './sun';
 import type { LayerSet, WallOverride } from './layer-sets';
 import type { Separator } from '../elements/separator/schema';
 import type { Curtain } from '../elements/curtain/schema';
@@ -125,6 +126,8 @@ export interface Doc {
   readonly layerSets?: readonly LayerSet[];
   /** Walls of a type filled in plan with a colour of their own (app/layer-sets.ts). */
   readonly overrides?: readonly WallOverride[];
+  /** Where it is and the sun shown (app/sun.ts); the view's fixed light when not set. */
+  readonly site?: Site;
   /** Sheets: papers with a title block and views placed on them (elements/sheet, app/sheets.ts). */
   readonly sheets?: readonly Sheet[];
 }

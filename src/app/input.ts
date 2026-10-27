@@ -1,6 +1,7 @@
 // Mouse and keyboard. Plan: wheel zooms at the cursor, middle button pans. 3D: wheel zooms at the
 // cursor, middle pans, Shift + middle or right rotates (OrbitControls). Left button is the tool's.
 
+import { showSite } from '../ui/site-dialog';
 import { showSections } from '../ui/sections-dialog';
 import { showSheets } from '../ui/sheets-dialog';
 import { showOverrides } from '../ui/overrides-dialog';
@@ -81,6 +82,7 @@ export function wireInput(app: App): void {
   app.openSchedules = () => showSchedulesDialog(app);
   app.openSections = (id) => showSections(app, id);
   app.openSheets = (id) => showSheets(app, id);
+  app.openSite = () => showSite(app);
   watchErrors(() => app.debugOpen && app.toggleDebug(true));
   app.openWallTypes = (typeId) => showWallTypes(app, typeId);
   app.openMaterials = () => showMaterials(app);

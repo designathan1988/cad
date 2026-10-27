@@ -1877,6 +1877,16 @@ button.project-name:hover {
   background: var(--field);
   cursor: pointer;
 }
+/* The site dialog's hour through the day: the slider and the hour it is at. */
+.site-hour {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.site-hour input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .units-body {
   padding: var(--sp-3) var(--sp-4);
 }

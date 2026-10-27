@@ -1,5 +1,6 @@
 // One frame of the views: the plan's overlay (selection, previews, snaps, tags, temporary dimensions and their value fields) or the 3D's, and the panel. Functions over the app (app.ts delegates).
 
+import { sunDirection } from './sun';
 import { calibrateDraft } from './reference-ui';
 import { roomTagText } from './room-tag';
 import { overrideColours } from './layer-sets';
@@ -244,6 +245,8 @@ export function renderFrame(app: App): void {
     app.scene.setOrtho(ui.view3d.ortho);
     app.scene.setSection(ui.view3d.section);
     app.scene.sync(shown, ui.selection, preview, (id) => app.lift(id));
+    const site = app.store.get().site;
+    app.scene.setSun(site ? sunDirection(site) : null, site?.shadows ?? false);
     // Cut at the level's cut height: where it goes through the level's walls, their plan pieces.
     const doc = app.store.get();
     const cut = cutAt(doc.levels, ui.levelId, ui.view3d);

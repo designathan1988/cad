@@ -250,7 +250,7 @@ export function sheetCanvas(app: App, s: Sheet, dpi: number, page: { readonly n:
         ctx.strokeRect(f.x0, f.y0, v.w, v.h);
         ctx.restore();
       }
-      if (v.kind === 'plan' && image) northArrow(ctx, { x: f.x1 - 9, y: f.y0 + 10 }, ink, family);
+      if (v.kind === 'plan' && image) northArrow(ctx, { x: f.x1 - 9, y: f.y0 + 10 }, ink, family, doc.site?.north ?? 0);
       // Its title under it, underlined, with its scale.
       ctx.save();
       ctx.fillStyle = ink;
@@ -275,10 +275,14 @@ export function sheetCanvas(app: App, s: Sheet, dpi: number, page: { readonly n:
   return canvas;
 }
 
-/** A north arrow: a circle, an arrow up it (the plan's north is up the paper), "N" over it. */
-function northArrow(ctx: CanvasRenderingContext2D, c: Point2, ink: string, family: string): void {
+/** A north arrow: a circle, an arrow up it toward the site's north, "N" over it. */
+function northArrow(ctx: CanvasRenderingContext2D, c: Point2, ink: string, family: string, north: number): void {
   const r = 4;
   ctx.save();
+  // Turned with the site's north (counter-clockwise in plan; the paper's y runs down).
+  ctx.translate(c.x, c.y);
+  ctx.rotate((-north * Math.PI) / 180);
+  ctx.translate(-c.x, -c.y);
   ctx.strokeStyle = ink;
   ctx.fillStyle = ink;
   ctx.lineWidth = 0.25;

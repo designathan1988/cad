@@ -3,6 +3,7 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
+import { isSite } from '../app/sun';
 import { isSheet, isViewport } from '../elements/sheet/schema';
 import { isLayerSet, isWallOverride } from '../app/layer-sets';
 import { isVariableName } from '../core/measure';
@@ -263,6 +264,8 @@ export function repairProject(raw: unknown): ReadResult {
     // Its layer combinations and graphic overrides, the bad ones left out.
     ...(Array.isArray(raw.layerSets) && raw.layerSets.some(isLayerSet) ? { layerSets: (raw.layerSets as unknown[]).filter(isLayerSet) } : {}),
     ...(Array.isArray(raw.overrides) && raw.overrides.some(isWallOverride) ? { overrides: (raw.overrides as unknown[]).filter(isWallOverride) } : {}),
+    // Its site and sun, when it set one that is one.
+    ...(isSite(raw.site) ? { site: raw.site } : {}),
     // Its sheets, the bad ones left out (and on each, the views that are not views).
     ...(Array.isArray(raw.sheets) ? { sheets: (raw.sheets as unknown[]).flatMap((x): unknown[] => (isObject(x) && Array.isArray(x.viewports) ? [{ ...x, viewports: (x.viewports as unknown[]).filter(isViewport) }] : [])).filter(isSheet) } : {}),
     // Its named lengths, the bad ones left out.
