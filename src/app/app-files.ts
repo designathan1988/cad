@@ -1,5 +1,7 @@
 // The project as a file: saving, opening, a new one, and the exports (GLB, DXF). Functions over the app (app.ts delegates).
 
+import { newId } from '../core/id';
+import { importIfc } from '../io/import-ifc';
 import { exportIfc as ifcOf } from '../io/export-ifc';
 import { deriveGeometry } from './geometry';
 import type { KindKey } from '../elements/contract';
@@ -158,9 +160,28 @@ export function newProject(app: App): void {
   app.toast(t('toast.newUndo'));
 }
 
-/** Opens a project file in place of the current project, as one undo step. */
+/**
+ * Opens a project file in place of the current project, as one undo step. An IFC file (io/import-ifc.ts)
+ * becomes a project of what has an element here; what has none is said.
+ */
 export async function openFile(app: App, file: File): Promise<void> {
-  const r = readProject(await file.text());
+  const text = await file.text();
+  let ifcSaid: string | null = null;
+  let source = text;
+  if (/\.ifc$/i.test(file.name) || text.startsWith('ISO-10303-21')) {
+    try {
+      const imported = importIfc(text, newId);
+      // Read as a saved project is, so it is checked the same way.
+      source = JSON.stringify({ ...imported.doc, name: imported.doc.name || file.name.replace(/\.ifc$/i, '') });
+      const left = Object.entries(imported.skipped).map(([cls, n]) => `${n} ${cls}`).join(', ');
+      const m = imported.made;
+      ifcSaid = t(left ? 'ifc.importedSome' : 'ifc.imported', { walls: m.walls, doors: m.doors, windows: m.windows, rooms: m.rooms, floors: m.floors, levels: m.levels, left });
+    } catch (e) {
+      app.ui.error = t('ifc.unreadable', { why: e instanceof Error ? e.message : String(e) });
+      return app.renderChrome();
+    }
+  }
+  const r = readProject(source);
   if (!r.ok) {
     app.ui.error = t(`open.${r.error}`);
     return app.renderChrome();
@@ -177,7 +198,7 @@ export async function openFile(app: App, file: File): Promise<void> {
   if (app.db) {
     // A new project of the list: the open one stays there (projects.ts).
     await importAsProject(app, app.db, opened);
-    app.toast(fixed > 1 ? t('toast.importedFixed', { n: fixed }) : fixed === 1 ? t('toast.importedFixedOne') : t('toast.imported'));
+    app.toast(ifcSaid ?? (fixed > 1 ? t('toast.importedFixed', { n: fixed }) : fixed === 1 ? t('toast.importedFixedOne') : t('toast.imported')));
     return;
   }
   // One undo step, like any other change: opening by mistake never loses the project that was open.
@@ -185,5 +206,5 @@ export async function openFile(app: App, file: File): Promise<void> {
   app.framed.plan = false;
   app.framed['3d'] = false;
   app.frameAll();
-  app.toast(fixed > 1 ? t('toast.openedFixed', { n: fixed }) : fixed === 1 ? t('toast.openedFixedOne') : t('toast.openedUndo'));
+  app.toast(ifcSaid ?? (fixed > 1 ? t('toast.openedFixed', { n: fixed }) : fixed === 1 ? t('toast.openedFixedOne') : t('toast.openedUndo')));
 }

@@ -44,7 +44,7 @@ export function buildShell(root: HTMLElement) {
   const lang = el('button', { type: 'button', class: 'icon-btn text-btn' });
   const theme = iconButton('moon');
   const panelToggle = iconButton('panel');
-  const fileInput = el('input', { type: 'file', accept: '.json,application/json', hidden: '' });
+  const fileInput = el('input', { type: 'file', accept: '.json,application/json,.ifc', hidden: '' });
   right.append(commands, shortcuts, lang, theme, panelToggle, fileInput);
   top.append(left, center, right);
 

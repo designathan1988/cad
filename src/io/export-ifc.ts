@@ -128,6 +128,7 @@ export function exportIfc(doc: Doc, g: DerivedGeometry, naming: IfcNaming, now: 
   const world = s.add(`IFCAXIS2PLACEMENT3D(${origin},${zUp},${xAxis})`);
   const context = s.add(`IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,${world},$)`);
   const body = s.add(`IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,${context},$,.MODEL_VIEW.,$)`);
+  const axisContext = s.add(`IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Axis','Model',*,*,*,*,${context},$,.GRAPH_VIEW.,$)`);
   const units = s.add(
     `IFCUNITASSIGNMENT(${list([
       s.add('IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.)'),
@@ -199,8 +200,15 @@ export function exportIfc(doc: Doc, g: DerivedGeometry, naming: IfcNaming, now: 
     const points = s.add(`IFCCARTESIANPOINTLIST3D((${coords.join(',')}))`);
     return styled(s.add(`IFCTRIANGULATEDFACESET(${points},$,$,(${faces.join(',')}),$)`), hex);
   };
-  const shape = (items: readonly string[], type: 'SweptSolid' | 'Tessellation') =>
-    s.add(`IFCPRODUCTDEFINITIONSHAPE($,$,(${s.add(`IFCSHAPEREPRESENTATION(${body},'Body','${type}',${list(items)})`)}))`);
+  /** Its body; a wall's also its axis, its reference line from its start to its end along its own x. */
+  const shape = (items: readonly string[], type: 'SweptSolid' | 'Tessellation', axis?: number) => {
+    const reps = [s.add(`IFCSHAPEREPRESENTATION(${body},'Body','${type}',${list(items)})`)];
+    if (axis !== undefined) {
+      const line = s.add(`IFCPOLYLINE((${s.add('IFCCARTESIANPOINT((0.,0.))')},${s.add(`IFCCARTESIANPOINT((${stepReal(axis)},0.))`)}))`);
+      reps.unshift(s.add(`IFCSHAPEREPRESENTATION(${axisContext},'Axis','Curve2D',(${line}))`));
+    }
+    return s.add(`IFCPRODUCTDEFINITIONSHAPE($,$,${list(reps)})`);
+  };
   const pset = (key: string, of: string, name: string, props: readonly string[]) => {
     const set = s.add(`IFCPROPERTYSET(${guid(`pset:${key}:${name}`)},$,${stepString(name)},$,${list(props)})`);
     s.add(`IFCRELDEFINESBYPROPERTIES(${guid(`rel:pset:${key}:${name}`)},$,$,$,(${of}),${set})`);
@@ -252,7 +260,7 @@ export function exportIfc(doc: Doc, g: DerivedGeometry, naming: IfcNaming, now: 
       items = f ? [f] : [];
     } else items = sol.blocks.map((b) => prism(b.polygon.map(local), b.bottom, b.top, colourOf(b.layerIndex)));
     if (items.length === 0) continue;
-    const e = s.add(`IFCWALL(${guid(w.id)},$,${stepString(naming.wall(wallNo))},$,$,${placement({ x: w.start.x, y: w.start.y, z: 0 }, dir)},${shape(items, sloped ? 'Tessellation' : 'SweptSolid')},${stepString(w.id)},.STANDARD.)`);
+    const e = s.add(`IFCWALL(${guid(w.id)},$,${stepString(naming.wall(wallNo))},$,$,${placement({ x: w.start.x, y: w.start.y, z: 0 }, dir)},${shape(items, sloped ? 'Tessellation' : 'SweptSolid', len)},${stepString(w.id)},.STANDARD.)`);
     wallEntities.set(w.id, e);
     contain(w.levelId, e);
     const wt = wallTypes.get(w.wallTypeId);
