@@ -96,6 +96,9 @@ export const BUILT_IN_MATERIALS: readonly Material[] = [
   { id: 'screen', name: '', color: '#0e1013', roughness: 0.1, metalness: 0.2, cut: 'solid' },
 ];
 
+/** The materials seen through in the views, each with its opacity: glass, frosted glass, water. */
+export const SEE_THROUGH: Readonly<Record<string, number>> = { glass: 0.45, frostedGlass: 0.8, water: 0.7 };
+
 /** A material for a name an older file used and the built-in ones do not have: grey, plain. */
 export const materialFor = (id: MaterialId): Material => BUILT_IN_MATERIALS.find((m) => m.id === id) ?? { id, name: id, color: '#9c9a94', roughness: 0.9, metalness: 0, cut: 'solid' };
 

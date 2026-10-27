@@ -7,6 +7,7 @@
 
 import { creaseEdges, cutGeometries, pieceGeometry } from '../elements/kinds/object';
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import type { App } from '../app/app';
 import { addDefinition, updateDefinition } from '../elements/object/commands';
 import { evaluateObject } from '../elements/object/evaluate';
@@ -535,7 +536,12 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
     ) {
       this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
       this.renderer.setPixelRatio(window.devicePixelRatio || 1);
-      this.scene.add(new THREE.HemisphereLight(0xffffff, 0x8890a0, 1.6));
+      // A room's light around it, as the realistic 3D has: what metals, mirrors and glazes reflect.
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      this.scene.environmentIntensity = 0.4;
+      pmrem.dispose();
+      this.scene.add(new THREE.HemisphereLight(0xffffff, 0x8890a0, 0.9));
       const sun = new THREE.DirectionalLight(0xffffff, 1.4);
       sun.position.set(3, 6, 4);
       this.scene.add(sun, this.group);

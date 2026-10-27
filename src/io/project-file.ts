@@ -3,7 +3,7 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
-import { LIBRARY_V50 } from '../elements/object/library-living';
+import { FAMILY_BATCHES } from '../elements/object/library-families';
 import { isSite } from '../app/sun';
 import { isSheet, isViewport } from '../elements/sheet/schema';
 import { isLayerSet, isRoomOverride, isWallOverride } from '../app/layer-sets';
@@ -112,7 +112,7 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 42: tags by elements with their values (`tags`, elements/tag). Older files have none.
  * Version 43: a room's interior elevations, marks kept to a level (`levelId`, elements/section). Older marks have none: every level.
  */
-export const CURRENT_VERSION = 50;
+export const CURRENT_VERSION = 51;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -315,8 +315,9 @@ export function repairProject(raw: unknown): ReadResult {
   // Version 49 put handles on the kitchen's doors and the washbasin's cabinet: the library's own, still
   // as they came, take them.
   const since49 = raw.version < 49 ? since48.map((d) => LIBRARY_NOW.find((l) => (l.id === KITCHEN.id || l.id === WASHBASIN.id) && l.id === d.id && JSON.stringify(before49(l)) === JSON.stringify(d)) ?? d) : since48;
-  // Version 50 brought the living room's families (library-living.ts): a file from before gets those it has not.
-  const definitions = raw.version < 50 ? [...since49, ...LIBRARY_V50.filter((d) => !since49.some((k) => k.id === d.id))] : since49;
+  // From version 50 each batch of families (library-families.ts): a file from before a batch gets its families it has not.
+  const fileVersion = raw.version;
+  const definitions = FAMILY_BATCHES.reduce((list, b) => (fileVersion < b.version ? [...list, ...b.families.filter((d) => !list.some((k) => k.id === d.id))] : list), since49);
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));

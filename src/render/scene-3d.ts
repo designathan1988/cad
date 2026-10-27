@@ -17,7 +17,7 @@ import type { RenderQuality, VisualStyle } from '../app/view-3d';
 import type { Point2 } from '../core/vector';
 import type { DerivedGeometry, OpeningSolid, WallSolid } from '../app/geometry';
 import type { WallId } from '../elements/wall/schema';
-import type { Material } from '../elements/material/schema';
+import { type Material, SEE_THROUGH } from '../elements/material/schema';
 import { blockPaint, type Paint, wallMeshKey } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
 import { prism, shownPrism, slopedPrism, toThree } from './prisms';
@@ -284,6 +284,8 @@ export class Scene3D {
   private readonly tracedPatterns = new WeakMap<THREE.Material, THREE.MeshStandardMaterial>();
   /** The traced view's glass: clear, transmitting, of window glass's index (1.5). */
   private readonly tracedGlass = new THREE.MeshPhysicalMaterial({ color: 0xf2f8fa, roughness: 0.02, metalness: 0, transmission: 1, ior: 1.5, thickness: 0.006, side: THREE.DoubleSide });
+  /** Frosted glass, traced: light through it, scattered. */
+  private readonly tracedFrosted = new THREE.MeshPhysicalMaterial({ color: 0xf4f8fa, roughness: 0.45, metalness: 0, transmission: 1, ior: 1.5, thickness: 0.006, side: THREE.DoubleSide });
   private traced = { content: -1, camera: '', light: '' };
   /** Bumped whenever an element's meshes are made or dropped: the tracer's scene is built again. */
   private contentVersion = 0;
@@ -403,8 +405,11 @@ export class Scene3D {
     this.setPattern(x, m);
     x.roughness = m.roughness;
     x.metalness = m.metalness;
-    // The project's glass is seen through (a curtain wall's panels, an object's glass part).
-    const clear = m.id === 'glass';
+    // The project's glass is seen through (a curtain wall's panels, an object's glass part), and so are
+    // frosted glass and water, less (SEE_THROUGH).
+    const clear = SEE_THROUGH[m.id] !== undefined;
+    x.userData.opacity = SEE_THROUGH[m.id];
+    x.userData.frosted = m.id === 'frostedGlass';
     if (x.userData.clear !== clear) {
       x.userData.clear = clear;
       this.faint(x, this.xrayOn);
@@ -437,7 +442,7 @@ export class Scene3D {
     const on = faint && m.userData.kept !== true;
     const clear = m.userData.clear === true;
     m.transparent = on || clear;
-    m.opacity = on ? XRAY_OPACITY : clear ? GLASS_OPACITY : 1;
+    m.opacity = on ? XRAY_OPACITY : clear ? ((m.userData.opacity as number | undefined) ?? GLASS_OPACITY) : 1;
     m.depthWrite = !on && !clear;
     m.needsUpdate = true;
   }
@@ -756,7 +761,7 @@ export class Scene3D {
           const pattern = (material.userData.pattern as PatternUniforms | undefined)?.uPatMap.value ? (material.userData.pattern as PatternUniforms) : null;
           // Glass as glass (light through it, bent and reflected), not as a see-through surface.
           const glass = material === this.materials.glass || material.userData.clear === true;
-          out.add(new THREE.Mesh(pattern ? patternUv(geometry, pattern) : geometry, glass ? this.tracedGlass : pattern ? this.tracedPattern(material as THREE.MeshStandardMaterial) : material));
+          out.add(new THREE.Mesh(pattern ? patternUv(geometry, pattern) : geometry, glass ? (material.userData.frosted === true ? this.tracedFrosted : this.tracedGlass) : pattern ? this.tracedPattern(material as THREE.MeshStandardMaterial) : material));
         }
       });
     // The luminaires' lights, where they are.

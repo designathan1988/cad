@@ -408,6 +408,3 @@ export const POUF: ObjectDefinition = {
 };
 
 export const LIBRARY_LIVING: readonly ObjectDefinition[] = [ARMCHAIR, CHAISE_SOFA, COFFEE_TABLE, SIDE_TABLE, TELEVISION, TV_UNIT, SIDEBOARD, RUG, POUF];
-
-/** The families version 50 of the project file brought (io/project-file.ts gives them to an older file). */
-export const LIBRARY_V50: readonly ObjectDefinition[] = [...LIBRARY_LIVING];

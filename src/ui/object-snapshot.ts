@@ -3,6 +3,8 @@
 // picture, made the first time one is asked for, so the dialog's redraws do not each take a context.
 
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { SEE_THROUGH } from '../elements/material/schema';
 import type { Doc } from '../app/document';
 import { cutGeometries } from '../elements/kinds/object';
 import { evaluateObject } from '../elements/object/evaluate';
@@ -19,7 +21,12 @@ function stageOf(): Stage | null {
   // Read back as an image right after drawing: the buffer kept until then.
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
   const scene = new THREE.Scene();
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x8890a0, 1.6));
+  // A room's light around it, as the realistic 3D has: what metals, mirrors and glazes reflect.
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.4;
+  pmrem.dispose();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8890a0, 0.9));
   const sun = new THREE.DirectionalLight(0xffffff, 1.4);
   sun.position.set(3, 6, 4);
   const group = new THREE.Group();
@@ -43,8 +50,8 @@ export function objectSnapshot(def: ObjectDefinition, doc: Doc, w: number, h: nu
   const box = new THREE.Box3();
   for (const { piece: p, geometry } of cutGeometries(ev.pieces)) {
     // Glass seen through, as in the 3D view (scene-3d.ts).
-    const clear = p.material.id === 'glass';
-    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: p.material.color, roughness: p.material.roughness, metalness: p.material.metalness, transparent: clear, opacity: clear ? 0.45 : 1 }));
+    const see = SEE_THROUGH[p.material.id];
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: p.material.color, roughness: p.material.roughness, metalness: p.material.metalness, transparent: see !== undefined, opacity: see ?? 1 }));
     s.group.add(mesh);
     box.expandByObject(mesh);
   }
