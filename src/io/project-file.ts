@@ -5,6 +5,7 @@
 
 import { MORE_WALL_TYPES } from '../elements/wall/library-types';
 import { FAMILY_BATCHES } from '../elements/object/library-families';
+import { SCHOOL_DESKS } from '../elements/object/library-sectors';
 import { isSite } from '../app/sun';
 import { isSheet, isViewport } from '../elements/sheet/schema';
 import { isLayerSet, isRoomOverride, isWallOverride } from '../app/layer-sets';
@@ -113,7 +114,7 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 42: tags by elements with their values (`tags`, elements/tag). Older files have none.
  * Version 43: a room's interior elevations, marks kept to a level (`levelId`, elements/section). Older marks have none: every level.
  */
-export const CURRENT_VERSION = 60;
+export const CURRENT_VERSION = 61;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -323,7 +324,10 @@ export function repairProject(raw: unknown): ReadResult {
   const since49 = raw.version < 49 ? since48.map((d) => LIBRARY_NOW.find((l) => (l.id === KITCHEN.id || l.id === WASHBASIN.id) && l.id === d.id && JSON.stringify(before49(l)) === JSON.stringify(d)) ?? d) : since48;
   // From version 50 each batch of families (library-families.ts): a file from before a batch gets its families it has not.
   const fileVersion = raw.version;
-  const definitions = FAMILY_BATCHES.reduce((list, b) => (fileVersion < b.version ? [...list, ...b.families.filter((d) => !list.some((k) => k.id === d.id))] : list), since49);
+  const batched = FAMILY_BATCHES.reduce((list, b) => (fileVersion < b.version ? [...list, ...b.families.filter((d) => !list.some((k) => k.id === d.id))] : list), since49);
+  // Version 60 had the school desks on two panel legs and a chair on two sled sides: a file of it gets the
+  // four-legged ones (version 60 was out for minutes, so no one changed them).
+  const definitions = fileVersion === 60 ? batched.map((d) => (d.id === SCHOOL_DESKS.id ? SCHOOL_DESKS : d)) : batched;
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));
