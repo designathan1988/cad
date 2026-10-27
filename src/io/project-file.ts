@@ -25,7 +25,7 @@ const LIBRARY_NOW = [...LIBRARY, ...LIBRARY_MORE];
 /** The library's tree and potted plant as they were before version 45 (cones), by their parts. */
 const isOldTree = (d: ObjectDefinition) => d.parts.length === 3 && d.parts.every((p) => p.kind === 'cylinder');
 const isOldPotPlant = (d: ObjectDefinition) => d.parts.length === 2 && d.parts.every((p) => p.kind === 'cylinder');
-import { LIBRARY_LIGHTS } from '../elements/object/library-lights';
+import { LIBRARY_LIGHTS, POINT_LIGHT } from '../elements/object/library-lights';
 import { definitionMaterials } from '../elements/object/materials';
 import { isDefinition } from '../elements/object/valid';
 import { objectKind } from '../elements/kinds/object';
@@ -108,7 +108,7 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 42: tags by elements with their values (`tags`, elements/tag). Older files have none.
  * Version 43: a room's interior elevations, marks kept to a level (`levelId`, elements/section). Older marks have none: every level.
  */
-export const CURRENT_VERSION = 47;
+export const CURRENT_VERSION = 48;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -302,10 +302,12 @@ export function repairProject(raw: unknown): ReadResult {
   const since46 = raw.version < 46 ? since45.map((d) => ROUNDED.find((r) => r.id === d.id && JSON.stringify(unrounded(before47(r))) === JSON.stringify(d)) ?? d) : since45;
   // Version 47 gave the furniture its own wood and the chair an open back: the library's own, still
   // as they came, take the new ones (the chair by its parts, as the tree above).
-  const definitions =
+  const since47 =
     raw.version < 47
       ? since46.map((d) => LIBRARY_NOW.find((l) => l.id === d.id && JSON.stringify(before47(l)) === JSON.stringify(d)) ?? (d.id === CHAIR.id && isOldChair(d) ? CHAIR : d))
       : since46;
+  // Version 48 drew the point of light as a bulb and its socket (it was a cylinder).
+  const definitions = raw.version < 48 ? since47.map((d) => (d.id === POINT_LIGHT.id && d.parts.length === 1 && d.parts[0]!.kind === 'cylinder' ? POINT_LIGHT : d)) : since47;
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));

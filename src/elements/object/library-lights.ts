@@ -94,8 +94,12 @@ export const POINT_LIGHT: ObjectDefinition = {
   id: 'def_point_light',
   name: { pt: 'Ponto de luz', en: 'Point of light' },
   category: 'lighting',
-  params: [len('altura', 'Altura', 'Height', 2.4, 0.1, 10), ...light(10, 3000), mat('matBulbo', 'Bulbo', 'Bulb', 'glass')],
-  parts: [{ kind: 'cylinder', name: { pt: 'Bulbo', en: 'Bulb' }, x: 0, y: 0, z: 'altura - 0.03', r: 0.03, h: 0.06, material: 'matBulbo' }],
+  params: [len('altura', 'Altura', 'Height', 2.4, 0.1, 10), ...light(10, 3000), mat('matBulbo', 'Bulbo', 'Bulb', 'glass'), mat('matSoquete', 'Soquete', 'Socket', 'ceramic')],
+  // A bulb, round, hanging from its socket.
+  parts: [
+    { kind: 'sphere', name: { pt: 'Bulbo', en: 'Bulb' }, x: 0, y: 0, z: 'altura - 0.035', r: 0.03, h: 0.07, material: 'matBulbo' },
+    { kind: 'cylinder', name: { pt: 'Soquete', en: 'Socket' }, x: 0, y: 0, z: 'altura + 0.03', r: 0.014, h: 0.035, material: 'matSoquete' },
+  ],
   handles: [{ param: 'altura', axis: 'z', at: [0, 0, 'altura'] }],
   types: [{ id: 'std', name: { pt: 'Padrão', en: 'Standard' }, values: {} }],
   light: { x: 0, y: 0, z: 'altura', watts: 'potencia', kelvin: 'cor' },

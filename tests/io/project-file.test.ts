@@ -216,4 +216,13 @@ describe('version 5', () => {
     expect(r.doc.definitions.find((d) => d.id === chair.id)).toEqual(chair);
     expect(r.doc.materials.some((m) => m.id === 'woodVeneer')).toBe(true);
   });
+
+  it("a version 47 file's point of light, a cylinder, becomes the bulb and its socket", () => {
+    const doc = newDocument();
+    const point = doc.definitions.find((d) => d.id === 'def_point_light')!;
+    expect(point.parts.map((p) => p.kind)).toEqual(['sphere', 'cylinder']);
+    const cylinder = { ...point, parts: [{ kind: 'cylinder', name: { pt: 'Bulbo', en: 'Bulb' }, x: 0, y: 0, z: 'altura - 0.03', r: 0.03, h: 0.06, material: 'matBulbo' }] };
+    const r = readProject(JSON.stringify({ ...doc, version: 47, definitions: doc.definitions.map((d) => (d.id === point.id ? cylinder : d)) }));
+    expect(r.ok && r.doc.definitions.find((d) => d.id === point.id)).toEqual(point);
+  });
 });
