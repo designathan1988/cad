@@ -8,6 +8,7 @@ import { LIBRARY_BEDROOM } from './library-bedroom';
 import { LIBRARY_KITCHEN } from './library-kitchen';
 import { LIBRARY_BATH } from './library-bath';
 import { LIBRARY_OFFICE } from './library-office';
+import { LIBRARY_OUTDOOR } from './library-outdoor';
 
 export const FAMILY_BATCHES: readonly { readonly version: number; readonly families: readonly ObjectDefinition[] }[] = [
   { version: 50, families: LIBRARY_LIVING },
@@ -15,6 +16,7 @@ export const FAMILY_BATCHES: readonly { readonly version: number; readonly famil
   { version: 52, families: LIBRARY_KITCHEN },
   { version: 53, families: LIBRARY_BATH },
   { version: 54, families: LIBRARY_OFFICE },
+  { version: 55, families: LIBRARY_OUTDOOR },
 ];
 
 export const LIBRARY_FAMILIES: readonly ObjectDefinition[] = FAMILY_BATCHES.flatMap((b) => b.families);
