@@ -11,6 +11,7 @@ import { addLines, deleteLine, setBase, setBdi, setCub, setExtras, setOwnPrice, 
 import { guessFromName, itemsFromRows } from '../costs/price-base';
 import { type BudgetLine, costsOf, type Measure, QUANTITY_OFS, type QuantityOf } from '../costs/schema';
 import { readCsv, readXlsx } from '../io/xlsx';
+import { abcRows, type Cell, csvOf, scheduleRows, sheetRows } from '../costs/tables';
 import { el, numberField, segmented, select } from './controls';
 import { openProjectDialog } from './dialog';
 import { getLang, materialLabel, type MessageKey, num, t } from './i18n';
@@ -36,17 +37,6 @@ const MEASURE_OF: Readonly<Record<QuantityOf, Measure>> = {
   built: 'area',
   fixed: 'count',
 };
-
-/** A CSV as a spreadsheet in the interface's language reads it (as the schedules' CSV, app/schedules.ts). */
-function csv(rows: readonly (readonly (string | number)[])[]): string {
-  const pt = getLang() === 'pt';
-  const sep = pt ? ';' : ',';
-  const cell = (v: string | number) => {
-    if (typeof v === 'number') return pt ? v.toFixed(2).replace('.', ',') : v.toFixed(2);
-    return /[";,\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
-  };
-  return `﻿${rows.map((r) => r.map(cell).join(sep)).join('\r\n')}\r\n`;
-}
 
 /** A text field committed on Enter or on leaving it. */
 function textCommit(value: string, label: string, commit: (v: string) => void, cls = 'text-field'): HTMLInputElement {
@@ -93,9 +83,10 @@ export function showBudget(app: App, first: Tab = 'sheet'): void {
       x.addEventListener('click', run);
       return x;
     };
-    const save = (name: string, rows: (string | number)[][]) => {
+    const say = (k: string, v?: Readonly<Record<string, string | number>>) => t(k as MessageKey, v);
+    const save = (name: string, rows: Cell[][]) => {
       const file = `${app.fileBase()} - ${name}.csv`;
-      app.download(file, csv(rows), 'text/csv;charset=utf-8');
+      app.download(file, csvOf(rows, getLang() === 'pt'), 'text/csv;charset=utf-8');
       app.toast(t('schedule.saved', { file }));
     };
     let body: HTMLElement;
@@ -266,16 +257,7 @@ export function showBudget(app: App, first: Tab = 'sheet'): void {
         extras,
         totals,
       );
-      saveBtn = btn(t('schedule.csv'), () =>
-        save(t('budget.tab.sheet'), [
-          [t('budget.code'), t('budget.description'), t('budget.unit'), t('budget.quantity'), t('budget.price'), t('budget.total')],
-          ...b.rows.map((r) => [r.line.code, r.line.description, r.line.unit, r.quantity, r.price?.price ?? '', r.total ?? '']),
-          ['', t('budget.direct'), '', '', '', b.direct],
-          ['', t('budget.bdiValue', { p: num(costs.bdi, 2) }), '', '', '', b.bdi],
-          ...costs.extras.map((x) => ['', x.name, '', '', '', x.value]),
-          ['', t('budget.grand'), '', '', '', b.total],
-        ]),
-      );
+      saveBtn = btn(t('schedule.csv'), () => save(t('budget.tab.sheet'), sheetRows(doc, b, say)));
     } else if (tab === 'abc') {
       const abc = abcOf(b);
       body = el(
@@ -305,9 +287,7 @@ export function showBudget(app: App, first: Tab = 'sheet'): void {
         ),
         ...(abc.length === 0 ? [el('p', { class: 'tour-empty' }, t('budget.noPriced'))] : []),
       );
-      saveBtn = btn(t('schedule.csv'), () =>
-        save(t('budget.tab.abc'), [[t('budget.rank'), t('budget.code'), t('budget.description'), t('budget.total'), t('budget.share'), t('budget.cumulative'), t('budget.class')], ...abc.map((a, i) => [String(i + 1), a.row.line.code, a.row.line.description, a.row.total!, a.share, a.cumulative, a.cls])]),
-      );
+      saveBtn = btn(t('schedule.csv'), () => save(t('budget.tab.abc'), abcRows(b, say)));
     } else {
       const s = scheduleOf(doc, b);
       const monthHeads = s.months.map((_, i) => el('th', { class: 'num' }, t('budget.month', { n: i + 1 })));
@@ -337,14 +317,7 @@ export function showBudget(app: App, first: Tab = 'sheet'): void {
         btn(t('budget.addStage'), () => app.store.dispatch(setStages([...costs.stages, { id: newId('stage'), name: t('budget.stageDefault'), start: 1, months: 1 }]))),
         el('p', { class: 'tour-empty' }, t('budget.scheduleNote')),
       );
-      saveBtn = btn(t('schedule.csv'), () =>
-        save(t('budget.tab.schedule'), [
-          [t('budget.stage'), t('budget.start'), t('budget.months'), t('budget.total'), ...s.months.map((_, i) => t('budget.month', { n: i + 1 }))],
-          ...s.rows.map((r) => [r.stage.name, String(r.stage.start), String(r.stage.months), r.cost, ...r.months]),
-          [t('budget.perMonth'), '', '', '', ...s.months],
-          [t('budget.cumulativeMonth'), '', '', '', ...s.cumulative],
-        ]),
-      );
+      saveBtn = btn(t('schedule.csv'), () => save(t('budget.tab.schedule'), scheduleRows(doc, b, say)));
     }
     const closeBtn = btn(t('help.close'), close);
     closeBtn.dataset.focus = 'close';

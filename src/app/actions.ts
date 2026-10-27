@@ -225,6 +225,7 @@ export function appActions(app: App, open: Openers): Action[] {
     })),
     make('level.edit', 'levels.edit', levels, open.levels),
     // The norms the model is checked against, and what is outside them.
+    make('approval.open', 'approval.open', edit, () => app.openApproval(), { keywords: 'aprovação approval prefeitura city hall alvará permit habite-se RRT ART CNO cartório registry documentos documents memorial pasta folder' }),
     make('budget.open', 'budget.open', edit, () => app.openBudget(), { keywords: 'orçamento budget custo cost CUB SINAPI BDI curva ABC cronograma físico-financeiro schedule preço price' }),
     make('lot.edit', 'lot.open', edit, () => app.openLot(), { keywords: 'lote lot terreno zona zone quadro de áreas area table taxa de ocupação coeficiente aproveitamento permeabilidade recuo setback gabarito matrícula' }),
     make('rules.report', 'rules.report', edit, () => app.downloadCompliance(), { keywords: 'relatório conformidade compliance report normas norms pendências' }),

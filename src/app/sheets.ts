@@ -376,9 +376,15 @@ export const sheetDpi = (paper: string): number => (paper === 'A4' || paper === 
 
 /** The sheets as one PDF, a page each, downloaded: the whole set, or the one given. */
 export async function downloadSheetsPdf(app: App, only?: string): Promise<void> {
+  const made = await sheetsPdf(app, only);
+  if (made) app.download(made.file, new Blob([made.pdf as BlobPart], { type: 'application/pdf' }), 'application/pdf');
+}
+
+/** The sheets (or one) as a PDF and its file's name; null when there are none. */
+export async function sheetsPdf(app: App, only?: string): Promise<{ pdf: Uint8Array; file: string } | null> {
   const all = sheetsOf(app.store.get());
   const chosen = only ? all.filter((s) => s.id === only) : all;
-  if (chosen.length === 0) return;
+  if (chosen.length === 0) return null;
   const pages = [];
   for (const s of chosen) {
     const canvas = sheetCanvas(app, s, sheetDpi(s.paper), { n: all.indexOf(s) + 1, of: all.length });
@@ -391,7 +397,7 @@ export async function downloadSheetsPdf(app: App, only?: string): Promise<void> 
   const title = one ? `${doc.name || t('app.untitled')} · ${one.number} ${one.name}` : `${doc.name || t('app.untitled')} · ${t('sheet.set')}`;
   const pdf = pdfOfPages(pages, title);
   const file = one ? `${app.fileBase()}-${one.number}.pdf` : `${app.fileBase()}-${t('sheet.setFile')}.pdf`;
-  app.download(file, new Blob([pdf as BlobPart], { type: 'application/pdf' }), 'application/pdf');
+  return { pdf, file };
 }
 
 /**

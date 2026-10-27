@@ -80,6 +80,7 @@ import { checkRules, type Finding, LOT_ELEMENT } from '../rules/check';
 import { complianceHtml } from './documents';
 import { showLot } from '../ui/lot-dialog';
 import { showBudget } from '../ui/budget-dialog';
+import { showApproval } from '../ui/approval-dialog';
 import { type Rule, rulesOf } from '../rules/schema';
 import { showRules } from '../ui/rules-dialog';
 import { renderDebugPanel } from '../ui/debug-panel';
@@ -1653,6 +1654,11 @@ export class App {
   /** The CUB estimate, the budget, its ABC curve and schedule (ui/budget-dialog.ts). */
   openBudget(): void {
     showBudget(this);
+  }
+
+  /** The approval journey and the project's documents (ui/approval-dialog.ts). */
+  openApproval(): void {
+    showApproval(this);
   }
 
   /** An element as a report names it: a room by its number and name, a wall by its number, the lot. */

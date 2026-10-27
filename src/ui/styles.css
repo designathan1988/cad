@@ -2466,6 +2466,58 @@ button.project-name:hover {
 .lot-body .budget-total {
   margin-top: var(--sp-3);
 }
+/* The approval dialog (ui/approval-dialog.ts): its summary, the steps scrolling, each with its documents. */
+.approval-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  align-items: center;
+  padding: 0 var(--sp-4) var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.approval-scroll {
+  max-height: 58vh;
+  overflow: auto;
+  padding: 0 var(--sp-4) var(--sp-3);
+}
+.approval-step {
+  padding: var(--sp-2) 0 var(--sp-3);
+  border-bottom: var(--line) solid var(--border);
+}
+.approval-step-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  align-items: center;
+  margin-bottom: var(--sp-2);
+}
+.approval-step-head > .text-field {
+  flex: 1 1 var(--lot-col);
+  font-weight: 600;
+}
+.approval-est {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+.approval-est .num-field {
+  width: calc(7 * var(--sp-4));
+}
+.approval-docs td {
+  white-space: normal;
+  vertical-align: top;
+}
+.approval-docs td:first-child {
+  width: 40%;
+}
+.approval-docs .text-field {
+  width: 100%;
+}
+.approval-done .text-field,
+.approval-na .text-field {
+  color: var(--text-2);
+}
 /* The lot dialog (ui/lot-dialog.ts): its fields two to a row, then the table of areas. */
 .lot-body {
   max-height: 70vh;

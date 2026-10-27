@@ -31,12 +31,22 @@ export function openProjectDialog(app: App, render: (close: () => void) => HTMLE
     const usable = (x: HTMLElement | null) => (x && !(x as HTMLButtonElement).disabled ? x : null);
     (usable(find(key)) ?? usable(find(fallback())) ?? find('close'))?.focus();
   };
+  const focusables = () => [...back.querySelectorAll<HTMLElement>('input, select, textarea, button, summary')];
   const redraw = () => {
     stale = false;
     const a = document.activeElement;
-    const key = a instanceof HTMLElement && back.contains(a) ? a.dataset.focus : undefined;
+    const inside = a instanceof HTMLElement && back.contains(a);
+    const key = inside ? a.dataset.focus : undefined;
+    // A control with no focus key: its place among the controls, and its kind. A list chosen with the
+    // arrow keys took one step, then the focus fell to the page and the next arrows did nothing.
+    const at = inside && key === undefined ? focusables().indexOf(a) : -1;
+    const tag = inside ? a.tagName : '';
     back.replaceChildren(render(close));
     if (key !== undefined) focusKey(key);
+    else if (at >= 0) {
+      const again = focusables()[at];
+      if (again && again.tagName === tag) again.focus();
+    }
   };
   const unsubscribe = app.store.subscribe(() => {
     if (typing()) stale = true;

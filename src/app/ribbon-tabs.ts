@@ -214,7 +214,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
             { id: 'settings.variables', icon: 'hash', size: 'S' },
           ],
         },
-        { title: 'rib.p.project', items: [{ id: 'file.projects', icon: 'folder', size: 'L' }, { id: 'view.schedules', icon: 'table', size: 'S' }, { id: 'rules.edit', icon: 'warning', size: 'S' }, { id: 'lot.edit', icon: 'map', size: 'S' }, { id: 'rules.report', icon: 'download', size: 'S' }, { id: 'budget.open', icon: 'table', size: 'S' }] },
+        { title: 'rib.p.project', items: [{ id: 'file.projects', icon: 'folder', size: 'L' }, { id: 'view.schedules', icon: 'table', size: 'S' }, { id: 'rules.edit', icon: 'warning', size: 'S' }, { id: 'lot.edit', icon: 'map', size: 'S' }, { id: 'rules.report', icon: 'download', size: 'S' }, { id: 'budget.open', icon: 'table', size: 'S' }, { id: 'approval.open', icon: 'folder', size: 'S' }] },
         {
           title: 'rib.p.export',
           items: [

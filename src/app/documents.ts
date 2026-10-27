@@ -6,8 +6,14 @@
 import { complianceReport, type RuleReport, type RuleStatus } from '../rules/check';
 import { packsOf, rulesOf } from '../rules/schema';
 import { citation, rangeText, ruleValue } from '../ui/rules-dialog';
-import { name, num, t } from '../ui/i18n';
+import { materialLabel, name, num, t } from '../ui/i18n';
+import { approvalOf, progressOf } from '../approval/schema';
+import { materialIn } from '../elements/material/schema';
+import { referenceLength } from '../elements/opening/derive';
+import { cubEstimate } from '../costs/budget';
+import { costsOf } from '../costs/schema';
 import { type Doc, levelOf } from './document';
+import { wallAreas } from './quantities';
 import type { DerivedGeometry } from './geometry';
 import { lotOf } from './lot';
 import { type LotReport, lotReport } from './lot-areas';
@@ -101,4 +107,119 @@ export function complianceHtml(doc: Doc, g: DerivedGeometry, title: (id: string)
     .join('');
   const body = `${summary}<h2>${esc(t('lot.title'))}</h2>${lotLines(doc)}<h2>${esc(t('areas.title'))}</h2>${areasTable(doc, lotReport(doc, g))}<h2>${esc(t('report.rules'))}</h2>${tables}<p class="note">${esc(t('report.note'))}</p>`;
   return page(t('report.title'), doc, body, today);
+}
+
+const m2 = (v: number) => `${num(v, 2)} m²`;
+const metres = (v: number) => `${num(v, 2)} m`;
+const table = (head: readonly string[], rows: readonly (readonly string[])[], numeric: readonly number[] = []) =>
+  `<table><tr>${head.map((h, i) => `<th${numeric.includes(i) ? ' class="n"' : ''}>${esc(h)}</th>`).join('')}</tr>${rows
+    .map((r) => `<tr>${r.map((c, i) => `<td${numeric.includes(i) ? ' class="n"' : ''}>${esc(c)}</td>`).join('')}</tr>`)
+    .join('')}</table>`;
+
+/**
+ * The descriptive memorial (memorial descritivo): the lot, the table of areas, the wall systems (each
+ * type's layers, where it is used, its length and net area), the doors and windows by size, and the
+ * rooms level by level with their areas, heights and finishes. All read from the model.
+ */
+export function memorialHtml(doc: Doc, g: DerivedGeometry, today: string): string {
+  const mat = (id: string) => materialLabel(materialIn(doc.materials, id));
+  // The wall types in use, each with its layers, its walls' length and net area.
+  const walls = doc.wallTypes
+    .map((type) => {
+      const mine = doc.walls.filter((w) => w.wallTypeId === type.id);
+      if (mine.length === 0) return '';
+      const length = mine.reduce((s, w) => s + referenceLength(w), 0);
+      const net = mine.reduce((s, w) => s + wallAreas(doc, g, w).net, 0);
+      const thickness = type.layers.reduce((s, l) => s + l.thickness, 0);
+      const layers = table(
+        [t('memo.layer'), t('memo.material'), t('memo.thickness')],
+        type.layers.map((l) => [t(`fn.${l.function}`), mat(l.materialId), `${num(l.thickness * 100, 1)} cm`]),
+        [2],
+      );
+      return `<h3>${esc(name(type.name))}</h3><p>${esc(t('memo.wallUse', { n: mine.length, length: metres(length), area: m2(net), thickness: `${num(thickness * 100, 1)} cm` }))}</p>${layers}`;
+    })
+    .join('');
+  // Doors and windows by kind and size.
+  const groups = new Map<string, { kind: string; w: number; h: number; sill: number; n: number }>();
+  for (const o of doc.openings) {
+    const key = `${o.kind}/${o.width}/${o.height}/${o.kind === 'window' ? o.sill : 0}`;
+    const g0 = groups.get(key) ?? { kind: o.kind, w: o.width, h: o.height, sill: o.kind === 'window' ? o.sill : 0, n: 0 };
+    groups.set(key, { ...g0, n: g0.n + 1 });
+  }
+  const openings = table(
+    [t('memo.kind'), t('memo.size'), t('memo.sill'), t('memo.count')],
+    [...groups.values()]
+      .sort((a, b) => a.kind.localeCompare(b.kind) || b.w * b.h - a.w * a.h)
+      .map((x) => [t(x.kind === 'door' ? 'memo.door' : 'memo.window'), `${num(x.w, 2)} × ${num(x.h, 2)} m`, x.kind === 'window' ? metres(x.sill) : '—', String(x.n)]),
+    [3],
+  );
+  // The rooms, level by level.
+  const rooms = [...doc.levels]
+    .sort((a, b) => a.elevation - b.elevation)
+    .map((level) => {
+      const list = doc.rooms.filter((r) => r.levelId === level.id);
+      if (list.length === 0) return '';
+      const rows = list.map((r) => {
+        const s = g.rooms.get(r.id);
+        const f = r.finishes;
+        return [
+          `${r.number} · ${name(r.name)}`,
+          r.use ? t(`use.${r.use}`) : '',
+          s?.enclosed ? m2(s.area) : '—',
+          metres(r.height ?? level.height),
+          f?.floor ? mat(f.floor) : '—',
+          f?.wall ? mat(f.wall) : '—',
+          f?.ceiling ? mat(f.ceiling) : '—',
+        ];
+      });
+      return `<h3>${esc(name(level.name))}</h3>${table([t('memo.room'), t('memo.use'), t('memo.area'), t('memo.height'), t('memo.floor'), t('memo.wallFinish'), t('memo.ceiling')], rows, [2, 3])}`;
+    })
+    .join('');
+  const body = `<h2>1. ${esc(t('lot.title'))}</h2>${lotLines(doc)}
+<h2>2. ${esc(t('areas.title'))}</h2>${areasTable(doc, lotReport(doc, g))}
+<h2>3. ${esc(t('memo.walls'))}</h2>${walls || `<p>${esc(t('memo.none'))}</p>`}
+<h2>4. ${esc(t('memo.openings'))}</h2>${groups.size > 0 ? openings : `<p>${esc(t('memo.none'))}</p>`}
+<h2>5. ${esc(t('memo.rooms'))}</h2>${rooms || `<p>${esc(t('memo.none'))}</p>`}
+<p class="note">${esc(t('memo.note'))}</p>`;
+  return page(t('memo.title'), doc, body, today);
+}
+
+/** The table of areas on its own page, with the lot. */
+export function areasHtml(doc: Doc, g: DerivedGeometry, today: string): string {
+  return page(t('areas.title'), doc, `<h2>${esc(t('lot.title'))}</h2>${lotLines(doc)}<h2>${esc(t('areas.title'))}</h2>${areasTable(doc, lotReport(doc, g))}`, today);
+}
+
+/** The CUB estimate on a page: the standard, the month, the area, the value, the estimate, the source. */
+export function cubHtml(doc: Doc, g: DerivedGeometry, today: string): string {
+  const { cub } = costsOf(doc);
+  const e = cubEstimate(doc, g);
+  const money = (v: number) => `R$ ${num(v, 2)}`;
+  const rows = [
+    [t('budget.cubStandard'), cub.standard],
+    [t('budget.cubState'), cub.state],
+    [t('budget.cubMonth'), cub.month],
+    [t('budget.cubDesonerado'), t(cub.desonerado ? 'memo.yes' : 'memo.no')],
+    [t('budget.cubArea'), m2(e.area)],
+    [t('budget.cubValue'), `${money(e.value)}/m²`],
+    [t('budget.cubTotal'), money(e.total)],
+    [t('budget.cubSource'), cub.source],
+  ];
+  return page(t('budget.tab.cub'), doc, `${table(['', ''], rows)}<p class="note">${esc(t('budget.cubIntro'))}</p>`, today);
+}
+
+/** The approval journey: step by step its documents, who issues each, its state and note; the steps' estimates. */
+export function approvalHtml(doc: Doc, today: string): string {
+  const a = approvalOf(doc);
+  const p = progressOf(a);
+  const steps = a.steps
+    .map((s, i) => {
+      const est = [s.days !== undefined ? t('approval.days', { n: s.days }) : '', s.cost !== undefined ? `R$ ${num(s.cost, 2)}` : ''].filter(Boolean).join(' · ');
+      return `<h3>${i + 1}. ${esc(s.name)}${est ? ` <span class="note">(${esc(est)})</span>` : ''}</h3>${table(
+        [t('approval.doc'), t('approval.issuer'), t('approval.state'), t('approval.note')],
+        s.docs.map((d) => [d.name, d.issuer, t(`approval.state.${d.state}`), d.note ?? '']),
+      )}`;
+    })
+    .join('');
+  const summary = `<p>${esc(a.city)} · ${esc(t('approval.progress', { done: p.done, all: p.all }))}${p.days || p.cost ? ` · ${esc(t('approval.estimates', { days: p.days, cost: num(p.cost, 2) }))}` : ''}</p>`;
+  return page(t('approval.title'), doc, summary + steps, today);
 }

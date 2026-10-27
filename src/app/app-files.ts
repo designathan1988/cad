@@ -94,24 +94,7 @@ export function exportIfc(app: App): void {
     return app.renderChrome();
   }
   try {
-    const marks = openingMarks(doc.openings, markPrefix());
-    const definition = (id: string) => doc.definitions.find((d) => d.id === id);
-    const text = ifcOf(doc, deriveGeometry(doc), {
-      project: t('app.untitled'),
-      site: t('ifc.site'),
-      building: t('ifc.building'),
-      name,
-      wall: (n) => t('wall.tag', { n }),
-      material: (m) => materialLabel(m),
-      opening: (id, kind) => marks.get(id) ?? t(kind === 'door' ? 'export.door' : 'export.window', { n: '' }).trim(),
-      element: (key, n) => t(kindOfKey(key as KindKey).exportName, { n }),
-      object: (id) => {
-        const d = definition(id);
-        return d ? words(d.name) : id;
-      },
-      category: (id) => definition(id)?.category ?? null,
-      zone: (z) => z,
-    }, new Date());
+    const text = ifcText(app);
     const file = `${app.fileBase()}.ifc`;
     app.download(file, new Blob([text], { type: 'application/x-step' }), 'application/x-step');
     app.toast(t('export.ifcSaved', { file }));
@@ -119,6 +102,29 @@ export function exportIfc(app: App): void {
     console.error(e);
     app.toast(t('export.failed', { what: 'IFC', error: e instanceof Error ? e.message : String(e) }));
   }
+}
+
+/** The model as IFC4 text, named in the interface's words (the export, the project's folder). */
+export function ifcText(app: App): string {
+  const doc = app.store.get();
+  const marks = openingMarks(doc.openings, markPrefix());
+  const definition = (id: string) => doc.definitions.find((d) => d.id === id);
+  return ifcOf(doc, deriveGeometry(doc), {
+    project: t('app.untitled'),
+    site: t('ifc.site'),
+    building: t('ifc.building'),
+    name,
+    wall: (n) => t('wall.tag', { n }),
+    material: (m) => materialLabel(m),
+    opening: (id, kind) => marks.get(id) ?? t(kind === 'door' ? 'export.door' : 'export.window', { n: '' }).trim(),
+    element: (key, n) => t(kindOfKey(key as KindKey).exportName, { n }),
+    object: (id) => {
+      const d = definition(id);
+      return d ? words(d.name) : id;
+    },
+    category: (id) => definition(id)?.category ?? null,
+    zone: (z) => z,
+  }, new Date());
 }
 
 /** The model as OBJ (three.js's exporter, the GLB's scene): its groups by element, in metres, y up. */
