@@ -1861,6 +1861,57 @@ button.project-name:hover {
 .units-body {
   padding: var(--sp-3) var(--sp-4);
 }
+/* Customising the shortcuts (keys-dialog.ts): the search and what was done, then the list, which alone
+   scrolls; each action with its key, Off and Default. */
+.keys-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.keys-top {
+  padding: var(--sp-3) var(--sp-4) 0;
+}
+.keys-search {
+  width: 100%;
+  height: var(--control-h);
+  padding: 0 var(--sp-2);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  color: var(--text);
+}
+.keys-list {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-2) var(--sp-4);
+}
+.keys-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--control-h);
+  border-bottom: var(--line) solid var(--border);
+}
+.keys-name {
+  display: flex;
+  flex-direction: column;
+}
+.keys-group {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+.keys-key {
+  min-width: var(--control-h);
+  cursor: pointer;
+}
+.keys-changed .keys-key {
+  border-color: var(--accent);
+}
+.keys-dialog .actions {
+  padding-top: var(--sp-3);
+  border-top: var(--line) solid var(--border);
+}
 /* Printing a plan (print-dialog.ts): the choices beside the page as it will print; one above the other
    on a narrow window. */
 .print-dialog {

@@ -32,6 +32,8 @@ export interface Prefs {
   snaps?: boolean;
   /** Into how many parts a segment's division points cut it (snap.ts): 3 when not set. */
   snapParts?: number;
+  /** Shortcuts the user remapped or turned off (app/keymap.ts): an action's id, its key or null. */
+  keymap?: Record<string, string | null>;
   /** Where the plan was looking (pixels per metre, world point at the centre): a reload framed it all again. */
   planView?: { scale: number; center: { x: number; y: number } };
   /** Walking: the eyes' height above the floor (m). */

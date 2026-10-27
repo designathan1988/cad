@@ -1,6 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import type { KeyMap } from './keymap';
 import { arrangeNeeds, arrangeSteps, type ArrangeHow, type Box as ArrangeBox, boxOf } from '../tools/arrange';
 import type { ScreenHandle } from './object-handles';
 import type { HandleDrag } from './object-handles';
@@ -1716,6 +1717,14 @@ export class App {
   openObjects: () => void = () => {};
   /** Printing a plan (ui/print-dialog.ts), set by the input layer. */
   openPrint: () => void = () => {};
+  /** The shortcuts the user remapped or turned off (app/keymap.ts), kept with the preferences. */
+  keymap: KeyMap = loadPrefs().keymap ?? {};
+
+  setKeymap(map: KeyMap): void {
+    this.keymap = map;
+    savePrefs({ keymap: { ...map } });
+    this.render();
+  }
   objectClick(p: Point2): void {
     kindTools.objectClick(this, p);
   }

@@ -1,6 +1,7 @@
 // The drawing's keys (input.ts): shortcuts, the tools' keys, the arrows, Escape, Enter, Delete, Alt for
 // a guide, walking. What the pointer side shares with them comes in `k`.
 
+import { comboOf, resolveKey } from './keymap';
 import type { Point2 } from '../core/vector';
 import { t } from '../ui/i18n';
 import { viewKey } from './view-keys';
@@ -89,6 +90,18 @@ export function wireKeys(app: App, k: KeyContext): void {
     if (key === 'tab' && !ctrl && !e.altKey && !e.shiftKey && k.nextSnap()) {
       e.preventDefault();
       return;
+    }
+    // The user's keys first (app/keymap.ts): a key given to an action runs it; an action's own key,
+    // once it has another or none, does nothing.
+    const combo = Object.keys(app.keymap).length > 0 ? comboOf(e) : null;
+    if (combo) {
+      const found = resolveKey(combo, app.actionList(), app.keymap);
+      if (found.run) {
+        e.preventDefault();
+        if (found.run.enabled) found.run.run();
+        return;
+      }
+      if (found.blocked) return;
     }
     if (ctrl && key === 'z') {
       e.preventDefault();

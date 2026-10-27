@@ -1,6 +1,7 @@
 // Mouse and keyboard. Plan: wheel zooms at the cursor, middle button pans. 3D: wheel zooms at the
 // cursor, middle pans, Shift + middle or right rotates (OrbitControls). Left button is the tool's.
 
+import { showKeys } from '../ui/keys-dialog';
 import { wallNumber } from './document';
 import type { MessageKey } from '../ui/i18n';
 import { geometryOf } from './carry';
@@ -62,6 +63,7 @@ export function wireInput(app: App): void {
     projects: () => showProjectsDialog(app),
     print: () => showPrint(app),
     drawing: () => showDrawingSettings(app),
+    keys: () => showKeys(app),
   };
   app.openProjects = () => showProjectsDialog(app);
   const palette = () => showPalette(appActions(app, openers));
@@ -1041,9 +1043,18 @@ export function showHelp(app: App): void {
     [t('help.orbitKey'), t('help.orbit')],
   ];
   const close = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
+  // The keys as they are now: an action's own key, or the one the user gave it, or none (keymap.ts).
+  const acts = app.actionList();
+  const now = (k: string, v: string) => {
+    const a = acts.find((x) => x.defaultKeys === k && x.label === v);
+    return a ? (a.keys ?? '—') : k;
+  };
   const dl = el('dl');
-  for (const [k, v] of rows) dl.append(el('dt', {}, el('span', { class: 'kbd' }, k)), el('dd', {}, v));
-  const dialog = el('div', { class: 'dialog help-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('help.title') }, el('h2', {}, t('help.title')), dl, el('div', { class: 'actions' }, close));
+  for (const [k, v] of rows) dl.append(el('dt', {}, el('span', { class: 'kbd' }, now(k, v))), el('dd', {}, v));
+  // Shortcuts remapped or turned off there (WCAG 2.1.4).
+  const custom = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('keys.open'));
+  custom.addEventListener('click', () => showKeys(app));
+  const dialog = el('div', { class: 'dialog help-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('help.title') }, el('h2', {}, t('help.title')), dl, el('div', { class: 'actions' }, custom, el('span', { class: 'spacer' }), close));
   back.replaceChildren(dialog);
   back.hidden = false;
   const hide = () => {

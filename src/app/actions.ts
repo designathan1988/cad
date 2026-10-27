@@ -2,6 +2,7 @@
 // command palette lists these; the toolbar, keys and menus do the same things, with the same names
 // and keys (ref/chat.txt:200), because they read them from here.
 
+import { keyOf } from './keymap';
 import { ARRANGE_HOWS, arrangeNeeds } from '../tools/arrange';
 import { newId } from '../core/id';
 import { addZone } from '../elements/zone/commands';
@@ -18,7 +19,10 @@ export interface Action {
   readonly group: string;
   /** Words that also find it: its name in the other language. */
   readonly keywords: string;
+  /** Its key now: its own, or the one the user gave it (app/keymap.ts); none when turned off. */
   readonly keys?: string;
+  /** Its own key, whatever the user made of it. */
+  readonly defaultKeys?: string;
   readonly enabled: boolean;
   readonly run: () => void;
 }
@@ -36,21 +40,26 @@ export interface Openers {
   readonly projects: () => void;
   readonly print: () => void;
   readonly drawing: () => void;
+  readonly keys: () => void;
 }
 
 export function appActions(app: App, open: Openers): Action[] {
   const { ui, store } = app;
   const doc = store.get();
   const has = ui.selection.size > 0;
-  const make = (id: string, key: MessageKey, group: MessageKey, run: () => void, extra: { keys?: string; enabled?: boolean; keywords?: string } = {}): Action => ({
-    id,
-    label: t(key),
-    group: t(group),
-    keywords: `${tBoth(key)} ${extra.keywords ?? ''}`.trim(),
-    enabled: extra.enabled ?? true,
-    run,
-    ...(extra.keys ? { keys: extra.keys } : {}),
-  });
+  const make = (id: string, key: MessageKey, group: MessageKey, run: () => void, extra: { keys?: string; enabled?: boolean; keywords?: string } = {}): Action => {
+    const keys = keyOf(id, extra.keys, app.keymap);
+    return {
+      id,
+      label: t(key),
+      group: t(group),
+      keywords: `${tBoth(key)} ${extra.keywords ?? ''}`.trim(),
+      enabled: extra.enabled ?? true,
+      run,
+      ...(keys ? { keys } : {}),
+      ...(extra.keys ? { defaultKeys: extra.keys } : {}),
+    };
+  };
   const tools = 'pal.group.tools';
   const views = 'pal.group.views';
   const edit = 'pal.group.edit';
@@ -212,6 +221,7 @@ export function appActions(app: App, open: Openers): Action[] {
       const n = app.arrangeItems().length;
       return ARRANGE_HOWS.map((how) => make(`arrange.${how}`, `arrange.${how}` as MessageKey, edit, () => app.arrange(how), { enabled: n >= arrangeNeeds(how), keywords: 'alinhar align distribuir distribute organizar arrange' }));
     })(),
+    make('settings.keys', 'keys.open', settings, open.keys, { keywords: 'atalhos shortcuts teclado keyboard teclas keys remapear remap desligar' }),
     make('drawing.edit', 'draw.open', edit, open.drawing, { keywords: `${tBoth('draw.title')} 1:50 1:100 pena pen espessura lineweight` }),
     make('help.shortcuts', 'pal.shortcuts', help, open.help, { keys: '?' }),
     make('help.tour', 'pal.tour', help, open.tour),
