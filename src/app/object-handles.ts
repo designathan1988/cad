@@ -10,7 +10,8 @@ import type { Point2 } from '../core/vector';
 import { setObjectValues } from '../elements/object/commands';
 import { updateOpening } from '../elements/opening/commands';
 import type { Opening, PositionRule } from '../elements/opening/schema';
-import { held } from '../elements/object/evaluate';
+import { evaluateObject, held } from '../elements/object/evaluate';
+import { deriveGeometry } from './geometry';
 import type { ObjectSolid } from '../elements/kinds/object';
 import type { App } from './app';
 
@@ -25,6 +26,8 @@ export interface ScreenHandle {
   readonly dir: Point2;
   /** A door's or window's handle: which of its sizes it changes. */
   readonly opening?: OpeningHandle;
+  /** An object's handle: its place in the evaluated handles (to find it again with another value). */
+  readonly index?: number;
 }
 
 /** A jamb (the width, the other jamb staying), the head (the height) or a window's sill (the head staying). */
@@ -43,14 +46,14 @@ export function objectHandles(app: App): ScreenHandle[] {
   if (!s || s.object.levelId !== ui.levelId) return [];
   const lift = ui.view === '3d' ? app.lift(s.object.levelId) : 0;
   const project = (p: Point2, z: number): Point2 | null => (ui.view === 'plan' ? app.plan.toScreen(p) : app.projectAt(p, s.floor + lift + z));
-  return s.eval.handles.flatMap((h) => {
+  return s.eval.handles.flatMap((h, index) => {
     const a = project({ x: h.at.x, y: h.at.y }, h.at.z);
     const b = project({ x: h.at.x + h.dir.x, y: h.at.y + h.dir.y }, h.at.z + h.dir.z);
     if (!a || !b) return [];
     const along = { x: b.x - a.x, y: b.y - a.y };
     // Seen end-on (height in plan) it cannot be dragged: not shown.
     if (Math.hypot(along.x, along.y) < 4) return [];
-    return [{ id, param: h.param, at: a, along, shift: h.shift, dir: { x: h.dir.x, y: h.dir.y } }];
+    return [{ id, param: h.param, at: a, along, shift: h.shift, dir: { x: h.dir.x, y: h.dir.y }, index }];
   });
 }
 
@@ -130,6 +133,48 @@ export interface HandleDrag {
   readonly base?: Opening;
   /** How tall it can go: up to its wall's top. */
   readonly most?: number;
+  /**
+   * How far the handle goes along its axis for each metre (or unit) the value grows: 1 for a face that
+   * moves with it, ½ for a centred door's jamb or a diameter's edge. The pointer's motion over it is the
+   * value's, so the handle stays under the pointer.
+   */
+  readonly rate: number;
+}
+
+/** A small step to measure how the handle goes with its value. */
+const PROBE = 0.01;
+
+/** The rate, kept from nothing: 1 when the handle does not move at all with its value (it cannot follow then). */
+const usable = (r: number): number => (Number.isFinite(r) && Math.abs(r) > 0.05 ? r : 1);
+
+/** An object's handle's rate: its definition evaluated with the value a step on, the handle found again, and the object's own shift. */
+function objectRate(app: App, s: ObjectSolid, handle: ScreenHandle, start: number): number {
+  const param = s.def.params.find((x) => x.name === handle.param);
+  const at = handle.index === undefined ? undefined : s.eval.handles[handle.index];
+  if (!param || !at) return 1;
+  // A step up, or down when the value is at its most.
+  const step = held(param, start + PROBE) !== start ? PROBE : -PROBE;
+  const doc = app.store.get();
+  const ev = evaluateObject(s.def, { ...s.object, values: { ...s.object.values, [handle.param]: start + step } }, { definitions: doc.definitions, materials: doc.materials });
+  const next = ev.handles[handle.index!];
+  if (!next) return 1;
+  const len = Math.hypot(at.dir.x, at.dir.y, at.dir.z) || 1;
+  const moved = ((next.at.x - at.at.x) * at.dir.x + (next.at.y - at.at.y) * at.dir.y + (next.at.z - at.at.z) * at.dir.z) / len;
+  return usable(moved / step + handle.shift);
+}
+
+/** A door's or window's jamb's rate: the wall's openings derived with it a step wider, its rule as the drag keeps it. */
+function jambRate(app: App, o: Opening, which: 'start' | 'end'): number {
+  const before = app.geometry.openings.get(o.id)?.frame;
+  const doc = app.store.get();
+  const wider = { ...o, width: o.width + PROBE, rule: ruleFor(o.rule, which, PROBE) };
+  const after = deriveGeometry({ ...doc, openings: doc.openings.map((x) => (x.id === o.id ? wider : x)) }).openings.get(o.id)?.frame;
+  if (!before || !after) return 1;
+  const a = which === 'start' ? before.start : before.end;
+  const b = which === 'start' ? after.start : after.end;
+  // Outward along the wall: back from its start, on from its end.
+  const sign = which === 'start' ? -1 : 1;
+  return usable((((b.x - a.x) * before.dir.x + (b.y - a.y) * before.dir.y) * sign) / PROBE);
 }
 
 export function startHandleDrag(app: App, handle: ScreenHandle, from: Point2): HandleDrag | null {
@@ -140,12 +185,13 @@ export function startHandleDrag(app: App, handle: ScreenHandle, from: Point2): H
     const wallTop = app.geometry.solids.get(o.wallId)?.top;
     const most = wallTop !== undefined ? wallTop - placed.bottom : undefined;
     const start = handle.opening === 'head' ? o.height : handle.opening === 'sill' ? o.sill : o.width;
-    return { handle, from, start, startAt: { x: 0, y: 0 }, value: start, at: { x: 0, y: 0 }, patch: {}, base: o, ...(most !== undefined ? { most } : {}) };
+    const rate = handle.opening === 'start' || handle.opening === 'end' ? jambRate(app, o, handle.opening) : 1;
+    return { handle, from, start, startAt: { x: 0, y: 0 }, value: start, at: { x: 0, y: 0 }, patch: {}, base: o, rate, ...(most !== undefined ? { most } : {}) };
   }
   const s = app.geometry.kinds.get('objects')?.get(handle.id) as ObjectSolid | undefined;
   const start = s?.eval.env[handle.param];
   if (!s || start === undefined) return null;
-  return { handle, from, start, startAt: s.object.at, value: start, at: s.object.at };
+  return { handle, from, start, startAt: s.object.at, value: start, at: s.object.at, rate: objectRate(app, s, handle, start) };
 }
 
 /** The drag with the pointer at `p`: the change in metres along the axis on screen, held to the parameter. */
@@ -156,7 +202,7 @@ export function moveHandleDrag(app: App, d: HandleDrag, p: Point2): HandleDrag {
     const o = d.base;
     if (!o) return d;
     const a = d.handle.along;
-    const delta = ((p.x - d.from.x) * a.x + (p.y - d.from.y) * a.y) / (a.x * a.x + a.y * a.y);
+    const delta = ((p.x - d.from.x) * a.x + (p.y - d.from.y) * a.y) / (a.x * a.x + a.y * a.y) / d.rate;
     // On the centimetre with snaps on; never under 20 cm, a sill never below the floor.
     const snap = (v: number) => (app.ui.snaps ? Math.round(v / 0.01) * 0.01 : v);
     if (which === 'head') {
@@ -175,7 +221,7 @@ export function moveHandleDrag(app: App, d: HandleDrag, p: Point2): HandleDrag {
   const param = s?.def.params.find((x) => x.name === d.handle.param);
   if (!param) return d;
   const a = d.handle.along;
-  const delta = ((p.x - d.from.x) * a.x + (p.y - d.from.y) * a.y) / (a.x * a.x + a.y * a.y);
+  const delta = ((p.x - d.from.x) * a.x + (p.y - d.from.y) * a.y) / (a.x * a.x + a.y * a.y) / d.rate;
   // On the 5 mm step with snaps on (or the parameter's own step), within its range.
   const raw = d.start + delta;
   const value = held(param, app.ui.snaps ? Math.round(raw / 0.005) * 0.005 : raw);

@@ -10,7 +10,7 @@ import type { Doc } from '../../app/document';
 import { insideRing } from '../room/derive';
 import type { BaseGeometry, ElementKind, KindSolid } from '../contract';
 import { heightAt } from '../terrain/schema';
-import { evaluateObject, type ObjectEval, type Piece, pieceOutline } from '../object/evaluate';
+import { evaluateObject, type ObjectEval, type Piece, pieceOutline, pieceSpan } from '../object/evaluate';
 import { type ObjectItem, objectFields, words } from '../object/fields';
 import { isObjectInstance } from '../object/valid';
 import { OBJECT_PREFIX, type ObjectDefinition, type ObjectInstance } from '../object/schema';
@@ -58,7 +58,7 @@ function derive(doc: Doc, o: ObjectInstance, g: BaseGeometry): ObjectSolid | nul
 }
 
 function build(object: ObjectInstance, def: ObjectDefinition, ev: ObjectEval, floor: number): ObjectSolid {
-  const pieces = ev.pieces.filter((p) => !p.cut).sort((a, b) => a.z + a.h - (b.z + b.h));
+  const pieces = ev.pieces.filter((p) => !p.cut).sort((a, b) => pieceSpan(a).top - pieceSpan(b).top);
   const rings = pieces.map(pieceOutline);
   // The box around the pieces in the object's own axes, turned back into the plan.
   const c = Math.cos(object.angle);
@@ -74,8 +74,8 @@ function build(object: ObjectInstance, def: ObjectDefinition, ev: ObjectEval, fl
     [u1, v1],
     [u0, v1],
   ].map(([u, v]) => ({ x: object.at.x + u! * c - v! * s, y: object.at.y + u! * s + v! * c }));
-  const bottom = floor + (pieces.length ? Math.min(...pieces.map((p) => p.z)) : object.elevation);
-  const top = floor + (pieces.length ? Math.max(...pieces.map((p) => p.z + p.h)) : object.elevation + 0.1);
+  const bottom = floor + (pieces.length ? Math.min(...pieces.map((p) => pieceSpan(p).bottom)) : object.elevation);
+  const top = floor + (pieces.length ? Math.max(...pieces.map((p) => pieceSpan(p).top)) : object.elevation + 0.1);
   const voids = ev.pieces.filter((p) => p.cut).map(pieceOutline);
   return { object, def, eval: ev, rings, voids, outline, floor, bottom, top };
 }
@@ -211,6 +211,25 @@ export function pieceGeometry(piece: Piece): THREE.BufferGeometry {
         : piece.kind === 'sphere'
           ? new THREE.SphereGeometry(1, 28, 18).scale(piece.r, piece.h / 2, piece.r)
           : new THREE.CylinderGeometry(piece.r2, piece.r, piece.h, 24);
+  if (piece.kind === 'cylinder' && (piece.tilt || piece.roll)) {
+    // As a box leans (below), about its base's centre.
+    geometry.translate(0, piece.h / 2, 0);
+    geometry.rotateX(-(piece.tilt ?? 0));
+    geometry.rotateZ(-(piece.roll ?? 0));
+    geometry.rotateY(piece.angle ?? 0);
+    geometry.translate(piece.cx, piece.z, -piece.cy);
+    return geometry;
+  }
+  if (piece.kind === 'box' && (piece.tilt || piece.roll)) {
+    // About its base's centre: tilt about its x (three.js's x; its top toward plan +y, three.js's −z),
+    // then roll about its y (three.js's z; its top toward +x); then its turn in plan.
+    geometry.translate(0, piece.h / 2, 0);
+    geometry.rotateX(-(piece.tilt ?? 0));
+    geometry.rotateZ(-(piece.roll ?? 0));
+    geometry.rotateY(piece.angle);
+    geometry.translate(piece.cx, piece.z, -piece.cy);
+    return geometry;
+  }
   if (piece.kind === 'box' || piece.kind === 'mesh') geometry.rotateY(piece.angle);
   geometry.translate(piece.cx, piece.z + piece.h / 2, -piece.cy);
   return geometry;

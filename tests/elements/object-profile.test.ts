@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/app/document';
 import { pieceGeometry } from '../../src/elements/kinds/object';
-import { evaluateObject, pieceOutline } from '../../src/elements/object/evaluate';
+import { evaluateObject, pieceOutline, pieceSpan } from '../../src/elements/object/evaluate';
 import type { ObjectDefinition } from '../../src/elements/object/schema';
 import { isDefinition } from '../../src/elements/object/valid';
 
@@ -91,6 +91,42 @@ describe('profile parts', () => {
     const box = new THREE.Box3().setFromBufferAttribute(g.getAttribute('position') as THREE.BufferAttribute);
     expect([box.min.y, box.max.y]).toEqual([expect.closeTo(0.1, 6), expect.closeTo(1.1, 6)]);
     expect(pieceOutline(ev.pieces[0]!).every((q) => Math.abs(Math.hypot(q.x, q.y) - 0.2) < 1e-9)).toBe(true);
+  });
+
+  it('a box leaning back 90° lies on its back: its outline, span and geometry where they should be', () => {
+    const board: ObjectDefinition = { ...counter, id: 'def_b', parts: [{ kind: 'box', x: 0, y: 0, z: 0.5, w: 1, d: 0.1, h: 1, tilt: 90, material: 'concrete' }] };
+    expect(isDefinition(board)).toBe(true);
+    const ev = evaluateObject(board, { id: 'o', levelId: 'lvl_ground', definitionId: board.id, typeId: 't', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: [board], materials: doc.materials });
+    const piece = ev.pieces[0]!;
+    // Turned about its base's front edge (y = 0, z = 0.5): it lies from y 0 to 1, its thickness under z 0.5.
+    const ring = pieceOutline(piece);
+    const xs = ring.map((q) => q.x);
+    const ys = ring.map((q) => q.y);
+    expect([Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([0, 1, 0, 1]);
+    expect(pieceSpan(piece).bottom).toBeCloseTo(0.4, 9);
+    expect(pieceSpan(piece).top).toBeCloseTo(0.5, 9);
+    const box = new THREE.Box3().setFromBufferAttribute(pieceGeometry(piece).getAttribute('position') as THREE.BufferAttribute);
+    expect([box.min.x, box.max.x, box.min.y, box.max.y, box.min.z, box.max.z]).toEqual([0, 1, 0.4, 0.5, -1, 0].map((v) => expect.closeTo(v, 6)));
+    // Leaning sideways 30°: its top 1 m up goes half a metre toward +x.
+    const leg: ObjectDefinition = { ...counter, id: 'def_l2', parts: [{ kind: 'box', x: 0, y: 0, z: 0, w: 0.05, d: 0.05, h: 1, roll: 30, material: 'concrete' }] };
+    const lev = evaluateObject(leg, { id: 'o', levelId: 'lvl_ground', definitionId: leg.id, typeId: 't', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: [leg], materials: doc.materials });
+    const top = new THREE.Box3().setFromBufferAttribute(pieceGeometry(lev.pieces[0]!).getAttribute('position') as THREE.BufferAttribute);
+    expect(top.max.x).toBeCloseTo(0.05 * Math.cos(Math.PI / 6) + Math.sin(Math.PI / 6), 6);
+    expect(top.max.y).toBeCloseTo(Math.cos(Math.PI / 6), 6);
+  });
+
+  it('a cylinder leaning 90° lies along y: a rail, from its base to its length', () => {
+    const rail: ObjectDefinition = { ...counter, id: 'def_r', parts: [{ kind: 'cylinder', x: 0, y: 0, z: 1, r: 0.02, h: 0.6, tilt: 90, material: 'metal' }] };
+    expect(isDefinition(rail)).toBe(true);
+    const ev = evaluateObject(rail, { id: 'o', levelId: 'lvl_ground', definitionId: rail.id, typeId: 't', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: [rail], materials: doc.materials });
+    const piece = ev.pieces[0]!;
+    const ys = pieceOutline(piece).map((q) => q.y);
+    expect([Math.min(...ys), Math.max(...ys)].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([0, 0.6]);
+    expect(pieceSpan(piece).bottom).toBeCloseTo(0.98, 6);
+    expect(pieceSpan(piece).top).toBeCloseTo(1.02, 6);
+    const box = new THREE.Box3().setFromBufferAttribute(pieceGeometry(piece).getAttribute('position') as THREE.BufferAttribute);
+    // three.js's −z is plan y.
+    expect([box.min.z, box.max.z, box.min.y, box.max.y]).toEqual([-0.6, 0, 0.98, 1.02].map((v) => expect.closeTo(v, 6)));
   });
 
   it('drawn clockwise, it is turned round: the volume still positive', () => {

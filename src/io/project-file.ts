@@ -3,6 +3,7 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
+import { LIBRARY_V50 } from '../elements/object/library-living';
 import { isSite } from '../app/sun';
 import { isSheet, isViewport } from '../elements/sheet/schema';
 import { isLayerSet, isRoomOverride, isWallOverride } from '../app/layer-sets';
@@ -111,7 +112,7 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 42: tags by elements with their values (`tags`, elements/tag). Older files have none.
  * Version 43: a room's interior elevations, marks kept to a level (`levelId`, elements/section). Older marks have none: every level.
  */
-export const CURRENT_VERSION = 49;
+export const CURRENT_VERSION = 50;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -313,7 +314,9 @@ export function repairProject(raw: unknown): ReadResult {
   const since48 = raw.version < 48 ? since47.map((d) => (d.id === POINT_LIGHT.id && d.parts.length === 1 && d.parts[0]!.kind === 'cylinder' ? POINT_LIGHT : d)) : since47;
   // Version 49 put handles on the kitchen's doors and the washbasin's cabinet: the library's own, still
   // as they came, take them.
-  const definitions = raw.version < 49 ? since48.map((d) => LIBRARY_NOW.find((l) => (l.id === KITCHEN.id || l.id === WASHBASIN.id) && l.id === d.id && JSON.stringify(before49(l)) === JSON.stringify(d)) ?? d) : since48;
+  const since49 = raw.version < 49 ? since48.map((d) => LIBRARY_NOW.find((l) => (l.id === KITCHEN.id || l.id === WASHBASIN.id) && l.id === d.id && JSON.stringify(before49(l)) === JSON.stringify(d)) ?? d) : since48;
+  // Version 50 brought the living room's families (library-living.ts): a file from before gets those it has not.
+  const definitions = raw.version < 50 ? [...since49, ...LIBRARY_V50.filter((d) => !since49.some((k) => k.id === d.id))] : since49;
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));

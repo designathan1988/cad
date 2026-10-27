@@ -3,7 +3,7 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { BUILT_IN_MATERIALS, shade } from '../../src/elements/material/schema';
+import { BUILT_IN_MATERIALS, cutFill } from '../../src/elements/material/schema';
 
 const css = readFileSync(new URL('../../src/ui/styles.css', import.meta.url), 'utf8');
 
@@ -77,7 +77,7 @@ describe('contrast of the design tokens', () => {
     it(`${name} theme: the wall line on every built-in material as the plan paints it`, () => {
       const k = Number(theme.get('--material-shade'));
       const low = BUILT_IN_MATERIALS.filter((m) => m.cut !== 'none')
-        .map((m) => ({ id: m.id, got: ratio(theme.get('--wall-line')!, shade(m.color, k)) }))
+        .map((m) => ({ id: m.id, got: ratio(theme.get('--wall-line')!, cutFill(m.color, k, theme.get('--wall-line')!)) }))
         .filter((p) => p.got < 3)
         .map((p) => `${p.id}: ${p.got.toFixed(2)} < 3`);
       expect(low).toEqual([]);

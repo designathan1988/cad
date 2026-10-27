@@ -17,7 +17,7 @@ import { layoutRoomTags } from './room-tags';
 import type { Handles } from '../app/handles';
 import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
-import { type CutPattern, shade } from '../elements/material/schema';
+import { cutFill, type CutPattern } from '../elements/material/schema';
 import { hatchPattern } from './hatch';
 import { separateLabels } from '../app/dim-labels';
 import type { HeatLayer } from '../app/sim-map';
@@ -455,6 +455,8 @@ export class PlanView {
     // Pieces of one colour are filled as one path: the canvas covers a path as a whole, so where two
     // of them meet (a core through an L's mitre) no antialiased seam lets the outline under them show.
     const shadeBy = Number(color('--material-shade')) || 1;
+    // A layer's colour lightened (or darkened) only as much as the wall's line needs to read on it.
+    const wallLine = color('--wall-line');
     const fill = (list: typeof solids, colour: string | null) => {
       type Polys = [Point2[], (typeof solids)[number]['wall']][];
       const byColour = new Map<string, Polys>();
@@ -463,7 +465,7 @@ export class PlanView {
         const byLayer = colour === null && layered(s);
         for (const p of s.pieces) {
           const m = byLayer ? s.materials[p.layerIndex] : undefined;
-          const c = colour ?? phaseColour(s) ?? this.overrides.get(s.wall.wallTypeId) ?? (m ? (m.cut === 'none' ? color('--canvas') : shade(m.color, shadeBy)) : color('--wall-fill'));
+          const c = colour ?? phaseColour(s) ?? this.overrides.get(s.wall.wallTypeId) ?? (m ? (m.cut === 'none' ? color('--canvas') : cutFill(m.color, shadeBy, wallLine)) : color('--wall-fill'));
           const poly: Polys[number] = [[...p.polygon], s.wall];
           byColour.set(c, [...(byColour.get(c) ?? []), poly]);
           if (m) byPattern.set(m.cut, [...(byPattern.get(m.cut) ?? []), poly]);

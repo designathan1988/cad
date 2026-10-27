@@ -56,6 +56,44 @@ export const BUILT_IN_MATERIALS: readonly Material[] = [
   { id: 'bark', name: '', color: '#96765a', roughness: 0.95, metalness: 0, cut: 'wood' },
   // What the roofs are covered with (roof/schema.ts ROOF_COVERING).
   { id: 'clayTile', name: '', color: '#b4644a', roughness: 0.8, metalness: 0, cut: 'solid' },
+  // The furniture, fittings and equipment of the library's families (object/library-*.ts): woods,
+  // lacquers, metals, upholstery, stones, glass, plastics.
+  { id: 'oak', name: '', color: '#b88f5c', roughness: 0.55, metalness: 0, cut: 'wood', pattern: { kind: 'wood', layout: 'stack', length: 2.4, width: 0.4, joint: 0, jointColor: '#b88f5c', variation: 0.06, angle: 0 } },
+  { id: 'walnut', name: '', color: '#5f4231', roughness: 0.5, metalness: 0, cut: 'wood', pattern: { kind: 'wood', layout: 'stack', length: 2.4, width: 0.4, joint: 0, jointColor: '#5f4231', variation: 0.06, angle: 0 } },
+  { id: 'pine', name: '', color: '#d8b886', roughness: 0.6, metalness: 0, cut: 'wood', pattern: { kind: 'wood', layout: 'stack', length: 2.4, width: 0.4, joint: 0, jointColor: '#d8b886', variation: 0.06, angle: 0 } },
+  { id: 'freijo', name: '', color: '#a07a4e', roughness: 0.5, metalness: 0, cut: 'wood', pattern: { kind: 'wood', layout: 'stack', length: 2.4, width: 0.4, joint: 0, jointColor: '#a07a4e', variation: 0.06, angle: 0 } },
+  { id: 'lacquerWhite', name: '', color: '#f4f3ef', roughness: 0.25, metalness: 0, cut: 'solid' },
+  { id: 'lacquerBlack', name: '', color: '#1b1c1e', roughness: 0.25, metalness: 0, cut: 'solid' },
+  { id: 'lacquerSage', name: '', color: '#8d9c88', roughness: 0.35, metalness: 0, cut: 'solid' },
+  { id: 'lacquerTerracotta', name: '', color: '#b8664a', roughness: 0.35, metalness: 0, cut: 'solid' },
+  { id: 'blackSteel', name: '', color: '#2a2c2f', roughness: 0.45, metalness: 0.85, cut: 'solid' },
+  { id: 'stainless', name: '', color: '#c4c8cc', roughness: 0.32, metalness: 1, cut: 'solid' },
+  { id: 'chrome', name: '', color: '#e2e5e9', roughness: 0.08, metalness: 1, cut: 'solid' },
+  { id: 'brass', name: '', color: '#c49c4e', roughness: 0.3, metalness: 1, cut: 'solid' },
+  { id: 'copper', name: '', color: '#b8734b', roughness: 0.32, metalness: 1, cut: 'solid' },
+  { id: 'aluminium', name: '', color: '#b5b9bd', roughness: 0.4, metalness: 0.9, cut: 'solid' },
+  { id: 'leather', name: '', color: '#6c4129', roughness: 0.6, metalness: 0, cut: 'solid' },
+  { id: 'leatherBlack', name: '', color: '#262422', roughness: 0.55, metalness: 0, cut: 'solid' },
+  { id: 'linen', name: '', color: '#d2c9b6', roughness: 0.95, metalness: 0, cut: 'solid' },
+  { id: 'velvet', name: '', color: '#3e5b6c', roughness: 0.9, metalness: 0, cut: 'solid' },
+  { id: 'boucle', name: '', color: '#e8e2d6', roughness: 1, metalness: 0, cut: 'solid' },
+  { id: 'rattan', name: '', color: '#c8a46a', roughness: 0.8, metalness: 0, cut: 'solid' },
+  { id: 'marble', name: '', color: '#ece9e4', roughness: 0.12, metalness: 0, cut: 'solid' },
+  { id: 'graniteBlack', name: '', color: '#2b2b2d', roughness: 0.2, metalness: 0, cut: 'solid' },
+  { id: 'quartz', name: '', color: '#dad8d2', roughness: 0.15, metalness: 0, cut: 'solid' },
+  { id: 'terrazzo', name: '', color: '#cbc5bb', roughness: 0.35, metalness: 0, cut: 'solid' },
+  { id: 'stone', name: '', color: '#a69e8f', roughness: 0.85, metalness: 0, cut: 'concrete' },
+  { id: 'concretePolished', name: '', color: '#9e9d98', roughness: 0.35, metalness: 0, cut: 'concrete' },
+  { id: 'mirror', name: '', color: '#dfe6ea', roughness: 0.02, metalness: 1, cut: 'none' },
+  { id: 'frostedGlass', name: '', color: '#e3edf1', roughness: 0.5, metalness: 0, cut: 'none' },
+  { id: 'plasticWhite', name: '', color: '#f0f0ee', roughness: 0.4, metalness: 0, cut: 'solid' },
+  { id: 'plasticBlack', name: '', color: '#202124', roughness: 0.45, metalness: 0, cut: 'solid' },
+  { id: 'rubber', name: '', color: '#2f3032', roughness: 0.9, metalness: 0, cut: 'solid' },
+  { id: 'carpet', name: '', color: '#77726c', roughness: 1, metalness: 0, cut: 'solid' },
+  { id: 'jute', name: '', color: '#b79b6f', roughness: 1, metalness: 0, cut: 'solid' },
+  { id: 'water', name: '', color: '#5fa2c2', roughness: 0.05, metalness: 0, cut: 'none' },
+  { id: 'soil', name: '', color: '#6b4f3a', roughness: 1, metalness: 0, cut: 'concrete' },
+  { id: 'screen', name: '', color: '#0e1013', roughness: 0.1, metalness: 0.2, cut: 'solid' },
 ];
 
 /** A material for a name an older file used and the built-in ones do not have: grey, plain. */
@@ -65,6 +103,45 @@ export const isColor = (c: unknown): c is string => typeof c === 'string' && /^#
 
 /** A project's material by id; a name it does not have gets the plain grey one (materialFor). */
 export const materialIn = (list: readonly Material[], id: MaterialId): Material => list.find((m) => m.id === id) ?? materialFor(id);
+
+/** A colour's channels (0–255), from #rrggbb or rgb(r g b); null for another form. */
+function channels(c: string): [number, number, number] | null {
+  if (isColor(c)) {
+    const n = parseInt(c.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  const m = /^rgb\((\d+)[ ,]+(\d+)[ ,]+(\d+)\)$/.exec(String(c).trim());
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+
+/** WCAG's relative luminance of channels. */
+const luminance = ([r, g, b]: [number, number, number]): number => {
+  const lin = (v: number) => (v / 255 <= 0.03928 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+};
+const contrast = (a: [number, number, number], b: [number, number, number]) => {
+  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p) as [number, number];
+  return (x + 0.05) / (y + 0.05);
+};
+
+/**
+ * A layer's cut as the plan fills it: its colour shaded for the theme (shade), then mixed toward white
+ * or black as little as it takes for the wall's line to read on it (3:1, WCAG's for graphics): a walnut
+ * or a black lacquer layer under a dark line, a material the user made dark. Its own colour otherwise.
+ */
+export function cutFill(color: string, k: number, line: string): string {
+  const shaded = shade(color, k);
+  const fill = channels(shaded);
+  const ink = channels(line);
+  if (!fill || !ink || contrast(fill, ink) >= 3) return shaded;
+  for (let t = 0.05; t <= 1.001; t += 0.05) {
+    for (const to of [255, 0]) {
+      const mixed = fill.map((v) => Math.round(v + (to - v) * t)) as [number, number, number];
+      if (contrast(mixed, ink) >= 3) return `rgb(${mixed[0]} ${mixed[1]} ${mixed[2]})`;
+    }
+  }
+  return shaded;
+}
 
 /** A colour darkened (k < 1) toward black, for the plan's dark theme: the light wall line must read on it. */
 export function shade(color: string, k: number): string {

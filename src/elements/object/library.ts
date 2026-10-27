@@ -3,6 +3,7 @@
 // and the chairs, the number of chairs by formula. Lengths in metres; x along the width and y along the
 // depth from the centre, z up from the floor; the front faces −y.
 
+import { LIBRARY_V50 } from './library-living';
 import type { ObjectDefinition, ParamDef } from './schema';
 import { LIBRARY_MORE } from './library-more';
 import { LIBRARY_LIGHTS } from './library-lights';
@@ -266,4 +267,4 @@ export const DINING_SET: ObjectDefinition = {
 };
 
 /** The definitions a new project has, and those an older file gets: one of each category at least (phase 8). */
-export const LIBRARY: readonly ObjectDefinition[] = [TABLE, CHAIR, DINING_SET, BOOKCASE, CABINET, ...LIBRARY_MORE, ...LIBRARY_LIGHTS];
+export const LIBRARY: readonly ObjectDefinition[] = [TABLE, CHAIR, DINING_SET, BOOKCASE, CABINET, ...LIBRARY_MORE, ...LIBRARY_LIGHTS, ...LIBRARY_V50];

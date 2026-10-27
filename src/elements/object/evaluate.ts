@@ -11,8 +11,8 @@ import type { Expr, HandleDef, MeshData, ObjectDefinition, ObjectInstance, Param
 /** A piece in the world: a box (its centre, size and turn) or an upright cylinder (its base's centre); `cut`, a void
  * taken out of the solid pieces. */
 export type Piece = { readonly cut?: boolean } & (
-  | { readonly kind: 'box'; readonly cx: number; readonly cy: number; readonly z: number; readonly w: number; readonly d: number; readonly h: number; readonly angle: number; readonly material: Material; /** Its edges' radius, 0 square; never more than half its least side. */ readonly round: number }
-  | { readonly kind: 'cylinder'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly r2: number; readonly h: number; readonly material: Material }
+  | { readonly kind: 'box'; readonly cx: number; readonly cy: number; readonly z: number; readonly w: number; readonly d: number; readonly h: number; readonly angle: number; readonly material: Material; /** Its edges' radius, 0 square; never more than half its least side. */ readonly round: number; /** Leaning (radians) about its own x and y axes through its base's centre, tilt first (absent: upright); (cx, cy, z) is its base's centre where it is. */ readonly tilt?: number; readonly roll?: number }
+  | { readonly kind: 'cylinder'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly r2: number; readonly h: number; readonly material: Material; /** Leaning (radians) about its base's centre, tilt about its x then roll about its y, and its turn in plan. */ readonly tilt?: number; readonly roll?: number; readonly angle?: number }
   /** A profile extruded up from z by h: its corners in the world (plan), counter-clockwise. */
   | { readonly kind: 'profile'; readonly cx: number; readonly cy: number; readonly z: number; readonly h: number; readonly points: readonly { readonly x: number; readonly y: number }[]; readonly material: Material }
   /** A profile turned about the vertical through its base's centre: its points (r out, z up from its base). */
@@ -197,16 +197,27 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         if (w === null || d === null || h === null) continue;
         // A box of no size is nothing to draw (a door of a cabinet too narrow for one): left out quietly.
         if (w <= 1e-6 || d <= 1e-6 || h <= 1e-6) continue;
-        const centre = apply(frame, { x: ox + w / 2, y: oy + d / 2, z: oz });
         const round = part.round === undefined ? 0 : (num(part.round, at, `${label} edge radius`) ?? 0);
-        pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'box', cx: centre.x, cy: centre.y, z: centre.z, w, d, h, angle: frame.angle, material: materialOf(part), round: Math.max(0, Math.min(round, Math.min(w, d, h) / 2 - 1e-4)) });
+        const tilt = ((part.tilt === undefined ? 0 : (num(part.tilt, at, `${label} tilt`) ?? 0)) * Math.PI) / 180;
+        const roll = ((part.roll === undefined ? 0 : (num(part.roll, at, `${label} roll`) ?? 0)) * Math.PI) / 180;
+        // Its base's centre, turned with it: about its base's front edge (tilt), then its left edge (roll).
+        const ty = (d / 2) * Math.cos(tilt);
+        const tz = -(d / 2) * Math.sin(tilt);
+        const rx = (w / 2) * Math.cos(roll) + tz * Math.sin(roll);
+        const rz = -(w / 2) * Math.sin(roll) + tz * Math.cos(roll);
+        const centre = apply(frame, { x: ox + rx, y: oy + ty, z: oz + rz });
+        const leaning = { ...(Math.abs(tilt) > 1e-9 ? { tilt } : {}), ...(Math.abs(roll) > 1e-9 ? { roll } : {}) };
+        pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'box', cx: centre.x, cy: centre.y, z: centre.z, w, d, h, angle: frame.angle, material: materialOf(part), round: Math.max(0, Math.min(round, Math.min(w, d, h) / 2 - 1e-4)), ...leaning });
       } else if (part.kind === 'cylinder') {
         const r = num(part.r, at, `${label} radius`);
         const h = num(part.h, at, `${label} height`);
         const r2 = part.r2 === undefined ? r : num(part.r2, at, `${label} top radius`);
         if (r === null || h === null || r2 === null || h <= 1e-6 || Math.max(r, r2) <= 1e-6) continue;
         const centre = apply(frame, { x: ox, y: oy, z: oz });
-        pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'cylinder', cx: centre.x, cy: centre.y, z: centre.z, r: Math.max(0, r), r2: Math.max(0, r2), h, material: materialOf(part) });
+        const tilt = ((part.tilt === undefined ? 0 : (num(part.tilt, at, `${label} tilt`) ?? 0)) * Math.PI) / 180;
+        const roll = ((part.roll === undefined ? 0 : (num(part.roll, at, `${label} roll`) ?? 0)) * Math.PI) / 180;
+        const leaning = Math.abs(tilt) > 1e-9 || Math.abs(roll) > 1e-9 ? { tilt, roll, angle: frame.angle } : {};
+        pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'cylinder', cx: centre.x, cy: centre.y, z: centre.z, r: Math.max(0, r), r2: Math.max(0, r2), h, material: materialOf(part), ...leaning });
       } else if (part.kind === 'revolve') {
         const raw = part.points.map(([pr, pz], k) => ({ r: num(pr, at, `${label} r${k + 1}`), z: num(pz, at, `${label} z${k + 1}`) }));
         if (raw.some((q) => q.r === null || q.z === null)) continue;
@@ -320,7 +331,76 @@ function placeHandle(h: HandleDef, env: Env, frame: Frame, problems: string[]): 
 }
 
 /** A piece's outline in plan: a box's four corners, a cylinder's circle as a polygon. */
+/** A leaning box's eight corners in the world (z above the level's floor). */
+export function boxCorners(p: Extract<Piece, { kind: 'box' }>): { x: number; y: number; z: number }[] {
+  const t = p.tilt ?? 0;
+  const r = p.roll ?? 0;
+  const c = Math.cos(p.angle);
+  const s = Math.sin(p.angle);
+  const out: { x: number; y: number; z: number }[] = [];
+  for (const x of [-p.w / 2, p.w / 2])
+    for (const y of [-p.d / 2, p.d / 2])
+      for (const z of [0, p.h]) {
+        // Tilt about its x axis, roll about its y axis, through its base's centre; then its turn in plan.
+        const y1 = y * Math.cos(t) + z * Math.sin(t);
+        const z1 = -y * Math.sin(t) + z * Math.cos(t);
+        const x2 = x * Math.cos(r) + z1 * Math.sin(r);
+        const z2 = -x * Math.sin(r) + z1 * Math.cos(r);
+        out.push({ x: p.cx + x2 * c - y1 * s, y: p.cy + x2 * s + y1 * c, z: p.z + z2 });
+      }
+  return out;
+}
+
+/** A point of a piece's own axes (x, y across its base's centre, z up its axis) in the world, leaning as it does. */
+function leant(p: { cx: number; cy: number; z: number; tilt?: number; roll?: number; angle?: number }, x: number, y: number, z: number): { x: number; y: number; z: number } {
+  const t = p.tilt ?? 0;
+  const r = p.roll ?? 0;
+  const c = Math.cos(p.angle ?? 0);
+  const s = Math.sin(p.angle ?? 0);
+  const y1 = y * Math.cos(t) + z * Math.sin(t);
+  const z1 = -y * Math.sin(t) + z * Math.cos(t);
+  const x2 = x * Math.cos(r) + z1 * Math.sin(r);
+  const z2 = -x * Math.sin(r) + z1 * Math.cos(r);
+  return { x: p.cx + x2 * c - y1 * s, y: p.cy + x2 * s + y1 * c, z: p.z + z2 };
+}
+
+/** A leaning cylinder's rims, 16 points each, in the world. */
+function cylinderRims(p: Extract<Piece, { kind: 'cylinder' }>): { x: number; y: number; z: number }[] {
+  return [0, 1].flatMap((top) => Array.from({ length: 16 }, (_, k) => {
+    const a = (k / 16) * 2 * Math.PI;
+    const rr = top ? p.r2 : p.r;
+    return leant(p, rr * Math.cos(a), rr * Math.sin(a), top ? p.h : 0);
+  }));
+}
+
+/** The convex hull of points in plan, counter-clockwise (Andrew's monotone chain). */
+function hull(points: readonly { x: number; y: number }[]): { x: number; y: number }[] {
+  const ps = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
+  const cross = (o: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const half = (list: { x: number; y: number }[]) => {
+    const out: { x: number; y: number }[] = [];
+    for (const p of list) {
+      while (out.length >= 2 && cross(out[out.length - 2]!, out[out.length - 1]!, p) <= 1e-12) out.pop();
+      out.push(p);
+    }
+    out.pop();
+    return out;
+  };
+  return [...half(ps), ...half([...ps].reverse())];
+}
+
+/** A piece's lowest and highest point above the level's floor (a leaning box's by its corners). */
+export function pieceSpan(p: Piece): { readonly bottom: number; readonly top: number } {
+  if ((p.kind === 'box' || p.kind === 'cylinder') && (p.tilt || p.roll)) {
+    const zs = (p.kind === 'box' ? boxCorners(p) : cylinderRims(p)).map((q) => q.z);
+    return { bottom: Math.min(...zs), top: Math.max(...zs) };
+  }
+  return { bottom: p.z, top: p.z + p.h };
+}
+
 export function pieceOutline(p: Piece): { x: number; y: number }[] {
+  if (p.kind === 'box' && (p.tilt || p.roll)) return hull(boxCorners(p));
+  if (p.kind === 'cylinder' && (p.tilt || p.roll)) return hull(cylinderRims(p));
   if (p.kind === 'profile') return p.points.map((q) => ({ x: q.x, y: q.y }));
   if (p.kind === 'cylinder' || p.kind === 'sphere' || p.kind === 'revolve') {
     const r = p.kind === 'cylinder' ? Math.max(p.r, p.r2) : p.r;
