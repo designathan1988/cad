@@ -46,6 +46,11 @@ export interface DxfOut {
   readonly polyline: (layer: string, points: readonly Point2[], closed: boolean) => void;
   /** A TEXT of `height` (m) centred on `at`, turned `angle` degrees. */
   readonly text: (layer: string, at: Point2, height: number, text: string, angle?: number) => void;
+  /**
+   * An aligned DIMENSION measuring `a` to `b`, its line through `la`–`lb` and its text `value` at `textAt`:
+   * what `draw` writes is its drawing (its anonymous block, as a CAD program shows it).
+   */
+  readonly dimension?: (layer: string, d: { readonly a: Point2; readonly b: Point2; readonly la: Point2; readonly lb: Point2; readonly textAt: Point2; readonly value: string }, draw: () => void) => void;
 }
 
 /** A kind's 3D: a geometry in three.js coordinates, standing `y` up, in one of the scene's materials or

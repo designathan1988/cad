@@ -8,6 +8,7 @@ import { hatchLines, patternOf } from './hatch-lines';
 import type { SectionDrawing } from '../app/section-drawing';
 import type { DerivedGeometry } from '../app/geometry';
 import type { Point2 } from '../core/vector';
+import type { DxfOut } from '../elements/contract';
 import { eachSolid, KINDS } from '../elements/registry';
 import { markPoint } from '../elements/opening/marks';
 import { symbolLines } from '../elements/opening/symbol';
@@ -52,11 +53,15 @@ export interface DxfWriter {
   /** A TEXT of `height` centred on `at`, turned `angle` degrees. */
   readonly text: (layer: string, at: Point2, height: number, value: string, angle?: number) => void;
   readonly pair: (code: number, value: string | number) => void;
+  readonly dimension: NonNullable<DxfOut['dimension']>;
 }
 
 /** A DXF R12 in metres with these layers, its entities what `draw` writes. */
 export function writeDxf(layers: readonly { readonly name: string; readonly colour: number }[], draw: (w: DxfWriter) => void): string {
-  const out: string[] = [];
+  // The entities, and the blocks the dimensions' drawings go in (written before them, BLOCKS before ENTITIES).
+  const entities: string[] = [];
+  const blocks: string[] = [];
+  let out = entities;
   const pair = (code: number, value: string | number) => out.push(String(code), typeof value === 'number' ? fixed(value) : value);
   const line = (layer: Layer, a: Point2, b: Point2) => {
     pair(0, 'LINE');
@@ -103,6 +108,49 @@ export function writeDxf(layers: readonly { readonly name: string; readonly colo
     out.push('73', '2');
   };
 
+  let dims = 0;
+  const dimension: DxfWriter['dimension'] = (layer, d, drawn) => {
+    const name = `*D${++dims}`;
+    out = blocks;
+    pair(0, 'BLOCK');
+    pair(8, '0');
+    pair(2, name);
+    // 1: anonymous, made by the dimension.
+    out.push('70', '1');
+    pair(10, 0);
+    pair(20, 0);
+    pair(30, 0);
+    pair(3, name);
+    drawn();
+    pair(0, 'ENDBLK');
+    pair(8, '0');
+    out = entities;
+    pair(0, 'DIMENSION');
+    pair(8, layer);
+    pair(2, name);
+    pair(3, 'STANDARD');
+    // Its line's point (the second end of the line), the text's middle, and the two points measured.
+    pair(10, d.lb.x);
+    pair(20, d.lb.y);
+    pair(30, 0);
+    pair(11, d.textAt.x);
+    pair(21, d.textAt.y);
+    pair(31, 0);
+    // 1, aligned; + 32, its block its own.
+    out.push('70', '33');
+    pair(1, d.value);
+    pair(13, d.a.x);
+    pair(23, d.a.y);
+    pair(33, 0);
+    pair(14, d.b.x);
+    pair(24, d.b.y);
+    pair(34, 0);
+  };
+  draw({ line, polyline, text, pair, dimension });
+  out = [];
+  const body = entities;
+  const anon = blocks;
+
   pair(0, 'SECTION');
   pair(2, 'HEADER');
   pair(9, '$ACADVER');
@@ -136,18 +184,31 @@ export function writeDxf(layers: readonly { readonly name: string; readonly colo
     pair(6, 'CONTINUOUS');
   }
   pair(0, 'ENDTAB');
+  // The dimensions' style, the one they name.
+  pair(0, 'TABLE');
+  pair(2, 'DIMSTYLE');
+  out.push('70', '1');
+  pair(0, 'DIMSTYLE');
+  pair(2, 'STANDARD');
+  out.push('70', '0');
+  pair(0, 'ENDTAB');
+  pair(0, 'ENDSEC');
+
+  pair(0, 'SECTION');
+  pair(2, 'BLOCKS');
+  out.push(...anon);
   pair(0, 'ENDSEC');
 
   pair(0, 'SECTION');
   pair(2, 'ENTITIES');
-  draw({ line, polyline, text, pair });
+  out.push(...body);
   pair(0, 'ENDSEC');
   pair(0, 'EOF');
   return `${out.join('\r\n')}\r\n`;
 }
 
 export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels): string {
-  return writeDxf(DXF_LAYERS, ({ line, polyline, text, pair }) => {
+  return writeDxf(DXF_LAYERS, ({ line, polyline, text, pair, dimension }) => {
     // The walls cut at this level: their outline (the faces, a side shared by two pieces left out) and
     // the lines between their layers.
     const cut = [...g.solids.values()].filter((s) => s.wall.levelId === levelId && s.plan === 'cut');
@@ -180,7 +241,7 @@ export function planDxf(g: DerivedGeometry, levelId: string, labels: DxfLabels):
     }
     // The registry's kinds on this level, each writing itself.
     // An axis (on every level) on each plan.
-    for (const x of eachSolid(g.kinds)) if (x.levelId === null || x.levelId === levelId) x.kind.dxf?.(x.solid, { line, polyline, text });
+    for (const x of eachSolid(g.kinds)) if (x.levelId === null || x.levelId === levelId) x.kind.dxf?.(x.solid, { line, polyline, text, dimension });
     // Rooms: the outline, and the name and area at the plan's label point.
     for (const r of g.rooms.values()) {
       if (r.room.levelId !== levelId || !r.enclosed) continue;
