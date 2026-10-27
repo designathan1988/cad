@@ -10,7 +10,7 @@ import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { resetWallsToType, setWalls, updateWalls } from '../elements/wall/commands';
 import { alignHeads, alignOpenings, distributeOpenings, ruleKeepingPosition, setGroupSpacing, ungroupOpenings, updateOpening } from '../elements/opening/commands';
 import { GROUP_PREFIX } from '../elements/opening/schema';
-import { MEASURE_IDLE, reading } from '../tools/measure-tool';
+import { chainArea, chainLength, MEASURE_IDLE, reading } from '../tools/measure-tool';
 import { alignWalls, distributeWalls } from '../tools/arrange-walls';
 import { guideLine, guideMeasure } from '../tools/guide-tool';
 import { OPENING_PREVIEW_ID, ruleGuide } from './opening-ui';
@@ -78,7 +78,22 @@ export function renderFrame(app: App): void {
   const floorAng = floorAlong ? ((Math.atan2(floorAlong.y, floorAlong.x) * 180) / Math.PI + 360) % 360 : 0;
   // The tape: from its start to where the next click would land, or as measured.
   const m = ui.tool === 'measure' ? ui.measure : MEASURE_IDLE;
-  const tapeFrom = m.kind === 'idle' ? null : m.a;
+  const tapeFrom = m.kind === 'from' || m.kind === 'done' ? m.a : null;
+  // A chain being measured: its stretches and the one to the pointer; closed, its outline filled.
+  const chainTo = m.kind === 'chain' ? (ui.snap?.point ?? ui.cursor) : null;
+  const chainLine = m.kind === 'chain' ? [...m.points, ...(chainTo ? [chainTo] : [])] : m.kind === 'chainDone' ? (m.closed ? [...m.points, m.points[0]!] : [...m.points]) : null;
+  const chainLast = chainLine && chainLine.length >= 2 ? { a: chainLine.at(-2)!, b: chainLine.at(-1)! } : null;
+  const chainMeasure =
+    m.kind === 'chainDone' && m.closed
+      ? { at: { x: m.points.reduce((t, p) => t + p.x, 0) / m.points.length, y: m.points.reduce((t, p) => t + p.y, 0) / m.points.length }, text: areaText(chainArea(m.points)), clear: 0 }
+      : chainLine && chainLast && distance(chainLast.a, chainLast.b) > 0
+        ? {
+            at: { x: (chainLast.a.x + chainLast.b.x) / 2, y: (chainLast.a.y + chainLast.b.y) / 2 },
+            text: `${lengthText(distance(chainLast.a, chainLast.b))} · Σ ${lengthText(chainLength(chainLine, false))}`,
+            normal: { x: -(chainLast.b.y - chainLast.a.y) / distance(chainLast.a, chainLast.b), y: (chainLast.b.x - chainLast.a.x) / distance(chainLast.a, chainLast.b) },
+            clear: 0,
+          }
+        : null;
   const tapeTo = m.kind === 'done' ? m.b : m.kind === 'from' ? (ui.snap?.point ?? ui.cursor) : null;
   const tape = tapeFrom && tapeTo && distance(tapeFrom, tapeTo) > 0 ? reading(tapeFrom, tapeTo) : null;
   // How far the drawn preview reaches on the measure's side: its pieces as derived (reference line,
@@ -107,7 +122,7 @@ export function renderFrame(app: App): void {
     app.plan.draw(app.visibleGeometry(), {
       selected: ui.selection,
       hover: ui.hover,
-      roomSpace: ui.tool === 'room' ? ui.roomSpace : null,
+      roomSpace: ui.tool === 'room' ? ui.roomSpace : m.kind === 'chainDone' && m.closed ? m.points : null,
       preview,
       dimensionDraft: app.dimensionDraft(),
       gridDraft: app.gridDraft(),
@@ -127,7 +142,9 @@ export function renderFrame(app: App): void {
           ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${lengthText(len)} · ${num(ang, 1)}°`, normal: side!, clear: reach }
           : floorFrom && floorTo && floorAlong && floorLen >= MIN_WALL_LENGTH
             ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${lengthText(floorLen)} · ${num(floorAng, 1)}°`, normal: { x: -floorAlong.y, y: floorAlong.x }, clear: 0 }
-            : tape && tapeFrom && tapeTo
+            : chainMeasure
+              ? chainMeasure
+              : tape && tapeFrom && tapeTo
               ? {
                   at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 },
                   text: `${lengthText(tape.length)} · ${num(tape.angle, 1)}°`,
@@ -174,7 +191,9 @@ export function renderFrame(app: App): void {
       })),
       // A floor's outline being drawn, or a beam from its first point to where the next click lands.
       draft:
-        ui.tool === 'floor' && ui.floorDraft.length > 0
+        chainLine && chainLine.length >= 2
+          ? chainLine
+          : ui.tool === 'floor' && ui.floorDraft.length > 0
           ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
           : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
             ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
@@ -241,7 +260,9 @@ export function renderFrame(app: App): void {
       anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
       // A floor's outline being drawn, or a beam from its first point to where the next click lands.
       draft:
-        ui.tool === 'floor' && ui.floorDraft.length > 0
+        chainLine && chainLine.length >= 2
+          ? chainLine
+          : ui.tool === 'floor' && ui.floorDraft.length > 0
           ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
           : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
             ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]

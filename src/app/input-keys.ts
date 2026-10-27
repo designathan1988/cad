@@ -249,6 +249,9 @@ export function wireKeys(app: App, k: KeyContext): void {
     }
     if (e.key === 'Enter' && ui.tool === 'wall') return app.wallEvent({ kind: 'enter' });
     if (e.key === 'Enter' && ui.tool === 'floor') return app.floorFinish();
+    // Measuring a chain: Enter ends it open; C switches between two points and a chain.
+    if (e.key === 'Enter' && ui.tool === 'measure') return app.measureEvent({ kind: 'enter' });
+    if (key === 'c' && !ctrl && !e.shiftKey && ui.tool === 'measure') return app.toggleMeasureMode();
     // Enter ends what is being drawn by points: a roof's outline, a guardrail's path, a beam chain.
     if (e.key === 'Enter' && ui.tool === 'roof' && ui.roofDraft.length > 0) return app.roofFinish();
     if (e.key === 'Enter' && ui.tool === 'railing' && ui.railingDraft.length > 0) return app.railingFinish();

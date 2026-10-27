@@ -1,11 +1,12 @@
 // The interface around the views: the tool bar, the level list, the footer's hints and keys, the float bar, the browser drawer. Functions over the app (app.ts delegates).
 
+import { distance } from '../core/vector';
 import { words } from '../elements/object/fields';
-import { lengthText, typingExamples } from '../ui/units';
+import { areaText, lengthText, typingExamples } from '../ui/units';
 import * as THREE from 'three';
 import { type Point2 } from '../core/vector';
 import { ruleBase } from '../tools/opening-tool';
-import { reading } from '../tools/measure-tool';
+import { angleAt, chainArea, chainLength, reading } from '../tools/measure-tool';
 import { OPENING_PREVIEW_ID, ruleText } from './opening-ui';
 import { getLang, name, num, t, type MessageKey } from '../ui/i18n';
 import { icon } from '../ui/icons';
@@ -251,7 +252,14 @@ export function renderChrome(app: App): void {
     : ui.tool === 'roof'
     ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.roofDraft.length > 0 ? 'key.back' : 'key.exit'))]
     : ui.tool === 'measure'
-    ? [keyHint('Shift', t('key.straight')), ...altGuide, snapKey, keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clear'))]
+    ? [
+        keyHint('C', t(ui.measureMode === 'chain' ? 'key.measureDistance' : 'key.measureChain')),
+        ...(ui.measure.kind === 'chain' ? [keyHint('Enter', t('key.finish'))] : []),
+        keyHint('Shift', t('key.straight')),
+        ...altGuide,
+        snapKey,
+        keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clearMeasure')),
+      ]
     : ui.tool === 'floor'
     ? [keyHint('Enter', t('key.finish')), ...altGuide, snapKey, keyHint('Esc', t('key.exit'))]
     : drawing && w.kind === 'rect'
@@ -337,8 +345,21 @@ export function renderChrome(app: App): void {
 /** The footer for the measure tool: what to click, or what the tape read. */
 export function measureHint(app: App): string {
   const m = app.ui.measure;
-  if (m.kind === 'idle') return t('hint.measureStart');
+  if (m.kind === 'idle') return t(app.ui.measureMode === 'chain' ? 'hint.chainStart' : 'hint.measureStart');
   if (m.kind === 'from') return t('hint.measureEnd');
+  if (m.kind === 'chain') {
+    // The stretches so far and the one to the pointer; the angle where the last two meet.
+    const to = app.ui.snap?.point ?? app.ui.cursor;
+    const pts = to ? [...m.points, to] : [...m.points];
+    if (pts.length < 2) return t('hint.chainNext');
+    const n = pts.length;
+    const angle = n >= 3 ? angleAt(pts[n - 3]!, pts[n - 2]!, pts[n - 1]!) : null;
+    return t(angle === null ? 'hint.chainSoFar' : 'hint.chainSoFarAngle', { total: lengthText(chainLength(pts, false)), n: n - 1, last: lengthText(distance(pts[n - 2]!, pts[n - 1]!)), a: num(angle ?? 0, 1) });
+  }
+  if (m.kind === 'chainDone') {
+    if (m.closed) return t('hint.areaDone', { area: areaText(chainArea(m.points)), p: lengthText(chainLength(m.points, true)), n: m.points.length });
+    return t('hint.chainDone', { total: lengthText(chainLength(m.points, false)), n: m.points.length - 1 });
+  }
   const r = reading(m.a, m.b);
   return t('hint.measured', { d: lengthText(r.length), dx: lengthText(Math.abs(r.dx)), dy: lengthText(Math.abs(r.dy)), a: num(r.angle, 1) });
 }

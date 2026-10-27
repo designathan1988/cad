@@ -27,7 +27,7 @@ import { addOpening, placementProblem, updateOpening } from '../elements/opening
 import type { OpeningSize } from '../elements/opening/panel';
 import { isOpeningId, newOpening, OPENING_DEFAULTS, OPENING_PREFIX, type Opening, type OpeningKind } from '../elements/opening/schema';
 import { OPENING_IDLE, openingTransition, type OpeningToolEvent, type OpeningToolState } from '../tools/opening-tool';
-import { MEASURE_IDLE, type MeasureEvent, type MeasureState, measureTransition } from '../tools/measure-tool';
+import { MEASURE_IDLE, type MeasureEvent, type MeasureMode, type MeasureState, measureTransition } from '../tools/measure-tool';
 import { type GuideBase, type GuideDraft } from '../tools/guide-tool';
 import { type Guide } from '../elements/guide/schema';
 import { aimAlong, OPENING_PREVIEW_ID } from './opening-ui';
@@ -119,6 +119,8 @@ export interface UiState {
   floorDraft: Point2[];
   /** The measure tool's tape (measure-tool.ts). */
   measure: MeasureState;
+  /** Two points, or a chain of stretches with its sum, angles and area (C switches). */
+  measureMode: MeasureMode;
   /** The dimension tool's ends, before the dimension is made (dimension-tool.ts). */
   dimension: DimensionToolState;
   /** The grid tool's first point, before the axis is made. */
@@ -242,6 +244,7 @@ export class App {
       drag: null,
       floorDraft: [],
       measure: MEASURE_IDLE,
+      measureMode: 'distance',
       dimension: DIMENSION_IDLE,
       gridFrom: null,
       beamFrom: null,
@@ -952,9 +955,17 @@ export class App {
     return modify.modifyMarks(this);
   }
 
-  /** The measure tool: a click or Esc (measure-tool.ts). Nothing is added to the drawing. */
+  /** The measure tool between two points and a chain (C): the tape so far is dropped. */
+  toggleMeasureMode(): void {
+    this.ui.measureMode = this.ui.measureMode === 'chain' ? 'distance' : 'chain';
+    this.ui.measure = MEASURE_IDLE;
+    this.toast(t(this.ui.measureMode === 'chain' ? 'toast.measureChain' : 'toast.measureDistance'));
+    this.render();
+  }
+
+  /** The measure tool: a click, Enter or Esc (measure-tool.ts). Nothing is added to the drawing. */
   measureEvent(event: MeasureEvent): void {
-    this.ui.measure = measureTransition(this.ui.measure, event);
+    this.ui.measure = measureTransition(this.ui.measure, event, this.ui.measureMode);
     if (event.kind === 'escape') this.ui.snap = null;
     this.shell.measure.value = '';
     this.render();

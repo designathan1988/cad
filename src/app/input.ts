@@ -233,6 +233,8 @@ export function wireInput(app: App): void {
     const tape =
       ui.tool === 'measure' && ui.measure.kind === 'from'
         ? ui.measure.a
+        : ui.tool === 'measure' && ui.measure.kind === 'chain'
+          ? ui.measure.points.at(-1)!
         : ui.tool === 'dimension' && ui.dimension.kind === 'from'
           ? ui.dimension.a
           : ui.tool === 'grid'
@@ -267,7 +269,19 @@ export function wireInput(app: App): void {
       ],
       // Modifying, snapped from the base point: right angles and 15° steps from it, as a wall from its last point.
       from: tape ?? modifyFrom ?? (draft ? (draft.at(-1) ?? null) : w.kind === 'drawing' ? w.last : null),
-      chainStart: draft ? (draft.length >= 3 ? draft[0]! : null) : (w.kind === 'drawing' && w.count >= 2) || w.kind === 'bend' ? w.start : null,
+      // A chain being measured closes on its first point, as a floor's outline does.
+      chainStart:
+        ui.tool === 'measure' && ui.measure.kind === 'chain'
+          ? ui.measure.points.length >= 3
+            ? ui.measure.points[0]!
+            : null
+          : draft
+            ? draft.length >= 3
+              ? draft[0]!
+              : null
+            : (w.kind === 'drawing' && w.count >= 2) || w.kind === 'bend'
+              ? w.start
+              : null,
       enabled: ui.snaps,
       orthogonal: shift,
       points: elementPoints(),
