@@ -217,6 +217,21 @@ describe('version 5', () => {
     expect(r.doc.materials.some((m) => m.id === 'woodVeneer')).toBe(true);
   });
 
+  it("a version 48 file's kitchen and washbasin, as they came, get their handles; one changed by hand is kept", () => {
+    const doc = newDocument();
+    const kitchen = doc.definitions.find((d) => d.id === 'def_kitchen')!;
+    const basin = doc.definitions.find((d) => d.id === 'def_washbasin')!;
+    const bare = (d: typeof kitchen) => ({ ...d, params: d.params.filter((p) => p.name !== 'matPuxador'), parts: d.parts.filter((p) => !['Puxador', 'Puxador do aéreo'].includes(p.name?.pt ?? '')) });
+    expect(kitchen.parts.filter((p) => p.name?.pt === 'Puxador')).toHaveLength(1);
+    const changed = { ...bare(basin), name: { pt: 'Minha pia', en: 'My basin' } };
+    const old = { ...doc, version: 48, definitions: doc.definitions.map((d) => (d.id === kitchen.id ? bare(d) : d.id === basin.id ? changed : d)) };
+    const r = readProject(JSON.stringify(old));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.doc.definitions.find((d) => d.id === kitchen.id)).toEqual(kitchen);
+    expect(r.doc.definitions.find((d) => d.id === basin.id)).toEqual(changed);
+  });
+
   it("a version 47 file's point of light, a cylinder, becomes the bulb and its socket", () => {
     const doc = newDocument();
     const point = doc.definitions.find((d) => d.id === 'def_point_light')!;

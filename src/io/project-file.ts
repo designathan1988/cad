@@ -9,7 +9,7 @@ import { isLayerSet, isRoomOverride, isWallOverride } from '../app/layer-sets';
 import { isVariableName } from '../core/measure';
 import { isOpeningStyle, operationsOf } from '../elements/opening/style';
 import { CHAIR, LIBRARY } from '../elements/object/library';
-import { BED, COOKER, FRIDGE, LIBRARY_MORE, POT_PLANT, SOFA, TOILET, TREE } from '../elements/object/library-more';
+import { BED, COOKER, FRIDGE, KITCHEN, LIBRARY_MORE, POT_PLANT, SOFA, TOILET, TREE, WASHBASIN } from '../elements/object/library-more';
 import type { ObjectDefinition } from '../elements/object/schema';
 
 /** The library's definitions that version 46 gave rounded edges, and one as it was before. */
@@ -21,6 +21,9 @@ const before47 = (d: ObjectDefinition): ObjectDefinition => ({ ...d, params: d.p
 /** The library's chair before version 47, its back one board: three boxes, the back from the seat up. */
 const isOldChair = (d: ObjectDefinition) => d.parts.length === 3 && d.parts.every((p) => p.kind === 'box') && d.parts.some((p) => p.kind === 'box' && p.h === 'encosto - assento');
 const LIBRARY_NOW = [...LIBRARY, ...LIBRARY_MORE];
+/** A library definition as version 48 had it: no handles on the kitchen's doors nor the washbasin's cabinet. */
+const HANDLES = new Set(['Puxador', 'Puxador do aéreo']);
+const before49 = (d: ObjectDefinition): ObjectDefinition => ({ ...d, params: d.params.filter((p) => p.name !== 'matPuxador'), parts: d.parts.filter((p) => !HANDLES.has(p.name?.pt ?? '')) });
 
 /** The library's tree and potted plant as they were before version 45 (cones), by their parts. */
 const isOldTree = (d: ObjectDefinition) => d.parts.length === 3 && d.parts.every((p) => p.kind === 'cylinder');
@@ -108,7 +111,7 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 42: tags by elements with their values (`tags`, elements/tag). Older files have none.
  * Version 43: a room's interior elevations, marks kept to a level (`levelId`, elements/section). Older marks have none: every level.
  */
-export const CURRENT_VERSION = 48;
+export const CURRENT_VERSION = 49;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -304,10 +307,13 @@ export function repairProject(raw: unknown): ReadResult {
   // as they came, take the new ones (the chair by its parts, as the tree above).
   const since47 =
     raw.version < 47
-      ? since46.map((d) => LIBRARY_NOW.find((l) => l.id === d.id && JSON.stringify(before47(l)) === JSON.stringify(d)) ?? (d.id === CHAIR.id && isOldChair(d) ? CHAIR : d))
+      ? since46.map((d) => LIBRARY_NOW.find((l) => l.id === d.id && JSON.stringify(before49(before47(l))) === JSON.stringify(d)) ?? (d.id === CHAIR.id && isOldChair(d) ? CHAIR : d))
       : since46;
   // Version 48 drew the point of light as a bulb and its socket (it was a cylinder).
-  const definitions = raw.version < 48 ? since47.map((d) => (d.id === POINT_LIGHT.id && d.parts.length === 1 && d.parts[0]!.kind === 'cylinder' ? POINT_LIGHT : d)) : since47;
+  const since48 = raw.version < 48 ? since47.map((d) => (d.id === POINT_LIGHT.id && d.parts.length === 1 && d.parts[0]!.kind === 'cylinder' ? POINT_LIGHT : d)) : since47;
+  // Version 49 put handles on the kitchen's doors and the washbasin's cabinet: the library's own, still
+  // as they came, take them.
+  const definitions = raw.version < 49 ? since48.map((d) => LIBRARY_NOW.find((l) => (l.id === KITCHEN.id || l.id === WASHBASIN.id) && l.id === d.id && JSON.stringify(before49(l)) === JSON.stringify(d)) ?? d) : since48;
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));
