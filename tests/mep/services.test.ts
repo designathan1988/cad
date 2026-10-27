@@ -10,6 +10,7 @@ import { fittingsOf, networksOf } from '../../src/elements/mep/network';
 import { GROUP_OF, isMepPoint, isMepRun, type MepPoint, type MepRun } from '../../src/elements/mep/schema';
 import { hazenWilliams, mostUhc, neededDiameter, pressures, probableFlow, rainCapacity, rainDiameter, sewerFalls } from '../../src/elements/mep/water';
 import { DEFAULT_SIM } from '../../src/sim/settings';
+import { RAIN_PLACES, rainOf } from '../../src/elements/mep/rain-places';
 import { readProject, writeProject } from '../../src/io/project-file';
 import { runVertices } from '../../src/app/mep-ui';
 import { mepPointKind, mepRunKind } from '../../src/elements/kinds/mep';
@@ -226,6 +227,16 @@ describe('water and sewer', () => {
     expect(rainCapacity(0.1, 0.4)).toBe(0);
     expect(rainCapacity(0.1, 3)).toBe(405);
     expect(rainDiameter(11000, 4)).toBeNull();
+  });
+
+  it('NBR 10844 table 5: 98 places; a short record says the years its value stands for', () => {
+    expect(RAIN_PLACES).toHaveLength(98);
+    const sp = RAIN_PLACES.find((p) => p.name === 'São Paulo/SP (Mirante Santana)')!;
+    expect([rainOf(sp, 1), rainOf(sp, 5), rainOf(sp, 25)]).toEqual([{ value: 122, years: 1 }, { value: 172, years: 5 }, { value: 191, years: 7 }]);
+    // Alto Teresópolis: the "5-year" value is of 3 years, and there is no 25-year one.
+    const at = RAIN_PLACES.find((p) => p.name === 'Alto Teresópolis/RJ')!;
+    expect([rainOf(at, 5), rainOf(at, 25)]).toEqual([{ value: 137, years: 3 }, null]);
+    expect(new Set(RAIN_PLACES.map((p) => p.name)).size).toBe(98);
   });
 
   it('UHC and diameters (NBR 8160): a toilet asks a 100 mm branch; 25 units pass a 75; 250 at 1 % pass a 100', () => {

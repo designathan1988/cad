@@ -10,7 +10,8 @@ import { fittingsOf, networksOf } from '../elements/mep/network';
 import { GROUP_OF, systemsOf } from '../elements/mep/schema';
 import { DEFAULT_RAIN, MAX_STATIC, MIN_DYNAMIC, pressures, sewerFalls } from '../elements/mep/water';
 import { simSettingsOf } from '../app/sim-tables';
-import { el, numberField, segmented, select } from './controls';
+import { el, numberField, searchSelect, segmented, select } from './controls';
+import { RAIN_PLACES, rainOf, type RainReturn } from '../elements/mep/rain-places';
 import { openProjectDialog } from './dialog';
 import { type MessageKey, num, t } from './i18n';
 
@@ -158,6 +159,49 @@ export function showServices(app: App, first: Tab = 'systems'): void {
         note('services.waterNote', { min: MIN_DYNAMIC, max: MAX_STATIC }),
       );
     } else if (tab === 'sewer') {
+      // The design rain: typed, or a place of NBR 10844's table 5 and a return, which fill it in.
+      const rainPremise = (): HTMLElement[] => {
+        const s = simSettingsOf(doc);
+        const place = RAIN_PLACES.find((p) => p.name === s.rainPlace) ?? null;
+        const years: RainReturn = s.rainReturn ?? 5;
+        const choose = (name: string, y: RainReturn) => {
+          const p = RAIN_PLACES.find((x) => x.name === name);
+          const r = p ? rainOf(p, y) : null;
+          app.setSimulation({ ...s, rainPlace: name, rainReturn: y, ...(r ? { rain: r.value } : {}) });
+        };
+        const { rainPlace: _typed, ...typed } = s;
+        const got = place ? rainOf(place, years) : null;
+        const said = !place ? t('services.rainTypedNote') : got === null ? t('services.rainNone', { place: place.name, years }) : t(got.years === 1 ? 'services.rainFromOne' : 'services.rainFrom', { place: place.name, years: got.years, value: got.value });
+        return [
+          el(
+            'div',
+            { class: 'services-rain' },
+            el(
+              'label',
+              { class: 'lot-row' },
+              el('span', {}, t('services.rainPlace')),
+              searchSelect([{ value: '', label: t('services.rainTyped') }, ...RAIN_PLACES.map((p) => ({ value: p.name, label: p.name }))], s.rainPlace ?? '', (v) => (v === '' ? app.setSimulation(typed) : choose(v, years)), t('services.rainPlace')),
+            ),
+            el(
+              'div',
+              { class: 'lot-row' },
+              el('span', {}, t('services.rainReturn')),
+              segmented(
+                ([1, 5, 25] as const).map((y) => ({ value: String(y), label: y === 1 ? t('services.yearOne') : t('services.years', { n: y }) })),
+                String(years),
+                (v) => (place ? choose(place.name, Number(v) as RainReturn) : app.setSimulation({ ...s, rainReturn: Number(v) as RainReturn })),
+              ),
+            ),
+            el(
+              'label',
+              { class: 'lot-row' },
+              el('span', {}, t('services.rainIntensity')),
+              numberField(s.rain ?? DEFAULT_RAIN, (v) => app.setSimulation({ ...typed, rain: Math.max(1, v) }), 1, 0, 'mm/h', 1000),
+            ),
+          ),
+          el('p', { class: 'tour-empty' }, said),
+        ];
+      };
       const blocks = (['sewer', 'rain'] as const).map((group) => {
         const f = sewerFalls(doc, group);
         return el(
@@ -165,16 +209,7 @@ export function showServices(app: App, first: Tab = 'systems'): void {
           {},
           el('h3', {}, t(`services.disc.${group}` as MessageKey)),
           // The rain: the design rain the flows take, kept with the simulations' premises.
-          ...(group === 'rain'
-            ? [
-                el(
-                  'label',
-                  { class: 'lot-row services-rain' },
-                  el('span', {}, t('services.rainIntensity')),
-                  numberField(doc.simulation?.rain ?? DEFAULT_RAIN, (v) => app.setSimulation({ ...simSettingsOf(doc), rain: Math.max(1, v) }), 1, 0, 'mm/h', 1000),
-                ),
-              ]
-            : []),
+          ...(group === 'rain' ? rainPremise() : []),
           ...(f.stretches.length === 0 ? [note('services.noStretches')] : []),
           ...(f.stretches.length > 0
             ? [

@@ -14,6 +14,9 @@ export interface SimSettings {
   readonly wifi: { readonly band: WifiBand; /** dBm at the antenna. */ readonly power: number };
   /** The design rain for the rain pipes (mm/h, NBR 10844); none: 150, the norm's figure for up to 100 m². */
   readonly rain?: number;
+  /** Where it was taken from: a place of NBR 10844's table 5 and the return (years); none: typed. */
+  readonly rainPlace?: string;
+  readonly rainReturn?: 1 | 5 | 25;
 }
 
 /** São Paulo (zone 3), a cold winter night outside a heated room, a common router. */
@@ -31,5 +34,5 @@ export const isSimSettings = (x: unknown): x is SimSettings => {
   if (typeof x !== 'object' || x === null) return false;
   const o = x as Record<string, unknown>;
   const w = o.wifi as Record<string, unknown> | undefined;
-  return finite(o.zone) && Number.isInteger(o.zone) && o.zone >= 1 && o.zone <= 8 && air(o.inside) && air(o.outside) && typeof w === 'object' && w !== null && (w.band === '2.4' || w.band === '5') && finite(w.power) && (o.rain === undefined || (finite(o.rain) && o.rain > 0));
+  return finite(o.zone) && Number.isInteger(o.zone) && o.zone >= 1 && o.zone <= 8 && air(o.inside) && air(o.outside) && typeof w === 'object' && w !== null && (w.band === '2.4' || w.band === '5') && finite(w.power) && (o.rain === undefined || (finite(o.rain) && o.rain > 0)) && (o.rainPlace === undefined || typeof o.rainPlace === 'string') && (o.rainReturn === undefined || o.rainReturn === 1 || o.rainReturn === 5 || o.rainReturn === 25);
 };

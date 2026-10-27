@@ -2583,9 +2583,12 @@ button.project-name:hover {
   font-size: var(--fs-sm);
   color: var(--text-2);
 }
-/* The design rain over the rain table: a short number, not the table's width. */
+/* The design rain over the rain table: the place, the return and the number side by side, each its own width. */
 .services-rain {
-  max-width: var(--types-list-w);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--field-min-w), var(--types-list-w)));
+  gap: var(--sp-3);
+  align-items: end;
   margin-bottom: var(--sp-2);
 }
 .lot-num {
