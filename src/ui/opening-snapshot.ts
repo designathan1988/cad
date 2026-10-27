@@ -13,8 +13,8 @@ import { materialIn, SEE_THROUGH } from '../elements/material/schema';
 import { previewMesh } from '../render/pattern-texture';
 
 /** The wall around it: this much beyond each jamb, over the head and its thickness (m). */
-const MARGIN = 0.2;
-const THICK = 0.15;
+const MARGIN = 0.5;
+const THICK = 0.18;
 
 const look = (color: string, roughness: number, metalness = 0, opacity?: number) =>
   new THREE.MeshStandardMaterial({ color, roughness, metalness, ...(opacity === undefined ? {} : { transparent: true, opacity }) });
@@ -60,5 +60,5 @@ export function openingSnapshot(m: OpeningModel, w: number, h: number): string |
     meshes.push(new THREE.Mesh(geo, material));
   }
   // From the front (the wall's −y side, three.js's +z), a little to the side and above.
-  return meshSnapshot(meshes, w, h, 0.45, 0.22);
+  return meshSnapshot(meshes, w, h, 0.62, 0.3);
 }
