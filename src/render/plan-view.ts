@@ -171,6 +171,8 @@ export class PlanView {
   center: Point2 = { x: 4, y: 3 };
   /** The project's scale and pens, set before each drawing (elements/drawing/schema.ts). */
   drawing: DrawingSettings = DEFAULT_DRAWING;
+  /** Graphic overrides: walls of a type filled with a colour (app/layer-sets.ts); empty when off. */
+  overrides: ReadonlyMap<string, string> = new Map();
   /**
    * Drawn for paper (app/print.ts), not for the screen: its size in pen units, device pixels a unit,
    * the scale printed and the paper's colours. No grid; pens, texts and hatches keep their size on paper.
@@ -396,7 +398,8 @@ export class PlanView {
     const thick = (s: (typeof solids)[number]) => s.layers.reduce((t, l) => t + l.thickness, 0);
     // And only where the scale draws them (1:50 and larger): at 1:100 a wall is its outline, filled.
     const detail = this.detail === 'fine' && (this.printing !== null || byLayers(normal.filter((s) => s.layers.length > 0 && s.plan === 'cut').map(thick), this.scale));
-    const layered = (s: (typeof solids)[number]) => detail && s.layers.length > 0;
+    // An overridden wall is its colour alone: no layers, no hatches.
+    const layered = (s: (typeof solids)[number]) => detail && s.layers.length > 0 && !this.overrides.has(s.wall.wallTypeId);
     // Pieces of one colour are filled as one path: the canvas covers a path as a whole, so where two
     // of them meet (a core through an L's mitre) no antialiased seam lets the outline under them show.
     const shadeBy = Number(color('--material-shade')) || 1;
@@ -408,7 +411,7 @@ export class PlanView {
         const byLayer = colour === null && layered(s);
         for (const p of s.pieces) {
           const m = byLayer ? s.materials[p.layerIndex] : undefined;
-          const c = colour ?? (m ? (m.cut === 'none' ? color('--canvas') : shade(m.color, shadeBy)) : color('--wall-fill'));
+          const c = colour ?? this.overrides.get(s.wall.wallTypeId) ?? (m ? (m.cut === 'none' ? color('--canvas') : shade(m.color, shadeBy)) : color('--wall-fill'));
           const poly: Polys[number] = [[...p.polygon], s.wall];
           byColour.set(c, [...(byColour.get(c) ?? []), poly]);
           if (m) byPattern.set(m.cut, [...(byPattern.get(m.cut) ?? []), poly]);

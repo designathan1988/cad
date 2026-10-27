@@ -24,7 +24,8 @@ export function saveCurrentView(app: App): void {
     const c = app.plan.center;
     view = { id, kind: 'plan', name: nextViewName(doc.views, level ? name(level.name) : t('view.plan')), levelId: app.ui.levelId, scale: app.plan.scale, center: { x: c.x, y: c.y } };
   }
-  app.store.dispatch(saveView(view));
+  // What it shows goes with it: a view template (the categories hidden, the overrides on).
+  app.store.dispatch(saveView({ ...view, hidden: [...app.ui.hidden], overrides: app.ui.overridesOn }));
   app.toast(t('toast.viewSaved', { name: view.name }));
 }
 
@@ -33,6 +34,9 @@ export function goToView(app: App, id: string): void {
   const v = app.store.get().views.find((x) => x.id === id);
   if (!v) return;
   if (v.levelId !== app.ui.levelId) app.setLevel(v.levelId);
+  // As it was saved showing: its categories, its overrides (a view saved before these shows all).
+  if (v.hidden) app.ui.hidden = new Set(v.hidden);
+  if (v.overrides !== undefined) app.ui.overridesOn = v.overrides;
   if (v.kind === '3d') {
     // Read as stored views are: a file's view may hold anything.
     app.ui.view3d = readView3D(v.view3d);

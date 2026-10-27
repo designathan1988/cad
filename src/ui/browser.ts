@@ -94,6 +94,17 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
       // Every wall's reference line and direction, as ArchiCAD's view option (the selected ones' always show).
       item(t('layer.refLines'), () => app.toggleRefLines(), { pressed: ui.refLines, trail: ui.refLines ? t('layer.shown') : t('layer.hidden') }),
       item(t('layer.openingTags'), () => app.toggleOpeningTags(), { pressed: ui.openingTags, trail: ui.openingTags ? t('layer.shown') : t('layer.hidden') }),
+      // Layer combinations: a click shows as it says; × deletes one (an undo step).
+      ...(doc.layerSets ?? []).map((s) => {
+        const del = el('button', { type: 'button', class: 'icon-btn', title: t('layers.delete', { name: s.name }), 'aria-label': t('layers.delete', { name: s.name }) });
+        del.innerHTML = icon('close', 14);
+        del.addEventListener('click', () => app.deleteLayerSet(s.id));
+        const same = s.hidden.length === ui.hidden.size && s.hidden.every((c) => ui.hidden.has(c));
+        const row = el('div', { class: 'browser-row' }, ...([...item(s.name, () => app.applyLayerSet(s.id), { lead: icon('levelsAll', 16), ...(same ? { trail: t('browser.current') } : {}) }).childNodes] as HTMLElement[]), del);
+        return el('div', {}, row);
+      }),
+      item(t('layers.save'), () => app.saveLayerSet(), { lead: icon('plus', 16) }),
+      item(t('ovr.open'), () => app.openOverrides(), { lead: icon('frame', 16), trail: (doc.overrides ?? []).length ? (ui.overridesOn ? t('layer.shown') : t('layer.hidden')) : '' }),
     ),
     section(
       t('browser.types'),

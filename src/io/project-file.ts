@@ -3,6 +3,7 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
+import { isLayerSet, isWallOverride } from '../app/layer-sets';
 import { isVariableName } from '../core/measure';
 import { isOpeningStyle, operationsOf } from '../elements/opening/style';
 import { LIBRARY } from '../elements/object/library';
@@ -253,6 +254,9 @@ export function repairProject(raw: unknown): ReadResult {
     ...(Array.isArray(raw.rules) ? { rules: (raw.rules as unknown[]).filter(isNormRule) } : {}),
     // Its scale and pens, when it set them and they are ones (the defaults otherwise).
     ...(isDrawingSettings(raw.drawing) ? { drawing: raw.drawing } : {}),
+    // Its layer combinations and graphic overrides, the bad ones left out.
+    ...(Array.isArray(raw.layerSets) && raw.layerSets.some(isLayerSet) ? { layerSets: (raw.layerSets as unknown[]).filter(isLayerSet) } : {}),
+    ...(Array.isArray(raw.overrides) && raw.overrides.some(isWallOverride) ? { overrides: (raw.overrides as unknown[]).filter(isWallOverride) } : {}),
     // Its named lengths, the bad ones left out.
     ...(isObject(raw.variables) ? { variables: Object.fromEntries(Object.entries(raw.variables).filter(([k, v]) => isVariableName(k) && finite(v))) as Record<string, number> } : {}),
     name: typeof raw.name === 'string' ? raw.name : '',

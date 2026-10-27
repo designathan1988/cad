@@ -31,7 +31,8 @@ export function renderBrowserDrawer(app: App): void {
   if (!ui.browserOpen) return;
   const doc = app.store.get();
   // What the drawer shows: also the units (its Units item) and the materials (the types' thumbnails).
-  const key = JSON.stringify([getLang(), ui.view, ui.levelId, [...ui.hidden], ui.refLines, ui.openingTags, doc.levels, doc.wallTypes.map((x) => [x.id, x.name]), doc.walls.map((w) => w.wallTypeId), doc.views.map((v) => [v.id, v.name]), doc.units, doc.materials]);
+  // The layer combinations and the overrides too (its Layers section).
+  const key = JSON.stringify([getLang(), ui.view, ui.levelId, [...ui.hidden], ui.refLines, ui.openingTags, ui.overridesOn, doc.levels, doc.wallTypes.map((x) => [x.id, x.name]), doc.walls.map((w) => w.wallTypeId), doc.views.map((v) => [v.id, v.name]), doc.units, doc.materials, doc.layerSets, (doc.overrides ?? []).length]);
   if (key === app.browserKey) return;
   app.browserKey = key;
   // Keep the focus on the same button across the rebuild.

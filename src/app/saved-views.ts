@@ -2,12 +2,21 @@
 // what it shows, or a plan's level, zoom and position, under a name. In the document, so they go
 // with the file; saving and deleting one are undo steps. Going to one changes only the interface.
 
+import type { Category } from './geometry';
+import { isCategoryList } from './layer-sets';
 import type { Command } from '../core/store';
 import type { Point2 } from '../core/vector';
 import type { Doc } from './document';
 import type { View3D } from './view-3d';
 
-export type SavedView =
+/** What a view shows besides its camera (a view template): the categories hidden, the overrides on. */
+interface Shows {
+  readonly hidden?: readonly Category[];
+  readonly overrides?: boolean;
+}
+
+export type SavedView = Shows &
+  (
   | {
       readonly id: string;
       readonly name: string;
@@ -29,7 +38,8 @@ export type SavedView =
       /** Pixels per metre, and the plan point in the middle. */
       readonly scale: number;
       readonly center: Point2;
-    };
+    }
+  );
 
 /** The next free name of a kind: "3D 1", "3D 2", or the level's name and a number for a plan. */
 export function nextViewName(views: readonly SavedView[], base: string): string {
@@ -87,6 +97,7 @@ export function isSavedView(v: unknown): v is SavedView {
   const o = v as Record<string, unknown>;
   if (typeof o.id !== 'string' || typeof o.name !== 'string' || typeof o.levelId !== 'string') return false;
   if (o.caption !== undefined && typeof o.caption !== 'string') return false;
+  if ((o.hidden !== undefined && !isCategoryList(o.hidden)) || (o.overrides !== undefined && typeof o.overrides !== 'boolean')) return false;
   if (o.kind === '3d') {
     const w = o.view3d as Record<string, unknown> | undefined;
     return (

@@ -1,6 +1,7 @@
 // Mouse and keyboard. Plan: wheel zooms at the cursor, middle button pans. 3D: wheel zooms at the
 // cursor, middle pans, Shift + middle or right rotates (OrbitControls). Left button is the tool's.
 
+import { showOverrides } from '../ui/overrides-dialog';
 import { showVariables } from '../ui/variables-dialog';
 import { showKeys } from '../ui/keys-dialog';
 import { wallNumber } from './document';
@@ -82,6 +83,7 @@ export function wireInput(app: App): void {
   app.openUnits = () => showUnits(app);
   app.openObjects = () => showObjects(app);
   app.openPrint = () => showPrint(app);
+  app.openOverrides = () => showOverrides(app);
   shell.sidebar.addEventListener('click', () => app.toggleBrowser());
   offerTour(app);
   let panning: { x: number; y: number } | null = null;

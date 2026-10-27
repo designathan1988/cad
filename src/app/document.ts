@@ -1,6 +1,7 @@
 // The project document: only what the user decided. Thickness, heights, joins and geometry are
 // always derived from it.
 
+import type { LayerSet, WallOverride } from './layer-sets';
 import type { Separator } from '../elements/separator/schema';
 import type { Curtain } from '../elements/curtain/schema';
 import type { Zone } from '../elements/zone/schema';
@@ -113,6 +114,10 @@ export interface Doc {
   readonly drawing?: DrawingSettings;
   /** Named lengths (m) typed by name in any measure: the ceiling height, a module (core/measure.ts). */
   readonly variables?: Readonly<Record<string, number>>;
+  /** Named sets of the categories hidden (app/layer-sets.ts). */
+  readonly layerSets?: readonly LayerSet[];
+  /** Walls of a type filled in plan with a colour of their own (app/layer-sets.ts). */
+  readonly overrides?: readonly WallOverride[];
 }
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */

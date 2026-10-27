@@ -6,6 +6,7 @@
 // paper's colours are the light theme's on white; no grid, no guides, nothing selected. A title and a
 // scale bar along the bottom. As a PDF of one page (io/pdf.ts).
 
+import { overrideColours } from './layer-sets';
 import { drawingOf, type Doc } from './document';
 import { boundsOf, deriveGeometry, type DerivedGeometry, hideCategories } from './geometry';
 import type { App } from './app';
@@ -80,6 +81,7 @@ export function printCanvas(app: App, s: PrintSetup, dpi: number): HTMLCanvasEle
   // The drawing area's middle is above the paper's by half the title strip.
   view.center = { x: mid.x, y: mid.y - TITLE_MM / 2 / (1000 / s.den) };
   view.drawing = drawingOf(doc);
+  view.overrides = app.ui.overridesOn ? overrideColours(doc) : new Map();
   // The light theme's colours, read while it is set (the screen is not painted meanwhile), on white.
   const root = document.documentElement;
   const theme = root.dataset.theme;

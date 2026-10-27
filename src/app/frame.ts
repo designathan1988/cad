@@ -1,5 +1,6 @@
 // One frame of the views: the plan's overlay (selection, previews, snaps, tags, temporary dimensions and their value fields) or the 3D's, and the panel. Functions over the app (app.ts delegates).
 
+import { overrideColours } from './layer-sets';
 import { findingText } from '../ui/rules-dialog';
 import { keepSelectionInView3d } from './view-ui';
 import { objectHandles } from './object-handles';
@@ -121,6 +122,7 @@ export function renderFrame(app: App): void {
   const guideDim = ui.guide && guideOff !== null ? guideMeasure(ui.guide, guideOff) : null;
   if (plan) {
     app.plan.drawing = drawingOf(app.store.get());
+    app.plan.overrides = ui.overridesOn ? overrideColours(app.store.get()) : new Map();
     app.plan.draw(app.visibleGeometry(), {
       selected: ui.selection,
       hover: ui.hover,

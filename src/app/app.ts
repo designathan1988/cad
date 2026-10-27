@@ -1,6 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import { deleteLayerSet, nextName, saveLayerSet } from './layer-sets';
 import type { GuideMode } from './guide-ui';
 import { setVariables } from '../core/measure';
 import type { KeyMap } from './keymap';
@@ -114,6 +115,8 @@ export interface UiState {
   acquired: Point2[];
   /** Where the point being drawn goes from, as last snapped; null when nothing is being drawn. */
   drawFrom: Point2 | null;
+  /** Graphic overrides shown in plan (app/layer-sets.ts): on unless turned off. */
+  overridesOn: boolean;
   /** The guide tool's mode, and its first point (a line's, a circle's centre). */
   guideMode: GuideMode;
   guideFrom: Point2 | null;
@@ -252,6 +255,7 @@ export class App {
       acquired: [],
       drawFrom: null,
       smart: null,
+      overridesOn: true,
       guideMode: 'line',
       guideFrom: null,
       defaults: { wallTypeId: doc.wallTypes[0]!.id, referenceLine: 'centerline', baseOffset: 0, top: { kind: 'level', offset: 0 } },
@@ -1708,6 +1712,39 @@ export class App {
   }
 
   /** Shows or hides a category of elements; what is hidden leaves the selection. */
+  /** Graphic overrides shown or not (a view's choice). */
+  toggleOverrides(): void {
+    this.ui.overridesOn = !this.ui.overridesOn;
+    this.toast(t(this.ui.overridesOn ? 'ovr.toastOn' : 'ovr.toastOff'));
+    this.refresh();
+  }
+
+  /** A layer combination: its categories hidden, the others shown. */
+  applyLayerSet(id: string): void {
+    const set = this.store.get().layerSets?.find((s) => s.id === id);
+    if (!set) return;
+    this.ui.hidden = new Set(set.hidden);
+    const shown = this.visibleGeometry();
+    for (const sid of [...this.ui.selection]) if (!hasSolid(shown.kinds, sid)) this.ui.selection.delete(sid);
+    this.toast(t('layers.applied', { name: set.name }));
+    this.refresh();
+  }
+
+  /** The categories hidden now, kept as a combination under the next free name. */
+  saveLayerSet(): void {
+    const sets = this.store.get().layerSets ?? [];
+    const name = nextName(
+      sets.map((s) => s.name),
+      t('layers.base'),
+    );
+    this.store.dispatch(saveLayerSet({ id: newId('layers'), name, hidden: [...this.ui.hidden] }));
+    this.toast(t('layers.saved', { name }));
+  }
+
+  deleteLayerSet(id: string): void {
+    this.store.dispatch(deleteLayerSet(id));
+  }
+
   toggleCategory(c: Category): void {
     if (this.ui.hidden.has(c)) this.ui.hidden.delete(c);
     else this.ui.hidden.add(c);
@@ -1742,6 +1779,8 @@ export class App {
   openObjects: () => void = () => {};
   /** Printing a plan (ui/print-dialog.ts), set by the input layer. */
   openPrint: () => void = () => {};
+  /** The graphic overrides (ui/overrides-dialog.ts), set by the input layer. */
+  openOverrides: () => void = () => {};
   /** The shortcuts the user remapped or turned off (app/keymap.ts), kept with the preferences. */
   keymap: KeyMap = loadPrefs().keymap ?? {};
 
