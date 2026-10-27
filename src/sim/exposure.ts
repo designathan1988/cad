@@ -175,6 +175,8 @@ export interface Daylight {
   readonly roomId: string;
   /** m² of glass. */
   readonly glass: number;
+  /** The visible sky's angle θ (degrees), its windows' mean by their glass: 90 less what the model's walls in front of them hide. */
+  readonly sky: number;
   /** m²: floor, ceiling and walls. */
   readonly surfaces: number;
   /** %: T·Aw·θ / (A·(1 − R²)). */
@@ -189,16 +191,44 @@ export const DAYLIGHT = { transmittance: 0.8, sky: 90, reflectance: 0.5 } as con
 /** BS 8206-2's average daylight factors by use (%): a reference from the United Kingdom, not a Brazilian rule. */
 const TARGETS: Readonly<Record<string, number>> = { kitchen: 2, living: 1.5, bedroom: 1, office: 2 };
 
+/**
+ * A window's visible sky angle θ (degrees, BRE): 90° less the angle up to the top of the highest wall of
+ * the model in front of it, along the level line out of its middle (another wing of the building, a
+ * wall, a level above further on). The neighbours and the trees are not in the model, so not here.
+ */
+export function skyAngle(doc: Doc, g: DerivedGeometry, w: Face): number {
+  const own = doc.walls.find((x) => x.id === doc.openings.find((o) => o.id === w.id)?.wallId);
+  let most = 0;
+  for (const x of doc.walls) {
+    if (x === own) continue;
+    const s = g.solids.get(x.id);
+    if (!s || s.top <= w.z) continue;
+    // The line w.at + k·out against the wall's line, k > 0, within the wall's length.
+    const d = sub(x.end, x.start);
+    const den = w.out.x * d.y - w.out.y * d.x;
+    if (Math.abs(den) < 1e-12) continue;
+    const q = sub(x.start, w.at);
+    const k = (q.x * d.y - q.y * d.x) / den;
+    const m = (q.x * w.out.y - q.y * w.out.x) / den;
+    if (k <= 0.05 || m < 0 || m > 1) continue;
+    most = Math.max(most, (Math.atan2(s.top - w.z, k) * 180) / Math.PI);
+  }
+  return Math.max(0, DAYLIGHT.sky - most);
+}
+
 export function daylightOf(doc: Doc, g: DerivedGeometry): Daylight[] {
   const windows = exteriorWindows(doc, g);
   return doc.rooms.flatMap((r) => {
     const s = g.rooms.get(r.id);
     if (!s?.enclosed) return [];
     const height = r.height ?? levelOf(doc, r.levelId)?.height ?? 2.8;
-    const glass = windows.filter((w) => w.roomId === r.id).reduce((t, w) => t + (w.glass ?? 0), 0);
+    const mine = windows.filter((w) => w.roomId === r.id);
+    const glass = mine.reduce((t, w) => t + (w.glass ?? 0), 0);
+    // Each window's glass with its own sky: Σ Aw·θ.
+    const seen = mine.reduce((t, w) => t + (w.glass ?? 0) * skyAngle(doc, g, w), 0);
     const surfaces = 2 * s.area + s.perimeter * height;
     // With θ in degrees the formula gives the factor in % (Littlefair, BRE).
-    const factor = surfaces > 0 ? (DAYLIGHT.transmittance * glass * DAYLIGHT.sky) / (surfaces * (1 - DAYLIGHT.reflectance ** 2)) : 0;
-    return [{ roomId: r.id, glass, surfaces, factor, target: (r.use && TARGETS[r.use]) ?? null }];
+    const factor = surfaces > 0 ? (DAYLIGHT.transmittance * seen) / (surfaces * (1 - DAYLIGHT.reflectance ** 2)) : 0;
+    return [{ roomId: r.id, glass, sky: glass > 0 ? seen / glass : DAYLIGHT.sky, surfaces, factor, target: (r.use && TARGETS[r.use]) ?? null }];
   });
 }

@@ -7,7 +7,7 @@ import { deriveGeometry } from '../../src/app/geometry';
 import { DEFAULT_SITE } from '../../src/app/sun';
 import { newOpening } from '../../src/elements/opening/schema';
 import { acousticOf, glaserOf, guidelineOf, lagOf, limitsFor, reverberationOf, saturation, thermalOf, zoneWall } from '../../src/sim/envelope';
-import { daylightOf, exteriorWindows, hoursOf, roomSun, sunDays, sunSlots } from '../../src/sim/exposure';
+import { daylightOf, exteriorWindows, hoursOf, roomSun, skyAngle, sunDays, sunSlots } from '../../src/sim/exposure';
 import { absorptanceOf } from '../../src/sim/physics';
 import { risksOf } from '../../src/sim/risks';
 import { DEFAULT_SIM } from '../../src/sim/settings';
@@ -166,6 +166,22 @@ describe('sun and daylight', () => {
     expect(d!.glass).toBeCloseTo(glass, 9);
     expect(d!.factor).toBeCloseTo((0.8 * glass * 90) / (surfaces * 0.75), 9);
     expect(d!.target).toBe(1.5);
+  });
+
+  it('a wall in front of the window hides sky: θ = 90° less the angle up to its top', () => {
+    // A 2.80 m wall 3 m north of the north wall's line: the window's middle is 1.60 m up, on the outer face at y = 4.075.
+    const blocked: Doc = { ...room, walls: [...room.walls, wall('o', [-1, 7], [5, 7])] };
+    const g = deriveGeometry(blocked);
+    const [win] = exteriorWindows(blocked, g);
+    const theta = 90 - (Math.atan2(2.8 - 1.6, 7 - 4.075) * 180) / Math.PI;
+    expect(skyAngle(blocked, g, win!)).toBeCloseTo(theta, 6);
+    const [d] = daylightOf(blocked, g);
+    expect(d!.sky).toBeCloseTo(theta, 6);
+    // The factor goes down with the sky it sees.
+    expect(d!.factor / daylightOf(room, deriveGeometry(room))[0]!.factor).toBeCloseTo(theta / 90, 6);
+    // Behind the window, a wall hides nothing.
+    const behind: Doc = { ...room, walls: [...room.walls, wall('o', [-1, -3], [5, -3])] };
+    expect(daylightOf(behind, deriveGeometry(behind))[0]!.sky).toBeCloseTo(90, 9);
   });
 });
 

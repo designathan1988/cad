@@ -85,9 +85,9 @@ export function simBlock(section: SimSection, doc: Doc, g: DerivedGeometry, titl
     };
   }
   if (section === 'daylight') {
-    const rows = daylightOf(doc, g).map((d) => [{ text: title(d.roomId), id: d.roomId }, `${num(d.glass, 2)} m²`, `${num(d.surfaces, 2)} m²`, `${num(d.factor, 2)} %`, d.target === null ? '—' : `${num(d.target, 1)} %`, d.target === null ? '' : mark(d.factor >= d.target)]);
+    const rows = daylightOf(doc, g).map((d) => [{ text: title(d.roomId), id: d.roomId }, `${num(d.glass, 2)} m²`, `${num(d.sky, 0)}°`, `${num(d.surfaces, 2)} m²`, `${num(d.factor, 2)} %`, d.target === null ? '—' : `${num(d.target, 1)} %`, d.target === null ? '' : mark(d.factor >= d.target)]);
     return {
-      tables: rows.length > 0 ? [{ head: [t('memo.room'), t('sim.glass'), t('sim.surfaces'), t('sim.dlf'), t('sim.target'), ''], rows, numeric: [1, 2, 3, 4] }] : [],
+      tables: rows.length > 0 ? [{ head: [t('memo.room'), t('sim.glass'), 'θ', t('sim.surfaces'), t('sim.dlf'), t('sim.target'), ''], rows, numeric: [1, 2, 3, 4, 5] }] : [],
       empty: t('sim.noRooms'),
       premises: [t('sim.dlfPremise', { t: num(DAYLIGHT.transmittance, 2), sky: DAYLIGHT.sky, r: num(DAYLIGHT.reflectance, 2), glazed: num(GLAZED * 100, 0) }), t('sim.dlfTarget')],
     };
