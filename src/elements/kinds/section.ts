@@ -1,5 +1,6 @@
 // Sections and elevations in the registry (contract.ts): elements/section holds the mark itself. A mark
-// has no level: it is drawn on every level's plan, as the views it stands for cut through all of them.
+// has no level: it is drawn on every level's plan, as the views it stands for cut through all of them;
+// a room's interior elevation keeps to its room's level.
 
 import { isObject } from '../../core/guards';
 import { distance, type Point2 } from '../../core/vector';
@@ -90,7 +91,10 @@ export const sectionKind: ElementKind<SectionMark, SectionMark> = {
         id: 'kind',
         label: 'section.kind',
         kind: 'readout',
-        text: (ms) => (ms.every((m) => m.kind === ms[0]!.kind) ? t(ms[0]!.kind === 'section' ? 'section.kindSection' : 'section.kindElevation') : '—'),
+        text: (ms) => {
+          const kind = (m: SectionMark) => (m.kind === 'section' ? 'section.kindSection' : m.levelId === undefined ? 'section.kindElevation' : 'section.kindInterior');
+          return ms.every((m) => kind(m) === kind(ms[0]!)) ? t(kind(ms[0]!)) : '—';
+        },
       },
       {
         id: 'width',
@@ -164,7 +168,13 @@ export function drawSectionMark(p: PlanPaint, m: SectionMark, colour: string): v
     ctx.stroke();
     ctx.fillStyle = colour;
     const label = m.name.length > 3 ? m.name.slice(0, 1).toUpperCase() : m.name;
-    ctx.fillText(label, c.x, c.y + 0.5);
+    // Narrowed to the bubble when wider ("3-N", a room's elevation).
+    const fit = Math.min(1, (r * 1.6) / (ctx.measureText(label).width || 1));
+    ctx.save();
+    ctx.translate(c.x, c.y + 0.5);
+    ctx.scale(fit, fit);
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
   }
   ctx.restore();
 }

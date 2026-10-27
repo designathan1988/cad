@@ -63,6 +63,8 @@ export interface SectionDrawing {
   /** The extent of what its plane cuts (the building, not the ground beyond it); null when it cuts nothing. */
   readonly cutBox?: { readonly min: Point2; readonly max: Point2 } | null;
   readonly levels: readonly { readonly name: string; readonly z: number }[];
+  /** Where its ground line is and its heights are measured from: 0, or a room's elevation's level. */
+  readonly base: number;
   /** The doors and windows its plane cuts: the far side of their cut along the line, their floor, sill and head. */
   readonly openings: readonly { readonly at: number; readonly floor: number; readonly bottom: number; readonly top: number }[];
   /** The rooms its line crosses: each name in the middle of its longest stretch, half the room's height up. */
@@ -390,8 +392,10 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
     const dy = p.y - m.start.y;
     return { s: dx * along.x + dy * along.y, d: dx * look.x + dy * look.y, z: p.z };
   };
-  // Kept: from the line out to its depth, and between its ends.
+  // Kept: from the line out to its depth, and between its ends; a room's elevation, its level's floor to ceiling.
+  const own = m.levelId === undefined ? undefined : levelOf(doc, m.levelId);
   const sides: ((v: V) => number)[] = [(v) => m.depth - v.d, (v) => v.s, (v) => len - v.s];
+  if (own) sides.push((v) => v.z - own.elevation, (v) => own.elevation + own.height - v.z);
   const faces: SeenFace[] = [];
   const cuts: { loops: Point2[][]; segments: [Point2, Point2][]; fill?: { color: string; pattern: CutPattern }; pen?: 'fine'; ground?: true }[] = [];
   // The cut segments of the groups outlined together (the walls' layers), for their common outline.
@@ -410,7 +414,14 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
     solid.tris.forEach((t, ti) => {
       const vs = t.map(frame) as [V, V, V];
       // Wholly in front of the line, or past its depth or its ends: nothing.
-      if (vs.every((v) => v.d < 0) || vs.every((v) => v.d > m.depth) || vs.every((v) => v.s < 0) || vs.every((v) => v.s > len)) return;
+      if (vs.every((v) => v.d < 0) || sides.some((side) => vs.every((v) => side(v) < 0))) return;
+      // A face on a room's ceiling facing down, or on its floor facing up, is of what stands outside (a wall
+      // of the level above on the walls below): it would meet their tops and wipe out their outline.
+      if (own) {
+        const on = (z: number) => vs.every((v) => Math.abs(v.z - z) < 1e-9);
+        const up = (t[1].x - t[0].x) * (t[2].y - t[0].y) - (t[1].y - t[0].y) * (t[2].x - t[0].x);
+        if ((on(own.elevation + own.height) && up < 0) || (on(own.elevation) && up > 0)) return;
+      }
       let ring: Ring = vs.map((v) => ({ v, f: 1 as const }));
       ring = clipRing(ring, (v) => v.d, 2);
       for (const side of sides) ring = clipRing(ring, side, 0);
@@ -453,21 +464,21 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
     if (outline.length > 0) cuts.push({ loops: [], segments: outline });
   }
   faces.sort((a, b) => b.depth - a.depth);
-  const levels = [...doc.levels].sort((a, b) => a.elevation - b.elevation).map((l) => ({ name: l.name, z: l.elevation }));
+  const levels = (own ? [own] : [...doc.levels].sort((a, b) => a.elevation - b.elevation)).map((l) => ({ name: l.name, z: l.elevation }));
   const cutPoints = cuts.filter((c) => !c.ground).flatMap((c) => c.segments.flat());
   const cutBox =
     cutPoints.length > 0
       ? { min: { x: Math.min(...cutPoints.map((p) => p.x)), y: Math.min(...cutPoints.map((p) => p.y)) }, max: { x: Math.max(...cutPoints.map((p) => p.x)), y: Math.max(...cutPoints.map((p) => p.y)) } }
       : null;
   const crossed: SectionDrawing['rooms'][number][] = [];
-  for (const [id, r] of rooms) {
+  for (const [id, r] of m.kind === 'section' ? rooms : []) {
     const level = levelOf(doc, r.room.levelId);
     if (!r.enclosed || r.outline.length < 3 || !level) continue;
     const stretch = longestInside(r.outline, m.start, along, len);
     if (!stretch) continue;
     crossed.push({ id, number: r.room.number, name: r.room.name, at: { x: (stretch[0] + stretch[1]) / 2, y: level.elevation + (r.room.height ?? level.height) / 2 } });
   }
-  return { faces, cuts, box: Number.isFinite(min.x) ? { min, max } : null, cutBox, levels, openings: [...openings.values()].sort((a, b) => a.at - b.at), rooms: crossed, length: len };
+  return { faces, cuts, box: Number.isFinite(min.x) ? { min, max } : null, cutBox, base: own?.elevation ?? 0, levels, openings: [...openings.values()].sort((a, b) => a.at - b.at), rooms: crossed, length: len };
 }
 
 /**
@@ -475,10 +486,11 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
  * the top of what it shows (each stretch its own dimension); under it, the length of what it cuts (the
  * building, not the ground beyond it), or of all it shows when it cuts nothing. Null without a drawing.
  */
-export function sectionDims(d: Pick<SectionDrawing, 'box' | 'levels' | 'cutBox'>): { heights: number[]; along: [number, number] } | null {
+export function sectionDims(d: Pick<SectionDrawing, 'box' | 'levels' | 'cutBox'> & { readonly base?: number }): { heights: number[]; along: [number, number] } | null {
   if (!d.box) return null;
   const top = d.box.max.y;
-  const marks = [0, ...d.levels.map((l) => l.z).filter((z) => z > 1e-6 && z < top - 1e-6), top].filter((z, i, all) => i === 0 || z - all[i - 1]! > 1e-6);
+  const base = d.base ?? 0;
+  const marks = [base, ...d.levels.map((l) => l.z).filter((z) => z > base + 1e-6 && z < top - 1e-6), top].filter((z, i, all) => i === 0 || z - all[i - 1]! > 1e-6);
   const span = d.cutBox ?? d.box;
   return { heights: marks, along: [span.min.x, span.max.x] };
 }
@@ -576,8 +588,8 @@ export function paintSection(ctx: CanvasRenderingContext2D, d: SectionDrawing, p
   }
   // The ground, a little past the drawing both ways, and each level's mark at the right.
   if (d.box) {
-    const left = p.toPaper({ x: d.box.min.x, y: 0 });
-    const right = p.toPaper({ x: d.box.max.x, y: 0 });
+    const left = p.toPaper({ x: d.box.min.x, y: d.base });
+    const right = p.toPaper({ x: d.box.max.x, y: d.base });
     ctx.strokeStyle = p.ink;
     ctx.lineWidth = p.cutPen * 1.5;
     ctx.beginPath();
@@ -681,8 +693,8 @@ function paintDims(ctx: CanvasRenderingContext2D, dims: { heights: number[]; alo
   // Up the left side, 8 mm out from the drawing.
   upChain(ctx, p.toPaper({ x: dims.along[0], y: 0 }).x - 8, dims.heights, p, text, [1.5, 4]);
   // Under the ground line, 8 mm down: the whole length.
-  const a = p.toPaper({ x: dims.along[0], y: 0 });
-  const b = p.toPaper({ x: dims.along[1], y: 0 });
+  const a = p.toPaper({ x: dims.along[0], y: dims.heights[0]! });
+  const b = p.toPaper({ x: dims.along[1], y: dims.heights[0]! });
   const y = a.y + 8;
   ctx.beginPath();
   ctx.moveTo(a.x, y);

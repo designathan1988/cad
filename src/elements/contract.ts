@@ -89,6 +89,8 @@ export interface KindFieldContext {
   readonly startFloorHole?: (id: string) => void;
   /** Show a section's or an elevation's drawing (ui/sections-dialog.ts). */
   readonly openSection?: (id: string) => void;
+  /** Make the rooms' four interior elevations (app/kind-tools.ts). */
+  readonly interiorElevations?: (roomIds: readonly string[]) => void;
   /** Calibrate a reference by two points of it (app/reference-ui.ts). */
   readonly calibrate?: (id: string) => void;
   /** A spot height put on a terrain with its tool (app/terrain-ui.ts). */
@@ -111,7 +113,7 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   readonly prefix: string;
   /** The browser category that hides it; null for one that is always shown. */
   readonly category: Category | null;
-  /** On every level (it has no level of its own): a grid axis. Not pasted onto another level. */
+  /** On every level (it has no level of its own, but one may keep to its `levelId`): a grid axis. Not pasted onto another level. */
   readonly everyLevel?: true;
   /** Placed, moved, copied and deleted with its wall by the wall system (a door, a window: their rules
    * and groups): the registry's moving, copying and deleting leave it to the walls. */

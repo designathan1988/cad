@@ -1,7 +1,8 @@
 // Sections and elevations as drawings (docs/plano-de-escopo.md, phase 10: "cortes e elevações
 // documentados"): a line in plan, the same on every level, looking to its left (start → end) as far as
 // its depth. A section's line goes through the building and fills what it cuts; an elevation's stands
-// outside it and only sees. Drawn from the model each time (app/section-drawing.ts), so it follows it;
+// outside it and only sees; a room's interior elevation sees one wall of it from inside, on its level
+// alone. Drawn from the model each time (app/section-drawing.ts), so it follows it;
 // put on a sheet at a scale (elements/sheet).
 
 import { type Point2, distance } from '../../core/vector';
@@ -19,6 +20,8 @@ export interface SectionMark {
   readonly end: Point2;
   /** How far past its line it sees (m). */
   readonly depth: number;
+  /** A room's interior elevation: only this level's height is drawn, and the mark only on its plan. Absent: every level. */
+  readonly levelId?: string;
 }
 
 /** The least and greatest depth (m). */
@@ -47,7 +50,8 @@ export const isSectionMark = (m: unknown): m is SectionMark => {
     distance(o.start, o.end) > 1e-6 &&
     finite(o.depth) &&
     o.depth >= DEPTH_MIN &&
-    o.depth <= DEPTH_MAX
+    o.depth <= DEPTH_MAX &&
+    (o.levelId === undefined || typeof o.levelId === 'string')
   );
 };
 
@@ -75,5 +79,24 @@ export function elevationsAround(box: { min: Point2; max: Point2 }, margin: numb
     { side: 'south', start: { x: min.x - margin, y: min.y - margin }, end: { x: max.x + margin, y: min.y - margin }, depth: h + 2 * margin },
     { side: 'east', start: { x: max.x + margin, y: min.y - margin }, end: { x: max.x + margin, y: max.y + margin }, depth: w + 2 * margin },
     { side: 'west', start: { x: min.x - margin, y: max.y + margin }, end: { x: min.x - margin, y: min.y - margin }, depth: w + 2 * margin },
+  ];
+}
+
+/**
+ * A room's four interior elevations, inside its box (m): each wall seen from `inset` off the one across
+ * from it, as deep as the room and `beyond` into the wall it looks at (its windows' frames and glass),
+ * its line `beyond` into the side walls too, so they are cut. The north one looks at the north wall
+ * (+y), and so on; each looks to the left of its line.
+ */
+export function elevationsInside(box: { min: Point2; max: Point2 }, inset: number, beyond: number): { side: 'north' | 'south' | 'east' | 'west'; start: Point2; end: Point2; depth: number }[] {
+  const { min, max } = box;
+  const w = max.x - min.x;
+  const h = max.y - min.y;
+  const b = beyond;
+  return [
+    { side: 'north', start: { x: min.x - b, y: min.y + inset }, end: { x: max.x + b, y: min.y + inset }, depth: h - inset + b },
+    { side: 'east', start: { x: min.x + inset, y: max.y + b }, end: { x: min.x + inset, y: min.y - b }, depth: w - inset + b },
+    { side: 'south', start: { x: max.x + b, y: max.y - inset }, end: { x: min.x - b, y: max.y - inset }, depth: h - inset + b },
+    { side: 'west', start: { x: max.x - inset, y: min.y - b }, end: { x: max.x - inset, y: max.y + b }, depth: w - inset + b },
   ];
 }

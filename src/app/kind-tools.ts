@@ -2,7 +2,7 @@
 
 import { addSections } from '../elements/section/commands';
 import { boundsOf, deriveGeometry } from './geometry';
-import { DEPTH_MAX, elevationsAround, lookOf, nextSectionName, SECTION_PREFIX, type SectionMark } from '../elements/section/schema';
+import { DEPTH_MAX, elevationsAround, elevationsInside, lookOf, nextSectionName, SECTION_PREFIX, type SectionMark } from '../elements/section/schema';
 import { addObject } from '../elements/object/commands';
 import { OBJECT_PREFIX } from '../elements/object/schema';
 import { words } from '../elements/object/fields';
@@ -340,6 +340,35 @@ export function addElevations(app: App): void {
   }
   app.store.dispatch(addSections(marks));
   app.toast(t('section.elevationsMade', { n: marks.length }));
+}
+
+/**
+ * The rooms' four interior elevations each (elevationsInside, a centimetre off the wall behind, 30 cm into
+ * the wall seen), on the room's level, named by its number and the side ("3-N"); those already there kept.
+ */
+export function addInteriorElevations(app: App, roomIds: readonly string[]): void {
+  const doc = app.store.get();
+  const g = deriveGeometry(doc);
+  const have = new Set(doc.sections.map((m) => `${m.levelId ?? ''}|${m.name}`));
+  const marks: SectionMark[] = [];
+  let rooms = 0;
+  for (const id of roomIds) {
+    const r = g.rooms.get(id);
+    if (!r?.enclosed || r.outline.length < 3) continue;
+    rooms++;
+    const xs = r.outline.map((p) => p.x);
+    const ys = r.outline.map((p) => p.y);
+    const box = { min: { x: Math.min(...xs), y: Math.min(...ys) }, max: { x: Math.max(...xs), y: Math.max(...ys) } };
+    for (const e of elevationsInside(box, 0.01, 0.3)) {
+      const name = `${r.room.number}-${t(`section.sideShort.${e.side}`)}`;
+      if (have.has(`${r.room.levelId}|${name}`)) continue;
+      marks.push({ id: newId(SECTION_PREFIX), name, kind: 'elevation', start: e.start, end: e.end, depth: e.depth, levelId: r.room.levelId });
+    }
+  }
+  if (rooms === 0) return app.toast(t('section.interiorNone'));
+  if (marks.length === 0) return app.toast(t('section.interiorAll'));
+  app.store.dispatch(addSections(marks));
+  app.toast(t('section.interiorMade', { n: marks.length }));
 }
 
 /** The axis being drawn with the grid tool, and the name it will get; plan only. */

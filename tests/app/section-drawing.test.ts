@@ -8,12 +8,14 @@ import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 import { featureEdges, loopsOf, modelSolids, outlineOf, sectionDims, sectionDrawing } from '../../src/app/section-drawing';
 import type { Point3 } from '../../src/app/section-box';
-import { elevationsAround, isSectionMark, lookOf, nextSectionName, type SectionMark } from '../../src/elements/section/schema';
+import { elevationsAround, elevationsInside, isSectionMark, lookOf, nextSectionName, type SectionMark } from '../../src/elements/section/schema';
 import { flipSections, renameSection, setSectionDepth } from '../../src/elements/section/commands';
 import { addSheet, addViewport, deleteSheet, moveSheet, sheetsOf, updateSheet, updateViewport } from '../../src/elements/sheet/commands';
 import { drawingArea, frameOf, isSheet, isViewport, nextSheetNumber, type Sheet } from '../../src/elements/sheet/schema';
 import { readProject, writeProject } from '../../src/io/project-file';
 import { newOpening } from '../../src/elements/opening/schema';
+import { levelOfSolid } from '../../src/elements/registry';
+import { sectionKind } from '../../src/elements/kinds/section';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -141,6 +143,57 @@ describe('a section drawn from the model', () => {
     const beside = sectionDrawing(doc, modelSolids(doc, g), { ...across, start: { x: 6, y: -1 }, end: { x: 6, y: 4 } }, g.rooms);
     expect(beside.rooms).toEqual([]);
     expect(beside.openings).toEqual([]);
+  });
+
+  it("a room's interior elevation sees its wall from inside, its level's height alone", () => {
+    // The box twice, the upper one on a level 2.8 up; the room inside the lower box, faces 0.075 in.
+    const upper = box().walls.map((w) => ({ ...w, id: `${w.id}u`, levelId: 'lvl_1' }));
+    const doc: Doc = { ...box(), levels: [...box().levels, { id: 'lvl_1', name: 'Upper', elevation: 2.8, height: 2.8 }], walls: [...box().walls, ...upper] };
+    const inner = { min: { x: 0.075, y: 0.075 }, max: { x: 3.925, y: 2.925 } };
+    const views = elevationsInside(inner, 0.01, 0.3);
+    // Each looks into the room, across it to the wall it is named for, and 30 cm on into it.
+    const mid = { x: 2, y: 1.5 };
+    for (const v of views) {
+      const look = lookOf(v);
+      expect((mid.x - v.start.x) * look.x + (mid.y - v.start.y) * look.y).toBeGreaterThan(0);
+    }
+    const north = views.find((v) => v.side === 'north')!;
+    expect(lookOf(north)).toEqual({ x: expect.closeTo(0, 9), y: 1 });
+    expect(north.depth).toBeCloseTo(2.85 - 0.01 + 0.3, 9);
+    const solids = modelSolids(doc, deriveGeometry(doc));
+    const ground = sectionDrawing(doc, solids, { id: 'sec_n', name: '1-N', kind: 'elevation', ...north, levelId: 'lvl_ground' });
+    // The north wall's inside face, 2.84 m beyond the line; nothing of the level above.
+    expect(ground.faces.some((f) => Math.abs(f.depth - 2.84) < 1e-6)).toBe(true);
+    expect(ground.box!.min.y).toBeCloseTo(0, 6);
+    expect(ground.box!.max.y).toBeCloseTo(2.8, 6);
+    expect(ground.levels.map((l) => l.name)).toEqual([doc.levels[0]!.name]);
+    // Its line runs 30 cm into the side walls (from x −0.225): they are cut, the west one 0.15 to 0.3
+    // along it, the east one 4.15 to 4.3, from the floor to the ceiling.
+    const e = extents(ground);
+    expect(e.map((x) => [x.s0, x.s1, x.z0, x.z1].map((v) => Math.round(v * 1000) / 1000))).toEqual([
+      [0.15, 0.3, 0, 2.8],
+      [4.15, 4.3, 0, 2.8],
+    ]);
+    // On the upper level: from its floor, 2.8, to its ceiling; its dimensions measured from its floor.
+    const up = sectionDrawing(doc, solids, { id: 'sec_n2', name: '1-N', kind: 'elevation', ...north, levelId: 'lvl_1' });
+    expect(up.box!.min.y).toBeCloseTo(2.8, 6);
+    expect(up.box!.max.y).toBeCloseTo(5.6, 6);
+    expect(up.base).toBe(2.8);
+    expect(sectionDims(up)!.heights).toEqual([2.8, expect.closeTo(5.6, 6)]);
+    // Without a level, the whole height as before.
+    const whole = sectionDrawing(doc, solids, { id: 'sec_n3', name: 'N', kind: 'elevation', ...north });
+    expect(whole.box!.max.y).toBeCloseTo(5.6, 6);
+    expect(whole.base).toBe(0);
+  });
+
+  it("a room's elevation is on its level's plan alone, and kept so in the file", () => {
+    const inside: SectionMark = { ...across, kind: 'elevation', levelId: 'lvl_ground' };
+    expect(levelOfSolid(sectionKind as never, inside)).toBe('lvl_ground');
+    expect(levelOfSolid(sectionKind as never, across)).toBeNull();
+    expect(isSectionMark(inside)).toBe(true);
+    expect(isSectionMark({ ...inside, levelId: 3 })).toBe(false);
+    const r = readProject(writeProject({ ...box(), sections: [inside] }));
+    expect(r.ok && r.doc.sections).toEqual([inside]);
   });
 
   it('marks every level at its height', () => {

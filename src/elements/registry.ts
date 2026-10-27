@@ -45,11 +45,12 @@ export const kindOfId = (id: string): AnyKind | null => KINDS.find((k) => id.sta
 export const listOf = (doc: Doc, k: AnyKind): readonly { readonly id: string; readonly levelId: string }[] =>
   doc[k.key] as readonly { readonly id: string; readonly levelId: string }[];
 
-/** The level a derived element is on; null for one on every level. */
-export const levelOfSolid = (k: AnyKind, s: unknown): string | null => (k.everyLevel ? null : k.levelOf ? k.levelOf(s) : (k.element(s) as { levelId: string }).levelId);
+/** The level a derived element is on; null for one on every level (one of a kind on every level may keep to one: a room's elevation). */
+export const levelOfSolid = (k: AnyKind, s: unknown): string | null =>
+  k.everyLevel ? ((k.element(s) as { levelId?: string }).levelId ?? null) : k.levelOf ? k.levelOf(s) : (k.element(s) as { levelId: string }).levelId;
 
 /** The level of an element of the document (a door's, its wall's); null for one on every level. */
-export const levelOfElement = (k: AnyKind, e: { readonly levelId?: string }, doc: Doc): string | null => (k.everyLevel ? null : k.levelIn ? k.levelIn(e, doc) : (e.levelId ?? null));
+export const levelOfElement = (k: AnyKind, e: { readonly levelId?: string }, doc: Doc): string | null => (k.everyLevel ? (e.levelId ?? null) : k.levelIn ? k.levelIn(e, doc) : (e.levelId ?? null));
 
 /** The document with a kind's list replaced. */
 export const withList = (doc: Doc, k: AnyKind, list: readonly unknown[]): Doc => ({ ...doc, [k.key]: list }) as Doc;

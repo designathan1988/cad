@@ -441,6 +441,7 @@ export function renderFrame(app: App): void {
       },
       close: () => app.togglePanel(false),
       openSection: (id) => app.openSections(id),
+      interiorElevations: (ids) => app.addInteriorElevations(ids),
       calibrate: (id) => app.startCalibration(id),
       addSpot: (id) => app.startSpot(id),
       outlineTerrain: (id) => app.startTerrainOutline(id),

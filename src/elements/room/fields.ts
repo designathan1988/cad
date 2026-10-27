@@ -24,12 +24,14 @@ export interface RoomFieldActions {
   readonly materials: () => readonly Material[];
   readonly setFloorLayers: (ids: readonly FloorId[], layers: readonly FloorLayer[] | null) => void;
   readonly setFloorTiling: (ids: readonly FloorId[], tiling: Tiling | null) => void;
+  /** The rooms' four interior elevations each; not offered where there is none to make. */
+  readonly interiorElevations?: (ids: readonly RoomId[]) => void;
 }
 
 const one = <T>(xs: readonly T[]) => xs.length === 1;
 
 /** A room's own actions (the panel's room actions have the floor's too). */
-export type RoomOwnActions = Pick<RoomFieldActions, 'updateRoom' | 'updateRooms' | 'levelHeight' | 'materials'>;
+export type RoomOwnActions = Pick<RoomFieldActions, 'updateRoom' | 'updateRooms' | 'levelHeight' | 'materials' | 'interiorElevations'>;
 
 export function roomFields(rooms: readonly RoomSolid[], act: RoomOwnActions): Field<RoomSolid>[] {
   const id = rooms[0]?.room.id;
@@ -84,6 +86,10 @@ export function roomFields(rooms: readonly RoomSolid[], act: RoomOwnActions): Fi
       get: (r) => r.room.finishes?.base ?? 0,
       set: (v) => act.updateRooms(ids, { finishes: { base: v > 0 ? v : null } }),
     },
+    // Each wall seen from inside, on the room's level (a sheet's interior elevations).
+    ...(act.interiorElevations
+      ? [{ id: 'interiorElevations', label: 'room.interiorElevations', kind: 'action', enabled: (rs: readonly RoomSolid[]) => rs.some((r) => r.enclosed), run: () => act.interiorElevations!(ids) } as const]
+      : []),
   ];
 }
 

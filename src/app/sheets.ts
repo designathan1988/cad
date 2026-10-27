@@ -497,11 +497,11 @@ export function sectionViewport(app: App, s: Pick<Sheet, 'paper' | 'landscape'>,
   // The level marks stand out to the right of the drawing: room for them.
   const marks = 40;
   const room = { w: area.x1 - area.x0, h: area.y1 - area.y0 - 10 };
-  const need = { w: box.max.x - box.min.x, h: box.max.y - Math.min(0, box.min.y) };
+  const need = { w: box.max.x - box.min.x, h: box.max.y - Math.min(d.base, box.min.y) };
   const den = fittingScale(asked, need, { w: 20 + marks, h: 20 }, room);
   const per = 1000 / den;
   const w = Math.min(need.w * per + 20 + marks, room.w);
   const h = Math.min(need.h * per + 20, room.h);
-  const center = { x: (box.min.x + box.max.x) / 2 + marks / 2 / per, y: (Math.min(0, box.min.y) + box.max.y) / 2 };
+  const center = { x: (box.min.x + box.max.x) / 2 + marks / 2 / per, y: (Math.min(d.base, box.min.y) + box.max.y) / 2 };
   return { id, kind: 'section', sectionId: m.id, den, at: { x: area.x0 + w / 2, y: area.y0 + h / 2 }, w, h, center };
 }

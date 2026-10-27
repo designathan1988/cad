@@ -266,7 +266,7 @@ export function sectionDxf(d: SectionDrawing, levelText: (name: string, z: numbe
     if (!d.box) return;
     const x0 = d.box.min.x - 0.5;
     const x1 = d.box.max.x + 0.5;
-    line('A-SECT-LEVL', { x: x0, y: 0 }, { x: x1, y: 0 });
+    line('A-SECT-LEVL', { x: x0, y: d.base }, { x: x1, y: d.base });
     for (const l of d.levels) {
       line('A-SECT-LEVL', { x: d.box.max.x, y: l.z }, { x: x1 + 1.5, y: l.z });
       text('A-SECT-LEVL', { x: x1 + 1.5, y: l.z + 0.15 }, 0.15, levelText(l.name, l.z));

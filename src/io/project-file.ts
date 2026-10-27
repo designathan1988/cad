@@ -90,8 +90,9 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 40: rooms of a use in a colour of their own (`roomOverrides`, app/layer-sets.ts). Older files have none.
  * Version 41: angular, radius, diameter, arc length and coordinate dimensions (`measures`, elements/measure). Older files have none.
  * Version 42: tags by elements with their values (`tags`, elements/tag). Older files have none.
+ * Version 43: a room's interior elevations, marks kept to a level (`levelId`, elements/section). Older marks have none: every level.
  */
-export const CURRENT_VERSION = 42;
+export const CURRENT_VERSION = 43;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {

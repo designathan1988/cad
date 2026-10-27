@@ -1,9 +1,11 @@
 // Sections and elevations (phase 10; elements/section, app/section-drawing.ts): the marks listed, the one
 // picked drawn as it prints, from the model as it is now; the four elevations made round the building
 // in one go, a section drawn in plan with its tool, and a drawing put on a sheet at the project's scale.
+// A room's interior elevations are made from its panel and listed here with their level.
 
 import type { App } from '../app/app';
-import { drawingOf } from '../app/document';
+import { type Doc, drawingOf, levelOf } from '../app/document';
+import type { SectionMark } from '../elements/section/schema';
 import { levelText, sectionCanvas, sectionOf, sectionViewport } from '../app/sheets';
 import { sectionDxf, toCp1252 } from '../io/export-dxf';
 import { newId } from '../core/id';
@@ -11,12 +13,20 @@ import { addViewport, addSheet, sheetsOf } from '../elements/sheet/commands';
 import { nextSheetNumber, SHEET_PREFIX } from '../elements/sheet/schema';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
-import { t } from './i18n';
+import { name, t } from './i18n';
 import { showSheets } from './sheets-dialog';
 
 /** The preview's size on screen (px). */
 const PREVIEW_W = 640;
 const PREVIEW_H = 360;
+
+/** What a mark is: a section, an elevation, a room's interior elevation with its level ("Elevação interna · Térreo"). */
+function markKind(doc: Doc, m: SectionMark): string {
+  if (m.kind === 'section') return t('section.kindSection');
+  if (m.levelId === undefined) return t('section.kindElevation');
+  const level = levelOf(doc, m.levelId);
+  return level ? `${t('section.kindInterior')} · ${name(level.name)}` : t('section.kindInterior');
+}
 
 export function showSections(app: App, first?: string): void {
   let current: string | null = first ?? app.store.get().sections[0]?.id ?? null;
@@ -30,7 +40,7 @@ export function showSections(app: App, first?: string): void {
         'div',
         { class: 'sheet-list', role: 'list', 'aria-label': t('section.dialog') },
         ...doc.sections.map((m) => {
-          const b = el('button', { type: 'button', class: 'sheet-item', 'aria-pressed': String(m.id === current), role: 'listitem' }, el('strong', {}, m.name), el('span', {}, t(m.kind === 'section' ? 'section.kindSection' : 'section.kindElevation')));
+          const b = el('button', { type: 'button', class: 'sheet-item', 'aria-pressed': String(m.id === current), role: 'listitem' }, el('strong', {}, m.name), el('span', {}, markKind(doc, m)));
           b.dataset.focus = `mark:${m.id}`;
           b.addEventListener('click', () => {
             current = m.id;
@@ -55,12 +65,12 @@ export function showSections(app: App, first?: string): void {
         // Fitted to the preview: the drawing's box and the level marks' room at its right.
         const box = d.box ?? { min: { x: 0, y: 0 }, max: { x: d.length, y: 3 } };
         const wM = box.max.x - box.min.x + 4;
-        const hM = box.max.y - Math.min(0, box.min.y) + 2;
+        const hM = box.max.y - Math.min(d.base, box.min.y) + 2;
         const mmPerM = Math.min((PREVIEW_W * 0.75) / wM, PREVIEW_H / hM) / (96 / 25.4);
         const den = 1000 / mmPerM;
         const wMm = (PREVIEW_W / 96) * 25.4;
         const hMm = (PREVIEW_H / 96) * 25.4;
-        const canvas = sectionCanvas(app, mark, { den, wMm, hMm, center: { x: (box.min.x + box.max.x) / 2 + (wMm * 0.12 * den) / 1000, y: (Math.min(0, box.min.y) + box.max.y) / 2 } }, 96 * Math.min(2, window.devicePixelRatio || 1));
+        const canvas = sectionCanvas(app, mark, { den, wMm, hMm, center: { x: (box.min.x + box.max.x) / 2 + (wMm * 0.12 * den) / 1000, y: (Math.min(d.base, box.min.y) + box.max.y) / 2 } }, 96 * Math.min(2, window.devicePixelRatio || 1));
         canvas.className = 'section-preview';
         canvas.setAttribute('role', 'img');
         canvas.setAttribute('aria-label', t(mark.kind === 'section' ? 'section.titleOne' : 'section.elevationOne', { name: mark.name }));

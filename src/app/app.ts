@@ -1324,6 +1324,11 @@ export class App {
     return kindTools.addElevations(this);
   }
 
+  /** The rooms' four interior elevations each (kind-tools.ts). */
+  addInteriorElevations(roomIds: readonly string[]): void {
+    return kindTools.addInteriorElevations(this, roomIds);
+  }
+
   /**
    * Automatic dimensioning (elements/dimension/auto.ts): chains along the selected walls' outer faces,
    * or along every outer wall of the level when no wall is selected.
