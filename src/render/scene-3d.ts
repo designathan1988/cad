@@ -797,6 +797,13 @@ export class Scene3D {
   }
 
   /** How much a panel covers at the right and bottom edges of the canvas (screen pixels). */
+  /** The view moved on screen by (dx, dy) px, the camera left where it is: a selection brought out from under a panel. */
+  panScreen(dx: number, dy: number): void {
+    this.shift = { x: this.shift.x - dx, y: this.shift.y - dy };
+    this.offsetDirty = true;
+    this.invalidate();
+  }
+
   setCovered(covered: { right: number; bottom: number; left?: number }): void {
     const next = { right: covered.right, bottom: covered.bottom, left: covered.left ?? 0 };
     if (next.right === this.covered.right && next.bottom === this.covered.bottom && next.left === this.covered.left) return;

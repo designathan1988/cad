@@ -6,6 +6,7 @@ import { type Insets } from '../render/plan-view';
 import { t } from '../ui/i18n';
 import { type ViewId } from '../ui/shell';
 import { hasSolid } from '../elements/registry';
+import { levelOf } from './document';
 import { boundsOf } from './geometry';
 import { savePrefs } from './persist';
 import { fitFactor, keepInView } from './keep-in-view';
@@ -187,6 +188,34 @@ export function keepSelectionInView(app: App): boolean {
   const { dx, dy } = keepInView(screen, view, covered, room);
   if (dx === 0 && dy === 0 && k === 1) return false;
   app.plan.panBy(dx, dy);
+  return true;
+}
+
+/**
+ * The 3D view's counterpart: when the selection changes and a panel lying over the drawing (the
+ * drawer, a phone's sheet) covers the selected element, the view slides just enough to show it; the
+ * camera stays. Never while dragging, and not when nothing covers it.
+ */
+export function keepSelectionInView3d(app: App): boolean {
+  const covered = app.covered();
+  const ids = JSON.stringify([...app.ui.selection]);
+  const key = JSON.stringify([ids, covered]);
+  if (key === app.seenSelection3d) return false;
+  app.seenSelection3d = key;
+  if (app.ui.selection.size === 0 || app.ui.drag || app.ui.handleDrag || app.walker) return false;
+  if (covered.right === 0 && covered.bottom === 0 && !covered.left) return false;
+  const box = boundsOf(app.geometry, app.ui.selection);
+  if (!box) return false;
+  const level = levelOf(app.store.get(), app.ui.levelId);
+  const z0 = (level?.elevation ?? 0) + app.lift(app.ui.levelId);
+  const z1 = z0 + (level?.height ?? 2.8);
+  const pts = [box.min, box.max, { x: box.min.x, y: box.max.y }, { x: box.max.x, y: box.min.y }].flatMap((p) => [app.projectAt(p, z0), app.projectAt(p, z1)]).filter((p): p is Point2 => p !== null);
+  if (pts.length === 0) return false;
+  const vp = app.shell.viewport.getBoundingClientRect();
+  const screen = { left: Math.min(...pts.map((p) => p.x)), right: Math.max(...pts.map((p) => p.x)), top: Math.min(...pts.map((p) => p.y)), bottom: Math.max(...pts.map((p) => p.y)) };
+  const { dx, dy } = keepInView(screen, { w: vp.width, h: vp.height }, covered, { margin: 16, above: 48 });
+  if (dx === 0 && dy === 0) return false;
+  app.scene.panScreen(dx, dy);
   return true;
 }
 

@@ -93,4 +93,11 @@ export function renderRibbonTabs(box: HTMLElement, tabs: readonly RibbonTab[], c
     return b;
   });
   box.replaceChildren(file, ...buttons);
+  // On a narrow screen the tabs scroll: the chosen one is brought into sight (its ribbon showed with
+  // its tab out of view).
+  const active = buttons.find((b) => b.dataset.tab === chosen);
+  if (active && box.scrollWidth > box.clientWidth) {
+    const left = active.offsetLeft - box.offsetLeft;
+    if (left < box.scrollLeft || left + active.offsetWidth > box.scrollLeft + box.clientWidth) box.scrollLeft = Math.max(0, left - (box.clientWidth - active.offsetWidth) / 2);
+  }
 }

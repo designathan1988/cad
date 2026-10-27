@@ -1171,6 +1171,8 @@ export class App {
   }
 
   seenSelection = '';
+  /** The 3D view's: the selection and what covered it when last brought into sight (view-ui.ts). */
+  seenSelection3d = '';
   /** The viewport's size at the last check: a change is a resize, which keeps the selection in view. */
   seenSize = '';
   /** The selection and its extent at the last check: the same selection grown is an edit, which does too. */

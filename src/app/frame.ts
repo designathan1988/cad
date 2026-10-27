@@ -1,5 +1,6 @@
 // One frame of the views: the plan's overlay (selection, previews, snaps, tags, temporary dimensions and their value fields) or the 3D's, and the panel. Functions over the app (app.ts delegates).
 
+import { keepSelectionInView3d } from './view-ui';
 import { objectHandles } from './object-handles';
 import { areaText, lengthNum, lengthText, typingExamples } from '../ui/units';
 import { parseLength } from '../core/measure';
@@ -398,6 +399,7 @@ export function renderFrame(app: App): void {
  */
 export function afterPanel(app: App): void {
   if (app.ui.view === 'plan' && app.keepSelectionInView()) app.render();
+  else if (app.ui.view === '3d' && keepSelectionInView3d(app)) app.render();
 }
 
 /**
