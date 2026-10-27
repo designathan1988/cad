@@ -27,7 +27,8 @@ import { distributeOpenings } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
-import { isRule as isNormRule } from '../rules/schema';
+import { DEFAULT_RULES, isRule as isNormRule, isRulePack, type Rule as NormRule } from '../rules/schema';
+import { isLot } from '../app/lot';
 import { isDrawingSettings } from '../elements/drawing/schema';
 
 /**
@@ -74,8 +75,18 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  *   elements/sheet). Older files have none.
  * Version 32: references under the plan (`references`, elements/reference). Older files have none.
  * Version 33: the terrain (`terrains`, elements/terrain) and the site's sun (`site`). Older files have neither.
+ * Version 34: rule packs (`rulePacks`), rules on rooms and on the lot, and the lot (`lot`, app/lot.ts).
+ *   An older file with rules of its own gets the new default rules it lacks, its old ones in their pack.
  */
-export const CURRENT_VERSION = 33;
+export const CURRENT_VERSION = 34;
+
+/** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
+function upgradeRules(rules: NormRule[], version: number): NormRule[] {
+  if (version >= 34) return rules;
+  const defaults = new Map(DEFAULT_RULES.map((r) => [r.id, r]));
+  const kept = rules.map((r) => (r.pack === undefined && defaults.has(r.id) ? { ...r, pack: defaults.get(r.id)!.pack! } : r));
+  return [...kept, ...DEFAULT_RULES.filter((d) => !kept.some((r) => r.id === d.id))];
+}
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
@@ -259,7 +270,9 @@ export function repairProject(raw: unknown): ReadResult {
   let doc: Doc = {
     version: CURRENT_VERSION,
     // Its own rules, the bad ones left out (the defaults when it has none).
-    ...(Array.isArray(raw.rules) ? { rules: (raw.rules as unknown[]).filter(isNormRule) } : {}),
+    ...(Array.isArray(raw.rules) ? { rules: upgradeRules((raw.rules as unknown[]).filter(isNormRule), raw.version) } : {}),
+    ...(Array.isArray(raw.rulePacks) ? { rulePacks: (raw.rulePacks as unknown[]).filter(isRulePack) } : {}),
+    ...(isLot(raw.lot) ? { lot: raw.lot } : {}),
     // Its scale and pens, when it set them and they are ones (the defaults otherwise).
     ...(isDrawingSettings(raw.drawing) ? { drawing: raw.drawing } : {}),
     // Its layer combinations and graphic overrides, the bad ones left out.

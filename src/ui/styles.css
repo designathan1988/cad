@@ -58,6 +58,7 @@
   --coords-w: 120px;
   --swatch-w: 28px;
   --levels-col: 120px;
+  --lot-col: 220px;
   --menu-min-w: 180px;
   --list-max-h: 220px;
   --palette-max-h: 360px;
@@ -2294,15 +2295,118 @@ button.project-name:hover {
 /* The norms dialog (rules-dialog.ts): on, what, minimum, maximum, source; then what is outside them. */
 .rules {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1.3fr) var(--levels-col) var(--levels-col) minmax(0, 1fr);
+  /* On, what (and its uses), minimum, maximum, source, article, weight, delete. */
+  grid-template-columns: max-content minmax(0, 1.3fr) var(--levels-col) var(--levels-col) minmax(0, 1fr) minmax(0, 0.7fr) max-content max-content;
   gap: var(--sp-2) var(--sp-2);
   align-items: center;
   padding: var(--sp-3) var(--sp-4);
 }
 @media (max-width: 720px) {
   .rules {
-    grid-template-columns: max-content minmax(0, 1.2fr) repeat(2, minmax(0, 1fr)) minmax(0, 1fr);
+    grid-template-columns: max-content minmax(0, 1.2fr) repeat(2, minmax(0, 1fr)) minmax(0, 1fr) minmax(0, 0.7fr) max-content max-content;
   }
+}
+/* The rules scroll inside the dialog: the findings and the buttons stay in sight. */
+.rules-scroll {
+  max-height: 52vh;
+  overflow: auto;
+}
+/* A pack's name and where it holds, over its rules, across the grid. */
+.rules-pack {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-3);
+  align-items: baseline;
+  margin-top: var(--sp-3);
+  padding-bottom: var(--sp-1);
+  border-bottom: var(--line) solid var(--border);
+}
+.rules-pack span {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.rules-what {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.rules-uses summary {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.rules-use {
+  display: flex;
+  gap: var(--sp-1);
+  align-items: center;
+  font-size: var(--fs-sm);
+}
+.rules-add {
+  justify-self: start;
+}
+.rules-new {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+  padding: 0 var(--sp-4) var(--sp-3);
+}
+/* The lot dialog (ui/lot-dialog.ts): its fields two to a row, then the table of areas. */
+.lot-body {
+  max-height: 70vh;
+  overflow: auto;
+  padding: 0 var(--sp-4) var(--sp-3);
+}
+.lot-body h3 {
+  margin: var(--sp-3) 0 var(--sp-2);
+  font-size: var(--fs-md);
+}
+.lot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--lot-col), 1fr));
+  gap: var(--sp-2) var(--sp-4);
+}
+.lot-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+.lot-num {
+  display: flex;
+  gap: var(--sp-1);
+  align-items: center;
+}
+.lot-num .text-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.lot-areas table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: var(--sp-2);
+}
+.lot-areas th,
+.lot-areas td {
+  padding: var(--sp-1) var(--sp-2);
+  text-align: left;
+  border-bottom: var(--line) solid var(--border);
+}
+.lot-areas th {
+  color: var(--text-2);
+  font-weight: 600;
+}
+.lot-areas .n {
+  text-align: right;
+}
+.lot-areas .note {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
 }
 .rules input[type='checkbox'] {
   justify-self: center;

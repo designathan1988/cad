@@ -66,6 +66,8 @@ export interface DerivedGeometry {
   readonly roomWarnings: readonly RoomWarning[];
   /** A level's spaces, the ones its walls close in (room/derive.ts): where the room tool can put a room. Found when asked. */
   readonly spaces: (levelId: string) => readonly (readonly P[])[];
+  /** Each level's wall pieces before doors and windows are cut: what the building covers (app/lot-areas.ts). */
+  readonly levelPieces: ReadonlyMap<string, readonly (readonly P[])[]>;
   /** The registry's kinds (elements/registry.ts), derived: by kind, then id. */
   readonly kinds: KindSolids;
 }
@@ -178,7 +180,7 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     if (!found.has(levelId)) found.set(levelId, spacesOf(roomPieces.get(levelId) ?? []));
     return found.get(levelId)!;
   };
-  const base = { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, spaces };
+  const base = { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, spaces, levelPieces: piecesByLevel };
   // The registry's kinds last: a dimension is placed from the walls and doors.
   return { ...base, kinds: deriveKinds(doc, base) };
 }

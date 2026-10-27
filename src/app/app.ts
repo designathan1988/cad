@@ -51,7 +51,7 @@ import { type Insets, type PlanOverlay, PlanView } from '../render/plan-view';
 import { Scene3D } from '../render/scene-3d';
 import { Overlay3D, type Overlay3DState } from '../render/overlay-3d';
 import { ViewCube } from '../render/view-cube';
-import { getLang, htmlLang, markPrefix, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
+import { getLang, htmlLang, markPrefix, name as wordsOf, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
 import { buildShell, type Shell, type ToolId, type ViewId } from '../ui/shell';
 import { type Snap } from '../tools/snap';
 import { IDLE, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
@@ -61,7 +61,7 @@ import { type Grid } from '../elements/grid/schema';
 import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState } from '../tools/dimension-tool';
 import { geometryOf, keepRooms, moveRooms } from './carry';
 import { keepOpenings } from './keep-openings';
-import { type Doc, type DocWall, elementIds, levelOf, startLevel, type WallDefaults } from './document';
+import { type Doc, type DocWall, elementIds, levelOf, startLevel, type WallDefaults, wallNumber } from './document';
 
 /** The snap labels that name their wall. */
 export const SNAP_OF = {
@@ -76,7 +76,9 @@ export const SNAP_OF = {
 } as const;
 import { applyTemporary, boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, type TemporaryView } from './geometry';
 import { type Diagnostic, diagnose } from './diagnostics';
-import { checkRules, type Finding } from '../rules/check';
+import { checkRules, type Finding, LOT_ELEMENT } from '../rules/check';
+import { complianceHtml } from './documents';
+import { showLot } from '../ui/lot-dialog';
 import { type Rule, rulesOf } from '../rules/schema';
 import { showRules } from '../ui/rules-dialog';
 import { renderDebugPanel } from '../ui/debug-panel';
@@ -1627,17 +1629,45 @@ export class App {
 
   // ---- norms (rules/) -----------------------------------------------------------------------------
 
-  private normed: { g: DerivedGeometry; rules: readonly Rule[]; list: Finding[] } | null = null;
+  private normed: { g: DerivedGeometry; rules: readonly Rule[]; lot: unknown; list: Finding[] } | null = null;
 
-  /** What is outside the project's norm rules (rules/check.ts), once per geometry and rules. */
+  /** What is outside the project's norm rules (rules/check.ts), the rooms and the lot too, once per geometry, rules and lot. */
   normFindings(): Finding[] {
-    const rules = rulesOf(this.store.get());
-    if (this.normed?.g !== this.geometry || this.normed.rules !== rules) this.normed = { g: this.geometry, rules, list: checkRules(this.geometry, rules) };
+    const doc = this.store.get();
+    const rules = rulesOf(doc);
+    if (this.normed?.g !== this.geometry || this.normed.rules !== rules || this.normed.lot !== doc.lot || this.normed.lot !== doc.lot)
+      this.normed = { g: this.geometry, rules, lot: doc.lot, list: checkRules(this.geometry, rules, doc) };
     return this.normed.list;
   }
 
   openRules(): void {
     showRules(this);
+  }
+
+  /** The lot and its table of areas (ui/lot-dialog.ts). */
+  openLot(): void {
+    showLot(this);
+  }
+
+  /** An element as a report names it: a room by its number and name, a wall by its number, the lot. */
+  reportTitle(id: string): string {
+    if (id === LOT_ELEMENT) return t('lot.title');
+    const doc = this.store.get();
+    const room = doc.rooms.find((r) => r.id === id);
+    // With its level: the same number and name on two levels read as one room.
+    if (room) return `${room.number} · ${wordsOf(room.name)} (${wordsOf(levelOf(doc, room.levelId)?.name ?? '')})`;
+    const n = wallNumber(doc, id);
+    if (n !== null) return t('wall.tag', { n });
+    return this.elementTitle(id);
+  }
+
+  /** The compliance report as a page to print or keep (app/documents.ts). */
+  downloadCompliance(): void {
+    const today = new Date().toLocaleDateString(getLang() === 'pt' ? 'pt-BR' : 'en-GB');
+    const html = complianceHtml(this.store.get(), this.geometry, (id) => this.reportTitle(id), today);
+    const file = `${this.fileBase()} - ${t('report.title')}.html`;
+    this.download(file, new Blob([html], { type: 'text/html' }), 'text/html');
+    this.toast(t('report.saved', { file }));
   }
 
   /** Where the plan signs what is outside the norms on the level shown: a door's middle, else the element's corner. */
