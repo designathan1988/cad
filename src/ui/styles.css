@@ -595,6 +595,26 @@ button.project-name:hover {
   background: var(--bg);
   border-top: var(--line) solid var(--border);
   z-index: 4;
+  /* Measured for the queries below: what it holds gives way as the drawing narrows. It cannot scroll
+     sideways: that would clip the light's sliders, which open above it. */
+  container-type: inline-size;
+}
+/* Narrower: the 3D's lists' captions go (the select keeps its name; the plan's scale, alone on the bar,
+   keeps its); narrower still, the buttons show their icons only, each named and with its tip. */
+@container (max-width: 1260px) {
+  .view-bar-3d .look-caption {
+    display: none;
+  }
+}
+@container (max-width: 1150px) {
+  .view-bar .segmented .label {
+    display: none;
+  }
+}
+@container (max-width: 760px) {
+  .view-bar .light-btn .label {
+    display: none;
+  }
 }
 .view-bar-group {
   display: flex;

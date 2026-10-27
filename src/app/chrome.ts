@@ -127,6 +127,9 @@ export function renderChrome(app: App): void {
     quality.caption.textContent = t('view3d.qualityLabel');
     style.box.title = t('view3d.styleTip');
     quality.box.title = t('view3d.qualityTip');
+    // Named on their own: on a narrow bar the captions go (styles.css, .view-bar).
+    style.select.setAttribute('aria-label', t('view3d.styleLabel'));
+    quality.select.setAttribute('aria-label', t('view3d.qualityLabel'));
     style.select.replaceChildren(...VISUAL_STYLES.map((v) => new Option(t(`view3d.style.${v}` as MessageKey), v)));
     quality.select.replaceChildren(...RENDER_QUALITIES.map((v) => new Option(t(`view3d.quality.${v}` as MessageKey), v)));
   }

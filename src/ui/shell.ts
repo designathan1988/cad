@@ -182,7 +182,7 @@ export function buildShell(root: HTMLElement) {
   const shown = { reset: el('button', { type: 'button', class: 'has-icon light-btn' }) };
   shown.reset.innerHTML = icon('close', 16);
   shown.reset.append(el('span', { class: 'label' }));
-  const only3d = el('div', { class: 'view-bar-group' }, levelsBox, togglesBox, look.style.box, look.quality.box, el('span', { class: 'light-wrap' }, lightBtn, light.panel));
+  const only3d = el('div', { class: 'view-bar-group view-bar-3d' }, levelsBox, togglesBox, look.style.box, look.quality.box, el('span', { class: 'light-wrap' }, lightBtn, light.panel));
   const onlyPlan = el('div', { class: 'view-bar-group' }, planScale.box);
   viewBar.append(onlyPlan, only3d, el('span', { class: 'view-bar-sep' }), visBtn, shown.reset);
   viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, emptyHint, tempChip, walkStick, tourBar, pointCard, toast, browser);
