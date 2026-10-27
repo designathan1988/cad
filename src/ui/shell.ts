@@ -139,7 +139,7 @@ export function buildShell(root: HTMLElement) {
     return b;
   };
   const levelsShown = { all: barButton(levelsBox, 'levelsAll'), below: barButton(levelsBox, 'levelsBelow'), current: barButton(levelsBox, 'levelsOne') };
-  const togglesBox = el('div', { class: 'segmented', role: 'group' });
+  const togglesBox = el('div', { class: 'segmented view-toggles', role: 'group' });
   const explode = barButton(togglesBox, 'explode');
   const cut = barButton(togglesBox, 'cut');
   const xray = barButton(togglesBox, 'xray');
