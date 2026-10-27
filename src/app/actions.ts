@@ -77,6 +77,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('tool.roof', 'tool.roof', tools, () => app.setTool('roof'), { keys: 'T', keywords: 'telhado telhados roof cobertura água águas platibanda' }),
     make('tool.beam', 'tool.beam', tools, () => app.setTool('beam'), { keys: 'B', keywords: 'viga vigas beam estrutura structure' }),
     make('tool.separator', 'tool.separator', tools, () => app.setTool('separator'), { keywords: 'separador separação cômodo ambiente room separation line' }),
+    make('tool.curtain', 'tool.curtain', tools, () => app.setTool('curtain'), { keywords: 'parede-cortina pele de vidro fachada curtain wall glazing facade montante caixilho' }),
     make('tool.column', 'tool.column', tools, () => app.setTool('column'), { keys: 'P', keywords: 'pilar pilares coluna column estrutura structure' }),
     make('tool.grid', 'tool.grid', tools, () => app.setTool('grid'), { keys: 'Shift+G', keywords: 'eixo eixos grade grid axis axes estrutura' }),
     make('tool.dimension', 'tool.dimension', tools, () => app.setTool('dimension'), { keys: 'Shift+D', keywords: 'cota dimension medida permanente' }),

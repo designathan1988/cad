@@ -113,7 +113,7 @@ export function renderFrame(app: App): void {
       guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
       snap:
         // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-        (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+        (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
           ? { point: ui.snap.point, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
           : null,
       measure: guideDim
@@ -175,7 +175,7 @@ export function renderFrame(app: App): void {
       draft:
         ui.tool === 'floor' && ui.floorDraft.length > 0
           ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
-          : (ui.tool === 'beam' || ui.tool === 'separator') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
+          : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
             ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
             : ui.tool === 'roof' && ui.roofDraft.length > 0
               ? [...ui.roofDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
@@ -242,7 +242,7 @@ export function renderFrame(app: App): void {
       draft:
         ui.tool === 'floor' && ui.floorDraft.length > 0
           ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
-          : (ui.tool === 'beam' || ui.tool === 'separator') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
+          : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
             ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
             : ui.tool === 'roof' && ui.roofDraft.length > 0
               ? [...ui.roofDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]

@@ -147,10 +147,11 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
     ctx.lineWidth = 1;
     ctx.stroke();
     // Each hole crossed corner to corner: between its outermost corners on each diagonal (a stair's
-    // well with a notch had its middle points crossed, askew).
+    // well with a notch had its middle points crossed, askew). A ceiling's are not: above the cut, its
+    // cross lay over the stair under it.
     ctx.setLineDash([]);
     ctx.beginPath();
-    for (const h of f.holes) {
+    for (const h of ceiling ? [] : f.holes) {
       if (h.length < 3) continue;
       const pts = h.map((v) => p.toScreen(v));
       const most = (f: (q: { x: number; y: number }) => number, sign: number) => pts.reduce((a, b) => (sign * f(b) > sign * f(a) ? b : a));

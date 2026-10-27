@@ -48,7 +48,8 @@ export function row(label: string | { text: string; icon: IconName }, control: H
   if (opts.wide) control.classList.add('wide-control');
   // The whole name on hover, where the column cuts it.
   l.title = typeof label === 'string' ? label : label.text;
-  if (typeof label === 'string') l.append(label);
+  // In its span either way: a long name with no icon was cut to one line ("Profundidade do mo…").
+  if (typeof label === 'string') l.append(el('span', { class: 'field-label' }, label));
   else {
     l.insertAdjacentHTML('beforeend', icon(label.icon, 14).replace('class="icon"', 'class="icon field-icon"'));
     l.append(el('span', { class: 'field-label' }, label.text));

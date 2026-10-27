@@ -1002,6 +1002,10 @@ export class App {
     this.refresh();
   }
 
+  curtainClick(p: Point2): void {
+    return kindTools.curtainClick(this, p);
+  }
+
   separatorClick(p: Point2): void {
     return kindTools.separatorClick(this, p);
   }

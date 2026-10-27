@@ -58,8 +58,9 @@ import { isRule as isNormRule } from '../rules/schema';
  * Version 26: a wall's top up to another level or under the roof (`top` kinds 'toLevel', 'roof').
  *   Older walls have neither.
  * Version 27: the project's norm rules (`rules`, rules/schema.ts). Older files have none: the defaults.
+ * Version 28: curtain walls (`curtains`, elements/curtain). Older files have none.
  */
-export const CURRENT_VERSION = 27;
+export const CURRENT_VERSION = 28;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =

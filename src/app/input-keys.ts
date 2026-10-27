@@ -216,7 +216,7 @@ export function wireKeys(app: App, k: KeyContext): void {
         ui.roofDraft = [];
         return app.render();
       }
-      if (ui.tool === 'beam' || ui.tool === 'separator') {
+      if (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') {
         if (!ui.beamFrom) return app.setTool('select');
         ui.beamFrom = null;
         return app.render();
@@ -240,7 +240,7 @@ export function wireKeys(app: App, k: KeyContext): void {
     // Enter ends what is being drawn by points: a roof's outline, a guardrail's path, a beam chain.
     if (e.key === 'Enter' && ui.tool === 'roof' && ui.roofDraft.length > 0) return app.roofFinish();
     if (e.key === 'Enter' && ui.tool === 'railing' && ui.railingDraft.length > 0) return app.railingFinish();
-    if (e.key === 'Enter' && (ui.tool === 'beam' || ui.tool === 'separator') && ui.beamFrom) {
+    if (e.key === 'Enter' && (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom) {
       ui.beamFrom = null;
       return app.render();
     }

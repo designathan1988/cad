@@ -201,7 +201,7 @@ export function wireInput(app: App): void {
           ? ui.dimension.a
           : ui.tool === 'grid'
             ? ui.gridFrom
-            : ui.tool === 'beam' || ui.tool === 'separator'
+            : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain'
               ? ui.beamFrom
               : ui.tool === 'roof'
                 ? (ui.roofDraft.at(-1) ?? null)
@@ -341,7 +341,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
+    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -496,7 +496,7 @@ export function wireInput(app: App): void {
       app.gridEscape();
       return true;
     }
-    if ((ui.tool === 'beam' || ui.tool === 'separator') && ui.beamFrom) {
+    if ((ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom) {
       ui.beamFrom = null;
       app.render();
       return true;
@@ -618,6 +618,11 @@ export function wireInput(app: App): void {
     if (ui.tool === 'separator') {
       const at = worldAt(e);
       if (at) app.separatorClick(snapped(e)?.point ?? at.p);
+      return;
+    }
+    if (ui.tool === 'curtain') {
+      const at = worldAt(e);
+      if (at) app.curtainClick(snapped(e)?.point ?? at.p);
       return;
     }
     // A text or a level mark where the click is; then selected, its text ready to type.

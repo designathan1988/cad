@@ -25,6 +25,8 @@ const VIEW_FOV = 40;
 const WALK_FOV = 65;
 /** How much of a wall shows in x-ray. */
 const XRAY_OPACITY = 0.28;
+/** How much the project's glass hides what is behind it. */
+const GLASS_OPACITY = 0.45;
 
 /** Opaque in its middle, fading to nothing at its edge: the ground runs off into the background. */
 function groundFade(): THREE.Texture {
@@ -219,13 +221,20 @@ export class Scene3D {
     if (x.color.getHexString() !== m.color.slice(1).toLowerCase()) x.color.set(m.color);
     x.roughness = m.roughness;
     x.metalness = m.metalness;
+    // The project's glass is seen through (a curtain wall's panels, an object's glass part).
+    const clear = m.id === 'glass';
+    if (x.userData.clear !== clear) {
+      x.userData.clear = clear;
+      this.faint(x, this.xrayOn);
+    }
     return x;
   }
 
   private faint(m: THREE.Material, on: boolean): void {
-    m.transparent = on;
-    m.opacity = on ? XRAY_OPACITY : 1;
-    m.depthWrite = !on;
+    const clear = m.userData.clear === true;
+    m.transparent = on || clear;
+    m.opacity = on ? XRAY_OPACITY : clear ? GLASS_OPACITY : 1;
+    m.depthWrite = !on && !clear;
     m.needsUpdate = true;
   }
 

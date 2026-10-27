@@ -48,6 +48,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
             tool('window', 'tool.window', 'window', 'L'),
             tool('column', 'tool.column', 'column', 'S'),
             tool('beam', 'tool.beam', 'beam', 'S'),
+            tool('curtain', 'tool.curtain', 'window', 'S'),
             tool('floor', 'tool.floor', 'slab', 'S'),
             tool('roof', 'tool.roof', 'roof', 'S'),
             { id: 'tool.rectWall', icon: 'wall', size: 'S' },

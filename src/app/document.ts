@@ -2,6 +2,7 @@
 // always derived from it.
 
 import type { Separator } from '../elements/separator/schema';
+import type { Curtain } from '../elements/curtain/schema';
 import type { Zone } from '../elements/zone/schema';
 import type { Rule } from '../rules/schema';
 import { LIBRARY } from '../elements/object/library';
@@ -57,7 +58,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 27;
+  readonly version: 28;
   readonly name: string;
   /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
   readonly units: Units;
@@ -101,6 +102,8 @@ export interface Doc {
   readonly objects: readonly ObjectInstance[];
   /** Lines bounding rooms where there is no wall (elements/separator). */
   readonly separators: readonly Separator[];
+  /** Curtain walls (elements/curtain). */
+  readonly curtains: readonly Curtain[];
   /** Rooms taken together under a name, a category and a colour (elements/zone). */
   readonly zones: readonly Zone[];
   /** The norm rules it is checked against (rules/schema.ts); the defaults when it sets none. */
@@ -121,7 +124,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 27,
+    version: 28,
     name: '',
     units: DEFAULT_UNITS,
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
@@ -175,6 +178,7 @@ export function newDocument(): Doc {
     definitions: [...LIBRARY],
     objects: [],
     separators: [],
+    curtains: [],
     zones: [],
   };
 }

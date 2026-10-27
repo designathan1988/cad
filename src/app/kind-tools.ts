@@ -19,6 +19,8 @@ import { isConvex } from '../elements/roof/geometry';
 import { edgesFor, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, ROOF_PREFIX, ROOF_THICKNESS, type RoofKind } from '../elements/roof/schema';
 import { addBeam } from '../elements/beam/commands';
 import { addSeparator } from '../elements/separator/commands';
+import { addCurtain } from '../elements/curtain/commands';
+import { CURTAIN_DEFAULTS, CURTAIN_PREFIX } from '../elements/curtain/schema';
 import { SEPARATOR_PREFIX } from '../elements/separator/schema';
 import { BEAM_DEPTH, BEAM_PREFIX, BEAM_WIDTH } from '../elements/beam/schema';
 import { addColumn } from '../elements/column/commands';
@@ -173,6 +175,20 @@ export function separatorClick(app: App, p: Point2): void {
   app.store.dispatch(addSeparator({ id: newId(SEPARATOR_PREFIX), levelId: app.ui.levelId, start: from, end: p }));
   app.ui.beamFrom = p;
   app.ui.info = t('hint.separatorMade');
+  app.render();
+}
+
+/** The curtain wall tool: a click starts it, the next ends it and goes on from there, as walls chain. */
+export function curtainClick(app: App, p: Point2): void {
+  const from = app.ui.beamFrom;
+  if (!from) {
+    app.ui.beamFrom = p;
+    return app.render();
+  }
+  if (distance(from, p) < MIN_WALL_LENGTH) return;
+  app.store.dispatch(addCurtain({ id: newId(CURTAIN_PREFIX), levelId: app.ui.levelId, start: from, end: p, ...CURTAIN_DEFAULTS }));
+  app.ui.beamFrom = p;
+  app.ui.info = t('hint.curtainMade');
   app.render();
 }
 
