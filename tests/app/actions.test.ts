@@ -13,7 +13,7 @@ import { VIEW_3D_DEFAULT } from '../../src/app/view-3d';
 // Only what appActions reads; the actions themselves are not run here.
 function fakeApp(selection: string[] = [], view: '3d' | 'plan' = 'plan') {
   const store = createStore(addLevel('lvl_up', 'Upper').apply(newDocument()));
-  return { store, ui: { selection: new Set(selection), view, levelId: 'lvl_ground', hidden: new Set(), view3d: VIEW_3D_DEFAULT }, canMergeSelection: () => false } as unknown as App;
+  return { store, ui: { selection: new Set(selection), view, levelId: 'lvl_ground', hidden: new Set(), view3d: VIEW_3D_DEFAULT }, canMergeSelection: () => false, arrangeItems: () => [] } as unknown as App;
 }
 const openers = { help: () => {}, levels: () => {}, wallTypes: () => {}, materials: () => {}, units: () => {}, objects: () => {}, tour: () => {}, openFile: () => {}, projects: () => {}, print: () => {}, drawing: () => {} };
 

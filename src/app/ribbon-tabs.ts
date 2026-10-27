@@ -113,6 +113,19 @@ function tabsOf(app: App): readonly RibbonTab[] {
           title: 'rib.p.walls',
           items: [tool('split', 'edit.split', 'split', 'S'), tool('corner', 'edit.corner', 'corner', 'S'), { id: 'edit.merge', icon: 'merge', size: 'S' }],
         },
+        {
+          title: 'rib.p.arrange',
+          items: [
+            { id: 'arrange.left', icon: 'alignLeft', size: 'S' },
+            { id: 'arrange.centerX', icon: 'alignCenterX', size: 'S' },
+            { id: 'arrange.right', icon: 'alignRight', size: 'S' },
+            { id: 'arrange.top', icon: 'alignTop', size: 'S' },
+            { id: 'arrange.centerY', icon: 'alignCenterY', size: 'S' },
+            { id: 'arrange.bottom', icon: 'alignBottom', size: 'S' },
+            { id: 'arrange.spreadX', icon: 'distribute', size: 'S' },
+            { id: 'arrange.spreadY', icon: 'distributeY', size: 'S' },
+          ],
+        },
         { title: 'rib.p.clipboard', items: [{ id: 'edit.copyClip', icon: 'copy', size: 'S' }, { id: 'edit.paste', icon: 'plus', size: 'S' }] },
         {
           title: 'rib.p.selection',

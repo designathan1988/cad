@@ -1,6 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import { arrangeNeeds, arrangeSteps, type ArrangeHow, type Box as ArrangeBox, boxOf } from '../tools/arrange';
 import type { ScreenHandle } from './object-handles';
 import type { HandleDrag } from './object-handles';
 import { OBJECT_PREVIEW } from './kind-tools';
@@ -41,7 +42,7 @@ import { buildShell, type Shell, type ToolId, type ViewId } from '../ui/shell';
 import { type Snap } from '../tools/snap';
 import { IDLE, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, dragTransform, hull } from './select-drag';
-import { filterKinds, hasSolid, kindLists, kindOfId, levelOfElement, levelOfSolid, listOf, moveKinds } from '../elements/registry';
+import { filterKinds, hasSolid, kindLists, kindOfId, levelOfElement, levelOfSolid, listOf, moveKinds, eachSolid } from '../elements/registry';
 import { type Grid } from '../elements/grid/schema';
 import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState } from '../tools/dimension-tool';
 import { geometryOf, keepRooms, moveRooms } from './carry';
@@ -965,6 +966,35 @@ export class App {
    */
   modifyMarks(): { base: Point2; to: Point2 | null; ref: Point2 | null; axis: { point: Point2; dir: Point2 } | null; text: string | null } | null {
     return modify.modifyMarks(this);
+  }
+
+  /**
+   * The selected elements align and distribute moves (tools/arrange.ts): those of the registry that move
+   * on their own (furniture, columns, texts, stairs, guardrails…), each with the box around it in plan.
+   * Walls (their own align keeps them joined), doors and windows (they slide on their wall) and guides
+   * (no ends) are left out.
+   */
+  arrangeItems(): { id: string; box: ArrangeBox }[] {
+    const out: { id: string; box: ArrangeBox }[] = [];
+    for (const x of eachSolid(this.geometry.kinds)) {
+      if (!this.ui.selection.has(x.id) || x.kind.walled || x.kind.endless || x.kind.key === 'walls') continue;
+      const box = boxOf(x.kind.outlines(x.solid).flat());
+      if (box) out.push({ id: x.id, box });
+    }
+    return out;
+  }
+
+  /** Align or distribute the selection, one step to undo; said when there are too few to. */
+  arrange(how: ArrangeHow): void {
+    const items = this.arrangeItems();
+    if (items.length < arrangeNeeds(how)) return this.toast(t('arrange.needs', { n: arrangeNeeds(how) }));
+    const steps = arrangeSteps(
+      items.map((i) => i.box),
+      how,
+    );
+    const before = this.store.get();
+    const next = items.reduce((d, it, i) => moveKinds(d, new Set([it.id]), steps[i]!), before);
+    if (next !== before) this.store.dispatch({ label: 'cmd.arrange', apply: () => next });
   }
 
   /** The measure tool between two points and a chain (C): the tape so far is dropped. */

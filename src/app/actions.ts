@@ -2,6 +2,7 @@
 // command palette lists these; the toolbar, keys and menus do the same things, with the same names
 // and keys (ref/chat.txt:200), because they read them from here.
 
+import { ARRANGE_HOWS, arrangeNeeds } from '../tools/arrange';
 import { newId } from '../core/id';
 import { addZone } from '../elements/zone/commands';
 import { ZONE_COLOURS, ZONE_PREFIX } from '../elements/zone/schema';
@@ -206,6 +207,11 @@ export function appActions(app: App, open: Openers): Action[] {
     ...[2, 3, 4, 5, 6, 8, 10].map((n) =>
       make(`snap.parts.${n}`, 'pal.snapParts', settings, () => app.setSnapParts(n), { enabled: ui.snapParts !== n, keywords: `${n} encaixe snap divisão division terços thirds partes parts` }),
     ).map((a, i) => ({ ...a, label: t('pal.snapParts', { n: [2, 3, 4, 5, 6, 8, 10][i]! }) })),
+    // Align and distribute the selection (tools/arrange.ts): enabled when enough of it can.
+    ...(() => {
+      const n = app.arrangeItems().length;
+      return ARRANGE_HOWS.map((how) => make(`arrange.${how}`, `arrange.${how}` as MessageKey, edit, () => app.arrange(how), { enabled: n >= arrangeNeeds(how), keywords: 'alinhar align distribuir distribute organizar arrange' }));
+    })(),
     make('drawing.edit', 'draw.open', edit, open.drawing, { keywords: `${tBoth('draw.title')} 1:50 1:100 pena pen espessura lineweight` }),
     make('help.shortcuts', 'pal.shortcuts', help, open.help, { keys: '?' }),
     make('help.tour', 'pal.tour', help, open.tour),

@@ -87,6 +87,13 @@ const paths = {
   mirror: 'M12 3v18M9 7l-5 10h5zM15 7l5 10h-5z',
   // A wall and its parallel copy, the arrow across between them.
   offset: 'M4 5h16M4 19h16M12 8v8M9 13l3 3 3-3',
+  alignLeft: 'M4 3v18M8 6h11v4H8zM8 14h7v4H8z',
+  alignCenterX: 'M12 3v18M6 6h12v4H6zM8 14h8v4H8z',
+  alignRight: 'M20 3v18M5 6h11v4H5zM9 14h7v4H9z',
+  alignBottom: 'M3 20h18M6 5h4v11H6zM14 9h4v7h-4z',
+  alignCenterY: 'M3 12h18M6 6h4v12H6zM14 8h4v8h-4z',
+  alignTop: 'M3 4h18M6 8h4v11H6zM14 8h4v7h-4z',
+  distributeY: 'M4 4h16M4 20h16M9 8h6v3H9zM9 13h6v3H9z',
 } as const;
 
 export type IconName = keyof typeof paths;
