@@ -37,7 +37,7 @@ export interface SectionViewport {
 }
 
 /** The schedules a sheet can show: the model's (app/schedules.ts) and the list of the sheets. */
-export const SHEET_SCHEDULES = ['rooms', 'doors', 'windows', 'walls', 'sheets'] as const;
+export const SHEET_SCHEDULES = ['rooms', 'doors', 'windows', 'walls', 'construction', 'sheets'] as const;
 export type SheetSchedule = (typeof SHEET_SCHEDULES)[number];
 
 /** A schedule on the sheet (app/schedules.ts): which, and where its top left corner is (mm). */

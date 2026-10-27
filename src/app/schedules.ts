@@ -1,17 +1,16 @@
 // Quantity schedules (ref/chat.txt:119, l.147): doors, windows, rooms with their areas, walls with
-// their lengths and areas, read from the model and never stored (l.128), and as CSV. Pure.
+// their lengths, areas and modulation, the construction quantities out of their layers (quantities.ts),
+// read from the model and never stored (l.128), and as CSV. Pure.
 
 import type { Opening } from '../elements/opening/schema';
-import { add, scale } from '../core/vector';
-import { referenceLength } from '../elements/opening/derive';
 import { openingMarks } from '../elements/opening/marks';
-import { insideRing } from '../elements/room/derive';
 import type { RoomUse } from '../elements/room/schema';
-import { type Doc, levelOf, wallHeights, wallNumber } from './document';
+import { type Doc, type DocWall, levelOf, wallNumber } from './document';
 import type { DerivedGeometry } from './geometry';
+import { finishQuantities, layerQuantities, modulation, roomsBeside, wallAreas } from './quantities';
 
-export type ScheduleKind = 'doors' | 'windows' | 'rooms' | 'walls';
-export const SCHEDULE_KINDS: readonly ScheduleKind[] = ['doors', 'windows', 'rooms', 'walls'];
+export type ScheduleKind = 'doors' | 'windows' | 'rooms' | 'walls' | 'construction';
+export const SCHEDULE_KINDS: readonly ScheduleKind[] = ['doors', 'windows', 'rooms', 'walls', 'construction'];
 
 /** What a column holds: text, a count, a length (m), an area (m²) or a volume (m³). */
 export type ColumnUnit = 'text' | 'count' | 'm' | 'm2' | 'm3';
@@ -47,6 +46,10 @@ export interface Naming {
   readonly model: (o: Opening) => string;
   /** A material's name by its id: a room's finishes. */
   readonly material: (id: string) => string;
+  /** A message of the interface by its key (the construction schedule's items, a wall's modulation). */
+  readonly term: (key: string, vars?: Readonly<Record<string, string | number>>) => string;
+  /** A number as the interface writes it, to so many places. */
+  readonly number: (v: number, places: number) => string;
 }
 
 const col = (key: string, unit: ColumnUnit): ScheduleColumn => ({ key: `schedule.col.${key}`, unit });
@@ -111,21 +114,26 @@ export function schedule(doc: Doc, g: DerivedGeometry, kind: ScheduleKind, namin
       col('grossArea', 'm2'),
       col('openingArea', 'm2'),
       col('netArea', 'm2'),
+      col('modulation', 'text'),
     ];
     const rows = byLevel(doc, doc.walls).map((w) => {
       const type = doc.wallTypes.find((t) => t.id === w.wallTypeId);
-      const length = referenceLength(w);
-      const { bottom, top } = wallHeights(doc, w);
-      const height = Math.max(0, top - bottom);
-      // An opening's hole: as wide as it is, from its sill up to its head or the wall's top.
-      const holes = doc.openings
-        .filter((o) => o.wallId === w.id && g.openings.get(o.id)?.valid)
-        .reduce((s, o) => s + o.width * Math.max(0, Math.min(o.height, height - o.sill)), 0);
-      const gross = length * height;
-      return [naming.wallTag(wallNumber(doc, w.id) ?? 0), type ? naming.name(type.name) : '', levelName(w.levelId), length, height, gross, holes, gross - holes];
+      const { length, height, gross, holes } = wallAreas(doc, g, w);
+      return [
+        naming.wallTag(wallNumber(doc, w.id) ?? 0),
+        type ? naming.name(type.name) : '',
+        levelName(w.levelId),
+        length,
+        height,
+        gross,
+        holes,
+        gross - holes,
+        modulationText(doc, w, naming),
+      ];
     });
     return { kind, columns, rows, totals: totalsOf(columns, rows) };
   }
+  if (kind === 'construction') return construction(doc, g, naming);
   const openingKind = kind === 'doors' ? 'door' : 'window';
   const columns = [
     col('number', 'text'),
@@ -165,17 +173,56 @@ export function schedule(doc: Doc, g: DerivedGeometry, kind: ScheduleKind, namin
  * last. The same room on both sides (a door inside one space) once.
  */
 function sidesOf(g: DerivedGeometry, id: string, levelId: string, naming: Naming): string {
-  const frame = g.openings.get(id)?.frame;
-  if (!frame) return '';
-  const middle = scale(add(frame.start, frame.end), 0.5);
-  // Just off each face, 5 cm out: in the room on that side, if one is there.
-  const rooms = [frame.faces[0] - 0.05, frame.faces[1] + 0.05].map((offset) => {
-    const p = add(middle, scale(frame.normal, offset));
-    return [...g.rooms.values()].find((r) => r.room.levelId === levelId && r.enclosed && insideRing(r.outline, p))?.room ?? null;
-  });
+  if (!g.openings.get(id)?.frame) return '';
+  const rooms = [...roomsBeside(g, id, levelId)];
   const order = (r: (typeof rooms)[number]) => (r === null ? Infinity : Number.parseFloat(r.number) || 0);
   const names = [...rooms].sort((a, b) => order(a) - order(b)).map((r) => (r ? naming.name(r.name) : naming.outside));
   return names[0] === names[1] ? names[0]! : names.join(' / ');
+}
+
+/**
+ * A wall's modulation, as the walls schedule and its panel say it: its blocks along it and its courses
+ * up it, with what is left of each ("20 blocos de 24 cm + 5 cm; 37 fiadas de 7,5 cm"); empty for a wall
+ * that is not masonry.
+ */
+export function modulationText(doc: Doc, w: DocWall, naming: Pick<Naming, 'term' | 'number'>): string {
+  const m = modulation(doc, w);
+  if (!m) return '';
+  // Centimetres to the millimetre, a whole one without its ",0": "24 cm", "7,5 cm".
+  const cm = (v: number) => {
+    const x = Math.round(v * 1000) / 10;
+    return naming.number(x, Number.isInteger(x) ? 0 : 1);
+  };
+  const along = naming.term(m.rest > 0 ? 'mod.alongRest' : 'mod.along', { n: m.count, m: cm(m.module), r: cm(m.rest) });
+  const up = naming.term(m.courseRest > 0 ? 'mod.upRest' : 'mod.up', { n: m.courses, m: cm(m.course), r: cm(m.courseRest) });
+  return `${along}; ${up}`;
+}
+
+/**
+ * The construction quantities (quantities.ts), one row per item and material: the masonry (its blocks),
+ * the mortar of its joints, each face's finish, the other layers, the rooms' floors, walls and ceilings.
+ * Area, volume and pieces as each has them; no totals but the count, an area of plaster and one of
+ * blocks not adding up.
+ */
+function construction(doc: Doc, g: DerivedGeometry, naming: Naming): Schedule {
+  const columns = [col('item', 'text'), col('material', 'text'), col('area', 'm2'), col('volume', 'm3'), col('pieces', 'count')];
+  const rows = new Map<string, { item: string; material: string; area: number | null; volume: number | null; pieces: number | null }>();
+  const add = (item: string, materialId: string, area: number | null, volume: number | null, pieces: number | null) => {
+    const key = `${item}\u0000${materialId}`;
+    const r = rows.get(key) ?? { item, material: naming.material(materialId), area: null, volume: null, pieces: null };
+    const sum = (a: number | null, b: number | null) => (b === null ? a : (a ?? 0) + b);
+    rows.set(key, { ...r, area: sum(r.area, area), volume: sum(r.volume, volume), pieces: sum(r.pieces, pieces) });
+  };
+  for (const q of layerQuantities(doc, g)) {
+    if (q.mortar !== null) {
+      add(naming.term('qty.masonry'), q.materialId, q.area, q.volume, q.pieces);
+      add(naming.term('qty.mortar'), q.materialId, null, q.mortar, null);
+    } else if (q.place !== 'inner') add(naming.term(q.place === 'exterior' ? 'qty.faceExterior' : 'qty.faceInterior'), q.materialId, q.area, q.volume, q.pieces);
+    else add(naming.term('qty.layer', { fn: naming.term(`fn.${q.function}`) }), q.materialId, q.area, q.volume, q.pieces);
+  }
+  for (const f of finishQuantities(doc, g)) add(naming.term(`qty.room.${f.surface}`), f.materialId, f.area, null, f.pieces);
+  const list = [...rows.values()].map((r) => [r.item, r.material, r.area, r.volume, r.pieces]);
+  return { kind: 'construction', columns, rows: list, totals: columns.map((_, i) => (i === 0 ? list.length : null)) };
 }
 
 function totalsOf(columns: readonly ScheduleColumn[], rows: readonly (readonly Cell[])[]): Cell[] {

@@ -38,6 +38,8 @@ const naming: Naming = {
   markPrefix: { door: 'P', window: 'J' },
   model: () => 'Simples',
   material: (id) => id,
+  term: (key, vars) => (vars ? `${key} ${JSON.stringify(vars)}` : key),
+  number: (v, places) => v.toFixed(places),
 };
 const BOM = String.fromCharCode(0xfeff);
 

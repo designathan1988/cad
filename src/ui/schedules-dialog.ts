@@ -20,6 +20,8 @@ export const scheduleNaming = (app: App) => ({
   markPrefix: markPrefix(),
   model: modelName,
   material: (id: string) => materialLabel(materialIn(app.store.get().materials, id)),
+  term: (key: string, vars?: Readonly<Record<string, string | number>>) => t(key as MessageKey, vars),
+  number: (v: number, places: number) => num(v, places),
 });
 
 /** A cell as the table shows it: a dash for nothing, lengths in the project's unit. */
