@@ -18,7 +18,7 @@ import { drawingOf, elementIds, wallNumber } from './document';
 import { SCALES } from '../elements/drawing/schema';
 import { boundsOf, openingOutline } from './geometry';
 import { renderBrowser } from '../ui/browser';
-import { type RibbonItem, renderRibbonTab, renderRibbonTabs } from '../ui/ribbon';
+import { renderRibbonTab, renderRibbonTabs } from '../ui/ribbon';
 import { ribbonTabs } from './ribbon-tabs';
 import { exploding, RENDER_QUALITIES, shownLevels, VISUAL_STYLES } from './view-3d';
 import { contextEntries } from './context-menu';
@@ -154,10 +154,6 @@ export function renderChrome(app: App): void {
   }
   if (!doc.levels.some((l) => l.id === ui.levelId)) ui.levelId = doc.levels[0]!.id;
   shell.level.value = ui.levelId;
-  // The plan's tab says whose plan it is, as an open view's name ("Planta: Térreo").
-  const planName = `${t('view.plan')}: ${name(doc.levels.find((l) => l.id === ui.levelId)!.name)}`;
-  const planLabel = shell.viewPlan.querySelector('.label')!;
-  if (planLabel.textContent !== planName) planLabel.textContent = planName;
   // Gone once the wall tool is on: "press W" no longer applies, and the footer says what to click.
   // Only on an empty project: a column, a roof or a note drawn first is under it otherwise.
   shell.emptyHint.hidden = doc.walls.length > 0 || elementIds(doc).size > 0 || ui.tool === 'wall';
@@ -440,6 +436,7 @@ export function renderChrome(app: App): void {
   shell.ribbon.querySelector('[data-action="tool.rectWall"]')?.setAttribute('aria-pressed', String(drawing && rect));
   shell.coords.textContent = ui.cursor ? `x ${lengthText(ui.cursor.x)}  y ${lengthText(ui.cursor.y)}` : '';
   shell.fitFoot();
+  shell.fitViewBar();
   app.placeFloatBar();
 }
 
@@ -586,7 +583,7 @@ export function renderRibbon(app: App): void {
   app.ribbonSelected = selected;
   const shown = contextual && !app.ribbonAway ? contextual.id : app.ribbonTab;
   const tab = tabs.find((x) => x.id === shown)!;
-  renderOptBar(app, tabs, actions);
+  renderToolDone(app);
   const states = tab.panels.flatMap((p) => p.items.map((i) => {
     const a = actions.get(i.id);
     return a ? [i.id, a.label, a.keys ?? '', a.enabled, i.pressed?.() ?? null] : [i.id];
@@ -601,40 +598,15 @@ export function renderRibbon(app: App): void {
   if (focused) shell.ribbon.querySelector<HTMLElement>(`[data-action="${focused}"]`)?.focus();
 }
 
-/** The ribbon's buttons that say a tool (not a view or a setting shown): what the options bar names. */
-const TOOL_BUTTON = /^(tool|edit|mep|mark|objects)\./;
-
-/**
- * The options bar (the interface model's): the tool in use named as its ribbon button names it, with
- * its icon, and Finish (Esc); with Select, how many elements are selected. Drawn again when that changes.
- */
-function renderOptBar(app: App, tabs: ReturnType<typeof ribbonTabs>, actions: ReadonlyMap<string, ReturnType<App['actionList']>[number]>): void {
+/** The way out of the tool in use, on the view's bar: shown while one is, named in the interface's language. */
+function renderToolDone(app: App): void {
   const { shell, ui } = app;
-  // The pressed button of the tool, a list's own item before its button (the object, not "Object").
-  let found: { item: RibbonItem; label: string } | null = null;
-  if (ui.tool !== 'select')
-    for (const tab of tabs)
-      for (const p of tab.panels)
-        for (const item of p.items)
-          for (const it of [...(item.menu?.() ?? []), item]) {
-            if (found || !TOOL_BUTTON.test(it.id) || !it.pressed?.()) continue;
-            const a = actions.get(it.id);
-            if (a) found = { item: it, label: it.text ?? a.label };
-          }
-  const n = ui.selection.size;
-  const key = JSON.stringify([getLang(), ui.tool, found?.item.id ?? null, found?.label ?? '', n]);
-  if (key === shell.optBar.dataset.key) return;
-  shell.optBar.dataset.key = key;
-  const title = el('span', { class: 'opt-title' });
-  title.innerHTML = icon(found ? found.item.icon : 'pointer', 16);
-  title.append(found ? found.label.replace(/[.…]+$/, '') : t('tool.select'));
-  if (!found) {
-    shell.optBar.replaceChildren(title, el('span', { class: 'opt-sep' }), el('span', {}, n === 1 ? t('opt.selectedOne') : t('opt.selected', { n })));
-    return;
-  }
-  const finish = el('button', { type: 'button', class: 'btn' }, t('opt.finish'), ' ', el('span', { class: 'kbd' }, 'Esc'));
-  finish.addEventListener('click', () => actions.get('tool.select')?.run());
-  shell.optBar.replaceChildren(title, el('span', { class: 'spacer' }), finish);
+  const on = ui.tool !== 'select';
+  shell.toolDone.hidden = !on;
+  if (!on || shell.toolDone.dataset.lang === getLang()) return;
+  shell.toolDone.dataset.lang = getLang();
+  shell.toolDone.replaceChildren(el('span', { class: 'label' }, t('opt.finish')), el('span', { class: 'kbd' }, 'Esc'));
+  shell.toolDone.title = t('opt.finishTip');
 }
 
 /** The object tool's definition, named in the interface's language. */

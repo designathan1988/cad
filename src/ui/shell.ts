@@ -53,12 +53,8 @@ export function buildShell(root: HTMLElement) {
   const fileMenu = el('button', { type: 'button', class: 'rb-tab rb-file' });
   fileMenu.setAttribute('aria-haspopup', 'menu');
   const ribbon = el('div', { class: 'ribbon', role: 'toolbar' });
-  // The options bar under the ribbon (the interface model's): the tool in use, or what is selected, and
-  // the way out of the tool. Filled by app/chrome.ts.
-  const optBar = el('div', { class: 'opt-bar', role: 'toolbar' });
-
-  // The views' strip, over the drawing: the level, Plan, 3D and Walk as tabs, and the project browser.
-  const strip = el('div', { class: 'view-strip' });
+  // The level, Plan, 3D and Walk, and the project browser: in a small box under the view cube (a strip
+  // of their own over the drawing, and an options bar under the ribbon, were two rows for little).
   const levelBox = el('div', { class: 'select level-select' });
   const level = el('select');
   levelBox.append(level);
@@ -78,7 +74,6 @@ export function buildShell(root: HTMLElement) {
   sidebar.innerHTML = icon('sidebar', 16);
   const sidebarLabel = el('span', { class: 'label' });
   sidebar.append(sidebarLabel);
-  strip.append(levelBox, views, el('span', { class: 'spacer' }), sidebar);
 
   const browser = el('aside', { class: 'browser', 'aria-label': 'Project browser' });
   browser.hidden = true;
@@ -184,8 +179,17 @@ export function buildShell(root: HTMLElement) {
   shown.reset.append(el('span', { class: 'label' }));
   const only3d = el('div', { class: 'view-bar-group view-bar-3d' }, levelsBox, togglesBox, look.style.box, look.quality.box, el('span', { class: 'light-wrap' }, lightBtn, light.panel));
   const onlyPlan = el('div', { class: 'view-bar-group' }, planScale.box);
-  viewBar.append(onlyPlan, only3d, el('span', { class: 'view-bar-sep' }), visBtn, shown.reset);
-  viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, emptyHint, tempChip, walkStick, tourBar, pointCard, toast, browser);
+  // The way out of the tool in use (it was the options bar's), shown while one is.
+  const toolDone = el('button', { type: 'button', class: 'has-icon light-btn tool-done' });
+  toolDone.hidden = true;
+  viewBar.append(onlyPlan, only3d, el('span', { class: 'view-bar-sep' }), visBtn, shown.reset, el('span', { class: 'spacer' }), toolDone);
+  // The drawing's corner, top right, one panel (as a CAD's view cube with its navigation bar under it):
+  // the cube and its home (app.ts puts them first; in 3D only); the three views side by side as icons,
+  // each named in its tip; the level by its name, a list; the project browser, named (its icon alone
+  // says little).
+  const viewBox = el('div', { class: 'view-box' }, views, levelBox, sidebar);
+  const viewCorner = el('div', { class: 'view-corner' }, viewBox);
+  viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, emptyHint, tempChip, walkStick, tourBar, pointCard, toast, browser, viewCorner);
 
   const panel = el('aside', { class: 'panel', 'aria-label': 'Properties' });
 
@@ -204,7 +208,7 @@ export function buildShell(root: HTMLElement) {
 
   const helpBack = el('div', { class: 'dialog-back' });
   helpBack.hidden = true;
-  root.append(top, tabs, ribbon, optBar, strip, viewport, viewBar, panel, foot, helpBack);
+  root.append(top, tabs, ribbon, viewport, viewBar, panel, foot, helpBack);
 
   // The footer's tip comes first: the key hints that leave it no room go, the first ones first (Esc,
   // last, is the one most needed). At 1280 px the wall tool's tip was cut after a few words. The keys
@@ -223,10 +227,26 @@ export function buildShell(root: HTMLElement) {
   };
   new ResizeObserver(() => fitFoot(true)).observe(foot);
 
+  // The view's bar the same way: its steps (styles.css, .view-bar.fit-N) taken one by one until what it
+  // holds fits. Measured when its width changes, and when its contents do (another view, the language,
+  // a tool's way out shown).
+  let barKey = '';
+  const fitViewBar = (force = false) => {
+    const key = [...viewBar.querySelectorAll<HTMLElement>(':scope > *, .view-bar-group')].map((x) => (x.hidden ? '0' : '1') + x.textContent).join('|');
+    if (!force && key === barKey) return;
+    barKey = key;
+    viewBar.classList.remove('fit-1', 'fit-2', 'fit-3');
+    for (let step = 1; step <= 3 && viewBar.scrollWidth > viewBar.clientWidth + 1; step++) {
+      if (step > 1) viewBar.classList.remove(`fit-${step - 1}`);
+      viewBar.classList.add(`fit-${step}`);
+    }
+  };
+  new ResizeObserver(() => fitViewBar(true)).observe(viewBar);
+
   const parts = {
     homeBtn, projectName, savedNote, undo, redo, level, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, tabs, fileMenu, ribbon, optBar, strip, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, look, light, only3d, onlyPlan, planScale, visBtn, shownReset: shown.reset, dims, browser, sidebar,
-    emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, snapParts, coords, helpBack, fitFoot,
+    panelToggle, tabs, fileMenu, ribbon, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, viewCorner, toolDone, levelsShown, explode, cut, xray, box, ortho, look, light, only3d, onlyPlan, planScale, visBtn, shownReset: shown.reset, dims, browser, sidebar,
+    emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, snapParts, coords, helpBack, fitFoot, fitViewBar,
   };
 
   const relabel = () => {
@@ -246,14 +266,13 @@ export function buildShell(root: HTMLElement) {
     tip(save, 'top.export');
     tip(open, 'top.open');
     tip(panelToggle, 'top.panel');
-    tip(level, 'top.level');
     tip(sidebar, 'tool.sidebar');
+    tip(level, 'top.level');
     sidebarLabel.textContent = t('browser.short');
     fileMenu.textContent = t('rib.file');
     tabs.setAttribute('aria-label', t('rib.tabs'));
     ribbon.setAttribute('aria-label', t('rib.ribbon'));
-    optBar.setAttribute('aria-label', t('opt.bar'));
-    strip.setAttribute('aria-label', t('rib.views'));
+    views.setAttribute('aria-label', t('rib.views'));
     browser.setAttribute('aria-label', t('browser.title'));
     view3d.querySelector('.label')!.textContent = t('view.3d');
     viewPlan.querySelector('.label')!.textContent = t('view.plan');

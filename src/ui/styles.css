@@ -19,12 +19,10 @@
   --top-h: 40px;
   --tabs-h: 30px;
   --ribbon-h: 92px;
-  --strip-h: 36px;
-  --opt-h: 30px;
   --vcb-h: 36px;
   --foot-h: 36px;
   /* Where the drawing starts under the frame: a panel over the drawing (narrow windows) starts there. */
-  --chrome-top: calc(var(--top-h) + var(--tabs-h) + var(--ribbon-h) + var(--opt-h) + var(--strip-h));
+  --chrome-top: calc(var(--top-h) + var(--tabs-h) + var(--ribbon-h));
   --rb-large-w: 64px;
   --rb-small-h: 24px;
   --search-w: 300px;
@@ -40,7 +38,6 @@
   /* Component sizes */
   --tool-w: 36px;
   --label-w: 112px;
-  --level-w: 168px;
   --name-w: 220px;
   --head-h: 44px;
   --summary-h: 34px;
@@ -258,7 +255,7 @@ textarea {
 #app {
   display: grid;
   /* minmax(0, 1fr): the middle row never grows past the window, so the footer stays visible. */
-  grid-template-rows: var(--top-h) var(--tabs-h) var(--ribbon-h) var(--opt-h) var(--strip-h) minmax(0, 1fr) var(--vcb-h) var(--foot-h);
+  grid-template-rows: var(--top-h) var(--tabs-h) var(--ribbon-h) minmax(0, 1fr) var(--vcb-h) var(--foot-h);
   grid-template-columns: minmax(0, 1fr) auto;
   height: 100%;
 }
@@ -421,9 +418,6 @@ button.project-name:hover {
   pointer-events: none;
   color: var(--text-2);
 }
-.level-select {
-  width: var(--level-w);
-}
 /* The 3D view's style and quality (shell.ts): its icon and caption, then the list. */
 .look-select {
   gap: var(--sp-1);
@@ -584,7 +578,7 @@ button.project-name:hover {
 /* The view's control bar (shell.ts): a row of its own under the drawing, as the interface model's;
    one line, what does not fit scrolls sideways. */
 .view-bar {
-  grid-row: 7;
+  grid-row: 5;
   grid-column: 1;
   position: relative;
   display: flex;
@@ -595,27 +589,18 @@ button.project-name:hover {
   background: var(--bg);
   border-top: var(--line) solid var(--border);
   z-index: 4;
-  /* Measured for the queries below: what it holds gives way as the drawing narrows. It cannot scroll
-     sideways: that would clip the light's sliders, which open above it. */
-  container-type: inline-size;
 }
-/* In rem (the text's size, 13 px): what the bar holds widens with the text. Narrower: the 3D's lists'
-   captions go (the select keeps its name; the plan's scale, alone on the bar, keeps its); narrower
-   still, the buttons show their icons only, each named and with its tip. */
-@container (max-width: 97rem) {
-  .view-bar-3d .look-caption {
-    display: none;
-  }
-}
-@container (max-width: 88.5rem) {
-  .view-bar .segmented .label {
-    display: none;
-  }
-}
-@container (max-width: 58.5rem) {
-  .view-bar .light-btn .label {
-    display: none;
-  }
+/* When what it holds does not fit (measured, shell.ts fitViewBar; it cannot scroll sideways: that
+   would clip the light's sliders, which open above it), it gives way a step at a time: the 3D's lists'
+   captions (each select keeps its name; the plan's scale, alone, keeps its), then the buttons' words,
+   then the light's and the visibility's: each named and with its tip. */
+.view-bar.fit-1 .view-bar-3d .look-caption,
+.view-bar.fit-2 .view-bar-3d .look-caption,
+.view-bar.fit-3 .view-bar-3d .look-caption,
+.view-bar.fit-2 .segmented .label,
+.view-bar.fit-3 .segmented .label,
+.view-bar.fit-3 .light-btn .label {
+  display: none;
 }
 .view-bar-group {
   display: flex;
@@ -911,10 +896,69 @@ button.project-name:hover {
 }
 
 /* View cube */
-.cube-wrap {
+/* The drawing's corner (shell.ts): one panel, the view cube and its home over a column of icons. */
+.view-corner {
   position: absolute;
   right: var(--sp-5);
   top: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  /* As wide in plan, without the cube, as in 3D: nothing moves switching views; room for a level's name. */
+  width: calc(var(--cube-wrap) * 1.4);
+  padding: var(--sp-1);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  z-index: 4;
+}
+.view-box {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sp-1);
+  width: 100%;
+}
+/* The cube's own part of the panel, ruled off from what is under it. */
+.view-corner > .cube-wrap:not([hidden]) {
+  padding-bottom: var(--sp-1);
+  border-bottom: var(--line) solid var(--border);
+}
+/* The views: three icons in a row, the pressed one in the accent. */
+.view-box .view-tabs {
+  justify-content: space-between;
+}
+.view-box .view-tab {
+  display: grid;
+  place-items: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  padding: 0;
+  border-radius: var(--radius);
+}
+.view-box .view-tab .label {
+  display: none;
+}
+.view-box .view-tab:hover {
+  background: var(--hover);
+}
+.view-box .view-tab[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.view-box .level-select {
+  width: 100%;
+}
+.view-box .browser-toggle {
+  justify-content: flex-start;
+  width: 100%;
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-sm);
+}
+.cube-wrap {
   width: var(--cube-wrap);
   display: flex;
   flex-direction: column;
@@ -1335,9 +1379,6 @@ button.project-name:hover {
   .project-name {
     max-width: calc(var(--name-w) * 0.55);
   }
-  .level-select {
-    width: calc(var(--level-w) * 0.72);
-  }
   .segmented .has-icon .label {
     display: none;
   }
@@ -1358,14 +1399,6 @@ button.project-name:hover {
   .browser-toggle .label {
     display: none;
   }
-  .view-strip .level-select {
-    flex: none;
-  }
-  /* The 3D view's controls at the left: centred, at 390 px, the view cube covered Cut. */
-  .view-bar {
-    left: var(--sp-3);
-    transform: none;
-  }
   .titlebar .quick,
   .titlebar .sep,
   .saved-note,
@@ -1379,9 +1412,6 @@ button.project-name:hover {
   }
   .project-name {
     max-width: calc(var(--name-w) * 0.5);
-  }
-  .level-select {
-    width: calc(var(--level-w) * 0.7);
   }
   .panel {
     top: auto;
@@ -1417,8 +1447,7 @@ button.project-name:hover {
     --wide-btn-h: 44px;
     --top-h: 48px;
     --tabs-h: 40px;
-    --strip-h: 48px;
-    --opt-h: 40px;
+    --vcb-h: 48px;
     --rb-small-h: 44px;
     --ribbon-h: 128px;
     --foot-h: 52px;
@@ -3079,7 +3108,6 @@ textarea.text-field {
   flex: none;
   padding: 0 var(--sp-3);
   border: 0;
-  border-bottom: var(--line-2) solid transparent;
   background: transparent;
   color: var(--text-2);
   font-size: var(--fs-md);
@@ -3105,42 +3133,6 @@ textarea.text-field {
 .rb-file:hover {
   color: var(--accent-contrast);
   background: var(--accent-strong);
-}
-
-/* The options bar (shell.ts): the tool in use or what is selected, a rule between its parts, the way
-   out of the tool at its end. One line; what does not fit is cut, not wrapped. */
-.opt-bar {
-  grid-row: 4;
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  min-width: 0;
-  padding: 0 var(--sp-3);
-  overflow: hidden;
-  white-space: nowrap;
-  background: var(--bg);
-  border-bottom: var(--line) solid var(--border);
-  font-size: var(--fs-sm);
-  color: var(--text-2);
-}
-.opt-title {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-1);
-  color: var(--text);
-  font-weight: 600;
-}
-.opt-sep {
-  align-self: stretch;
-  margin: var(--sp-1) 0;
-  border-left: var(--line) solid var(--border);
-}
-.opt-bar .spacer {
-  flex: 1;
-}
-.opt-bar .btn {
-  height: calc(var(--opt-h) - 2 * var(--sp-1));
 }
 
 /* The contextual tab (Modify | Wall): last, in the accent, as Revit marks its own apart. */
@@ -3286,28 +3278,16 @@ textarea.text-field {
   cursor: default;
 }
 
-/* The views' strip: the level, the views as tabs, the project browser's button. */
-.view-strip {
-  grid-row: 5;
-  grid-column: 1;
-  display: flex;
-  align-items: stretch;
-  gap: var(--sp-2);
-  min-width: 0;
-  padding: 0 var(--sp-2);
-  overflow-x: auto;
-  scrollbar-width: none;
-  background: var(--bg-2);
-  border-bottom: var(--line) solid var(--border);
-}
-.view-strip .level-select {
-  align-self: center;
-}
-.view-strip .spacer {
+/* On the view's bar (shell.ts): the level, the views as tabs, the project browser's button at its end. */
+.view-bar .spacer {
   flex: 1;
+}
+.tool-done[hidden] {
+  display: none;
 }
 .view-tabs {
   display: flex;
+  align-self: stretch;
   align-items: stretch;
 }
 .view-tab {
@@ -3328,9 +3308,6 @@ textarea.text-field {
   color: var(--text);
 }
 .view-tab[aria-pressed='true'] {
-  border-bottom-color: var(--accent);
-  background: var(--bg);
-  color: var(--text);
   font-weight: 600;
 }
 .browser-toggle {
@@ -3342,15 +3319,15 @@ textarea.text-field {
   padding: 0 var(--sp-2);
 }
 .viewport {
-  grid-row: 6;
+  grid-row: 4;
   grid-column: 1;
 }
 .panel {
-  grid-row: 5 / 8;
+  grid-row: 4 / 6;
   grid-column: 2;
 }
 .foot {
-  grid-row: 8;
+  grid-row: 6;
   grid-column: 1 / -1;
 }
 @media (pointer: coarse) {

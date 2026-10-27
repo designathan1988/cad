@@ -60,11 +60,9 @@ export function renderFrame(app: App): void {
   shell.planCanvas.classList.toggle('hidden', !plan);
   shell.glCanvas.classList.toggle('hidden', plan);
   app.cube.root.hidden = plan;
-  // The view cube and the 3D view's centre stay in the part of the viewport the panel leaves free.
+  // The view's corner (the cube, the views' box) and the 3D view's centre stay in the part of the viewport the panel leaves free.
   const covered = app.covered();
-  app.cube.root.style.right = `${20 + covered.right}px`;
-  // The view's bar is under the drawing now (its own row): nothing of it over the cube.
-  app.cube.root.style.top = '';
+  shell.viewCorner.style.right = `${20 + covered.right}px`;
   app.scene.setCovered(covered);
   const preview = new Set([...app.previewWall(), ...app.previewOpening()].map((w) => w.id));
   const guide = app.openingKind() ? ruleGuide(app.store.get(), app.geometry, OPENING_PREVIEW_ID) : null;

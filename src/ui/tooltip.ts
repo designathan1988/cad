@@ -35,8 +35,10 @@ export function installTooltips(root: HTMLElement = document.body): void {
     const h = tip.offsetHeight;
     // Beside a tall narrow thing (the tool bar), under the rest; always inside the window.
     const beside = r.height > r.width * 0.8 && r.left < 80;
-    let x = beside ? r.right + 8 : r.left + r.width / 2 - w / 2;
-    let y = beside ? r.top + r.height / 2 - h / 2 : r.bottom + 6;
+    // The drawing's corner panel, a column at the right: its tips to its left, not over the icon below.
+    const leftOf = el.closest('.view-corner') !== null;
+    let x = leftOf ? r.left - w - 8 : beside ? r.right + 8 : r.left + r.width / 2 - w / 2;
+    let y = beside || leftOf ? r.top + r.height / 2 - h / 2 : r.bottom + 6;
     if (y + h > window.innerHeight - 4) y = r.top - h - 6;
     x = Math.max(4, Math.min(x, window.innerWidth - w - 4));
     y = Math.max(4, y);

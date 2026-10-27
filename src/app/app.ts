@@ -378,7 +378,7 @@ export class App {
       (dir) => this.scene.frame(boundsOf(this.geometry), this.height(), dir),
       () => this.scene.frame(boundsOf(this.geometry), this.height()),
     );
-    this.shell.viewport.append(this.cube.root);
+    this.shell.viewCorner.prepend(this.cube.root);
     this.scene.onChange = () => {
       this.cube.update(this.scene.camera);
       this.placeFloatBar();
