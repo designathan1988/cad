@@ -107,6 +107,7 @@ export const FLOOR_BUILDUPS: Readonly<Record<string, readonly FloorLayer[]>> = {
   carpet: [{ materialId: 'carpet', thickness: 0.01 }, { materialId: 'screed', thickness: 0.04 }, { materialId: 'concrete', thickness: 0.1 }],
   deck: [{ materialId: 'deck', thickness: 0.025 }, { materialId: 'concrete', thickness: 0.08 }],
   stoneOutdoor: [{ materialId: 'stone', thickness: 0.03 }, { materialId: 'screed', thickness: 0.04 }, { materialId: 'gravel', thickness: 0.08 }],
+  flagstoneOutdoor: [{ materialId: 'flagstone', thickness: 0.03 }, { materialId: 'screed', thickness: 0.04 }, { materialId: 'gravel', thickness: 0.08 }],
   woodCeiling: [{ materialId: 'woodSlats', thickness: 0.01 }],
   pvcCeiling: [{ materialId: 'plasticWhite', thickness: 0.008 }],
 };

@@ -110,6 +110,7 @@ export const BUILT_IN_MATERIALS: readonly Material[] = [
   { id: 'hydraulicTile', name: '', color: '#cdbc9f', roughness: 0.6, metalness: 0, cut: 'solid', pattern: { kind: 'tiles', layout: 'checker', length: 0.2, width: 0.2, joint: 0.002, jointColor: '#9c8c72', variation: 0.04, angle: 0, color2: '#5e7a6e' } },
   { id: 'deck', name: '', color: '#8a6243', roughness: 0.7, metalness: 0, cut: 'wood', pattern: { kind: 'wood', layout: 'running', length: 1.5, width: 0.14, joint: 0.006, jointColor: '#2e2219', variation: 0.14, angle: 0 } },
   { id: 'stoneCladding', name: '', color: '#9e9385', roughness: 0.9, metalness: 0, cut: 'concrete', pattern: { kind: 'brick', layout: 'running', length: 0.3, width: 0.05, joint: 0.004, jointColor: '#6f675c', variation: 0.28, angle: 0 } },
+  { id: 'flagstone', name: '', color: '#a49a88', roughness: 0.85, metalness: 0, cut: 'concrete', pattern: { kind: 'flagstone', layout: 'stack', length: 0.45, width: 0.4, joint: 0.015, jointColor: '#7d776d', variation: 0.2, angle: 0 } },
   { id: 'woodSlats', name: '', color: '#a77b51', roughness: 0.6, metalness: 0, cut: 'wood', pattern: { kind: 'wood', layout: 'stack', length: 2.4, width: 0.04, joint: 0.012, jointColor: '#2a2119', variation: 0.08, angle: 0 } },
 ];
 

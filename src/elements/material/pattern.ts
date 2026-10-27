@@ -7,10 +7,10 @@
 /** A #rrggbb colour (as schema.ts's: that file builds on this one). */
 const isColor = (c: unknown): c is string => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
 
-export type PatternKind = 'tiles' | 'wood' | 'brick' | 'marble' | 'granite';
+export type PatternKind = 'tiles' | 'wood' | 'brick' | 'marble' | 'granite' | 'flagstone';
 export type PatternLayout = 'stack' | 'running' | 'herringbone' | 'checker';
 
-export const PATTERN_KINDS: readonly PatternKind[] = ['tiles', 'wood', 'brick', 'marble', 'granite'];
+export const PATTERN_KINDS: readonly PatternKind[] = ['tiles', 'wood', 'brick', 'marble', 'granite', 'flagstone'];
 export const PATTERN_LAYOUTS: readonly PatternLayout[] = ['stack', 'running', 'herringbone', 'checker'];
 
 export interface SurfacePattern {
@@ -37,6 +37,8 @@ export const PATTERN_DEFAULTS: Readonly<Record<PatternKind, SurfacePattern>> = {
   brick: { kind: 'brick', layout: 'running', length: 0.23, width: 0.065, joint: 0.01, jointColor: '#cfc8bb', variation: 0.12, angle: 0 },
   // Slabs of stone: veins wandering across each (marble), speckles over each (granite).
   marble: { kind: 'marble', layout: 'stack', length: 1.2, width: 0.6, joint: 0.001, jointColor: '#c9c5bd', variation: 0.04, angle: 0 },
+  // Irregular stones (crazy paving): pieces of about the length by the width, their sides broken.
+  flagstone: { kind: 'flagstone', layout: 'stack', length: 0.45, width: 0.4, joint: 0.015, jointColor: '#8c857a', variation: 0.18, angle: 0 },
   granite: { kind: 'granite', layout: 'stack', length: 1.2, width: 0.6, joint: 0.001, jointColor: '#2a2a2a', variation: 0.03, angle: 0 },
 };
 

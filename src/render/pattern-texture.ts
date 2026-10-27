@@ -36,6 +36,10 @@ export function paintPattern(p: SurfacePattern, color: string): { readonly canva
   // A joint at least a pixel wide, so a thin one does not vanish.
   const inset = p.joint > 0 && p.joint * sx < 1 ? 1 - p.joint * sx : 0;
   const other = p.color2 ?? tint(color, -0.4);
+  if (p.kind === 'flagstone') {
+    stones(ctx, p, color, period, sx, sy);
+    return { canvas, period };
+  }
   pieces.forEach((piece, i) => {
     const base = piece.alt ? other : color;
     const fill = tint(base, piece.tone * p.variation);
@@ -130,6 +134,38 @@ function veins(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h
   }
   ctx.globalAlpha = 1;
   ctx.restore();
+}
+
+/**
+ * Irregular stones: the grid of pieces with each corner, and each side's middle, moved a little, the same
+ * for the stones that share it (so they fit) and again a period on (so the texture repeats); each stone
+ * its own tone, the joint drawn round it.
+ */
+function stones(ctx: CanvasRenderingContext2D, p: SurfacePattern, color: string, period: { readonly u: number; readonly v: number }, sx: number, sy: number): void {
+  const R = 4;
+  const pu = period.u / R;
+  const pv = period.v / R;
+  const m = (k: number) => ((k % R) + R) % R;
+  // A corner (i, j) and the middles of the sides from it (h: along u, v: along v), moved within the cell.
+  const corner = (i: number, j: number) => ({ x: (i + (hash(m(i) * 7 + m(j), 1) - 0.5) * 0.45) * pu, y: (j + (hash(m(i) * 7 + m(j), 2) - 0.5) * 0.45) * pv });
+  const midH = (i: number, j: number) => ({ x: (i + 0.5 + (hash(m(i) * 11 + m(j), 3) - 0.5) * 0.3) * pu, y: (j + (hash(m(i) * 11 + m(j), 4) - 0.5) * 0.35) * pv });
+  const midV = (i: number, j: number) => ({ x: (i + (hash(m(i) * 13 + m(j), 5) - 0.5) * 0.35) * pu, y: (j + 0.5 + (hash(m(i) * 13 + m(j), 6) - 0.5) * 0.3) * pv });
+  ctx.lineJoin = 'round';
+  for (let j = -1; j <= R; j++) {
+    for (let i = -1; i <= R; i++) {
+      const ring = [corner(i, j), midH(i, j), corner(i + 1, j), midV(i + 1, j), corner(i + 1, j + 1), midH(i, j + 1), corner(i, j + 1), midV(i, j)];
+      ctx.beginPath();
+      ring.forEach((q, k) => (k === 0 ? ctx.moveTo(q.x * sx, q.y * sy) : ctx.lineTo(q.x * sx, q.y * sy)));
+      ctx.closePath();
+      ctx.fillStyle = tint(color, (hash(m(i) * 5 + m(j), 9) - 0.5) * 2 * p.variation);
+      ctx.fill();
+      if (p.joint > 0) {
+        ctx.strokeStyle = p.jointColor;
+        ctx.lineWidth = Math.max(1, p.joint * sx);
+        ctx.stroke();
+      }
+    }
+  }
 }
 
 /** A granite slab's grain: speckles lighter and darker than the stone, all over it. */
