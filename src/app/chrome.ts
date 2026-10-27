@@ -186,6 +186,8 @@ export function renderChrome(app: App): void {
               ? t(ui.sectionFrom ? 'hint.sectionEnd' : 'hint.sectionStart')
               : ui.tool === 'callout'
               ? t(ui.calloutFrom ? 'hint.calloutText' : 'hint.calloutPoint')
+              : ui.tool === 'calibrate'
+              ? t(ui.calibrate?.a ? 'hint.calibrateSecond' : 'hint.calibrateFirst')
               : ui.tool === 'guide'
                 ? t(ui.guideMode === 'point' ? 'hint.guidePoint' : ui.guideMode === 'circle' ? (ui.guideFrom ? 'hint.guideRadius' : 'hint.guideCentre') : ui.guideFrom ? 'hint.guideSecond' : 'hint.guideFirst')
               : ui.tool === 'column'
@@ -252,6 +254,8 @@ export function renderChrome(app: App): void {
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.sectionFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'callout'
     ? [snapKey, keyHint('Esc', t(ui.calloutFrom ? 'key.back' : 'key.exit'))]
+    : ui.tool === 'calibrate'
+    ? [snapKey, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'column'
     ? [snapKey, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'guide'

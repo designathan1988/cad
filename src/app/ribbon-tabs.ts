@@ -93,6 +93,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
             { id: 'tool.guideLine', icon: 'guide', size: 'S', pressed: () => ui.tool === 'guide' && ui.guideMode === 'line' },
             { id: 'tool.guidePoint', icon: 'center', size: 'S', pressed: () => ui.tool === 'guide' && ui.guideMode === 'point' },
             { id: 'tool.guideCircle', icon: 'radius', size: 'S', pressed: () => ui.tool === 'guide' && ui.guideMode === 'circle' },
+            { id: 'ref.import', icon: 'map', size: 'S' },
           ],
         },
       ],

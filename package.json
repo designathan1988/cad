@@ -23,6 +23,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "pdfjs-dist": "^4.10.38",
     "polyclip-ts": "^0.16.8",
     "three": "^0.186.1"
   }

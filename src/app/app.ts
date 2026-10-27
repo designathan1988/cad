@@ -1,6 +1,8 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import * as refs from './reference-ui';
+import { onReferenceLoaded } from '../elements/kinds/reference';
 import { autoDimensions } from '../elements/dimension/auto';
 import { addDimensions } from '../elements/dimension/commands';
 import { lengthText } from '../ui/units';
@@ -153,6 +155,8 @@ export interface UiState {
   sectionFrom: Point2 | null;
   /** The callout tool's arrow point (kind-tools.ts: calloutClick). */
   calloutFrom: Point2 | null;
+  /** A reference being calibrated: which, and its first point once clicked (reference-ui.ts). */
+  calibrate: { readonly id: string; readonly a: Point2 | null } | null;
   /** The beam tool's first point, before the beam is made. */
   beamFrom: Point2 | null;
   /** The object tool's definition (elements/object), and the turn the next object is placed at (radians). */
@@ -232,6 +236,7 @@ export class App {
     // Every change to the walls, however it is made, keeps the doors and windows to what they are
     // measured from (keep-openings.ts), and the rooms it moves the walls past in their space.
     const store = createStore(boot.doc);
+    onReferenceLoaded(() => this.render());
     this.store = {
       ...store,
       // Locked and equal dimensions are kept too (elements/dimension/constraints.ts): what holds them
@@ -296,6 +301,7 @@ export class App {
       gridFrom: null,
       sectionFrom: null,
       calloutFrom: null,
+      calibrate: null,
       beamFrom: null,
       objectDef: 'def_table',
       objectAngle: 0,
@@ -1155,6 +1161,20 @@ export class App {
   /** Esc in the section tool: the line begun is dropped; none begun, the tool is left. */
   sectionEscape(): void {
     return kindTools.sectionEscape(this);
+  }
+
+  /** A picture, a PDF or a DXF put under the plan (reference-ui.ts). */
+  pickReference(): void {
+    return refs.pickReference(this);
+  }
+
+  /** Calibrating a reference: two points of it, then the distance between them. */
+  startCalibration(id: string): void {
+    return refs.startCalibration(this, id);
+  }
+
+  calibrateClick(p: Point2): void {
+    return refs.calibrateClick(this, p);
   }
 
   /** The callout tool: a click puts the arrow's point, the next the text, ready to type. */

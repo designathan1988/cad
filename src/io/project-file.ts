@@ -71,8 +71,9 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  *   and brick get theirs.
  * Version 31: sections and elevations (`sections`, elements/section) and sheets (`sheets`,
  *   elements/sheet). Older files have none.
+ * Version 32: references under the plan (`references`, elements/reference). Older files have none.
  */
-export const CURRENT_VERSION = 31;
+export const CURRENT_VERSION = 32;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =

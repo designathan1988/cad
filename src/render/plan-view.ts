@@ -81,6 +81,8 @@ export interface PlanOverlay {
   readonly sectionDraft?: SectionMark | null;
   /** The callout being placed: its arrow's point, and the pointer where its text will go. */
   readonly calloutDraft?: { readonly from: Point2; readonly to: Point2 } | null;
+  /** The two points of a reference being calibrated, and their distance as it is now. */
+  readonly calibrateDraft?: { readonly a: Point2; readonly b: Point2; readonly text: string } | null;
   /** The guide being placed. */
   readonly guideDraft?: { readonly point: Point2; readonly dir: Point2 } | null;
   /**
@@ -520,6 +522,10 @@ export class PlanView {
     if (o.gridDraft) drawAxis(paint, o.gridDraft.start, o.gridDraft.end, o.gridDraft.name, color('--wall-sel'));
     if (o.sectionDraft) drawSectionMark(paint, o.sectionDraft, color('--wall-sel'));
     if (o.calloutDraft) drawLeader(paint, o.calloutDraft.to, o.calloutDraft.from, color('--wall-sel'));
+    if (o.calibrateDraft) {
+      this.dashed(o.calibrateDraft.a, o.calibrateDraft.b, color('--snap'));
+      this.label({ x: (o.calibrateDraft.a.x + o.calibrateDraft.b.x) / 2, y: (o.calibrateDraft.a.y + o.calibrateDraft.b.y) / 2 }, o.calibrateDraft.text, color('--snap'), color('--canvas'), this.font('700', '--fs-sm'));
+    }
     // Guides over the walls, thin (a guide laid on a wall's face is seen there), and texts over all.
     for (const x of kinds) if (x.kind.layer === 'over') x.kind.plan(paint, x.solid, shownLit(x.id));
     if (o.guideDraft) this.drawLine(o.guideDraft.point, o.guideDraft.dir, color('--guide'), 1.6, [10, 4]);
