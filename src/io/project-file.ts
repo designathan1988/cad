@@ -88,8 +88,9 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 38: the simulations' settings (`simulation`, sim/settings.ts) and a material's own physics. Older files have neither.
  * Version 39: revision clouds (`clouds`, elements/cloud). Older files have none.
  * Version 40: rooms of a use in a colour of their own (`roomOverrides`, app/layer-sets.ts). Older files have none.
+ * Version 41: angular, radius, diameter, arc length and coordinate dimensions (`measures`, elements/measure). Older files have none.
  */
-export const CURRENT_VERSION = 40;
+export const CURRENT_VERSION = 41;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {

@@ -282,6 +282,11 @@ export function wireKeys(app: App, k: KeyContext): void {
         ui.beamFrom = null;
         return app.render();
       }
+      if (ui.tool === 'mark') {
+        if (ui.markDraft.length === 0) return app.setTool('select');
+        ui.markDraft = ui.markDraft.slice(0, -1);
+        return app.render();
+      }
       if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? app.wallEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'split') return app.setTool('select');
       // The Corner tool lets go of its first wall first (below), then of itself.

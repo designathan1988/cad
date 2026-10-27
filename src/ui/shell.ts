@@ -9,7 +9,7 @@ import { t, type MessageKey } from './i18n';
 import { icon, type IconName } from './icons';
 
 /** `modify`: Move, Copy, Rotate, Scale or Mirror on the selection (tools/modify-tool.ts), a button each. */
-export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'column' | 'beam' | 'separator' | 'cloud' | 'curtain' | 'note' | 'levelMark' | 'roof' | 'stair' | 'railing' | 'grid' | 'object' | 'measure' | 'dimension' | 'modify' | 'split' | 'corner' | 'guide' | 'section' | 'callout' | 'calibrate' | 'spot' | 'mepPoint' | 'mepRun';
+export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'column' | 'beam' | 'separator' | 'cloud' | 'mark' | 'curtain' | 'note' | 'levelMark' | 'roof' | 'stair' | 'railing' | 'grid' | 'object' | 'measure' | 'dimension' | 'modify' | 'split' | 'corner' | 'guide' | 'section' | 'callout' | 'calibrate' | 'spot' | 'mepPoint' | 'mepRun';
 export type ViewId = '3d' | 'plan';
 
 

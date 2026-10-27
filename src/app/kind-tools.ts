@@ -41,6 +41,9 @@ import { LEVEL_MARK_HEIGHT, NOTE_HEIGHT, NOTE_PREFIX } from '../elements/note/sc
 import { newId } from '../core/id';
 import { signedArea } from '../elements/room/derive';
 import type { App } from './app';
+import { addMeasure } from '../elements/measure/commands';
+import { arcWallAt } from '../elements/measure/place';
+import { MEASURE_PREFIX } from '../elements/measure/schema';
 
 /** A level mark where the menu was opened (or the middle of the view), selected: it says the level's height. */
 export function addLevelMarkHere(app: App, at?: Point2): void {
@@ -379,4 +382,46 @@ export function dimensionDraft(app: App): (NonNullable<PlanOverlay['dimensionDra
   const offset = s.kind === 'placing' ? offsetThrough(a, b, at) : 0;
   const p = placeDimension(app.store.get(), app.geometry, { id: '', levelId: '', a: { kind: 'point', at: a }, b: { kind: 'point', at: b }, offset });
   return p ? { ...p, text: lengthNum(p.length) } : null;
+}
+
+/**
+ * The measure tool. An angle: the vertex, a point on one arm, a point on the other; its arc at half the
+ * shorter arm. An arc wall: a click on it, at the line nearest the click (its faces or its reference line).
+ * A coordinate: the point, then where its text goes.
+ */
+export function markClick(app: App, p: Point2): void {
+  const ui = app.ui;
+  const done = (key: 'hint.markMade') => {
+    ui.markDraft = [];
+    ui.info = t(key);
+    app.render();
+  };
+  if (ui.markMode === 'radius') {
+    const hit = arcWallAt(app.store.get(), ui.levelId, p, 8 / app.plan.scale);
+    if (!hit) {
+      ui.info = t('hint.markNoArc');
+      return app.render();
+    }
+    app.store.dispatch(addMeasure({ id: newId(MEASURE_PREFIX), levelId: ui.levelId, type: 'radius', ...hit }));
+    return done('hint.markMade');
+  }
+  const draft = [...ui.markDraft, p];
+  if (draft.length >= 2 && distance(draft.at(-1)!, draft.at(-2)!) < MIN_WALL_LENGTH) return;
+  if (ui.markMode === 'coord') {
+    if (draft.length < 2) {
+      ui.markDraft = draft;
+      return app.render();
+    }
+    app.store.dispatch(addMeasure({ id: newId(MEASURE_PREFIX), levelId: ui.levelId, type: 'coord', at: draft[0]!, label: draft[1]! }));
+    return done('hint.markMade');
+  }
+  if (draft.length < 3) {
+    ui.markDraft = draft;
+    return app.render();
+  }
+  const [vertex, a, b] = draft as [Point2, Point2, Point2];
+  if (distance(vertex, b) < MIN_WALL_LENGTH) return;
+  const radius = Math.max(0.3, Math.min(distance(vertex, a), distance(vertex, b)) / 2);
+  app.store.dispatch(addMeasure({ id: newId(MEASURE_PREFIX), levelId: ui.levelId, type: 'angle', vertex, a, b, radius }));
+  done('hint.markMade');
 }

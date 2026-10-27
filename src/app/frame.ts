@@ -146,7 +146,7 @@ export function renderFrame(app: App): void {
       guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
       snap:
         // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-        (ui.tool === 'wall' || ui.tool === 'guide' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'spot' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'mepPoint' || ui.tool === 'mepRun' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+        (ui.tool === 'wall' || ui.tool === 'guide' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'spot' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'mark' || ui.tool === 'curtain' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'mepPoint' || ui.tool === 'mepRun' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
           ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null), ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
           : null,
       measure: guideDim
@@ -218,6 +218,10 @@ export function renderFrame(app: App): void {
             ? [ui.guideFrom, (ui.snap?.point ?? ui.cursor)!]
           : ui.tool === 'floor' && ui.floorDraft.length > 0
           ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
+          : ui.tool === 'mark' && ui.markDraft.length > 0 && (ui.snap?.point ?? ui.cursor)
+            ? ui.markDraft.length === 2 && ui.markMode === 'angle'
+              ? [ui.markDraft[1]!, ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
+              : [ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
           : ui.tool === 'cloud' && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
             ? [...cloudRing({ a: ui.beamFrom, b: (ui.snap?.point ?? ui.cursor)! }), cloudRing({ a: ui.beamFrom, b: (ui.snap?.point ?? ui.cursor)! })[0]!]
           : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
@@ -301,6 +305,10 @@ export function renderFrame(app: App): void {
             ? [ui.guideFrom, (ui.snap?.point ?? ui.cursor)!]
           : ui.tool === 'floor' && ui.floorDraft.length > 0
           ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
+          : ui.tool === 'mark' && ui.markDraft.length > 0 && (ui.snap?.point ?? ui.cursor)
+            ? ui.markDraft.length === 2 && ui.markMode === 'angle'
+              ? [ui.markDraft[1]!, ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
+              : [ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
           : ui.tool === 'cloud' && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
             ? [...cloudRing({ a: ui.beamFrom, b: (ui.snap?.point ?? ui.cursor)! }), cloudRing({ a: ui.beamFrom, b: (ui.snap?.point ?? ui.cursor)! })[0]!]
           : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)

@@ -168,7 +168,17 @@ function tabsOf(app: App): readonly RibbonTab[] {
       title: 'rib.tab.annotate',
       panels: [
         select,
-        { title: 'rib.p.dims', items: [tool('dimension', 'tool.dimension', 'dimension', 'L'), { id: 'dim.auto', icon: 'dimension', size: 'S' }, tool('measure', 'tool.measure', 'ruler', 'L')] },
+        {
+          title: 'rib.p.dims',
+          items: [
+            tool('dimension', 'tool.dimension', 'dimension', 'L'),
+            { id: 'dim.auto', icon: 'dimension', size: 'S' },
+            { id: 'mark.angle', icon: 'corner', size: 'S', pressed: () => ui.tool === 'mark' && ui.markMode === 'angle' },
+            { id: 'mark.radius', icon: 'radius', size: 'S', pressed: () => ui.tool === 'mark' && ui.markMode === 'radius' },
+            { id: 'mark.coord', icon: 'pin', size: 'S', pressed: () => ui.tool === 'mark' && ui.markMode === 'coord' },
+            tool('measure', 'tool.measure', 'ruler', 'L'),
+          ],
+        },
         { title: 'rib.p.text', items: [tool('note', 'edit.addNote', 'text', 'L'), tool('callout', 'tool.callout', 'text', 'S'), tool('levelMark', 'edit.addLevelMark', 'height', 'S')] },
         { title: 'rib.p.tags', items: [{ id: 'settings.openingTags', icon: 'tag', size: 'S', pressed: () => ui.openingTags }] },
         {

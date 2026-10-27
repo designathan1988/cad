@@ -207,6 +207,8 @@ export function renderChrome(app: App): void {
                   ? t(ui.beamFrom ? 'hint.separatorEnd' : 'hint.separatorStart')
                 : ui.tool === 'cloud'
                   ? t(ui.beamFrom ? 'hint.cloudEnd' : 'hint.cloudStart')
+                : ui.tool === 'mark'
+                  ? t(ui.markMode === 'radius' ? 'hint.markRadius' : ui.markMode === 'coord' ? (ui.markDraft.length === 0 ? 'hint.markCoordPoint' : 'hint.markCoordLabel') : ui.markDraft.length === 0 ? 'hint.markAngleVertex' : ui.markDraft.length === 1 ? 'hint.markAngleArm1' : 'hint.markAngleArm2')
                 : ui.tool === 'curtain'
                   ? t(ui.beamFrom ? 'hint.curtainEnd' : 'hint.curtainStart')
                 : ui.tool === 'note'
@@ -277,6 +279,8 @@ export function renderChrome(app: App): void {
     ? [keyHint(t('key.spaceKey'), t('key.turn90')), snapKey, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain'
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
+    : ui.tool === 'mark'
+    ? [snapKey, keyHint('Esc', t(ui.markDraft.length > 0 ? 'key.back' : 'key.exit'))]
     : ui.tool === 'stair'
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.stairFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'mepPoint'

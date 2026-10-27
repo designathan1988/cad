@@ -461,7 +461,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'spot' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'mepPoint' || ui.tool === 'mepRun') {
+    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'spot' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'mark' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'mepPoint' || ui.tool === 'mepRun') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -630,6 +630,11 @@ export function wireInput(app: App): void {
       app.render();
       return true;
     }
+    if (ui.tool === 'mark' && ui.markDraft.length > 0) {
+      ui.markDraft = ui.markDraft.slice(0, -1);
+      app.render();
+      return true;
+    }
     if (ui.tool === 'roof' && ui.roofDraft.length > 0) {
       app.roofFinish();
       return true;
@@ -766,6 +771,11 @@ export function wireInput(app: App): void {
     if (ui.tool === 'cloud') {
       const at = worldAt(e);
       if (at) app.cloudClick(snapped(e)?.point ?? at.p);
+      return;
+    }
+    if (ui.tool === 'mark') {
+      const at = worldAt(e);
+      if (at && ui.view === 'plan') app.markClick(ui.markMode === 'radius' ? at.p : (snapped(e)?.point ?? at.p));
       return;
     }
     if (ui.tool === 'curtain') {

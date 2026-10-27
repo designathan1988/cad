@@ -106,6 +106,9 @@ import { doorFlips, type Handles, handlesFor } from './handles';
 import { newId } from '../core/id';
 import { insideRing } from '../elements/room/derive';
 
+/** What the measure tool measures (elements/measure). */
+export type MarkMode = 'angle' | 'radius' | 'coord';
+
 export interface UiState {
   view: ViewId;
   tool: ToolId;
@@ -197,6 +200,9 @@ export interface UiState {
   mepKind: PointKind;
   mepSystem: string;
   mepDraft: Point2[];
+  /** The measure tool (kind-tools.ts: markClick): what it measures, and its points so far. */
+  markMode: MarkMode;
+  markDraft: Point2[];
   /** A simulation's map over the plan (app/sim-map.ts): the Wi-Fi signal, the rooms' daylight or sun; none. */
   simMap: SimMap;
   /** A guide being placed (guide-tool.ts): Alt over a wall or a guide in a drawing tool. */
@@ -342,6 +348,8 @@ export class App {
       mepKind: 'socket',
       mepSystem: 'sys_power',
       mepDraft: [],
+      markMode: 'angle',
+      markDraft: [],
       simMap: 'none',
       guide: null,
       view3d: readView3D(prefs.view3d),
@@ -748,6 +756,7 @@ export class App {
     this.ui.stairFrom = null;
     this.ui.railingDraft = [];
     this.ui.mepDraft = [];
+    this.ui.markDraft = [];
     this.ui.guide = null;
     this.ui.modify = null;
     this.modifyBefore = null;
@@ -1199,6 +1208,17 @@ export class App {
 
   cloudClick(p: Point2): void {
     return kindTools.cloudClick(this, p);
+  }
+
+  /** The measure tool, measuring an angle, an arc wall or a point's coordinates. */
+  setMarkMode(mode: MarkMode): void {
+    this.setTool('mark');
+    this.ui.markMode = mode;
+    this.render();
+  }
+
+  markClick(p: Point2): void {
+    return kindTools.markClick(this, p);
   }
 
   /** The column tool: a click stands a column there, the section of the last one made. */
