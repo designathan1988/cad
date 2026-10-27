@@ -3,7 +3,7 @@
 import { findingText } from '../ui/rules-dialog';
 import { keepSelectionInView3d } from './view-ui';
 import { objectHandles } from './object-handles';
-import { areaText, lengthNum, lengthText, typingExamples } from '../ui/units';
+import { angleNum, areaText, lengthNum, lengthText, typingExamples } from '../ui/units';
 import { parseLength } from '../core/measure';
 import { distance } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
@@ -15,7 +15,7 @@ import { alignWalls, distributeWalls } from '../tools/arrange-walls';
 import { guideLine, guideMeasure } from '../tools/guide-tool';
 import { OPENING_PREVIEW_ID, ruleGuide } from './opening-ui';
 import { toolCursor } from '../ui/cursors';
-import { getLang, name, num, t } from '../ui/i18n';
+import { getLang, name, t } from '../ui/i18n';
 import { renderPanel } from '../ui/panel';
 import { snapLabel } from '../tools/snap';
 import { bulgeKeepingSide } from '../tools/arc-edit';
@@ -139,15 +139,15 @@ export function renderFrame(app: App): void {
         : marks?.to && marks.text
           ? { at: { x: (marks.base.x + marks.to.x) / 2, y: (marks.base.y + marks.to.y) / 2 }, text: marks.text, clear: 0 }
         : end && along && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
-          ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${lengthText(len)} · ${num(ang, 1)}°`, normal: side!, clear: reach }
+          ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${lengthText(len)} · ${angleNum(ang)}°`, normal: side!, clear: reach }
           : floorFrom && floorTo && floorAlong && floorLen >= MIN_WALL_LENGTH
-            ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${lengthText(floorLen)} · ${num(floorAng, 1)}°`, normal: { x: -floorAlong.y, y: floorAlong.x }, clear: 0 }
+            ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${lengthText(floorLen)} · ${angleNum(floorAng)}°`, normal: { x: -floorAlong.y, y: floorAlong.x }, clear: 0 }
             : chainMeasure
               ? chainMeasure
               : tape && tapeFrom && tapeTo
               ? {
                   at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 },
-                  text: `${lengthText(tape.length)} · ${num(tape.angle, 1)}°`,
+                  text: `${lengthText(tape.length)} · ${angleNum(tape.angle)}°`,
                   normal: { x: -tape.dy / tape.length, y: tape.dx / tape.length },
                   clear: 0,
                 }
@@ -251,11 +251,11 @@ export function renderFrame(app: App): void {
       measure: marks?.to && marks.text
         ? { at: { x: (marks.base.x + marks.to.x) / 2, y: (marks.base.y + marks.to.y) / 2 }, text: marks.text }
         : end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
-          ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${lengthText(len)} · ${num(ang, 1)}°` }
+          ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${lengthText(len)} · ${angleNum(ang)}°` }
           : floorFrom && floorTo && floorLen >= MIN_WALL_LENGTH
-            ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${lengthText(floorLen)} · ${num(floorAng, 1)}°` }
+            ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${lengthText(floorLen)} · ${angleNum(floorAng)}°` }
             : tape && tapeFrom && tapeTo
-              ? { at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 }, text: `${lengthText(tape.length)} · ${num(tape.angle, 1)}°` }
+              ? { at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 }, text: `${lengthText(tape.length)} · ${angleNum(tape.angle)}°` }
               : app.bendMeasure(),
       anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
       // A floor's outline being drawn, or a beam from its first point to where the next click lands.

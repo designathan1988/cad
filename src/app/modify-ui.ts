@@ -1,6 +1,6 @@
 // The Modify tools (move, copy, rotate, mirror, scale, offset) and splitting, cornering and merging walls. Functions over the app (app.ts delegates).
 
-import { lengthText, typingExamples } from '../ui/units';
+import { angleNum, lengthText, typingExamples } from '../ui/units';
 import { distance, type Point2, scale } from '../core/vector';
 import { setWalls } from '../elements/wall/commands';
 import { num, t, type MessageKey } from '../ui/i18n';
@@ -240,10 +240,10 @@ export function modifyMarks(app: App): { base: Point2; to: Point2 | null; ref: P
   let text: string | null = null;
   if (to) {
     if (m.kind === 'move' || m.kind === 'copy') text = `${lengthText(distance(base, to))}`;
-    else if (m.kind === 'rotate' && ref) text = `${num(((((deg({ x: to.x - base.x, y: to.y - base.y }) - deg({ x: ref.x - base.x, y: ref.y - base.y })) % 360) + 540) % 360) - 180, 1)}°`;
+    else if (m.kind === 'rotate' && ref) text = `${angleNum(((((deg({ x: to.x - base.x, y: to.y - base.y }) - deg({ x: ref.x - base.x, y: ref.y - base.y })) % 360) + 540) % 360) - 180)}°`;
     else if (m.kind === 'scale' && ref) text = tr ? `× ${num(tr.factor, 3)}` : null;
     else if (m.kind === 'scale' || m.kind === 'rotate') text = `${lengthText(distance(base, to))}`;
-    else if (m.kind === 'mirror') text = `${num((deg({ x: to.x - base.x, y: to.y - base.y }) + 360) % 180, 1)}°`;
+    else if (m.kind === 'mirror') text = `${angleNum((deg({ x: to.x - base.x, y: to.y - base.y }) + 360) % 180)}°`;
   }
   const len = to ? distance(base, to) : 0;
   const axis = m.kind === 'mirror' && to && len > 1e-9 ? { point: base, dir: { x: (to.x - base.x) / len, y: (to.y - base.y) / len } } : null;

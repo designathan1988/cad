@@ -1,5 +1,6 @@
 // The fields roofs show in the panel (ui/fields.ts builds the rows).
 
+import { slopeFormat, slopeShown, slopeTyped, slopeUnit } from '../../ui/units';
 import type { Field } from '../../ui/fields';
 import { t } from '../../ui/i18n';
 import type { RoofPatch } from './commands';
@@ -28,11 +29,13 @@ export function roofFields(roofs: readonly RoofSolid[], act: RoofFieldActions): 
       label: 'roof.grade',
       icon: 'raise',
       kind: 'number',
-      unit: '%',
+      // As the project writes slopes (ui/units.ts): percent, degrees or 1:n.
+      unit: slopeUnit(),
       min: 0,
+      decimals: slopeFormat() === 'percent' ? 2 : 1,
       when: (rs) => rs.every((r) => r.roof.kind !== 'flat'),
-      get: (r) => r.roof.edges.find((e) => e.grade !== null)?.grade ?? 0,
-      set: (v) => act.updateRoofs(ids, { grade: v }),
+      get: (r) => slopeShown(r.roof.edges.find((e) => e.grade !== null)?.grade ?? 0),
+      set: (v) => act.updateRoofs(ids, { grade: slopeTyped(v) }),
     },
     { id: 'overhang', label: 'roof.overhang', icon: 'width', kind: 'number', min: 0, get: (r) => r.roof.edges[0]?.overhang ?? 0, set: (v) => act.updateRoofs(ids, { overhang: v }) },
     { id: 'thickness', label: 'roof.thickness', kind: 'number', min: 0.01, get: (r) => r.roof.thickness, set: (v) => act.updateRoofs(ids, { thickness: v }) },
@@ -58,11 +61,12 @@ export function roofFields(roofs: readonly RoofSolid[], act: RoofFieldActions): 
               labelVars: { n: i + 1 },
               icon: 'raise',
               kind: 'number',
-              unit: '%',
+              unit: slopeUnit(),
               min: 0,
+              decimals: slopeFormat() === 'percent' ? 2 : 1,
               sub: true,
-              get: () => e.grade ?? 0,
-              set: (v: number) => act.updateRoofs(ids, { side: { index: i, grade: v } }),
+              get: () => slopeShown(e.grade ?? 0),
+              set: (v: number) => act.updateRoofs(ids, { side: { index: i, grade: slopeTyped(v) } }),
             }) as const,
         )
       : []),

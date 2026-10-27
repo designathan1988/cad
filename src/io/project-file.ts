@@ -253,7 +253,14 @@ export function repairProject(raw: unknown): ReadResult {
     // Its scale and pens, when it set them and they are ones (the defaults otherwise).
     ...(isDrawingSettings(raw.drawing) ? { drawing: raw.drawing } : {}),
     name: typeof raw.name === 'string' ? raw.name : '',
-    units: isUnits(raw.units) ? { length: raw.units.length, decimals: raw.units.decimals } : DEFAULT_UNITS,
+    units: isUnits(raw.units)
+      ? {
+          length: raw.units.length,
+          decimals: raw.units.decimals,
+          ...(raw.units.angleDecimals !== undefined ? { angleDecimals: raw.units.angleDecimals } : {}),
+          ...(raw.units.slope !== undefined ? { slope: raw.units.slope } : {}),
+        }
+      : DEFAULT_UNITS,
     levels,
     materials,
     definitions,

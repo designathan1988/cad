@@ -2,7 +2,7 @@
 
 import { distance } from '../core/vector';
 import { words } from '../elements/object/fields';
-import { areaText, lengthText, typingExamples } from '../ui/units';
+import { angleNum, areaText, lengthText, typingExamples } from '../ui/units';
 import * as THREE from 'three';
 import { type Point2 } from '../core/vector';
 import { ruleBase } from '../tools/opening-tool';
@@ -354,14 +354,14 @@ export function measureHint(app: App): string {
     if (pts.length < 2) return t('hint.chainNext');
     const n = pts.length;
     const angle = n >= 3 ? angleAt(pts[n - 3]!, pts[n - 2]!, pts[n - 1]!) : null;
-    return t(angle === null ? 'hint.chainSoFar' : 'hint.chainSoFarAngle', { total: lengthText(chainLength(pts, false)), n: n - 1, last: lengthText(distance(pts[n - 2]!, pts[n - 1]!)), a: num(angle ?? 0, 1) });
+    return t(angle === null ? 'hint.chainSoFar' : 'hint.chainSoFarAngle', { total: lengthText(chainLength(pts, false)), n: n - 1, last: lengthText(distance(pts[n - 2]!, pts[n - 1]!)), a: angleNum(angle ?? 0) });
   }
   if (m.kind === 'chainDone') {
     if (m.closed) return t('hint.areaDone', { area: areaText(chainArea(m.points)), p: lengthText(chainLength(m.points, true)), n: m.points.length });
     return t('hint.chainDone', { total: lengthText(chainLength(m.points, false)), n: m.points.length - 1 });
   }
   const r = reading(m.a, m.b);
-  return t('hint.measured', { d: lengthText(r.length), dx: lengthText(Math.abs(r.dx)), dy: lengthText(Math.abs(r.dy)), a: num(r.angle, 1) });
+  return t('hint.measured', { d: lengthText(r.length), dx: lengthText(Math.abs(r.dx)), dy: lengthText(Math.abs(r.dy)), a: angleNum(r.angle) });
 }
 
 export function placeFloatBar(app: App): void {

@@ -1,5 +1,6 @@
 // The fields stairs show in the panel (ui/fields.ts builds the rows).
 
+import { slopeFormat, slopeShown, slopeTyped, slopeUnit } from '../../ui/units';
 import { lengthText } from '../../ui/units';
 import type { Field } from '../../ui/fields';
 import { num, t } from '../../ui/i18n';
@@ -33,11 +34,13 @@ export function stairFields(stairs: readonly StairSolid[], act: StairFieldAction
       label: 'stair.grade',
       icon: 'raise',
       kind: 'number',
-      unit: '%',
-      min: 0.5,
+      // As the project writes slopes (ui/units.ts); a 1:n ramp has no least n but a greatest one.
+      unit: slopeUnit(),
+      min: slopeFormat() === 'ratio' ? 1 : slopeShown(0.5),
+      decimals: slopeFormat() === 'percent' ? 2 : 1,
       when: (items) => items.every((s) => s.stair.kind === 'ramp'),
-      get: (s) => s.stair.grade ?? RAMP_GRADE,
-      set: (v) => act.updateStairs(ids, { grade: v }),
+      get: (s) => slopeShown(s.stair.grade ?? RAMP_GRADE),
+      set: (v) => act.updateStairs(ids, { grade: slopeTyped(v) }),
     },
     { id: 'width', label: 'stair.width', kind: 'number', min: 0.4, get: (s) => s.stair.width, set: (v) => act.updateStairs(ids, { width: v }) },
     {

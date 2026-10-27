@@ -1,10 +1,11 @@
-// Typed measures: "4,5", "450cm", "4500 mm", "1,5+0,3", "4.5<90". Metres inside. A small parser,
-// never eval: numbers with comma or point, an optional unit per term, + − × ÷ and parentheses. A number
-// typed without a unit is in the project's length unit (setBareUnit; metres until it is set).
+// Typed measures: "4,5", "450cm", "4500 mm", "1,5+0,3", "4.5<90", "12'6\"", "3ft", "8in". Metres
+// inside. A small parser, never eval: numbers with comma or point, an optional unit per term, + − × ÷
+// and parentheses. A number typed without a unit is in the project's length unit (setBareUnit; metres
+// until it is set). Feet followed by a number are feet and inches: 12'6" and 12' 6 are 12 ft 6 in.
 
 export type Parsed<T> = { ok: true; value: T } | { ok: false };
 
-const UNITS: Readonly<Record<string, number>> = { mm: 0.001, cm: 0.01, m: 1 };
+const UNITS: Readonly<Record<string, number>> = { mm: 0.001, cm: 0.01, m: 1, ft: 0.3048, "'": 0.3048, in: 0.0254, '"': 0.0254 };
 
 /** Metres per unit of a number typed without one: 1 for metres, 0.01 for centimetres, 0.001 for millimetres. */
 let bare = 1;
@@ -108,10 +109,18 @@ class Parser {
     const n = Number(m[0].replace(',', '.'));
     if (!withUnit) return n;
     this.skip();
-    const u = /^(mm|cm|m)(?![a-z])/i.exec(this.s.slice(this.i));
+    const u = /^(?:(mm|cm|m|ft|in)(?![a-z])|(['"]))/i.exec(this.s.slice(this.i));
     if (!u) return n * bare;
     this.i += u[0].length;
-    return n * UNITS[u[1]!.toLowerCase()]!;
+    const unit = (u[1] ?? u[2]!).toLowerCase();
+    const value = n * UNITS[unit]!;
+    if (unit !== 'ft' && unit !== "'") return value;
+    // Feet, then inches: 12'6" or 12' 6 (the inches' mark may be left off).
+    this.skip();
+    const inches = /^(\d+(?:[.,]\d*)?|[.,]\d+)\s*(?:"|in(?![a-z]))?/i.exec(this.s.slice(this.i));
+    if (!inches) return value;
+    this.i += inches[0].length;
+    return value + Number(inches[1]!.replace(',', '.')) * UNITS.in!;
   }
 
   private peek(): string | undefined {

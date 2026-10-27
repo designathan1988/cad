@@ -137,7 +137,8 @@ export function numberField(value: number | null, onCommit: (v: number) => void,
   });
   input.addEventListener('blur', () => commit());
   input.addEventListener('input', clear);
-  box.append(input, el('span', { class: 'unit' }, isLength ? lengthUnit() : unit), error);
+  // Feet and inches carry their own marks (12' 6"): no unit after them.
+  box.append(input, el('span', { class: 'unit' }, isLength ? (lengthUnit() === 'ft' ? '' : lengthUnit()) : unit), error);
   return box;
 }
 
