@@ -57,6 +57,21 @@ describe('the lot and its table of areas', () => {
     expect(r.height).toBeCloseTo(2.8, 6);
   });
 
+  it('a patio drawn outside the house is paving: the permeable share less it, its overlap with the house once', () => {
+    // A 6 × 3 m patio in front of the house, 1 m of it under the house's south wall (y 4 to 7, x 6 to 12).
+    const patio = { id: 'floor_p', levelId: 'lvl_ground', source: { kind: 'outline' as const, points: square(6, 3, 6, 3) }, thickness: 0.1, offset: 0 };
+    const withPatio: Doc = { ...house, floors: [patio as never] };
+    const r = lotReport(withPatio, deriveGeometry(withPatio));
+    // Outside the projection (which starts at y = 4.9): 6 × 1.9.
+    expect(r.paving).toBeCloseTo(6 * 1.9, 6);
+    expect(r.permeability).toBeCloseTo(100 - ((10.2 * 8.2 + 6 * 1.9) * 100) / 600, 6);
+    // The occupancy is the building's alone.
+    expect(r.occupancy).toBeCloseTo((10.2 * 8.2 * 100) / 600, 6);
+    // A ceiling is no paving.
+    const ceiling: Doc = { ...house, floors: [{ ...patio, kind: 'ceiling' } as never] };
+    expect(lotReport(ceiling, deriveGeometry(ceiling)).paving).toBeCloseTo(0, 9);
+  });
+
   it('the lot rules take the lot\'s parameters: a setback short of it is found, cited', () => {
     const doc: Doc = { ...house, lot: { address: '', city: 'São Paulo', state: 'SP', registry: '', taxNumber: '', zone: 'ZM', law: 'LPUOS', frontEdge: 0, front: 5, maxOccupancy: 70 } };
     const findings = checkRules(deriveGeometry(doc), rulesOf(doc), doc);

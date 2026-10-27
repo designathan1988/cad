@@ -72,6 +72,7 @@ export function areasTable(doc: Doc, r: LotReport): string {
 <table><tr><th></th><th class="n">${esc(t('areas.measured'))}</th><th class="n">${esc(t('areas.allowed'))}</th></tr>
 <tr><td>${esc(t('areas.lot'))}</td><td class="n">${m2(r.lotArea)}</td><td class="n"></td></tr>
 <tr><td>${esc(t('areas.projection'))}</td><td class="n">${m2(r.projection)}</td><td class="n"></td></tr>
+<tr><td>${esc(t('areas.paving'))}</td><td class="n">${m2(r.paving)}</td><td class="n"></td></tr>
 <tr><td>${esc(t('rules.subject.lotOccupancy'))}</td><td class="n">${pct(r.occupancy)}</td><td class="n">${limit(lot.maxOccupancy, (x) => `≤ ${num(x, 2)} %`)}</td></tr>
 <tr><td>${esc(t('rules.subject.lotFloorRatio'))}</td><td class="n">${r.floorRatio === null ? '—' : num(r.floorRatio, 2)}</td><td class="n">${limit(lot.maxFloorRatio, (x) => `≤ ${num(x, 2)}`)}</td></tr>
 <tr><td>${esc(t('rules.subject.lotPermeability'))}</td><td class="n">${pct(r.permeability)}</td><td class="n">${limit(lot.minPermeability, (x) => `≥ ${num(x, 2)} %`)}</td></tr>

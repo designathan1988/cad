@@ -3,13 +3,14 @@
 // building's projection on the lot (the union of every level's), the built area, and from them the
 // occupancy, the floor-area ratio, the permeable share, the setbacks from the lot's sides and the
 // height. The lot's outline is the terrain's (elements/terrain), or only its area when the lot gives
-// one. The permeable share is the lot less the projection: paving outside the building is not drawn.
+// one. The permeable share is the lot less the projection and the floors outside it (a patio, a
+// driveway: a floor drawn by its outline out of doors), each counted once where they overlap.
 // Pure.
 
 import { setPrecision, union } from 'polyclip-ts';
 import { dot, type Point2, sub } from '../core/vector';
 import { KINDS } from '../elements/registry';
-import { signedArea } from '../elements/room/derive';
+import { type FloorSolid, signedArea } from '../elements/room/derive';
 import type { Doc } from './document';
 import type { DerivedGeometry } from './geometry';
 import { lotOf } from './lot';
@@ -74,6 +75,8 @@ export interface LotReport {
   readonly occupancy: number | null;
   readonly floorRatio: number | null;
   readonly permeability: number | null;
+  /** m²: the floors outside the building's projection on the ground level (paving), counted against the permeable share. */
+  readonly paving: number;
   /** Least distances to the front, the sides and the back (m; null without an outline or a building). */
   readonly setbacks: { readonly front: number | null; readonly side: number | null; readonly back: number | null };
   /** From the lowest level's floor to the highest top of a wall or of another solid (m). */
@@ -130,6 +133,12 @@ export function lotReport(doc: Doc, g: DerivedGeometry): LotReport {
     for (const s of g.kinds.get(k.key)?.values() ?? []) top = Math.max(top, k.span(s as never).top);
   }
   const occ = ratio(projection);
+  // What does not let the rain in: the building's projection and the floors on the ground's level drawn
+  // outside it (no ceiling), together (a floor under the building is in the projection already).
+  const bottom = doc.levels.length > 0 ? [...doc.levels].sort((a, b) => a.elevation - b.elevation)[0]!.id : null;
+  const floors = [...((g.kinds.get('floors')?.values() ?? []) as Iterable<FloorSolid>)].filter((f) => f.floor.kind !== 'ceiling' && f.floor.levelId === bottom).map((f) => f.outline);
+  const sealed = floors.length > 0 ? areaOf(coverOf([...cover, ...floors])) : projection;
+  const shut = ratio(sealed);
   return {
     lotArea,
     outline,
@@ -139,7 +148,8 @@ export function lotReport(doc: Doc, g: DerivedGeometry): LotReport {
     cover,
     occupancy: occ === null ? null : occ * 100,
     floorRatio: ratio(built),
-    permeability: occ === null ? null : (1 - occ) * 100,
+    permeability: shut === null ? null : (1 - shut) * 100,
+    paving: sealed - projection,
     setbacks,
     height: top - ground,
   };
