@@ -37,7 +37,7 @@ export interface Network {
 
 /** How near two vertices are to be one node, and a point to its run (in plan). */
 const SAME = 0.02;
-const REACH = 0.05;
+export const REACH = 0.05;
 
 const groupOf = (doc: Doc, systemId: string, fallback: string): string => {
   const s = systemIn(doc, systemId);

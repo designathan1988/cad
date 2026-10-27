@@ -181,6 +181,26 @@ describe('water and sewer', () => {
     expect(p!.ok).toBe(true);
   });
 
+  it('hot water: a heater a cold pipe reaches takes the tank\'s head and the cold way\'s losses', () => {
+    const hot: Doc = {
+      ...house,
+      mepPoints: [...house.mepPoints, pt('aq', 'heater', 0, 3, 1.8, 'sys_hot'), pt('q1', 'hotOutlet', 2, 3, 0.6, 'sys_hot')],
+      mepRuns: [...house.mepRuns, run('a2', 'sys_cold', 0.025, [0, 0, 2.7], [0, 3, 2.7]), run('h1', 'sys_hot', 0.025, [0, 3, 1.8], [2, 3, 1.8])],
+    };
+    const [q] = pressures(hot, 'hotWater');
+    // The tank at 4 m over the outlet at 0.6.
+    expect(q!.head).toBeCloseTo(3.4, 9);
+    // Cold: 1.3 m down from the tank carrying the cold and the hot outlet (0.3 + 0.3), 3 m to over the
+    // heater carrying the hot one; hot: 2 m and the 1.2 m drop to the outlet.
+    const hw = (w: number, l: number) => hazenWilliams(probableFlow(w) / 1000, 0.025) * l * 1.2;
+    expect(q!.loss).toBeCloseTo(hw(0.6, 1.3) + hw(0.3, 3) + hw(0.3, 3.2), 9);
+    // The cold outlet's way now carries the heater's draw on its first stretch.
+    expect(pressures(hot, 'coldWater')[0]!.loss).toBeCloseTo(hw(0.6, 1.3) + hw(0.3, 3 + 2.1), 9);
+    // No cold pipe to the heater: the heater's own height, as before.
+    const alone: Doc = { ...hot, mepRuns: hot.mepRuns.filter((r) => r.id !== 'a2') };
+    expect(pressures(alone, 'hotWater')[0]!.head).toBeCloseTo(1.2, 9);
+  });
+
   it('UHC and diameters (NBR 8160): a toilet asks a 100 mm branch; 25 units pass a 75; 250 at 1 % pass a 100', () => {
     const withToilet: Doc = { ...house, mepPoints: house.mepPoints.map((p) => (p.id === 'ralo' ? { ...p, fixture: 'toilet' as const } : p)) };
     const [s] = sewerFalls(withToilet).stretches;
