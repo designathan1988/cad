@@ -151,6 +151,10 @@ export function renderChrome(app: App): void {
   }
   if (!doc.levels.some((l) => l.id === ui.levelId)) ui.levelId = doc.levels[0]!.id;
   shell.level.value = ui.levelId;
+  // The plan's tab says whose plan it is, as an open view's name ("Planta: Térreo").
+  const planName = `${t('view.plan')}: ${name(doc.levels.find((l) => l.id === ui.levelId)!.name)}`;
+  const planLabel = shell.viewPlan.querySelector('.label')!;
+  if (planLabel.textContent !== planName) planLabel.textContent = planName;
   // Gone once the wall tool is on: "press W" no longer applies, and the footer says what to click.
   // Only on an empty project: a column, a roof or a note drawn first is under it otherwise.
   shell.emptyHint.hidden = doc.walls.length > 0 || elementIds(doc).size > 0 || ui.tool === 'wall';
