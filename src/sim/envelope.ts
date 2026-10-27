@@ -64,6 +64,39 @@ export function limitsFor(zone: number, absorptance: number): { u: number; ct: n
   return { u, ct: zone === 8 ? null : 130 };
 }
 
+/**
+ * NBR 15220-3 (2005) annex C, as given in LabEEE/UFSC's course notes: the external wall each zone asks for
+ * (table C.2) and that wall's limits (table C.1): U ≤ (W/m²K), φ at most or at least (h), FSo ≤ (%).
+ * Recommendations, not requirements; the 2024 edition of part 3 changed the zoning, to confirm.
+ */
+export type WallClass = 'light' | 'lightReflective' | 'heavy';
+export const WALL_CLASSES: Readonly<Record<WallClass, { readonly u: number; readonly lagMax: number | null; readonly lagMin: number | null; readonly fso: number }>> = {
+  light: { u: 3.0, lagMax: 4.3, lagMin: null, fso: 5.0 },
+  lightReflective: { u: 3.6, lagMax: 4.3, lagMin: null, fso: 4.0 },
+  heavy: { u: 2.2, lagMax: null, lagMin: 6.5, fso: 3.5 },
+};
+const ZONE_WALLS: readonly WallClass[] = ['light', 'light', 'lightReflective', 'heavy', 'lightReflective', 'heavy', 'heavy', 'lightReflective'];
+export const zoneWall = (zone: number): WallClass => ZONE_WALLS[Math.min(8, Math.max(1, Math.round(zone))) - 1]!;
+
+export interface Guideline {
+  readonly wall: WallClass;
+  readonly u: boolean;
+  readonly lag: boolean;
+  readonly fso: boolean;
+  readonly ok: boolean;
+}
+
+/** A wall type's results against its zone's guideline; null while a layer has no physics. */
+export function guidelineOf(r: Thermal, zone: number): Guideline | null {
+  if (r.transmittance === null || r.lag === null || r.solarFactor === null) return null;
+  const wall = zoneWall(zone);
+  const c = WALL_CLASSES[wall];
+  const u = r.transmittance <= c.u + 1e-9;
+  const lag = (c.lagMax === null || r.lag <= c.lagMax + 1e-9) && (c.lagMin === null || r.lag >= c.lagMin - 1e-9);
+  const fso = r.solarFactor <= c.fso + 1e-9;
+  return { wall, u, lag, fso, ok: u && lag && fso };
+}
+
 export function thermalOf(type: WallType, materials: readonly Material[], s: SimSettings): Thermal {
   const layers = layersOf(type, materials);
   const missing = [...new Set(layers.filter((l) => !l.physics).map((l) => l.materialId))];

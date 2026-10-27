@@ -5,7 +5,7 @@
 
 import { type MessageKey, materialLabel, name, num, t } from '../ui/i18n';
 import { materialIn } from '../elements/material/schema';
-import { acousticOf, glaserOf, R_SE, R_SI, reverberationOf, thermalOf } from '../sim/envelope';
+import { acousticOf, glaserOf, guidelineOf, R_SE, R_SI, reverberationOf, thermalOf, WALL_CLASSES, zoneWall } from '../sim/envelope';
 import { roomsBeside } from './quantities';
 import { levelOf } from './document';
 import { DAYLIGHT, daylightOf, exteriorFaces, GLAZED, hoursOf, octant, roomSun, sunDays, sunSlots } from '../sim/exposure';
@@ -93,9 +93,8 @@ export function simBlock(section: SimSection, doc: Doc, g: DerivedGeometry, titl
     };
   }
   if (section === 'thermal') {
-    const rows = typesInUse(doc, g).map(({ id, exterior }) => {
-      const type = doc.wallTypes.find((x) => x.id === id)!;
-      const r = thermalOf(type, doc.materials, s);
+    const results = typesInUse(doc, g).map(({ id, exterior }) => ({ id, exterior, r: thermalOf(doc.wallTypes.find((x) => x.id === id)!, doc.materials, s) }));
+    const rows = results.map(({ id, exterior, r }) => {
       if (r.missing.length > 0) return [typeName(doc, id), t(exterior ? 'sim.yes' : 'sim.no'), t('sim.missing', { what: r.missing.map((m) => matName(doc, m)).join(', ') }), '', '', '', '', '', '', ''];
       return [
         typeName(doc, id),
@@ -110,10 +109,26 @@ export function simBlock(section: SimSection, doc: Doc, g: DerivedGeometry, titl
         exterior ? mark(Boolean(r.okU) && r.okCT !== false) : '—',
       ];
     });
+    // The exterior types against the wall NBR 15220-3 recommends for the zone.
+    const wall = zoneWall(s.zone);
+    const c = WALL_CLASSES[wall];
+    const guide: SimTable = {
+      title: t('sim.guideTitle', {
+        zone: s.zone,
+        wall: t(`sim.wall.${wall}`),
+        limits: `U ≤ ${num(c.u, 1)}; φ ${c.lagMax !== null ? `≤ ${num(c.lagMax, 1)}` : `≥ ${num(c.lagMin!, 1)}`} h; FSo ≤ ${num(c.fso, 1)} %`,
+      }),
+      head: [t('sim.type'), 'U', 'φ', 'FSo', t('sim.status')],
+      rows: results.flatMap(({ id, exterior, r }) => {
+        const k = exterior ? guidelineOf(r, s.zone) : null;
+        return k ? [[typeName(doc, id), { text: `${num(r.transmittance!, 2)} W/m²K`, ok: k.u }, { text: `${num(r.lag!, 1)} h`, ok: k.lag }, { text: `${num(r.solarFactor!, 1)} %`, ok: k.fso }, mark(k.ok)]] : [];
+      }),
+      numeric: [1, 2, 3],
+    };
     return {
-      tables: rows.length > 0 ? [{ head: [t('sim.type'), t('sim.exterior'), 'U', t('sim.limit'), 'CT', t('sim.limit'), 'α', 'φ', 'FSo', t('sim.status')], rows, numeric: [2, 3, 4, 5, 6, 7, 8] }] : [],
+      tables: rows.length > 0 ? [{ head: [t('sim.type'), t('sim.exterior'), 'U', t('sim.limit'), 'CT', t('sim.limit'), 'α', 'φ', 'FSo', t('sim.status')], rows, numeric: [2, 3, 4, 5, 6, 7, 8] }, ...(guide.rows.length > 0 ? [guide] : [])] : [],
       empty: t('sim.noWalls'),
-      premises: [t('sim.thermalPremise', { rsi: num(R_SI, 2), rse: num(R_SE, 2), zone: s.zone }), t('sim.thermalLimits'), t('sim.absorptance'), t('sim.lagPremise')],
+      premises: [t('sim.thermalPremise', { rsi: num(R_SI, 2), rse: num(R_SE, 2), zone: s.zone }), t('sim.thermalLimits'), t('sim.absorptance'), t('sim.lagPremise'), t('sim.guidePremise')],
     };
   }
   if (section === 'condensation') {

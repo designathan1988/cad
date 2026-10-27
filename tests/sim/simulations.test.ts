@@ -6,7 +6,7 @@ import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 import { DEFAULT_SITE } from '../../src/app/sun';
 import { newOpening } from '../../src/elements/opening/schema';
-import { acousticOf, glaserOf, lagOf, limitsFor, reverberationOf, saturation, thermalOf } from '../../src/sim/envelope';
+import { acousticOf, glaserOf, guidelineOf, lagOf, limitsFor, reverberationOf, saturation, thermalOf, zoneWall } from '../../src/sim/envelope';
 import { daylightOf, exteriorWindows, hoursOf, roomSun, sunDays, sunSlots } from '../../src/sim/exposure';
 import { absorptanceOf } from '../../src/sim/physics';
 import { risksOf } from '../../src/sim/risks';
@@ -47,6 +47,21 @@ describe('the envelope', () => {
     const t = thermalOf(type('wt_masonry15'), doc0.materials, DEFAULT_SIM);
     expect(t.lag).toBeGreaterThan(2);
     expect(t.solarFactor).toBeCloseTo(4 * t.transmittance! * t.absorptance, 9);
+  });
+
+  it('NBR 15220-3: the wall each zone recommends, and a wall type against it', () => {
+    expect([1, 2, 3, 4, 5, 6, 7, 8].map(zoneWall)).toEqual(['light', 'light', 'lightReflective', 'heavy', 'lightReflective', 'heavy', 'heavy', 'lightReflective']);
+    const t = thermalOf(type('wt_masonry15'), doc0.materials, DEFAULT_SIM);
+    // Zone 3, light reflective: U 3.04 ≤ 3.6, FSo 4·U·α ≤ 4 %, φ ≤ 4.3 h.
+    const g3 = guidelineOf(t, 3)!;
+    expect(g3.wall).toBe('lightReflective');
+    expect([g3.u, g3.fso]).toEqual([true, true]);
+    expect(g3.lag).toBe(t.lag! <= 4.3);
+    // Zone 4 asks for a heavy wall: U ≤ 2.2 and φ ≥ 6.5 h; the 15 cm masonry is neither.
+    const g4 = guidelineOf(t, 4)!;
+    expect([g4.wall, g4.u, g4.lag, g4.ok]).toEqual(['heavy', false, false, false]);
+    // No physics, no verdict.
+    expect(guidelineOf({ ...t, transmittance: null, lag: null, solarFactor: null }, 3)).toBeNull();
   });
 
   it('absorptance from the colour: white none, black all', () => {
