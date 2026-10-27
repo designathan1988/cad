@@ -35,6 +35,7 @@
   --objs-nav-w: 200px;
   --objs-side-w: 360px;
   --objs-side-w-sm: 280px;
+  --types-side-w: 560px;
   --objs-card-min: 176px;
   --objs-search-w: 360px;
   --search-w: 300px;
@@ -3855,6 +3856,18 @@ textarea.text-field {
   padding: var(--sp-4);
   border-left: var(--line) solid var(--border);
 }
+/* Its parts keep their height: in a column that scrolls, the main button had been squeezed flat. */
+.objs-side > * {
+  flex-shrink: 0;
+}
+/* The wall types edit their layers beside the cards: a wider side for the layer table. */
+.types-store .objs-main {
+  grid-template-columns: var(--objs-nav-w) minmax(0, 1fr) var(--types-side-w);
+}
+.types-store .objs-preview {
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+}
 .objs-preview {
   display: block;
   width: 100%;
@@ -3966,6 +3979,9 @@ textarea.text-field {
   .objs-main {
     grid-template-columns: minmax(0, 1fr) var(--objs-side-w);
   }
+  .types-store .objs-main {
+    grid-template-columns: minmax(0, 1fr) var(--types-side-w);
+  }
   .objs-nav {
     display: none;
   }
@@ -3974,13 +3990,17 @@ textarea.text-field {
   .objs-main {
     grid-template-columns: minmax(0, 1fr) var(--objs-side-w-sm);
   }
+  .types-store .objs-main {
+    grid-template-columns: minmax(0, 1fr) var(--objs-side-w);
+  }
   .objs-total {
     display: none;
   }
 }
 /* A phone: one column, the cards then the chosen one, scrolled together; each row its own height. */
 @media (max-width: 40rem) {
-  .objs-main {
+  .objs-main,
+  .types-store .objs-main {
     grid-template-columns: minmax(0, 1fr);
     grid-auto-rows: max-content;
     overflow-y: auto;
