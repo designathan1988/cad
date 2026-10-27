@@ -124,6 +124,8 @@ export interface PlanOverlay {
   readonly draft: readonly Point2[] | null;
   /** Points the pointer rested on, to align with (snap.ts, acquired): a small plus each. */
   readonly acquired?: readonly Point2[];
+  /** A move's smart guides: dashed alignments, and equal gaps each with its length. */
+  readonly smart?: { readonly lines: readonly { a: Point2; b: Point2 }[]; readonly gaps: readonly { a: Point2; b: Point2; text: string }[] } | null;
   /** Its corners so far, each marked: a typed first corner shows before the pointer moves. */
   readonly draftCorners?: readonly Point2[];
   /** The opening being placed (an id present in the geometry), drawn in the accent colour. */
@@ -575,6 +577,37 @@ export class PlanView {
       ctx.restore();
     }
     for (const d of o.dims ?? []) this.drawDim(d, color('--wall-sel'));
+    if (o.smart) {
+      ctx.save();
+      ctx.strokeStyle = color('--snap');
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      for (const l of o.smart.lines) {
+        const [a, b] = crisp(this.toScreen(l.a), this.toScreen(l.b));
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineWidth = 1.4;
+      for (const gp of o.smart.gaps) {
+        const a = this.toScreen(gp.a);
+        const b = this.toScreen(gp.b);
+        const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        const n = { x: -(b.y - a.y) / len, y: (b.x - a.x) / len };
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        for (const p of [a, b]) {
+          ctx.moveTo(p.x - n.x * 4, p.y - n.y * 4);
+          ctx.lineTo(p.x + n.x * 4, p.y + n.y * 4);
+        }
+        ctx.stroke();
+        this.label({ x: (gp.a.x + gp.b.x) / 2, y: (gp.a.y + gp.b.y) / 2 }, gp.text, color('--snap'), color('--canvas'), this.font('600', '--fs-xs'));
+      }
+      ctx.restore();
+    }
     if (o.acquired?.length) {
       ctx.save();
       ctx.strokeStyle = color('--snap');

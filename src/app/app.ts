@@ -111,6 +111,8 @@ export interface UiState {
   acquired: Point2[];
   /** Where the point being drawn goes from, as last snapped; null when nothing is being drawn. */
   drawFrom: Point2 | null;
+  /** A move's smart guides (tools/smart-guides.ts): alignments and equal gaps, while it is dragged. */
+  smart: { readonly lines: readonly { a: Point2; b: Point2 }[]; readonly gaps: readonly { a: Point2; b: Point2 }[] } | null;
   defaults: WallDefaults;
   wall: WallToolState;
   opening: OpeningToolState;
@@ -243,6 +245,7 @@ export class App {
       lock: null,
       acquired: [],
       drawFrom: null,
+      smart: null,
       defaults: { wallTypeId: doc.wallTypes[0]!.id, referenceLine: 'centerline', baseOffset: 0, top: { kind: 'level', offset: 0 } },
       wall: IDLE,
       opening: OPENING_IDLE,

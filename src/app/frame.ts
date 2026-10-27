@@ -217,6 +217,7 @@ export function renderFrame(app: App): void {
       ],
       underlay: app.underlay(),
       acquired: ui.acquired,
+      smart: ui.smart && ui.drag?.kind === 'move' ? { lines: ui.smart.lines, gaps: ui.smart.gaps.map((g) => ({ ...g, text: lengthText(distance(g.a, g.b)) })) } : null,
     });
     app.plan.drawPoints(app.pointsShown());
   } else {

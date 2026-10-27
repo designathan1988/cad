@@ -7,6 +7,8 @@
 // with snaps. Drag on empty space: window selection (left to right: wholly inside) or crossing
 // selection (right to left: anything touched), as in Revit and AutoCAD. Esc cancels any drag.
 
+import { boxOf, type Box } from '../tools/arrange';
+import { smartGuides } from '../tools/smart-guides';
 import { add, distance, dot, normalize, type Point2, scale, sub, vec } from '../core/vector';
 import { setWalls } from '../elements/wall/commands';
 import type { WallEnd, WallId } from '../elements/wall/schema';
@@ -75,6 +77,28 @@ type Pending =
 const ROTATE_STEP = Math.PI / 12;
 
 const THRESHOLD_PX = 4;
+/** How near (screen pixels) an edge, a centre or equal gaps take a moved selection (smart-guides.ts). */
+const SMART_PX = 8;
+
+/**
+ * The box around the selection in plan and those around everything else shown (walls, rooms, floors,
+ * furniture, columns, texts…; guides have no ends): what a move aligns with.
+ */
+function smartBoxes(app: App, selected: ReadonlySet<string>): { box: Box; others: Box[] } | null {
+  const g = app.visibleGeometry();
+  const mine: Point2[] = [];
+  const others: Box[] = [];
+  const add = (id: string, pts: readonly Point2[]) => {
+    const b = boxOf(pts);
+    if (!b) return;
+    if (selected.has(id)) mine.push(...pts);
+    else others.push(b);
+  };
+  for (const s of g.solids.values()) add(s.wall.id, s.pieces.flatMap((p) => p.polygon));
+  for (const x of eachSolid(g.kinds)) if (!x.kind.endless) add(x.id, x.kind.outlines(x.solid).flat());
+  const box = boxOf(mine);
+  return box ? { box, others } : null;
+}
 /** An arc's middle let go this near its chord (px) makes the wall straight, with snaps on. */
 const STRAIGHT_PX = 8;
 /** Reach of an end grip from its centre: larger than the 9 px square drawn; 22 px (a 44 px target) on touch. */
@@ -92,6 +116,8 @@ export interface SelectGestures {
 export function selectGestures(app: App): SelectGestures {
   const { ui } = app;
   let pending: Pending | null = null;
+  /** The boxes a move aligns with, taken when it starts. */
+  let smart: { box: Box; others: Box[] } | null = null;
 
   return {
     down(screen, world, hit, shift) {
@@ -146,6 +172,7 @@ export function selectGestures(app: App): SelectGestures {
           ui.drag = { kind: 'slide', id: sliding.id, grab: dot(sub(pending.at, centre), f.dir), walls: doc.walls, openings: doc.openings };
         } else if (pending.kind === 'wall' && moving.length + rooms.size + kinds.size > 0) {
           ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, kinds };
+          smart = ui.view === 'plan' ? smartBoxes(app, ui.selection) : null;
         }
         else if (pending.kind === 'grip') ui.drag = { kind: 'grip', id: pending.id, end: pending.end, walls: doc.walls };
         else if (pending.kind === 'stretch') {
@@ -176,6 +203,13 @@ export function selectGestures(app: App): SelectGestures {
         let delta = sub(world, d.origin);
         if (shift) delta = Math.abs(delta.x) >= Math.abs(delta.y) ? vec(delta.x, 0) : vec(0, delta.y);
         if (ui.snaps) delta = vec(Math.round(delta.x / GRID_STEP) * GRID_STEP, Math.round(delta.y / GRID_STEP) * GRID_STEP);
+        // Onto the neighbours' edges and centres, or equal gaps between two (not with Shift's axis).
+        ui.smart = null;
+        if (smart && ui.snaps && !shift && ui.view === 'plan') {
+          const found = smartGuides(smart.box, smart.others, delta, SMART_PX / app.plan.scale);
+          delta = vec(found.delta.x, found.delta.y);
+          ui.smart = { lines: found.lines, gaps: found.gaps };
+        }
         // Alone, only these walls move: the walls they met keep their ends, and the joins open.
         const walls = alone
           ? doc.walls.map((w) => (d.ids.includes(w.id) ? { ...w, start: add(w.start, delta), end: add(w.end, delta) } : w))
@@ -236,6 +270,8 @@ export function selectGestures(app: App): SelectGestures {
       pending = null;
       ui.drag = null;
       ui.snap = null;
+      ui.smart = null;
+      smart = null;
       if (d?.kind === 'move' || d?.kind === 'rotate') {
         // The rooms whose walls all went along go too (carry.ts): one undo step for both.
         const before = app.store.get();
@@ -264,6 +300,8 @@ export function selectGestures(app: App): SelectGestures {
       pending = null;
       ui.drag = null;
       ui.snap = null;
+      ui.smart = null;
+      smart = null;
       app.refresh();
       return true;
     },
