@@ -81,10 +81,11 @@ export interface LayerQuantity {
   readonly mortar: number | null;
 }
 
-/** Every wall's layers with their quantities. */
+/** Every wall's layers with their quantities: the walls to be built (one existing or to be demolished is not built). */
 export function layerQuantities(doc: Doc, g: DerivedGeometry): LayerQuantity[] {
   const out: LayerQuantity[] = [];
   for (const w of doc.walls) {
+    if (w.phase) continue;
     const type = doc.wallTypes.find((t) => t.id === w.wallTypeId);
     if (!type) continue;
     const { net } = wallAreas(doc, g, w);
@@ -110,6 +111,23 @@ export function layerQuantities(doc: Doc, g: DerivedGeometry): LayerQuantity[] {
     });
   }
   return out;
+}
+
+/** The walls to be demolished in a renovation: each one's type, net area and volume (its type's thickness). */
+export interface DemolitionQuantity {
+  readonly wallId: string;
+  readonly typeId: string;
+  readonly area: number;
+  readonly volume: number;
+}
+
+export function demolitionQuantities(doc: Doc, g: DerivedGeometry): DemolitionQuantity[] {
+  return doc.walls.flatMap((w) => {
+    if (w.phase !== 'demolish') return [];
+    const type = doc.wallTypes.find((t) => t.id === w.wallTypeId);
+    const { net } = wallAreas(doc, g, w);
+    return [{ wallId: w.id, typeId: w.wallTypeId, area: net, volume: net * (type?.layers.reduce((s, l) => s + l.thickness, 0) ?? 0) }];
+  });
 }
 
 /** The rooms' finishes: floor, walls and ceiling, each with its material, area and pieces. */

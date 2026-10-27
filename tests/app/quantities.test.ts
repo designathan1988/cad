@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
-import { finishQuantities, layerQuantities, modulation, mortarFor, piecesFor } from '../../src/app/quantities';
+import { demolitionQuantities, finishQuantities, layerQuantities, modulation, mortarFor, piecesFor } from '../../src/app/quantities';
 import { type Naming, schedule } from '../../src/app/schedules';
 import { newOpening } from '../../src/elements/opening/schema';
 
@@ -126,5 +126,18 @@ describe('construction quantities', () => {
     expect(s.totals).toEqual([4, null, null, null, null]);
     const w = schedule(one, deriveGeometry(one), 'walls', naming);
     expect(w.rows[0]!.at(-1)).toBe('mod.along 25 24 0; mod.upRest 37 7.5 2.5');
+  });
+
+  it('a renovation: existing and demolished walls are not built; the demolished ones are taken down, by type', () => {
+    // Beside the 6 m wall with its door, a 4 m existing one and a 3 m one to be demolished (2.80 m high).
+    const reform: Doc = { ...one, walls: [...one.walls, { ...wall('e', [0, 5], [4, 5]), phase: 'existing' }, { ...wall('x', [0, 9], [3, 9]), phase: 'demolish' }] };
+    const g = deriveGeometry(reform);
+    expect(new Set(layerQuantities(reform, g).map((q) => q.wallId))).toEqual(new Set(['a']));
+    const [d] = demolitionQuantities(reform, g);
+    expect(d!.wallId).toBe('x');
+    expect(d!.area).toBeCloseTo(3 * 2.8, 9);
+    expect(d!.volume).toBeCloseTo(3 * 2.8 * 0.15, 9);
+    const rows = schedule(reform, g, 'construction', naming).rows;
+    expect(rows.find((r) => String(r[0]).startsWith('qty.demolish'))!.slice(2, 4)).toEqual([expect.closeTo(8.4, 9), expect.closeTo(1.26, 9)]);
   });
 });

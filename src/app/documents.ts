@@ -127,7 +127,8 @@ export function memorialHtml(doc: Doc, g: DerivedGeometry, today: string): strin
   // The wall types in use, each with its layers, its walls' length and net area.
   const walls = doc.wallTypes
     .map((type) => {
-      const mine = doc.walls.filter((w) => w.wallTypeId === type.id);
+      // The walls to be built (a renovation's existing and demolished ones are said apart, below).
+      const mine = doc.walls.filter((w) => w.wallTypeId === type.id && !w.phase);
       if (mine.length === 0) return '';
       const length = mine.reduce((s, w) => s + referenceLength(w), 0);
       const net = mine.reduce((s, w) => s + wallAreas(doc, g, w).net, 0);

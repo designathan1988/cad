@@ -7,7 +7,7 @@ import { openingMarks } from '../elements/opening/marks';
 import type { RoomUse } from '../elements/room/schema';
 import { type Doc, type DocWall, levelOf, wallNumber } from './document';
 import type { DerivedGeometry } from './geometry';
-import { finishQuantities, layerQuantities, modulation, roomsBeside, wallAreas } from './quantities';
+import { demolitionQuantities, finishQuantities, layerQuantities, modulation, roomsBeside, wallAreas } from './quantities';
 
 export type ScheduleKind = 'doors' | 'windows' | 'rooms' | 'walls' | 'construction';
 export const SCHEDULE_KINDS: readonly ScheduleKind[] = ['doors', 'windows', 'rooms', 'walls', 'construction'];
@@ -221,6 +221,13 @@ function construction(doc: Doc, g: DerivedGeometry, naming: Naming): Schedule {
     else add(naming.term('qty.layer', { fn: naming.term(`fn.${q.function}`) }), q.materialId, q.area, q.volume, q.pieces);
   }
   for (const f of finishQuantities(doc, g)) add(naming.term(`qty.room.${f.surface}`), f.materialId, f.area, null, f.pieces);
+  // A renovation's walls to be demolished, by type: their area and volume to take down.
+  for (const d of demolitionQuantities(doc, g)) {
+    const key = `demolish\u0000${d.typeId}`;
+    const typeName = naming.term('qty.demolish', { type: naming.name(doc.wallTypes.find((x) => x.id === d.typeId)?.name ?? d.typeId) });
+    const r = rows.get(key) ?? { item: typeName, material: '—', area: 0, volume: 0, pieces: null };
+    rows.set(key, { ...r, area: (r.area ?? 0) + d.area, volume: (r.volume ?? 0) + d.volume });
+  }
   const list = [...rows.values()].map((r) => [r.item, r.material, r.area, r.volume, r.pieces]);
   return { kind: 'construction', columns, rows: list, totals: columns.map((_, i) => (i === 0 ? list.length : null)) };
 }
