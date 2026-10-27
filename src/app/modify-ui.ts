@@ -93,6 +93,12 @@ export function modifyEvent(app: App, event: ModifyEvent): void {
     app.ui.info = t('hint.seriesOffer');
     app.renderChrome();
   }
+  // A parametric object keeps its size in a scale (its sizes are its parameters, with their rules): said,
+  // or the scale seemed to do nothing to a table.
+  if (m.kind === 'scale' && ids.some((id) => doc.objects.some((o) => o.id === id))) {
+    app.ui.info = t('hint.scaleObjects');
+    app.renderChrome();
+  }
 }
 
 /**

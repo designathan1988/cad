@@ -21,6 +21,16 @@ export interface ObjectItem {
 
 export const words = (w: Words): string => (getLang() === 'pt' ? w.pt : w.en);
 
+/**
+ * The lengths of a definition measured up and down: those in a part's height or level, or dragged by a
+ * vertical handle. Their fields get the height icon; the rest, the width one.
+ */
+function verticalParams(def: ObjectDefinition): Set<string> {
+  const exprs = [...def.parts.flatMap((p) => [p.z, 'h' in p ? p.h : 0]), ...(def.handles ?? []).filter((h) => h.axis === 'z').map((h) => h.param)];
+  const text = exprs.map(String).join(' ');
+  return new Set(def.params.filter((p) => new RegExp(`\\b${p.name}\\b`).test(text)).map((p) => p.name));
+}
+
 export function objectFields(items: readonly ObjectItem[], doc: Doc, dispatch: (c: Command<Doc>) => void): Field<ObjectItem>[] {
   const ids = items.map((i) => i.object.id);
   const first = items[0];
@@ -31,6 +41,7 @@ export function objectFields(items: readonly ObjectItem[], doc: Doc, dispatch: (
   ];
   if (oneDefinition) {
     const def = first.def;
+    const vertical = verticalParams(def);
     fields.push({
       id: 'objType',
       label: 'object.type',
@@ -58,7 +69,7 @@ export function objectFields(items: readonly ObjectItem[], doc: Doc, dispatch: (
           ...label,
           ...own,
           kind: 'number',
-          icon: p.kind === 'length' ? 'width' : 'hash',
+          icon: p.kind !== 'length' ? 'hash' : vertical.has(p.name) ? 'height' : 'width',
           ...(p.min !== undefined ? { min: p.min } : {}),
           ...(p.kind === 'length' ? {} : { unit: '' }),
           ...(p.kind === 'integer' ? { decimals: 0 } : {}),

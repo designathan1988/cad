@@ -136,6 +136,8 @@
   --kbd-bg: #f1f2f4;
   --kbd-border: #d7dae0;
   --floor-fill: #e8e4dc;
+  /* Furniture and other objects in plan: they hide the floor under them, as on paper. */
+  --furniture: #ffffff;
   /* The level below, under an upper level's plan. */
   --underlay: #dcdee3;
   /* Guides: construction lines, apart from the snap's amber and the selection's blue. */
@@ -193,6 +195,8 @@
   --kbd-bg: #2a2b31;
   --kbd-border: #3a3b43;
   --floor-fill: #26272d;
+  /* Lighter than the floors and the rooms' colours: the canvas's near black read as a hole in the room. */
+  --furniture: #464954;
   --underlay: #2f3138;
   --guide: #c084fc;
   --ref-line: #2dd4bf;

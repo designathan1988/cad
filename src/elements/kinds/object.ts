@@ -95,7 +95,7 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
     const line = lit ? p.color('--wall-sel') : p.color('--text-2');
     for (const ring of s.rings) {
       trace(p, ring);
-      p.ctx.fillStyle = lit ? p.color('--wall-sel-fill') : p.color('--canvas');
+      p.ctx.fillStyle = lit ? p.color('--wall-sel-fill') : p.color('--furniture');
       p.ctx.fill();
       p.ctx.strokeStyle = line;
       p.ctx.lineWidth = 1;

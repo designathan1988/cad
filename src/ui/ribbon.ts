@@ -48,8 +48,14 @@ function button(item: RibbonItem, action: Action): HTMLButtonElement {
   // Dimmed, still focusable: a disabled control is skipped by the keyboard and says nothing. A pressed
   // one is not dimmed (the view shown has nothing to switch to, and shows that it is on).
   if (!action.enabled && !pressed) b.setAttribute('aria-disabled', 'true');
-  b.addEventListener('click', () => {
+  b.addEventListener('click', (e) => {
     if (action.enabled || item.explains) action.run();
+    // Clicked with the pointer, the keys go to the drawing again: Enter after Scale took the button
+    // and started the tool over, instead of taking the selection's centre. From the keyboard it keeps
+    // the focus, where the user is. The ribbon is drawn again by the action, its focus moved to this
+    // button's new copy (chrome.ts): that one lets go of it.
+    const now = document.activeElement;
+    if (e.detail > 0 && now instanceof HTMLElement && now.dataset.action === item.id) now.blur();
   });
   return b;
 }
