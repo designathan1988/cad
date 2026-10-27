@@ -250,6 +250,10 @@ export function wireInput(app: App): void {
           points.push({ point: { x: ring.reduce((t, v) => t + v.x, 0) / ring.length, y: ring.reduce((t, v) => t + v.y, 0) / ring.length }, kind: 'center' });
         }
       }
+      // The services' points and their runs' vertices: a run drawn from a socket or a panel starts on it,
+      // and so joins it (mep-ui.ts: MEET), wherever on its disc the click was.
+      for (const p of doc.mepPoints) if (p.levelId === ui.levelId) points.push({ point: p.at, kind: 'center' });
+      for (const r of doc.mepRuns) if (r.levelId === ui.levelId) for (const v of r.points) points.push({ point: { x: v.x, y: v.y }, kind: 'node' });
       pointCache = { doc, levelId: ui.levelId, points };
     }
     return pointCache.points;
@@ -284,6 +288,8 @@ export function wireInput(app: App): void {
                   ? ui.stairFrom
                   : ui.tool === 'railing'
                     ? (ui.railingDraft.at(-1) ?? null)
+                  : ui.tool === 'mepRun'
+                    ? (ui.mepDraft.at(-1) ?? null)
                     : null;
     const measuring = ui.tool === 'measure' || ui.tool === 'dimension';
     const modifyFrom = ui.tool === 'modify' && ui.modify && ui.modify.state.step !== 'base' ? ui.modify.state.base : null;
@@ -455,7 +461,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'spot' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
+    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'spot' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'mepPoint' || ui.tool === 'mepRun') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -632,6 +638,10 @@ export function wireInput(app: App): void {
       app.railingFinish();
       return true;
     }
+    if (ui.tool === 'mepRun' && ui.mepDraft.length > 0) {
+      app.mepRunFinish();
+      return true;
+    }
     if (ui.tool === 'measure' && ui.measure.kind !== 'idle') {
       app.measureEvent({ kind: 'escape' });
       return true;
@@ -771,6 +781,16 @@ export function wireInput(app: App): void {
     if (ui.tool === 'spot') {
       const at = worldAt(e);
       if (at && ui.view === 'plan') app.spotClick(snapped(e)?.point ?? at.p);
+      return;
+    }
+    if (ui.tool === 'mepPoint') {
+      const at = worldAt(e);
+      if (at) app.mepPointClick(snapped(e)?.point ?? at.p);
+      return;
+    }
+    if (ui.tool === 'mepRun') {
+      const at = worldAt(e);
+      if (at) app.mepRunClick(snapped(e)?.point ?? at.p, at.mpp);
       return;
     }
     // A text or a level mark where the click is; then selected, its text ready to type.

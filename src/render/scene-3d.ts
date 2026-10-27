@@ -277,6 +277,9 @@ export class Scene3D {
     if (!x) {
       x = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide });
       this.prepare(x);
+      // The services' pipes and points (elements/kinds/mep.ts: their materials "mep_…") stay whole in
+      // X-ray: seeing them through the walls is what it is for.
+      x.userData.kept = m.id.startsWith('mep_');
       this.faint(x, this.xrayOn);
       patterned(x);
       this.layerMaterials.set(m.id, x);
@@ -317,7 +320,8 @@ export class Scene3D {
     }
   }
 
-  private faint(m: THREE.Material, on: boolean): void {
+  private faint(m: THREE.Material, faint: boolean): void {
+    const on = faint && m.userData.kept !== true;
     const clear = m.userData.clear === true;
     m.transparent = on || clear;
     m.opacity = on ? XRAY_OPACITY : clear ? GLASS_OPACITY : 1;

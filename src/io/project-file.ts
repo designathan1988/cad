@@ -31,6 +31,7 @@ import { DEFAULT_RULES, isRule as isNormRule, isRulePack, type Rule as NormRule 
 import { isLot } from '../app/lot';
 import { isCosts } from '../costs/schema';
 import { isApproval } from '../approval/schema';
+import { isMepSystem } from '../elements/mep/schema';
 import { isDrawingSettings } from '../elements/drawing/schema';
 
 /**
@@ -81,8 +82,9 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  *   An older file with rules of its own gets the new default rules it lacks, its old ones in their pack.
  * Version 35: the costs (`costs`, costs/schema.ts): the CUB, a price base, the budget. Older files have none.
  * Version 36: the approval journey (`approval`, approval/schema.ts). Older files have none: São Paulo's.
+ * Version 37: building services (`mepPoints`, `mepRuns`, `systems`, elements/mep). Older files have none.
  */
-export const CURRENT_VERSION = 36;
+export const CURRENT_VERSION = 37;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -279,6 +281,7 @@ export function repairProject(raw: unknown): ReadResult {
     ...(isLot(raw.lot) ? { lot: raw.lot } : {}),
     ...(isCosts(raw.costs) ? { costs: raw.costs } : {}),
     ...(isApproval(raw.approval) ? { approval: raw.approval } : {}),
+    ...(Array.isArray(raw.systems) && raw.systems.some(isMepSystem) ? { systems: (raw.systems as unknown[]).filter(isMepSystem) } : {}),
     // Its scale and pens, when it set them and they are ones (the defaults otherwise).
     ...(isDrawingSettings(raw.drawing) ? { drawing: raw.drawing } : {}),
     // Its layer combinations and graphic overrides, the bad ones left out.

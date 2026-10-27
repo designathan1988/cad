@@ -420,6 +420,38 @@ export function ifcClassOf(key: string, category: string | null, solid: unknown)
       return { entity: 'IFCCURTAINWALL', type: '.NOTDEFINED.' };
     case 'terrains':
       return { entity: 'IFCGEOGRAPHICELEMENT', type: '.TERRAIN.' };
+    case 'mepRuns': {
+      // A run by what it is: a pipe, a conduit (a cable carrier), a cable, a duct.
+      const kind = (solid as { run?: { kind?: string } }).run?.kind;
+      return { entity: kind === 'conduit' ? 'IFCCABLECARRIERSEGMENT' : kind === 'cable' ? 'IFCCABLESEGMENT' : kind === 'duct' ? 'IFCDUCTSEGMENT' : 'IFCPIPESEGMENT', type: '.NOTDEFINED.' };
+    }
+    case 'mepPoints': {
+      const kind = (solid as { point?: { kind?: string } }).point?.kind ?? '';
+      const entity: Record<string, string> = {
+        panel: 'IFCELECTRICDISTRIBUTIONBOARD',
+        socket: 'IFCOUTLET',
+        socketHigh: 'IFCOUTLET',
+        shower: 'IFCOUTLET',
+        switch: 'IFCSWITCHINGDEVICE',
+        light: 'IFCLIGHTFIXTURE',
+        data: 'IFCOUTLET',
+        reservoir: 'IFCTANK',
+        heater: 'IFCELECTRICAPPLIANCE',
+        coldOutlet: 'IFCVALVE',
+        hotOutlet: 'IFCVALVE',
+        drain: 'IFCWASTETERMINAL',
+        sewerOutlet: 'IFCWASTETERMINAL',
+        rainDrain: 'IFCWASTETERMINAL',
+        rainOutlet: 'IFCWASTETERMINAL',
+        gasMeter: 'IFCFLOWMETER',
+        gasOutlet: 'IFCVALVE',
+        hydrant: 'IFCFIRESUPPRESSIONTERMINAL',
+        acUnit: 'IFCUNITARYEQUIPMENT',
+        solarPanel: 'IFCSOLARDEVICE',
+        sensor: 'IFCSENSOR',
+      };
+      return { entity: entity[kind] ?? 'IFCBUILDINGELEMENTPROXY', type: '.NOTDEFINED.' };
+    }
     case 'objects':
       return category === 'fixture'
         ? { entity: 'IFCSANITARYTERMINAL', type: '.NOTDEFINED.' }

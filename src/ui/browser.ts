@@ -15,6 +15,7 @@ const CATEGORIES: readonly { id: Category; key: MessageKey }[] = [
   { id: 'rooms', key: 'layer.rooms' },
   { id: 'floors', key: 'layer.floors' },
   { id: 'objects', key: 'layer.objects' },
+  { id: 'services', key: 'layer.services' },
   { id: 'guides', key: 'layer.guides' },
 ];
 

@@ -7,7 +7,7 @@ import { isColor } from '../elements/material/schema';
 import type { Doc } from './document';
 import type { Category } from './geometry';
 
-export const CATEGORIES: readonly Category[] = ['walls', 'openings', 'rooms', 'floors', 'objects', 'guides'];
+export const CATEGORIES: readonly Category[] = ['walls', 'openings', 'rooms', 'floors', 'objects', 'services', 'guides'];
 
 export interface LayerSet {
   readonly id: string;

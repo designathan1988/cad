@@ -1,0 +1,213 @@
+// Phase 13: building services. Networks joined by themselves, the load table, the water pressures at
+// the points, the sewer's falls, the runs through the structure, the analytic model.
+
+import { describe, expect, it } from 'vitest';
+import { type Doc, newDocument } from '../../src/app/document';
+import { deriveGeometry } from '../../src/app/geometry';
+import { analyticModel, clashesOf, isometricSvg, waterproofing } from '../../src/elements/mep/coordination';
+import { loadTable, protect, voltageDrop } from '../../src/elements/mep/electrical';
+import { networksOf } from '../../src/elements/mep/network';
+import { isMepPoint, isMepRun, type MepPoint, type MepRun } from '../../src/elements/mep/schema';
+import { hazenWilliams, pressures, probableFlow, sewerFalls } from '../../src/elements/mep/water';
+import { readProject, writeProject } from '../../src/io/project-file';
+import { runVertices } from '../../src/app/mep-ui';
+import { mepPointKind, mepRunKind } from '../../src/elements/kinds/mep';
+
+const pt = (id: string, kind: MepPoint['kind'], x: number, y: number, height: number, systemId: string, extra: Partial<MepPoint> = {}): MepPoint => ({ id, levelId: 'lvl_ground', at: { x, y }, height, kind, systemId, ...extra });
+const run = (id: string, systemId: string, diameter: number, ...points: [number, number, number][]): MepRun => ({ id, levelId: 'lvl_ground', systemId, kind: 'pipe', diameter, points: points.map(([x, y, z]) => ({ x, y, z })) });
+
+const house: Doc = {
+  ...newDocument(),
+  mepPoints: [
+    pt('qd', 'panel', 0, 0, 1.5, 'sys_power'),
+    pt('t1', 'socket', 4, 0, 0.3, 'sys_power'),
+    pt('t2', 'socket', 4, 3, 0.3, 'sys_power'),
+    pt('ch', 'shower', 0, 3, 2.2, 'sys_power'),
+    pt('rs', 'reservoir', 0, 0, 4, 'sys_cold'),
+    pt('af', 'coldOutlet', 3, 0, 0.6, 'sys_cold'),
+    pt('ci', 'sewerOutlet', 5, 0, -0.4, 'sys_sewer'),
+    pt('ralo', 'drain', 0, 0, 0, 'sys_sewer'),
+  ],
+  mepRuns: [
+    run('e1', 'sys_power', 0.025, [0, 0, 1.5], [0, 0, 2.7], [4, 0, 2.7], [4, 3, 2.7]),
+    run('e2', 'sys_power', 0.025, [0, 0, 2.7], [0, 3, 2.7]),
+    run('a1', 'sys_cold', 0.025, [0, 0, 4], [0, 0, 2.7], [3, 0, 2.7]),
+    run('s1', 'sys_sewer', 0.1, [0, 0, -0.2], [5, 0, -0.3], [5, 0, -0.4]),
+  ],
+};
+
+describe('networks', () => {
+  it('runs meet at their vertices and points join the run over them', () => {
+    const net = networksOf(house).get('electric')!;
+    // The panel on the first vertex; the sockets and the shower each joined by a drop.
+    expect(net.pointNode.size).toBe(4);
+    const drops = net.edges.filter((e) => !e.runId);
+    expect(drops.map((e) => Math.round(e.length * 100) / 100).sort()).toEqual([0.5, 2.4, 2.4]);
+  });
+
+  it('a run drawn to a point comes down to it; one drawn to a vertex takes its height', () => {
+    const v = runVertices(house, 'lvl_ground', 'sys_power', [
+      { x: 0, y: 3 },
+      { x: 4, y: 3 },
+    ]);
+    // From the shower (at 2.20) up to the run's height, across, then on the socket down to 0.30.
+    expect(v.map((p) => [p.x, p.y, Math.round(p.z * 100) / 100])).toEqual([
+      [0, 3, 2.2],
+      [0, 3, 2.7],
+      [4, 3, 2.7],
+      [4, 3, 0.3],
+    ]);
+  });
+
+  it('a sewer run falls the way it is drawn, by its least fall, from the drain down to the way out', () => {
+    const v = runVertices(house, 'lvl_ground', 'sys_sewer', [
+      { x: 0, y: 0 },
+      { x: 5, y: 0 },
+    ]);
+    // A 100 mm pipe: 1 %, 5 cm over 5 m; up from the drain at 0, down into the box at −0.40.
+    expect(v.map((p) => [p.x, p.y, Math.round(p.z * 1000) / 1000])).toEqual([
+      [0, 0, 0],
+      [0, 0, -0.2],
+      [5, 0, -0.25],
+      [5, 0, -0.4],
+    ]);
+  });
+
+  it('a point raised in the panel takes the run\'s vertex on it along', () => {
+    let next: Doc = house;
+    const solid = mepPointKind.derive(house, house.mepPoints.find((p) => p.id === 'rs')!, deriveGeometry(house))!;
+    const fields = mepPointKind.fields!([solid], { dispatch: (c: { apply: (d: Doc) => Doc }) => (next = c.apply(next)), doc: house } as never);
+    const height = fields.find((f) => f.id === 'mepHeight') as { set: (v: number) => void };
+    height.set(5);
+    expect(next.mepPoints.find((p) => p.id === 'rs')!.height).toBe(5);
+    expect(next.mepRuns.find((r) => r.id === 'a1')!.points.map((v) => v.z)).toEqual([5, 2.7, 2.7]);
+    // The other runs where they were: the panel's conduit starts at the same place, but at 1.50.
+    expect(next.mepRuns.find((r) => r.id === 'e1')).toBe(house.mepRuns.find((r) => r.id === 'e1'));
+  });
+
+  it('in 3D a run comes down to the points it passes over, not to those it reaches itself', () => {
+    const g = deriveGeometry(house);
+    const e1 = mepRunKind.derive(house, house.mepRuns.find((r) => r.id === 'e1')!, g)!;
+    // The socket under the corner (4, 0) and the one under its end (4, 3), which it stops over; the
+    // panel is on its first vertex, the shower under the other run.
+    expect(e1.drops.map((d) => [d.to.x, d.to.y, d.from.z, d.to.z])).toEqual([
+      [4, 0, 2.7, 0.3],
+      [4, 3, 2.7, 0.3],
+    ]);
+  });
+
+  it('kept in the file', () => {
+    expect(house.mepPoints.every(isMepPoint) && house.mepRuns.every(isMepRun)).toBe(true);
+    const r = readProject(writeProject(house));
+    expect(r.ok && [r.doc.mepPoints.length, r.doc.mepRuns.length]).toEqual([8, 4]);
+  });
+});
+
+describe('the load table', () => {
+  it('the circuits: the sockets together, the shower alone; breaker, section and drop along the conduits', () => {
+    const t = loadTable(house);
+    expect(t.hasPanel).toBe(true);
+    expect(t.unreached).toEqual([]);
+    const tug = t.circuits.find((c) => c.name === 'TUG1')!;
+    expect([tug.power, tug.voltage, tug.breaker, tug.section]).toEqual([200, 127, 6, 2.5]);
+    // The farthest socket: up 1.2, along 4 and 3, down 2.4.
+    expect(tug.length).toBeCloseTo(10.6, 9);
+    expect(tug.drop).toBeCloseTo(voltageDrop(10.6, 200 / 127, 2.5, 127), 9);
+    const tue = t.circuits.find((c) => c.name === 'TUE1')!;
+    expect([tue.power, tue.voltage, tue.current, tue.breaker, tue.section]).toEqual([5500, 220, 25, 25, 4]);
+    expect(tue.length).toBeCloseTo(1.2 + 3 + 0.5, 9);
+    expect(t.total).toBe(5700);
+  });
+
+  it('breakers and sections by the current', () => {
+    expect(protect(9, 'lighting')).toEqual({ breaker: 10, section: 1.5 });
+    expect(protect(18, 'tug')).toEqual({ breaker: 20, section: 2.5 });
+    expect(protect(45, 'tue')).toEqual({ breaker: 50, section: 10 });
+  });
+
+  it('a point no conduit reaches is said', () => {
+    const lone: Doc = { ...house, mepPoints: [...house.mepPoints, pt('t9', 'socket', 9, 9, 0.3, 'sys_power')] };
+    const t = loadTable(lone);
+    expect(t.unreached.map((p) => p.id)).toEqual(['t9']);
+    expect(t.circuits.find((c) => c.name === 'TUG1')!.length).toBeNull();
+  });
+});
+
+describe('water and sewer', () => {
+  it('the pressure at an outlet: the tank\'s head less the losses on its way', () => {
+    const [p] = pressures(house, 'coldWater');
+    expect(p!.head).toBeCloseTo(3.4, 9);
+    expect(p!.staticKpa).toBeCloseTo(3.4 * 9.80665, 6);
+    const q = probableFlow(0.3) / 1000;
+    const loss = hazenWilliams(q, 0.025) * (1.3 + 3 + 2.1) * 1.2;
+    expect(p!.loss).toBeCloseTo(loss, 9);
+    expect(p!.dynamicKpa).toBeCloseTo((3.4 - loss) * 9.80665, 6);
+    expect(p!.ok).toBe(true);
+  });
+
+  it('the sewer\'s falls: 2 % on a 100 mm pipe holds, a flat one does not', () => {
+    const f = sewerFalls(house);
+    expect(f.hasOutlet).toBe(true);
+    expect(f.unreached).toEqual([]);
+    expect(f.stretches).toHaveLength(1);
+    expect(f.stretches[0]!.slope).toBeCloseTo(2, 9);
+    expect(f.stretches[0]!.ok).toBe(true);
+    const flat: Doc = { ...house, mepRuns: house.mepRuns.map((r) => (r.id === 's1' ? run('s1', 'sys_sewer', 0.1, [0, 0, -0.3], [5, 0, -0.3], [5, 0, -0.4]) : r)) };
+    expect(sewerFalls(flat).stretches[0]!.ok).toBe(false);
+  });
+});
+
+describe('coordination', () => {
+  const column = { id: 'col_1', levelId: 'lvl_ground', at: { x: 2, y: 0 }, width: 0.2, depth: 0.2, angle: 0 };
+  const withColumn: Doc = { ...house, columns: [column] };
+
+  it('a conduit through a column is a clash; moved aside it is not', () => {
+    const c = clashesOf(withColumn, deriveGeometry(withColumn));
+    // The conduit and the cold pipe also lie along one line at 2.70, and the pipe comes down onto the
+    // second conduit's start (the runs' clashes, first).
+    expect(c.map((x) => [x.runId, x.elementId])).toEqual([
+      ['e1', 'a1'],
+      ['e2', 'a1'],
+      ['e1', 'col_1'],
+      ['a1', 'col_1'],
+    ]);
+    const aside: Doc = { ...withColumn, columns: [{ ...column, at: { x: 2, y: 1.5 } }] };
+    expect(clashesOf(aside, deriveGeometry(aside)).map((x) => [x.runId, x.elementId])).toEqual([
+      ['e1', 'a1'],
+      ['e2', 'a1'],
+    ]);
+  });
+
+  it('runs of two disciplines touching are a clash; 10 cm apart, or of one network, they are not', () => {
+    const apart: Doc = { ...house, mepRuns: house.mepRuns.map((r) => (r.id === 'a1' ? run('a1', 'sys_cold', 0.025, [0, -0.1, 4], [0, -0.1, 2.7], [3, -0.1, 2.7]) : r)) };
+    expect(clashesOf(apart, deriveGeometry(apart))).toEqual([]);
+    // Crossing it at its height: the gap between the axes (0) less than the radii.
+    const across: Doc = { ...apart, mepRuns: [...apart.mepRuns, run('x1', 'sys_gas', 0.022, [2, -1, 2.7], [2, 1, 2.7])] };
+    const c = clashesOf(across, deriveGeometry(across));
+    // Across the conduit and the moved cold pipe alike.
+    expect(c.map((x) => [x.runId, x.elementId, Math.round(x.at.x * 100) / 100, Math.round(x.at.y * 100) / 100 + 0])).toEqual([
+      ['e1', 'x1', 2, 0],
+      ['a1', 'x1', 2, -0.1],
+    ]);
+    // The two power conduits meet at (0, 0, 2.70): one network, no clash.
+    expect(c.some((x) => x.runId === 'e1' && x.elementId === 'e2')).toBe(false);
+  });
+
+  it('the analytic model and its warnings', () => {
+    const thin: Doc = { ...newDocument(), columns: [{ ...column, width: 0.15 }] };
+    const m = analyticModel(deriveGeometry(thin));
+    expect(m.bars).toHaveLength(1);
+    expect(m.bars[0]!.length).toBeCloseTo(2.8, 9);
+    expect(m.warnings.map((w) => w.kind)).toEqual(['columnThin']);
+  });
+
+  it('the wet rooms\' waterproofing, and the isometric drawing', () => {
+    expect(waterproofing(newDocument(), deriveGeometry(newDocument()))).toEqual([]);
+    const svg = isometricSvg(house, house.mepRuns);
+    expect(svg.startsWith('<svg')).toBe(true);
+    expect((svg.match(/<polyline/g) ?? []).length).toBe(4);
+    expect((svg.match(/<circle/g) ?? []).length).toBe(8);
+    // The drops: two sockets, the shower, the cold outlet, the drain (the panel, the tank and the box are on their runs).
+    expect((svg.match(/<line/g) ?? []).length).toBe(5);
+  });
+});

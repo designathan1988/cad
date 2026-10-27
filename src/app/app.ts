@@ -2,6 +2,8 @@
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
 import * as terrains from './terrain-ui';
+import * as mepUi from './mep-ui';
+import { type PointKind, systemIn } from '../elements/mep/schema';
 import { pickModel } from './model-import';
 import * as refs from './reference-ui';
 import { onReferenceLoaded } from '../elements/kinds/reference';
@@ -81,6 +83,7 @@ import { complianceHtml } from './documents';
 import { showLot } from '../ui/lot-dialog';
 import { showBudget } from '../ui/budget-dialog';
 import { showApproval } from '../ui/approval-dialog';
+import { showServices } from '../ui/services-dialog';
 import { type Rule, rulesOf } from '../rules/schema';
 import { showRules } from '../ui/rules-dialog';
 import { renderDebugPanel } from '../ui/debug-panel';
@@ -182,6 +185,10 @@ export interface UiState {
   stairFrom: Point2 | null;
   /** Points of a guardrail's path being drawn. */
   railingDraft: Point2[];
+  /** The services' tools (app/mep-ui.ts): the kind of point placed, the system a run is drawn in, its points so far. */
+  mepKind: PointKind;
+  mepSystem: string;
+  mepDraft: Point2[];
   /** A guide being placed (guide-tool.ts): Alt over a wall or a guide in a drawing tool. */
   guide: GuideDraft | null;
   /** How the 3D view shows the levels: which, exploded, cut (view-3d.ts). */
@@ -320,6 +327,9 @@ export class App {
       roofDraft: [],
       stairFrom: null,
       railingDraft: [],
+      mepKind: 'socket',
+      mepSystem: 'sys_power',
+      mepDraft: [],
       guide: null,
       view3d: readView3D(prefs.view3d),
       modify: null,
@@ -714,6 +724,7 @@ export class App {
     this.ui.roofDraft = [];
     this.ui.stairFrom = null;
     this.ui.railingDraft = [];
+    this.ui.mepDraft = [];
     this.ui.guide = null;
     this.ui.modify = null;
     this.modifyBefore = null;
@@ -1093,6 +1104,27 @@ export class App {
 
   railingFinish(): void {
     return kindTools.railingFinish(this);
+  }
+
+  /** The services' tools (app/mep-ui.ts): a point of a kind, a run of a system. */
+  startMepPoint(kind: PointKind): void {
+    return mepUi.startMepPoint(this, kind);
+  }
+
+  startMepRun(systemId: string): void {
+    return mepUi.startMepRun(this, systemId);
+  }
+
+  mepPointClick(p: Point2): void {
+    return mepUi.mepPointClick(this, p);
+  }
+
+  mepRunClick(p: Point2, mpp: number): void {
+    return mepUi.mepRunClick(this, p, mpp);
+  }
+
+  mepRunFinish(): void {
+    return mepUi.mepRunFinish(this);
   }
 
   /**
@@ -1661,6 +1693,11 @@ export class App {
     showApproval(this);
   }
 
+  /** The services' systems, load table, pressures, falls, clashes and drawings (ui/services-dialog.ts). */
+  openServices(): void {
+    showServices(this);
+  }
+
   /**
    * An element as a report names it, with its level: the same number on two levels read as one. A room
    * by its number and name, a wall by its number, a door or window by its mark and its wall, the lot.
@@ -1679,6 +1716,20 @@ export class App {
     if (o && host) {
       const mark = openingMarks(doc.openings, markPrefix()).get(o.id) ?? this.elementTitle(id);
       return `${mark} · ${t('wall.tag', { n: wallNumber(doc, host.id) ?? 0 })} (${level(host.levelId)})`;
+    }
+    // A services' point by what it is: "Chuveiro 1 (Térreo)", not "Ponto de instalação 12".
+    const point = doc.mepPoints.find((p) => p.id === id);
+    if (point) return `${t(`mep.kind.${point.kind}` as MessageKey)} ${doc.mepPoints.filter((p) => p.kind === point.kind).indexOf(point) + 1} (${level(point.levelId)})`;
+    // A run by its system: "Trecho 2 de Iluminação (Térreo)".
+    const run = doc.mepRuns.find((r) => r.id === id);
+    if (run) return `${t('mep.runTitle', { n: doc.mepRuns.filter((r) => r.systemId === run.systemId).indexOf(run) + 1, system: systemIn(doc, run.systemId)?.name ?? t('mep.run') })} (${level(run.levelId)})`;
+    // Anything else by its kind, its place among its kind and its level: "Pilar 2 (Térreo)", not "Pilar".
+    const k = kindOfId(id);
+    const list = k ? listOf(doc, k) : [];
+    const i = list.findIndex((x) => x.id === id);
+    if (k && i >= 0) {
+      const on = levelOfElement(k, list[i]!, doc);
+      return `${t(k.one)} ${i + 1}${on ? ` (${level(on)})` : ''}`;
     }
     return this.elementTitle(id);
   }

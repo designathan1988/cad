@@ -1,5 +1,6 @@
 // The interface around the views: the tool bar, the level list, the footer's hints and keys, the float bar, the browser drawer. Functions over the app (app.ts delegates).
 
+import { systemIn } from '../elements/mep/schema';
 import { distance } from '../core/vector';
 import { words } from '../elements/object/fields';
 import { angleNum, areaText, lengthText, typingExamples } from '../ui/units';
@@ -212,7 +213,11 @@ export function renderChrome(app: App): void {
                       ? t(ui.stairFrom ? 'hint.stairDirection' : 'hint.stairStart')
                       : ui.tool === 'railing'
                         ? t(ui.railingDraft.length > 0 ? 'hint.railingNext' : 'hint.railingStart')
-                        : null;
+                        : ui.tool === 'mepPoint'
+                          ? t('hint.mepPoint', { what: t(`mep.kind.${ui.mepKind}`) })
+                          : ui.tool === 'mepRun'
+                            ? t(ui.mepDraft.length > 0 ? 'hint.mepRunNext' : 'hint.mepRunStart', { what: systemIn(app.store.get(), ui.mepSystem)?.name ?? '' })
+                            : null;
   const guideHint = ui.guide
     ? t('hint.guide', {
         d: lengthText(app.guideOffset() ?? 0),
@@ -268,6 +273,10 @@ export function renderChrome(app: App): void {
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
     : ui.tool === 'stair'
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.stairFrom ? 'key.back' : 'key.exit'))]
+    : ui.tool === 'mepPoint'
+    ? [snapKey, keyHint('Esc', t('key.exit'))]
+    : ui.tool === 'mepRun'
+    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.mepDraft.length > 0 ? 'key.finish' : 'key.exit'))]
     : ui.tool === 'railing'
     ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.railingDraft.length > 0 ? 'key.finish' : 'key.exit'))]
     : ui.tool === 'roof'

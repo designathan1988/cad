@@ -14,6 +14,7 @@ import type { Rule, RulePack } from '../rules/schema';
 import type { Lot } from './lot';
 import type { Costs } from '../costs/schema';
 import type { Approval } from '../approval/schema';
+import type { MepPoint, MepRun, MepSystem } from '../elements/mep/schema';
 import { DEFAULT_DRAWING, type DrawingSettings } from '../elements/drawing/schema';
 import { LIBRARY } from '../elements/object/library';
 import type { ObjectDefinition, ObjectInstance } from '../elements/object/schema';
@@ -68,7 +69,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 36;
+  readonly version: 37;
   readonly name: string;
   /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
   readonly units: Units;
@@ -122,6 +123,11 @@ export interface Doc {
   readonly references: readonly Reference[];
   /** The lot's ground: its outline and spot heights (elements/terrain). */
   readonly terrains: readonly Terrain[];
+  /** Building services: the points where a network meets a use, and the runs between them (elements/mep). */
+  readonly mepPoints: readonly MepPoint[];
+  readonly mepRuns: readonly MepRun[];
+  /** The services' systems (elements/mep); the defaults, one per discipline, when it sets none. */
+  readonly systems?: readonly MepSystem[];
   /** The norm rules it is checked against (rules/schema.ts); the defaults when it sets none. */
   readonly rules?: readonly Rule[];
   /** The packs those rules come in (rules/schema.ts); the defaults when it sets none. */
@@ -160,7 +166,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 36,
+    version: 37,
     name: '',
     units: DEFAULT_UNITS,
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
@@ -219,6 +225,8 @@ export function newDocument(): Doc {
     sections: [],
     references: [],
     terrains: [],
+    mepPoints: [],
+    mepRuns: [],
   };
 }
 

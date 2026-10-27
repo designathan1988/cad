@@ -2,6 +2,7 @@
 // command palette lists these; the toolbar, keys and menus do the same things, with the same names
 // and keys (ref/chat.txt:200), because they read them from here.
 
+import { POINT_KIND_LIST, systemsOf } from '../elements/mep/schema';
 import { keyOf } from './keymap';
 import { ARRANGE_HOWS, arrangeNeeds } from '../tools/arrange';
 import { newId } from '../core/id';
@@ -48,13 +49,13 @@ export function appActions(app: App, open: Openers): Action[] {
   const { ui, store } = app;
   const doc = store.get();
   const has = ui.selection.size > 0;
-  const make = (id: string, key: MessageKey, group: MessageKey, run: () => void, extra: { keys?: string; enabled?: boolean; keywords?: string } = {}): Action => {
+  const make = (id: string, key: MessageKey, group: MessageKey, run: () => void, extra: { keys?: string; enabled?: boolean; keywords?: string; vars?: Readonly<Record<string, string | number>> } = {}): Action => {
     const keys = keyOf(id, extra.keys, app.keymap);
     return {
       id,
-      label: t(key),
+      label: t(key, extra.vars),
       group: t(group),
-      keywords: `${tBoth(key)} ${extra.keywords ?? ''}`.trim(),
+      keywords: `${tBoth(key, extra.vars)} ${extra.keywords ?? ''}`.trim(),
       enabled: extra.enabled ?? true,
       run,
       ...(keys ? { keys } : {}),
@@ -85,6 +86,10 @@ export function appActions(app: App, open: Openers): Action[] {
     make('tool.window', 'tool.window', tools, () => app.setTool('window'), { keys: 'Shift+W' }),
     make('tool.room', 'tool.room', tools, () => app.setTool('room'), { keys: 'R' }),
     make('tool.measure', 'tool.measure', tools, () => app.setTool('measure'), { keys: 'M' }),
+    make('services.open', 'services.open', tools, () => app.openServices(), { keywords: 'instalações services quadro de cargas load table pressão pressure esgoto sewer conflitos clashes isométrico isometric estrutura structure impermeabilização' }),
+    // Building services (app/mep-ui.ts): a point of each kind, a run of each system.
+    ...POINT_KIND_LIST.map((k) => make(`mep.point.${k}`, `mep.tool.${k}` as MessageKey, tools, () => app.startMepPoint(k), { keywords: `instalação installation ponto point ${tBoth(`mep.kind.${k}` as MessageKey)}` })),
+    ...systemsOf(doc).map((s) => make(`mep.run.${s.id}`, 'mep.runToolOf', tools, () => app.startMepRun(s.id), { vars: { name: s.name }, keywords: 'rede network tubo pipe eletroduto conduit duto duct' })),
     make('tool.railing', 'tool.railing', tools, () => app.setTool('railing'), { keys: 'G', keywords: 'guarda-corpo guarda corpo corrimão railing guardrail parapeito' }),
     make('tool.stair', 'tool.stair', tools, () => app.setTool('stair'), { keys: 'E', keywords: 'escada escadas stair stairs degrau caracol rampa ramp' }),
     make('tool.roof', 'tool.roof', tools, () => app.setTool('roof'), { keys: 'T', keywords: 'telhado telhados roof cobertura água águas platibanda' }),
@@ -181,7 +186,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('settings.refLines', 'pal.refLines', settings, () => app.toggleRefLines()),
     make('settings.debug', 'debug.pal', settings, () => app.toggleDebug(), { keys: 'F7', keywords: 'debug diagnóstico diagnostics erros errors problemas' }),
     make('settings.openingTags', 'pal.openingTags', settings, () => app.toggleOpeningTags(), { keywords: 'etiquetas tags marks tipo type portas janelas doors windows' }),
-    ...(['walls', 'openings', 'rooms', 'floors', 'objects', 'guides'] as const).map((c) =>
+    ...(['walls', 'openings', 'rooms', 'floors', 'objects', 'services', 'guides'] as const).map((c) =>
       make(`layer.${c}`, ui.hidden.has(c) ? (`pal.show.${c}` as const) : (`pal.hide.${c}` as const), settings, () => app.toggleCategory(c)),
     ),
     ...[...doc.levels]

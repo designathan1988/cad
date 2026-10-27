@@ -1,0 +1,225 @@
+// The services dialog (elements/mep): the systems with what each has; the load table and its one-line
+// diagram; the water pressures at the points; the sewer's falls; the runs through the structure; the
+// structure's analytic model and warnings; the isometric drawing; the wet rooms' waterproofing. Read
+// from the model each time it is drawn; a row with an element selects and frames it.
+
+import type { App } from '../app/app';
+import { analyticModel, clashesOf, isometricSvg, waterproofing } from '../elements/mep/coordination';
+import { loadTable, MAX_DROP } from '../elements/mep/electrical';
+import { networksOf } from '../elements/mep/network';
+import { GROUP_OF, systemsOf } from '../elements/mep/schema';
+import { MAX_STATIC, MIN_DYNAMIC, pressures, sewerFalls } from '../elements/mep/water';
+import { el, segmented, select } from './controls';
+import { openProjectDialog } from './dialog';
+import { type MessageKey, num, t } from './i18n';
+
+type Tab = 'systems' | 'loads' | 'water' | 'sewer' | 'clashes' | 'structure' | 'iso' | 'wet';
+const TABS: readonly Tab[] = ['systems', 'loads', 'water', 'sewer', 'clashes', 'structure', 'iso', 'wet'];
+
+/** A one-line diagram of the panel and its circuits, as SVG. */
+function oneLine(circuits: ReturnType<typeof loadTable>['circuits']): string {
+  const row = 34;
+  const h = 40 + circuits.length * row;
+  const lines = circuits
+    .map((c, i) => {
+      const y = 40 + i * row + row / 2;
+      return `<line x1="60" y1="${y}" x2="150" y2="${y}" stroke="currentColor" stroke-width="1.5"/><rect x="150" y="${y - 7}" width="26" height="14" fill="none" stroke="currentColor"/><text x="190" y="${y + 4}" font-size="12" fill="currentColor">${c.name} · ${c.breaker ?? '?'} A · ${c.section === null ? '?' : num(c.section, 1)} mm² · ${Math.round(c.power)} VA</text>`;
+    })
+    .join('');
+  // Drawn at its own size (a page's text size), not stretched to the dialog's width.
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="520" height="${h}" viewBox="0 0 520 ${h}" class="services-svg" role="img"><text x="12" y="22" font-size="12" font-weight="700" fill="currentColor">QD</text><line x1="60" y1="30" x2="60" y2="${h - 10}" stroke="currentColor" stroke-width="3"/>${lines}</svg>`;
+}
+
+export function showServices(app: App, first: Tab = 'systems'): void {
+  let tab: Tab = first;
+  let isoGroup = 'all';
+  let dialog: { redraw: () => void } | null = null;
+  const render = (close: () => void): HTMLElement => {
+    const doc = app.store.get();
+    const g = app.geometry;
+    const tabs = segmented(
+      TABS.map((k) => ({ value: k, label: t(`services.tab.${k}` as MessageKey) })),
+      tab,
+      (k) => {
+        tab = k;
+        dialog?.redraw();
+      },
+      true,
+    );
+    const pick = (id: string) => () => {
+      close();
+      app.ui.selection = new Set([id]);
+      app.showElementLevel(id);
+      app.frameSelection();
+    };
+    const table = (head: readonly string[], rows: readonly (readonly (string | HTMLElement)[])[], numeric: readonly number[] = []) =>
+      el(
+        'table',
+        { class: 'schedule-table' },
+        el('thead', {}, el('tr', {}, ...head.map((h, i) => el('th', { class: numeric.includes(i) ? 'num' : '' }, h)))),
+        el('tbody', {}, ...rows.map((r) => el('tr', {}, ...r.map((c, i) => el('td', { class: numeric.includes(i) ? 'num' : '' }, c))))),
+      );
+    const link = (text: string, id: string) => {
+      const b = el('button', { type: 'button', class: 'icon-btn text-btn services-link' }, text);
+      b.addEventListener('click', pick(id));
+      return b;
+    };
+    const mark = (ok: boolean) => el('span', { class: ok ? 'services-ok' : 'services-bad' }, t(ok ? 'services.ok' : 'services.bad'));
+    const note = (key: MessageKey, vars?: Readonly<Record<string, string | number>>) => el('p', { class: 'tour-empty' }, t(key, vars));
+    let body: HTMLElement;
+    if (tab === 'systems') {
+      const runs = new Map<string, number>();
+      for (const s of g.kinds.get('mepRuns')?.values() ?? []) {
+        const r = s as { run: { systemId: string }; length: number };
+        runs.set(r.run.systemId, (runs.get(r.run.systemId) ?? 0) + r.length);
+      }
+      body = el(
+        'div',
+        { class: 'budget-scroll' },
+        table(
+          [t('services.system'), t('services.discipline'), t('services.points'), t('services.runLength')],
+          systemsOf(doc).map((s) => {
+            const swatch = el('span', { class: 'services-swatch' });
+            swatch.style.background = s.color;
+            return [el('span', {}, swatch, s.name), t(`services.disc.${s.discipline}` as MessageKey), String(doc.mepPoints.filter((p) => p.systemId === s.id).length), `${num(runs.get(s.id) ?? 0, 2)} m`];
+          }),
+          [2, 3],
+        ),
+        note('services.systemsNote'),
+      );
+    } else if (tab === 'loads') {
+      const lt = loadTable(doc);
+      const rows = lt.circuits.map((c) => [
+        c.name,
+        t(`services.circuit.${c.kind}` as MessageKey),
+        String(c.points.length),
+        `${Math.round(c.power)} VA`,
+        `${c.voltage} V`,
+        `${num(c.current, 2)} A`,
+        c.breaker === null ? '—' : `${c.breaker} A`,
+        c.section === null ? '—' : `${num(c.section, 1)} mm²`,
+        c.length === null ? '—' : `${num(c.length, 2)} m`,
+        c.drop === null ? '—' : `${num(c.drop, 2)} %`,
+        c.drop === null ? '—' : mark(c.drop <= MAX_DROP),
+      ]);
+      const svg = el('div', { class: 'services-diagram' });
+      svg.innerHTML = oneLine(lt.circuits);
+      body = el(
+        'div',
+        { class: 'budget-scroll' },
+        ...(lt.hasPanel ? [] : [note('services.noPanel')]),
+        table(
+          [t('services.circuitName'), t('services.circuitKind'), t('services.points'), t('services.load'), t('services.voltage'), t('services.current'), t('services.breaker'), t('services.section'), t('services.way'), t('services.drop'), ''],
+          rows,
+          [2, 3, 4, 5, 6, 7, 8, 9],
+        ),
+        el('p', {}, t('services.totalLoad', { va: Math.round(lt.total) })),
+        ...(lt.unreached.length > 0 ? [el('p', { class: 'services-bad' }, t('services.unreached', { n: lt.unreached.length })), el('div', {}, ...lt.unreached.map((p) => link(app.reportTitle(p.id), p.id)))] : []),
+        el('h3', {}, t('services.oneLine')),
+        svg,
+        note('services.loadsNote', { drop: MAX_DROP }),
+      );
+    } else if (tab === 'water') {
+      const all = [...pressures(doc, 'coldWater'), ...pressures(doc, 'hotWater')];
+      body = el(
+        'div',
+        { class: 'budget-scroll' },
+        all.length === 0
+          ? note('services.noWater')
+          : table(
+              [t('services.outlet'), t('services.head'), t('services.loss'), t('services.static'), t('services.dynamic'), ''],
+              all.map((p) => [
+                link(`${app.reportTitle(p.point.id)}${p.point.label ? ` · ${p.point.label}` : ''}`, p.point.id),
+                p.head === null ? '—' : `${num(p.head, 2)} m`,
+                p.loss === null ? '—' : `${num(p.loss, 3)} m`,
+                p.staticKpa === null ? '—' : `${num(p.staticKpa, 1)} kPa`,
+                p.dynamicKpa === null ? '—' : `${num(p.dynamicKpa, 1)} kPa`,
+                p.head === null ? el('span', { class: 'services-bad' }, t('services.noSource')) : mark(p.ok),
+              ]),
+              [1, 2, 3, 4],
+            ),
+        note('services.waterNote', { min: MIN_DYNAMIC, max: MAX_STATIC }),
+      );
+    } else if (tab === 'sewer') {
+      const blocks = (['sewer', 'rain'] as const).map((group) => {
+        const f = sewerFalls(doc, group);
+        return el(
+          'div',
+          {},
+          el('h3', {}, t(`services.disc.${group}` as MessageKey)),
+          ...(f.stretches.length === 0 ? [note('services.noStretches')] : []),
+          ...(f.stretches.length > 0
+            ? [table([t('services.stretch'), t('services.diameter'), t('services.length'), t('services.fall'), t('services.least'), ''], f.stretches.map((s) => [link(app.reportTitle(s.runId), s.runId), `${Math.round(s.diameter * 1000)} mm`, `${num(s.length, 2)} m`, `${num(s.slope, 2)} %`, `${num(s.least, 0)} %`, mark(s.ok)]), [1, 2, 3, 4])]
+            : []),
+          ...(f.stretches.length > 0 && !f.hasOutlet ? [note('services.noOutlet')] : []),
+          ...(f.unreached.length > 0 ? [el('p', { class: 'services-bad' }, t('services.drainsLoose', { n: f.unreached.length }))] : []),
+        );
+      });
+      body = el('div', { class: 'budget-scroll' }, ...blocks, note('services.sewerNote'));
+    } else if (tab === 'clashes') {
+      const c = clashesOf(doc, g);
+      body = el(
+        'div',
+        { class: 'budget-scroll' },
+        c.length === 0 ? el('p', { class: 'services-ok' }, t('services.noClash')) : table([t('mep.run'), t('services.through'), t('services.where')], c.map((x) => [link(app.reportTitle(x.runId), x.runId), link(app.reportTitle(x.elementId), x.elementId), `${num(x.at.x, 2)}; ${num(x.at.y, 2)} · ${num(x.z, 2)} m`])),
+        note('services.clashNote'),
+      );
+    } else if (tab === 'structure') {
+      const m = analyticModel(g);
+      body = el(
+        'div',
+        { class: 'budget-scroll' },
+        m.bars.length === 0
+          ? note('services.noStructure')
+          : table(
+              [t('services.bar'), t('services.barKind'), t('services.length'), t('services.sectionSize')],
+              m.bars.map((b) => [link(app.reportTitle(b.id), b.id), t(b.kind === 'column' ? 'column.title' : 'beam.title'), `${num(b.length, 2)} m`, `${num(b.width * 100, 0)} × ${num(b.depth * 100, 0)} cm`]),
+              [2, 3],
+            ),
+        ...(m.warnings.length > 0 ? [el('h3', {}, t('services.warnings', { n: m.warnings.length })), ...m.warnings.map((w) => el('p', { class: 'services-bad' }, link(app.reportTitle(w.elementId), w.elementId), ' ', t(`services.warn.${w.kind}` as MessageKey, { v: num(w.value * 100, 0) })))] : []),
+        note('services.structureNote'),
+      );
+    } else if (tab === 'iso') {
+      const groups = [...networksOf(doc).keys()].sort();
+      const chooser = select([{ value: 'all', label: t('services.allSystems') }, ...groups.map((x) => ({ value: x, label: t(`services.group.${x}` as MessageKey) }))], isoGroup, (v) => {
+        isoGroup = v;
+        dialog?.redraw();
+      });
+      const runs = doc.mepRuns.filter((r) => {
+        if (isoGroup === 'all') return true;
+        const s = systemsOf(doc).find((x) => x.id === r.systemId);
+        return s ? GROUP_OF[s.discipline] === isoGroup : false;
+      });
+      const box = el('div', { class: 'services-iso' });
+      box.innerHTML = isometricSvg(doc, runs);
+      const save = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('services.saveSvg'));
+      save.addEventListener('click', () => {
+        const file = `${app.fileBase()} - ${t('services.tab.iso')}.svg`;
+        app.download(file, new Blob([isometricSvg(doc, runs, 1600, 1040)], { type: 'image/svg+xml' }), 'image/svg+xml');
+        app.toast(t('schedule.saved', { file }));
+      });
+      body = el('div', { class: 'budget-scroll' }, el('div', { class: 'budget-bar' }, chooser, save), runs.length === 0 ? note('services.noRuns') : box);
+    } else {
+      const w = waterproofing(doc, g);
+      body = el(
+        'div',
+        { class: 'budget-scroll' },
+        w.length === 0 ? note('services.noWet') : table([t('memo.room'), t('services.wetFloor'), t('services.wetWalls'), t('budget.total')], w.map((x) => [link(app.reportTitle(x.roomId), x.roomId), `${num(x.floor, 2)} m²`, `${num(x.walls, 2)} m²`, `${num(x.floor + x.walls, 2)} m²`]), [1, 2, 3]),
+        note('services.wetNote'),
+      );
+    }
+    const closeBtn = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
+    closeBtn.dataset.focus = 'close';
+    closeBtn.addEventListener('click', close);
+    return el(
+      'div',
+      { class: 'dialog dialog-xl budget-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('services.title') },
+      el('h2', {}, t('services.title')),
+      el('div', { class: 'schedule-tabs' }, tabs),
+      body,
+      el('div', { class: 'actions' }, el('span', { class: 'spacer' }), closeBtn),
+    );
+  };
+  dialog = openProjectDialog(app, render);
+  app.shell.helpBack.querySelector<HTMLElement>('[data-focus="close"]')?.focus();
+}

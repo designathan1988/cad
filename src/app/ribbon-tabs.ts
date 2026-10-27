@@ -101,6 +101,67 @@ function tabsOf(app: App): readonly RibbonTab[] {
       ],
     },
     {
+      id: 'services',
+      title: 'rib.tab.services',
+      panels: [
+        select,
+        { title: 'rib.p.servicesCalc', items: [{ id: 'services.open', icon: 'table', size: 'L' }] },
+        {
+          title: 'rib.p.electric',
+          items: [
+            { id: 'mep.point.panel', icon: 'table', size: 'L', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'panel' },
+            { id: 'mep.point.socket', icon: 'plus', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'socket' },
+            { id: 'mep.point.socketHigh', icon: 'plus', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'socketHigh' },
+            { id: 'mep.point.shower', icon: 'raise', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'shower' },
+            { id: 'mep.point.switch', icon: 'pointer', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'switch' },
+            { id: 'mep.point.light', icon: 'sun', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'light' },
+            { id: 'mep.point.data', icon: 'hash', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'data' },
+            { id: 'mep.run.sys_power', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_power' },
+            { id: 'mep.run.sys_lighting', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_lighting' },
+            { id: 'mep.run.sys_data', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_data' },
+          ],
+        },
+        {
+          title: 'rib.p.water',
+          items: [
+            { id: 'mep.point.reservoir', icon: 'box', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'reservoir' },
+            { id: 'mep.point.coldOutlet', icon: 'pin', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'coldOutlet' },
+            { id: 'mep.point.heater', icon: 'box', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'heater' },
+            { id: 'mep.point.hotOutlet', icon: 'pin', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'hotOutlet' },
+            { id: 'mep.run.sys_cold', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_cold' },
+            { id: 'mep.run.sys_hot', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_hot' },
+          ],
+        },
+        {
+          title: 'rib.p.drainage',
+          items: [
+            { id: 'mep.point.drain', icon: 'center', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'drain' },
+            { id: 'mep.point.sewerOutlet', icon: 'box', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'sewerOutlet' },
+            { id: 'mep.point.rainDrain', icon: 'center', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'rainDrain' },
+            { id: 'mep.point.rainOutlet', icon: 'box', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'rainOutlet' },
+            { id: 'mep.run.sys_sewer', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_sewer' },
+            { id: 'mep.run.sys_rain', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_rain' },
+          ],
+        },
+        {
+          title: 'rib.p.otherServices',
+          items: [
+            { id: 'mep.point.gasMeter', icon: 'box', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'gasMeter' },
+            { id: 'mep.point.gasOutlet', icon: 'pin', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'gasOutlet' },
+            { id: 'mep.run.sys_gas', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_gas' },
+            { id: 'mep.point.hydrant', icon: 'warning', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'hydrant' },
+            { id: 'mep.run.sys_fire', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_fire' },
+            { id: 'mep.point.acUnit', icon: 'cube', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'acUnit' },
+            { id: 'mep.run.sys_hvac', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_hvac' },
+            { id: 'mep.point.solarPanel', icon: 'sun', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'solarPanel' },
+            { id: 'mep.run.sys_solar', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_solar' },
+            { id: 'mep.point.sensor', icon: 'center', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'sensor' },
+            { id: 'mep.run.sys_auto', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_auto' },
+          ],
+        },
+      ],
+    },
+    {
       id: 'annotate',
       title: 'rib.tab.annotate',
       panels: [

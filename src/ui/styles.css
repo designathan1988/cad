@@ -126,6 +126,8 @@
   --hatch: rgb(17 18 22 / 0.5);
   --warn: #c2410c;
   --error: #dc2626;
+  /* A check that holds (the services' calculations). */
+  --ok: #15803d;
   --warn-soft: #fff1e6;
   --snap: #b45309;
   --shadow: 0 2px 8px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.06);
@@ -185,6 +187,7 @@
   --hatch: rgb(236 236 240 / 0.42);
   --warn: #fb923c;
   --error: #f87171;
+  --ok: #4ade80;
   --warn-soft: #3a2618;
   --snap: #f59e0b;
   --shadow: 0 2px 10px rgb(0 0 0 / 0.4);
@@ -2465,6 +2468,39 @@ button.project-name:hover {
 }
 .lot-body .budget-total {
   margin-top: var(--sp-3);
+}
+/* The services dialog (ui/services-dialog.ts): its marks, the system swatches and the drawings. */
+.services-ok {
+  color: var(--ok);
+}
+.services-bad {
+  color: var(--error);
+}
+.services-swatch {
+  display: inline-block;
+  width: var(--sp-3);
+  height: var(--sp-3);
+  margin-right: var(--sp-2);
+  border-radius: var(--radius);
+  vertical-align: middle;
+}
+.services-link {
+  padding: 0;
+}
+.services-diagram,
+.services-iso {
+  color: var(--text);
+  padding: var(--sp-2) 0;
+}
+.services-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+.services-iso svg {
+  width: 100%;
+  height: auto;
+  /* Whole in the dialog under its bar, without scrolling. */
+  max-height: 40vh;
 }
 /* The approval dialog (ui/approval-dialog.ts): its summary, the steps scrolling, each with its documents. */
 .approval-summary {
