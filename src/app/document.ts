@@ -65,8 +65,12 @@ export const cutHeightOf = (level: Level): number => level.cutHeight ?? CUT_HEIG
  * A wall as the user placed it: the engine's wall plus where it stands and how high it goes. Its base
  * offset and top are its own only when set; otherwise its type's (wallBase, wallTop).
  */
+/** A wall's phase in a renovation: already there, or there to be demolished; none: new, to be built. */
+export type WallPhase = 'existing' | 'demolish';
+
 export interface DocWall extends Wall {
   readonly levelId: LevelId;
+  readonly phase?: WallPhase;
   readonly baseOffset?: number;
   /** Top tied to the level height plus an offset, or a fixed height. */
   readonly top?: HeightRule;

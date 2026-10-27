@@ -3,7 +3,7 @@
 import { sunDirection } from './sun';
 import { calibrateDraft } from './reference-ui';
 import { roomTagText } from './room-tag';
-import { overrideColours, roomOverrideColours } from './layer-sets';
+import { overrideColours, wallPhases, roomOverrideColours } from './layer-sets';
 import { findingText } from '../ui/rules-dialog';
 import { keepSelectionInView3d } from './view-ui';
 import { objectHandles } from './object-handles';
@@ -132,6 +132,7 @@ export function renderFrame(app: App): void {
   if (plan) {
     app.plan.drawing = app.drawingNow();
     app.plan.overrides = ui.overridesOn ? overrideColours(app.store.get()) : new Map();
+    app.plan.phases = ui.overridesOn ? wallPhases(app.store.get()) : new Map();
     app.plan.roomOverrides = ui.overridesOn ? roomOverrideColours(app.store.get()) : new Map();
     app.plan.draw(app.visibleGeometry(), {
       selected: ui.selection,

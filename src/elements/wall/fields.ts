@@ -2,7 +2,7 @@
 // and top are the wall's own or its type's (app/document.ts): an own one is marked, with the way back.
 
 import { lengthText } from '../../ui/units';
-import { type Doc, type DocWall, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop } from '../../app/document';
+import { type Doc, type DocWall, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop, type WallPhase } from '../../app/document';
 import { distance } from '../../core/vector';
 import type { Field } from '../../ui/fields';
 import { name, num, t, type MessageKey } from '../../ui/i18n';
@@ -106,6 +106,21 @@ export function wallFields(
         get: (w) => w.referenceLine,
         // The body stays where it is; the line moves to its face or centre (edit.ts).
         set: (v) => act.setReferenceLine(v as ReferenceLine),
+      },
+      {
+        // Its phase in a renovation: drawn in a colour of its own with the overrides on (layer-sets.ts).
+        id: 'phase',
+        label: 'panel.phase',
+        kind: 'segmented',
+        options: [
+          { value: 'new', label: t('phase.new'), short: t('phase.new') },
+          { value: 'existing', label: t('phase.existing'), short: t('phase.existing') },
+          { value: 'demolish', label: t('phase.demolish'), short: t('phase.demolish') },
+        ],
+        labelled: true,
+        wide: true,
+        get: (w) => w.phase ?? 'new',
+        set: (v) => act.updateWalls((v === 'new' ? { phase: undefined } : { phase: v as WallPhase }) as Partial<Omit<DocWall, 'id'>>),
       },
     ],
     constraints: [

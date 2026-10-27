@@ -139,6 +139,10 @@
   --axis-x: #e0827f;
   --axis-y: #7cc49a;
   --wall-fill: #9ea2aa;
+  /* A renovation's walls (layer-sets.ts: wallPhases): to be built red, to be demolished yellow, existing grey. */
+  --phase-new: #d64545;
+  --phase-existing: #9ea2aa;
+  --phase-demolish: #e0b034;
   --wall-line: #111216;
   --wall-sel: #2563eb;
   --wall-sel-fill: #a9bde6;
@@ -199,6 +203,9 @@
   --axis-x: #8a4644;
   --axis-y: #3f7a56;
   --wall-fill: #5d616b;
+  --phase-new: #e06a6a;
+  --phase-existing: #5d616b;
+  --phase-demolish: #d8b04a;
   --wall-line: #e6e7eb;
   --wall-sel: #5b8def;
   --wall-sel-fill: #3e5c94;

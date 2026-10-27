@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/app/document';
-import { deleteLayerSet, isLayerSet, isRoomOverride, nextName, overrideColours, roomOverrideColours, saveLayerSet, setOverrides, setRoomOverrides } from '../../src/app/layer-sets';
+import { deleteLayerSet, isLayerSet, isRoomOverride, nextName, overrideColours, roomOverrideColours, saveLayerSet, setOverrides, setRoomOverrides, wallPhases } from '../../src/app/layer-sets';
 import { isSavedView } from '../../src/app/saved-views';
 import { readProject, writeProject } from '../../src/io/project-file';
 
@@ -70,5 +70,22 @@ describe('room overrides', () => {
     expect(isRoomOverride({ id: 'x', use: 'castle', color: '#000000' })).toBe(false);
     expect(setRoomOverrides([{ id: 'x', use: 'castle', color: '#000000' }]).apply(doc)).toBe(doc);
     expect('roomOverrides' in setRoomOverrides([]).apply(doc)).toBe(false);
+  });
+
+  it('walls by their phase in a renovation: none until one has a phase, then every wall by its own; the file keeps it', () => {
+    const wall = (id: string, phase?: 'existing' | 'demolish') => ({ id, levelId: 'lvl_ground', wallTypeId: 'wt_masonry15', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline' as const, ...(phase ? { phase } : {}) });
+    const plain = { ...newDocument(), walls: [wall('wall_a'), wall('wall_b')] };
+    expect(wallPhases(plain).size).toBe(0);
+    const reform = { ...plain, walls: [wall('wall_a', 'demolish'), wall('wall_b'), wall('wall_c', 'existing')] };
+    expect([...wallPhases(reform)]).toEqual([
+      ['wall_a', 'demolish'],
+      ['wall_b', 'new'],
+      ['wall_c', 'existing'],
+    ]);
+    const r = readProject(writeProject(reform));
+    expect(r.ok && r.doc.walls.map((w) => w.phase ?? 'new')).toEqual(['demolish', 'new', 'existing']);
+    // A phase the app does not know leaves the wall out, said.
+    const bad = readProject(writeProject({ ...reform, walls: [...reform.walls, { ...wall('wall_d'), phase: 'moved' as never }] }));
+    expect(bad.ok && bad.doc.walls.length).toBe(3);
   });
 });

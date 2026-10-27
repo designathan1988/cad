@@ -185,6 +185,8 @@ export class PlanView {
   drawing: DrawingSettings = DEFAULT_DRAWING;
   /** Graphic overrides: walls of a type filled with a colour (app/layer-sets.ts); empty when off. */
   overrides: ReadonlyMap<string, string> = new Map();
+  /** The walls' phases in a renovation (app/layer-sets.ts: wallPhases), each drawn in its token's colour; empty when off. */
+  phases: ReadonlyMap<string, 'new' | 'existing' | 'demolish'> = new Map();
   /** Graphic overrides of rooms: a use filled with a colour (app/layer-sets.ts); empty when off. */
   roomOverrides: ReadonlyMap<string, string> = new Map();
   /**
@@ -439,7 +441,13 @@ export class PlanView {
     // And only where the scale draws them (1:50 and larger): at 1:100 a wall is its outline, filled.
     const detail = this.detail === 'fine' && (this.printing !== null || byLayers(normal.filter((s) => s.layers.length > 0 && s.plan === 'cut').map(thick), this.scale));
     // An overridden wall is its colour alone: no layers, no hatches.
-    const layered = (s: (typeof solids)[number]) => detail && s.layers.length > 0 && !this.overrides.has(s.wall.wallTypeId);
+    // A wall's own id (an arc's segments are "id#k", geometry/arc.ts) and its phase's colour, if phases are drawn.
+    const phaseOf = (s: (typeof solids)[number]) => this.phases.get(s.wall.id.split('#')[0]!);
+    const phaseColour = (s: (typeof solids)[number]) => {
+      const p = phaseOf(s);
+      return p ? color(`--phase-${p}`) : undefined;
+    };
+    const layered = (s: (typeof solids)[number]) => detail && s.layers.length > 0 && !this.overrides.has(s.wall.wallTypeId) && !phaseOf(s);
     // Pieces of one colour are filled as one path: the canvas covers a path as a whole, so where two
     // of them meet (a core through an L's mitre) no antialiased seam lets the outline under them show.
     const shadeBy = Number(color('--material-shade')) || 1;
@@ -451,7 +459,7 @@ export class PlanView {
         const byLayer = colour === null && layered(s);
         for (const p of s.pieces) {
           const m = byLayer ? s.materials[p.layerIndex] : undefined;
-          const c = colour ?? this.overrides.get(s.wall.wallTypeId) ?? (m ? (m.cut === 'none' ? color('--canvas') : shade(m.color, shadeBy)) : color('--wall-fill'));
+          const c = colour ?? phaseColour(s) ?? this.overrides.get(s.wall.wallTypeId) ?? (m ? (m.cut === 'none' ? color('--canvas') : shade(m.color, shadeBy)) : color('--wall-fill'));
           const poly: Polys[number] = [[...p.polygon], s.wall];
           byColour.set(c, [...(byColour.get(c) ?? []), poly]);
           if (m) byPattern.set(m.cut, [...(byPattern.get(m.cut) ?? []), poly]);

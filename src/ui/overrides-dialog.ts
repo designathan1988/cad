@@ -98,6 +98,9 @@ export function showOverrides(app: App): void {
         ...(roomRows.length ? roomRows : [el('p', { class: 'mat-note' }, t('ovr.roomsEmpty'))]),
         addRoom,
         el('p', { class: 'mat-note' }, t('ovr.roomsNote')),
+        // The walls' phases in a renovation (the wall panel's "Phase"), drawn while the overrides are on.
+        el('h3', {}, t('ovr.phases')),
+        el('p', { class: 'mat-note' }, t(app.store.get().walls.some((w) => w.phase) ? 'ovr.phasesOn' : 'ovr.phasesNone')),
       ),
       el('div', { class: 'actions' }, on, el('span', { class: 'spacer' }), done),
     );

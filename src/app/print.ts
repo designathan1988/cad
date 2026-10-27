@@ -7,7 +7,7 @@
 // scale bar along the bottom. As a PDF of one page (io/pdf.ts).
 
 import { roomTagText } from './room-tag';
-import { overrideColours, roomOverrideColours } from './layer-sets';
+import { overrideColours, wallPhases, roomOverrideColours } from './layer-sets';
 import { drawingOf, type Doc } from './document';
 import { boundsOf, deriveGeometry, type DerivedGeometry, hideCategories } from './geometry';
 import type { App } from './app';
@@ -113,6 +113,7 @@ export function planCanvas(app: App, f: PlanFrame, dpi: number): { readonly canv
   view.center = f.center;
   view.drawing = drawingOf(doc);
   view.overrides = app.ui.overridesOn ? overrideColours(doc) : new Map();
+  view.phases = app.ui.overridesOn ? wallPhases(doc) : new Map();
   view.roomOverrides = app.ui.overridesOn ? roomOverrideColours(doc) : new Map();
   withPaperColours((color) => {
     view.printing = { w, h, ratio: (unitMm * dpi) / 25.4, den: f.den, color };

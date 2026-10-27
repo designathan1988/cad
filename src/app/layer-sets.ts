@@ -52,6 +52,15 @@ export const setRoomOverrides = (overrides: readonly RoomOverride[]): Command<Do
 /** The colour rooms of each use are filled with in plan, when the overrides are on. */
 export const roomOverrideColours = (doc: Pick<Doc, 'roomOverrides'>): ReadonlyMap<string, string> => new Map((doc.roomOverrides ?? []).map((o) => [o.use, o.color]));
 
+/**
+ * The walls' phases in a renovation, for the overrides (plan-view.ts: a colour token each): once a wall has
+ * one, every wall is drawn by its own (new ones, to be built, in theirs); none when no wall has a phase.
+ */
+export function wallPhases(doc: Pick<Doc, 'walls'>): ReadonlyMap<string, 'new' | 'existing' | 'demolish'> {
+  if (!doc.walls.some((w) => w.phase)) return new Map();
+  return new Map(doc.walls.map((w) => [w.id, w.phase ?? 'new']));
+}
+
 export const isCategoryList = (x: unknown): x is Category[] => Array.isArray(x) && x.every((c) => (CATEGORIES as readonly unknown[]).includes(c));
 
 export const isLayerSet = (x: unknown): x is LayerSet => {

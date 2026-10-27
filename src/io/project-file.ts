@@ -180,6 +180,7 @@ export const isWall = (w: unknown): w is DocWall =>
   (w.bulge === undefined || finite(w.bulge)) &&
   isTop(w.top) &&
   (w.baseOffset === undefined || finite(w.baseOffset)) &&
+  (w.phase === undefined || w.phase === 'existing' || w.phase === 'demolish') &&
   (w.joins === undefined || (isObject(w.joins) && [w.joins.start, w.joins.end].every((j) => j === undefined || ['off', 'through', 'stop', 'miter', 'square'].includes(j as string))));
 
 const isRule = (r: unknown): boolean => {
