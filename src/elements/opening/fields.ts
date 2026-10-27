@@ -165,7 +165,17 @@ export function positionFields(doc: Doc, one: OpeningSolid, placed: ReadonlyMap<
       get: (x) => (hasDistance(x.opening.rule) ? x.opening.rule.distance - baseOf(x) : 0),
       set: (v) => hasDistance(rule) && act.update([o.id], { rule: { ...rule, distance: baseOf(one) + v } }),
     },
-    { id: 'jambs', label: 'panel.jambs', kind: 'readout', text: (xs) => `${lengthNum(xs[0]!.start)} – ${lengthText(xs[0]!.end)}` },
+    // From the same end as the distance above: measured from the wall's end, they read from there too (from
+    // its start they showed 9,28 – 10,18 m beside a distance of 0,55 m).
+    {
+      id: 'jambs',
+      label: 'panel.jambs',
+      kind: 'readout',
+      text: (xs) => {
+        const x = xs[0]!;
+        return x.opening.rule.kind === 'fromEnd' ? `${lengthNum(length - x.end)} – ${lengthText(length - x.start)}` : `${lengthNum(x.start)} – ${lengthText(x.end)}`;
+      },
+    },
     // In the middle of its room's stretch of wall: between the faces of the walls beside it (the
     // wall's ends when none), measured from the start from then on.
     {
