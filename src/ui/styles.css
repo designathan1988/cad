@@ -72,6 +72,7 @@
   --dialog-top: min(10vh, 96px);
   --types-list-w: 220px;
   --thumb-sm: 36px;
+  --thumb-lg: 72px;
   --field-min-w: 160px;
   --tour-w: 320px;
   --browser-w: 260px;
@@ -2583,6 +2584,21 @@ button.project-name:hover {
   gap: var(--sp-1);
   font-size: var(--fs-sm);
   color: var(--text-2);
+}
+/* The office's logo in the lot dialog: small, beside its buttons. */
+.lot-logo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.lot-logo img {
+  max-width: var(--types-list-w);
+  max-height: var(--thumb-lg);
+  padding: var(--sp-1);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--paper);
 }
 /* The design rain over the rain table: the place, the return and the number side by side, each its own width. */
 .services-rain {

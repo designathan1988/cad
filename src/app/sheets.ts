@@ -13,6 +13,7 @@ import { schedule, type ScheduleKind } from './schedules';
 import { modelSolids, paintSection, sectionDrawing, type SectionDrawing, type Solid3 } from './section-drawing';
 import { drawingOf } from './document';
 import { lotOf } from './lot';
+import { logoImage, logoReady } from './logo-image';
 import { SCALES, scaleFactor } from '../elements/drawing/schema';
 import type { SectionMark } from '../elements/section/schema';
 import { sheetsOf } from '../elements/sheet/commands';
@@ -210,8 +211,10 @@ export const viewFrame = (app: App, v: Viewport) => frameOf(v, v.kind === 'sched
  * The sheet on a canvas its paper's size at `dpi`: its border, its views, its title block. `page`: its
  * place in the set (1 of 3).
  */
-export function sheetCanvas(app: App, s: Sheet, dpi: number, page: { readonly n: number; readonly of: number }): HTMLCanvasElement {
+export function sheetCanvas(app: App, s: Sheet, dpi: number, page: { readonly n: number; readonly of: number }, logoLoaded?: () => void): HTMLCanvasElement {
   const doc = app.store.get();
+  // The office's logo, once decoded (logo-image.ts); the caller draws again when it is.
+  const logo = logoImage(lotOf(doc).logo, logoLoaded);
   const { w, h } = sheetSize(s);
   const k = dpi / 25.4;
   const canvas = document.createElement('canvas');
@@ -271,7 +274,7 @@ export function sheetCanvas(app: App, s: Sheet, dpi: number, page: { readonly n:
       ctx.stroke();
       ctx.restore();
     }
-    titleBlock(ctx, doc, s, w, h, page, ink, family);
+    titleBlock(ctx, doc, s, w, h, page, ink, family, logo);
   });
   return canvas;
 }
@@ -310,7 +313,7 @@ function northArrow(ctx: CanvasRenderingContext2D, c: Point2, ink: string, famil
 }
 
 /** The border and the title block in the bottom right corner. */
-function titleBlock(ctx: CanvasRenderingContext2D, doc: Doc, s: Sheet, w: number, h: number, page: { n: number; of: number }, ink: string, family: string): void {
+function titleBlock(ctx: CanvasRenderingContext2D, doc: Doc, s: Sheet, w: number, h: number, page: { n: number; of: number }, ink: string, family: string, logo: HTMLImageElement | null): void {
   const m = SHEET_MARGIN;
   ctx.save();
   ctx.strokeStyle = ink;
@@ -378,24 +381,44 @@ function titleBlock(ctx: CanvasRenderingContext2D, doc: Doc, s: Sheet, w: number
   ] as const;
   // As wide as the paper leaves beside the title block (none on an upright A4).
   const bw = Math.min(OFFICE_W, x0 - m);
-  if (rows.some(([, v]) => v) && bw >= 40) {
+  const named = rows.some(([, v]) => v);
+  if ((named || logo) && bw >= 40) {
     const bx = x0 - bw;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(bx, y0, bw, TITLE_H);
     ctx.fillStyle = ink;
     ctx.lineWidth = 0.35;
     ctx.strokeRect(bx, y0, bw, TITLE_H);
-    ctx.lineWidth = 0.18;
-    ctx.beginPath();
-    for (const k of [1, 2]) {
-      ctx.moveTo(bx, y0 + rowH * k);
-      ctx.lineTo(x0, y0 + rowH * k);
+    // The logo in a square at the block's left (the whole block without names), kept in its proportions.
+    const lw = logo ? (named ? Math.min(TITLE_H, bw * 0.4) : bw) : 0;
+    if (logo) {
+      const room = { w: lw - 4, h: TITLE_H - 4 };
+      const k = Math.min(room.w / logo.naturalWidth, room.h / logo.naturalHeight);
+      const iw = logo.naturalWidth * k;
+      const ih = logo.naturalHeight * k;
+      ctx.drawImage(logo, bx + 2 + (room.w - iw) / 2, y0 + 2 + (room.h - ih) / 2, iw, ih);
+      if (named) {
+        ctx.lineWidth = 0.18;
+        ctx.beginPath();
+        ctx.moveTo(bx + lw, y0);
+        ctx.lineTo(bx + lw, y0 + TITLE_H);
+        ctx.stroke();
+      }
     }
-    ctx.stroke();
-    rows.forEach(([name, value], i) => {
-      label(name, bx + 3, y0 + rowH * i + 3.5);
-      fit(value || '—', bx + 3, y0 + rowH * (i + 1) - 2.2, TEXT.cell + 0.5, '600', bw - 6);
-    });
+    if (named) {
+      const tx = bx + lw;
+      ctx.lineWidth = 0.18;
+      ctx.beginPath();
+      for (const k of [1, 2]) {
+        ctx.moveTo(tx, y0 + rowH * k);
+        ctx.lineTo(x0, y0 + rowH * k);
+      }
+      ctx.stroke();
+      rows.forEach(([name, value], i) => {
+        label(name, tx + 3, y0 + rowH * i + 3.5);
+        fit(value || '—', tx + 3, y0 + rowH * (i + 1) - 2.2, TEXT.cell + 0.5, '600', bw - lw - 6);
+      });
+    }
   }
   ctx.restore();
 }
@@ -417,6 +440,8 @@ export async function sheetsPdf(app: App, only?: string): Promise<{ pdf: Uint8Ar
   const all = sheetsOf(app.store.get());
   const chosen = only ? all.filter((s) => s.id === only) : all;
   if (chosen.length === 0) return null;
+  // The logo decoded before the pages are drawn; one that cannot be is left out, and said.
+  if (!(await logoReady(lotOf(app.store.get()).logo))) app.toast(t('lot.logoBad'));
   const pages = [];
   for (const s of chosen) {
     const canvas = sheetCanvas(app, s, sheetDpi(s.paper), { n: all.indexOf(s) + 1, of: all.length });

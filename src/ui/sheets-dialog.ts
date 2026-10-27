@@ -155,7 +155,7 @@ export function showSheets(app: App, first?: string): void {
       // The page as it prints, small, with the view picked outlined; a view dragged on it moves.
       const size = sheetSize(sheet);
       const dpi = (PREVIEW_PX / size.w) * 25.4;
-      const page = sheetCanvas(app, sheet, dpi, { n: all.indexOf(sheet) + 1, of: all.length });
+      const page = sheetCanvas(app, sheet, dpi, { n: all.indexOf(sheet) + 1, of: all.length }, () => dialog.redraw());
       page.className = 'sheet-preview';
       page.setAttribute('role', 'img');
       page.setAttribute('aria-label', t('sheet.preview', { number: sheet.number }));

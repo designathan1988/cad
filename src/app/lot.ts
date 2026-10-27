@@ -40,7 +40,13 @@ export interface Lot {
   readonly responsible?: string;
   readonly license?: string;
   readonly record?: string;
+  /** The office's logo, drawn in the title block: a PNG or JPEG as a data URL, reduced (app/logo-image.ts). */
+  readonly logo?: string;
 }
+
+/** The largest logo kept (characters of its data URL): about 450 kB of picture. */
+export const LOGO_MAX = 600_000;
+export const isLogo = (v: unknown): v is string => typeof v === 'string' && v.length <= LOGO_MAX && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+=*$/.test(v);
 
 /** The title block's fields of the lot: who it is for and who answers for it. */
 export const OFFICE_FIELDS = ['owner', 'firm', 'responsible', 'license', 'record'] as const;
@@ -59,7 +65,8 @@ export const isLot = (l: unknown): l is Lot => {
     Number.isInteger(x.frontEdge) &&
     x.frontEdge >= 0 &&
     ['area', 'maxOccupancy', 'maxFloorRatio', 'minPermeability', 'front', 'side', 'back', 'maxHeight'].every((k) => opt(x[k])) &&
-    OFFICE_FIELDS.every((k) => x[k] === undefined || text(x[k]))
+    OFFICE_FIELDS.every((k) => x[k] === undefined || text(x[k])) &&
+    (x.logo === undefined || isLogo(x.logo))
   );
 };
 

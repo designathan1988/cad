@@ -5,7 +5,8 @@
 
 import type { App } from '../app/app';
 import { areasTable } from '../app/documents';
-import { type Lot, lotOf, OFFICE_FIELDS } from '../app/lot';
+import { isLogo, type Lot, lotOf, OFFICE_FIELDS } from '../app/lot';
+import { shrinkLogo } from '../app/logo-image';
 import { lotReport } from '../app/lot-areas';
 import type { Command } from '../core/store';
 import type { Doc } from '../app/document';
@@ -15,7 +16,7 @@ import { openProjectDialog } from './dialog';
 import { type MessageKey, num, t } from './i18n';
 
 /** The lot changed: the project takes its own lot the first time. */
-export const setLot = (patch: Partial<Lot>): Command<Doc> => ({
+export const setLot = (patch: { readonly [K in keyof Lot]?: Lot[K] | undefined }): Command<Doc> => ({
   label: 'cmd.setLot',
   apply: (doc) => {
     const lot = lotOf(doc);
@@ -109,6 +110,29 @@ export function showLot(app: App): void {
       text('license', 'lot.license'),
       text('record', 'lot.record'),
     );
+    // The office's logo for the title block: a picture chosen, reduced to fit; shown small; taken out.
+    const pick = el('input', { type: 'file', accept: 'image/png,image/jpeg', hidden: '' });
+    pick.addEventListener('change', () => {
+      const file = pick.files?.[0];
+      pick.value = '';
+      if (!file) return;
+      void shrinkLogo(file).then(
+        (url) => (isLogo(url) ? app.store.dispatch(setLot({ logo: url })) : app.toast(t('lot.logoBig'))),
+        () => app.toast(t('lot.logoBad')),
+      );
+    });
+    const chooseLogo = el('button', { type: 'button', class: 'icon-btn text-btn' }, t(lot.logo ? 'lot.logoChange' : 'lot.logoChoose'));
+    chooseLogo.dataset.focus = 'logo';
+    chooseLogo.addEventListener('click', () => pick.click());
+    const dropLogo = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('lot.logoRemove'));
+    dropLogo.dataset.focus = 'logoRemove';
+    dropLogo.addEventListener('click', () => app.store.dispatch(setLot({ logo: undefined })));
+    const logo = el(
+      'div',
+      { class: 'lot-row' },
+      el('span', {}, t('lot.logo')),
+      el('div', { class: 'lot-logo' }, ...(lot.logo ? [el('img', { src: lot.logo, alt: t('lot.logo') }), chooseLogo, dropLogo] : [chooseLogo]), pick),
+    );
     const table = el('div', { class: 'lot-areas' });
     table.innerHTML = areasTable(doc, lotReport(doc, app.geometry));
     const closeBtn = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
@@ -118,7 +142,7 @@ export function showLot(app: App): void {
       'div',
       { class: 'dialog dialog-wide', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('lot.title') },
       el('h2', {}, t('lot.title')),
-      el('div', { class: 'lot-body' }, el('h3', {}, t('lot.where')), where, el('h3', {}, t('lot.office')), el('p', { class: 'tour-empty' }, t('lot.officeNote')), office, el('h3', {}, t('lot.params')), el('p', { class: 'tour-empty' }, t('lot.paramsNote')), zone, front, el('h3', {}, t('areas.title')), table),
+      el('div', { class: 'lot-body' }, el('h3', {}, t('lot.where')), where, el('h3', {}, t('lot.office')), el('p', { class: 'tour-empty' }, t('lot.officeNote')), office, logo, el('h3', {}, t('lot.params')), el('p', { class: 'tour-empty' }, t('lot.paramsNote')), zone, front, el('h3', {}, t('areas.title')), table),
       el('div', { class: 'actions' }, el('span', { class: 'spacer' }), closeBtn),
     );
   };
