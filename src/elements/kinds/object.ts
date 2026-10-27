@@ -8,6 +8,7 @@ import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Material } from '../material/schema';
+import { ARC_SAG } from '../../core/tolerance';
 import type { Doc } from '../../app/document';
 import { insideRing } from '../room/derive';
 import type { BaseGeometry, ElementKind, KindSolid } from '../contract';
@@ -229,6 +230,18 @@ export function creaseEdges(geo: THREE.BufferGeometry, angle = 20): THREE.Buffer
   return new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
 }
 
+/**
+ * How many sides a round piece is drawn with: as many as keep its faces within ARC_SAG of the true curve
+ * (as a wall's arc is), from 8 for a pin to 64 for a wheel. A fixed 24 drew a 3 mm hook as finely as a
+ * 60 cm wheel, and the wheel visibly faceted.
+ */
+export function roundSides(r: number): number {
+  if (!(r > ARC_SAG)) return 8;
+  // A multiple of four: a vertex on each axis, so the piece keeps its full size across and along.
+  const n = Math.ceil(Math.PI / Math.acos(1 - ARC_SAG / r) / 4) * 4;
+  return Math.max(8, Math.min(64, n));
+}
+
 /** A piece's geometry where it is, in three.js's axes: plan x, y and height z are x, −z and y; a turn in
  * plan (counter-clockwise) is one about y. For the 3D, the GLB and the definition editor alike. */
 export function pieceGeometry(piece: Piece): THREE.BufferGeometry {
@@ -238,7 +251,7 @@ export function pieceGeometry(piece: Piece): THREE.BufferGeometry {
     const pts = piece.profile.map((q) => new THREE.Vector2(q.r, q.z));
     if (pts[0]!.x > 1e-6) pts.unshift(new THREE.Vector2(0, pts[0]!.y));
     if (pts.at(-1)!.x > 1e-6) pts.push(new THREE.Vector2(0, pts.at(-1)!.y));
-    const g = new THREE.LatheGeometry(pts, 32);
+    const g = new THREE.LatheGeometry(pts, roundSides(piece.r));
     g.translate(piece.cx, piece.z, -piece.cy);
     return g;
   }
@@ -255,14 +268,15 @@ export function pieceGeometry(piece: Piece): THREE.BufferGeometry {
       ? meshGeometry(piece)
       : piece.kind === 'box'
         ? piece.round > 1e-4
-          ? new RoundedBoxGeometry(piece.w, piece.h, piece.d, 3, piece.round)
+          ? new RoundedBoxGeometry(piece.w, piece.h, piece.d, piece.round < 0.01 ? 2 : 3, piece.round)
           : new THREE.BoxGeometry(piece.w, piece.h, piece.d)
         : piece.kind === 'sphere'
-          ? new THREE.SphereGeometry(1, 28, 18).scale(piece.r, piece.h / 2, piece.r)
-          : new THREE.CylinderGeometry(piece.r2, piece.r, piece.h, 24);
+          ? new THREE.SphereGeometry(1, roundSides(Math.max(piece.r, piece.h / 2)), Math.max(6, roundSides(Math.max(piece.r, piece.h / 2)) / 2)).scale(piece.r, piece.h / 2, piece.r)
+          : new THREE.CylinderGeometry(piece.r2, piece.r, piece.h, roundSides(Math.max(piece.r, piece.r2)));
   if (piece.kind === 'sphere' && piece.ry !== undefined) {
     // An ellipsoid: r along its x, ry along its y (three.js's −z), h tall; leaning and turned about its base's centre.
-    const g = new THREE.SphereGeometry(1, 28, 18).scale(piece.r, piece.h / 2, piece.ry);
+    const n = roundSides(Math.max(piece.r, piece.ry, piece.h / 2));
+    const g = new THREE.SphereGeometry(1, n, Math.max(6, n / 2)).scale(piece.r, piece.h / 2, piece.ry);
     g.translate(0, piece.h / 2, 0);
     g.rotateX(-(piece.tilt ?? 0));
     g.rotateZ(-(piece.roll ?? 0));
