@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { SEE_THROUGH } from '../elements/material/schema';
+import { previewMesh } from '../render/pattern-texture';
 import type { Doc } from '../app/document';
 import { cutGeometries } from '../elements/kinds/object';
 import { evaluateObject } from '../elements/object/evaluate';
@@ -51,7 +52,7 @@ export function objectSnapshot(def: ObjectDefinition, doc: Doc, w: number, h: nu
   for (const { piece: p, geometry } of cutGeometries(ev.pieces)) {
     // Glass seen through, as in the 3D view (scene-3d.ts).
     const see = SEE_THROUGH[p.material.id];
-    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: p.material.color, roughness: p.material.roughness, metalness: p.material.metalness, transparent: see !== undefined, opacity: see ?? 1 }));
+    const mesh = previewMesh(geometry, p.material, see);
     s.group.add(mesh);
     box.expandByObject(mesh);
   }

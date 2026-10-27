@@ -87,7 +87,6 @@ function grain(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h
   ctx.restore();
 }
 
-/** The pattern as a repeating texture, in sRGB, its period in metres. */
 /** A number in [0, 1) from n and k, the same every time (a slab's veins drawn alike on each repaint). */
 const hash = (n: number, k: number): number => {
   const x = Math.sin(n * 127.1 + k * 311.7) * 43758.5453;
@@ -144,6 +143,7 @@ function speckles(ctx: CanvasRenderingContext2D, x: number, y: number, w: number
   }
 }
 
+/** The pattern as a repeating texture, in sRGB, its period in metres. */
 export function patternTexture(p: SurfacePattern, color: string, anisotropy: number): { readonly texture: THREE.CanvasTexture; readonly period: THREE.Vector2 } {
   const { canvas, period } = paintPattern(p, color);
   const texture = new THREE.CanvasTexture(canvas);
@@ -152,4 +152,60 @@ export function patternTexture(p: SurfacePattern, color: string, anisotropy: num
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = anisotropy;
   return { texture, period: new THREE.Vector2(period.u, period.v) };
+}
+
+/**
+ * Texture coordinates for a pattern on a geometry already in the world, as the 3D view's patterned shader
+ * lays it (scene-3d.ts): a face looking up or down in plan, one looking sideways along its length and up;
+ * over the pattern's period (m), turned by its angle (radians). Made flat (each triangle its own corners)
+ * so a face takes its own direction.
+ */
+export function patternUvAt(g: THREE.BufferGeometry, period: THREE.Vector2, angle: number): THREE.BufferGeometry {
+  const flat = g.index ? g.toNonIndexed() : g;
+  if (flat !== g) g.dispose();
+  const pos = flat.attributes.position as THREE.BufferAttribute;
+  const uv = new Float32Array(pos.count * 2);
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const n = new THREE.Vector3();
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  for (let t = 0; t + 2 < pos.count; t += 3) {
+    a.fromBufferAttribute(pos, t);
+    b.fromBufferAttribute(pos, t + 1);
+    c.fromBufferAttribute(pos, t + 2);
+    n.subVectors(b, a).cross(c.clone().sub(a));
+    const ax = Math.abs(n.x);
+    const ay = Math.abs(n.y);
+    const az = Math.abs(n.z);
+    for (let k = 0; k < 3; k++) {
+      const v = k === 0 ? a : k === 1 ? b : c;
+      const [x, y] = ay >= Math.max(ax, az) ? [v.x, -v.z] : ax >= az ? [-v.z, v.y] : [v.x, v.y];
+      uv[(t + k) * 2] = (cos * x + sin * y) / period.x;
+      uv[(t + k) * 2 + 1] = (-sin * x + cos * y) / period.y;
+    }
+  }
+  flat.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return flat;
+}
+
+/** Textures painted for the previews, by pattern and colour: the dialog's redraws paint each once. */
+const previewTextures = new Map<string, { readonly texture: THREE.CanvasTexture; readonly period: THREE.Vector2 }>();
+
+/**
+ * A piece's mesh as the previews draw it (the objects dialog, the definition editor): its material's colour,
+ * finish and pattern (laid as the 3D view lays it), glass and the like seen through.
+ */
+export function previewMesh(geometry: THREE.BufferGeometry, m: { readonly color: string; readonly roughness: number; readonly metalness: number; readonly pattern?: SurfacePattern }, opacity: number | undefined): THREE.Mesh {
+  const see = { transparent: opacity !== undefined, opacity: opacity ?? 1 };
+  if (!m.pattern) return new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: m.color, roughness: m.roughness, metalness: m.metalness, ...see }));
+  const key = JSON.stringify([m.pattern, m.color]);
+  let t = previewTextures.get(key);
+  if (!t) {
+    t = patternTexture(m.pattern, m.color, 4);
+    previewTextures.set(key, t);
+  }
+  const g = patternUvAt(geometry, t.period, (m.pattern.angle * Math.PI) / 180);
+  return new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: t.texture, roughness: m.roughness, metalness: m.metalness, ...see }));
 }

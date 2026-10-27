@@ -5,6 +5,8 @@
 // as one types. Beside them a live 3D preview turned by dragging, sliders that flex each parameter (the
 // Revit test: does it still hold?), and what does not work out.
 
+import { previewMesh } from '../render/pattern-texture';
+import { SEE_THROUGH } from '../elements/material/schema';
 import { creaseEdges, cutGeometries, pieceGeometry } from '../elements/kinds/object';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -572,7 +574,8 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
       // The solid parts with the voids taken out, and each void a faint ghost to place it by.
       const drawn = [...cutGeometries(ev.pieces), ...ev.pieces.filter((p) => p.cut).map((piece) => ({ piece, geometry: pieceGeometry(piece) }))];
       for (const { piece: p, geometry: g } of drawn) {
-        const mesh = new THREE.Mesh(g, p.cut ? new THREE.MeshStandardMaterial({ color: 0xd04040, transparent: true, opacity: 0.18, depthWrite: false }) : new THREE.MeshStandardMaterial({ color: p.material.color, roughness: p.material.roughness, metalness: p.material.metalness }));
+        // A void a faint red ghost; a part in its material, its pattern laid as the 3D view lays it.
+        const mesh = p.cut ? new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xd04040, transparent: true, opacity: 0.18, depthWrite: false })) : previewMesh(g, p.material, SEE_THROUGH[p.material.id]);
         const edges = new THREE.LineSegments(g.userData.cut ? creaseEdges(g, 30) : new THREE.EdgesGeometry(g, 30), new THREE.LineBasicMaterial({ color: 0x2b2f36, transparent: true, opacity: 0.5 }));
         mesh.add(edges);
         this.group.add(mesh);

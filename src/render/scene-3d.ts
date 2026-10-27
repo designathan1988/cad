@@ -4,7 +4,7 @@
 
 import { creaseEdges } from '../elements/kinds/object';
 import * as THREE from 'three';
-import { patternTexture } from './pattern-texture';
+import { patternTexture, patternUvAt } from './pattern-texture';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -115,34 +115,7 @@ function patterned(x: THREE.MeshStandardMaterial): void {
  * takes its own direction.
  */
 function patternUv(g: THREE.BufferGeometry, u: PatternUniforms): THREE.BufferGeometry {
-  const flat = g.index ? g.toNonIndexed() : g;
-  if (flat !== g) g.dispose();
-  const pos = flat.attributes.position as THREE.BufferAttribute;
-  const uv = new Float32Array(pos.count * 2);
-  const a = new THREE.Vector3();
-  const b = new THREE.Vector3();
-  const c = new THREE.Vector3();
-  const n = new THREE.Vector3();
-  const cos = Math.cos(u.uPatAngle.value);
-  const sin = Math.sin(u.uPatAngle.value);
-  const { x: px, y: py } = u.uPatPeriod.value;
-  for (let t = 0; t + 2 < pos.count; t += 3) {
-    a.fromBufferAttribute(pos, t);
-    b.fromBufferAttribute(pos, t + 1);
-    c.fromBufferAttribute(pos, t + 2);
-    n.subVectors(b, a).cross(c.clone().sub(a));
-    const ax = Math.abs(n.x);
-    const ay = Math.abs(n.y);
-    const az = Math.abs(n.z);
-    for (let k = 0; k < 3; k++) {
-      const v = k === 0 ? a : k === 1 ? b : c;
-      const [x, y] = ay >= Math.max(ax, az) ? [v.x, -v.z] : ax >= az ? [-v.z, v.y] : [v.x, v.y];
-      uv[(t + k) * 2] = (cos * x + sin * y) / px;
-      uv[(t + k) * 2 + 1] = (-sin * x + cos * y) / py;
-    }
-  }
-  flat.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  return flat;
+  return patternUvAt(g, u.uPatPeriod.value, u.uPatAngle.value);
 }
 
 /** A luminaire's point light per lumen: 900 lm give the floor 1.75 m under it about 0.5, a third of the sun. */
