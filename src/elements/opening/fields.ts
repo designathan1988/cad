@@ -14,7 +14,7 @@ import { name, t, type MessageKey } from '../../ui/i18n';
 import { alignCandidates, alignFits, referenceCandidates } from './commands';
 import { fitStyle, leafRange, modelOf, OPENING_MODELS, operationsOf, PANED } from './style';
 import { parseLength } from '../../core/measure';
-import { type AlignEdge, type GroupSpacing, hasDistance, OPENING_DEFAULTS, type Opening, type OpeningGroup, type OpeningGroupId, type OpeningId, type OpeningKind, type OpeningStyle, type Operation, type RuleKind, WINDOW_SCREENS, type WindowScreen } from './schema';
+import { type AlignEdge, type GroupSpacing, hasDistance, OPENING_DEFAULTS, type Opening, type OpeningGroup, type OpeningGroupId, type OpeningId, type OpeningKind, type OpeningStyle, type Operation, type RuleKind, WINDOW_SCREENS, type WindowScreen, DOOR_HANDLES, type DoorHandle, LEAF_DESIGNS, type LeafDesign } from './schema';
 
 export type OpeningSize = { readonly width: number; readonly height: number; readonly sill: number; readonly style?: OpeningStyle | undefined };
 
@@ -396,7 +396,7 @@ const withoutMullions = (s: OpeningStyle): OpeningStyle => {
   return rest;
 };
 
-export function styleFields(selected: readonly OpeningSolid[], update: OpeningPanelActions['update']): Field<OpeningSolid>[] {
+export function styleFields(selected: readonly OpeningSolid[], update: OpeningPanelActions['update'], materials: readonly { readonly id: string; readonly label: string }[] = []): Field<OpeningSolid>[] {
   const ids = selected.map((s) => s.opening.id);
   const kind = selected[0]?.opening.kind ?? 'door';
   const change = (patch: Partial<OpeningStyle>) => update(ids, (o) => (o.style ? { style: fitStyle(o.kind, { ...o.style, ...patch }) } : {}));
@@ -459,6 +459,69 @@ export function styleFields(selected: readonly OpeningSolid[], update: OpeningPa
       get: (x) => (style(x).threshold ? '1' : '0'),
       set: (v) => change({ threshold: v === '1' }),
     },
+    // How far it stands open (kept with it: drawn so in 3D, in renders and exports).
+    { id: 'openAmount', label: 'panel.openAmount', kind: 'number', unit: '%', decimals: 0, min: 0, get: (x) => Math.round((style(x).open ?? 0) * 100), set: (v) => change({ open: Math.max(0, Math.min(1, v / 100)) }) },
+    {
+      // A door leaf's design.
+      id: 'design',
+      label: 'panel.design',
+      kind: 'select',
+      when: () => kind === 'door',
+      options: LEAF_DESIGNS.map((d) => ({ value: d, label: t(`design.${d}` as MessageKey) })),
+      get: (x) => style(x).design ?? (style(x).operation === 'overhead' || style(x).operation === 'roller' ? 'grooves' : 'flush'),
+      set: (v) => change({ design: v as LeafDesign }),
+    },
+    {
+      id: 'handle',
+      label: 'panel.handle',
+      kind: 'select',
+      when: () => kind === 'door',
+      options: DOOR_HANDLES.map((h) => ({ value: h, label: t(`handle.${h}` as MessageKey) })),
+      get: (x) => style(x).handle ?? (['sliding', 'pivot'].includes(style(x).operation) ? 'pull' : ['overhead', 'roller', 'folding'].includes(style(x).operation) ? 'none' : 'lever'),
+      set: (v) => change({ handle: v as DoorHandle }),
+    },
+    {
+      id: 'glazing',
+      label: 'panel.glazing',
+      kind: 'segmented',
+      options: [
+        { value: 'clear', label: t('glazing.clear') },
+        { value: 'frosted', label: t('glazing.frosted') },
+      ],
+      get: (x) => style(x).glazing ?? 'clear',
+      set: (v) => change({ glazing: v as 'clear' | 'frosted' }),
+    },
+    {
+      // Glazing bars dividing each pane: none, or 2 to 6 across and up.
+      id: 'muntins',
+      label: 'panel.muntins',
+      kind: 'select',
+      when: () => kind === 'window',
+      options: [{ value: '0', label: t('screen.none') }, ...[2, 3, 4, 5, 6].map((k) => ({ value: String(k), label: `${k} × ${k}` }))],
+      get: (x) => String(style(x).muntins ?? 0),
+      set: (v) => update(ids, (o) => {
+        if (!o.style) return {};
+        const { muntins: _m, ...rest } = o.style;
+        return { style: fitStyle(o.kind, v === '0' ? rest : { ...rest, muntins: Number(v) }) };
+      }),
+    },
+    ...(materials.length > 0
+      ? (['leafMaterial', 'frameMaterial'] as const).map(
+          (key): Field<OpeningSolid> => ({
+            id: key,
+            label: `panel.${key}`,
+            kind: 'select',
+            options: [{ value: '', label: t('panel.sceneMaterial') }, ...materials.map((m) => ({ value: m.id, label: m.label }))],
+            get: (x) => style(x)[key] ?? '',
+            set: (v) =>
+              update(ids, (o) => {
+                if (!o.style) return {};
+                const { [key]: _old, ...rest } = o.style;
+                return { style: fitStyle(o.kind, v === '' ? rest : { ...rest, [key]: v }) };
+              }),
+          }),
+        )
+      : []),
   ];
 }
 

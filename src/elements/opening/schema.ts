@@ -91,7 +91,25 @@ export interface OpeningStyle {
   readonly mullions?: readonly number[];
   /** A window's transoms (travessas): each above the clear opening's bottom (m); none when absent. */
   readonly transoms?: readonly number[];
+  /** A door leaf's design: flush (lisa), raised panels (almofadada), glazed, half glazed, slats (veneziana), grooves (frisada). */
+  readonly design?: LeafDesign;
+  /** How far it stands open, 0 closed to 1 fully (a swinging leaf 90°, a sliding one pushed aside, a sash raised or tilted). */
+  readonly open?: number;
+  /** A door's handle: a lever, a pull bar, a knob or none; by how it opens when absent. */
+  readonly handle?: DoorHandle;
+  /** The leaves' (sashes') and the frame's materials, of the project's; the scene's when absent. */
+  readonly leafMaterial?: string;
+  readonly frameMaterial?: string;
+  /** The glass: clear or frosted. */
+  readonly glazing?: 'clear' | 'frosted';
+  /** Glazing bars dividing each pane into this many across and up (2 or more); none when absent. */
+  readonly muntins?: number;
 }
+
+export type LeafDesign = 'flush' | 'panels' | 'glazed' | 'halfGlazed' | 'slats' | 'grooves';
+export const LEAF_DESIGNS: readonly LeafDesign[] = ['flush', 'panels', 'glazed', 'halfGlazed', 'slats', 'grooves'];
+export type DoorHandle = 'lever' | 'pull' | 'knob' | 'none';
+export const DOOR_HANDLES: readonly DoorHandle[] = ['lever', 'pull', 'knob', 'none'];
 
 export type WindowScreen = 'shutter' | 'grille';
 export const WINDOW_SCREENS: readonly WindowScreen[] = ['shutter', 'grille'];

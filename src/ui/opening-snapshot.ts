@@ -9,9 +9,11 @@ import { newOpening } from '../elements/opening/schema';
 import type { OpeningModel } from '../elements/opening/style';
 import { prism } from '../render/prisms';
 import { meshSnapshot } from './object-snapshot';
+import { materialIn, SEE_THROUGH } from '../elements/material/schema';
+import { previewMesh } from '../render/pattern-texture';
 
 /** The wall around it: this much beyond each jamb, over the head and its thickness (m). */
-const MARGIN = 0.35;
+const MARGIN = 0.2;
 const THICK = 0.15;
 
 const look = (color: string, roughness: number, metalness = 0, opacity?: number) =>
@@ -24,7 +26,7 @@ export function openingSnapshot(m: OpeningModel, w: number, h: number): string |
   const top = m.sill + m.height;
   const face = THICK / 2;
   const frame = { start: { x: 0, y: 0 }, end: { x: width, y: 0 }, dir: { x: 1, y: 0 }, normal: { x: 0, y: 1 }, faces: [-face, face] as const, region: [] };
-  const opening = newOpening('snapshot', 'wall', m.kind, { kind: 'fromStart', distance: 0 }, { width, height: m.height, sill: m.sill, style: m.style });
+  const opening = newOpening('snapshot', 'wall', m.kind, { kind: 'fromStart', distance: 0 }, { width, height: m.height, sill: m.sill, swing: 'right', style: { ...m.style, open: m.style.open ?? 0.35 } });
   const meshes: THREE.Mesh[] = [];
   const wallTop = top + MARGIN;
   // The wall: a block each side, one over the head, one under a window's sill.
@@ -46,6 +48,13 @@ export function openingSnapshot(m: OpeningModel, w: number, h: number): string |
       const o3 = new THREE.Vector3(origin.x, origin.z, -origin.y);
       const r = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(axis.x, 0, -axis.y).normalize(), angle);
       geo.applyMatrix4(new THREE.Matrix4().makeTranslation(-o3.x, -o3.y, -o3.z)).applyMatrix4(r).applyMatrix4(new THREE.Matrix4().makeTranslation(o3.x, o3.y, o3.z));
+    }
+    // In the model's own materials where it sets them (frosted glass too), else a timber leaf in a white frame.
+    const own = part.role === 'leaf' ? m.style.leafMaterial : part.role === 'frame' ? m.style.frameMaterial : m.style.glazing === 'frosted' ? 'frostedGlass' : undefined;
+    if (own) {
+      const mat = materialIn([], own);
+      meshes.push(previewMesh(geo, mat, SEE_THROUGH[mat.id]));
+      continue;
     }
     const material = part.role === 'glass' ? look('#a9c8d8', 0.05, 0, 0.45) : part.role === 'leaf' ? look(m.kind === 'door' ? '#a06c43' : '#f4f4f2', 0.55) : look('#f4f4f2', 0.5);
     meshes.push(new THREE.Mesh(geo, material));

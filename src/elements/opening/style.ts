@@ -4,7 +4,7 @@
 // plain leaf or pane every file before styles had, drawn exactly as it was.
 
 import { finite, isObject } from '../../core/guards';
-import { DOOR_OPERATIONS, type Opening, type OpeningKind, type OpeningStyle, type Operation, WINDOW_OPERATIONS } from './schema';
+import { DOOR_HANDLES, DOOR_OPERATIONS, LEAF_DESIGNS, type Opening, type OpeningKind, type OpeningStyle, type Operation, WINDOW_OPERATIONS } from './schema';
 
 export interface OpeningModel {
   readonly id: string;
@@ -51,6 +51,26 @@ export const OPENING_MODELS: readonly OpeningModel[] = [
   win('winHopper', 'hopper', 1, 0.6, 0.4, 1.7),
   win('winPivot', 'pivot', 1, 1, 1, 1.1),
   win('winDoubleHung', 'doubleHung', 1, 0.8, 1.4, 0.9),
+  door('doorPanelsOak', 'swing', 1, 0.8, { design: 'panels', leafMaterial: 'oak', frameMaterial: 'oak', casing: 0.06 }),
+  door('doorEntrance', 'swing', 1, 1, { design: 'panels', leafMaterial: 'walnut', frameMaterial: 'walnut', casing: 0.08, transom: 0.4, threshold: true }),
+  door('doorGrooved', 'swing', 1, 0.9, { design: 'grooves', leafMaterial: 'lacquerWhite', handle: 'lever' }),
+  door('doorHalfGlazed', 'swing', 1, 0.8, { design: 'halfGlazed', leafMaterial: 'lacquerSage', frameMaterial: 'lacquerWhite' }),
+  door('doorGlazed', 'swing', 1, 0.8, { design: 'glazed', leafMaterial: 'blackSteel', frameMaterial: 'blackSteel', handle: 'pull', casing: 0 }),
+  door('doorLouvred', 'swing', 1, 0.7, { design: 'slats', leafMaterial: 'pine' }),
+  door('doorDoublePanels', 'double', 2, 1.6, { design: 'panels', leafMaterial: 'oak', frameMaterial: 'oak', casing: 0.07, handle: 'knob' }),
+  door('doorDoubleGlazed', 'double', 2, 1.4, { design: 'glazed', leafMaterial: 'lacquerWhite', frameMaterial: 'lacquerWhite' }),
+  door('doorPivotSlatted', 'pivot', 1, 1.4, { design: 'grooves', leafMaterial: 'walnut', frameMaterial: 'blackSteel', casing: 0, handle: 'pull' }),
+  door('doorBarn', 'sliding', 1, 0.9, { design: 'grooves', leafMaterial: 'oak', casing: 0, handle: 'pull' }),
+  door('doorSlidingGlass', 'sliding', 2, 2, { design: 'glazed', leafMaterial: 'aluminium', frameMaterial: 'aluminium', casing: 0, threshold: true }),
+  door('doorFoldingLouvred', 'folding', 4, 1.6, { design: 'slats', leafMaterial: 'lacquerWhite' }),
+  win('winCasementBars', 'casement', 2, 1.2, 1.2, 1, { muntins: 3, leafMaterial: 'lacquerWhite', frameMaterial: 'lacquerWhite', casing: 0.05 }),
+  win('winCasement4', 'casement', 4, 2, 1.3, 0.9, { leafMaterial: 'oak', frameMaterial: 'oak' }),
+  win('winSlidingShutter', 'sliding', 2, 1.5, 1.2, 1, { screen: 'shutter', leafMaterial: 'aluminium', frameMaterial: 'aluminium' }),
+  win('winSlidingGrille', 'sliding', 2, 1.2, 1, 1.1, { screen: 'grille', leafMaterial: 'lacquerWhite' }),
+  win('winBathFrosted', 'awning', 1, 0.6, 0.6, 1.5, { glazing: 'frosted', leafMaterial: 'aluminium', frameMaterial: 'aluminium' }),
+  win('winFullHeight', 'fixed', 2, 2.4, 2.2, 0.1, { leafMaterial: 'blackSteel', frameMaterial: 'blackSteel' }),
+  win('winSashBars', 'doubleHung', 1, 0.9, 1.5, 0.8, { muntins: 2, leafMaterial: 'lacquerWhite', frameMaterial: 'lacquerWhite', casing: 0.06 }),
+  win('winCornerBand', 'fixed', 3, 3, 0.6, 1.5, { leafMaterial: 'aluminium', frameMaterial: 'aluminium' }),
 ];
 
 export const operationsOf = (kind: OpeningKind): readonly Operation[] => (kind === 'door' ? DOOR_OPERATIONS : WINDOW_OPERATIONS);
@@ -136,7 +156,14 @@ export const isOpeningStyle = (s: unknown): s is OpeningStyle =>
   s.transom >= 0 &&
   typeof s.threshold === 'boolean' &&
   (s.screen === undefined || s.screen === 'shutter' || s.screen === 'grille') &&
-  [s.mullions, s.transoms].every((xs) => xs === undefined || (Array.isArray(xs) && xs.length <= 6 && xs.every((x) => finite(x) && x >= 0)));
+  [s.mullions, s.transoms].every((xs) => xs === undefined || (Array.isArray(xs) && xs.length <= 6 && xs.every((x) => finite(x) && x >= 0))) &&
+  (s.design === undefined || (LEAF_DESIGNS as readonly unknown[]).includes(s.design)) &&
+  (s.open === undefined || (typeof s.open === 'number' && s.open >= 0 && s.open <= 1)) &&
+  (s.handle === undefined || (DOOR_HANDLES as readonly unknown[]).includes(s.handle)) &&
+  (s.leafMaterial === undefined || typeof s.leafMaterial === 'string') &&
+  (s.frameMaterial === undefined || typeof s.frameMaterial === 'string') &&
+  (s.glazing === undefined || s.glazing === 'clear' || s.glazing === 'frosted') &&
+  (s.muntins === undefined || (Number.isInteger(s.muntins) && (s.muntins as number) >= 2 && (s.muntins as number) <= 8));
 
 /** The IFC name of how it opens: IfcDoorTypeOperationEnum for a door, IfcWindowPanelOperationEnum for a window's panes. */
 export function ifcOperation(o: Pick<Opening, 'kind' | 'style' | 'hinge'>): string {

@@ -55,6 +55,8 @@ export interface OpeningSolid extends PlacedOpening {
   /** Absolute heights of the bottom and the head. */
   readonly bottom: number;
   readonly top: number;
+  /** Its leaves', frame's and glass's materials where its style sets them (the project's); the scene's otherwise. */
+  readonly looks?: { readonly leaf?: Material; readonly frame?: Material; readonly glass?: Material };
 }
 
 export interface DerivedGeometry {
@@ -91,7 +93,15 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     const bottom = base + p.opening.sill;
     const top = bottom + p.opening.height;
     const frame = wall && shape && typeof shape !== 'string' ? openingFrame(shape, p.start, p.end) : null;
-    openings.set(p.opening.id, { ...p, frame, bottom, top });
+    const st = p.opening.style;
+    const looks = st && (st.leafMaterial || st.frameMaterial || st.glazing === 'frosted')
+      ? {
+          ...(st.leafMaterial ? { leaf: materialIn(doc.materials, st.leafMaterial) } : {}),
+          ...(st.frameMaterial ? { frame: materialIn(doc.materials, st.frameMaterial) } : {}),
+          ...(st.glazing === 'frosted' ? { glass: materialIn(doc.materials, 'frostedGlass') } : {}),
+        }
+      : undefined;
+    openings.set(p.opening.id, { ...p, frame, bottom, top, ...(looks ? { looks } : {}) });
     // One that does not fit in its wall cuts nothing: it would open the wall past its end and undo the
     // joint there. It is drawn with its warning until it is fixed.
     if (frame && wall && !p.warnings.includes('openingOutside')) cuts.set(wall.id, [...(cuts.get(wall.id) ?? []), { region: frame.region, bottom, top }]);

@@ -2,6 +2,7 @@
 // their fields (fields.ts). It only reads state and sends changes; each change is one command, so
 // one undo step.
 
+import { materialLabel } from '../../ui/i18n';
 import { lengthNum, lengthText } from '../../ui/units';
 import type { Doc } from '../../app/document';
 import type { OpeningSolid } from '../../app/geometry';
@@ -49,7 +50,7 @@ export function openingPanel(
   if (group) nodes.push(fieldsSection(t('panel.group'), true, groupFields(group, placed, act), [group]));
   if (list.length >= 2) nodes.push(fieldsSection(t('panel.arrange'), true, arrangeFields(doc, list, placed, act), list));
   // How they are made, when every one has a make and all are of one kind.
-  if (list.every((o) => o.style) && list.every((o) => o.kind === list[0]!.kind)) nodes.push(fieldsSection(t('panel.make'), true, styleFields(selected, act.update), selected));
+  if (list.every((o) => o.style) && list.every((o) => o.kind === list[0]!.kind)) nodes.push(fieldsSection(t('panel.make'), true, styleFields(selected, act.update, doc.materials.map((m) => ({ id: m.id, label: materialLabel(m) }))), selected));
   // A door's leaf, or a casement window's: the side it opens to and its hinge.
   if (one && (one.opening.kind === 'door' || one.opening.style?.operation === 'casement')) nodes.push(fieldsSection(t('panel.door.leaf'), true, leafFields(one, act.update, rooms), selected));
   const mine = warnings.filter((w) => w.openings.some((id) => ids.includes(id)));

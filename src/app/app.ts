@@ -45,6 +45,7 @@ import { createStore, type Store } from '../core/store';
 import { distance, type Point2 } from '../core/vector';
 import { addOpening, placementProblem, updateOpening } from '../elements/opening/commands';
 import type { OpeningSize } from '../elements/opening/panel';
+import { OPENING_MODELS } from '../elements/opening/style';
 import { isOpeningId, newOpening, OPENING_DEFAULTS, OPENING_PREFIX, type Opening, type OpeningKind } from '../elements/opening/schema';
 import { OPENING_IDLE, openingTransition, type OpeningToolEvent, type OpeningToolState } from '../tools/opening-tool';
 import { MEASURE_IDLE, type MeasureEvent, type MeasureMode, type MeasureState, measureTransition } from '../tools/measure-tool';
@@ -326,7 +327,8 @@ export class App {
       defaults: { wallTypeId: doc.wallTypes[0]!.id, referenceLine: 'centerline', baseOffset: 0, top: { kind: 'level', offset: 0 } },
       wall: IDLE,
       opening: OPENING_IDLE,
-      openingDefaults: { door: { ...OPENING_DEFAULTS.door }, window: { ...OPENING_DEFAULTS.window } },
+      // A new door or window is made with a make (style.ts) so all of it can be changed: a panelled oak door, a two-pane sliding window.
+      openingDefaults: { door: { ...OPENING_DEFAULTS.door, style: OPENING_MODELS.find((m) => m.id === 'doorPanelsOak')!.style }, window: { ...OPENING_DEFAULTS.window, style: OPENING_MODELS.find((m) => m.id === 'winSliding2')!.style } },
       snap: null,
       cursor: null,
       error: null,

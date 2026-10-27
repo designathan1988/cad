@@ -1393,7 +1393,9 @@ export class Scene3D {
     const m = this.materials;
     const shown = state === 'p' ? m.preview : state === 's' ? m.topSel : state === 'i' ? m.invalid : null;
     for (const part of openingParts(o, o.frame!, this.isOpen(o.opening.id))) {
-      const mat = shown ?? (part.role === 'leaf' ? m.leaf : part.role === 'glass' ? m.glass : m.frame);
+      // Its own materials where its style sets them (frosted glass seen through, as the materials' glass is).
+      const own = part.role === 'leaf' ? o.looks?.leaf : part.role === 'glass' ? o.looks?.glass : o.looks?.frame;
+      const mat = shown ?? (own ? this.layerMaterial(own) : part.role === 'leaf' ? m.leaf : part.role === 'glass' ? m.glass : m.frame);
       const geo = prism(part.polygon, part.bottom, part.top);
       if (part.turn) {
         // Tilted about its level axis: three.js's (x, height, −y) for the plan's (x, y, height).
