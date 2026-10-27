@@ -206,6 +206,8 @@ describe('the detailed engines\' inputs', () => {
     // The window on the wall whose side runs along y = 3.925 (the inner face of the north wall).
     const win = idf.slice(idf.indexOf('FenestrationSurface:Detailed'));
     expect(win).toMatch(/3\.925, 2\.2;/);
+    // The zone takes the name the interface gives the room, accents dropped.
+    expect(energyPlusIdf(room, g, 'Casa', () => 'Cômodo')).toMatch(/^Zone,\n {4}\S+ Comodo,/m);
   });
 
   it('Radiance: six surfaces and the glass, the window a seamed hole in its wall; FDS: four walls and the hole', () => {

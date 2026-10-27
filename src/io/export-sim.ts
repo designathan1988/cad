@@ -5,6 +5,7 @@
 // windows as holes). Each is written for the engine to run; none is run here. Pure.
 
 import type { Doc } from '../app/document';
+import type { Room } from '../elements/room/schema';
 import { levelOf } from '../app/document';
 import type { DerivedGeometry } from '../app/geometry';
 import { DEFAULT_SITE } from '../app/sun';
@@ -40,8 +41,12 @@ interface Surface {
   readonly materialId: string;
 }
 
+/** A room's name as the files carry it: the one the interface shows, given by the caller (the stored one by default). */
+export type RoomName = (room: Room) => string;
+const storedName: RoomName = (r) => r.name;
+
 /** The rooms' surfaces: each edge of its outline a wall, its floor and ceiling; windows on their walls. */
-function surfacesOf(doc: Doc, g: DerivedGeometry): { zones: { name: string; roomId: string; height: number; area: number; z: number }[]; surfaces: Surface[] } {
+function surfacesOf(doc: Doc, g: DerivedGeometry, roomName: RoomName): { zones: { name: string; roomId: string; height: number; area: number; z: number }[]; surfaces: Surface[] } {
   const zones: { name: string; roomId: string; height: number; area: number; z: number }[] = [];
   const surfaces: Surface[] = [];
   const windows = exteriorWindows(doc, g);
@@ -53,7 +58,7 @@ function surfacesOf(doc: Doc, g: DerivedGeometry): { zones: { name: string; room
     const level = levelOf(doc, r.levelId);
     const z0 = level?.elevation ?? 0;
     const height = r.height ?? level?.height ?? 2.8;
-    let zone = safe(`${r.number} ${r.name}`);
+    let zone = safe(`${r.number} ${roomName(r)}`);
     while (used.has(zone)) zone += '_';
     used.add(zone);
     zones.push({ name: zone, roomId: r.id, height, area: s.area, z: z0 });
@@ -113,9 +118,9 @@ function surfacesOf(doc: Doc, g: DerivedGeometry): { zones: { name: string; room
 const vertices = (pts: readonly { x: number; y: number; z: number }[], indent = '    ') => pts.map((p, i) => `${indent}${n(p.x)}, ${n(p.y)}, ${n(p.z)}${i === pts.length - 1 ? ';' : ','}`).join('\n');
 
 /** The project as an EnergyPlus input (version 24.1 fields), free-running: the zones' temperatures hour by hour, with a weather file. */
-export function energyPlusIdf(doc: Doc, g: DerivedGeometry, title: string): string {
+export function energyPlusIdf(doc: Doc, g: DerivedGeometry, title: string, roomName: RoomName = storedName): string {
   const site = doc.site ?? DEFAULT_SITE;
-  const { zones, surfaces } = surfacesOf(doc, g);
+  const { zones, surfaces } = surfacesOf(doc, g, roomName);
   const lines: string[] = [];
   const obj = (...fields: string[]) => lines.push(`${fields[0]},\n${fields.slice(1).map((f, i, all) => `    ${f}${i === all.length - 1 ? ';' : ','}`).join('\n')}\n`);
   lines.push(`! ${title}: written by cad2 from the model. Run it with a weather file (EPW) of the place.\n! The walls by their types' layers (NBR 15220-2 physics); slabs as 12 cm of concrete; windows as single clear glass (adopted).\n`);
@@ -154,9 +159,9 @@ export function energyPlusIdf(doc: Doc, g: DerivedGeometry, title: string): stri
 }
 
 /** The rooms' surfaces as a Radiance scene: plastic by each material's colour, the windows as glass. */
-export function radianceScene(doc: Doc, g: DerivedGeometry, title: string): string {
+export function radianceScene(doc: Doc, g: DerivedGeometry, title: string, roomName: RoomName = storedName): string {
   const site = doc.site ?? DEFAULT_SITE;
-  const { surfaces } = surfacesOf(doc, g);
+  const { surfaces } = surfacesOf(doc, g, roomName);
   const out: string[] = [`# ${title}: written by cad2 from the model, metres, z up.`, `# A sky to go with it, at noon of the June solstice there:`, `# !gensky 6 21 12 +s -a ${n(site.latitude, 2)} -o ${n(-site.longitude, 2)} -m ${n(-site.utcOffset * 15, 0)}`, ''];
   const mats = new Set(surfaces.map((s) => s.materialId));
   for (const id of mats) {

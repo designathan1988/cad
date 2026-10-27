@@ -1741,11 +1741,13 @@ export class App {
     const doc = this.store.get();
     const title = doc.name || t('app.untitled');
     const today = new Date().toLocaleDateString(getLang() === 'pt' ? 'pt-BR' : 'en-GB');
+    // A room as the interface names it, with its level's name when there is more than one.
+    const roomName = (r: { name: string; levelId: string }) => (doc.levels.length > 1 ? `${wordsOf(r.name)} ${wordsOf(doc.levels.find((l) => l.id === r.levelId)?.name ?? '')}` : wordsOf(r.name));
     const [ext, type, content] =
       kind === 'idf'
-        ? ['idf', 'text/plain', energyPlusIdf(doc, this.geometry, title)]
+        ? ['idf', 'text/plain', energyPlusIdf(doc, this.geometry, title, roomName)]
         : kind === 'rad'
-          ? ['rad', 'text/plain', radianceScene(doc, this.geometry, title)]
+          ? ['rad', 'text/plain', radianceScene(doc, this.geometry, title, roomName)]
           : kind === 'fds'
             ? ['fds', 'text/plain', fdsInput(doc, this.geometry, title)]
             : ['html', 'text/html', simulationHtml(doc, this.geometry, (id) => this.reportTitle(id), today)];
