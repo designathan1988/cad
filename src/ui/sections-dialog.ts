@@ -10,11 +10,11 @@ import { levelText, sectionCanvas, sectionOf, sectionViewport } from '../app/she
 import { sectionDxf, toCp1252 } from '../io/export-dxf';
 import { newId } from '../core/id';
 import { addViewport, addSheet, sheetsOf } from '../elements/sheet/commands';
-import { nextSheetNumber, SHEET_PREFIX } from '../elements/sheet/schema';
+import { nextSheetNumber, SHEET_PREFIX, type Sheet } from '../elements/sheet/schema';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { name, t } from './i18n';
-import { showSheets } from './sheets-dialog';
+import { freeSpot, showSheets } from './sheets-dialog';
 
 /** The preview's size on screen (px). */
 const PREVIEW_W = 640;
@@ -77,14 +77,20 @@ export function showSections(app: App, first?: string): void {
         const place = el('button', { type: 'button', class: 'btn' }, t('section.place'));
         place.dataset.focus = 'place';
         place.addEventListener('click', () => {
-          // On the first sheet that has room… the last sheet, or a new one when there is none.
+          // On the first sheet with room for it, clear of the views there; on a new sheet when none has.
           const sheets = sheetsOf(doc);
-          let sheet = sheets.at(-1) ?? null;
-          if (!sheet) {
-            sheet = { id: newId(SHEET_PREFIX), number: nextSheetNumber(sheets), name: t(mark.kind === 'section' ? 'section.titleOne' : 'section.elevationOne', { name: mark.name }), paper: 'A3', landscape: true, viewports: [] };
-            app.store.dispatch(addSheet(sheet));
+          const scale = drawingOf(doc).scale;
+          for (const sheet of sheets) {
+            const v = freeSpot(app, sheet, sectionViewport(app, sheet, mark, scale, newId('vp')));
+            if (!v) continue;
+            app.store.dispatch(addViewport(sheet.id, v));
+            close();
+            showSheets(app, sheet.id);
+            return;
           }
-          app.store.dispatch(addViewport(sheet.id, sectionViewport(app, sheet, mark, drawingOf(app.store.get()).scale, newId('vp'))));
+          const base = { paper: 'A3', landscape: true } as const;
+          const sheet: Sheet = { id: newId(SHEET_PREFIX), number: nextSheetNumber(sheets), name: t(mark.kind === 'section' ? 'section.titleOne' : 'section.elevationOne', { name: mark.name }), ...base, viewports: [sectionViewport(app, base, mark, scale, newId('vp'))] };
+          app.store.dispatch(addSheet(sheet));
           close();
           showSheets(app, sheet.id);
         });

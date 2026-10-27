@@ -32,6 +32,11 @@ const row = (label: string, control: HTMLElement, focus: string) => {
  * row by row from its top left, 5 mm apart; where it was when there is none.
  */
 export function placedFree(app: App, sheet: Sheet, v: Viewport): Viewport {
+  return freeSpot(app, sheet, v) ?? v;
+}
+
+/** The view moved to the first place on the sheet where it overlaps no other view; null when there is none. */
+export function freeSpot(app: App, sheet: Sheet, v: Viewport): Viewport | null {
   const area = drawingArea(sheet);
   const gap = 5;
   const taken = sheet.viewports.map((x) => viewFrame(app, x));
@@ -47,7 +52,7 @@ export function placedFree(app: App, sheet: Sheet, v: Viewport): Viewport {
       }
     }
   }
-  return v;
+  return null;
 }
 
 /** A new sheet: the next number, A3 turned, the current level's plan on it at the project's scale. */
