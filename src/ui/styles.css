@@ -1752,14 +1752,32 @@ button.project-name:hover {
   border-bottom: 0;
 }
 /* Wall types: the list of types, and the chosen one's fields and layers beside it. */
+/* Wall types, materials, objects: only the body scrolls, the title and the buttons stay in sight (at
+   880 px the 16 objects pushed Place and Edit below the fold). */
 .types-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   width: min(var(--dialog-w-xl), calc(100vw - 2 * var(--sp-4)));
 }
 .types-body {
   display: grid;
   grid-template-columns: var(--types-list-w) minmax(0, 1fr);
   gap: var(--sp-4);
+  min-height: 0;
+  overflow-y: auto;
   padding: var(--sp-3) var(--sp-4);
+}
+.types-dialog .actions {
+  /* On a phone the seven buttons go on two lines: squeezed on one, "Colocar" read "Colo". */
+  flex-wrap: wrap;
+  row-gap: var(--sp-1);
+  padding-top: var(--sp-3);
+  border-top: var(--line) solid var(--border);
+}
+.types-dialog .actions > button {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .types-list {
   display: flex;
