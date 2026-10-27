@@ -3,6 +3,7 @@
 // step. A command that would leave a material unusable (a colour that is not one, a finish outside 0..1)
 // changes nothing.
 
+import { definitionMaterials } from '../object/materials';
 import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
 import { CUT_PATTERNS, isColor, type Material, type MaterialId } from './schema';
@@ -29,8 +30,16 @@ export const updateMaterial = (id: MaterialId, patch: MaterialPatch): Command<Do
   },
 });
 
-/** How many wall type layers are made of it. */
-export const materialUses = (doc: Doc, id: MaterialId): number => doc.wallTypes.reduce((n, t) => n + t.layers.filter((l) => l.materialId === id).length, 0);
+/**
+ * How many things are made of it: wall type layers, floor layers, rooms' finishes and object
+ * definitions. Counting only the walls' layers showed a floor's tiles or a table's wood as unused,
+ * and let them be deleted.
+ */
+export const materialUses = (doc: Doc, id: MaterialId): number =>
+  doc.wallTypes.reduce((n, t) => n + t.layers.filter((l) => l.materialId === id).length, 0) +
+  doc.floors.reduce((n, f) => n + (f.layers ?? []).filter((l) => l.materialId === id).length, 0) +
+  doc.rooms.reduce((n, r) => n + [r.finishes?.floor, r.finishes?.wall, r.finishes?.ceiling].filter((m) => m === id).length, 0) +
+  doc.definitions.filter((d) => definitionMaterials([d]).has(id)).length;
 
 /** Why a material cannot be deleted: layers use it, or it is the last one. Null when it can be. */
 export function materialDeleteBlocker(doc: Doc, id: MaterialId): 'inUse' | 'last' | 'missing' | null {
