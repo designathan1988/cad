@@ -196,8 +196,12 @@ export class PlanView {
   printing: { readonly w: number; readonly h: number; readonly ratio: number; readonly den: number; readonly color: (name: string) => string } | null = null;
   private readonly ctx: CanvasRenderingContext2D;
 
-  constructor(readonly canvas: HTMLCanvasElement) {
-    const ctx = canvas.getContext('2d');
+  /** `context`: drawn on it instead of the canvas's own (a vector page, io/pdf-canvas.ts). */
+  constructor(
+    readonly canvas: HTMLCanvasElement,
+    context?: CanvasRenderingContext2D,
+  ) {
+    const ctx = context ?? canvas.getContext('2d');
     if (!ctx) throw new Error('2D canvas unavailable');
     this.ctx = ctx;
   }

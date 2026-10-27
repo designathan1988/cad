@@ -16,7 +16,7 @@ import { PAPERS, PEN_UNIT_MM, scaleFactor } from '../elements/drawing/schema';
 import { markPoint, openingMarks } from '../elements/opening/marks';
 import { insideRing } from '../elements/room/derive';
 import { PlanView } from '../render/plan-view';
-import { pdfOfCanvas } from '../io/pdf';
+import { PdfCanvas, pdfOfVectorPages } from '../io/pdf-canvas';
 import type { Point2 } from '../core/vector';
 import { markPrefix, name, t } from '../ui/i18n';
 
@@ -100,12 +100,37 @@ export function planMiddle(app: App, levelId: string): Point2 {
  * plan views (app/sheets.ts): drawn from the model each time, so they follow it.
  */
 export function planCanvas(app: App, f: PlanFrame, dpi: number): { readonly canvas: HTMLCanvasElement; readonly view: PlanView } {
+  const canvas = document.createElement('canvas');
+  const view = new PlanView(canvas);
+  drawPlan(app, f, view, ((PEN_UNIT_MM * scaleFactor(f.den)) * dpi) / 25.4);
+  return { canvas, view };
+}
+
+/**
+ * The plan on a vector page (io/pdf-canvas.ts), in its frame: `pdf`'s map set so the frame's top left is
+ * its origin and a unit a millimetre. Clipped to the frame; its own map's start set there (pushBase).
+ */
+export function planOnPdf(app: App, f: PlanFrame, pdf: PdfCanvas): PlanView {
+  const unitMm = PEN_UNIT_MM * scaleFactor(f.den);
+  pdf.save();
+  pdf.beginPath();
+  pdf.rect(0, 0, f.wMm, f.hMm);
+  pdf.clip();
+  pdf.scale(unitMm, unitMm);
+  pdf.pushBase();
+  const view = new PlanView({ width: 0, height: 0 } as HTMLCanvasElement, pdf as unknown as CanvasRenderingContext2D);
+  drawPlan(app, f, view, 1);
+  pdf.popBase();
+  pdf.restore();
+  return view;
+}
+
+/** The plan drawn by `view` for paper, `ratio` device units a pen unit. */
+function drawPlan(app: App, f: PlanFrame, view: PlanView, ratio: number): void {
   const doc = app.store.get();
   const g = levelPlan(doc, f.levelId, app.ui.hidden);
   // One pen unit on paper (mm): 0.12 mm at 1:100, heavier at a larger scale.
   const unitMm = PEN_UNIT_MM * scaleFactor(f.den);
-  const canvas = document.createElement('canvas');
-  const view = new PlanView(canvas);
   const w = f.wMm / unitMm;
   const h = f.hMm / unitMm;
   // Units a metre: a metre is 1000/den mm on paper.
@@ -116,7 +141,7 @@ export function planCanvas(app: App, f: PlanFrame, dpi: number): { readonly canv
   view.phases = app.ui.overridesOn ? wallPhases(doc) : new Map();
   view.roomOverrides = app.ui.overridesOn ? roomOverrideColours(doc) : new Map();
   withPaperColours((color) => {
-    view.printing = { w, h, ratio: (unitMm * dpi) / 25.4, den: f.den, color };
+    view.printing = { w, h, ratio, den: f.den, color };
     const marks = openingMarks(doc.openings, markPrefix());
     const rooms = [...g.rooms.values()];
     const inRoom = (p: { x: number; y: number }) => rooms.some((r) => r.enclosed && insideRing(r.outline, p));
@@ -133,7 +158,6 @@ export function planCanvas(app: App, f: PlanFrame, dpi: number): { readonly canv
       openingTags: app.ui.openingTags ? [...g.openings.values()].flatMap((o) => (o.frame ? [{ at: markPoint(o.frame, o.opening, 0.25, inRoom), text: marks.get(o.opening.id) ?? '', width: o.opening.width }] : [])) : [],
     });
   });
-  return { canvas, view };
 }
 
 /**
@@ -143,17 +167,35 @@ export function planCanvas(app: App, f: PlanFrame, dpi: number): { readonly canv
 export function printCanvas(app: App, s: PrintSetup, dpi: number): HTMLCanvasElement {
   const doc = app.store.get();
   const paper = paperSize(s);
-  const mid = planMiddle(app, s.levelId);
-  // The drawing area's middle is above the paper's by half the title strip.
-  const { canvas, view } = planCanvas(app, { levelId: s.levelId, den: s.den, wMm: paper.w, hMm: paper.h, center: { x: mid.x, y: mid.y - TITLE_MM / 2 / (1000 / s.den) } }, dpi);
+  const { canvas, view } = planCanvas(app, printFrame(app, s), dpi);
   const unitMm = PEN_UNIT_MM * scaleFactor(s.den);
-  withPaperColours((_c, css) => titleStrip(view, canvas, doc, s, paper.w / unitMm, paper.h / unitMm, css));
+  withPaperColours((_c, css) => titleStrip(view, canvas.getContext('2d')!, doc, s, paper.w / unitMm, paper.h / unitMm, css));
   return canvas;
 }
 
+/** The plan's frame on the paper: all of it, the plan's middle above the paper's by half the title strip. */
+function printFrame(app: App, s: PrintSetup): PlanFrame {
+  const paper = paperSize(s);
+  const mid = planMiddle(app, s.levelId);
+  return { levelId: s.levelId, den: s.den, wMm: paper.w, hMm: paper.h, center: { x: mid.x, y: mid.y - TITLE_MM / 2 / (1000 / s.den) } };
+}
+
+/** The plan printed as a vector page (io/pdf-canvas.ts): what printCanvas draws, as lines and text. */
+export function printPdf(app: App, s: PrintSetup): PdfCanvas {
+  const doc = app.store.get();
+  const paper = paperSize(s);
+  const pdf = new PdfCanvas(paper.w, paper.h);
+  const view = planOnPdf(app, printFrame(app, s), pdf);
+  const unitMm = PEN_UNIT_MM * scaleFactor(s.den);
+  pdf.save();
+  pdf.scale(unitMm, unitMm);
+  withPaperColours((_c, css) => titleStrip(view, pdf as unknown as CanvasRenderingContext2D, doc, s, paper.w / unitMm, paper.h / unitMm, css));
+  pdf.restore();
+  return pdf;
+}
+
 /** Along the bottom: a scale bar (0 to a round length) on the left, the title on the right. */
-function titleStrip(view: PlanView, canvas: HTMLCanvasElement, doc: Doc, s: PrintSetup, w: number, h: number, css: CSSStyleDeclaration): void {
-  const ctx = canvas.getContext('2d')!;
+function titleStrip(view: PlanView, ctx: CanvasRenderingContext2D, doc: Doc, s: PrintSetup, w: number, h: number, css: CSSStyleDeclaration): void {
   const unitMm = PEN_UNIT_MM * scaleFactor(s.den);
   const mm = (v: number) => v / unitMm;
   const ink = css.getPropertyValue('--text').trim() || '#000000';
@@ -194,13 +236,11 @@ function titleStrip(view: PlanView, canvas: HTMLCanvasElement, doc: Doc, s: Prin
   ctx.fillText(t('print.scale', { den: s.den }), w - mm(MARGIN_MM), base - mm(0.5));
 }
 
-/** The plan printed as a PDF, downloaded: 300 dpi on A4 and A3, 200 on A2, 150 on A1 and A0. */
+/** The plan printed as a vector PDF, downloaded. */
 export async function downloadPlanPdf(app: App, s: PrintSetup): Promise<void> {
-  const dpi = s.paper === 'A4' || s.paper === 'A3' ? 300 : s.paper === 'A2' ? 200 : 150;
-  const canvas = printCanvas(app, s, dpi);
-  const paper = paperSize(s);
+  const page = printPdf(app, s);
   const level = app.store.get().levels.find((l) => l.id === s.levelId);
   const title = `${app.store.get().name || t('app.untitled')} · ${level ? name(level.name) : ''} · 1:${s.den}`;
-  const pdf = await pdfOfCanvas(canvas, paper.w, paper.h, title);
+  const pdf = new Blob([(await pdfOfVectorPages([page], title)) as BlobPart], { type: 'application/pdf' });
   app.download(`${app.fileBase()}-${level ? name(level.name) : 'planta'}-1-${s.den}.pdf`, pdf, 'application/pdf');
 }

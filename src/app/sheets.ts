@@ -8,7 +8,7 @@
 import type { App } from './app';
 import type { Doc } from './document';
 import { boundsOf, type DerivedGeometry, deriveGeometry } from './geometry';
-import { levelPlan, planCanvas, planMiddle, withPaperColours } from './print';
+import { levelPlan, planCanvas, planMiddle, planOnPdf, withPaperColours } from './print';
 import { schedule, type ScheduleKind } from './schedules';
 import { modelSolids, paintSection, sectionDrawing, type SectionDrawing, type Solid3 } from './section-drawing';
 import { drawingOf } from './document';
@@ -18,7 +18,7 @@ import { SCALES, scaleFactor } from '../elements/drawing/schema';
 import type { SectionMark } from '../elements/section/schema';
 import { sheetsOf } from '../elements/sheet/commands';
 import { detailRefs, drawingArea, type FramedViewport, frameOf, type PlanViewport, type ScheduleViewport, type SectionViewport, type Sheet, SHEET_MARGIN, sheetSize, TITLE_H, TITLE_W, type Viewport } from '../elements/sheet/schema';
-import { pageOfRgb, pdfOfPages, rgbOfCanvas } from '../io/pdf';
+import { PdfCanvas, pdfOfVectorPages } from '../io/pdf-canvas';
 import { getLang, type MessageKey, name, num, t } from '../ui/i18n';
 import { scheduleNaming, shownCell } from '../ui/schedules-dialog';
 import { lengthUnit } from '../ui/units';
@@ -59,6 +59,12 @@ export function sectionCanvas(app: App, m: SectionMark, f: { den: number; wMm: n
   canvas.height = Math.max(1, Math.round(f.hMm * k));
   const ctx = canvas.getContext('2d')!;
   ctx.scale(k, k);
+  paintSectionView(app, m, f, ctx, k);
+  return canvas;
+}
+
+/** A section or an elevation drawn on `ctx` in its frame (its top left the origin, a unit a millimetre), `k` device pixels a millimetre. */
+function paintSectionView(app: App, m: SectionMark, f: { den: number; wMm: number; hMm: number; center: Point2 }, ctx: CanvasRenderingContext2D, k: number): void {
   const d = sectionOf(app, m);
   const pens = drawingOf(app.store.get()).pens;
   const sf = scaleFactor(f.den);
@@ -82,7 +88,6 @@ export function sectionCanvas(app: App, m: SectionMark, f: { den: number; wMm: n
       roomText: (n, s) => `${n} · ${name(s)}`,
     });
   });
-  return canvas;
 }
 
 /** A schedule's table as texts: its title, its heads, its rows and its totals, and which columns are numbers. */
@@ -224,8 +229,6 @@ export const viewFrame = (app: App, v: Viewport) => frameOf(v, v.kind === 'sched
  */
 export function sheetCanvas(app: App, s: Sheet, dpi: number, page: { readonly n: number; readonly of: number }, logoLoaded?: () => void): HTMLCanvasElement {
   const doc = app.store.get();
-  // The office's logo, once decoded (logo-image.ts); the caller draws again when it is.
-  const logo = logoImage(lotOf(doc).logo, logoLoaded);
   const { w, h } = sheetSize(s);
   const k = dpi / 25.4;
   const canvas = document.createElement('canvas');
@@ -233,30 +236,73 @@ export function sheetCanvas(app: App, s: Sheet, dpi: number, page: { readonly n:
   canvas.height = Math.round(h * k);
   const ctx = canvas.getContext('2d')!;
   ctx.scale(k, k);
+  // Each view drawn on its own canvas at the resolution, then put on the sheet.
+  const images = new Map(
+    s.viewports.map((v) => {
+      if (v.kind === 'plan') return [v.id, doc.levels.some((l) => l.id === v.levelId) ? planCanvas(app, { levelId: v.levelId, den: v.den, wMm: v.w, hMm: v.h, center: v.center }, dpi).canvas : null];
+      const m = v.kind === 'section' ? doc.sections.find((x) => x.id === v.sectionId) : undefined;
+      return [v.id, m && v.kind === 'section' ? sectionCanvas(app, m, { den: v.den, wMm: v.w, hMm: v.h, center: v.center }, dpi) : null];
+    }),
+  );
+  paintSheet(app, ctx, s, page, logoLoaded, (v, f) => {
+    const image = images.get(v.id);
+    if (image) ctx.drawImage(image, f.x0, f.y0, v.w, v.h);
+    return image !== null && image !== undefined;
+  });
+  return canvas;
+}
+
+/** The sheet as a vector page (io/pdf-canvas.ts): its views drawn on the page itself, as lines and text. */
+export function sheetPdf(app: App, s: Sheet, page: { readonly n: number; readonly of: number }): PdfCanvas {
+  const doc = app.store.get();
+  const { w, h } = sheetSize(s);
+  const pdf = new PdfCanvas(w, h);
+  paintSheet(app, pdf as unknown as CanvasRenderingContext2D, s, page, undefined, (v, f) => {
+    const frame = { den: v.den, wMm: v.w, hMm: v.h, center: v.center };
+    if (v.kind === 'plan') {
+      if (!doc.levels.some((l) => l.id === v.levelId)) return false;
+      pdf.save();
+      pdf.translate(f.x0, f.y0);
+      planOnPdf(app, { levelId: v.levelId, ...frame }, pdf);
+      pdf.restore();
+      return true;
+    }
+    const m = doc.sections.find((x) => x.id === v.sectionId);
+    if (!m) return false;
+    pdf.save();
+    pdf.translate(f.x0, f.y0);
+    pdf.beginPath();
+    pdf.rect(0, 0, v.w, v.h);
+    pdf.clip();
+    paintSectionView(app, m, frame, pdf as unknown as CanvasRenderingContext2D, 300 / 25.4);
+    pdf.restore();
+    return true;
+  });
+  return pdf;
+}
+
+/**
+ * The sheet on `ctx`, a unit a millimetre: the paper, its views (each drawn by `view` in its frame;
+ * false when what it showed is gone), their titles, the border and the title block.
+ */
+function paintSheet(app: App, ctx: CanvasRenderingContext2D, s: Sheet, page: { readonly n: number; readonly of: number }, logoLoaded: (() => void) | undefined, view: (v: FramedViewport, f: ReturnType<typeof frameOf>) => boolean): void {
+  const doc = app.store.get();
+  // The office's logo, once decoded (logo-image.ts); the caller draws again when it is.
+  const logo = logoImage(lotOf(doc).logo, logoLoaded);
+  const { w, h } = sheetSize(s);
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, w, h);
-  const views: { v: Viewport; image: HTMLCanvasElement | null }[] = s.viewports.map((v) => {
-    if (v.kind === 'plan') {
-      if (!doc.levels.some((l) => l.id === v.levelId)) return { v, image: null };
-      return { v, image: planCanvas(app, { levelId: v.levelId, den: v.den, wMm: v.w, hMm: v.h, center: v.center }, dpi).canvas };
-    }
-    if (v.kind === 'section') {
-      const m = doc.sections.find((x) => x.id === v.sectionId);
-      return { v, image: m ? sectionCanvas(app, m, { den: v.den, wMm: v.w, hMm: v.h, center: v.center }, dpi) : null };
-    }
-    return { v, image: null };
-  });
   withPaperColours((color, css) => {
     const ink = color('--text') || '#000000';
     const family = css.getPropertyValue('--font').trim() || 'sans-serif';
-    for (const { v, image } of views) {
+    for (const v of s.viewports) {
       if (v.kind === 'schedule') {
         paintTable(ctx, tableOf(app, v.schedule), v.at, v.w, ink, family);
         continue;
       }
       const f = frameOf(v);
-      if (image) ctx.drawImage(image, f.x0, f.y0, v.w, v.h);
-      else {
+      const image = view(v, f);
+      if (!image) {
         // What it showed is gone (a level, a section deleted): its place, said.
         ctx.save();
         ctx.strokeStyle = ink;
@@ -287,7 +333,6 @@ export function sheetCanvas(app: App, s: Sheet, dpi: number, page: { readonly n:
     }
     titleBlock(ctx, doc, s, w, h, page, ink, family, logo);
   });
-  return canvas;
 }
 
 /** A north arrow: a circle, an arrow up it toward the site's north, "N" over it. */
@@ -453,17 +498,12 @@ export async function sheetsPdf(app: App, only?: string): Promise<{ pdf: Uint8Ar
   if (chosen.length === 0) return null;
   // The logo decoded before the pages are drawn; one that cannot be is left out, and said.
   if (!(await logoReady(lotOf(app.store.get()).logo))) app.toast(t('lot.logoBad'));
-  const pages = [];
-  for (const s of chosen) {
-    const canvas = sheetCanvas(app, s, sheetDpi(s.paper), { n: all.indexOf(s) + 1, of: all.length });
-    const { w, h } = sheetSize(s);
-    // Each page compressed before the next is drawn: the set never holds its pictures whole.
-    pages.push(await pageOfRgb(rgbOfCanvas(canvas), canvas.width, canvas.height, w, h));
-  }
+  // Each sheet a vector page: its lines, fills and texts as the screen draws them.
+  const pages = chosen.map((s) => sheetPdf(app, s, { n: all.indexOf(s) + 1, of: all.length }));
   const doc = app.store.get();
   const one = chosen.length === 1 ? chosen[0]! : null;
   const title = one ? `${doc.name || t('app.untitled')} · ${one.number} ${one.name}` : `${doc.name || t('app.untitled')} · ${t('sheet.set')}`;
-  const pdf = pdfOfPages(pages, title);
+  const pdf = await pdfOfVectorPages(pages, title);
   const file = one ? `${app.fileBase()}-${one.number}.pdf` : `${app.fileBase()}-${t('sheet.setFile')}.pdf`;
   return { pdf, file };
 }
