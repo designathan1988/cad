@@ -23,6 +23,23 @@ export interface Railing {
    * stair arrives at), the stored `points` being only what it had last.
    */
   readonly host?: { readonly stairId: string };
+  /** What fills it below the top rail: a mid rail (when not set), balusters, or glass panels. */
+  readonly infill?: RailingInfill;
+}
+
+export type RailingInfill = 'rails' | 'balusters' | 'glass';
+/** Balusters' spacing, centre to centre, and their size (m): an 8 cm gap, under the 11 cm NBR 14718 asks. */
+export const BALUSTER_SPACING = 0.1;
+export const BALUSTER_SIZE = 0.02;
+/** The top rail's and the posts' size (m). */
+export const RAIL_SIZE = 0.04;
+
+/** The widest clear opening of its infill (m): what a child could pass through. */
+export function railingGap(r: { readonly height: number; readonly infill?: RailingInfill }): number {
+  if (r.infill === 'glass') return 0;
+  if (r.infill === 'balusters') return BALUSTER_SPACING - BALUSTER_SIZE;
+  // Between the floor and the mid rail, and the mid rail and the top one.
+  return r.height / 2 - RAIL_SIZE;
 }
 
 export const isRailingId = (id: string): boolean => id.startsWith(`${RAILING_PREFIX}_`);

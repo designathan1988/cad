@@ -98,12 +98,20 @@ describe('the norm rules', () => {
     expect(low).toEqual(['stairRiser', 'stairBlondel']);
   });
 
-  it('a guardrail under 1.10 m and a door under 80 cm are outside; a rule turned off says nothing', () => {
-    const low = { id: 'railing_l', levelId: 'lvl_ground', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }], height: 0.9, baseOffset: 0 };
+  it('a guardrail under 1.10 m is outside; a rule turned off says nothing', () => {
+    const low = { id: 'railing_l', levelId: 'lvl_ground', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }], height: 0.9, baseOffset: 0, infill: 'balusters' as const };
     const doc = docOf(stair('straight'), { railings: [low] });
     expect(checkRules(deriveGeometry(doc), DEFAULT_RULES).map((f) => [f.elementId, f.rule.subject])).toEqual([['railing_l', 'railingHeight']]);
     const off = DEFAULT_RULES.map((r) => (r.subject === 'railingHeight' ? { ...r, on: false } : r));
     expect(checkRules(deriveGeometry(doc), off)).toEqual([]);
+  });
+
+  it("a guardrail's opening: a mid rail leaves half its height open (outside 11 cm); balusters and glass are within", () => {
+    const at = (infill?: 'rails' | 'balusters' | 'glass') => ({ id: 'railing_r', levelId: 'lvl_ground', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }], height: 1.1, baseOffset: 0, ...(infill ? { infill } : {}) });
+    const subjects = (r: ReturnType<typeof at>) => checkRules(deriveGeometry(docOf(stair('straight'), { railings: [r] })), DEFAULT_RULES).map((f) => f.rule.subject);
+    expect(subjects(at())).toEqual(['railingGap']);
+    expect(subjects(at('balusters'))).toEqual([]);
+    expect(subjects(at('glass'))).toEqual([]);
   });
 
   it("the project's own rules read back; a bad one is left out", () => {

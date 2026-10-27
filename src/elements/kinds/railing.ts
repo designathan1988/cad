@@ -7,7 +7,9 @@ import { railingGeometry } from '../../render/prisms';
 import type { ElementKind } from '../contract';
 import { updateRailings } from '../railing/commands';
 import { railingFields } from '../railing/fields';
-import { postsOf, type Railing, RAILING_PREFIX, wellPath } from '../railing/schema';
+import { BALUSTER_SIZE, BALUSTER_SPACING, postsOf, RAIL_SIZE, type Railing, RAILING_PREFIX, wellPath } from '../railing/schema';
+import type { KindSolid } from '../contract';
+import { type Material, materialIn } from '../material/schema';
 import { stairWell } from '../stair/geometry';
 import { arrivalOf, solidOfStair } from '../stair/well';
 import { nearSegment, throughElement, trace } from './paint';
@@ -17,6 +19,8 @@ export interface RailingSolid {
   readonly railing: Railing;
   readonly bottom: number;
   readonly points: readonly Point2[];
+  /** The project's glass, for panes. */
+  readonly glass: Material;
 }
 
 export const railingKind: ElementKind<Railing, RailingSolid> = {
@@ -39,16 +43,18 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
     finite(r.height) &&
     r.height > 0 &&
     finite(r.baseOffset) &&
-    (r.host === undefined || (isObject(r.host) && typeof r.host.stairId === 'string')),
+    (r.host === undefined || (isObject(r.host) && typeof r.host.stairId === 'string')) &&
+    (r.infill === undefined || r.infill === 'rails' || r.infill === 'balusters' || r.infill === 'glass'),
   // Not memoised: one held by a stair moves with it.
   derive: (doc, r) => {
     const bottom = (doc.levels.find((l) => l.id === r.levelId)?.elevation ?? 0) + r.baseOffset;
     const stair = r.host ? doc.stairs.find((s) => s.id === r.host!.stairId) : undefined;
-    if (!stair) return { railing: r, bottom, points: r.points };
+    const glass = materialIn(doc.materials, 'glass');
+    if (!stair) return { railing: r, bottom, points: r.points, glass };
     const solid = solidOfStair(doc, stair);
     const arrival = arrivalOf(solid);
     const path = arrival ? wellPath(stairWell(solid), arrival[0], arrival[1]) : [];
-    return { railing: r, bottom, points: path.length >= 2 ? path : r.points };
+    return { railing: r, bottom, points: path.length >= 2 ? path : r.points, glass };
   },
   element: (s) => s.railing,
   // Deleting its stair deletes it.
@@ -81,7 +87,12 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
     }
     ctx.restore();
   },
-  solid: (s) => ({ geometry: railingGeometry(s.points, postsOf(s), s.railing.height), y: s.bottom, material: 'side', edges: false }),
+  // Its frame; and its glass, when it has panes.
+  solid: (s) => {
+    const g = railingGeometry(s.points, postsOf(s), s.railing.height, RAIL_SIZE, s.railing.infill ?? 'rails', BALUSTER_SPACING, BALUSTER_SIZE);
+    const frame: KindSolid = { geometry: g.frame, y: s.bottom, material: 'side', edges: false };
+    return g.glass ? [frame, { geometry: g.glass, y: s.bottom, material: s.glass, edges: false }] : frame;
+  },
   dxfLayers: [{ name: 'A-FLOR-HRAL', colour: 4 }],
   dxf: (s, out) => out.polyline('A-FLOR-HRAL', s.points, false),
   fields: (items, { dispatch }) =>

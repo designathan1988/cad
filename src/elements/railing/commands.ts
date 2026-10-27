@@ -2,14 +2,14 @@
 
 import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
-import type { Railing } from './schema';
+import type { Railing, RailingInfill } from './schema';
 
 export const addRailing = (railing: Railing): Command<Doc> => ({
   label: 'cmd.addRailing',
   apply: (doc) => ({ ...doc, railings: [...doc.railings, railing] }),
 });
 
-export type RailingPatch = { readonly height?: number; readonly baseOffset?: number };
+export type RailingPatch = { readonly height?: number; readonly baseOffset?: number; readonly infill?: RailingInfill };
 
 export const updateRailings = (ids: readonly string[], patch: RailingPatch): Command<Doc> => ({
   label: 'cmd.updateRailing',

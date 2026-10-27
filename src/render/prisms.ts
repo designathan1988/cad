@@ -212,7 +212,15 @@ export function roofGeometry(
  * A guardrail: posts from its foot to its top, a top rail and a mid rail, each a square bar of `size`.
  * In three.js coordinates, its foot at height 0.
  */
-export function railingGeometry(points: readonly Point2[], posts: readonly Point2[], height: number, size = 0.04): THREE.BufferGeometry {
+export function railingGeometry(
+  points: readonly Point2[],
+  posts: readonly Point2[],
+  height: number,
+  size = 0.04,
+  infill: 'rails' | 'balusters' | 'glass' = 'rails',
+  spacing = 0.1,
+  baluster = 0.02,
+): { frame: THREE.BufferGeometry; glass: THREE.BufferGeometry | null } {
   const pos: number[] = [];
   const v = (x: number, y: number, z: number) => new THREE.Vector3(x, z, -y);
   const quad = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, d: THREE.Vector3) =>
@@ -227,18 +235,47 @@ export function railingGeometry(points: readonly Point2[], posts: readonly Point
     const B = corners(b, zb);
     for (let i = 0; i < 4; i++) quad(A[i]!, B[i]!, B[(i + 1) % 4]!, A[(i + 1) % 4]!);
   };
-  const post = (p: Point2) => {
-    const c = [v(p.x - h, p.y - h, 0), v(p.x + h, p.y - h, 0), v(p.x + h, p.y + h, 0), v(p.x - h, p.y + h, 0)];
-    const t = [v(p.x - h, p.y - h, height), v(p.x + h, p.y - h, height), v(p.x + h, p.y + h, height), v(p.x - h, p.y + h, height)];
+  const post = (p: Point2, s = h, top = height) => {
+    const c = [v(p.x - s, p.y - s, 0), v(p.x + s, p.y - s, 0), v(p.x + s, p.y + s, 0), v(p.x - s, p.y + s, 0)];
+    const t = [v(p.x - s, p.y - s, top), v(p.x + s, p.y - s, top), v(p.x + s, p.y + s, top), v(p.x - s, p.y + s, top)];
     for (let i = 0; i < 4; i++) quad(c[i]!, c[(i + 1) % 4]!, t[(i + 1) % 4]!, t[i]!);
   };
   for (const p of posts) post(p);
+  const glass: number[] = [];
   for (let i = 0; i + 1 < points.length; i++) {
-    bar(points[i]!, height, points[i + 1]!, height);
-    bar(points[i]!, height / 2, points[i + 1]!, height / 2);
+    const a = points[i]!;
+    const b = points[i + 1]!;
+    bar(a, height, b, height);
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (infill === 'rails') bar(a, height / 2, b, height / 2);
+    else if (infill === 'balusters' && len > spacing) {
+      // A bottom rail, and a baluster every `spacing` between it and the top rail.
+      bar(a, 0.1, b, 0.1);
+      const n = Math.floor(len / spacing);
+      for (let k = 1; k < n; k++) post({ x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n }, baluster / 2, height);
+    } else if (infill === 'glass' && len > 2 * size) {
+      // A pane between the posts, from a hand above the floor to under the top rail, on the rail's line.
+      const u = { x: (b.x - a.x) / len, y: (b.y - a.y) / len };
+      const p0 = { x: a.x + u.x * h, y: a.y + u.y * h };
+      const p1 = { x: b.x - u.x * h, y: b.y - u.y * h };
+      const t = 0.006;
+      const nx = -u.y * t;
+      const ny = u.x * t;
+      const z0 = 0.05;
+      const z1 = height - h;
+      const g = (x: number, y: number, z: number) => [x, z, -y];
+      const face = (sx: number, sy: number) =>
+        glass.push(...g(p0.x + sx, p0.y + sy, z0), ...g(p1.x + sx, p1.y + sy, z0), ...g(p1.x + sx, p1.y + sy, z1), ...g(p0.x + sx, p0.y + sy, z0), ...g(p1.x + sx, p1.y + sy, z1), ...g(p0.x + sx, p0.y + sy, z1));
+      face(nx, ny);
+      face(-nx, -ny);
+    }
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  geo.computeVertexNormals();
-  return geo;
+  const frame = new THREE.BufferGeometry();
+  frame.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  frame.computeVertexNormals();
+  if (glass.length === 0) return { frame, glass: null };
+  const panes = new THREE.BufferGeometry();
+  panes.setAttribute('position', new THREE.Float32BufferAttribute(glass, 3));
+  panes.computeVertexNormals();
+  return { frame, glass: panes };
 }

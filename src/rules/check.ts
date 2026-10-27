@@ -4,6 +4,7 @@
 import type { DerivedGeometry } from '../app/geometry';
 import type { RailingSolid } from '../elements/kinds/railing';
 import type { StairSolid } from '../elements/stair/geometry';
+import { railingGap } from '../elements/railing/schema';
 import { type Rule, type RuleSubject } from './schema';
 
 export interface Finding {
@@ -40,7 +41,10 @@ function measures(g: DerivedGeometry): { id: string; subject: RuleSubject; value
     out.push({ id, subject: 'stairFlightRise', value: flightRise(s) });
     out.push({ id, subject: 'stairWidth', value: s.stair.width });
   }
-  for (const r of (g.kinds.get('railings')?.values() ?? []) as Iterable<RailingSolid>) out.push({ id: r.railing.id, subject: 'railingHeight', value: r.railing.height });
+  for (const r of (g.kinds.get('railings')?.values() ?? []) as Iterable<RailingSolid>) {
+    out.push({ id: r.railing.id, subject: 'railingHeight', value: r.railing.height });
+    out.push({ id: r.railing.id, subject: 'railingGap', value: railingGap(r.railing) });
+  }
   for (const o of g.openings.values()) if (o.opening.kind === 'door') out.push({ id: o.opening.id, subject: 'doorWidth', value: o.opening.width });
   return out;
 }

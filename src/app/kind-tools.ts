@@ -84,7 +84,8 @@ export function railingFinish(app: App): void {
   if (points.length < 2) return app.render();
   const last = app.store.get().railings.at(-1);
   const id = newId(RAILING_PREFIX);
-  app.store.dispatch(addRailing({ id, levelId: app.ui.levelId, points, height: last?.height ?? RAILING_HEIGHT, baseOffset: 0 }));
+  // Like the last one made; balusters at first, as the norm asks of an opening (railingGap).
+  app.store.dispatch(addRailing({ id, levelId: app.ui.levelId, points, height: last?.height ?? RAILING_HEIGHT, baseOffset: 0, infill: last?.infill ?? 'balusters' }));
   app.ui.info = t('hint.railingMade');
   app.render();
 }

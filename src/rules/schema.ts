@@ -12,9 +12,10 @@ export type RuleSubject =
   | 'stairWidth'
   | 'rampGrade'
   | 'railingHeight'
+  | 'railingGap'
   | 'doorWidth';
 
-export const RULE_SUBJECTS: readonly RuleSubject[] = ['stairRiser', 'stairTread', 'stairBlondel', 'stairFlightRise', 'stairWidth', 'rampGrade', 'railingHeight', 'doorWidth'];
+export const RULE_SUBJECTS: readonly RuleSubject[] = ['stairRiser', 'stairTread', 'stairBlondel', 'stairFlightRise', 'stairWidth', 'rampGrade', 'railingHeight', 'railingGap', 'doorWidth'];
 
 /** How a subject's value is shown: metres as lengths, or a percentage. */
 export const SUBJECT_UNIT: Readonly<Record<RuleSubject, 'm' | '%'>> = {
@@ -25,6 +26,7 @@ export const SUBJECT_UNIT: Readonly<Record<RuleSubject, 'm' | '%'>> = {
   stairWidth: 'm',
   rampGrade: '%',
   railingHeight: 'm',
+  railingGap: 'm',
   doorWidth: 'm',
 };
 
@@ -51,6 +53,7 @@ export const DEFAULT_RULES: readonly Rule[] = [
   { id: 'rule_stairWidth', subject: 'stairWidth', min: 1.2, source: 'NBR 9050', on: false },
   { id: 'rule_ramp', subject: 'rampGrade', max: 8.33, source: 'NBR 9050', on: true },
   { id: 'rule_railing', subject: 'railingHeight', min: 1.1, source: 'NBR 14718', on: true },
+  { id: 'rule_railingGap', subject: 'railingGap', max: 0.11, source: 'NBR 14718', on: true },
   { id: 'rule_door', subject: 'doorWidth', min: 0.8, source: 'NBR 9050', on: true },
 ];
 
