@@ -83,7 +83,13 @@ export function wireButtons(app: App, palette: () => void): void {
   shell.xray.addEventListener('click', () => app.setView3D({ xray: !ui.view3d.xray }));
   shell.box.addEventListener('click', () => app.toggleBox());
   shell.ortho.addEventListener('click', () => app.setView3D({ ortho: !ui.view3d.ortho }));
-  shell.look.style.select.addEventListener('change', () => app.setView3D({ style: shell.look.style.select.value as VisualStyle }));
+  shell.look.style.select.addEventListener('change', () => {
+    const style = shell.look.style.select.value as VisualStyle;
+    // Said before it starts: the first time on a computer the graphics card compiles the ray tracing, and
+    // the screen can stand still while it does (measured: about half a minute); the browser keeps it after.
+    if (style === 'photo') app.toast(t('view3d.photoFirst'));
+    app.setView3D({ style });
+  });
   shell.look.quality.select.addEventListener('change', () => app.setView3D({ quality: shell.look.quality.select.value as RenderQuality }));
   shell.planScale.select.addEventListener('change', () => app.store.dispatch(setDrawing({ ...drawingOf(app.store.get()), scale: Number(shell.planScale.select.value) })));
   shell.visBtn.addEventListener('click', () => app.actionList().find((a) => a.id === 'view.overrides')?.run());

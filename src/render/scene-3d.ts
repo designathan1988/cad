@@ -59,6 +59,8 @@ const TRACE: Readonly<Record<RenderQuality, { readonly scale: number; readonly s
   high: { scale: 1, samples: 1024, picture: 256 },
   ultra: { scale: 1, samples: 4096, picture: 512 },
 };
+/** The traced view's exposure (its tone mapping), against its light being far brighter than the raster view's. */
+const TRACE_EXPOSURE = 0.55;
 /** How much of a wall shows in x-ray. */
 const XRAY_OPACITY = 0.28;
 /** How much the project's glass hides what is behind it. */
@@ -643,23 +645,30 @@ export class Scene3D {
       // Shown through an edge-keeping denoise (glslSmartDeNoise): strong while there are few samples, faded
       // out as they add up, so the first seconds are not grain and the finished picture is not blurred.
       const denoiseMaterial = new DenoiseMaterial({ blending: THREE.NoBlending, premultipliedAlpha: true });
-      // Its colours as the tracer's own display gives them (no tone mapping, no colour space step of its own).
-      denoiseMaterial.fragmentShader = denoiseMaterial.fragmentShader.replace('#include <tonemapping_fragment>', '').replace('#include <colorspace_fragment>', '');
+      // Shown as the realistic view is: filmic tone mapping (no blown-out whites) and the screen's colour space
+      // (the tracer's own display gave its linear values straight: washed out and flat).
       const denoise = new FullScreenQuad(denoiseMaterial);
       t.renderToCanvasCallback = (target, renderer, quad) => {
         const n = t.samples;
-        // Strong at first, easing to a light edge-keeping pass that stays (a few hundred samples still grain a matte floor).
-        const strength = Math.max(0.3, 1 - n / 1024);
+        // A denoise easing from moderate to light as samples add up (1024), kept low enough to keep textures: strong, it smeared them (stones into
+        // blotches, bricks washed out). Fireflies are kept down by the glossy filter instead.
+        const strength = Math.max(0.15, 1 - n / 1024);
+        // Always drawn through it (strength 0: no smoothing), for its tone mapping and colour space.
         void quad;
         const m = denoise.material as DenoiseMaterial & { uniforms: Record<string, { value: unknown }> };
         m.uniforms.map!.value = target.texture;
-        m.uniforms.sigma!.value = 2.5 + 3 * strength;
+        m.uniforms.sigma!.value = 1.2 + 1.8 * strength;
         m.uniforms.kSigma!.value = 1;
-        m.uniforms.threshold!.value = 0.12 + 0.12 * strength;
+        m.uniforms.threshold!.value = 0.04 + 0.06 * strength;
         m.uniforms.opacity!.value = 1;
         const auto = renderer.autoClear;
+        const exposure = renderer.toneMappingExposure;
         renderer.autoClear = false;
+        // The traced light (sun and the whole sky bounced) is several times the raster view's: exposed down
+        // so its whites keep their texture and its shadows their depth.
+        renderer.toneMappingExposure = TRACE_EXPOSURE;
         denoise.render(renderer);
+        renderer.toneMappingExposure = exposure;
         renderer.autoClear = auto;
       };
       // Its scene's bounding volumes built in a worker: built here, the page stood still for seconds.
