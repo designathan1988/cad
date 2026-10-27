@@ -1538,8 +1538,14 @@ export class App {
     savePrefs({ browserOpen: open });
     this.shell.browser.hidden = !open;
     const after = this.covered().left ?? 0;
-    // What was in the middle of the free part stays there: the plan slides by half the drawer.
-    if (this.ui.view === 'plan') this.plan.panBy((after - before) / 2, 0);
+    // The plan moves only when the drawer comes over the drawing, and only as far as it covers it:
+    // sliding by half the drawer each time it opened or closed was a jump of the whole drawing.
+    const box = boundsOf(this.geometry);
+    if (this.ui.view === 'plan' && box && after > before) {
+      const left = this.plan.toScreen({ x: box.min.x, y: box.max.y }).x;
+      const need = after + 16 - left;
+      if (need > 0) this.plan.panBy(need, 0);
+    }
     this.render();
     if (open) this.shell.browser.querySelector<HTMLElement>('button')?.focus();
     else this.shell.sidebar.focus();
