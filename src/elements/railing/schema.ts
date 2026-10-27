@@ -19,10 +19,11 @@ export interface Railing {
   /** Its foot above (+) or below (−) its level's floor (m): on a slab's edge, a terrace's. */
   readonly baseOffset: number;
   /**
-   * Round a stair's well, on the floor it reaches: its path follows the well (all but the side the
-   * stair arrives at), the stored `points` being only what it had last.
+   * Round a stair's well, on the floor it reaches (its path follows the well, all but the side the
+   * stair arrives at), or along a floor's edge (a balcony's, a mezzanine's: all round it): the stored
+   * `points` being only what it had last.
    */
-  readonly host?: { readonly stairId: string };
+  readonly host?: { readonly stairId: string } | { readonly floorId: string };
   /** What fills it below the top rail: a mid rail (when not set), balusters, or glass panels. */
   readonly infill?: RailingInfill;
 }

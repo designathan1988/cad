@@ -18,6 +18,8 @@ export interface RoomFieldActions {
   /** Draws a hole in the one floor selected (the floor tool, for its outline). */
   readonly startFloorHole?: (id: FloorId) => void;
   readonly clearFloorHoles?: (ids: readonly FloorId[]) => void;
+  /** A guardrail all round the one floor's edge; null when it has one already, or is a ceiling. */
+  readonly edgeRailing?: (f: FloorSolid) => (() => void) | null;
   /** The project's materials: what finishes and layers are chosen from. */
   readonly materials: () => readonly Material[];
   readonly setFloorLayers: (ids: readonly FloorId[], layers: readonly FloorLayer[] | null) => void;
@@ -86,7 +88,7 @@ export function roomFields(rooms: readonly RoomSolid[], act: RoomOwnActions): Fi
 }
 
 /** A floor's own actions (a room's panel has them too). */
-export type FloorFieldActions = Pick<RoomFieldActions, 'updateFloor' | 'startFloorHole' | 'clearFloorHoles' | 'materials' | 'setFloorLayers' | 'setFloorTiling'>;
+export type FloorFieldActions = Pick<RoomFieldActions, 'updateFloor' | 'startFloorHole' | 'clearFloorHoles' | 'edgeRailing' | 'materials' | 'setFloorLayers' | 'setFloorTiling'>;
 
 export function floorFields(floors: readonly FloorSolid[], roomName: (id: RoomId) => string, act: FloorFieldActions): Field<FloorSolid>[] {
   const ids = floors.map((f) => f.floor.id);
@@ -173,7 +175,19 @@ export function floorFields(floors: readonly FloorSolid[], roomName: (id: RoomId
       ? [{ id: 'addHole', label: 'floor.addHole', kind: 'action', run: () => act.startFloorHole!(ids[0]!) } as const]
       : []),
     ...(act.clearFloorHoles
-      ? [{ id: 'clearHoles', label: 'floor.clearHoles', kind: 'action', when: (fs: readonly FloorSolid[]) => fs.some((f) => f.holes.length > 0), run: () => act.clearFloorHoles!(ids) } as const]
+      ? [
+          {
+            id: 'clearHoles',
+            label: 'floor.clearHoles',
+            kind: 'action',
+            // Its own holes: a stair's well is the stair's, and the button did nothing to it.
+            when: (fs: readonly FloorSolid[]) => fs.some((f) => (f.floor.holes?.length ?? 0) > 0),
+            run: () => act.clearFloorHoles!(ids),
+          } as const,
+        ]
+      : []),
+    ...(act.edgeRailing && floors.length === 1
+      ? [{ id: 'edgeRailing', label: 'floor.edgeRailing', kind: 'action', enabled: (fs: readonly FloorSolid[]) => act.edgeRailing!(fs[0]!) !== null, run: () => act.edgeRailing!(floors[0]!)?.() } as const]
       : []),
   ];
 }

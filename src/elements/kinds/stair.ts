@@ -120,7 +120,7 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
       wellRailing: (s) => {
         const level = levelReached(doc, s.stair);
         const arrival = arrivalOf(s);
-        if (!level || !arrival || s.stair.well === false || doc.railings.some((r) => r.host?.stairId === s.stair.id)) return null;
+        if (!level || !arrival || s.stair.well === false || doc.railings.some((r) => r.host !== undefined && 'stairId' in r.host && r.host.stairId === s.stair.id)) return null;
         const points = wellPath(stairWell(s), arrival[0], arrival[1]);
         if (points.length < 2) return null;
         return () => dispatch(addRailing({ id: newId(RAILING_PREFIX), levelId: level, points, height: RAILING_HEIGHT, baseOffset: 0, host: { stairId: s.stair.id }, infill: 'balusters' }));

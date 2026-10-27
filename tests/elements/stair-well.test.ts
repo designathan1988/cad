@@ -106,6 +106,20 @@ describe('the guardrail round a well', () => {
   });
 });
 
+describe("the guardrail along a floor's edge", () => {
+  it('goes all round its outline, closed, on its top; raising the floor takes it along', () => {
+    const r = { id: 'railing_e', levelId: 'lvl_up', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }], height: 1.1, baseOffset: 0, host: { floorId: 'floor_f' } };
+    const doc = docOf(stair('straight', { well: false }), { railings: [r] });
+    const s = deriveGeometry(doc).kinds.get('railings')!.get('railing_e') as RailingSolid;
+    expect(s.points).toHaveLength(5);
+    expect(s.points[0]).toEqual(s.points[4]);
+    expect(s.bottom).toBeCloseTo(2.8, 9);
+    const raised = { ...doc, floors: [{ ...slab, offset: 0.2 }] };
+    expect((deriveGeometry(raised).kinds.get('railings')!.get('railing_e') as RailingSolid).bottom).toBeCloseTo(3, 9);
+    expect(railingKind.holders!(r)).toEqual(['floor_f']);
+  });
+});
+
 describe('the norm rules', () => {
   it('a stair within them has nothing; a steeper one is outside the riser and 2e + p', () => {
     const ok = checkRules(deriveGeometry(docOf(stair('straight'))), DEFAULT_RULES);

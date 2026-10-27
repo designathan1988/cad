@@ -15,6 +15,9 @@ import { floorFields } from '../room/fields';
 import type { Floor } from '../room/schema';
 import { trace } from './paint';
 import { tilingDrawing } from '../../render/tiling';
+import { newId } from '../../core/id';
+import { addRailing } from '../railing/commands';
+import { RAILING_HEIGHT, RAILING_PREFIX } from '../railing/schema';
 import { materialIn } from '../material/schema';
 
 export const FLOOR_PREFIX = 'floor';
@@ -200,6 +203,12 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
         },
         ...(c.startFloorHole ? { startFloorHole: c.startFloorHole } : {}),
         clearFloorHoles: (ids) => c.dispatch(clearFloorHoles(ids)),
+        // All round its edge, on its level at its top, with balusters (railing/schema.ts).
+        edgeRailing: (f) => {
+          if (f.floor.kind === 'ceiling' || f.outline.length < 3 || c.doc.railings.some((r) => r.host && 'floorId' in r.host && r.host.floorId === f.floor.id)) return null;
+          const points = [...f.outline, f.outline[0]!];
+          return () => c.dispatch(addRailing({ id: newId(RAILING_PREFIX), levelId: f.floor.levelId, points, height: RAILING_HEIGHT, baseOffset: 0, host: { floorId: f.floor.id }, infill: 'balusters' }));
+        },
         materials: () => c.doc.materials,
         setFloorLayers: (ids, layers) => c.dispatch(setFloorLayers(ids, layers)),
         setFloorTiling: (ids, tiling) => c.dispatch(setFloorTiling(ids, tiling)),

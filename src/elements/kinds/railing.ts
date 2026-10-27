@@ -12,6 +12,7 @@ import type { KindSolid } from '../contract';
 import { type Material, materialIn } from '../material/schema';
 import { stairWell } from '../stair/geometry';
 import { arrivalOf, solidOfStair } from '../stair/well';
+import { deriveFloor } from '../room/derive';
 import { nearSegment, throughElement, trace } from './paint';
 
 /** A guardrail as it stands: its foot's height and its path (its well's, when a stair holds it). */
@@ -43,13 +44,22 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
     finite(r.height) &&
     r.height > 0 &&
     finite(r.baseOffset) &&
-    (r.host === undefined || (isObject(r.host) && typeof r.host.stairId === 'string')) &&
+    (r.host === undefined || (isObject(r.host) && (typeof r.host.stairId === 'string' || typeof r.host.floorId === 'string'))) &&
     (r.infill === undefined || r.infill === 'rails' || r.infill === 'balusters' || r.infill === 'glass'),
   // Not memoised: one held by a stair moves with it.
-  derive: (doc, r) => {
+  derive: (doc, r, g) => {
     const bottom = (doc.levels.find((l) => l.id === r.levelId)?.elevation ?? 0) + r.baseOffset;
-    const stair = r.host ? doc.stairs.find((s) => s.id === r.host!.stairId) : undefined;
+    const host = r.host;
     const glass = materialIn(doc.materials, 'glass');
+    // Along a floor's edge: all round its outline, closed.
+    const floor = host && 'floorId' in host ? doc.floors.find((f) => f.id === host.floorId) : undefined;
+    if (floor) {
+      // On its top, its own offset above that: the floor raised takes it along.
+      const fs = deriveFloor(floor, g.rooms, (id) => doc.levels.find((l) => l.id === id)?.elevation ?? 0);
+      const outline = fs.outline;
+      return { railing: r, bottom: fs.top + r.baseOffset, points: outline.length >= 3 ? [...outline, outline[0]!] : r.points, glass };
+    }
+    const stair = host && 'stairId' in host ? doc.stairs.find((s) => s.id === host.stairId) : undefined;
     if (!stair) return { railing: r, bottom, points: r.points, glass };
     const solid = solidOfStair(doc, stair);
     const arrival = arrivalOf(solid);
@@ -58,7 +68,7 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
   },
   element: (s) => s.railing,
   // Deleting its stair deletes it.
-  holders: (r) => (r.host ? [r.host.stairId] : []),
+  holders: (r) => (r.host ? ['stairId' in r.host ? r.host.stairId : r.host.floorId] : []),
   outlines: (s) => [s.points],
   hit: (s, p, near) => s.points.slice(1).some((q, i) => nearSegment(p, s.points[i]!, q, near)),
   pick: 'beforeWalls',
