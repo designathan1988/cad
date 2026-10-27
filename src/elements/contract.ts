@@ -17,7 +17,7 @@ import type { MessageKey } from '../ui/i18n';
 import type { IconName } from '../ui/icons';
 
 /** The document's lists the registry's kinds keep. */
-export type KindKey = 'references' | 'sections' | 'separators' | 'curtains' | 'zones' | 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'objects' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings' | 'walls';
+export type KindKey = 'terrains' | 'references' | 'sections' | 'separators' | 'curtains' | 'zones' | 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'objects' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings' | 'walls';
 
 /** The derived geometry before the registry's kinds: what a kind held by walls and doors reads. */
 export type BaseGeometry = Omit<DerivedGeometry, 'kinds'>;
@@ -91,6 +91,8 @@ export interface KindFieldContext {
   readonly openSection?: (id: string) => void;
   /** Calibrate a reference by two points of it (app/reference-ui.ts). */
   readonly calibrate?: (id: string) => void;
+  /** A spot height put on a terrain with its tool (app/terrain-ui.ts). */
+  readonly addSpot?: (id: string) => void;
 }
 
 /** Where a kind's text sits on screen, and its lines: what the room tags keep off. */

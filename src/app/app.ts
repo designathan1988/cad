@@ -1,6 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import * as terrains from './terrain-ui';
 import { pickModel } from './model-import';
 import * as refs from './reference-ui';
 import { onReferenceLoaded } from '../elements/kinds/reference';
@@ -158,6 +159,8 @@ export interface UiState {
   calloutFrom: Point2 | null;
   /** A reference being calibrated: which, and its first point once clicked (reference-ui.ts). */
   calibrate: { readonly id: string; readonly a: Point2 | null } | null;
+  /** The terrain the spot tool puts spot heights on (terrain-ui.ts). */
+  spotFor: string | null;
   /** The beam tool's first point, before the beam is made. */
   beamFrom: Point2 | null;
   /** The object tool's definition (elements/object), and the turn the next object is placed at (radians). */
@@ -303,6 +306,7 @@ export class App {
       sectionFrom: null,
       calloutFrom: null,
       calibrate: null,
+      spotFor: null,
       beamFrom: null,
       objectDef: 'def_table',
       objectAngle: 0,
@@ -1172,6 +1176,20 @@ export class App {
   /** A picture, a PDF or a DXF put under the plan (reference-ui.ts). */
   pickReference(): void {
     return refs.pickReference(this);
+  }
+
+  /** A terrain round the model (terrain-ui.ts). */
+  addTerrain(): void {
+    return terrains.addTerrain(this);
+  }
+
+  /** The spot tool on a terrain: each click a spot height, its height typed. */
+  startSpot(id: string): void {
+    return terrains.startSpot(this, id);
+  }
+
+  spotClick(p: Point2): void {
+    return terrains.spotClick(this, p);
   }
 
   /** Calibrating a reference: two points of it, then the distance between them. */

@@ -73,8 +73,9 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 31: sections and elevations (`sections`, elements/section) and sheets (`sheets`,
  *   elements/sheet). Older files have none.
  * Version 32: references under the plan (`references`, elements/reference). Older files have none.
+ * Version 33: the terrain (`terrains`, elements/terrain) and the site's sun (`site`). Older files have neither.
  */
-export const CURRENT_VERSION = 32;
+export const CURRENT_VERSION = 33;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =

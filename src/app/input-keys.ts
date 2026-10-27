@@ -239,6 +239,10 @@ export function wireKeys(app: App, k: KeyContext): void {
       if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'grid') return app.gridEscape();
       if (ui.tool === 'section') return app.sectionEscape();
+      if (ui.tool === 'spot') {
+        ui.spotFor = null;
+        return app.setTool('select');
+      }
       if (ui.tool === 'calibrate') {
         ui.calibrate = null;
         return app.setTool('select');

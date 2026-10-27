@@ -418,6 +418,8 @@ export function ifcClassOf(key: string, category: string | null, solid: unknown)
       return { entity: 'IFCBEAM', type: '.BEAM.' };
     case 'curtains':
       return { entity: 'IFCCURTAINWALL', type: '.NOTDEFINED.' };
+    case 'terrains':
+      return { entity: 'IFCGEOGRAPHICELEMENT', type: '.TERRAIN.' };
     case 'objects':
       return category === 'fixture'
         ? { entity: 'IFCSANITARYTERMINAL', type: '.NOTDEFINED.' }

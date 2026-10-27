@@ -455,7 +455,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
+    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'spot' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -766,6 +766,11 @@ export function wireInput(app: App): void {
     if (ui.tool === 'calibrate') {
       const at = worldAt(e);
       if (at && ui.view === 'plan') app.calibrateClick(snapped(e)?.point ?? at.p);
+      return;
+    }
+    if (ui.tool === 'spot') {
+      const at = worldAt(e);
+      if (at && ui.view === 'plan') app.spotClick(snapped(e)?.point ?? at.p);
       return;
     }
     // A text or a level mark where the click is; then selected, its text ready to type.

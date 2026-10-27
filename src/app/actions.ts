@@ -204,6 +204,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('view.sheets', 'sheet.open', views, () => app.openSheets(), { keywords: 'prancha pranchas sheet sheets carimbo title block folha PDF documentação' }),
     make('tool.section', 'tool.section', tools, () => app.setTool('section'), { keywords: 'corte section linha de corte cut line' }),
     make('model.import', 'model.import', file, () => app.pickModel(), { keywords: 'glTF GLB OBJ modelo model 3D importar import objeto object biblioteca library' }),
+    make('terrain.add', 'terrain.add', tools, () => app.addTerrain(), { keywords: 'terreno terrain lote lot curvas de nível contour topografia topography' }),
     make('ref.import', 'ref.import', file, () => app.pickReference(), { keywords: 'referência reference imagem image foto PDF DXF calibrar calibrate fundo underlay planta escaneada scan' }),
     make('tool.callout', 'tool.callout', tools, () => app.setTool('callout'), { keywords: 'chamada callout seta leader texto com seta nota anotação' }),
     make('dim.auto', 'dim.auto', tools, () => app.autoDimension(), { keywords: 'cotagem automática auto dimension cotar paredes cotas fachada exterior' }),

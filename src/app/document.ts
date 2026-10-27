@@ -8,6 +8,7 @@ import type { Curtain } from '../elements/curtain/schema';
 import type { Zone } from '../elements/zone/schema';
 import type { SectionMark } from '../elements/section/schema';
 import type { Reference } from '../elements/reference/schema';
+import type { Terrain } from '../elements/terrain/schema';
 import type { Sheet } from '../elements/sheet/schema';
 import type { Rule } from '../rules/schema';
 import { DEFAULT_DRAWING, type DrawingSettings } from '../elements/drawing/schema';
@@ -64,7 +65,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 32;
+  readonly version: 33;
   readonly name: string;
   /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
   readonly units: Units;
@@ -116,6 +117,8 @@ export interface Doc {
   readonly sections: readonly SectionMark[];
   /** Pictures and DXF drawings under the plan, to trace over (elements/reference). */
   readonly references: readonly Reference[];
+  /** The lot's ground: its outline and spot heights (elements/terrain). */
+  readonly terrains: readonly Terrain[];
   /** The norm rules it is checked against (rules/schema.ts); the defaults when it sets none. */
   readonly rules?: readonly Rule[];
   /** The plan's scale and the pens (elements/drawing/schema.ts); the defaults when it sets none. */
@@ -146,7 +149,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 32,
+    version: 33,
     name: '',
     units: DEFAULT_UNITS,
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
@@ -204,6 +207,7 @@ export function newDocument(): Doc {
     zones: [],
     sections: [],
     references: [],
+    terrains: [],
   };
 }
 
