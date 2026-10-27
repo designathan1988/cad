@@ -1,7 +1,8 @@
 // Formulas of a parametric object (docs/plano-de-escopo.md, phase 3): a small safe language, never eval.
 // Numbers (with a decimal point: a comma parts a function's values), lengths with a unit (mm, cm, m: metres inside), the object's parameters by
 // name, + − × ÷ and %, comparisons (true is 1, false 0), and/or/not, and the functions if, min, max,
-// round, floor, ceil, abs, sqrt, sin, cos, tan (degrees), clamp. Parsed once into a tree and evaluated
+// round, floor, ceil, abs, sqrt, sin, cos, tan (degrees), atan and atan2 (degrees: a slope's angle from
+// its run and rise), clamp. Parsed once into a tree and evaluated
 // against the values; an unknown name or a division by zero makes the formula fail, never the app.
 
 export type Env = Readonly<Record<string, number>>;
@@ -16,7 +17,7 @@ type Node =
 export type Formula = { readonly ok: true; readonly node: Node; readonly names: ReadonlySet<string> } | { readonly ok: false; readonly error: string };
 
 const UNITS: Readonly<Record<string, number>> = { mm: 0.001, cm: 0.01, m: 1 };
-const FUNCTIONS: Readonly<Record<string, number>> = { if: 3, min: -1, max: -1, round: -1, floor: 1, ceil: 1, abs: 1, sqrt: 1, sin: 1, cos: 1, tan: 1, clamp: 3 };
+const FUNCTIONS: Readonly<Record<string, number>> = { if: 3, min: -1, max: -1, round: -1, floor: 1, ceil: 1, abs: 1, sqrt: 1, sin: 1, cos: 1, tan: 1, atan: 1, atan2: 2, clamp: 3 };
 
 const cache = new Map<string, Formula>();
 
@@ -108,6 +109,9 @@ function run(n: Node, env: Env): number {
         case 'sin': return Math.sin(v[0]! * deg);
         case 'cos': return Math.cos(v[0]! * deg);
         case 'tan': return Math.tan(v[0]! * deg);
+        case 'atan': return Math.atan(v[0]!) / deg;
+        // atan2(y, x): the angle of (x, y), as Math.atan2 takes them.
+        case 'atan2': return Math.atan2(v[0]!, v[1]!) / deg;
         case 'clamp': return Math.min(Math.max(v[0]!, v[1]!), v[2]!);
       }
       throw new Error(`function ${n.name}`);

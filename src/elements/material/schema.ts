@@ -94,6 +94,7 @@ export const BUILT_IN_MATERIALS: readonly Material[] = [
   { id: 'water', name: '', color: '#5fa2c2', roughness: 0.05, metalness: 0, cut: 'none' },
   { id: 'soil', name: '', color: '#6b4f3a', roughness: 1, metalness: 0, cut: 'concrete' },
   { id: 'screen', name: '', color: '#0e1013', roughness: 0.1, metalness: 0.2, cut: 'solid' },
+  { id: 'bottleGlass', name: '', color: '#2e5a35', roughness: 0.08, metalness: 0, cut: 'none' },
 ];
 
 /** The materials seen through in the views, each with its opacity: glass, frosted glass, water. */
