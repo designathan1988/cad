@@ -87,6 +87,10 @@ export interface OpeningStyle {
   readonly threshold: boolean;
   /** A window's protection on its outside face: a shutter (veneziana, slats) or a grille (grade, bars); none when absent. */
   readonly screen?: WindowScreen;
+  /** A window's mullions where they are wanted: each from the start jamb's inside face (m); the panes equal when absent. */
+  readonly mullions?: readonly number[];
+  /** A window's transoms (travessas): each above the clear opening's bottom (m); none when absent. */
+  readonly transoms?: readonly number[];
 }
 
 export type WindowScreen = 'shutter' | 'grille';

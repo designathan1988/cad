@@ -12,7 +12,8 @@ import type { OpeningSolid } from '../../app/geometry';
 import type { Field } from '../../ui/fields';
 import { name, t, type MessageKey } from '../../ui/i18n';
 import { alignCandidates, alignFits, referenceCandidates } from './commands';
-import { fitStyle, leafRange, modelOf, OPENING_MODELS, operationsOf } from './style';
+import { fitStyle, leafRange, modelOf, OPENING_MODELS, operationsOf, PANED } from './style';
+import { parseLength } from '../../core/measure';
 import { type AlignEdge, type GroupSpacing, hasDistance, OPENING_DEFAULTS, type Opening, type OpeningGroup, type OpeningGroupId, type OpeningId, type OpeningKind, type OpeningStyle, type Operation, type RuleKind, WINDOW_SCREENS, type WindowScreen } from './schema';
 
 export type OpeningSize = { readonly width: number; readonly height: number; readonly sill: number; readonly style?: OpeningStyle | undefined };
@@ -367,6 +368,11 @@ const withoutScreen = (s: OpeningStyle): OpeningStyle => {
   const { screen: _gone, ...rest } = s;
   return rest;
 };
+/** A number of panes asked for: equal ones, the mullions placed by hand let go. */
+const withoutMullions = (s: OpeningStyle): OpeningStyle => {
+  const { mullions: _gone, ...rest } = s;
+  return rest;
+};
 
 export function styleFields(selected: readonly OpeningSolid[], update: OpeningPanelActions['update']): Field<OpeningSolid>[] {
   const ids = selected.map((s) => s.opening.id);
@@ -383,7 +389,29 @@ export function styleFields(selected: readonly OpeningSolid[], update: OpeningPa
       get: (x) => style(x).operation,
       set: (v) => change({ operation: v as Operation }),
     },
-    { id: 'leaves', label: kind === 'door' ? 'panel.leaves' : 'panel.panes', kind: 'number', unit: '', decimals: 0, min: 1, when: () => leafMax > 1, get: (x) => style(x).leaves, set: (v) => change({ leaves: v }) },
+    { id: 'leaves', label: kind === 'door' ? 'panel.leaves' : 'panel.panes', kind: 'number', unit: '', decimals: 0, min: 1, when: () => leafMax > 1, get: (x) => style(x).leaves, set: (v) => update(ids, (o) => (o.style ? { style: fitStyle(o.kind, { ...withoutMullions(o.style), leaves: v }) } : {})) },
+    // A window's panes split where wanted: the mullions from the start jamb, the transoms from the bottom ("0,45; 0,90").
+    ...(['mullions', 'transoms'] as const).map(
+      (key): Field<OpeningSolid> => ({
+        id: key,
+        label: `panel.${key}`,
+        kind: 'text',
+        when: () => kind === 'window' && selected.every((x) => PANED.includes(style(x).operation)),
+        get: (x) => (style(x)[key] ?? []).map((m) => lengthNum(m)).join('; '),
+        set: (v) => {
+          const parts = v.split(';').map((p) => p.trim()).filter((p) => p !== '');
+          const read = parts.map((p) => parseLength(p));
+          if (read.some((r) => !r.ok || r.value < 0)) return;
+          const values = read.map((r) => (r.ok ? r.value : 0));
+          update(ids, (o) => {
+            if (!o.style) return {};
+            const { [key]: _old, ...rest } = o.style;
+            return { style: fitStyle(o.kind, values.length > 0 ? { ...rest, [key]: values } : rest) };
+          });
+        },
+      }),
+    ),
+    { id: 'splitsNote', label: 'panel.splitsNote', kind: 'note', when: () => kind === 'window' && selected.every((x) => PANED.includes(style(x).operation)), text: () => t('panel.splitsNote') },
     { id: 'frame', label: 'panel.frame', kind: 'number', min: 0, get: (x) => style(x).frame, set: (v) => change({ frame: Math.min(0.3, v) }) },
     { id: 'casing', label: 'panel.casing', kind: 'number', min: 0, get: (x) => style(x).casing, set: (v) => change({ casing: Math.min(0.3, v) }) },
     { id: 'transom', label: 'panel.transom', kind: 'number', min: 0, get: (x) => style(x).transom, set: (v) => change({ transom: v }) },

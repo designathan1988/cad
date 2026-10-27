@@ -7,6 +7,7 @@
 
 import { add, distance, normalize, type Point2, scale, sub } from '../../core/vector';
 import type { Opening } from './schema';
+import { paneSpans } from './style';
 import type { OpeningFrame } from './void';
 
 type Placed = { readonly opening: Opening; readonly start: number; readonly end: number };
@@ -69,11 +70,10 @@ function sweeps(op: Placed, f: OpeningFrame): Sweep[] {
     case 'double':
       return [one(a, along, clear / 2), one(b, back, clear / 2)];
     case 'casement': {
-      const n = s.leaves;
-      if (n === 1) return [startHinge ? one(a, along, clear) : one(b, back, clear)];
+      const spans = paneSpans(s, a, clear);
+      if (spans.length === 1) return [startHinge ? one(a, along, clear) : one(b, back, clear)];
       // Pairs hung from the jambs and the mullions between them, opening away from each other.
-      const w = clear / n;
-      return Array.from({ length: n }, (_, i) => (i % 2 === 0 ? one(a + i * w, along, w) : one(a + (i + 1) * w, back, w)));
+      return spans.map(([t0, t1], i) => (i % 2 === 0 ? one(t0, along, t1 - t0) : one(t1, back, t1 - t0)));
     }
     case 'pivot': {
       // The pivot a sixth in from the hinge jamb: the long side sweeps out, the short side in.
@@ -153,7 +153,7 @@ export function symbolLines(op: Placed, f: OpeningFrame | null): Point2[][] {
       lines.push([P(a, mid - 0.012), P(b, mid - 0.012)], [P(a, mid + 0.012), P(b, mid + 0.012)]);
     } else {
       lines.push([P(a, mid), P(b, mid)]);
-      for (let i = 1; i < leaves; i++) lines.push([P(a + (i * clear) / leaves, lo), P(a + (i * clear) / leaves, hi)]);
+      for (const [t] of paneSpans(s, a, clear).slice(1)) lines.push([P(t, lo), P(t, hi)]);
       if (s.operation === 'casement') for (const sw of sweeps(op, f)) lines.push(sw.leaf, sw.arc);
     }
     return lines;

@@ -70,13 +70,53 @@ export function leafRange(op: Operation): readonly [number, number] {
   return [1, 1];
 }
 
+/** The window operations whose panes stand side by side and one over another: their mullions and transoms placed at will. */
+export const PANED: readonly Operation[] = ['fixed', 'casement', 'awning', 'hopper'];
+
 /** A style kept to what its kind and operation allow: a door's operation on a window becomes its first one. */
 export function fitStyle(kind: OpeningKind, s: OpeningStyle): OpeningStyle {
   const operation = operationsOf(kind).includes(s.operation) ? s.operation : operationsOf(kind)[0]!;
   const [lo, hi] = leafRange(operation);
-  // A shutter or a grille is a window's.
-  const { screen, ...rest } = s;
-  return { ...rest, ...(kind === 'window' && screen ? { screen } : {}), operation, leaves: Math.max(lo, Math.min(hi, Math.round(s.leaves))), threshold: kind === 'door' && s.threshold };
+  // A shutter or a grille is a window's; so are mullions and transoms where they are wanted, and only
+  // for panes side by side (not sliding or hung ones), as many mullions as panes allow.
+  const { screen, mullions, transoms, ...rest } = s;
+  const paned = kind === 'window' && PANED.includes(operation);
+  const ms = paned && mullions && mullions.length > 0 ? [...mullions].sort((x, y) => x - y).slice(0, hi - 1) : null;
+  const ts = paned && transoms && transoms.length > 0 ? [...transoms].sort((x, y) => x - y).slice(0, 5) : null;
+  return {
+    ...rest,
+    ...(kind === 'window' && screen ? { screen } : {}),
+    ...(ms ? { mullions: ms } : {}),
+    ...(ts ? { transoms: ts } : {}),
+    operation,
+    leaves: ms ? ms.length + 1 : Math.max(lo, Math.min(hi, Math.round(s.leaves))),
+    threshold: kind === 'door' && s.threshold,
+  };
+}
+
+/**
+ * A window's panes across its clear opening (from `a`, `clear` wide), as [from, to] along it: split at
+ * its mullions (those inside it, 5 cm clear of the jambs and of each other), or into `leaves` equal ones.
+ */
+export function paneSpans(s: OpeningStyle, a: number, clear: number): [number, number][] {
+  const cuts = splitsIn(s.mullions, clear);
+  if (cuts) return [0, ...cuts].map((t, i, all) => [a + t, a + (all[i + 1] ?? clear)]);
+  const n = s.leaves;
+  return Array.from({ length: n }, (_, i) => [a + (i * clear) / n, a + ((i + 1) * clear) / n]);
+}
+
+/** A window's rows of panes from `bottom` to `top`, split at its transoms (each above `bottom`); one without. */
+export function paneRows(s: OpeningStyle, bottom: number, top: number): [number, number][] {
+  const cuts = splitsIn(s.transoms, top - bottom) ?? [];
+  return [0, ...cuts].map((z, i, all) => [bottom + z, bottom + (all[i + 1] ?? top - bottom)]);
+}
+
+/** Splits kept inside 0…length, 5 cm clear of its ends and of each other; null for none. */
+function splitsIn(at: readonly number[] | undefined, length: number): number[] | null {
+  if (!at || at.length === 0) return null;
+  const kept: number[] = [];
+  for (const x of [...at].sort((p, q) => p - q)) if (x >= 0.05 && x <= length - 0.05 && x - (kept.at(-1) ?? 0) >= 0.05) kept.push(x);
+  return kept.length > 0 ? kept : null;
 }
 
 export const isOpeningStyle = (s: unknown): s is OpeningStyle =>
@@ -95,7 +135,8 @@ export const isOpeningStyle = (s: unknown): s is OpeningStyle =>
   finite(s.transom) &&
   s.transom >= 0 &&
   typeof s.threshold === 'boolean' &&
-  (s.screen === undefined || s.screen === 'shutter' || s.screen === 'grille');
+  (s.screen === undefined || s.screen === 'shutter' || s.screen === 'grille') &&
+  [s.mullions, s.transoms].every((xs) => xs === undefined || (Array.isArray(xs) && xs.length <= 6 && xs.every((x) => finite(x) && x >= 0)));
 
 /** The IFC name of how it opens: IfcDoorTypeOperationEnum for a door, IfcWindowPanelOperationEnum for a window's panes. */
 export function ifcOperation(o: Pick<Opening, 'kind' | 'style' | 'hinge'>): string {

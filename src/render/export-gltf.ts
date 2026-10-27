@@ -134,7 +134,7 @@ export function modelScene(doc: Doc, g: DerivedGeometry, naming: ExportNaming): 
       height: o.opening.height,
       sill: o.opening.sill,
       operation: ifcOperation(o.opening),
-      ...(o.opening.style ? { leaves: o.opening.style.leaves, frame: o.opening.style.frame, casing: o.opening.style.casing, transom: o.opening.style.transom, threshold: o.opening.style.threshold } : {}),
+      ...(o.opening.style ? { leaves: o.opening.style.leaves, frame: o.opening.style.frame, casing: o.opening.style.casing, transom: o.opening.style.transom, threshold: o.opening.style.threshold, ...(o.opening.style.mullions ? { mullions: o.opening.style.mullions } : {}), ...(o.opening.style.transoms ? { transoms: o.opening.style.transoms } : {}) } : {}),
       wall: naming.wallTag(wallNumber(doc, o.opening.wallId) ?? 0),
       level: levelName(host.wall.levelId),
     };

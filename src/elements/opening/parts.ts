@@ -8,6 +8,7 @@
 
 import { add, distance, normalize, type Point2, scale, sub } from '../../core/vector';
 import type { Opening } from './schema';
+import { paneRows, paneSpans } from './style';
 import { symbolLines } from './symbol';
 import type { OpeningFrame } from './void';
 
@@ -174,6 +175,10 @@ export function openingParts(o: Placed, f: OpeningFrame, open: boolean): Opening
     push(box(width - 0.03, width, face - 0.015, face + 0.015), o.bottom, o.top, 'frame');
     for (let z = o.bottom + 0.03; z + 0.03 <= o.top; z += 0.05) push(box(0.03, width - 0.03, face - 0.01, face + 0.01), z, z + 0.03, 'leaf');
   }
+  // The panes side by side and one over another: at the mullions and transoms where they are wanted, else equal.
+  const panes = () => {
+    for (const [t0, t1] of paneSpans(s, a, clear)) for (const [z0, z1] of paneRows(s, bottom, top)) pane(t0, t1, mid, z0, z1);
+  };
   const tilt = (z: number, angle: number) => {
     turning = { origin: { ...P(width / 2, mid), z }, axis: along, angle: outside * angle };
   };
@@ -196,14 +201,14 @@ export function openingParts(o: Placed, f: OpeningFrame, open: boolean): Opening
         for (const l of lines) push(slabAlong(l[0]!, l[1]!, 0.02), bottom, top, 'glass');
         if (lines.length > 0) break;
       }
-      for (let i = 0; i < n; i++) pane(a + (i * clear) / n, a + ((i + 1) * clear) / n, mid);
+      panes();
       break;
     default:
       // Open: an awning out from its head, a hopper and a pivot about their middle.
       if (open && s.operation === 'awning') tilt(top, Math.PI / 6);
       else if (open && s.operation === 'hopper') tilt((bottom + top) / 2, -Math.PI / 5);
       else if (open && s.operation === 'pivot') tilt((bottom + top) / 2, Math.PI / 3);
-      for (let i = 0; i < n; i++) pane(a + (i * clear) / n, a + ((i + 1) * clear) / n, mid);
+      panes();
       turning = undefined;
   }
   return parts;
