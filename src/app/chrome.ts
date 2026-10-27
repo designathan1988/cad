@@ -216,6 +216,8 @@ export function renderChrome(app: App): void {
   const altGuide = ui.view === 'plan' ? [keyHint('Alt', t('key.guide'))] : [];
   // S says what it is now, wherever points snap: drawing, it was nowhere in the footer, and the snaps
   // seemed impossible to turn off.
+  // While a point is drawn from another: the arrows lock its direction.
+  const lockKeys = ui.drawFrom ? [keyHint('→ ↑', t('key.lockAxis')), keyHint('← ↓', t('key.lockWall'))] : [];
   const snapKey = keyHint('S', t(ui.snaps ? 'key.snapsOn' : 'key.snapsOff'));
   const keys = app.walker
     ? [keyHint('W A S D', t('key.walk')), keyHint('Shift', t('key.run')), keyHint('+ −', t('key.eye')), keyHint('PgUp PgDn', t('key.walkLevel')), keyHint('Esc', t('key.exit'))]
@@ -229,33 +231,33 @@ export function renderChrome(app: App): void {
         ...(mod.kind === 'move' && !mod.copy ? [keyHint('U', t(mod.disjoin ? 'key.disjoinOn' : 'key.disjoinOff'))] : []),
         // Offset has no centre and no angle: its distance is square to the wall.
         ...(mod.state.step === 'base' && mod.kind !== 'move' && mod.kind !== 'copy' && mod.kind !== 'offset' ? [keyHint('Enter', t('key.centre'))] : []),
-        ...(mod.kind !== 'offset' ? [keyHint('Shift', t('key.straight'))] : []),
+        ...(mod.kind !== 'offset' ? [keyHint('Shift', t('key.straight')), ...lockKeys] : []),
         snapKey,
         keyHint('Esc', t(mod.state.step === 'base' ? 'key.exit' : 'key.back')),
       ]
     : placing || ui.tool === 'room'
     ? [keyHint('Esc', t('key.exit'))]
     : ui.tool === 'dimension'
-    ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.dimension.kind === 'idle' ? 'key.exit' : 'key.back'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.dimension.kind === 'idle' ? 'key.exit' : 'key.back'))]
     : ui.tool === 'grid'
-    ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.gridFrom ? 'key.back' : 'key.exit'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.gridFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'column'
     ? [snapKey, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'object'
     ? [keyHint(t('key.spaceKey'), t('key.turn90')), snapKey, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain'
-    ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
     : ui.tool === 'stair'
-    ? [keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.stairFrom ? 'key.back' : 'key.exit'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.stairFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'railing'
-    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.railingDraft.length > 0 ? 'key.finish' : 'key.exit'))]
+    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.railingDraft.length > 0 ? 'key.finish' : 'key.exit'))]
     : ui.tool === 'roof'
-    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), snapKey, keyHint('Esc', t(ui.roofDraft.length > 0 ? 'key.back' : 'key.exit'))]
+    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.roofDraft.length > 0 ? 'key.back' : 'key.exit'))]
     : ui.tool === 'measure'
     ? [
         keyHint('C', t(ui.measureMode === 'chain' ? 'key.measureDistance' : 'key.measureChain')),
         ...(ui.measure.kind === 'chain' ? [keyHint('Enter', t('key.finish'))] : []),
-        keyHint('Shift', t('key.straight')),
+        keyHint('Shift', t('key.straight')), ...lockKeys,
         ...altGuide,
         snapKey,
         keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clearMeasure')),
@@ -272,7 +274,7 @@ export function renderChrome(app: App): void {
           // What the key does now: with the arc on, it goes back to straight walls.
           keyHint('A', t(arc || w.kind === 'bend' ? 'key.arcOff' : 'key.arc')),
           keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')),
-          keyHint('Shift', t('key.straight')),
+          keyHint('Shift', t('key.straight')), ...lockKeys,
           ...altGuide,
           snapKey,
           keyHint('Esc', t('key.finish')),

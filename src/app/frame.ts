@@ -107,6 +107,8 @@ export function renderFrame(app: App): void {
   const snapWall = ui.snap?.wallId ? wallNumber(app.store.get(), ui.snap.wallId) : null;
   const ofKey = ui.snap && snapWall !== null && ui.snap.kind in SNAP_OF ? SNAP_OF[ui.snap.kind as keyof typeof SNAP_OF] : null;
   const labelKey = ofKey ?? (ui.snap ? snapLabel[ui.snap.kind] : null);
+  // Held to a direction: what it is held to.
+  const lockLabel = ui.snap?.kind === 'locked' && ui.lock ? t(ui.lock.label, ui.lock.vars) : null;
   // The guide being placed, at the distance typed or pointed; its distance as a dimension.
   const guideOff = app.guideOffset();
   const marks = app.modifyMarks();
@@ -130,7 +132,7 @@ export function renderFrame(app: App): void {
       snap:
         // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
         (ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
-          ? { point: ui.snap.point, kind: ui.snap.kind, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null, ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
+          ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null), ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
           : null,
       measure: guideDim
         ? { at: { x: (guideDim.a.x + guideDim.b.x) / 2, y: (guideDim.a.y + guideDim.b.y) / 2 }, text: `${lengthText(guideOff!)}`, normal: ui.guide!.base.dir, clear: 0 }
@@ -214,6 +216,7 @@ export function renderFrame(app: App): void {
         ...(guideDim && guideOff! > 0 ? [{ ...guideDim, side: ui.guide!.base.dir, clear: 0 }] : []),
       ],
       underlay: app.underlay(),
+      acquired: ui.acquired,
     });
     app.plan.drawPoints(app.pointsShown());
   } else {
@@ -239,7 +242,7 @@ export function renderFrame(app: App): void {
       project: (p, z) => app.projectAt(p, z),
       floor: (level?.elevation ?? 0) + app.lift(ui.levelId),
       height: level?.height ?? 2.8,
-      snap: active && ui.snap ? { point: ui.snap.point, kind: ui.snap.kind, label: labelKey ? t(labelKey, { n: snapWall ?? '' }) : null } : null,
+      snap: active && ui.snap ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null) } : null,
       axis:
         end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
           ? { start: w.last, end }

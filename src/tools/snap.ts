@@ -17,6 +17,7 @@ export type SnapKind =
   | 'division'
   | 'center'
   | 'node'
+  | 'locked'
   | 'onWall'
   | 'onFace'
   | 'onGuide'
@@ -78,6 +79,14 @@ export interface SnapInput {
   readonly parts?: number;
   /** Points already offered under the pointer (Tab, app/input.ts): passed over for the next one. */
   readonly skip?: readonly Point2[];
+  /**
+   * A direction the point is held to from `from` (a unit vector: an arrow key's axis, a wall's line or
+   * square to it, or Shift's direction): the point slides along it, stopping where it crosses a wall
+   * or a guide near the pointer.
+   */
+  readonly lock?: Point2;
+  /** Points the pointer rested on (acquired): the point aligns with them across or up, as with walls' ends. */
+  readonly acquired?: readonly Point2[];
 }
 
 /** A line without ends: a point of it and its unit direction. */
@@ -114,6 +123,7 @@ export const snapLabel: Readonly<Record<SnapKind, MessageKey | null>> = {
   division: 'snap.division',
   center: 'snap.center',
   node: 'snap.node',
+  locked: 'snap.locked',
   onWall: 'snap.onWall',
   onFace: 'snap.onFace',
   onGuide: 'snap.onGuide',
@@ -128,6 +138,7 @@ export function snap(input: SnapInput): Snap {
   const { cursor, mpp, from } = input;
   const r = RADIUS_PX * mpp;
   const guides = input.guides ?? [];
+  if (from && input.lock) return locked(cursor, from, input.lock, input.enabled, guides, input.segments, r);
   if (from && input.orthogonal) return orthogonal(cursor, from, input.enabled, guides, r);
   if (!input.enabled) return { point: cursor, kind: 'none' };
   // What Tab has already offered here is passed over: the next candidate, in the same order.
@@ -337,7 +348,7 @@ export function snap(input: SnapInput): Snap {
   // direction the point slides along that direction to the line, so it never leaves the angle.
   const dir = best && from ? normalize(sub(best.point, from)) : null;
   // The origin last: the axes it stands for are a weaker guide than the walls' own ends.
-  const targets = [...ends, ...(input.chainStart ? [input.chainStart] : []), ORIGIN];
+  const targets = [...ends, ...(input.chainStart ? [input.chainStart] : []), ...(input.acquired ?? []), ORIGIN];
   for (const [k, e] of targets.entries()) {
     const base = best?.point ?? cursor;
     if (distance(e, cursor) <= r) continue;
@@ -368,6 +379,28 @@ function orthogonal(cursor: Point2, from: Point2, grid: boolean, guides: readonl
     if (p && dot(sub(p, from), u) > 0 && Math.abs(dot(sub(p, from), u) - raw) <= r) return { point: p, kind: 'onGuide' };
   }
   return { point, kind: 'angle' };
+}
+
+/**
+ * Held to a direction from `from`: the pointer's foot on that line, its distance on the 5 cm grid, or
+ * where the line crosses a straight wall or a guide within reach of that point.
+ */
+function locked(cursor: Point2, from: Point2, dir: Point2, grid: boolean, guides: readonly GuideLine[], segments: SnapInput['segments'], r: number): Snap {
+  const raw = dot(sub(cursor, from), dir);
+  const point = add(from, scale(dir, grid ? Math.round(raw / GRID_STEP) * GRID_STEP : raw));
+  if (grid) {
+    const crossings = [
+      ...segments.flatMap((s) => {
+        if (s.bulge || distance(s.start, s.end) === 0) return [];
+        const p = lineCrossing(from, dir, s.start, sub(s.end, s.start));
+        return p && dot(sub(p, s.start), sub(p, s.end)) <= 1e-12 ? [p] : [];
+      }),
+      ...guides.flatMap((g) => lineCrossing(from, dir, g.point, g.dir) ?? []),
+    ].filter((p) => Math.abs(dot(sub(p, from), dir) - raw) <= r && distance(p, from) > MIN_SNAP_RUN);
+    const near = crossings.sort((a, b) => distance(a, cursor) - distance(b, cursor))[0];
+    if (near) return { point: near, kind: 'locked', guideFrom: from };
+  }
+  return { point, kind: 'locked', guideFrom: from };
 }
 
 const perpOf = (u: Point2): Point2 => vec(-u.y, u.x);

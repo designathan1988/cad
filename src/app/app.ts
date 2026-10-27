@@ -104,6 +104,12 @@ export interface UiState {
   snapParts: number;
   /** Snap points Tab has passed over under the pointer (snap.ts, skip); emptied once it moves on. */
   snapSkip: Point2[];
+  /** A direction the next point is held to (an arrow key, Shift: snap.ts, lock), from the point it was set at. */
+  lock: { readonly dir: Point2; readonly label: MessageKey; readonly vars: Record<string, string | number>; readonly at: Point2; readonly by: 'arrow' | 'shift' } | null;
+  /** Points the pointer rested on, to align with (snap.ts, acquired): three at most, until the tool changes. */
+  acquired: Point2[];
+  /** Where the point being drawn goes from, as last snapped; null when nothing is being drawn. */
+  drawFrom: Point2 | null;
   defaults: WallDefaults;
   wall: WallToolState;
   opening: OpeningToolState;
@@ -233,6 +239,9 @@ export class App {
       snaps: prefs.snaps !== false,
       snapParts: prefs.snapParts ?? 3,
       snapSkip: [],
+      lock: null,
+      acquired: [],
+      drawFrom: null,
       defaults: { wallTypeId: doc.wallTypes[0]!.id, referenceLine: 'centerline', baseOffset: 0, top: { kind: 'level', offset: 0 } },
       wall: IDLE,
       opening: OPENING_IDLE,
@@ -630,6 +639,9 @@ export class App {
     const host = (tool === 'door' || tool === 'window') && this.ui.selection.size === 1 ? this.store.get().walls.find((w) => this.ui.selection.has(w.id)) : undefined;
     this.ui.tool = tool;
     this.ui.wall = IDLE;
+    // A lock and the points rested on belong to what was being drawn.
+    this.ui.lock = null;
+    this.ui.acquired = [];
     this.ui.roomSpace = null;
     this.ui.tapToConfirm = false;
     // A side flipped for some walls is not left for later ones, drawn another time.

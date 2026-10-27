@@ -1,6 +1,8 @@
 // Mouse and keyboard. Plan: wheel zooms at the cursor, middle button pans. 3D: wheel zooms at the
 // cursor, middle pans, Shift + middle or right rotates (OrbitControls). Left button is the tool's.
 
+import { wallNumber } from './document';
+import type { MessageKey } from '../ui/i18n';
 import { geometryOf } from './carry';
 import { showObjects } from '../ui/objects-dialog';
 import { endHandleDrag, moveHandleDrag, objectHandleAt, startHandleDrag } from './object-handles';
@@ -40,6 +42,11 @@ import { wireButtons } from './input-buttons';
 
 /** How near (screen pixels) the pointer must come to a wall, a door or a window to take it. */
 const PICK_PX = 6;
+
+/** What a rest on the pointer acquires: a point of something, not a place on a line or the grid. */
+const ACQUIRED = new Set(['endpoint', 'corner', 'midpoint', 'division', 'center', 'node', 'intersection']);
+/** How long the pointer rests on a point to acquire it (ms). */
+const ACQUIRE_MS = 450;
 
 export function wireInput(app: App): void {
   const { shell, ui } = app;
@@ -191,6 +198,7 @@ export function wireInput(app: App): void {
   };
   /** The last pointer move over the drawing, and where Tab was last pressed (snap.ts, skip). */
   let lastMove: PointerEvent | null = null;
+  let acquireTimer = 0;
   let tabAt: { x: number; y: number } | null = null;
   // The elements' own points on the level, to snap to: a door's or a window's jambs and middle, an
   // object's or a column's corners and centre. Of the document as it is (not a preview: an object
@@ -256,6 +264,10 @@ export function wireInput(app: App): void {
     const below = ui.hidden.has('walls') ? null : app.levelBelow();
     const walls = app.store.get().walls;
     const onFace = ui.tool === 'wall' && ui.defaults.referenceLine !== 'centerline' && below !== null;
+    const from = tape ?? modifyFrom ?? (draft ? (draft.at(-1) ?? null) : w.kind === 'drawing' ? w.last : null);
+    ui.drawFrom = from;
+    // A lock holds while the point is drawn from where it was set; a new point lets it go.
+    if (ui.lock && (!from || distance(ui.lock.at, from) > 1e-9)) ui.lock = null;
     return snap({
       cursor: at.p,
       mpp: at.mpp,
@@ -268,7 +280,7 @@ export function wireInput(app: App): void {
         ...walls.filter((x) => x.levelId === below).map((x) => ({ start: x.start, end: x.end, reach: measuring ? 0 : halfOf(x.id), ...(x.bulge ? { bulge: x.bulge } : {}) })),
       ],
       // Modifying, snapped from the base point: right angles and 15° steps from it, as a wall from its last point.
-      from: tape ?? modifyFrom ?? (draft ? (draft.at(-1) ?? null) : w.kind === 'drawing' ? w.last : null),
+      from,
       // A chain being measured closes on its first point, as a floor's outline does.
       chainStart:
         ui.tool === 'measure' && ui.measure.kind === 'chain'
@@ -283,7 +295,9 @@ export function wireInput(app: App): void {
               ? w.start
               : null,
       enabled: ui.snaps,
-      orthogonal: shift,
+      orthogonal: shift && !ui.lock,
+      ...(ui.lock ? { lock: ui.lock.dir } : {}),
+      acquired: ui.acquired,
       points: elementPoints(),
       parts: ui.snapParts,
       skip: ui.snapSkip,
@@ -350,6 +364,14 @@ export function wireInput(app: App): void {
   let boxDrag: { face: BoxFace; box: SectionBox; from: { x: number; y: number }; along: { x: number; y: number } } | null = null;
   const onMove = (e: PointerEvent) => {
     lastMove = e;
+    // Resting on a point a moment acquires it: the next points align with it across or up.
+    window.clearTimeout(acquireTimer);
+    acquireTimer = window.setTimeout(() => {
+      const s = ui.snap;
+      if (!s || ui.tool === 'select' || !ACQUIRED.has(s.kind) || ui.acquired.some((p) => distance(p, s.point) < 1e-9)) return;
+      ui.acquired = [...ui.acquired, s.point].slice(-3);
+      app.render();
+    }, ACQUIRE_MS);
     // Moved on from where Tab was pressed: the snaps start over.
     if (tabAt && Math.hypot(e.clientX - tabAt.x, e.clientY - tabAt.y) > 4) {
       tabAt = null;
@@ -841,6 +863,11 @@ export function wireInput(app: App): void {
   // Walking (walk.ts): the keys held move the walker each frame; let go, it stops.
   window.addEventListener('keyup', (e) => {
     if (app.walker) app.walkKeys.delete(e.key.toLowerCase());
+    // Shift let go: its lock goes with it.
+    if (e.key === 'Shift' && ui.lock?.by === 'shift') {
+      ui.lock = null;
+      if (lastMove) onMove(lastMove);
+    }
     if (e.key !== 'Alt') return;
     const target = e.target as HTMLElement;
     if (!target.closest('input, select, textarea')) e.preventDefault();
@@ -866,6 +893,51 @@ export function wireInput(app: App): void {
     guideTools,
     palette,
     showMarquee,
+    // An arrow while drawing: held to x (→) or y (↑), or along (←) or square (↓) to the wall the snap
+    // names or the nearest one; the same arrow again lets go.
+    lock: (key) => {
+      const from = ui.drawFrom;
+      if (!from || !lastMove || ui.tool === 'select') return false;
+      let dir: Point2;
+      let label: MessageKey;
+      let vars: Record<string, string | number> = {};
+      if (key === 'arrowright' || key === 'arrowup') {
+        dir = key === 'arrowright' ? { x: 1, y: 0 } : { x: 0, y: 1 };
+        label = key === 'arrowright' ? 'lock.x' : 'lock.y';
+      } else {
+        const doc = app.store.get();
+        const cursor = ui.cursor ?? from;
+        const straight = doc.walls.filter((x) => x.levelId === ui.levelId && !x.bulge && distance(x.start, x.end) > 0);
+        const named = ui.snap?.wallId ? straight.find((x) => x.id === ui.snap!.wallId) : undefined;
+        const near = (x: (typeof straight)[number]) => {
+          const u = normalize(sub(x.end, x.start));
+          const t = Math.max(0, Math.min(distance(x.start, x.end), (cursor.x - x.start.x) * u.x + (cursor.y - x.start.y) * u.y));
+          return distance(cursor, { x: x.start.x + u.x * t, y: x.start.y + u.y * t });
+        };
+        const wall = named ?? [...straight].sort((a, b) => near(a) - near(b))[0];
+        if (!wall) {
+          app.toast(t('lock.noWall'));
+          return true;
+        }
+        const u = normalize(sub(wall.end, wall.start));
+        dir = key === 'arrowleft' ? u : { x: -u.y, y: u.x };
+        label = key === 'arrowleft' ? 'lock.parallel' : 'lock.square';
+        vars = { n: wallNumber(doc, wall.id) ?? '' };
+      }
+      ui.lock = ui.lock?.label === label && ui.lock.by === 'arrow' ? null : { dir, label, vars, at: from, by: 'arrow' };
+      onMove(lastMove);
+      return true;
+    },
+    // Shift, drawing along a snapped direction (an angle, a wall's line, square to it): held to it.
+    shiftLock: () => {
+      const from = ui.drawFrom;
+      const s = ui.snap;
+      if (!from || !s || !lastMove || ui.lock || (s.kind !== 'angle' && s.kind !== 'parallel' && s.kind !== 'perpendicular')) return;
+      const len = distance(from, s.point);
+      if (len < 1e-6) return;
+      ui.lock = { dir: { x: (s.point.x - from.x) / len, y: (s.point.y - from.y) / len }, label: 'lock.shift', vars: {}, at: from, by: 'shift' };
+      onMove(lastMove);
+    },
     // The snap offered is passed over and the pointer's place taken again: the next candidate.
     nextSnap: () => {
       const s = ui.snap;

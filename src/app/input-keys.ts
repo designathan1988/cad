@@ -27,6 +27,10 @@ export interface KeyContext {
   showMarquee(): void;
   /** Tab: the next snap under the pointer; false when no tool is snapping there. */
   nextSnap(): boolean;
+  /** An arrow while drawing: a direction lock (snap.ts, lock); false when nothing is being drawn. */
+  lock(key: string): boolean;
+  /** Shift pressed while drawing along a snapped direction: held to it. */
+  shiftLock(): void;
 }
 
 export function wireKeys(app: App, k: KeyContext): void {
@@ -155,6 +159,12 @@ export function wireKeys(app: App, k: KeyContext): void {
       shell.measure.value = e.key;
       return app.refresh();
     }
+    // Arrows while drawing lock the direction (→ x, ↑ y, ← along a wall, ↓ square to it).
+    if (!ctrl && !e.altKey && !e.shiftKey && (key === 'arrowright' || key === 'arrowleft' || key === 'arrowup' || key === 'arrowdown') && k.lock(key)) {
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'Shift' && !e.repeat) k.shiftLock();
     // Arrows, with or without Alt, before Alt shortcuts are left to the browser.
     const step = !ctrl && !e.shiftKey && ui.selection.size > 0 && ui.view === 'plan' ? arrowStep(e.key, e.altKey) : null;
     if (step) {

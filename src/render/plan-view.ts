@@ -122,6 +122,8 @@ export interface PlanOverlay {
   }[];
   /** A floor outline being drawn, ending at the cursor. */
   readonly draft: readonly Point2[] | null;
+  /** Points the pointer rested on, to align with (snap.ts, acquired): a small plus each. */
+  readonly acquired?: readonly Point2[];
   /** Its corners so far, each marked: a typed first corner shows before the pointer moves. */
   readonly draftCorners?: readonly Point2[];
   /** The opening being placed (an id present in the geometry), drawn in the accent colour. */
@@ -573,6 +575,21 @@ export class PlanView {
       ctx.restore();
     }
     for (const d of o.dims ?? []) this.drawDim(d, color('--wall-sel'));
+    if (o.acquired?.length) {
+      ctx.save();
+      ctx.strokeStyle = color('--snap');
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      for (const a of o.acquired) {
+        const q = this.toScreen(a);
+        ctx.moveTo(q.x - 4, q.y);
+        ctx.lineTo(q.x + 4, q.y);
+        ctx.moveTo(q.x, q.y - 4);
+        ctx.lineTo(q.x, q.y + 4);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
     const snapBox = o.snap ? this.drawSnap(o.snap, color('--snap'), color('--bg')) : null;
     if (o.measure) this.drawMeasure(o.measure, snapBox, color('--accent-text'), color('--canvas'));
   }
@@ -1148,6 +1165,7 @@ export function snapMark(ctx: CanvasRenderingContext2D, kind: string, p: Point2)
     case 'aligned':
     case 'axis':
     case 'parallel':
+    case 'locked':
     case 'angle':
       ctx.moveTo(p.x - r, p.y);
       ctx.lineTo(p.x + r, p.y);
