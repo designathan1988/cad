@@ -8,7 +8,7 @@ import { analyticModel, clashesOf, isometricSvg, waterproofing } from '../../src
 import { balance, generalDemand, loadTable, protect, showerFactor, voltageDrop } from '../../src/elements/mep/electrical';
 import { fittingsOf, networksOf } from '../../src/elements/mep/network';
 import { GROUP_OF, isMepPoint, isMepRun, type MepPoint, type MepRun } from '../../src/elements/mep/schema';
-import { hazenWilliams, mostUhc, neededDiameter, pressures, probableFlow, rainCapacity, rainDiameter, sewerFalls, sewerStacks, stackDiameter, trapReach, ventBranchDiameter, ventDiameter } from '../../src/elements/mep/water';
+import { equivalentLength, hazenWilliams, mostUhc, neededDiameter, pressures, probableFlow, rainCapacity, rainDiameter, sewerFalls, sewerStacks, stackDiameter, trapReach, ventBranchDiameter, ventDiameter } from '../../src/elements/mep/water';
 import { DEFAULT_SIM } from '../../src/sim/settings';
 import { RAIN_PLACES, rainOf } from '../../src/elements/mep/rain-places';
 import { readProject, writeProject } from '../../src/io/project-file';
@@ -217,12 +217,21 @@ describe('probable demand (CELG D CT 04/18)', () => {
 });
 
 describe('water and sewer', () => {
+  it('NBR 5626:1998 table A.3 by diameter: its row, the next larger for one between, the largest past it', () => {
+    expect([equivalentLength('elbow90', 0.025), equivalentLength('elbow45', 0.025), equivalentLength('teeStraight', 0.025), equivalentLength('teeSide', 0.025)]).toEqual([1.5, 0.7, 0.9, 3.1]);
+    expect(equivalentLength('elbow90', 0.022)).toBe(1.5);
+    expect(equivalentLength('teeSide', 0.1)).toBe(8.3);
+    expect(equivalentLength('elbow90', 0.2)).toBe(5.4);
+  });
+
   it('the pressure at an outlet: the tank\'s head less the losses on its way', () => {
     const [p] = pressures(house, 'coldWater');
     expect(p!.head).toBeCloseTo(3.4, 9);
     expect(p!.staticKpa).toBeCloseTo(3.4 * 9.80665, 6);
     const q = probableFlow(0.3) / 1000;
-    const loss = hazenWilliams(q, 0.025) * (1.3 + 3 + 2.1) * 1.2;
+    // NBR 5626:1998 table A.3, 25 mm: the two 90° elbows on its way (down from the tank, then down to the
+    // outlet), 1,5 m each.
+    const loss = hazenWilliams(q, 0.025) * (1.3 + 3 + 2.1 + 1.5 + 1.5);
     expect(p!.loss).toBeCloseTo(loss, 9);
     expect(p!.dynamicKpa).toBeCloseTo((3.4 - loss) * 9.80665, 6);
     expect(p!.ok).toBe(true);
@@ -237,12 +246,14 @@ describe('water and sewer', () => {
     const [q] = pressures(hot, 'hotWater');
     // The tank at 4 m over the outlet at 0.6.
     expect(q!.head).toBeCloseTo(3.4, 9);
-    // Cold: 1.3 m down from the tank carrying the cold and the hot outlet (0.3 + 0.3), 3 m to over the
-    // heater carrying the hot one; hot: 2 m and the 1.2 m drop to the outlet.
-    const hw = (w: number, l: number) => hazenWilliams(probableFlow(w) / 1000, 0.025) * l * 1.2;
-    expect(q!.loss).toBeCloseTo(hw(0.6, 1.3) + hw(0.3, 3) + hw(0.3, 3.2), 9);
-    // The cold outlet's way now carries the heater's draw on its first stretch.
-    expect(pressures(hot, 'coldWater')[0]!.loss).toBeCloseTo(hw(0.6, 1.3) + hw(0.3, 3 + 2.1), 9);
+    // Cold: 1.3 m down from the tank carrying the cold and the hot outlet (0.3 + 0.3), then out of the tee's
+    // side (3,1 m, table A.3, 25 mm) 3 m to over the heater carrying the hot one; hot: 2 m, the elbow (1,5 m)
+    // and the 1.2 m drop to the outlet.
+    const hw = (w: number, l: number) => hazenWilliams(probableFlow(w) / 1000, 0.025) * l;
+    expect(q!.loss).toBeCloseTo(hw(0.6, 1.3) + hw(0.3, 3 + 3.1) + hw(0.3, 2 + 1.2 + 1.5), 9);
+    // The cold outlet's way now carries the heater's draw on its first stretch, and its corner is a tee
+    // it leaves by the side.
+    expect(pressures(hot, 'coldWater')[0]!.loss).toBeCloseTo(hw(0.6, 1.3) + hw(0.3, 3 + 3.1) + hw(0.3, 2.1 + 1.5), 9);
     // No cold pipe to the heater: the heater's own height, as before.
     const alone: Doc = { ...hot, mepRuns: hot.mepRuns.filter((r) => r.id !== 'a2') };
     expect(pressures(alone, 'hotWater')[0]!.head).toBeCloseTo(1.2, 9);

@@ -2,7 +2,9 @@
 // Water: from the tank down the pipes (network.ts) to each outlet, the hot through the heater; the static head is
 // the tank's height over the outlet's; the probable flow in each stretch is NBR 5626's 0,3·√ΣP (L/s,
 // P the relative weights of the outlets it feeds); the friction is Hazen-Williams' with C = 140 (PVC)
-// taking the pipe's diameter as its bore, plus 20 % for the fittings; the dynamic pressure is the head
+// taking the pipe's diameter as its bore, plus each fitting the water passes on its way as its equivalent
+// length (NBR 5626:1998 table A.3, smooth pipe: an elbow where it turns, a tee straight through or out of
+// its side); the dynamic pressure is the head
 // less the losses. NBR 5626 asks at least 10 kPa at an outlet in use and at most 400 kPa standing
 // (values to confirm in the edition in force). Sewer: each sloping stretch's fall towards the way out,
 // at least 2 % up to 75 mm and 1 % from 100 mm (NBR 8160, to confirm); its stacks and vent pipes, the
@@ -19,7 +21,31 @@ export const MAX_STATIC = 400;
 /** kPa per metre of water. */
 const KPA_PER_M = 9.80665;
 const HAZEN_C = 140;
-const FITTINGS = 1.2;
+
+/**
+ * NBR 5626:1998 table A.3, smooth pipe (plastic, copper): each fitting's equivalent length (m) by nominal
+ * diameter (mm): elbow 90°, elbow 45°, tee straight through, tee out of its side.
+ */
+export const EQUIVALENT: readonly (readonly [number, number, number, number, number])[] = [
+  [15, 1.1, 0.4, 0.7, 2.3],
+  [20, 1.2, 0.5, 0.8, 2.4],
+  [25, 1.5, 0.7, 0.9, 3.1],
+  [32, 2.0, 1.0, 1.5, 4.6],
+  [40, 3.2, 1.0, 2.2, 7.3],
+  [50, 3.4, 1.3, 2.3, 7.6],
+  [65, 3.7, 1.7, 2.4, 7.8],
+  [80, 3.9, 1.8, 2.5, 8.0],
+  [100, 4.3, 1.9, 2.6, 8.3],
+  [125, 4.9, 2.4, 3.3, 10.0],
+  [150, 5.4, 2.6, 3.8, 11.1],
+];
+export type PassKind = 'elbow90' | 'elbow45' | 'teeStraight' | 'teeSide';
+/** A fitting's equivalent length (m) at a diameter (m): the table's row for it, else the next larger. */
+export function equivalentLength(kind: PassKind, diameter: number): number {
+  const mm = diameter * 1000;
+  const row = EQUIVALENT.find((r) => r[0] >= mm - 0.5) ?? EQUIVALENT[EQUIVALENT.length - 1]!;
+  return row[kind === 'elbow90' ? 1 : kind === 'elbow45' ? 2 : kind === 'teeStraight' ? 3 : 4];
+}
 
 export interface OutletPressure {
   readonly point: MepPoint;
@@ -63,11 +89,46 @@ function flowOver(net: Network, demands: readonly Demand[]) {
     }
     return n;
   };
-  const lossOf = (path: readonly number[]): number =>
-    path.reduce((t, k) => {
+  // How many pieces meet at each node (a fitting is where two or more do).
+  const degree = new Map<number, number>();
+  for (const e of net.edges) if (e.length > 1e-9) for (const n of [e.a, e.b]) degree.set(n, (degree.get(n) ?? 0) + 1);
+  // The way out of a node along an edge, a unit vector.
+  const away = (k: number, node: number) => {
+    const e = net.edges[k]!;
+    const a = net.nodes[node]!;
+    const b = net.nodes[e.a === node ? e.b : e.a]!;
+    const l = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) || 1;
+    return { x: (b.x - a.x) / l, y: (b.y - a.y) / l, z: (b.z - a.z) / l };
+  };
+  // The fitting the water passes at a node between two edges of its way: turning, an elbow; through a
+  // junction, a tee straight through or out of its side; straight on with nothing else there, none.
+  const passAt = (node: number, k1: number, k2: number): PassKind | null => {
+    const u = away(k1, node);
+    const w = away(k2, node);
+    const turn = 180 - (Math.acos(Math.max(-1, Math.min(1, u.x * w.x + u.y * w.y + u.z * w.z))) * 180) / Math.PI;
+    if ((degree.get(node) ?? 0) >= 3) return turn < 22.5 ? 'teeStraight' : 'teeSide';
+    return turn >= 67.5 ? 'elbow90' : turn >= 22.5 ? 'elbow45' : null;
+  };
+  // The friction along a way, each edge's with the fittings at its end toward the outlet (from the outlet's
+  // node up to the source, as pathTo gives it).
+  const lossOf = (path: readonly number[], start: number): number => {
+    let n = start;
+    let t = 0;
+    path.forEach((k, i) => {
       const e = net.edges[k]!;
-      return t + hazenWilliams(probableFlow(carried.get(k) ?? 0) / 1000, e.diameter) * e.length * FITTINGS;
-    }, 0);
+      const j = hazenWilliams(probableFlow(carried.get(k) ?? 0) / 1000, e.diameter);
+      let length = e.length;
+      const next = e.a === n ? e.b : e.a;
+      const k2 = path[i + 1];
+      if (k2 !== undefined) {
+        const pass = passAt(next, k, k2);
+        if (pass) length += equivalentLength(pass, e.diameter);
+      }
+      t += j * length;
+      n = next;
+    });
+    return t;
+  };
   return { paths, sourceOf, lossOf };
 }
 
@@ -125,12 +186,12 @@ export function pressures(doc: Doc, group: 'coldWater' | 'hotWater'): OutletPres
     if (!path) return { point, head: null, loss: null, staticKpa: null, dynamicKpa: null, flow: null, ok: false };
     const src = flow.sourceOf(path, node);
     let top = net.nodes[src]!.z;
-    let loss = flow.lossOf(path);
+    let loss = flow.lossOf(path, node);
     const c = group === 'hotWater' ? inlet.get(src) : undefined;
     const coldPath = c === undefined ? undefined : coldFlow?.paths.get(c);
     if (cold && coldFlow && c !== undefined && coldPath) {
       top = cold.nodes[coldFlow.sourceOf(coldPath, c)]!.z;
-      loss += coldFlow.lossOf(coldPath);
+      loss += coldFlow.lossOf(coldPath, c);
     }
     const head = top - net.nodes[node]!.z;
     const staticKpa = head * KPA_PER_M;
