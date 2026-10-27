@@ -21,7 +21,7 @@ import { GRID_STEP, type Snap } from '../tools/snap';
 import type { App } from './app';
 import type { DocWall } from './document';
 import { insidePolygon } from './geometry';
-import { updateOpening } from '../elements/opening/commands';
+import { detachedFrom, wallRule } from '../elements/opening/commands';
 import type { Opening } from '../elements/opening/schema';
 import { offsetThrough, placeDimension } from '../elements/dimension/anchor';
 import { wallsOnGrids } from '../elements/grid/carry';
@@ -172,7 +172,8 @@ export function selectGestures(app: App): SelectGestures {
           // Taken where it was pressed: that point's distance along the wall from the opening's centre.
           const f = placed.frame;
           const centre = add(f.start, scale(f.dir, (placed.end - placed.start) / 2));
-          ui.drag = { kind: 'slide', id: sliding.id, grab: dot(sub(pending.at, centre), f.dir), walls: doc.walls, openings: doc.openings };
+          // What was measured from it stays where it is (held by its wall): it moves alone.
+          ui.drag = { kind: 'slide', id: sliding.id, grab: dot(sub(pending.at, centre), f.dir), walls: doc.walls, openings: detachedFrom(doc, sliding.id) };
         } else if (pending.kind === 'wall' && moving.length + rooms.size + kinds.size > 0) {
           ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, kinds };
           smart = ui.view === 'plan' ? smartBoxes(app, ui.selection) : null;
@@ -259,8 +260,10 @@ export function selectGestures(app: App): SelectGestures {
           if (aim) {
             const rule = ruleAt(aim, o.width);
             // Onto another wall a door opens to the side the pointer is on, as when it is placed.
-            const next: Opening = aim.wallId === o.wallId ? { ...o, rule } : { ...o, wallId: aim.wallId, rule, swing: aim.side };
-            ui.drag = { ...d, openings: doc.openings.map((x) => (x.id === d.id ? next : x)) };
+            const moved: Opening = aim.wallId === o.wallId ? { ...o, rule } : { ...o, wallId: aim.wallId, rule, swing: aim.side };
+            // Held by its wall, not measured from a neighbour (which then could not move without it).
+            const next: Opening = { ...moved, rule: wallRule({ ...doc, openings: d.openings }, moved) };
+            ui.drag = { ...d, openings: d.openings.map((x) => (x.id === d.id ? next : x)) };
           }
         }
       } else if (d.kind === 'rotate' && world) {
@@ -296,7 +299,9 @@ export function selectGestures(app: App): SelectGestures {
       } else if (d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'bulge') app.store.dispatch(setWalls(d.walls));
       else if (d?.kind === 'slide') {
         const o = d.openings.find((x) => x.id === d.id);
-        if (o) app.store.dispatch(updateOpening(o.id, { wallId: o.wallId, rule: o.rule, swing: o.swing }));
+        // It and what was detached from it, one undo step.
+        const changed = new Map(d.openings.filter((x) => JSON.stringify(x) !== JSON.stringify(app.store.get().openings.find((y) => y.id === x.id))).map((x) => [x.id, x]));
+        if (o && changed.size > 0) app.store.dispatch({ label: 'cmd.updateOpening', apply: (doc) => ({ ...doc, openings: doc.openings.map((x) => changed.get(x.id) ?? x) }) });
       }
       else if (d?.kind === 'dimLine') app.store.dispatch(setDimensionOffset(d.id, d.offset));
       else if (d?.kind === 'marquee') selectByMarquee(app, d.a, d.b, shift);

@@ -1452,6 +1452,17 @@ export class Scene3D {
     return hit ? { p: { x: hit.point.x, y: -hit.point.z }, height: hit.point.y } : null;
   }
 
+  /** The ray under a screen point, in plan coordinates (x, y in plan, z the height): from the eye, unit direction. */
+  rayAt(clientX: number, clientY: number): { origin: { x: number; y: number; z: number }; dir: { x: number; y: number; z: number } } {
+    const r = this.canvas.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(ndc, this.camera);
+    const o = ray.ray.origin;
+    const d = ray.ray.direction;
+    return { origin: { x: o.x, y: -o.z, z: o.y }, dir: { x: d.x, y: -d.z, z: d.y } };
+  }
+
   /** Where a screen point meets the horizontal plane at height z, in world plan coordinates. */
   groundPoint(clientX: number, clientY: number, z: number): Point2 | null {
     const r = this.canvas.getBoundingClientRect();

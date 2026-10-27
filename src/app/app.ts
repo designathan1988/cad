@@ -44,7 +44,7 @@ import * as files from './app-files';
 import * as THREE from 'three';
 import { createStore, type Store } from '../core/store';
 import { distance, type Point2 } from '../core/vector';
-import { addOpening, placementProblem, updateOpening } from '../elements/opening/commands';
+import { addOpening, placementProblem, updateOpening, wallRule } from '../elements/opening/commands';
 import type { OpeningSize } from '../elements/opening/panel';
 import { OPENING_MODELS } from '../elements/opening/style';
 import { isOpeningId, newOpening, OPENING_DEFAULTS, OPENING_PREFIX, type Opening, type OpeningKind } from '../elements/opening/schema';
@@ -563,7 +563,9 @@ export class App {
     this.ui.opening = r.state;
     if (r.place) {
       const size = this.ui.openingDefaults[kind];
-      const opening = newOpening(newId(OPENING_PREFIX), r.place.wallId, kind, r.place.rule, { ...size, swing: r.place.swing });
+      const made = newOpening(newId(OPENING_PREFIX), r.place.wallId, kind, r.place.rule, { ...size, swing: r.place.swing });
+      // Where it was aimed, held by its wall: measured from a neighbour, it moved whenever that one did.
+      const opening = { ...made, rule: wallRule(this.store.get(), made) };
       const problem = placementProblem(this.store.get(), opening);
       if (problem) {
         this.ui.error = t('hint.openingRefused', { reason: afterColon(t(`warn.${problem}`)) });

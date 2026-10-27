@@ -10,7 +10,7 @@ import { faceOffsets, wallDirection, wallNormal } from '../elements/wall/geometr
 import { shapeOf } from '../elements/wall/geometry/shape';
 import { type Aim, ruleBase } from '../tools/opening-tool';
 import { t, type MessageKey } from '../ui/i18n';
-import type { Doc } from './document';
+import { type Doc, wallHeights } from './document';
 import type { DerivedGeometry } from './geometry';
 import { wallStops, wallStopsOf } from './wall-stops';
 
@@ -127,4 +127,36 @@ export function ruleGuide(
   const b = at(span[1]);
   const text = `${lengthText(Math.abs(span[1] - span[0]))}`;
   return { dim: { a, b, side, clear, text }, measure: { at: scale(add(a, b), 0.5), text, normal: side, clear } };
+}
+
+/**
+ * Where a ray from the eye (plan x, y; z the height) first meets a straight wall of the given levels, on its
+ * middle plane, between its ends and from its bottom to its top: the wall itself, not its cut mesh. Aiming
+ * a door or window at the meshes, the opening's own hole let the ray through: the aim fell off the wall,
+ * the preview went, the hole closed, the aim came back, over and over (it flickered). Null when no straight
+ * wall is under the ray (an arc wall is aimed at by its mesh).
+ */
+export function wallUnderRay(doc: Doc, levelIds: ReadonlySet<string>, ray: { origin: { x: number; y: number; z: number }; dir: { x: number; y: number; z: number } }): { p: Point2; height: number } | null {
+  const types = new Map(doc.wallTypes.map((x) => [x.id, x]));
+  let best: { t: number; p: Point2; height: number } | null = null;
+  for (const wall of doc.walls) {
+    if (!levelIds.has(wall.levelId) || wall.bulge) continue;
+    const shape = shapeOf(wall, types.get(wall.wallTypeId));
+    if (typeof shape === 'string' || arcOf(shape) !== null) continue;
+    const n = wallNormal(shape);
+    const [o0, o1] = faceOffsets(shape);
+    const base = add(shape.start, scale(n, (o0 + o1) / 2));
+    const denom = ray.dir.x * n.x + ray.dir.y * n.y;
+    if (Math.abs(denom) < 1e-9) continue;
+    const t = ((base.x - ray.origin.x) * n.x + (base.y - ray.origin.y) * n.y) / denom;
+    if (t <= 0 || (best && t >= best.t)) continue;
+    const p = { x: ray.origin.x + ray.dir.x * t, y: ray.origin.y + ray.dir.y * t };
+    const height = ray.origin.z + ray.dir.z * t;
+    const station = dot(sub(p, shape.start), wallDirection(shape));
+    if (station < 0 || station > referenceLength(wall)) continue;
+    const { bottom, top } = wallHeights(doc, wall);
+    if (height < bottom || height > top) continue;
+    best = { t, p, height };
+  }
+  return best ? { p: best.p, height: best.height } : null;
 }

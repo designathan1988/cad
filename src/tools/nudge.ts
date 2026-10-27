@@ -7,6 +7,7 @@ import { moveRooms, roomsGoingWith } from '../app/carry';
 import type { Doc } from '../app/document';
 import { type DerivedGeometry, hostsIn } from '../app/geometry';
 import { dot, normalize, type Point2, sub } from '../core/vector';
+import { detachedFrom } from '../elements/opening/commands';
 import { deriveOpenings } from '../elements/opening/derive';
 import { hasDistance, type PositionRule } from '../elements/opening/schema';
 import { moveKinds } from '../elements/registry';
@@ -19,7 +20,12 @@ export function arrowStep(key: string, fine: boolean): Point2 | null {
   return dirs[key] ?? null;
 }
 
-export function nudge(doc: Doc, g: DerivedGeometry, ids: readonly string[], step: Point2): Doc {
+export function nudge(doc0: Doc, g: DerivedGeometry, ids: readonly string[], step: Point2): Doc {
+  // An opening moved alone: what was measured from it is held by its wall instead, and stays (commands.ts).
+  const doc = ids.reduce((d, id) => {
+    const openings = detachedFrom(d, id);
+    return openings === d.openings ? d : { ...d, openings };
+  }, doc0);
   // The walls on a selected axis go with it.
   const set = new Set([...ids, ...wallsOnGrids(doc, ids)]);
   const wallIds = doc.walls.filter((w) => set.has(w.id)).map((w) => w.id);

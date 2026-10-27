@@ -23,7 +23,7 @@ import { snap } from '../tools/snap';
 import { t } from '../ui/i18n';
 import { el } from '../ui/controls';
 import { wallAt } from './geometry';
-import { aimAt, OPENING_PREVIEW_ID } from './opening-ui';
+import { aimAt, OPENING_PREVIEW_ID, wallUnderRay } from './opening-ui';
 import type { App } from './app';
 import { levelOf } from './document';
 import { selectGestures } from './select-drag';
@@ -506,7 +506,9 @@ export function wireInput(app: App): void {
       return app.render();
     }
     if (app.openingKind()) {
-      const seen = aimAt3d(e);
+      // In 3D, on the wall itself (its own hole does not let the aim through): opening-ui.ts, wallUnderRay.
+      const onWall = ui.view === 'plan' ? null : wallUnderRay(app.store.get(), new Set([ui.levelId]), app.scene.rayAt(e.clientX, e.clientY));
+      const seen = onWall ? { p: onWall.p, mpp: app.scene.metresPerPixel(onWall.p, onWall.height) } : aimAt3d(e);
       return app.openingEvent({ kind: 'hover', aim: seen ? aimAt(app.store.get(), app.geometry, ui.levelId, seen.p, seen.mpp, OPENING_PREVIEW_ID) : null });
     }
     if (ui.handleDrag) {

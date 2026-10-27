@@ -108,6 +108,28 @@ export const deleteElements = (ids: readonly string[]): Command<Doc> => ({
  * Aligned is the exception: it moves the opening across from its reference, by the centres. Groups
  * are made with distributeOpenings, not here.
  */
+/**
+ * An opening's rule held to its wall: placed by its distance from the wall's nearer end (or centred), where
+ * it is now, never from another opening. What the door and window tools store: placed or dragged next to
+ * another one, it was measured from it, and moving that one dragged it along (or, each measured from the
+ * other, neither could be placed and one vanished). Measuring from another opening stays the user's choice
+ * in the panel.
+ */
+export function wallRule(doc: Doc, o: Opening): PositionRule {
+  if (o.rule.kind !== 'fromOpening' && o.rule.kind !== 'aligned') return o.rule;
+  const inDoc = { ...doc, openings: [...doc.openings.filter((x) => x.id !== o.id), o] };
+  const me = placedIn(inDoc).get(o.id);
+  const host = me && hostsIn(inDoc).get(o.wallId);
+  if (!me || !host) return o.rule;
+  return me.start <= host.length - me.end ? { kind: 'fromStart', distance: me.start } : { kind: 'fromEnd', distance: host.length - me.end };
+}
+
+/** The openings placed from `id` (by distance or alignment) held where they are by their walls instead: `id` moves alone. */
+export function detachedFrom(doc: Doc, id: OpeningId): readonly Opening[] {
+  if (!doc.openings.some((o) => (o.rule.kind === 'fromOpening' || o.rule.kind === 'aligned') && o.rule.openingId === id)) return doc.openings;
+  return doc.openings.map((o) => (o.rule.kind === 'fromOpening' || o.rule.kind === 'aligned') && o.rule.openingId === id ? { ...o, rule: wallRule(doc, o) } : o);
+}
+
 export function ruleKeepingPosition(doc: Doc, id: OpeningId, kind: RuleKind, referenceId?: OpeningId): PositionRule | null {
   const placed = placedIn(doc);
   const me = placed.get(id);
