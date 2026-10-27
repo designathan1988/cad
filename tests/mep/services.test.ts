@@ -8,7 +8,7 @@ import { analyticModel, clashesOf, isometricSvg, waterproofing } from '../../src
 import { balance, generalDemand, loadTable, protect, showerFactor, voltageDrop } from '../../src/elements/mep/electrical';
 import { fittingsOf, networksOf } from '../../src/elements/mep/network';
 import { GROUP_OF, isMepPoint, isMepRun, type MepPoint, type MepRun } from '../../src/elements/mep/schema';
-import { hazenWilliams, mostUhc, neededDiameter, pressures, probableFlow, rainCapacity, rainDiameter, sewerFalls } from '../../src/elements/mep/water';
+import { hazenWilliams, mostUhc, neededDiameter, pressures, probableFlow, rainCapacity, rainDiameter, sewerFalls, sewerStacks, stackDiameter, ventDiameter } from '../../src/elements/mep/water';
 import { DEFAULT_SIM } from '../../src/sim/settings';
 import { RAIN_PLACES, rainOf } from '../../src/elements/mep/rain-places';
 import { readProject, writeProject } from '../../src/io/project-file';
@@ -275,6 +275,43 @@ describe('water and sewer', () => {
     expect(neededDiameter(250, 1, 0)).toBe(0.15);
     // At 0.5 % DN 100 and 150 are not allowed as collectors: only DN 200 there.
     expect(neededDiameter(500, 0.5, 0)).toBe(0.2);
+  });
+
+  it('stacks and vents (NBR 8160 tables 6 and 2): sized, and their open ends over the roof', () => {
+    // Two storeys: a toilet upstairs on a branch to a 100 mm stack at the origin, from 6.00 down to the
+    // collector at −0.20; its top 0.40 over the top level's ceiling (5.60).
+    const upper = { id: 'lvl_1', name: 'Upper', elevation: 2.8, height: 2.8 };
+    const twoStorey: Doc = {
+      ...house,
+      levels: [...house.levels, upper],
+      mepPoints: [...house.mepPoints.filter((p) => p.id !== 'ralo'), { ...pt('bs', 'drain', 0.6, 0, 0, 'sys_sewer', { fixture: 'toilet' }), levelId: 'lvl_1' }],
+      mepRuns: [...house.mepRuns, run('tq', 'sys_sewer', 0.1, [0, 0, 6], [0, 0, -0.2]), { ...run('r1', 'sys_sewer', 0.1, [0.6, 0, -0.1], [0, 0, -0.1]), levelId: 'lvl_1' }],
+    };
+    const { stacks, vented } = sewerStacks(twoStorey, []);
+    expect(stacks).toHaveLength(1);
+    expect(stacks[0]).toMatchObject({ kind: 'stack', uhc: 6, needed: 0.1, sized: true, runIds: ['tq'], cover: 5.6, through: true });
+    expect(stacks[0]!.above).toBeCloseTo(0.4, 9);
+    expect(stacks[0]!.length).toBeCloseTo(6.2, 9);
+    expect(vented).toBe(true);
+    // Under a roof face at 6.50 over it: its end is 0.50 under it, not out.
+    const roof = { faces: [{ polygon: [{ x: -5, y: -5 }, { x: 5, y: -5 }, { x: 5, y: 5 }, { x: -5, y: 5 }], z: () => 6.5 }] };
+    const covered = sewerStacks(twoStorey, [roof]);
+    expect(covered.stacks[0]!.through).toBe(false);
+    expect(covered.vented).toBe(false);
+    // One storey: a toilet on the collector and a 50 mm vent pipe up from its start to 3.20, over the ceiling (2.80).
+    const withToilet: Doc = { ...house, mepPoints: house.mepPoints.map((p) => (p.id === 'ralo' ? { ...p, fixture: 'toilet' as const } : p)) };
+    expect(sewerStacks(withToilet, [])).toMatchObject({ stacks: [], vented: false, fixtures: 1 });
+    const withVent: Doc = { ...withToilet, mepRuns: [...withToilet.mepRuns, run('v1', 'sys_sewer', 0.05, [0, 0, -0.2], [0, 0, 3.2])] };
+    const v = sewerStacks(withVent, []);
+    // It vents the 100 mm collector carrying 6 UHC: table 2's row DN 100 up to 43 UHC, a 50 mm vent up to 11 m.
+    expect(v.stacks[0]).toMatchObject({ kind: 'vent', uhc: 6, vented: 0.1, needed: 0.05, sized: true, through: true });
+    expect(v.vented).toBe(true);
+    // Table 6 by storeys, never under the largest branch; table 2 by the vented pipe, its UHC and length.
+    expect([stackDiameter(30, 3, 0), stackDiameter(31, 3, 0), stackDiameter(31, 4, 0), stackDiameter(241, 3, 0), stackDiameter(6, 2, 0.1), stackDiameter(9000, 4, 0)]).toEqual([0.075, 0.1, 0.075, 0.15, 0.1, null]);
+    expect([ventDiameter(0.075, 21, 40), ventDiameter(0.075, 21, 10), ventDiameter(0.1, 600, 10), ventDiameter(0.04, 8, 50)]).toEqual([0.075, 0.04, null, null]);
+    // Table 7 to DN 400.
+    expect(neededDiameter(2000, 1, 0)).toBe(0.25);
+    expect(neededDiameter(11000, 4, 0)).toBe(0.4);
   });
 
   it('the sewer\'s falls: 2 % on a 100 mm pipe holds, a flat one does not', () => {

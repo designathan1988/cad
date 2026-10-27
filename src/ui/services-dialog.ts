@@ -8,7 +8,8 @@ import { analyticModel, clashesOf, isometricSvg, waterproofing } from '../elemen
 import { loadTable, MAX_DROP } from '../elements/mep/electrical';
 import { fittingsOf, networksOf } from '../elements/mep/network';
 import { GROUP_OF, systemsOf } from '../elements/mep/schema';
-import { DEFAULT_RAIN, MAX_STATIC, MIN_DYNAMIC, pressures, sewerFalls } from '../elements/mep/water';
+import { DEFAULT_RAIN, MAX_STATIC, MIN_DYNAMIC, pressures, sewerFalls, sewerStacks } from '../elements/mep/water';
+import type { RoofSolid } from '../elements/roof/geometry';
 import { simSettingsOf } from '../app/sim-tables';
 import { el, numberField, searchSelect, segmented, select } from './controls';
 import { RAIN_PLACES, rainOf, type RainReturn } from '../elements/mep/rain-places';
@@ -215,6 +216,35 @@ export function showServices(app: App, first: Tab = 'systems'): void {
           el('p', { class: 'tour-empty' }, said),
         ];
       };
+      // The sewer's stacks and vents (NBR 8160 tables 6 and 2), each with its open end over the roof.
+      const stacksBlock = (): HTMLElement[] => {
+        const { stacks, vented, fixtures } = sewerStacks(doc, [...(g.kinds.get('roofs')?.values() ?? [])] as RoofSolid[]);
+        if (stacks.length === 0 && fixtures === 0) return [];
+        return [
+          el('h3', {}, t('services.stacks')),
+          ...(stacks.length > 0
+            ? [
+                table(
+                  [t('services.stretch'), t('services.stackKind'), t('services.diameter'), t('services.length'), 'UHC', t('services.neededDn'), '', t('services.aboveRoof'), ''],
+                  stacks.map((s) => [
+                    link(app.reportTitle(s.runIds[0]!), s.runIds[0]!),
+                    t(`services.stack.${s.kind}` as MessageKey),
+                    `${Math.round(s.diameter * 1000)} mm`,
+                    `${num(s.length, 2)} m`,
+                    s.uhc > 0 ? num(s.uhc, 0) : '—',
+                    s.needed === null ? (s.uhc > 0 ? t('services.pastTables') : '—') : `DN ${Math.round(s.needed * 1000)}`,
+                    s.uhc > 0 ? mark(s.sized) : '—',
+                    `${num(s.above, 2)} m`,
+                    mark(s.through),
+                  ]),
+                  [2, 3, 4, 5, 7],
+                ),
+              ]
+            : []),
+          ...(vented ? [] : [el('p', { class: 'services-bad' }, t('services.noVent'))]),
+          note('services.stackNote', { n: doc.levels.length }),
+        ];
+      };
       const blocks = (['sewer', 'rain'] as const).map((group) => {
         const f = sewerFalls(doc, group);
         return el(
@@ -247,6 +277,7 @@ export function showServices(app: App, first: Tab = 'systems'): void {
           ...(f.stretches.length > 0 && !f.hasOutlet ? [note('services.noOutlet')] : []),
           ...(f.unreached.length > 0 ? [el('p', { class: 'services-bad' }, t('services.drainsLoose', { n: f.unreached.length }))] : []),
           ...(f.unsized.length > 0 ? [el('p', { class: 'services-bad' }, t(group === 'sewer' ? 'services.unsized' : 'services.rainUnsized', { n: f.unsized.length })), el('div', {}, ...f.unsized.map((p) => link(app.reportTitle(p.id), p.id)))] : []),
+          ...(group === 'sewer' ? stacksBlock() : []),
         );
       });
       body = el('div', { class: 'budget-scroll' }, ...blocks, note('services.sewerNote'), note('services.uhcNote'), note('services.rainNote'));

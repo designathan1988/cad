@@ -5,11 +5,13 @@
 // taking the pipe's diameter as its bore, plus 20 % for the fittings; the dynamic pressure is the head
 // less the losses. NBR 5626 asks at least 10 kPa at an outlet in use and at most 400 kPa standing
 // (values to confirm in the edition in force). Sewer: each sloping stretch's fall towards the way out,
-// at least 2 % up to 75 mm and 1 % from 100 mm (NBR 8160, to confirm). Pure.
+// at least 2 % up to 75 mm and 1 % from 100 mm (NBR 8160, to confirm); its stacks and vent pipes, the
+// upright pipes, sized by NBR 8160 (1999) tables 6 and 2 and their open ends over the roof. Pure.
 
 import type { Doc } from '../../app/document';
 import { fromSources, type Network, networksOf, pathTo, REACH, sourcesOf } from './network';
 import { FIXTURES, type MepPoint, pointLoad, POINT_KINDS } from './schema';
+import { insideRing } from '../room/derive';
 
 export const MIN_DYNAMIC = 10;
 export const MAX_STATIC = 400;
@@ -190,12 +192,15 @@ export const BRANCH_UHC: readonly (readonly [number, number])[] = [
 ];
 /**
  * NBR 8160 (1999) table 7: a sub-collector's or the building drain's nominal diameter (m) and the most UHC
- * it takes at a least fall of 0.5, 1, 2 and 4 % (none: not allowed at that fall). Up to DN 200, as reproduced.
+ * it takes at a least fall of 0.5, 1, 2 and 4 % (none: not allowed at that fall).
  */
 export const COLLECTOR_UHC: readonly (readonly [number, readonly (number | null)[]])[] = [
   [0.1, [null, 180, 216, 250]],
   [0.15, [null, 700, 840, 1000]],
   [0.2, [1400, 1600, 1920, 2300]],
+  [0.25, [2500, 2900, 3500, 4200]],
+  [0.3, [3900, 4600, 5600, 6700]],
+  [0.4, [7000, 8300, 10000, 12000]],
 ];
 const FALLS = [0.5, 1, 2, 4];
 
@@ -209,8 +214,24 @@ export function mostUhc(d: number, slope: number): number {
 
 /** The least nominal diameter for so many UHC at a fall, never under the largest fixture's branch; null past the tables. */
 export function neededDiameter(uhc: number, slope: number, least: number): number | null {
-  for (const d of [0.04, 0.05, 0.075, 0.1, 0.15, 0.2]) if (d >= least - 1e-9 && mostUhc(d, slope) >= uhc) return d;
+  for (const d of [0.04, 0.05, 0.075, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4]) if (d >= least - 1e-9 && mostUhc(d, slope) >= uhc) return d;
   return null;
+}
+
+/** Each fixture's units and branch diameter on every edge of its way out: the UHC an edge carries and its largest branch. */
+function fixtureLoads(net: Network, dist: ReadonlyMap<number, number>, via: ReadonlyMap<number, number>): { units: Map<number, number>; branch: Map<number, number> } {
+  const units = new Map<number, number>();
+  const branch = new Map<number, number>();
+  for (const p of net.points) {
+    const f = p.fixture ? FIXTURES[p.fixture] : null;
+    const node = net.pointNode.get(p.id);
+    if (!f || node === undefined || !dist.has(node)) continue;
+    for (const k of pathTo(net, via, node)) {
+      units.set(k, (units.get(k) ?? 0) + f.uhc);
+      branch.set(k, Math.max(branch.get(k) ?? 0, f.dn));
+    }
+  }
+  return { units, branch };
 }
 
 /** The least fall (%) for a sewer pipe's diameter. */
@@ -226,18 +247,7 @@ export function sewerFalls(doc: Doc, group: 'sewer' | 'rain' = 'sewer'): { stret
   if (!net) return { stretches: [], unreached: [], hasOutlet: false, unsized: [] };
   const sources = sourcesOf(net);
   const { dist, via } = fromSources(net, sources);
-  // Each fixture's units and branch on every edge of its way out.
-  const units = new Map<number, number>();
-  const branch = new Map<number, number>();
-  for (const p of net.points) {
-    const f = p.fixture ? FIXTURES[p.fixture] : null;
-    const node = net.pointNode.get(p.id);
-    if (!f || node === undefined || !dist.has(node)) continue;
-    for (const k of pathTo(net, via, node)) {
-      units.set(k, (units.get(k) ?? 0) + f.uhc);
-      branch.set(k, Math.max(branch.get(k) ?? 0, f.dn));
-    }
-  }
+  const { units, branch } = fixtureLoads(net, dist, via);
   // Each rain drain's flow on every edge of its way out.
   const intensity = doc.simulation?.rain ?? DEFAULT_RAIN;
   const flows = new Map<number, number>();
@@ -268,4 +278,173 @@ export function sewerFalls(doc: Doc, group: 'sewer' | 'rain' = 'sewer'): { stret
   // The sewer's drains that say no fixture, the rain's no area: what they take is not counted.
   const unsized = net.points.filter((p) => !POINT_KINDS[p.kind].source && (group === 'sewer' ? !p.fixture : !p.area));
   return { stretches, unreached, hasOutlet: sources.length > 0, unsized };
+}
+
+/**
+ * NBR 8160 (1999) table 6: a stack's nominal diameter (m) and the most UHC it takes in a building of up to
+ * three storeys, and of more.
+ */
+export const STACK_UHC: readonly (readonly [number, number, number])[] = [
+  [0.04, 4, 8],
+  [0.05, 10, 24],
+  [0.075, 30, 70],
+  [0.1, 240, 500],
+  [0.15, 960, 1900],
+  [0.2, 2200, 3600],
+  [0.25, 3800, 5600],
+  [0.3, 6000, 8400],
+];
+
+/** The least stack diameter for so many UHC in a building of so many storeys, never under its largest branch; null past the table. */
+export function stackDiameter(uhc: number, storeys: number, least: number): number | null {
+  return STACK_UHC.find(([d, low, high]) => d >= least - 1e-9 && (storeys <= 3 ? low : high) >= uhc - 1e-9)?.[0] ?? null;
+}
+
+/** The vent pipes' diameters of table 2 (m). */
+const VENT_DN = [0.04, 0.05, 0.075, 0.1, 0.15, 0.2, 0.25, 0.3];
+/**
+ * NBR 8160 (1999) table 2: the stack's or branch's nominal diameter (m), its UHC, and the longest vent column
+ * (m) each vent diameter of VENT_DN allows (null: not that one).
+ */
+export const VENT_COLUMN: readonly (readonly [number, number, readonly (number | null)[]])[] = [
+  [0.04, 8, [46]],
+  [0.04, 10, [30]],
+  [0.05, 12, [23, 61]],
+  [0.05, 20, [15, 46]],
+  [0.075, 10, [13, 46, 317]],
+  [0.075, 21, [10, 33, 247]],
+  [0.075, 53, [8, 29, 207]],
+  [0.075, 102, [8, 26, 189]],
+  [0.1, 43, [null, 11, 76, 299]],
+  [0.1, 140, [null, 8, 61, 229]],
+  [0.1, 320, [null, 7, 52, 195]],
+  [0.1, 530, [null, 6, 46, 177]],
+  [0.15, 500, [null, null, 10, 40, 305]],
+  [0.15, 1100, [null, null, 8, 31, 238]],
+  [0.15, 2000, [null, null, 7, 26, 201]],
+  [0.15, 2900, [null, null, 6, 23, 183]],
+  [0.2, 1800, [null, null, null, 10, 73, 286]],
+  [0.2, 3400, [null, null, null, 7, 57, 219]],
+  [0.2, 5600, [null, null, null, 6, 49, 186]],
+  [0.2, 7600, [null, null, null, 5, 43, 171]],
+  [0.25, 4000, [null, null, null, null, 24, 94, 293]],
+  [0.25, 7200, [null, null, null, null, 18, 73, 225]],
+  [0.25, 11000, [null, null, null, null, 16, 60, 192]],
+  [0.25, 15000, [null, null, null, null, 14, 55, 174]],
+  [0.3, 7300, [null, null, null, null, 9, 37, 116, 287]],
+  [0.3, 13000, [null, null, null, null, 7, 29, 90, 219]],
+  [0.3, 20000, [null, null, null, null, 6, 24, 76, 186]],
+  [0.3, 26000, [null, null, null, null, 5, 22, 70, 152]],
+];
+
+/** The least vent column diameter for the pipe it vents (its diameter, its UHC) and its length (m); null past table 2. */
+export function ventDiameter(vented: number, uhc: number, length: number): number | null {
+  const row = VENT_COLUMN.find(([d, u]) => Math.abs(d - vented) < 1e-6 && u >= uhc - 1e-9);
+  if (!row) return null;
+  const i = row[2].findIndex((l) => l !== null && l >= length - 1e-9);
+  return i < 0 ? null : VENT_DN[i]!;
+}
+
+/** NBR 8160 4.3.6 b): a vent's open end at least this far over the roof (2 m on a roof slab used for more; not known here). */
+export const VENT_ABOVE = 0.3;
+
+export interface Stack {
+  /** A stack (tubo de queda) carries the fixtures' sewage down; a vent (tubo ventilador) carries none, only air. */
+  readonly kind: 'stack' | 'vent';
+  readonly runIds: readonly string[];
+  readonly at: { readonly x: number; readonly y: number };
+  /** Absolute heights of its foot and its open end (m), and its length. */
+  readonly bottom: number;
+  readonly top: number;
+  readonly length: number;
+  readonly diameter: number;
+  /** A stack's UHC at its foot; a vent's, those of the pipe it vents (at its foot); and that pipe's diameter. */
+  readonly uhc: number;
+  readonly vented: number;
+  /** The least diameter: a stack's by table 6 (not under its largest branch), a vent's by table 2; null past them or with nothing to size. */
+  readonly needed: number | null;
+  readonly sized: boolean;
+  /** The roof over it (or, with none, the top level's ceiling) and how far its open end stands over it (m). */
+  readonly cover: number;
+  readonly above: number;
+  readonly through: boolean;
+}
+
+/**
+ * The sewer's upright pipes (a run's vertical stretches at one place, 1 m or more of them together): each a
+ * stack when it carries fixtures, sized by NBR 8160 table 6 for the building's storeys, or a vent, sized by
+ * table 2 for the pipe at its foot and its length; each with its open end over the roof (4.3.5 and 4.3.6:
+ * 0.30 m at least). `vented`: false when the sewer has fixtures and no stack or vent reaches over the roof
+ * (4.3.11 asks one even of a one-storey building). Roof faces give the cover; without one over it, the top
+ * level's ceiling.
+ */
+export function sewerStacks(doc: Doc, roofs: readonly { readonly faces: readonly { readonly polygon: readonly { x: number; y: number }[]; readonly z: (p: { x: number; y: number }) => number }[] }[]): { stacks: Stack[]; vented: boolean; fixtures: number } {
+  const net = networksOf(doc).get('sewer');
+  if (!net) return { stacks: [], vented: true, fixtures: 0 };
+  const { dist, via } = fromSources(net, sourcesOf(net));
+  const { units, branch } = fixtureLoads(net, dist, via);
+  const fixtures = net.points.filter((p) => p.fixture).length;
+  // The vertical stretches of runs, joined where they meet into one pipe each.
+  const vertical = net.edges.map((e, k) => ({ e, k })).filter(({ e }) => {
+    const a = net.nodes[e.a]!;
+    const b = net.nodes[e.b]!;
+    return e.runId !== undefined && Math.hypot(a.x - b.x, a.y - b.y) < REACH && Math.abs(a.z - b.z) > 0.01;
+  });
+  const parent = new Map<number, number>();
+  const root = (n: number): number => {
+    let r = n;
+    while (parent.has(r) && parent.get(r) !== r) r = parent.get(r)!;
+    return r;
+  };
+  for (const { e } of vertical) {
+    if (!parent.has(e.a)) parent.set(e.a, e.a);
+    if (!parent.has(e.b)) parent.set(e.b, e.b);
+    parent.set(root(e.a), root(e.b));
+  }
+  const chains = new Map<number, typeof vertical>();
+  for (const v of vertical) chains.set(root(v.e.a), [...(chains.get(root(v.e.a)) ?? []), v]);
+  const storeys = doc.levels.length;
+  const ceiling = Math.max(0, ...doc.levels.map((l) => l.elevation + l.height));
+  const stacks: Stack[] = [];
+  for (const chain of chains.values()) {
+    const nodes = [...new Set(chain.flatMap(({ e }) => [e.a, e.b]))];
+    const zs = nodes.map((n) => net.nodes[n]!.z);
+    const bottom = Math.min(...zs);
+    const top = Math.max(...zs);
+    if (top - bottom < 1 - 1e-9) continue;
+    const foot = nodes[zs.indexOf(bottom)]!;
+    const crown = nodes[zs.indexOf(top)]!;
+    const at = { x: net.nodes[crown]!.x, y: net.nodes[crown]!.y };
+    const carried = Math.max(0, ...chain.map(({ k }) => units.get(k) ?? 0));
+    const diameter = Math.max(...chain.map(({ e }) => e.diameter));
+    const length = chain.reduce((t, { e }) => t + e.length, 0);
+    const inChain = new Set(chain.map(({ k }) => k));
+    // What the vent stands on: the pipes at its foot that are not it.
+    const below = net.edges.map((e, k) => ({ e, k })).filter(({ e, k }) => !inChain.has(k) && (e.a === foot || e.b === foot));
+    const kind = carried > 0 ? 'stack' : 'vent';
+    const uhc = kind === 'stack' ? carried : Math.max(0, ...below.map(({ k }) => units.get(k) ?? 0));
+    const vented = kind === 'stack' ? diameter : Math.max(0, ...below.map(({ e }) => e.diameter));
+    const least = Math.max(0, ...chain.map(({ k }) => branch.get(k) ?? 0));
+    const needed = uhc <= 0 ? null : kind === 'stack' ? stackDiameter(uhc, storeys, least) : ventDiameter(vented, uhc, length);
+    const covers = roofs.flatMap((r) => r.faces.filter((f) => insideRing(f.polygon, at)).map((f) => f.z(at)));
+    const cover = covers.length > 0 ? Math.max(...covers) : ceiling;
+    stacks.push({
+      kind,
+      runIds: [...new Set(chain.map(({ e }) => e.runId!))],
+      at,
+      bottom,
+      top,
+      length,
+      diameter,
+      uhc,
+      vented,
+      needed,
+      sized: needed === null ? uhc <= 0 : diameter >= needed - 1e-6,
+      cover,
+      above: top - cover,
+      through: top - cover >= VENT_ABOVE - 1e-6,
+    });
+  }
+  stacks.sort((a, b) => a.at.x - b.at.x || a.at.y - b.at.y);
+  return { stacks, vented: fixtures === 0 || stacks.some((s) => s.through), fixtures };
 }
