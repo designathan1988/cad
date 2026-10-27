@@ -57,7 +57,7 @@ export const PARASOL: ObjectDefinition = {
     // Open: a shallow cone of canvas, its valance round the rim, and the ribs under it.
     { kind: 'revolve', name: w('Lona', 'Canopy'), when: 'aberto', x: 0, y: 0, z: 'altura - 0.45', points: [['largura/2', 0], ['largura/2 - 0.02', 0.03], [0.03, 0.42], [0, 0.44]], material: 'matLona' },
     { kind: 'revolve', name: w('Babado', 'Valance'), when: 'aberto', x: 0, y: 0, z: 'altura - 0.55', points: [['largura/2 - 0.005', 0], ['largura/2', 0], ['largura/2', 0.1], ['largura/2 - 0.005', 0.1]], material: 'matLona' },
-    { kind: 'box', name: w('Vareta', 'Rib'), when: 'aberto', repeat: { count: 8 }, x: -0.006, y: 0, z: 'altura - 0.46', w: 0.012, d: 'largura/2 - 0.03', h: 0.012, turn: '45 * i', material: 'matEstrutura' },
+    { kind: 'box', name: w('Vareta', 'Rib'), when: 'aberto', repeat: { count: 8 }, x: '-(largura/2 - 0.03) / 2 * sin(45 * i) - 0.006', y: '(largura/2 - 0.03) / 2 * cos(45 * i) - (largura/2 - 0.03) / 2', z: 'altura - 0.46', w: 0.012, d: 'largura/2 - 0.03', h: 0.012, turn: '45 * i', material: 'matEstrutura' },
     // Closed: the canvas furled round the pole.
     { kind: 'revolve', name: w('Lona fechada', 'Furled canopy'), when: 'aberto == 0', x: 0, y: 0, z: 'altura - 1.3', points: [[0.03, 0], [0.09, 0.4], [0.07, 1.1], [0.03, 1.25]], material: 'matLona' },
   ],
