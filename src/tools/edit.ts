@@ -4,7 +4,7 @@
 // another's body. Nothing here touches geometry beyond the reference lines: the join engine redoes the rest.
 
 import type { Doc, DocWall } from '../app/document';
-import { POINT_TOLERANCE } from '../core/tolerance';
+import { MIN_WALL_LENGTH, POINT_TOLERANCE } from '../core/tolerance';
 import { add, cross, distance, dot, intersectLines, normalize, type Point2, scale, sub } from '../core/vector';
 import type { ReferenceLine, WallEnd, WallId } from '../elements/wall/schema';
 import { exteriorOffset } from '../elements/wall/geometry/shape';
@@ -170,6 +170,8 @@ export function stretchEnd(doc: Doc, id: WallId, end: WallEnd, to: Point2): DocW
   const w = doc.walls.find((x) => x.id === id);
   if (!w) return [...doc.walls];
   const next = end === 'start' ? { start: to, end: w.end } : { start: w.start, end: to };
+  // Onto its other end: a wall of no length, refused (it stays as it was).
+  if (distance(next.start, next.end) < MIN_WALL_LENGTH) return [...doc.walls];
   // Only the corner at the dragged end follows; Ts on the body stay where they are along the host.
   const old = end === 'start' ? w.start : w.end;
   return doc.walls.map((x) => {

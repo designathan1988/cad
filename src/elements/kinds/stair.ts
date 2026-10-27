@@ -59,7 +59,7 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
   mapped: (s, t, id) => {
     const at = t.map(s.at);
     const x = t.map({ x: s.at.x + Math.cos(s.angle), y: s.at.y + Math.sin(s.angle) });
-    return { ...s, id, at, angle: Math.atan2(x.y - at.y, x.x - at.x), width: s.width * t.factor, ...(t.mirror ? { turn: s.turn === 'left' ? 'right' : 'left' } : {}) };
+    return { ...s, id, at, angle: Math.atan2(x.y - at.y, x.x - at.x), width: Math.max(0.4, s.width * t.factor), ...(t.mirror ? { turn: s.turn === 'left' ? 'right' : 'left' } : {}) };
   },
   // A room's name keeps off it: written over the steps it could not be read.
   keepOut: (p, s) => {

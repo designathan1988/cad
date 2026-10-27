@@ -51,7 +51,8 @@ export const roomKind: ElementKind<Room, RoomItem> = {
     typeof r.name === 'string' &&
     typeof r.number === 'string' &&
     (r.use === undefined || (ROOM_USES as readonly unknown[]).includes(r.use)) &&
-    (r.height === undefined || (finite(r.height) && r.height > 0)),
+    (r.height === undefined || (finite(r.height) && r.height > 0)) &&
+    (r.finishes === undefined || (isObject(r.finishes) && (r.finishes.base === undefined || (finite(r.finishes.base) && r.finishes.base >= 0)))),
   derive: (doc, r, g) => {
     const elevation = doc.levels.find((l) => l.id === r.levelId)?.elevation ?? 0;
     const solid = g.rooms.get(r.id) ?? { room: r, enclosed: false, outline: [], area: 0, perimeter: 0, label: r.seed, sharing: [] };

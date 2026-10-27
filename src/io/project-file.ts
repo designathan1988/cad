@@ -3,6 +3,8 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
+import type { Point2 } from '../core/vector';
+import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { MORE_WALL_TYPES } from '../elements/wall/library-types';
 import { FAMILY_BATCHES } from '../elements/object/library-families';
 import { LIBRARY_SECTORS } from '../elements/object/library-sectors';
@@ -199,6 +201,7 @@ export const isWall = (w: unknown): w is DocWall =>
   typeof w.id === 'string' &&
   isPoint(w.start) &&
   isPoint(w.end) &&
+  Math.hypot((w.end as Point2).x - (w.start as Point2).x, (w.end as Point2).y - (w.start as Point2).y) >= MIN_WALL_LENGTH &&
   typeof w.wallTypeId === 'string' &&
   (w.bulge === undefined || finite(w.bulge)) &&
   isTop(w.top) &&
@@ -239,6 +242,7 @@ export const isOpening = (o: unknown): o is Opening =>
   finite(o.height) &&
   o.height > 0 &&
   finite(o.sill) &&
+  o.sill >= 0 &&
   (o.hinge === 'start' || o.hinge === 'end') &&
   (o.swing === 'left' || o.swing === 'right') &&
   isRule(o.rule) &&

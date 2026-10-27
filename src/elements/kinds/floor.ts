@@ -52,6 +52,9 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
       (f.source.kind === 'outline' && Array.isArray(f.source.points) && f.source.points.length >= 3 && f.source.points.every(isPoint))) &&
     (f.holes === undefined || (Array.isArray(f.holes) && f.holes.every((h) => Array.isArray(h) && h.length >= 3 && h.every(isPoint)))) &&
     (f.slope === undefined || (isObject(f.slope) && finite(f.slope.grade) && finite(f.slope.dir))) &&
+    // Its build-up's layers each of some thickness, its tiles of some size (a slab of nothing is not drawn).
+    (f.layers === undefined || (Array.isArray(f.layers) && f.layers.every((l: unknown) => isObject(l) && typeof l.materialId === 'string' && finite(l.thickness) && l.thickness > 0))) &&
+    (f.tiling === undefined || (isObject(f.tiling) && finite(f.tiling.width) && f.tiling.width > 0 && finite(f.tiling.length) && f.tiling.length > 0 && finite(f.tiling.joint) && f.tiling.joint >= 0)) &&
     (f.kind === undefined || f.kind === 'ceiling'),
   derive: (doc, f, g) => {
     let s = deriveFloor(f, g.rooms, (id) => doc.levels.find((l) => l.id === id)?.elevation ?? 0);

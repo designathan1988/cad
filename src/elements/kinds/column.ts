@@ -59,7 +59,7 @@ export const columnKind: ElementKind<Column, ColumnSolid> = {
   mapped: (c, t, id) => {
     const at = t.map(c.at);
     const x = t.map({ x: c.at.x + Math.cos(c.angle), y: c.at.y + Math.sin(c.angle) });
-    return { ...c, id, at, angle: Math.atan2(x.y - at.y, x.x - at.x), width: c.width * t.factor, depth: c.depth * t.factor };
+    return { ...c, id, at, angle: Math.atan2(x.y - at.y, x.x - at.x), width: Math.max(0.05, c.width * t.factor), depth: Math.max(0.05, c.depth * t.factor) };
   },
   onGrid: (c, onLine) => onLine(c.at),
   similar: (a, b) => (a.shape ?? 'rect') === (b.shape ?? 'rect') && Math.abs(a.width - b.width) < 1e-6 && Math.abs(a.depth - b.depth) < 1e-6,

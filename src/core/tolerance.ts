@@ -8,6 +8,8 @@ export const COLLINEAR_ANGLE = 0.6;
 export const MITER_LIMIT = 10;
 /** Walls shorter than this are invalid (m). */
 export const MIN_WALL_LENGTH = 1e-3;
+/** The least height, width or thickness a building element is given, however it is set (m): never 0 or less. */
+export const MIN_ELEMENT_SIZE = 0.01;
 /** Pieces smaller than this are dropped (m²). */
 export const AREA_EPSILON = 1e-9;
 /** Largest gap between an arc face and its chords (m). See docs/adr/0001-arc-sag.md. */

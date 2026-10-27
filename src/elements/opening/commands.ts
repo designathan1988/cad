@@ -3,6 +3,7 @@
 // to keep their openings where they were. The one exception is a distributed group: losing a member
 // spreads the others out again, which is what the group is for.
 
+import { MIN_ELEMENT_SIZE } from '../../core/tolerance';
 import { dropKinds, hasKinds } from '../registry';
 import { type Doc, wallHeights } from '../../app/document';
 import type { Command } from '../../core/store';
@@ -59,6 +60,8 @@ export const updateOpening = (id: OpeningId, patch: Partial<Omit<Opening, 'id'>>
     const openings = doc.openings.map((o) => {
       if (o.id !== id) return o;
       const next = { ...o, ...patch };
+      // A width or height of nothing, or a sill under the floor: refused (it stays as it was).
+      if (!(next.width >= MIN_ELEMENT_SIZE) || !(next.height >= MIN_ELEMENT_SIZE) || !(next.sill >= 0)) return o;
       if (JSON.stringify(next) === JSON.stringify(o)) return o;
       changed = true;
       return next;

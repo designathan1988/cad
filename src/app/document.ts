@@ -1,6 +1,7 @@
 // The project document: only what the user decided. Thickness, heights, joins and geometry are
 // always derived from it.
 
+import { MIN_ELEMENT_SIZE } from '../core/tolerance';
 import { MORE_WALL_TYPES } from '../elements/wall/library-types';
 import type { Site } from './sun';
 import type { LayerSet, RoomOverride, WallOverride } from './layer-sets';
@@ -314,17 +315,18 @@ export function wallHeights(doc: Doc, wall: DocWall): { bottom: number; top: num
   const top = wallTop(doc, wall);
   const levelTop = level.elevation + level.height;
   switch (top.kind) {
+    // Never at or under its bottom (an offset down past it, a base raised over it): the least height.
     case 'level':
-      return { bottom, top: levelTop + top.offset };
+      return { bottom, top: Math.max(bottom + MIN_ELEMENT_SIZE, levelTop + top.offset) };
     case 'fixed':
-      return { bottom, top: bottom + top.height };
+      return { bottom, top: bottom + Math.max(MIN_ELEMENT_SIZE, top.height) };
     case 'toLevel': {
       const to = levelOf(doc, top.levelId);
-      return { bottom, top: Math.max(bottom + 0.01, to ? to.elevation + top.offset : levelTop) };
+      return { bottom, top: Math.max(bottom + MIN_ELEMENT_SIZE, to ? to.elevation + top.offset : levelTop) };
     }
     case 'roof': {
       const under = highestUnder(roofCoversOf(doc, wall.levelId), wallBand(doc, wall));
-      return { bottom, top: Math.max(bottom + 0.01, under ?? levelTop) };
+      return { bottom, top: Math.max(bottom + MIN_ELEMENT_SIZE, under ?? levelTop) };
     }
   }
 }

@@ -31,12 +31,12 @@ export const roofKind: ElementKind<Roof, RoofSolid> = {
     r.outline.every(isPoint) &&
     Array.isArray(r.edges) &&
     r.edges.length === r.outline.length &&
-    r.edges.every((e) => isObject(e) && (e.grade === null || finite(e.grade)) && finite(e.overhang)) &&
+    r.edges.every((e) => isObject(e) && (e.grade === null || finite(e.grade)) && finite(e.overhang) && e.overhang >= 0) &&
     (r.kind === 'flat' || r.kind === 'shed' || r.kind === 'gable' || r.kind === 'hip') &&
     finite(r.thickness) &&
     r.thickness > 0 &&
     finite(r.baseOffset) &&
-    (r.parapet === undefined || finite(r.parapet)) &&
+    (r.parapet === undefined || (finite(r.parapet) && r.parapet >= 0)) &&
     (r.covering === undefined || (isObject(r.covering) && typeof r.covering.materialId === 'string' && finite(r.covering.thickness) && r.covering.thickness > 0)),
   // On its level's top; not memoised: a wall put under it (its top on the roof) closes its gable.
   derive: (doc, r) => {
