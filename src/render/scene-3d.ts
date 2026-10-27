@@ -10,6 +10,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GradientEquirectTexture, WebGLPathTracer } from 'three-gpu-pathtracer';
 import type { RenderQuality, VisualStyle } from '../app/view-3d';
 import type { Point2 } from '../core/vector';
 import type { DerivedGeometry, OpeningSolid, WallSolid } from '../app/geometry';
@@ -43,6 +44,13 @@ const QUALITY: Readonly<Record<RenderQuality, { readonly ratio: number; readonly
   medium: { ratio: 1, max: 2, shadow: 2048, soft: true, ao: true, aoSamples: 8, aoBlend: 0.5 },
   high: { ratio: 1, max: 2, shadow: 4096, soft: true, ao: true, aoSamples: 16, aoBlend: 0.8 },
   ultra: { ratio: 2, max: 3, shadow: 4096, soft: true, ao: true, aoSamples: 24, aoBlend: 0.9 },
+};
+/** The photorealistic style by quality: the share of the screen's pixels traced, the samples it stops at. */
+const TRACE: Readonly<Record<RenderQuality, { readonly scale: number; readonly samples: number }>> = {
+  low: { scale: 0.5, samples: 64 },
+  medium: { scale: 0.75, samples: 256 },
+  high: { scale: 1, samples: 1024 },
+  ultra: { scale: 1, samples: 4096 },
 };
 /** How much of a wall shows in x-ray. */
 const XRAY_OPACITY = 0.28;
@@ -92,6 +100,43 @@ function patterned(x: THREE.MeshStandardMaterial): void {
         ].join('\n'),
       );
   };
+}
+
+/**
+ * Texture coordinates for a pattern on a geometry already in the world, as the patterned shader lays it
+ * (patterned above): a face looking up or down in plan, one looking sideways along its length and up;
+ * over the pattern's period, turned by its angle. Made flat (each triangle its own corners) so a face
+ * takes its own direction.
+ */
+function patternUv(g: THREE.BufferGeometry, u: PatternUniforms): THREE.BufferGeometry {
+  const flat = g.index ? g.toNonIndexed() : g;
+  if (flat !== g) g.dispose();
+  const pos = flat.attributes.position as THREE.BufferAttribute;
+  const uv = new Float32Array(pos.count * 2);
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const n = new THREE.Vector3();
+  const cos = Math.cos(u.uPatAngle.value);
+  const sin = Math.sin(u.uPatAngle.value);
+  const { x: px, y: py } = u.uPatPeriod.value;
+  for (let t = 0; t + 2 < pos.count; t += 3) {
+    a.fromBufferAttribute(pos, t);
+    b.fromBufferAttribute(pos, t + 1);
+    c.fromBufferAttribute(pos, t + 2);
+    n.subVectors(b, a).cross(c.clone().sub(a));
+    const ax = Math.abs(n.x);
+    const ay = Math.abs(n.y);
+    const az = Math.abs(n.z);
+    for (let k = 0; k < 3; k++) {
+      const v = k === 0 ? a : k === 1 ? b : c;
+      const [x, y] = ay >= Math.max(ax, az) ? [v.x, -v.z] : ax >= az ? [-v.z, v.y] : [v.x, v.y];
+      uv[(t + k) * 2] = (cos * x + sin * y) / px;
+      uv[(t + k) * 2 + 1] = (-sin * x + cos * y) / py;
+    }
+  }
+  flat.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return flat;
 }
 
 /** A luminaire's point light per lumen: 900 lm give the floor 1.75 m under it about 0.5, a third of the sun. */
@@ -222,6 +267,16 @@ export class Scene3D {
   );
   private needsRender = true;
   private raf = 0;
+  /** The photorealistic style's path tracer, made the first time it is chosen; what it was last given. */
+  private tracer: WebGLPathTracer | null = null;
+  /** Its sky, an equirectangular gradient (it cannot read the realistic style's PMREM): the light from
+   * everywhere a hemisphere light gives the raster view. */
+  private traceSky: GradientEquirectTexture | null = null;
+  private traceScene: THREE.Scene | null = null;
+  private readonly tracedPatterns = new WeakMap<THREE.Material, THREE.MeshStandardMaterial>();
+  private traced = { content: -1, camera: '', light: '' };
+  /** Bumped whenever an element's meshes are made or dropped: the tracer's scene is built again. */
+  private contentVersion = 0;
   onChange: () => void = () => {};
 
   constructor(readonly canvas: HTMLCanvasElement) {
@@ -410,9 +465,14 @@ export class Scene3D {
     this.invalidate();
   }
 
+  /** Lit and finished as the real thing: the realistic style, and the photorealistic one traced over it. */
+  private lifelike(): boolean {
+    return this.style === 'realistic' || this.style === 'photo';
+  }
+
   /** The edges' lines as the style draws them: full in hidden lines, none in realistic (but in x-ray). */
   private applyEdges(): void {
-    this.edgeMaterial.visible = this.style !== 'realistic' || this.xrayOn;
+    this.edgeMaterial.visible = !this.lifelike() || this.xrayOn;
     this.edgeMaterial.opacity = this.style === 'hidden' || this.xrayOn ? 0.9 : 0.55;
   }
 
@@ -436,7 +496,7 @@ export class Scene3D {
       shadow.map?.dispose();
       shadow.map = null;
     }
-    const realistic = style === 'realistic';
+    const realistic = this.lifelike();
     this.renderer.toneMapping = realistic ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
     this.renderer.toneMappingExposure = 1;
     if (realistic && !this.environment) {
@@ -466,8 +526,8 @@ export class Scene3D {
     const b = this.brightness;
     // π: three.js's diffuse is the albedo over π times the light, so π gives each colour as it is.
     this.ambient.intensity = s === 'consistent' ? Math.PI * b : 0;
-    this.sun.intensity = (s === 'consistent' ? 0 : s === 'realistic' ? this.sunBase * 2.6 : this.sunBase) * b * this.sunScale;
-    this.sky.intensity = (s === 'consistent' ? 0 : s === 'realistic' ? this.skyBase * 0.05 : this.skyBase) * b;
+    this.sun.intensity = (s === 'consistent' ? 0 : this.lifelike() ? this.sunBase * 2.6 : this.sunBase) * b * this.sunScale;
+    this.sky.intensity = (s === 'consistent' ? 0 : this.lifelike() ? this.skyBase * 0.05 : this.skyBase) * b;
     this.fill.intensity = (s === 'shaded' || s === 'hidden' ? 0.6 : 0) * b;
     this.scene.environmentIntensity = 0.22 * b;
   }
@@ -475,7 +535,7 @@ export class Scene3D {
   /** Shadows drawn: those the site asks, or Realistic's own while the sun is up; materials compiled again for them. */
   private applyShadows(recompile = false): void {
     const up = this.sunWay === null || this.sunWay.z > 0;
-    const on = (this.siteShadows && this.sunWay !== null && this.sunWay.z > 0) || (this.style === 'realistic' && up);
+    const on = (this.siteShadows && this.sunWay !== null && this.sunWay.z > 0) || (this.lifelike() && up);
     const changed = on !== this.shadows;
     this.shadows = on;
     this.renderer.shadowMap.enabled = on;
@@ -532,6 +592,10 @@ export class Scene3D {
           swapped.push([mesh, mesh.material]);
           mesh.material = this.hiddenFace;
         });
+    if (this.style === 'photo' && !this.xrayOn && this.clip.length === 0 && this.trace()) {
+      for (const [mesh, m] of swapped) mesh.material = m;
+      return;
+    }
     const fx = this.effects(w, h);
     if (fx) {
       if (resized) {
@@ -541,6 +605,120 @@ export class Scene3D {
       fx.render();
     } else this.renderer.render(this.scene, this.camera);
     for (const [mesh, m] of swapped) mesh.material = m;
+  }
+
+  /**
+   * One sample more of the photorealistic view (three-gpu-pathtracer): the elements' meshes and the sun
+   * (not the grid, the guides or the ground's shadow catcher), bounced light, soft shadows and the
+   * sky's reflections. Given the scene again when an element changed, the camera when it moved, the
+   * lights when they did; it keeps drawing until it has the quality's samples. False when the
+   * browser cannot trace (the realistic raster view is drawn instead).
+   */
+  private trace(): boolean {
+    if (!this.tracer) {
+      const t = new WebGLPathTracer(this.renderer);
+      t.bounces = 5;
+      t.minSamples = 1;
+      t.renderDelay = 0;
+      t.fadeDuration = 300;
+      t.dynamicLowRes = true;
+      this.tracer = t;
+      const sky = new GradientEquirectTexture(256);
+      sky.topColor.set(0x9fbfe6);
+      sky.bottomColor.set(0xe9e3d6);
+      sky.exponent = 0.6;
+      sky.update();
+      this.traceSky = sky;
+    }
+    const t = this.tracer;
+    t.renderScale = TRACE[this.quality].scale;
+    if (this.traced.content !== this.contentVersion) {
+      this.traceScene?.traverse((o) => (o as THREE.Mesh).isMesh && (o as THREE.Mesh).geometry.dispose());
+      this.traceScene = Object.assign(new THREE.Scene(), { children: [this.traceCopies(), this.sun], environment: this.traceSky, background: this.traceSky });
+      this.traceScene.environmentIntensity = this.brightness;
+      t.setScene(this.traceScene, this.camera);
+      this.traced = { content: this.contentVersion, camera: '', light: '' };
+    }
+    const camera = `${this.camera.matrixWorld.elements.join()}|${this.camera.projectionMatrix.elements.join()}`;
+    if (camera !== this.traced.camera) {
+      t.setCamera(this.camera);
+      this.traced.camera = camera;
+    }
+    const light = `${this.sun.position.toArray().join()}|${this.sun.intensity}|${this.brightness}`;
+    if (light !== this.traced.light && this.traceScene) {
+      this.traceScene.environmentIntensity = this.brightness;
+      t.updateLights();
+      t.updateEnvironment();
+      this.traced.light = light;
+    }
+    t.renderSample();
+    // Drawing on, a sample a frame, until the quality's count.
+    if (t.samples < TRACE[this.quality].samples) this.invalidate();
+    return true;
+  }
+
+  /**
+   * The elements' meshes for the path tracer, one material each where they stand. A mesh of several
+   * materials (a wall block's sides and top) is split by its groups: the tracer numbers one material per
+   * mesh while it lists a mesh's every material, so after the first such mesh every surface took its
+   * neighbour's colour (the terrain red, a roof green).
+   */
+  private traceCopies(): THREE.Group {
+    const out = new THREE.Group();
+    // Their positions as they are now: a level's elements just lifted to its height had them still from
+    // before (the raster view updates them as it draws), and the upper level's slab and stair were missing.
+    this.scene.updateMatrixWorld(true);
+    for (const { group } of this.walls.values())
+      group.traverseVisible((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const parts: [THREE.BufferGeometry, THREE.Material][] = [];
+        if (!Array.isArray(mesh.material)) parts.push([mesh.geometry.clone(), mesh.material]);
+        else {
+          const g = mesh.geometry;
+          const flat = g.index ? g.toNonIndexed() : g;
+          for (const grp of g.groups.length > 0 ? g.groups : [{ start: 0, count: flat.attributes.position!.count, materialIndex: 0 }]) {
+            const m = mesh.material[grp.materialIndex ?? 0];
+            if (!m || grp.count === 0) continue;
+            const part = new THREE.BufferGeometry();
+            for (const [name, attr] of Object.entries(flat.attributes)) {
+              const a = attr as THREE.BufferAttribute;
+              part.setAttribute(name, new THREE.BufferAttribute(a.array.slice(grp.start * a.itemSize, (grp.start + grp.count) * a.itemSize), a.itemSize, a.normalized));
+            }
+            parts.push([part, m]);
+          }
+          if (flat !== g) flat.dispose();
+        }
+        for (const [geometry, material] of parts) {
+          // Where it stands, in the world's metres: a pattern is laid in them.
+          geometry.applyMatrix4(mesh.matrixWorld);
+          const pattern = (material.userData.pattern as PatternUniforms | undefined)?.uPatMap.value ? (material.userData.pattern as PatternUniforms) : null;
+          out.add(new THREE.Mesh(pattern ? patternUv(geometry, pattern) : geometry, pattern ? this.tracedPattern(material as THREE.MeshStandardMaterial) : material));
+        }
+      });
+    // The luminaires' lights, where they are.
+    for (const { group } of this.walls.values())
+      group.traverseVisible((o) => {
+        if (!(o as THREE.Light).isLight) return;
+        const light = o.clone();
+        light.matrixAutoUpdate = false;
+        light.matrix.copy(o.matrixWorld);
+        out.add(light);
+      });
+    return out;
+  }
+
+  /** A patterned material as the tracer can read it: its pattern a texture of its own (patternUv's
+   * coordinates), not a shader's; one per material, kept while it is. */
+  private tracedPattern(m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
+    const u = m.userData.pattern as PatternUniforms;
+    let x = this.tracedPatterns.get(m);
+    if (!x || x.map !== u.uPatMap.value) {
+      x?.dispose();
+      x = new THREE.MeshStandardMaterial({ color: m.color, map: u.uPatMap.value, roughness: m.roughness, metalness: m.metalness, side: m.side });
+      this.tracedPatterns.set(m, x);
+    }
+    return x;
   }
 
   /**
@@ -868,6 +1046,17 @@ export class Scene3D {
     };
     if (this.shadows && fine > screenMap) remap(fine);
     this.draw(W, H, true);
+    // Traced, the picture keeps sampling until it is clean (the quality's count, a minute at most): one
+    // frame of the tracer is a sample, noise.
+    if (this.style === 'photo' && this.tracer && this.traceScene) {
+      // No fade from its coarse preview: timed by the clock, it had barely begun when the samples, queued
+      // in a tenth of a second, were done, and the picture came out mostly the preview's noise.
+      const fade = this.tracer.fadeDuration;
+      this.tracer.fadeDuration = 0;
+      const until = performance.now() + 60_000;
+      while (this.tracer.samples < TRACE[this.quality].samples && performance.now() < until) this.tracer.renderSample();
+      this.tracer.fadeDuration = fade;
+    }
     // Taken now, before the next frame clears the drawing buffer.
     const blob = new Promise<Blob | null>((done) => this.canvas.toBlob(done, 'image/png'));
     if (shadow.mapSize.x !== screenMap) remap(screenMap);
@@ -909,6 +1098,7 @@ export class Scene3D {
       group.userData.wallId = id;
       this.scene.add(group);
       this.walls.set(id, { group, key });
+      this.contentVersion++;
       place(id, levelId);
     }
     // The registry's kinds (elements/registry.ts): each gives its solid; rebuilt only when it changed.
@@ -950,6 +1140,7 @@ export class Scene3D {
       group.userData.wallId = x.id;
       this.scene.add(group);
       this.walls.set(x.id, { group, key });
+      this.contentVersion++;
       place(x.id, x.levelId);
     }
     const faces = this.facesOf(g);
@@ -977,6 +1168,7 @@ export class Scene3D {
       group.userData.wallId = s.wall.id;
       this.scene.add(group);
       this.walls.set(s.wall.id, { group, key });
+      this.contentVersion++;
       place(s.wall.id, s.wall.levelId);
     }
     for (const [id, w] of this.walls) {
@@ -1169,6 +1361,7 @@ export class Scene3D {
   }
 
   private drop(group: THREE.Group): void {
+    this.contentVersion++;
     this.scene.remove(group);
     group.traverse((o) => {
       if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) o.geometry.dispose();

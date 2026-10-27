@@ -11,7 +11,7 @@ export type LevelsShown = 'all' | 'below' | 'current';
 
 /** How the 3D view draws (Revit's visual styles): white faces and their lines; shaded by the light; each
  * material's own colour, unlit; realistic (tone mapping, the sky's reflections, shadows, ambient occlusion). */
-export const VISUAL_STYLES = ['hidden', 'shaded', 'consistent', 'realistic'] as const;
+export const VISUAL_STYLES = ['hidden', 'shaded', 'consistent', 'realistic', 'photo'] as const;
 export type VisualStyle = (typeof VISUAL_STYLES)[number];
 /** How finely: the resolution, the shadows' map, ambient occlusion and supersampling (render/scene-3d.ts). */
 export const RENDER_QUALITIES = ['low', 'medium', 'high', 'ultra'] as const;
