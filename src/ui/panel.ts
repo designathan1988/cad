@@ -47,6 +47,9 @@ export interface PanelInput {
 export interface PanelActions {
   readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
   readonly setReferenceLine: (line: ReferenceLine) => void;
+  readonly setWallType: (typeId: string) => void;
+  readonly keepClear: boolean;
+  readonly setKeepClear: (on: boolean) => void;
   /** Takes these values off the selected walls, so they come from their type again. */
   readonly resetToType: (fields: readonly ('top' | 'baseOffset')[]) => void;
   readonly editType: () => void;

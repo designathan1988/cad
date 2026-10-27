@@ -16,6 +16,11 @@ export interface WallFieldActions {
   readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
   /** Another reference line for the selected walls, their bodies kept where they are. */
   readonly setReferenceLine: (line: ReferenceLine) => void;
+  /** Another type for the selected walls: the face against their room kept, or their reference line (keepClear). */
+  readonly setWallType: (typeId: string) => void;
+  /** Whether a type changed keeps the clear span (the face against the room) or the reference line. */
+  readonly keepClear: boolean;
+  readonly setKeepClear: (on: boolean) => void;
   readonly resetToType: (fields: readonly ('top' | 'baseOffset')[]) => void;
   /** Opens the wall types dialog on the selected walls' type. */
   readonly editType: () => void;
@@ -60,7 +65,24 @@ export function wallFields(
         // Types are many and alike: a list with search and a thumbnail of each one's layers.
         options: doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name), keywords: w.name, thumb: layerSwatch(w.layers, doc.materials) })),
         get: (w) => w.wallTypeId,
-        set: (v) => act.updateWalls({ wallTypeId: v }),
+        set: (v) => act.setWallType(v),
+      },
+      {
+        // What stays where it was when the type, and so the thickness, changes: the room's clear size,
+        // the thickness going to the other side, or the reference line, the faces moving about it.
+        id: 'keepOnType',
+        label: 'panel.keepOnType',
+        icon: 'refInterior',
+        kind: 'segmented',
+        sub: true,
+        wide: true,
+        labelled: true,
+        options: [
+          { value: 'clear', label: t('keep.clear'), short: t('keep.clear') },
+          { value: 'line', label: t('keep.line'), short: t('keep.line') },
+        ],
+        get: () => (act.keepClear ? 'clear' : 'line'),
+        set: (v) => act.setKeepClear(v === 'clear'),
       },
       {
         id: 'editType',

@@ -208,19 +208,83 @@ export function changeReferenceLine(doc: Doc, ids: readonly WallId[], line: Refe
     const t = wallThickness(doc, w);
     // The new line, this far along the left normal from the old one, leaves the faces where they are.
     const shift = exteriorOffset(w.referenceLine, t) - exteriorOffset(line, t);
-    const arc = arcOf({ start: w.start, end: w.end, bulge: w.bulge ?? 0 });
-    let map: (p: Point2) => Point2;
-    if (arc) {
-      // Offset o along the left normal is radius r − turn·o: the line's radius changes, its centre stays.
-      const k = (arc.radius - arc.turn * shift) / arc.radius;
-      map = (p) => add(arc.center, scale(sub(p, arc.center), k));
-    } else {
-      const u = normalize(sub(w.end, w.start));
-      map = (p) => add(p, scale({ x: -u.y, y: u.x }, shift));
-    }
-    walls = transformWalls({ ...doc, walls }, [id], map).map((x) => (x.id === id ? { ...x, referenceLine: line } : x));
+    walls = shiftWall({ ...doc, walls }, w, shift).map((x) => (x.id === id ? { ...x, referenceLine: line } : x));
   }
   return [...walls];
+}
+
+/** The wall's line moved across, this far along its left normal; the walls joined to it keep their joins. */
+function shiftWall(doc: Doc, w: DocWall, shift: number): readonly DocWall[] {
+  if (Math.abs(shift) < 1e-12) return doc.walls;
+  const arc = arcOf({ start: w.start, end: w.end, bulge: w.bulge ?? 0 });
+  let map: (p: Point2) => Point2;
+  if (arc) {
+    // Offset o along the left normal is radius r − turn·o: the line's radius changes, its centre stays.
+    const k = (arc.radius - arc.turn * shift) / arc.radius;
+    map = (p) => add(arc.center, scale(sub(p, arc.center), k));
+  } else {
+    const u = normalize(sub(w.end, w.start));
+    map = (p) => add(p, scale({ x: -u.y, y: u.x }, shift));
+  }
+  return transformWalls(doc, [w.id], map);
+}
+
+/** Which of a wall's faces stays where it is when its type changes: null, its reference line does. */
+export type KeptFace = 'exterior' | 'interior' | 'middle' | null;
+
+/**
+ * The walls in `ids` of another type, each with the face `kept` names left where it was: the room's
+ * side, so the room keeps its clear size ("manter o vão livre", docs/plano-de-escopo.md, diferenciais,
+ * 3), its middle between two rooms, which share the change. The line moves across by the difference,
+ * the walls joined to it keep their joins, as for a move; its reference line stays the same kind.
+ */
+export function changeWallType(doc: Doc, ids: readonly WallId[], typeId: string, kept: (w: DocWall) => KeptFace): DocWall[] {
+  let walls: readonly DocWall[] = doc.walls;
+  const type = doc.wallTypes.find((x) => x.id === typeId);
+  if (!type) return [...walls];
+  const t1 = type.layers.reduce((s, l) => s + l.thickness, 0);
+  for (const id of ids) {
+    const w = walls.find((x) => x.id === id);
+    if (!w || w.wallTypeId === typeId) continue;
+    const t0 = wallThickness(doc, w);
+    const face = t0 > 0 ? kept(w) : null;
+    // Across the left normal the body runs from its exterior face, e, to its interior face, e + t.
+    const e0 = exteriorOffset(w.referenceLine, t0);
+    const e1 = exteriorOffset(w.referenceLine, t1);
+    const shift = face === 'exterior' ? e0 - e1 : face === 'interior' ? e0 + t0 - (e1 + t1) : face === 'middle' ? e0 + t0 / 2 - (e1 + t1 / 2) : 0;
+    walls = shiftWall({ ...doc, walls }, w, shift).map((x) => (x.id === id ? { ...x, wallTypeId: typeId } : x));
+  }
+  return [...walls];
+}
+
+/**
+ * The face of a wall a room is against, from where the enclosed rooms of its level are: just past
+ * each face, at a quarter, the middle and three quarters of its length. A room on one side: that
+ * face; on both (a partition): its middle; on neither: null, its reference line.
+ */
+export function roomFace(doc: Doc, w: DocWall, inRoom: (levelId: string, p: Point2) => boolean): KeptFace {
+  const t = wallThickness(doc, w);
+  const e = exteriorOffset(w.referenceLine, t);
+  const arc = arcOf({ start: w.start, end: w.end, bulge: w.bulge ?? 0 });
+  // A point of the reference line and its left normal, at a fraction of the wall's length.
+  const at = (f: number): { p: Point2; n: Point2 } => {
+    if (arc) {
+      const a = arc.startAngle + arc.sweep * f;
+      const r = { x: Math.cos(a), y: Math.sin(a) };
+      return { p: add(arc.center, scale(r, arc.radius)), n: scale(r, -arc.turn) };
+    }
+    const u = normalize(sub(w.end, w.start));
+    return { p: add(w.start, scale(sub(w.end, w.start), f)), n: { x: -u.y, y: u.x } };
+  };
+  const past = 0.05;
+  let exterior = false;
+  let interior = false;
+  for (const f of [0.25, 0.5, 0.75]) {
+    const { p, n } = at(f);
+    if (inRoom(w.levelId, add(p, scale(n, e - past)))) exterior = true;
+    if (inRoom(w.levelId, add(p, scale(n, e + t + past)))) interior = true;
+  }
+  return exterior && interior ? 'middle' : interior ? 'interior' : exterior ? 'exterior' : null;
 }
 
 /** Stretches an end along the wall's own line, to the foot of `cursor` on it: the direction stays. */

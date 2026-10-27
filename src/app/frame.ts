@@ -29,7 +29,9 @@ import { shownFor } from './geometry';
 import { stackedSteps } from './stacked';
 import { type TempDim, tempDims } from './temp-dims';
 import { cutAt } from './view-3d';
-import { changeReferenceLine, moveWalls } from '../tools/edit';
+import { changeReferenceLine, changeWallType, moveWalls, roomFace } from '../tools/edit';
+import { insideRing } from '../elements/room/derive';
+import { loadPrefs, savePrefs } from './persist';
 import { newId } from '../core/id';
 import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
 import type { App } from './app';
@@ -354,6 +356,20 @@ export function renderFrame(app: App): void {
       setReferenceLine: (line) => {
         const ids = app.selectedWalls().map((w) => w.id);
         app.store.dispatch(setWalls(changeReferenceLine(app.store.get(), ids, line), 'cmd.referenceLine'));
+      },
+      setWallType: (typeId) => {
+        const doc = app.store.get();
+        const ids = app.selectedWalls().map((w) => w.id);
+        // The rooms as they are now, before the walls move: the face each wall has against one stays.
+        const rooms = [...app.geometry.rooms.values()].filter((r) => r.enclosed);
+        const inRoom = (levelId: string, p: { x: number; y: number }) => rooms.some((r) => r.room.levelId === levelId && insideRing(r.outline, p));
+        const keep = loadPrefs().keepClear !== false;
+        app.store.dispatch(setWalls(changeWallType(doc, ids, typeId, (w) => (keep ? roomFace(doc, w, inRoom) : null)), 'cmd.wallType'));
+      },
+      keepClear: loadPrefs().keepClear !== false,
+      setKeepClear: (on) => {
+        savePrefs({ keepClear: on });
+        app.render();
       },
       resetToType: (fields) => app.store.dispatch(resetWallsToType([...ui.selection], fields)),
       editType: () => app.openWallTypes(app.store.get().walls.find((w) => ui.selection.has(w.id))?.wallTypeId),
