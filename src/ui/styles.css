@@ -3864,6 +3864,27 @@ textarea.text-field {
 .types-store .objs-main {
   grid-template-columns: var(--objs-nav-w) minmax(0, 1fr) var(--types-side-w);
 }
+/* The floor build-ups: no folders, the cards and the chosen one. */
+.flstore .objs-main {
+  grid-template-columns: minmax(0, 1fr) var(--objs-side-w);
+}
+.flstore-layers {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.flstore-layers li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-1) 0;
+  border-bottom: var(--line) solid var(--border);
+  font-size: var(--fs-sm);
+}
+.flstore-t {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
 .types-store .objs-preview {
   aspect-ratio: 16 / 9;
   object-fit: contain;

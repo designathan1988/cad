@@ -37,6 +37,7 @@ export interface Openers {
   readonly units: () => void;
   readonly objects: () => void;
   readonly openings: () => void;
+  readonly floors: () => void;
   readonly tour: () => void;
   readonly openFile: () => void;
   readonly projects: () => void;
@@ -248,6 +249,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('type.edit', 'types.edit', edit, open.wallTypes, { keywords: tBoth('types.title') }),
     make('material.edit', 'mats.edit', edit, open.materials, { keywords: tBoth('mats.title') }),
     make('objects.edit', 'objs.open', edit, open.objects, { keywords: `${tBoth('objs.title')} biblioteca library família family editor` }),
+    make('floors.store', 'flstore.open', edit, open.floors, { keywords: `${tBoth('flstore.title')} piso floor laje slab contrapiso screed composição build-up` }),
     make('openings.store', 'opstore.open', edit, open.openings, { keywords: `${tBoth('opstore.title')} catálogo catalog modelo model porta door janela window` }),
     make('units.edit', 'units.edit', edit, open.units, { keywords: `${tBoth('units.title')} ${tBoth('units.cm')} ${tBoth('units.mm')}` }),
     ...[2, 3, 4, 5, 6, 8, 10].map((n) =>
