@@ -6,7 +6,9 @@ import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 import { DEFAULT_SITE } from '../../src/app/sun';
 import { newOpening } from '../../src/elements/opening/schema';
-import { acousticOf, glaserOf, guidelineOf, lagOf, limitsFor, reverberationOf, saturation, thermalOf, zoneWall } from '../../src/sim/envelope';
+import { acousticOf, glaserOf, guidelineOf, lagOf, limitsFor, openableShare, reverberationOf, saturation, thermalOf, ventVerdict, zoneShading, zoneVents, zoneWall } from '../../src/sim/envelope';
+import { simBlock } from '../../src/app/sim-tables';
+import { num } from '../../src/ui/i18n';
 import { daylightOf, exteriorWindows, hoursOf, roomSun, skyAngle, sunDays, sunSlots } from '../../src/sim/exposure';
 import { absorptanceOf } from '../../src/sim/physics';
 import { risksOf } from '../../src/sim/risks';
@@ -117,6 +119,32 @@ const room: Doc = {
   openings: [{ ...newOpening('win', 'n', 'window', { kind: 'centered' }, { width: 1.2, height: 1.2 }), sill: 1 }],
   rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 2, y: 2 }, name: 'Room', number: '1', use: 'living' }],
 };
+
+describe('openings for ventilation (NBR 15220-3)', () => {
+  it('the size each zone asks, table C.1\'s ranges, and the share of a window that opens', () => {
+    expect([1, 2, 3, 4, 5, 6, 7, 8].map(zoneVents)).toEqual(['medium', 'medium', 'medium', 'medium', 'medium', 'medium', 'small', 'large']);
+    expect([1, 3, 4, 8].map(zoneShading)).toEqual(['winterSun', 'winterSun', 'shade', 'shade']);
+    expect([ventVerdict(9.9, 'small'), ventVerdict(12, 'small'), ventVerdict(15.5, 'small'), ventVerdict(30, 'medium'), ventVerdict(30, 'large'), ventVerdict(55, 'large')]).toEqual(['under', 'in', 'over', 'over', 'under', 'in']);
+    expect(['fixed', 'sliding', 'doubleHung', 'casement', 'awning', undefined].map(openableShare)).toEqual([0, 0.5, 0.5, 1, 1, 1]);
+  });
+
+  it('a living room\'s windows to the outside over its floor: the 4 × 4 room\'s 1.20 × 1.20 window is under medium; a sliding one half of it', () => {
+    const rows = (d: Doc) => simBlock('thermal', d, deriveGeometry(d), (id) => id).tables.find((x) => x.head.includes('A'))?.rows ?? [];
+    const plain = rows(room);
+    expect(plain).toHaveLength(1);
+    // 1.44 m² over the 3.85 × 3.85 m inside the 15 cm walls.
+    const floor = 3.85 * 3.85;
+    expect(plain[0]![3]).toBe(`${num((1.44 / floor) * 100, 1)} %`);
+    expect(plain[0]![4]).toMatchObject({ ok: false });
+    const sliding: Doc = { ...room, openings: room.openings.map((o) => ({ ...o, width: 3, height: 1.2, style: { operation: 'sliding', leaves: 2, frame: 0.05, casing: 0, transom: 0, threshold: false } })) };
+    // 3.6 m² of frame, half of it opens: 1.80 m², 12.1 % — still under medium (15 %).
+    expect(rows(sliding)[0]![2]).toBe(`${num(1.8, 2)} m²`);
+    const casement: Doc = { ...sliding, openings: sliding.openings.map((o) => ({ ...o, style: { ...o.style!, operation: 'casement' } })) };
+    expect(rows(casement)[0]![4]).toMatchObject({ ok: true });
+    // A bathroom is no long-stay room: not listed.
+    expect(rows({ ...room, rooms: room.rooms.map((r) => ({ ...r, use: 'bathroom' as const })) })).toEqual([]);
+  });
+});
 
 describe('sun and daylight', () => {
   it('a north window in São Paulo: sun all the June day and the equinox, hardly any in December', () => {

@@ -78,6 +78,40 @@ export const WALL_CLASSES: Readonly<Record<WallClass, { readonly u: number; read
 const ZONE_WALLS: readonly WallClass[] = ['light', 'light', 'lightReflective', 'heavy', 'lightReflective', 'heavy', 'heavy', 'lightReflective'];
 export const zoneWall = (zone: number): WallClass => ZONE_WALLS[Math.min(8, Math.max(1, Math.round(zone))) - 1]!;
 
+/**
+ * NBR 15220-3 (2005; its 2003 project text, at LabEEE/UFSC), tables 1 to 22 and C.1: the openings for
+ * ventilation each zone asks for (medium in 1 to 6, small in 7, large in 8), as the effective area in % of
+ * the floor of a long-stay room (kitchen, bedroom, living room; note 2): small 10 to 15 %, medium 15 to
+ * 25 %, large over 40 %. And their shading: the sun let in in the cold season (1 to 3), shaded (4 to 8).
+ */
+export type VentSize = 'small' | 'medium' | 'large';
+export const VENT_SIZES: Readonly<Record<VentSize, { readonly min: number; readonly max: number | null }>> = {
+  small: { min: 10, max: 15 },
+  medium: { min: 15, max: 25 },
+  large: { min: 40, max: null },
+};
+const ZONE_VENTS: readonly VentSize[] = ['medium', 'medium', 'medium', 'medium', 'medium', 'medium', 'small', 'large'];
+const zoneIndex = (zone: number): number => Math.min(8, Math.max(1, Math.round(zone))) - 1;
+export const zoneVents = (zone: number): VentSize => ZONE_VENTS[zoneIndex(zone)]!;
+export const zoneShading = (zone: number): 'winterSun' | 'shade' => (zoneIndex(zone) < 3 ? 'winterSun' : 'shade');
+
+/** A share of the floor (%) against a size of table C.1: under it, in it, or over it. */
+export function ventVerdict(share: number, size: VentSize): 'under' | 'in' | 'over' {
+  const { min, max } = VENT_SIZES[size];
+  return share < min - 1e-9 ? 'under' : max !== null && share > max + 1e-9 ? 'over' : 'in';
+}
+
+/**
+ * The share of a window that opens, by how it opens: none for a fixed one, half for a sliding or a
+ * double-hung one (its leaves pass each other), the whole for one whose leaves turn (casement, awning,
+ * hopper, pivot) and for a plain one with no make. The frame's area, not the open air an awning's angle leaves.
+ */
+export function openableShare(operation: string | undefined): number {
+  if (operation === 'fixed') return 0;
+  if (operation === 'sliding' || operation === 'doubleHung') return 0.5;
+  return 1;
+}
+
 export interface Guideline {
   readonly wall: WallClass;
   readonly u: boolean;

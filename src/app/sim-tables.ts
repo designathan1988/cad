@@ -5,7 +5,7 @@
 
 import { type MessageKey, materialLabel, name, num, t } from '../ui/i18n';
 import { materialIn } from '../elements/material/schema';
-import { acousticOf, glaserOf, guidelineOf, R_SE, R_SI, reverberationOf, thermalOf, WALL_CLASSES, zoneWall } from '../sim/envelope';
+import { acousticOf, glaserOf, guidelineOf, openableShare, R_SE, R_SI, reverberationOf, thermalOf, VENT_SIZES, ventVerdict, WALL_CLASSES, zoneShading, zoneVents, zoneWall } from '../sim/envelope';
 import { roomsBeside } from './quantities';
 import { levelOf } from './document';
 import { DAYLIGHT, daylightOf, exteriorFaces, GLAZED, hoursOf, octant, roomSun, sunDays, sunSlots } from '../sim/exposure';
@@ -125,10 +125,40 @@ export function simBlock(section: SimSection, doc: Doc, g: DerivedGeometry, titl
       }),
       numeric: [1, 2, 3],
     };
+    // The long-stay rooms' openings for ventilation against the size NBR 15220-3 asks for the zone.
+    const size = zoneVents(s.zone);
+    const range = VENT_SIZES[size];
+    const opens = new Map<string, number>();
+    for (const o of doc.openings) {
+      const w = doc.walls.find((x) => x.id === o.wallId);
+      if (o.kind !== 'window' || !w || !g.openings.get(o.id)?.valid) continue;
+      // Only a window to the outside ventilates: a room on one side, none on the other.
+      const [a, b] = roomsBeside(g, o.id, w.levelId);
+      const room = a && !b ? a : b && !a ? b : null;
+      if (room) opens.set(room.id, (opens.get(room.id) ?? 0) + o.width * o.height * openableShare(o.style?.operation));
+    }
+    const vents: SimTable = {
+      title: t('sim.ventTitle', {
+        zone: s.zone,
+        size: t(`sim.vent.${size}` as MessageKey),
+        range: range.max === null ? `A > ${num(range.min, 0)} %` : `${num(range.min, 0)} % ≤ A ≤ ${num(range.max, 0)} %`,
+        shade: t(`sim.shade.${zoneShading(s.zone)}` as MessageKey),
+      }),
+      head: [t('memo.room'), t('sim.floorArea'), t('sim.ventArea'), 'A', t('sim.status')],
+      rows: doc.rooms.flatMap((r) => {
+        const x = g.rooms.get(r.id);
+        if (!x?.enclosed || x.area <= 0 || !(r.use === 'living' || r.use === 'bedroom' || r.use === 'kitchen')) return [];
+        const area = opens.get(r.id) ?? 0;
+        const share = (area / x.area) * 100;
+        const v = ventVerdict(share, size);
+        return [[{ text: title(r.id), id: r.id }, `${num(x.area, 2)} m²`, `${num(area, 2)} m²`, `${num(share, 1)} %`, { text: t(`sim.ventVerdict.${v}` as MessageKey), ok: v === 'in' }]];
+      }),
+      numeric: [1, 2, 3],
+    };
     return {
-      tables: rows.length > 0 ? [{ head: [t('sim.type'), t('sim.exterior'), 'U', t('sim.limit'), 'CT', t('sim.limit'), 'α', 'φ', 'FSo', t('sim.status')], rows, numeric: [2, 3, 4, 5, 6, 7, 8] }, ...(guide.rows.length > 0 ? [guide] : [])] : [],
+      tables: [...(rows.length > 0 ? [{ head: [t('sim.type'), t('sim.exterior'), 'U', t('sim.limit'), 'CT', t('sim.limit'), 'α', 'φ', 'FSo', t('sim.status')], rows, numeric: [2, 3, 4, 5, 6, 7, 8] }, ...(guide.rows.length > 0 ? [guide] : [])] : []), ...(vents.rows.length > 0 ? [vents] : [])],
       empty: t('sim.noWalls'),
-      premises: [t('sim.thermalPremise', { rsi: num(R_SI, 2), rse: num(R_SE, 2), zone: s.zone }), t('sim.thermalLimits'), t('sim.absorptance'), t('sim.lagPremise'), t('sim.guidePremise')],
+      premises: [t('sim.thermalPremise', { rsi: num(R_SI, 2), rse: num(R_SE, 2), zone: s.zone }), t('sim.thermalLimits'), t('sim.absorptance'), t('sim.lagPremise'), t('sim.guidePremise'), t('sim.ventPremise')],
     };
   }
   if (section === 'condensation') {
