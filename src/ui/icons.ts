@@ -29,6 +29,7 @@ const paths = {
   wall: 'M3 6h18M3 18h18M6 6v12M10 6v12M14 6v12M18 6v12',
   slab: 'M2 12l10-5 10 5-10 5zM2 12v2l10 5 10-5v-2',
   door: 'M6 21V3h10v18M6 21h12M13 12h.01M16 3l3 2v16',
+  doorOpen: 'M4 21h16M6 21V3h12v18M6 3l6 3v17M10 13h.01',
   window: 'M4 4h16v16H4zM12 4v16M4 12h16',
   room: 'M3 3h18v18H3zM3 12h7M14 3v7M14 14v7',
   dimension: 'M3 12h18M3 8v8M21 8v8M7 12l-2-2M7 12l-2 2M17 12l2-2M17 12l2 2',

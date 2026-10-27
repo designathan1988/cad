@@ -29,7 +29,9 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
   flipWall: { icon: 'flip' },
   editType: { icon: 'wall' },
   flipHinge: { icon: 'door', keys: 'H' },
-  toggleOpen: { icon: 'swing' },
+  // Each its own icon: open or close is a door standing ajar; the side it opens to, the swing's arc; the
+  // hinge's jamb, a door with its hinge side marked. Two of them shared the arc and could not be told apart.
+  toggleOpen: { icon: 'doorOpen' },
   flipSwing: { icon: 'swing' },
   centerOpening: { icon: 'center' },
   addFloor: { icon: 'slab' },
