@@ -28,6 +28,8 @@ export interface Solid3 {
   readonly cut?: { readonly color: string; readonly pattern: CutPattern };
   /** The groups cut together whose outline is drawn with the cut pen (all the walls' layers); its own without. */
   readonly outline?: string;
+  /** The ground (a terrain): drawn, but not the building the dimensions measure. */
+  readonly ground?: true;
 }
 
 /** A face beyond the plane, in the drawing's (along, height) coordinates (m), with its edges to draw. */
@@ -50,9 +52,12 @@ export interface SectionDrawing {
     readonly segments: readonly (readonly [Point2, Point2])[];
     readonly fill?: { readonly color: string; readonly pattern: CutPattern };
     readonly pen?: 'fine';
+    readonly ground?: true;
   }[];
   /** Its extent (m): along the line and up. */
   readonly box: { readonly min: Point2; readonly max: Point2 } | null;
+  /** The extent of what its plane cuts (the building, not the ground beyond it); null when it cuts nothing. */
+  readonly cutBox?: { readonly min: Point2; readonly max: Point2 } | null;
   readonly levels: readonly { readonly name: string; readonly z: number }[];
   /** The line's length (m). */
   readonly length: number;
@@ -144,7 +149,7 @@ export function modelSolids(doc: Doc, g: DerivedGeometry, hidden: ReadonlySet<st
     const made = x.kind.solid(x.solid);
     if (!made) continue;
     (Array.isArray(made) ? (made as readonly KindSolid[]) : [made as KindSolid]).forEach((part, i) => {
-      out.push({ group: `${x.id}:${i}`, tris: geometryTriangles(part.geometry, part.y) });
+      out.push({ group: `${x.id}:${i}`, tris: geometryTriangles(part.geometry, part.y), ...(x.kind.key === 'terrains' ? { ground: true as const } : {}) });
     });
   }
   return out;
@@ -353,7 +358,7 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
   // Kept: from the line out to its depth, and between its ends.
   const sides: ((v: V) => number)[] = [(v) => m.depth - v.d, (v) => v.s, (v) => len - v.s];
   const faces: SeenFace[] = [];
-  const cuts: { loops: Point2[][]; segments: [Point2, Point2][]; fill?: { color: string; pattern: CutPattern }; pen?: 'fine' }[] = [];
+  const cuts: { loops: Point2[][]; segments: [Point2, Point2][]; fill?: { color: string; pattern: CutPattern }; pen?: 'fine'; ground?: true }[] = [];
   // The cut segments of the groups outlined together (the walls' layers), for their common outline.
   const together = new Map<string, [Point2, Point2][]>();
   let min = { x: Infinity, y: Infinity };
@@ -398,7 +403,7 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
       if (solid.outline) {
         cuts.push({ loops: loopsOf(outline), segments: outline, ...(solid.cut ? { fill: solid.cut } : {}), pen: 'fine' });
         together.set(solid.outline, [...(together.get(solid.outline) ?? []), ...cutSegments]);
-      } else cuts.push({ loops: loopsOf(outline), segments: outline });
+      } else cuts.push({ loops: loopsOf(outline), segments: outline, ...(solid.ground ? { ground: true as const } : {}) });
     }
   }
   // Over the layers, the walls' outline: where two layers meet both cut the line, so it is inside.
@@ -408,7 +413,25 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
   }
   faces.sort((a, b) => b.depth - a.depth);
   const levels = [...doc.levels].sort((a, b) => a.elevation - b.elevation).map((l) => ({ name: l.name, z: l.elevation }));
-  return { faces, cuts, box: Number.isFinite(min.x) ? { min, max } : null, levels, length: len };
+  const cutPoints = cuts.filter((c) => !c.ground).flatMap((c) => c.segments.flat());
+  const cutBox =
+    cutPoints.length > 0
+      ? { min: { x: Math.min(...cutPoints.map((p) => p.x)), y: Math.min(...cutPoints.map((p) => p.y)) }, max: { x: Math.max(...cutPoints.map((p) => p.x)), y: Math.max(...cutPoints.map((p) => p.y)) } }
+      : null;
+  return { faces, cuts, box: Number.isFinite(min.x) ? { min, max } : null, cutBox, levels, length: len };
+}
+
+/**
+ * A section's dimensions: up its left side, the heights from the ground to each level above it and to
+ * the top of what it shows (each stretch its own dimension); under it, the length of what it cuts (the
+ * building, not the ground beyond it), or of all it shows when it cuts nothing. Null without a drawing.
+ */
+export function sectionDims(d: Pick<SectionDrawing, 'box' | 'levels' | 'cutBox'>): { heights: number[]; along: [number, number] } | null {
+  if (!d.box) return null;
+  const top = d.box.max.y;
+  const marks = [0, ...d.levels.map((l) => l.z).filter((z) => z > 1e-6 && z < top - 1e-6), top].filter((z, i, all) => i === 0 || z - all[i - 1]! > 1e-6);
+  const span = d.cutBox ?? d.box;
+  return { heights: marks, along: [span.min.x, span.max.x] };
 }
 
 /** How a drawing is painted: model (along, up) to paper (mm), the pens (mm) and the colours. */
@@ -427,6 +450,8 @@ export interface SectionPaint {
   readonly levelText: (name: string, z: number) => string;
   /** The page's pixels per millimetre: a layer's hatch drawn sharp at it. */
   readonly pxPerMm?: number;
+  /** A length as dimensions write it ("2,80"); none: no dimensions drawn. */
+  readonly lengthText?: (m: number) => string;
 }
 
 /** The spacing of a cut's hatch on paper (mm), at any scale, as a section's hatch is drawn by hand. */
@@ -532,5 +557,57 @@ export function paintSection(ctx: CanvasRenderingContext2D, d: SectionDrawing, p
       ctx.fillText(p.levelText(l.name, l.z), x + 2, at.y - 0.4);
     }
   }
+  const dims = p.lengthText ? sectionDims(d) : null;
+  if (dims && p.lengthText) paintDims(ctx, dims, p, p.lengthText);
+  ctx.restore();
+}
+
+/** The section's dimensions on paper: ticks at 45°, the values over their lines, upright ones turned. */
+function paintDims(ctx: CanvasRenderingContext2D, dims: { heights: number[]; along: [number, number] }, p: SectionPaint, text: (m: number) => string): void {
+  const tick = 1;
+  ctx.save();
+  ctx.strokeStyle = p.ink;
+  ctx.fillStyle = p.ink;
+  ctx.lineWidth = p.finePen;
+  ctx.font = `400 ${p.text}px ${p.family}`;
+  // Up the left side, 8 mm out from the drawing.
+  const x = p.toPaper({ x: dims.along[0], y: 0 }).x - 8;
+  const ys = dims.heights.map((z) => p.toPaper({ x: dims.along[0], y: z }).y);
+  ctx.beginPath();
+  ctx.moveTo(x, ys[0]!);
+  ctx.lineTo(x, ys.at(-1)!);
+  for (const y of ys) {
+    ctx.moveTo(x - tick, y + tick);
+    ctx.lineTo(x + tick, y - tick);
+    ctx.moveTo(x + 1.5, y);
+    ctx.lineTo(x + 4, y);
+  }
+  ctx.stroke();
+  for (let i = 1; i < ys.length; i++) {
+    ctx.save();
+    ctx.translate(x - 0.8, (ys[i - 1]! + ys[i]!) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(text(dims.heights[i]! - dims.heights[i - 1]!), 0, 0);
+    ctx.restore();
+  }
+  // Under the ground line, 8 mm down: the whole length.
+  const a = p.toPaper({ x: dims.along[0], y: 0 });
+  const b = p.toPaper({ x: dims.along[1], y: 0 });
+  const y = a.y + 8;
+  ctx.beginPath();
+  ctx.moveTo(a.x, y);
+  ctx.lineTo(b.x, y);
+  for (const q of [a.x, b.x]) {
+    ctx.moveTo(q - tick, y + tick);
+    ctx.lineTo(q + tick, y - tick);
+    ctx.moveTo(q, a.y + 1.5);
+    ctx.lineTo(q, y + 1.5);
+  }
+  ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(text(dims.along[1] - dims.along[0]), (a.x + b.x) / 2, y - 0.6);
   ctx.restore();
 }

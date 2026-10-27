@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
-import { featureEdges, loopsOf, modelSolids, outlineOf, sectionDrawing } from '../../src/app/section-drawing';
+import { featureEdges, loopsOf, modelSolids, outlineOf, sectionDims, sectionDrawing } from '../../src/app/section-drawing';
 import type { Point3 } from '../../src/app/section-box';
 import { elevationsAround, isSectionMark, lookOf, nextSectionName, type SectionMark } from '../../src/elements/section/schema';
 import { flipSections, renameSection, setSectionDepth } from '../../src/elements/section/commands';
@@ -69,6 +69,25 @@ describe('a section drawn from the model', () => {
       .sort((a, b) => a.s0 - b.s0);
     expect(south.map((x) => Math.round((x.s1 - x.s0) * 1000) / 1000)).toEqual([0.015, 0.12, 0.015]);
     expect(south.map((x) => x.pattern)).toEqual([doc.materials.find((m) => m.id === 'plaster')!.cut, doc.materials.find((m) => m.id === 'brick')!.cut, doc.materials.find((m) => m.id === 'plaster')!.cut]);
+  });
+
+  it("its dimensions: the heights from the ground to each level and to the top, its whole length", () => {
+    const box2 = { min: { x: 0.9, y: 0 }, max: { x: 4.1, y: 5.6 } };
+    expect(sectionDims({ box: box2, levels: [{ name: 'T', z: 0 }, { name: 'P1', z: 2.8 }] })).toEqual({ heights: [0, 2.8, 5.6], along: [0.9, 4.1] });
+    // A level at the top is the top; one below the ground is not measured from it.
+    expect(sectionDims({ box: { ...box2, max: { x: 4.1, y: 2.8 } }, levels: [{ name: 'S', z: -3 }, { name: 'T', z: 0 }, { name: 'P1', z: 2.8 }] })!.heights).toEqual([0, 2.8]);
+    expect(sectionDims({ box: null, levels: [] })).toBeNull();
+    const doc = box();
+    const dims = sectionDims(sectionDrawing(doc, modelSolids(doc, deriveGeometry(doc)), across))!;
+    expect(dims.heights).toEqual([0, expect.closeTo(2.8, 6)]);
+    // The length of what it cuts: the south wall's outer face to the north wall's (0.925 to 4.075 along the line).
+    expect(dims.along).toEqual([expect.closeTo(0.925, 6), expect.closeTo(4.075, 6)]);
+    // A terrain wider than the house is cut too, but it is ground: the length is still the house's.
+    const withGround = { ...doc, terrains: [{ id: 'terrain_1', levelId: 'lvl_ground', outline: [{ x: -6, y: -6 }, { x: 10, y: -6 }, { x: 10, y: 10 }, { x: -6, y: 10 }], spots: [{ x: 0, y: 0, z: -0.2 }], interval: 0.5 }] };
+    const grounded = sectionDims(sectionDrawing(withGround, modelSolids(withGround, deriveGeometry(withGround)), across))!;
+    expect(grounded.along).toEqual([expect.closeTo(0.925, 6), expect.closeTo(4.075, 6)]);
+    // Cutting nothing: all it shows.
+    expect(sectionDims({ box: box2, levels: [], cutBox: null })!.along).toEqual([0.9, 4.1]);
   });
 
   it('moving a wall moves its cut: the drawing follows the model', () => {

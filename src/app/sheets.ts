@@ -74,6 +74,7 @@ export function sectionCanvas(app: App, m: SectionMark, f: { den: number; wMm: n
       text: TEXT.cell,
       levelText,
       pxPerMm: k,
+      lengthText: (m) => num(m, 2),
     });
   });
   return canvas;
