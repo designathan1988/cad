@@ -33,6 +33,8 @@ export const DEFAULT_PHYSICS: Readonly<Record<string, MaterialPhysics & { readon
   insulation: { conductivity: 0.045, density: 100, specificHeat: 0.75, vapour: 1, wifiLoss: 1, source: 'NBR 15220-2 B.3: lã de rocha' },
   // Madeira de densidade elevada: 800–1000 kg/m³, λ 0,29, c 1,34.
   wood: { conductivity: 0.29, density: 900, specificHeat: 1.34, vapour: 50, wifiLoss: 4, source: 'NBR 15220-2 B.3: madeira 800–1000 kg/m³' },
+  // Furniture's wood is the same wood, only drawn differently (material/schema.ts).
+  woodVeneer: { conductivity: 0.29, density: 900, specificHeat: 1.34, vapour: 50, wifiLoss: 4, source: 'NBR 15220-2 B.3: madeira 800–1000 kg/m³' },
   // Aço: 7800 kg/m³, λ 55, c 0,46.
   metal: { conductivity: 55, density: 7800, specificHeat: 0.46, vapour: 1e6, wifiLoss: 26, source: 'NBR 15220-2 B.3: aço' },
   // Vidro comum: 2500 kg/m³, λ 1,00, c 0,84.

@@ -17,6 +17,7 @@ import { openProjectDialog } from './dialog';
 import { editDefinition } from './definition-editor';
 import { getLang, type MessageKey, t } from './i18n';
 import { icon } from './icons';
+import { objectSnapshot } from './object-snapshot';
 
 /** A new definition: one box, its width, depth and height, handles on them, one type. */
 export function blankDefinition(n: number): ObjectDefinition {
@@ -116,6 +117,9 @@ export function showObjects(app: App, first?: string): void {
     if (shown.length === 0) list.append(el('p', { class: 'mat-note' }, t('objs.noMatch')));
     const detail = el('div', { class: 'types-detail mat-detail' });
     if (def) {
+      // How it looks, in 3D at its first type: the list's thumbnails are its plan.
+      const picture = objectSnapshot(def, doc, 640, 480);
+      if (picture) detail.append(el('img', { class: 'objs-preview', src: picture, alt: words(def.name) }));
       detail.append(
         el('h3', {}, words(def.name)),
         el('p', { class: 'mat-note' }, t('objs.summary', { p: def.params.length, k: def.parts.length, h: def.handles.length, t: def.types.length })),

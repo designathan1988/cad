@@ -1997,6 +1997,17 @@ button.project-name:hover {
 }
 .types-detail {
   min-width: 0;
+  /* In view while the list scrolls under it: a long list, its chosen one far down, had scrolled the
+     detail and the search out of sight when the dialog opened on it. */
+  position: sticky;
+  top: 0;
+  align-self: start;
+}
+.types-list > .keys-search {
+  position: sticky;
+  top: calc(-1 * var(--sp-3));
+  z-index: 1;
+  box-shadow: 0 0 0 var(--sp-2) var(--bg);
 }
 /* Materials (materials-dialog.ts): laid out as the wall types, each with its colour beside its name. */
 .mat-chip {
@@ -2409,6 +2420,10 @@ button.project-name:hover {
 @media (max-width: 720px) {
   .types-body {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* One column: the detail follows the list, not over it. */
+  .types-detail {
+    position: static;
   }
   /* A layer in two lines: number, function and its buttons; then thickness, material and core, each
      with its caption, since the column heads are gone. */
@@ -3423,6 +3438,16 @@ textarea.text-field {
   border-radius: var(--radius);
   background: var(--bg-2);
   color: var(--text-2);
+}
+/* The chosen object in 3D, at the head of its detail (objects-dialog.ts). */
+.objs-preview {
+  display: block;
+  width: 100%;
+  max-width: calc(var(--thumb-lg) * 6);
+  aspect-ratio: 4 / 3;
+  margin-bottom: var(--sp-2);
+  border-radius: var(--radius);
+  background: var(--bg-2);
 }
 .objs-thumb svg {
   width: 100%;
