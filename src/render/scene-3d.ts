@@ -2,6 +2,7 @@
 // renders only when something changed. World (x, y, height) maps to three.js (x, height, −y).
 // Each convex piece is a prism; pieces are disjoint by construction, so no 3D boolean exists.
 
+import { creaseEdges } from '../elements/kinds/object';
 import * as THREE from 'three';
 import { patternTexture } from './pattern-texture';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -1430,7 +1431,8 @@ export class Scene3D {
 
   /** A floor's or an opening's edges, as the walls' lines (never picked). */
   private outline(geo: THREE.BufferGeometry): THREE.LineSegments {
-    const lines = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 20), this.edgeMaterial);
+    // A cut object's part (kinds/object.ts) by its creases only: its T-junctions are no edges.
+    const lines = new THREE.LineSegments(geo.userData.cut ? creaseEdges(geo, 20) : new THREE.EdgesGeometry(geo, 20), this.edgeMaterial);
     lines.raycast = () => {};
     return lines;
   }

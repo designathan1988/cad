@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import type { Doc } from '../app/document';
-import { pieceGeometry } from '../elements/kinds/object';
+import { cutGeometries } from '../elements/kinds/object';
 import { evaluateObject } from '../elements/object/evaluate';
 import type { ObjectDefinition } from '../elements/object/schema';
 
@@ -41,10 +41,10 @@ export function objectSnapshot(def: ObjectDefinition, doc: Doc, w: number, h: nu
     s.group.remove(c);
   }
   const box = new THREE.Box3();
-  for (const p of ev.pieces) {
+  for (const { piece: p, geometry } of cutGeometries(ev.pieces)) {
     // Glass seen through, as in the 3D view (scene-3d.ts).
     const clear = p.material.id === 'glass';
-    const mesh = new THREE.Mesh(pieceGeometry(p), new THREE.MeshStandardMaterial({ color: p.material.color, roughness: p.material.roughness, metalness: p.material.metalness, transparent: clear, opacity: clear ? 0.45 : 1 }));
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: p.material.color, roughness: p.material.roughness, metalness: p.material.metalness, transparent: clear, opacity: clear ? 0.45 : 1 }));
     s.group.add(mesh);
     box.expandByObject(mesh);
   }

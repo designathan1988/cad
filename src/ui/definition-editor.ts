@@ -5,7 +5,7 @@
 // as one types. Beside them a live 3D preview turned by dragging, sliders that flex each parameter (the
 // Revit test: does it still hold?), and what does not work out.
 
-import { pieceGeometry } from '../elements/kinds/object';
+import { creaseEdges, cutGeometries, pieceGeometry } from '../elements/kinds/object';
 import * as THREE from 'three';
 import type { App } from '../app/app';
 import { addDefinition, updateDefinition } from '../elements/object/commands';
@@ -239,6 +239,17 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
           p.kind === 'object'
             ? choose(defs.map((d) => ({ value: d.id, label: words(d.name) })), p.definition, (v) => upd({ definition: v } as Partial<Part>), `k${i}:def`, t('ed.definition'))
             : choose(materialOptions(), p.material ?? 'plaster', (v) => upd({ material: v }), `k${i}:mat`, t('ed.material')),
+          // A void: taken out of the other parts (an object's part is never one).
+          ...(p.kind === 'object'
+            ? [el('span', {})]
+            : [
+                (() => {
+                  const box = el('input', { type: 'checkbox', 'data-focus': `k${i}:cut` }) as HTMLInputElement;
+                  box.checked = p.cut === true;
+                  box.addEventListener('change', () => (box.checked ? upd({ cut: true }) : set({ ...draft, parts: replaceAt(draft.parts, i, withoutKey(p, 'cut') as Part) })));
+                  return el('label', { class: 'ed-cut', title: t('ed.cutTip') }, box, el('span', {}, t('ed.cut')));
+                })(),
+              ]),
           remove(t('ed.removePart', { n: i + 1 }), `k${i}:remove`, () => set({ ...draft, parts: draft.parts.filter((_, k) => k !== i) })),
         ),
         el('div', { class: 'ed-grid' }, ex('x', 'x'), ex('y', 'y'), ex('z', 'z'), ...size),
@@ -527,10 +538,11 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
         this.group.remove(c);
       }
       const box = new THREE.Box3();
-      for (const p of ev.pieces) {
-        const g = pieceGeometry(p);
-        const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: p.material.color, roughness: p.material.roughness, metalness: p.material.metalness }));
-        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g, 30), new THREE.LineBasicMaterial({ color: 0x2b2f36, transparent: true, opacity: 0.5 }));
+      // The solid parts with the voids taken out, and each void a faint ghost to place it by.
+      const drawn = [...cutGeometries(ev.pieces), ...ev.pieces.filter((p) => p.cut).map((piece) => ({ piece, geometry: pieceGeometry(piece) }))];
+      for (const { piece: p, geometry: g } of drawn) {
+        const mesh = new THREE.Mesh(g, p.cut ? new THREE.MeshStandardMaterial({ color: 0xd04040, transparent: true, opacity: 0.18, depthWrite: false }) : new THREE.MeshStandardMaterial({ color: p.material.color, roughness: p.material.roughness, metalness: p.material.metalness }));
+        const edges = new THREE.LineSegments(g.userData.cut ? creaseEdges(g, 30) : new THREE.EdgesGeometry(g, 30), new THREE.LineBasicMaterial({ color: 0x2b2f36, transparent: true, opacity: 0.5 }));
         mesh.add(edges);
         this.group.add(mesh);
         box.expandByObject(mesh);

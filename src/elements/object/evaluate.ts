@@ -8,14 +8,15 @@ import { type Material, materialIn } from '../material/schema';
 import { type Env, evaluateFormula, type Value } from './formula';
 import type { Expr, HandleDef, MeshData, ObjectDefinition, ObjectInstance, ParamDef, Part, Words } from './schema';
 
-/** A piece in the world: a box (its centre, size and turn) or an upright cylinder (its base's centre). */
-export type Piece =
+/** A piece in the world: a box (its centre, size and turn) or an upright cylinder (its base's centre); `cut`, a void
+ * taken out of the solid pieces. */
+export type Piece = { readonly cut?: boolean } & (
   | { readonly kind: 'box'; readonly cx: number; readonly cy: number; readonly z: number; readonly w: number; readonly d: number; readonly h: number; readonly angle: number; readonly material: Material; /** Its edges' radius, 0 square; never more than half its least side. */ readonly round: number }
   | { readonly kind: 'cylinder'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly r2: number; readonly h: number; readonly material: Material }
   /** A rounded mass (an ellipsoid) on its base's centre: r across, h up. */
   | { readonly kind: 'sphere'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly h: number; readonly material: Material }
   /** A mesh stretched to its box (centre, size and turn, as a box's). */
-  | { readonly kind: 'mesh'; readonly cx: number; readonly cy: number; readonly z: number; readonly w: number; readonly d: number; readonly h: number; readonly angle: number; readonly mesh: MeshData; readonly material: Material };
+  | { readonly kind: 'mesh'; readonly cx: number; readonly cy: number; readonly z: number; readonly w: number; readonly d: number; readonly h: number; readonly angle: number; readonly mesh: MeshData; readonly material: Material });
 
 /** A light in the world: where (z above the level's floor), how many lumens, its colour (#rrggbb). */
 export interface PlacedLight {
@@ -171,7 +172,7 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         }
         if (w === null || d === null || h === null || w <= 1e-6 || d <= 1e-6 || h <= 1e-6) continue;
         const centre = apply(frame, { x: ox + w / 2, y: oy + d / 2, z: oz });
-        pieces.push({ kind: 'mesh', cx: centre.x, cy: centre.y, z: centre.z, w, d, h, angle: frame.angle, mesh, material: materialOf(part) });
+        pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'mesh', cx: centre.x, cy: centre.y, z: centre.z, w, d, h, angle: frame.angle, mesh, material: materialOf(part) });
       } else if (part.kind === 'box') {
         const w = num(part.w, at, `${label} width`);
         const d = num(part.d, at, `${label} depth`);
@@ -181,20 +182,20 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         if (w <= 1e-6 || d <= 1e-6 || h <= 1e-6) continue;
         const centre = apply(frame, { x: ox + w / 2, y: oy + d / 2, z: oz });
         const round = part.round === undefined ? 0 : (num(part.round, at, `${label} edge radius`) ?? 0);
-        pieces.push({ kind: 'box', cx: centre.x, cy: centre.y, z: centre.z, w, d, h, angle: frame.angle, material: materialOf(part), round: Math.max(0, Math.min(round, Math.min(w, d, h) / 2 - 1e-4)) });
+        pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'box', cx: centre.x, cy: centre.y, z: centre.z, w, d, h, angle: frame.angle, material: materialOf(part), round: Math.max(0, Math.min(round, Math.min(w, d, h) / 2 - 1e-4)) });
       } else if (part.kind === 'cylinder') {
         const r = num(part.r, at, `${label} radius`);
         const h = num(part.h, at, `${label} height`);
         const r2 = part.r2 === undefined ? r : num(part.r2, at, `${label} top radius`);
         if (r === null || h === null || r2 === null || h <= 1e-6 || Math.max(r, r2) <= 1e-6) continue;
         const centre = apply(frame, { x: ox, y: oy, z: oz });
-        pieces.push({ kind: 'cylinder', cx: centre.x, cy: centre.y, z: centre.z, r: Math.max(0, r), r2: Math.max(0, r2), h, material: materialOf(part) });
+        pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'cylinder', cx: centre.x, cy: centre.y, z: centre.z, r: Math.max(0, r), r2: Math.max(0, r2), h, material: materialOf(part) });
       } else if (part.kind === 'sphere') {
         const r = num(part.r, at, `${label} radius`);
         const h = num(part.h, at, `${label} height`);
         if (r === null || h === null || h <= 1e-6 || r <= 1e-6) continue;
         const centre = apply(frame, { x: ox, y: oy, z: oz });
-        pieces.push({ kind: 'sphere', cx: centre.x, cy: centre.y, z: centre.z, r, h, material: materialOf(part) });
+        pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'sphere', cx: centre.x, cy: centre.y, z: centre.z, r, h, material: materialOf(part) });
       } else {
         const inner = c.definitions.find((d) => d.id === part.definition);
         if (!inner) {

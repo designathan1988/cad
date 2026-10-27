@@ -54,6 +54,8 @@ interface PartCommon {
   readonly material?: string;
   /** Its name, for the GLB and the panel (Tampo, Pé). */
   readonly name?: Words;
+  /** A void: taken out of the object's other parts (a sink's bowl in its counter, a hole), not drawn itself. */
+  readonly cut?: boolean;
 }
 
 export type Part =

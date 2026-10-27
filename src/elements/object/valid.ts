@@ -14,6 +14,7 @@ function isPart(p: unknown): p is Part {
   if (p.when !== undefined && typeof p.when !== 'string') return false;
   if (p.material !== undefined && typeof p.material !== 'string') return false;
   if (p.repeat !== undefined && !(isObject(p.repeat) && isExpr(p.repeat.count))) return false;
+  if (p.cut !== undefined && typeof p.cut !== 'boolean') return false;
   if (p.kind === 'box') return isExpr(p.w) && isExpr(p.d) && isExpr(p.h) && (p.round === undefined || isExpr(p.round));
   if (p.kind === 'cylinder') return isExpr(p.r) && isExpr(p.h) && (p.r2 === undefined || isExpr(p.r2));
   if (p.kind === 'sphere') return isExpr(p.r) && isExpr(p.h);

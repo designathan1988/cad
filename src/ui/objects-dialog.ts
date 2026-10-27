@@ -52,7 +52,7 @@ export const answers = (d: ObjectDefinition, query: string): boolean => {
 /** A definition's thumbnail: its pieces in plan at its first type, the highest drawn last, in their materials' colours. */
 export function thumbnailSvg(def: ObjectDefinition, doc: Doc): string | null {
   const ev = evaluateObject(def, { id: 'thumb', levelId: '', definitionId: def.id, typeId: def.types[0]?.id ?? '', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
-  const rings = [...ev.pieces].sort((a, b) => a.z + a.h - (b.z + b.h)).map((p) => ({ ring: pieceOutline(p), color: /^#[0-9a-f]{3,8}$/i.test(p.material.color) ? p.material.color : 'none' }));
+  const rings = [...ev.pieces].filter((p) => !p.cut).sort((a, b) => a.z + a.h - (b.z + b.h)).map((p) => ({ ring: pieceOutline(p), color: /^#[0-9a-f]{3,8}$/i.test(p.material.color) ? p.material.color : 'none' }));
   const all = rings.flatMap((r) => r.ring);
   if (all.length === 0) return null;
   const xs = all.map((p) => p.x);

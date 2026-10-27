@@ -4,6 +4,7 @@
 // derivation to the next while the object, its level, the definitions and the materials are the same.
 
 import * as THREE from 'three';
+import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { Doc } from '../../app/document';
 import { insideRing } from '../room/derive';
@@ -55,7 +56,7 @@ function derive(doc: Doc, o: ObjectInstance, g: BaseGeometry): ObjectSolid | nul
 }
 
 function build(object: ObjectInstance, def: ObjectDefinition, ev: ObjectEval, floor: number): ObjectSolid {
-  const pieces = [...ev.pieces].sort((a, b) => a.z + a.h - (b.z + b.h));
+  const pieces = ev.pieces.filter((p) => !p.cut).sort((a, b) => a.z + a.h - (b.z + b.h));
   const rings = pieces.map(pieceOutline);
   // The box around the pieces in the object's own axes, turned back into the plan.
   const c = Math.cos(object.angle);
@@ -74,6 +75,106 @@ function build(object: ObjectInstance, def: ObjectDefinition, ev: ObjectEval, fl
   const bottom = floor + (pieces.length ? Math.min(...pieces.map((p) => p.z)) : object.elevation);
   const top = floor + (pieces.length ? Math.max(...pieces.map((p) => p.z + p.h)) : object.elevation + 0.1);
   return { object, def, eval: ev, rings, outline, floor, bottom, top };
+}
+
+/**
+ * The solid pieces' geometries, each with the voids (cut pieces) that reach it taken out, in three.js's
+ * axes; the voids themselves not drawn. A piece no void reaches keeps its own geometry.
+ */
+export function cutGeometries(pieces: readonly Piece[]): { piece: Piece; geometry: THREE.BufferGeometry }[] {
+  const voids = pieces.filter((p) => p.cut);
+  const solids = pieces.filter((p) => !p.cut);
+  if (voids.length === 0) return solids.map((piece) => ({ piece, geometry: pieceGeometry(piece) }));
+  const evaluator = new Evaluator();
+  evaluator.attributes = ['position', 'normal'];
+  evaluator.useGroups = false;
+  const holes = voids.map((v) => {
+    const b = new Brush(pieceGeometry(v));
+    b.updateMatrixWorld();
+    return { brush: b, box: new THREE.Box3().setFromBufferAttribute(b.geometry.getAttribute('position') as THREE.BufferAttribute) };
+  });
+  const out = solids.map((piece) => {
+    let geometry = pieceGeometry(piece);
+    const box = new THREE.Box3().setFromBufferAttribute(geometry.getAttribute('position') as THREE.BufferAttribute);
+    for (const h of holes) {
+      if (!box.intersectsBox(h.box)) continue;
+      const a = new Brush(geometry.index ? geometry.toNonIndexed() : geometry);
+      a.updateMatrixWorld();
+      const result = evaluator.evaluate(a, h.brush, SUBTRACTION);
+      geometry.dispose();
+      geometry = result.geometry;
+      // Its lines are drawn by creaseEdges: the cut leaves T-junctions, which edges of one face would show.
+      geometry.userData.cut = true;
+    }
+    return { piece, geometry };
+  });
+  for (const h of holes) h.brush.geometry.dispose();
+  return out;
+}
+
+/**
+ * A cut geometry's lines: only where two faces meet at `angle` degrees or more, its vertices welded by
+ * position. three.js's EdgesGeometry also draws every edge of one face, and a cut leaves T-junctions
+ * (a vertex in the middle of another triangle's edge): those drew lines across flat faces.
+ */
+export function creaseEdges(geo: THREE.BufferGeometry, angle = 20): THREE.BufferGeometry {
+  const g = geo.index ? geo.toNonIndexed() : geo;
+  const pos = g.getAttribute('position') as THREE.BufferAttribute;
+  const key = (i: number) => `${Math.round(pos.getX(i) * 1e4)},${Math.round(pos.getY(i) * 1e4)},${Math.round(pos.getZ(i) * 1e4)}`;
+  // The distinct vertices, welded by position.
+  const verts: THREE.Vector3[] = [];
+  const index = new Map<string, number>();
+  const id = (i: number) => {
+    const k = key(i);
+    let v = index.get(k);
+    if (v === undefined) index.set(k, (v = verts.push(new THREE.Vector3().fromBufferAttribute(pos, i)) - 1));
+    return v;
+  };
+  // All of them first: an edge is split at vertices any triangle has, later ones too.
+  const ids: number[] = [];
+  for (let i = 0; i < pos.count; i++) ids.push(id(i));
+  // Each face edge split at the vertices lying on it (a T-junction's), so both sides of a crease meet on
+  // the same pieces; each piece with the normals of the faces it bounds.
+  const faces = new Map<string, { n: THREE.Vector3[]; a: number; b: number }>();
+  const d = new THREE.Vector3();
+  const q = new THREE.Vector3();
+  for (let t = 0; t + 2 < pos.count; t += 3) {
+    const tri = [ids[t]!, ids[t + 1]!, ids[t + 2]!];
+    const [a, b, c] = tri.map((k) => verts[k]!);
+    const n = b!.clone().sub(a!).cross(c!.clone().sub(a!));
+    if (n.lengthSq() < 1e-16) continue;
+    n.normalize();
+    for (const [i, j] of [[tri[0]!, tri[1]!], [tri[1]!, tri[2]!], [tri[2]!, tri[0]!]] as [number, number][]) {
+      const p0 = verts[i]!;
+      d.subVectors(verts[j]!, p0);
+      const len2 = d.lengthSq();
+      if (len2 < 1e-16) continue;
+      const on: [number, number][] = [[0, i], [1, j]];
+      verts.forEach((v, k) => {
+        if (k === i || k === j) return;
+        const s = q.subVectors(v, p0).dot(d) / len2;
+        if (s <= 1e-6 || s >= 1 - 1e-6) return;
+        if (q.subVectors(v, p0).addScaledVector(d, -s).lengthSq() < 1e-10) on.push([s, k]);
+      });
+      on.sort((x, y) => x[0] - y[0]);
+      for (let m = 1; m < on.length; m++) {
+        const u = on[m - 1]![1];
+        const w = on[m]![1];
+        const k = u < w ? `${u}|${w}` : `${w}|${u}`;
+        const e = faces.get(k) ?? faces.set(k, { n: [], a: u, b: w }).get(k)!;
+        e.n.push(n);
+      }
+    }
+  }
+  const cos = Math.cos((angle * Math.PI) / 180);
+  const out: number[] = [];
+  for (const e of faces.values()) {
+    if (e.n.length !== 2 || e.n[0]!.dot(e.n[1]!) > cos) continue;
+    const [a, b] = [verts[e.a]!, verts[e.b]!];
+    out.push(a.x, a.y, a.z, b.x, b.y, b.z);
+  }
+  if (g !== geo) g.dispose();
+  return new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
 }
 
 /** A piece's geometry where it is, in three.js's axes: plan x, y and height z are x, −z and y; a turn in
@@ -163,8 +264,7 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
     }
   },
   solid: (s) =>
-    s.eval.pieces.map((piece, i): KindSolid => {
-      const geometry = pieceGeometry(piece);
+    cutGeometries(s.eval.pieces).map(({ piece, geometry }, i): KindSolid => {
       // Its lights go with its first piece (a luminaire's: contract.ts, lights).
       return { geometry, y: s.floor, material: piece.material, edges: true, ...(i === 0 && s.eval.lights.length > 0 ? { lights: s.eval.lights } : {}) };
     }),

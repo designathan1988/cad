@@ -3436,6 +3436,15 @@ textarea.text-field {
   border-radius: var(--radius);
   background: var(--bg-2);
 }
+/* A part marked as a void, in its card's head (definition-editor.ts). */
+.ed-cut {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  white-space: nowrap;
+}
 .objs-thumb svg {
   width: 100%;
   height: 100%;
@@ -3472,7 +3481,8 @@ textarea.text-field {
 }
 .ed-card-head {
   display: grid;
-  grid-template-columns: auto 1fr 1fr var(--control-h);
+  /* Number and kind, name, material, the void's box (a part's, not an object's), remove. */
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto var(--control-h);
   align-items: center;
   gap: var(--sp-2);
 }
