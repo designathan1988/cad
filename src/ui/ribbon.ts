@@ -22,6 +22,8 @@ export interface RibbonItem {
   readonly pressed?: () => boolean;
   /** Dimmed, a click still runs it, to say what it needs (the Modify tools with nothing selected). */
   readonly explains?: boolean;
+  /** A button with a list (the Objects one): a click opens its items under it instead of running it. */
+  readonly menu?: () => readonly RibbonItem[];
 }
 
 export interface RibbonPanel {
@@ -36,15 +38,24 @@ export interface RibbonTab {
 }
 
 /** One button of the ribbon, for its action; disabled when the action is (with the palette's reason). */
-function button(item: RibbonItem, action: Action): HTMLButtonElement {
+function button(item: RibbonItem, action: Action, actions: ReadonlyMap<string, Action>): HTMLButtonElement {
   const label = item.text ?? (item.short ? t(item.short) : action.label);
   const tip = action.keys ? `${action.label} (${action.keys})` : action.label;
-  const b = el('button', { type: 'button', class: item.size === 'L' ? 'rb-large' : 'rb-small', title: tip, 'aria-label': tip });
+  const b = el('button', { type: 'button', class: item.size === 'L' ? 'rb-large' : 'rb-small', title: tip, 'aria-label': item.menu ? label : tip });
   b.dataset.action = item.id;
   b.innerHTML = icon(item.icon, item.size === 'L' ? 24 : 16);
   b.append(el('span', { class: 'rb-label' }, label));
   const pressed = item.pressed?.() ?? false;
   if (item.pressed) b.setAttribute('aria-pressed', String(pressed));
+  if (item.menu) {
+    const list = item.menu;
+    b.setAttribute('aria-haspopup', 'menu');
+    b.setAttribute('aria-expanded', 'false');
+    b.removeAttribute('title');
+    b.append(el('span', { class: 'rb-caret', 'aria-hidden': 'true' }, '▾'));
+    b.addEventListener('click', () => openMenu(b, list(), actions));
+    return b;
+  }
   // Dimmed, still focusable: a disabled control is skipped by the keyboard and says nothing. A pressed
   // one is not dimmed (the view shown has nothing to switch to, and shows that it is on).
   if (!action.enabled && !pressed) b.setAttribute('aria-disabled', 'true');
@@ -61,6 +72,63 @@ function button(item: RibbonItem, action: Action): HTMLButtonElement {
 }
 
 /**
+ * A button's list, under it, over everything: each item runs its action and closes it; a click outside,
+ * Escape or a ribbon drawn again (its button gone) closes it. Arrow keys move along it.
+ */
+function openMenu(anchor: HTMLButtonElement, items: readonly RibbonItem[], actions: ReadonlyMap<string, Action>): void {
+  document.querySelector('.rb-menu')?.remove();
+  const menu = el('div', { class: 'rb-menu', role: 'menu' });
+  const close = () => {
+    menu.remove();
+    anchor.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', outside, true);
+    document.removeEventListener('keydown', keys, true);
+  };
+  const outside = (e: Event) => {
+    if (!menu.contains(e.target as Node) && e.target !== anchor && !anchor.contains(e.target as Node)) close();
+  };
+  const entries = items.flatMap((item) => {
+    const action = actions.get(item.id);
+    if (!action) return [];
+    const label = item.text ?? (item.short ? t(item.short) : action.label);
+    const b = el('button', { type: 'button', class: 'rb-menu-item', role: 'menuitem', title: action.label });
+    b.innerHTML = icon(item.icon, 16);
+    b.append(el('span', {}, label));
+    if (item.pressed?.()) b.setAttribute('aria-current', 'true');
+    if (!action.enabled) b.setAttribute('aria-disabled', 'true');
+    b.addEventListener('click', () => {
+      close();
+      if (action.enabled) action.run();
+    });
+    return [b];
+  });
+  const keys = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      close();
+      anchor.focus();
+      return;
+    }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    const at = entries.indexOf(document.activeElement as HTMLButtonElement);
+    entries[(at + (e.key === 'ArrowDown' ? 1 : entries.length - 1) + entries.length) % entries.length]?.focus();
+  };
+  menu.append(...entries);
+  const r = anchor.getBoundingClientRect();
+  menu.style.left = `${Math.round(r.left)}px`;
+  menu.style.top = `${Math.round(r.bottom)}px`;
+  document.body.append(menu);
+  // Kept inside the window on its right.
+  const over = menu.getBoundingClientRect().right - window.innerWidth;
+  if (over > 0) menu.style.left = `${Math.max(0, Math.round(r.left - over))}px`;
+  anchor.setAttribute('aria-expanded', 'true');
+  document.addEventListener('pointerdown', outside, true);
+  document.addEventListener('keydown', keys, true);
+  entries[0]?.focus();
+}
+
+/**
  * The panels of a tab into `box`: large buttons each in a column, small ones three to a column, the
  * panel's title under them. An item whose action the app does not have is left out.
  */
@@ -71,7 +139,7 @@ export function renderRibbonTab(box: HTMLElement, tab: RibbonTab, actions: Reado
     for (const item of p.items) {
       const action = actions.get(item.id);
       if (!action) continue;
-      const b = button(item, action);
+      const b = button(item, action, actions);
       if (item.size === 'L') {
         column = null;
         body.append(b);

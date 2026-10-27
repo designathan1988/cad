@@ -3055,6 +3055,51 @@ textarea.text-field {
   opacity: 0.4;
   cursor: default;
 }
+/* A button with a list (Objects): its caret, and the list under it, over the drawing. */
+.rb-caret {
+  font-size: var(--fs-xs);
+  line-height: 1;
+  color: var(--text-2);
+}
+.rb-menu {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: var(--menu-min-w);
+  padding: var(--sp-1);
+  background: var(--bg);
+  border: var(--line) solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.rb-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: var(--rb-small-h);
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.rb-menu-item:hover,
+.rb-menu-item:focus-visible {
+  background: var(--hover);
+}
+.rb-menu-item[aria-current='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.rb-menu-item[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
 
 /* The views' strip: the level, the views as tabs, the project browser's button. */
 .view-strip {
