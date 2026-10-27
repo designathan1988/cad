@@ -20,6 +20,8 @@ import { t } from '../../ui/i18n';
 export interface ObjectSolid extends ObjectItem {
   /** Each piece's outline in plan, lowest first. */
   readonly rings: readonly (readonly { x: number; y: number }[])[];
+  /** The voids' outlines (a sink's cutout, a hole): drawn over the pieces, as a cutout is drawn in plan. */
+  readonly voids: readonly (readonly { x: number; y: number }[])[];
   /** The box around them all, turned with the object. */
   readonly outline: readonly { x: number; y: number }[];
   /** Its level's floor, and its lowest and highest points (m). */
@@ -74,7 +76,8 @@ function build(object: ObjectInstance, def: ObjectDefinition, ev: ObjectEval, fl
   ].map(([u, v]) => ({ x: object.at.x + u! * c - v! * s, y: object.at.y + u! * s + v! * c }));
   const bottom = floor + (pieces.length ? Math.min(...pieces.map((p) => p.z)) : object.elevation);
   const top = floor + (pieces.length ? Math.max(...pieces.map((p) => p.z + p.h)) : object.elevation + 0.1);
-  return { object, def, eval: ev, rings, outline, floor, bottom, top };
+  const voids = ev.pieces.filter((p) => p.cut).map(pieceOutline);
+  return { object, def, eval: ev, rings, voids, outline, floor, bottom, top };
 }
 
 /**
@@ -255,6 +258,13 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
       p.ctx.lineWidth = p.pen('fine');
       p.ctx.stroke();
     }
+    // The voids over them: their outline, as a counter's cutout is drawn.
+    for (const ring of s.voids) {
+      trace(p, ring);
+      p.ctx.strokeStyle = line;
+      p.ctx.lineWidth = p.pen('fine');
+      p.ctx.stroke();
+    }
     if (lit) {
       trace(p, s.outline);
       p.ctx.setLineDash([4, 3]);
@@ -271,6 +281,7 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
   dxfLayers: [{ name: 'A-FURN', colour: 8 }],
   dxf: (s, out) => {
     for (const ring of s.rings) out.polyline('A-FURN', ring, true);
+    for (const ring of s.voids) out.polyline('A-FURN', ring, true);
   },
   fields: (items, { dispatch, doc }) => objectFields(items, doc, dispatch),
 };
