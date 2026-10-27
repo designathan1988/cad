@@ -2019,6 +2019,11 @@ button.project-name:hover {
   color: var(--text-2);
   font-size: var(--fs-sm);
 }
+/* A group of a material's fields under its own heading: its physics. */
+.mat-sub {
+  margin: var(--sp-4) 0 var(--sp-1);
+  font-size: var(--fs-sm);
+}
 /* Sheets and sections (sheets-dialog.ts, sections-dialog.ts): the set listed on the left, the open one
    beside it with its page; one above the other on a narrow window. The page's overlay lies exactly over
    it, for the views to be picked and dragged. */

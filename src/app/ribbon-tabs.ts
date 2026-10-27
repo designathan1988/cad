@@ -105,7 +105,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
       title: 'rib.tab.services',
       panels: [
         select,
-        { title: 'rib.p.servicesCalc', items: [{ id: 'services.open', icon: 'table', size: 'L' }] },
+        { title: 'rib.p.servicesCalc', items: [{ id: 'services.open', icon: 'table', size: 'L' }, { id: 'sim.open', icon: 'sun', size: 'L' }] },
         {
           title: 'rib.p.electric',
           items: [
@@ -116,6 +116,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
             { id: 'mep.point.switch', icon: 'pointer', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'switch' },
             { id: 'mep.point.light', icon: 'sun', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'light' },
             { id: 'mep.point.data', icon: 'hash', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'data' },
+            { id: 'mep.point.accessPoint', icon: 'hash', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'accessPoint' },
             { id: 'mep.run.sys_power', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_power' },
             { id: 'mep.run.sys_lighting', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_lighting' },
             { id: 'mep.run.sys_data', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_data' },
@@ -275,7 +276,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
             { id: 'settings.variables', icon: 'hash', size: 'S' },
           ],
         },
-        { title: 'rib.p.project', items: [{ id: 'file.projects', icon: 'folder', size: 'L' }, { id: 'view.schedules', icon: 'table', size: 'S' }, { id: 'rules.edit', icon: 'warning', size: 'S' }, { id: 'lot.edit', icon: 'map', size: 'S' }, { id: 'rules.report', icon: 'download', size: 'S' }, { id: 'budget.open', icon: 'table', size: 'S' }, { id: 'approval.open', icon: 'folder', size: 'S' }] },
+        { title: 'rib.p.project', items: [{ id: 'file.projects', icon: 'folder', size: 'L' }, { id: 'view.schedules', icon: 'table', size: 'S' }, { id: 'rules.edit', icon: 'warning', size: 'S' }, { id: 'lot.edit', icon: 'map', size: 'S' }, { id: 'rules.report', icon: 'download', size: 'S' }, { id: 'budget.open', icon: 'table', size: 'S' }, { id: 'approval.open', icon: 'folder', size: 'S' }, { id: 'sim.open', icon: 'sun', size: 'S' }] },
         {
           title: 'rib.p.export',
           items: [

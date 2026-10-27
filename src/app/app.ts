@@ -4,6 +4,7 @@
 import * as terrains from './terrain-ui';
 import * as mepUi from './mep-ui';
 import { type PointKind, systemIn } from '../elements/mep/schema';
+import type { SimMap } from './sim-map';
 import { pickModel } from './model-import';
 import * as refs from './reference-ui';
 import { onReferenceLoaded } from '../elements/kinds/reference';
@@ -79,7 +80,10 @@ export const SNAP_OF = {
 import { applyTemporary, boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, type TemporaryView } from './geometry';
 import { type Diagnostic, diagnose } from './diagnostics';
 import { checkRules, type Finding, LOT_ELEMENT } from '../rules/check';
-import { complianceHtml } from './documents';
+import { complianceHtml, simulationHtml } from './documents';
+import { energyPlusIdf, fdsInput, radianceScene } from '../io/export-sim';
+import type { SimSettings } from '../sim/settings';
+import { showSimulations } from '../ui/simulation-dialog';
 import { showLot } from '../ui/lot-dialog';
 import { showBudget } from '../ui/budget-dialog';
 import { showApproval } from '../ui/approval-dialog';
@@ -189,6 +193,8 @@ export interface UiState {
   mepKind: PointKind;
   mepSystem: string;
   mepDraft: Point2[];
+  /** A simulation's map over the plan (app/sim-map.ts): the Wi-Fi signal, the rooms' daylight or sun; none. */
+  simMap: SimMap;
   /** A guide being placed (guide-tool.ts): Alt over a wall or a guide in a drawing tool. */
   guide: GuideDraft | null;
   /** How the 3D view shows the levels: which, exploded, cut (view-3d.ts). */
@@ -330,6 +336,7 @@ export class App {
       mepKind: 'socket',
       mepSystem: 'sys_power',
       mepDraft: [],
+      simMap: 'none',
       guide: null,
       view3d: readView3D(prefs.view3d),
       modify: null,
@@ -1696,6 +1703,35 @@ export class App {
   /** The services' systems, load table, pressures, falls, clashes and drawings (ui/services-dialog.ts). */
   openServices(): void {
     showServices(this);
+  }
+
+  /** The simulations: sun, daylight, thermal, condensation, acoustic, Wi-Fi, risks (ui/simulation-dialog.ts). */
+  openSimulations(): void {
+    showSimulations(this);
+  }
+
+  /** What the simulations assume, kept in the project (a step to undo). */
+  setSimulation(next: SimSettings): void {
+    this.store.dispatch({ label: 'cmd.setSimulation', apply: (d) => ({ ...d, simulation: next }) });
+    this.render();
+  }
+
+  /** A simulation's file: the report as a page, or the input of a detailed engine. */
+  downloadSimulation(kind: 'idf' | 'rad' | 'fds' | 'report'): void {
+    const doc = this.store.get();
+    const title = doc.name || t('app.untitled');
+    const today = new Date().toLocaleDateString(getLang() === 'pt' ? 'pt-BR' : 'en-GB');
+    const [ext, type, content] =
+      kind === 'idf'
+        ? ['idf', 'text/plain', energyPlusIdf(doc, this.geometry, title)]
+        : kind === 'rad'
+          ? ['rad', 'text/plain', radianceScene(doc, this.geometry, title)]
+          : kind === 'fds'
+            ? ['fds', 'text/plain', fdsInput(doc, this.geometry, title)]
+            : ['html', 'text/html', simulationHtml(doc, this.geometry, (id) => this.reportTitle(id), today)];
+    const file = `${this.fileBase()} - ${t(kind === 'report' ? 'sim.title' : (`sim.${kind}` as MessageKey))}.${ext}`;
+    this.download(file, new Blob([content], { type }), type);
+    this.toast(t(kind === 'report' ? 'report.saved' : 'image.saved', { file }));
   }
 
   /**

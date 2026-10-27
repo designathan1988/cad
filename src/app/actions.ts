@@ -86,6 +86,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('tool.window', 'tool.window', tools, () => app.setTool('window'), { keys: 'Shift+W' }),
     make('tool.room', 'tool.room', tools, () => app.setTool('room'), { keys: 'R' }),
     make('tool.measure', 'tool.measure', tools, () => app.setTool('measure'), { keys: 'M' }),
+    make('sim.open', 'sim.open', tools, () => app.openSimulations(), { keywords: 'simulações simulations insolação sun hours luz natural daylight térmico thermal transmitância U Glaser condensação mofo acústica acoustic Wi-Fi sinal riscos infiltração fissura EnergyPlus Radiance FDS' }),
     make('services.open', 'services.open', tools, () => app.openServices(), { keywords: 'instalações services quadro de cargas load table pressão pressure esgoto sewer conflitos clashes isométrico isometric estrutura structure impermeabilização' }),
     // Building services (app/mep-ui.ts): a point of each kind, a run of each system.
     ...POINT_KIND_LIST.map((k) => make(`mep.point.${k}`, `mep.tool.${k}` as MessageKey, tools, () => app.startMepPoint(k), { keywords: `instalação installation ponto point ${tBoth(`mep.kind.${k}` as MessageKey)}` })),

@@ -16,6 +16,7 @@ import { type Doc, levelOf } from './document';
 import { wallAreas } from './quantities';
 import type { DerivedGeometry } from './geometry';
 import { lotOf } from './lot';
+import { type Cell, SIM_SECTIONS, simBlock } from './sim-tables';
 import { type LotReport, lotReport } from './lot-areas';
 
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -222,4 +223,19 @@ export function approvalHtml(doc: Doc, today: string): string {
     .join('');
   const summary = `<p>${esc(a.city)} · ${esc(t('approval.progress', { done: p.done, all: p.all }))}${p.days || p.cost ? ` · ${esc(t('approval.estimates', { days: p.days, cost: num(p.cost, 2) }))}` : ''}</p>`;
   return page(t('approval.title'), doc, summary + steps, today);
+}
+
+/**
+ * The simulations' report: each simulation's tables and its premises, as the dialog shows them (app/
+ * sim-tables.ts), under a warning that all of it is an estimate.
+ */
+export function simulationHtml(doc: Doc, g: DerivedGeometry, title: (id: string) => string, today: string): string {
+  const text = (c: Cell) => (typeof c === 'string' ? c : c.text);
+  const body = SIM_SECTIONS.map((section) => {
+    const b = simBlock(section, doc, g, title);
+    const tables = b.tables.map((x) => `${x.title ? `<h3>${esc(x.title)}</h3>` : ''}${table(x.head, x.rows.map((r) => r.map(text)), x.numeric)}`).join('');
+    const empty = b.tables.length === 0 && b.empty ? `<p>${esc(b.empty)}</p>` : '';
+    return `<h2>${esc(t(`sim.tab.${section}`))}</h2>${empty}${tables}${b.premises.map((p) => `<p class="note">${esc(p)}</p>`).join('')}`;
+  }).join('');
+  return page(t('sim.title'), doc, `<p class="note">${esc(t('sim.reportIntro'))}</p>${body}`, today);
 }

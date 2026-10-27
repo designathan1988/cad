@@ -59,6 +59,7 @@ export type PointKind =
   | 'switch'
   | 'light'
   | 'data'
+  | 'accessPoint'
   | 'reservoir'
   | 'coldOutlet'
   | 'heater'
@@ -89,6 +90,8 @@ export const POINT_KINDS: Readonly<Record<PointKind, { readonly discipline: Disc
   switch: { discipline: 'lighting', height: 1.1 },
   light: { discipline: 'lighting', height: null, power: 100, voltage: 127 },
   data: { discipline: 'data', height: 0.3 },
+  // A Wi-Fi access point, on the ceiling (sim/wifi.ts maps its signal).
+  accessPoint: { discipline: 'data', height: null },
   reservoir: { discipline: 'coldWater', height: null, above: 0.3, source: true },
   coldOutlet: { discipline: 'coldWater', height: 0.6, weight: 0.3 },
   heater: { discipline: 'hotWater', height: 1.8, source: true },

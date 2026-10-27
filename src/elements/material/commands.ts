@@ -7,28 +7,31 @@ import { definitionMaterials } from '../object/materials';
 import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
 import { isPattern } from './pattern';
+import { isPhysics } from '../../sim/physics';
 import { CUT_PATTERNS, isColor, type Material, type MaterialId } from './schema';
 
 const unit = (n: number) => Number.isFinite(n) && n >= 0 && n <= 1;
-const usable = (m: Material): boolean => isColor(m.color) && unit(m.roughness) && unit(m.metalness) && CUT_PATTERNS.includes(m.cut) && (m.pattern === undefined || isPattern(m.pattern));
+const usable = (m: Material): boolean => isColor(m.color) && unit(m.roughness) && unit(m.metalness) && CUT_PATTERNS.includes(m.cut) && (m.pattern === undefined || isPattern(m.pattern)) && (m.physics === undefined || isPhysics(m.physics));
 
 export const addMaterial = (m: Material): Command<Doc> => ({
   label: 'cmd.addMaterial',
   apply: (doc) => (!usable(m) || doc.materials.some((x) => x.id === m.id) ? doc : { ...doc, materials: [...doc.materials, { ...m, name: m.name.trim() }] }),
 });
 
-export type MaterialPatch = Partial<Omit<Material, 'id' | 'pattern'>> & { readonly pattern?: Material['pattern'] | null };
+export type MaterialPatch = Partial<Omit<Material, 'id' | 'pattern' | 'physics'>> & { readonly pattern?: Material['pattern'] | null; readonly physics?: Material['physics'] | null };
 
-/** Name, colour, finish, cut pattern or surface pattern (null: none). The same values, or unusable ones, change nothing. */
+/** Name, colour, finish, cut pattern, surface pattern or physics (null: none, the table's). The same values, or unusable ones, change nothing. */
 export const updateMaterial = (id: MaterialId, patch: MaterialPatch): Command<Doc> => ({
   label: 'cmd.updateMaterial',
   apply: (doc) => {
     const old = doc.materials.find((m) => m.id === id);
     if (!old) return doc;
-    const { pattern, ...rest } = patch;
+    const { pattern, physics, ...rest } = patch;
     const merged: Material = { ...old, ...rest, name: (patch.name ?? old.name).trim() };
     const { pattern: _was, ...plain } = merged;
-    const next: Material = pattern === null ? plain : pattern !== undefined ? { ...merged, pattern } : merged;
+    const patterned: Material = pattern === null ? plain : pattern !== undefined ? { ...merged, pattern } : merged;
+    const { physics: _had, ...bare } = patterned;
+    const next: Material = physics === null ? bare : physics !== undefined ? { ...patterned, physics } : patterned;
     if (!usable(next) || JSON.stringify(next) === JSON.stringify(old)) return doc;
     return { ...doc, materials: doc.materials.map((m) => (m.id === id ? next : m)) };
   },

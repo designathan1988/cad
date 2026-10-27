@@ -20,6 +20,7 @@ import type { WallId } from '../elements/wall/schema';
 import { type CutPattern, shade } from '../elements/material/schema';
 import { hatchPattern } from './hatch';
 import { separateLabels } from '../app/dim-labels';
+import type { HeatLayer } from '../app/sim-map';
 
 /**
  * A 1 px line along a screen axis, moved onto pixel centres: drawn between two pixels it would be two
@@ -114,6 +115,8 @@ export interface PlanOverlay {
   readonly wallTags?: readonly { readonly at: Point2; readonly text: string }[];
   /** Where something is outside the norms (rules/): a warning sign there. */
   readonly normMarks?: readonly Point2[];
+  /** A simulation's colours under the walls (app/sim-map.ts). */
+  readonly heat?: HeatLayer | null;
   /** Doors' and windows' type marks beside them (opening/marks.ts); `width` is the opening's (m). */
   readonly openingTags?: readonly { readonly at: Point2; readonly text: string; readonly width: number }[];
   /**
@@ -369,6 +372,20 @@ export class PlanView {
     const shownLit = (id: string) => o.selected.has(id) || o.hover === id;
     // Floors (contract.ts: under) and rooms lie under the walls.
     for (const x of kinds) if (x.kind.layer === 'under') x.kind.plan(paint, x.solid, shownLit(x.id));
+    // A simulation's map over the floors and rooms, under the walls: its cells scaled to the plan, smoothed.
+    if (o.heat) {
+      const h = o.heat;
+      const img = document.createElement('canvas');
+      img.width = h.cols;
+      img.height = h.rows;
+      img.getContext('2d')?.putImageData(new ImageData(new Uint8ClampedArray(h.rgba), h.cols, h.rows), 0, 0);
+      const a = this.toScreen(h.origin);
+      const b = this.toScreen({ x: h.origin.x + h.cols * h.cell, y: h.origin.y - h.rows * h.cell });
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(img, a.x, a.y, b.x - a.x, b.y - a.y);
+      ctx.restore();
+    }
     // The room the room tool would make: the space under the pointer, dashed, as a room not yet there.
     if (o.roomSpace && o.roomSpace.length >= 3) {
       trace(o.roomSpace);

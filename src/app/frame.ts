@@ -38,6 +38,7 @@ import { newId } from '../core/id';
 import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
 import type { App } from './app';
 import { PREVIEW_ID, SNAP_OF } from './app';
+import { simHeat } from './sim-map';
 
 export function renderFrame(app: App): void {
   const { ui, shell } = app;
@@ -178,6 +179,7 @@ export function renderFrame(app: App): void {
       refLines: app.refLines(),
       openingTags: app.openingTags(),
       normMarks: app.normMarks(),
+      heat: simHeat(app.store.get(), app.geometry, ui.simMap, ui.levelId),
       ray: marks?.ref ? { start: marks.base, end: marks.ref } : null,
       handles: app.handles(),
       objectHandles: objectHandles(app),

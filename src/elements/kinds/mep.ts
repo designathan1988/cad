@@ -23,6 +23,7 @@ export const POINT_LETTERS: Readonly<Record<PointKind, string>> = {
   switch: 'S',
   light: 'L',
   data: 'D',
+  accessPoint: 'AP',
   reservoir: 'RS',
   coldOutlet: 'AF',
   heater: 'AQ',

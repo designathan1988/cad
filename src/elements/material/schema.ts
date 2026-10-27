@@ -5,6 +5,7 @@
 // (pattern.ts: tiles, boards, bricks) is painted on its faces in 3D.
 
 import { PATTERN_DEFAULTS, type SurfacePattern } from './pattern';
+import type { MaterialPhysics } from '../../sim/physics';
 
 export type MaterialId = string;
 
@@ -26,6 +27,8 @@ export interface Material {
   readonly cut: CutPattern;
   /** What its faces show in 3D: tiles, boards or bricks (none: its colour alone). */
   readonly pattern?: SurfacePattern;
+  /** Its own physics for the simulations (sim/physics.ts); absent, the table's for its id, if any. */
+  readonly physics?: MaterialPhysics;
 }
 
 /** The materials a new project has, and those an older file gets for the names it used. */

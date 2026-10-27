@@ -16,6 +16,8 @@ import { objectKind } from '../elements/kinds/object';
 import { DEFAULT_UNITS, isUnits } from '../ui/units';
 import { BUILT_IN_MATERIALS, CUT_PATTERNS, isColor, type Material, materialFor } from '../elements/material/schema';
 import { isPattern } from '../elements/material/pattern';
+import { isPhysics } from '../sim/physics';
+import { isSimSettings } from '../sim/settings';
 import { type Doc, type Level, ownValuesOnly } from '../app/document';
 import type { AnyKind, KindKey } from '../elements/contract';
 import { KINDS } from '../elements/registry';
@@ -83,8 +85,9 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 35: the costs (`costs`, costs/schema.ts): the CUB, a price base, the budget. Older files have none.
  * Version 36: the approval journey (`approval`, approval/schema.ts). Older files have none: São Paulo's.
  * Version 37: building services (`mepPoints`, `mepRuns`, `systems`, elements/mep). Older files have none.
+ * Version 38: the simulations' settings (`simulation`, sim/settings.ts) and a material's own physics. Older files have neither.
  */
-export const CURRENT_VERSION = 37;
+export const CURRENT_VERSION = 38;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -151,7 +154,8 @@ export const isMaterial = (m: unknown): m is Material =>
   m.metalness >= 0 &&
   m.metalness <= 1 &&
   (CUT_PATTERNS as readonly unknown[]).includes(m.cut) &&
-  (m.pattern === undefined || isPattern(m.pattern));
+  (m.pattern === undefined || isPattern(m.pattern)) &&
+  (m.physics === undefined || isPhysics(m.physics));
 
 export const isWallType = (t: unknown): t is WallType =>
   isObject(t) &&
@@ -289,6 +293,7 @@ export function repairProject(raw: unknown): ReadResult {
     ...(Array.isArray(raw.overrides) && raw.overrides.some(isWallOverride) ? { overrides: (raw.overrides as unknown[]).filter(isWallOverride) } : {}),
     // Its site and sun, when it set one that is one.
     ...(isSite(raw.site) ? { site: raw.site } : {}),
+    ...(isSimSettings(raw.simulation) ? { simulation: raw.simulation } : {}),
     // Its sheets, the bad ones left out (and on each, the views that are not views).
     ...(Array.isArray(raw.sheets) ? { sheets: (raw.sheets as unknown[]).flatMap((x): unknown[] => (isObject(x) && Array.isArray(x.viewports) ? [{ ...x, viewports: (x.viewports as unknown[]).filter(isViewport) }] : [])).filter(isSheet) } : {}),
     // Its named lengths, the bad ones left out.

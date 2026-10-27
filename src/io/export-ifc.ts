@@ -435,6 +435,7 @@ export function ifcClassOf(key: string, category: string | null, solid: unknown)
         switch: 'IFCSWITCHINGDEVICE',
         light: 'IFCLIGHTFIXTURE',
         data: 'IFCOUTLET',
+        accessPoint: 'IFCCOMMUNICATIONSAPPLIANCE',
         reservoir: 'IFCTANK',
         heater: 'IFCELECTRICAPPLIANCE',
         coldOutlet: 'IFCVALVE',

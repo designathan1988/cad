@@ -9,6 +9,7 @@ import type { Zone } from '../elements/zone/schema';
 import type { SectionMark } from '../elements/section/schema';
 import type { Reference } from '../elements/reference/schema';
 import type { Terrain } from '../elements/terrain/schema';
+import type { SimSettings } from '../sim/settings';
 import type { Sheet } from '../elements/sheet/schema';
 import type { Rule, RulePack } from '../rules/schema';
 import type { Lot } from './lot';
@@ -69,7 +70,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 37;
+  readonly version: 38;
   readonly name: string;
   /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
   readonly units: Units;
@@ -150,6 +151,8 @@ export interface Doc {
   readonly site?: Site;
   /** Sheets: papers with a title block and views placed on them (elements/sheet, app/sheets.ts). */
   readonly sheets?: readonly Sheet[];
+  /** What the simulations assume (sim/settings.ts); the defaults when it sets none. */
+  readonly simulation?: SimSettings;
 }
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */
@@ -166,7 +169,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 37,
+    version: 38,
     name: '',
     units: DEFAULT_UNITS,
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],

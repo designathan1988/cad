@@ -196,7 +196,7 @@ export function showServices(app: App, first: Tab = 'systems'): void {
       save.addEventListener('click', () => {
         const file = `${app.fileBase()} - ${t('services.tab.iso')}.svg`;
         app.download(file, new Blob([isometricSvg(doc, runs, 1600, 1040)], { type: 'image/svg+xml' }), 'image/svg+xml');
-        app.toast(t('schedule.saved', { file }));
+        app.toast(t('image.saved', { file }));
       });
       body = el('div', { class: 'budget-scroll' }, el('div', { class: 'budget-bar' }, chooser, save), runs.length === 0 ? note('services.noRuns') : box);
     } else {
