@@ -106,6 +106,8 @@ export interface ObjectDefinition {
   readonly id: DefinitionId;
   readonly name: Words;
   readonly category: DefinitionCategory;
+  /** The library's folder it is kept in (none: its category's). */
+  readonly folder?: string;
   readonly params: readonly ParamDef[];
   readonly parts: readonly Part[];
   readonly handles: readonly HandleDef[];

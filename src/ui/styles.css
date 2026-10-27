@@ -71,6 +71,8 @@
   --dialog-w-xl: 860px;
   --dialog-top: min(10vh, 96px);
   --types-list-w: 220px;
+  --thumb-sm: 36px;
+  --field-min-w: 160px;
   --tour-w: 320px;
   --browser-w: 260px;
   --tooltip-w: 280px;
@@ -3094,7 +3096,8 @@ textarea.text-field {
 }
 .ed-name {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Name (pt), name (en), category, folder; two by two on a narrow screen. */
+  grid-template-columns: repeat(auto-fit, minmax(var(--field-min-w), 1fr));
   gap: var(--sp-2);
   padding: 0 var(--sp-4) var(--sp-2);
 }
@@ -3153,6 +3156,27 @@ textarea.text-field {
 /* The objects' list: the icon beside both lines, as a wall type's thumbnail. */
 .types-item > .icon {
   grid-row: 1 / 3;
+}
+/* Each object's plan in a square beside its name; the folders as small headings over their objects. */
+.objs-thumb {
+  display: grid;
+  grid-row: 1 / 3;
+  place-items: center;
+  width: var(--thumb-sm);
+  height: var(--thumb-sm);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  color: var(--text-2);
+}
+.objs-thumb svg {
+  width: 100%;
+  height: 100%;
+}
+.objs-folder {
+  margin-top: var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
 }
 .ed-in,
 .ed-select {

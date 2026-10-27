@@ -4,16 +4,18 @@
 // an id the project already has gets a new one). Laid out as the wall types and the materials.
 
 import type { App } from '../app/app';
+import type { Doc } from '../app/document';
 import { copyLibraryLink } from '../app/library-link';
 import { newId } from '../core/id';
 import { addDefinition, definitionDeleteBlocker, deleteDefinition } from '../elements/object/commands';
+import { evaluateObject, pieceOutline } from '../elements/object/evaluate';
 import { words } from '../elements/object/fields';
 import { DEFINITION_PREFIX, type ObjectDefinition } from '../elements/object/schema';
 import { libraryOf, mergeLibrary } from '../io/library-file';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { editDefinition } from './definition-editor';
-import { t } from './i18n';
+import { getLang, type MessageKey, t } from './i18n';
 import { icon } from './icons';
 
 /** A new definition: one box, its width, depth and height, handles on them, one type. */
@@ -34,8 +36,38 @@ export function blankDefinition(n: number): ObjectDefinition {
   };
 }
 
+/** The folder a definition is kept in: its own, or its category's name. */
+export const folderOf = (d: ObjectDefinition): string => d.folder?.trim() || t(`ed.cat.${d.category}` as MessageKey);
+
+/** Text for comparing: no accents, no case. */
+const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/** Whether a definition answers a search: by its name in either language or its folder. */
+export const answers = (d: ObjectDefinition, query: string): boolean => {
+  const q = fold(query.trim());
+  return q === '' || [d.name.pt, d.name.en, folderOf(d)].some((s) => fold(s).includes(q));
+};
+
+/** A definition's thumbnail: its pieces in plan at its first type, the highest drawn last, in their materials' colours. */
+export function thumbnailSvg(def: ObjectDefinition, doc: Doc): string | null {
+  const ev = evaluateObject(def, { id: 'thumb', levelId: '', definitionId: def.id, typeId: def.types[0]?.id ?? '', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
+  const rings = [...ev.pieces].sort((a, b) => a.z + a.h - (b.z + b.h)).map((p) => ({ ring: pieceOutline(p), color: /^#[0-9a-f]{3,8}$/i.test(p.material.color) ? p.material.color : 'none' }));
+  const all = rings.flatMap((r) => r.ring);
+  if (all.length === 0) return null;
+  const xs = all.map((p) => p.x);
+  const ys = all.map((p) => -p.y);
+  const x0 = Math.min(...xs);
+  const y0 = Math.min(...ys);
+  const size = Math.max(Math.max(...xs) - x0, Math.max(...ys) - y0, 1e-3);
+  const pad = size * 0.08;
+  const f = (v: number) => Number(v.toFixed(4));
+  const polys = rings.map((r) => `<polygon points="${r.ring.map((p) => `${f(p.x)},${f(-p.y)}`).join(' ')}" fill="${r.color}" stroke="currentColor" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join('');
+  return `<svg viewBox="${f(x0 - pad)} ${f(y0 - pad)} ${f(size + 2 * pad)} ${f(size + 2 * pad)}" aria-hidden="true">${polys}</svg>`;
+}
+
 export function showObjects(app: App, first?: string): void {
   let chosen = first ?? app.store.get().definitions[0]?.id ?? '';
+  let query = '';
   const fileInput = el('input', { type: 'file', accept: '.json,application/json', hidden: '' });
   fileInput.addEventListener('change', () => {
     const file = fileInput.files?.[0];
@@ -44,28 +76,51 @@ export function showObjects(app: App, first?: string): void {
   });
   const render = (close: () => void): HTMLElement => {
     const doc = app.store.get();
-    if (!doc.definitions.some((d) => d.id === chosen)) chosen = doc.definitions[0]?.id ?? '';
-    const def = doc.definitions.find((d) => d.id === chosen);
+    // The folders in order, each with its objects by name, those the search leaves.
+    const folders = new Map<string, ObjectDefinition[]>();
+    for (const d of doc.definitions.filter((x) => answers(x, query))) folders.set(folderOf(d), [...(folders.get(folderOf(d)) ?? []), d]);
+    const lang = getLang() === 'pt' ? 'pt-BR' : 'en';
+    const shown = [...folders.keys()].sort((a, b) => a.localeCompare(b, lang)).map((name) => ({ name, defs: folders.get(name)!.sort((a, b) => words(a.name).localeCompare(words(b.name), lang)) }));
+    // The chosen one is one the list shows: the first when the search hides it.
+    const visible = shown.flatMap((f) => f.defs);
+    if (!visible.some((d) => d.id === chosen)) chosen = visible[0]?.id ?? '';
+    const def = visible.find((d) => d.id === chosen);
     const placed = (id: string) => doc.objects.filter((o) => o.definitionId === id).length;
     const list = el('div', { class: 'types-list', role: 'group', 'aria-label': t('objs.list') });
-    for (const d of doc.definitions) {
-      const b = el('button', { type: 'button', class: 'types-item', 'aria-pressed': String(d.id === chosen) });
-      b.dataset.focus = `def:${d.id}`;
-      b.insertAdjacentHTML('beforeend', icon('box', 18));
-      const n = placed(d.id);
-      b.append(el('span', { class: 'types-name' }, words(d.name)), el('span', { class: 'types-count' }, n === 0 ? t('objs.none') : t('objs.placed', { n })));
-      b.addEventListener('click', () => {
-        chosen = d.id;
-        dialog.redraw();
-      });
-      list.append(b);
+    // The search: by name or folder, as it is typed.
+    const search = el('input', { type: 'search', class: 'keys-search', placeholder: t('objs.search'), 'aria-label': t('objs.search') });
+    search.value = query;
+    search.dataset.focus = 'search';
+    search.addEventListener('input', () => {
+      query = search.value;
+      dialog.redraw();
+    });
+    list.append(search);
+    for (const { name, defs } of shown) {
+      list.append(el('div', { class: 'objs-folder' }, name));
+      for (const d of defs) {
+        const b = el('button', { type: 'button', class: 'types-item', 'aria-pressed': String(d.id === chosen) });
+        b.dataset.focus = `def:${d.id}`;
+        const thumb = el('span', { class: 'objs-thumb' });
+        thumb.innerHTML = thumbnailSvg(d, doc) ?? icon('box', 18);
+        b.append(thumb);
+        const n = placed(d.id);
+        b.append(el('span', { class: 'types-name' }, words(d.name)), el('span', { class: 'types-count' }, n === 0 ? t('objs.none') : n === 1 ? t('objs.placedOne') : t('objs.placed', { n })));
+        b.addEventListener('click', () => {
+          chosen = d.id;
+          dialog.redraw();
+        });
+        list.append(b);
+      }
     }
+    if (shown.length === 0) list.append(el('p', { class: 'mat-note' }, t('objs.noMatch')));
     const detail = el('div', { class: 'types-detail mat-detail' });
     if (def) {
       detail.append(
         el('h3', {}, words(def.name)),
         el('p', { class: 'mat-note' }, t('objs.summary', { p: def.params.length, k: def.parts.length, h: def.handles.length, t: def.types.length })),
         el('p', { class: 'mat-note' }, def.types.map((x) => words(x.name)).join(' · ')),
+        el('p', { class: 'mat-note' }, t('objs.inFolder', { folder: folderOf(def) })),
       );
     }
     const btn = (label: string, focus: string, run: () => void, primary = false) => {

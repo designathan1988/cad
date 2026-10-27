@@ -41,6 +41,7 @@ export function isDefinition(d: unknown): d is ObjectDefinition {
     typeof d.id === 'string' &&
     isWords(d.name) &&
     typeof d.category === 'string' &&
+    (d.folder === undefined || typeof d.folder === 'string') &&
     Array.isArray(d.params) &&
     d.params.every((p) => isObject(p) && typeof p.name === 'string' && /^[A-Za-z_À-ÿ][\wÀ-ÿ]*$/.test(p.name) && isWords(p.label) && PARAM_KINDS.includes(p.kind as string) && (typeof p.default === 'number' || typeof p.default === 'string')) &&
     Array.isArray(d.parts) &&

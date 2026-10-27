@@ -427,6 +427,14 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
       el('label', { class: 'ed-cell' }, el('span', {}, `${t('ed.name')} (pt)`), input(draft.name.pt, (v) => set({ ...draft, name: { ...draft.name, pt: v.trim() || draft.name.pt } }), 'name:pt', `${t('ed.name')} (pt)`)),
       el('label', { class: 'ed-cell' }, el('span', {}, `${t('ed.name')} (en)`), input(draft.name.en, (v) => set({ ...draft, name: { ...draft.name, en: v.trim() || draft.name.en } }), 'name:en', `${t('ed.name')} (en)`)),
       el('label', { class: 'ed-cell' }, el('span', {}, t('ed.category')), choose(CATEGORIES.map((c) => ({ value: c, label: t(`ed.cat.${c}` as MessageKey) })), draft.category, (v) => set({ ...draft, category: v }), 'category', t('ed.category'))),
+      // Its folder in the library: any name, the project's others offered; empty, its category's.
+      el(
+        'label',
+        { class: 'ed-cell' },
+        el('span', {}, t('ed.folder')),
+        input(draft.folder ?? '', (v) => set(v.trim() === '' ? withoutKey(draft, 'folder') : { ...draft, folder: v.trim() }), 'folder', t('ed.folder'), 'ed-folders'),
+        el('datalist', { id: 'ed-folders' }, ...[...new Set(doc.definitions.flatMap((d) => (d.folder ? [d.folder] : [])))].map((f) => new Option(f))),
+      ),
     );
     const saveBtn = el('button', { type: 'button', class: 'icon-btn text-btn primary' }, t('ed.save'));
     saveBtn.dataset.focus = 'save';
