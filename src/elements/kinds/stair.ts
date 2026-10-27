@@ -41,7 +41,8 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
     (s.height === undefined || (finite(s.height) && s.height > 0)) &&
     (s.railing === undefined || typeof s.railing === 'boolean') &&
     (s.well === undefined || typeof s.well === 'boolean') &&
-    (s.split === undefined || (finite(s.split) && s.split >= 1)),
+    (s.split === undefined || (finite(s.split) && s.split >= 1)) &&
+    (s.winders === undefined || typeof s.winders === 'boolean'),
   // From its level's floor, up its level's height unless it sets its own.
   memo: 'level',
   derive: (doc, s) => {

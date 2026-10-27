@@ -74,6 +74,20 @@ export function stairFields(stairs: readonly StairSolid[], act: StairFieldAction
       ],
       labelled: true,
     },
+    // An L's or a U's corner: a landing, or steps fanned about its inner corner.
+    {
+      id: 'winders',
+      label: 'stair.corner',
+      kind: 'segmented',
+      labelled: true,
+      when: (items) => items.every((s) => s.stair.kind === 'l' || s.stair.kind === 'u'),
+      get: (s) => (s.stair.winders ? 'winders' : 'landing'),
+      set: (v) => act.updateStairs(ids, { winders: v === 'winders' }),
+      options: [
+        { value: 'landing', label: t('stair.corner.landing') },
+        { value: 'winders', label: t('stair.corner.winders') },
+      ],
+    },
     // An L's or a U's flights: the steps before the landing (the rest after it).
     {
       id: 'split',

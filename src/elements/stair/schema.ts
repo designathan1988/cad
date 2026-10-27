@@ -32,6 +32,9 @@ export interface Stair {
   readonly well?: boolean;
   /** Risers in the first flight of an L or a U (the rest after the landing); half when not set. */
   readonly split?: number;
+  /** An L's or a U's corner turned by steps fanned about its inner corner (degraus em leque), 30°
+   * each, instead of a landing: three in an L, six in a U. */
+  readonly winders?: boolean;
 }
 
 /** How far (m) a floor's top may be from a stair's top and still be the floor it reaches. */

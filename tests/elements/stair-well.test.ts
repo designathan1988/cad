@@ -62,6 +62,23 @@ describe('a stair well', () => {
   });
 });
 
+describe('winders', () => {
+  it("turn an L's corner by three steps and a U's by six, each a riser, none a landing", () => {
+    const l = stairSolid(stair('l', { winders: true }), 2.8, 0);
+    const u = stairSolid(stair('u', { winders: true }), 2.8, 0);
+    expect(l.parts).toHaveLength(16);
+    expect(u.parts).toHaveLength(16);
+    expect(l.parts.every((p) => !p.landing) && u.parts.every((p) => !p.landing)).toBe(true);
+    // Each part one riser above the one before, from the first to the last.
+    for (const s of [l, u]) s.parts.forEach((p, i) => expect(p.top).toBeCloseTo((i + 1) * s.riser, 9));
+    // Three winders fill the L's corner square, 1 m by 1 m.
+    const fans = l.parts.slice(firstFlight(l.stair, 16), firstFlight(l.stair, 16) + 3);
+    expect(fans.reduce((a, p) => a + Math.abs(signedArea(p.polygon)), 0)).toBeCloseTo(1, 6);
+    // No landing: the whole climb is one rise.
+    expect(flightRise(u)).toBeCloseTo(2.8, 9);
+  });
+});
+
 describe('the guardrail round a well', () => {
   it('goes round it but where the stair arrives', () => {
     const square = [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 2 }];

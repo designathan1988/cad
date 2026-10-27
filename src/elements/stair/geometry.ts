@@ -48,8 +48,12 @@ function ccw(poly: Point2[]): Point2[] {
   return s < 0 ? poly.reverse() : poly;
 }
 
-/** The steps of an L's or a U's first flight: its own split, else half, leaving one at least after the landing. */
-export const firstFlight = (stair: Stair, risers: number): number => Math.min(Math.max(1, Math.round(stair.split ?? Math.floor(risers / 2))), Math.max(1, risers - 2));
+/** The risers its corner takes: a landing's one, or its winders (three in an L, six in a U). */
+const cornerRisers = (stair: Stair): number => (stair.winders ? (stair.kind === 'u' ? 6 : 3) : 1);
+
+/** The steps of an L's or a U's first flight: its own split, else half, leaving one at least after its corner. */
+export const firstFlight = (stair: Stair, risers: number): number =>
+  Math.min(Math.max(1, Math.round(stair.split ?? Math.floor((risers - cornerRisers(stair) + 1) / 2))), Math.max(1, risers - cornerRisers(stair) - 1));
 
 /**
  * The stair's footprint, its steps and landings united (counter-clockwise, the outer ring of the
@@ -125,8 +129,44 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
     for (const s of [-1, 1]) rails.push(railPts.map(([p, zz]) => ({ ...add(p, scale(across, (s * w) / 2)), z: zz + RAIL_HEIGHT })));
     return { stair, parts, walk, rails: stair.railing === false ? [] : rails, bottom, height, risers: runs, riser: rise };
   }
+  // Three steps fanned about the inner corner of a square of side w, its near edge centred at `near`,
+  // climbed along `dir` and turning to `turn`: 30° each, the first by the flight that arrives, the
+  // third by the one that leaves; the handrail along its outer edges.
+  const winders = (near: Point2, dir: Point2, turn: Point2, step0: number) => {
+    const inner = add(near, scale(turn, w / 2));
+    const a = add(near, scale(turn, -w / 2));
+    const b = add(a, scale(dir, w));
+    const c = add(inner, scale(dir, w));
+    const k30 = w * Math.tan(Math.PI / 6);
+    const p30 = add(a, scale(dir, k30));
+    const p60 = add(c, scale(turn, -k30));
+    [[inner, a, p30], [inner, p30, b, p60], [inner, p60, c]].forEach((polygon, i) => parts.push({ polygon: ccw(polygon), top: (step0 + i + 1) * riser, landing: false }));
+    walk.push(add(near, scale(dir, w / 2)));
+    rails.push([
+      { ...a, z: (step0 + 1) * riser + RAIL_HEIGHT },
+      { ...b, z: (step0 + 2.5) * riser + RAIL_HEIGHT },
+      { ...c, z: (step0 + 3) * riser + RAIL_HEIGHT },
+    ]);
+  };
   if (stair.kind === 'straight') {
     flight(stair.at, u, risers, 0, 0);
+  } else if (stair.kind === 'l' && stair.winders) {
+    // The first flight, three winders in the corner, the second flight to the turn's side.
+    const k = firstFlight(stair, risers);
+    flight(stair.at, u, k, 0, 0);
+    const end = add(stair.at, scale(u, k * t));
+    winders(end, u, side, k);
+    const o2 = add(add(end, scale(u, w / 2)), scale(side, w / 2));
+    flight(o2, side, risers - k - 3, 0, k + 3);
+  } else if (stair.kind === 'u' && stair.winders) {
+    // Up, six winders round the inner corner (two squares turning a half turn), back beside the first.
+    const k = firstFlight(stair, risers);
+    flight(stair.at, u, k, 0, 0);
+    const end = add(stair.at, scale(u, k * t));
+    winders(end, u, side, k);
+    winders(add(add(end, scale(u, w / 2)), scale(side, w / 2)), side, scale(u, -1), k + 3);
+    const o2 = add(end, scale(side, w));
+    flight(o2, scale(u, -1), risers - k - 6, 0, k + 6);
   } else if (stair.kind === 'l') {
     // The first flight, a square landing, the second flight to the turn's side.
     const k = firstFlight(stair, risers);

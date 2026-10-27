@@ -19,6 +19,7 @@ export type StairPatch = {
   readonly grade?: number;
   readonly well?: boolean;
   readonly split?: number;
+  readonly winders?: boolean;
 };
 
 export const updateStairs = (ids: readonly string[], patch: StairPatch): Command<Doc> => ({
