@@ -135,7 +135,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
           ],
         },
         { title: 'rib.p.circulation', items: [tool('stair', 'tool.stair', 'stair', 'L'), tool('railing', 'tool.railing', 'railing', 'S')] },
-        { title: 'rib.p.rooms', items: [tool('room', 'tool.room', 'room', 'L'), tool('separator', 'tool.separator', 'split', 'S'), { id: 'zone.make', icon: 'tag', size: 'S' }] },
+        { title: 'rib.p.rooms', items: [tool('room', 'tool.room', 'room', 'L'), tool('separator', 'tool.separator', 'split', 'S')] },
         {
           title: 'rib.p.reference',
           items: [
@@ -162,7 +162,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
         {
           title: 'rib.p.electric',
           items: [
-            { ...point('panel', 'table'), size: 'L' },
+            point('panel', 'table'),
             point('light', 'sun'),
             point('socket', 'plus'),
             point('socketHigh', 'plus'),
@@ -195,7 +195,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
         { title: 'rib.p.hvac', items: [point('acUnit', 'cube'), run('sys_hvac')] },
         { title: 'rib.p.fire', items: [point('hydrant', 'warning'), run('sys_fire')] },
         { title: 'rib.p.solar', items: [point('solarPanel', 'sun'), run('sys_solar')] },
-        { title: 'rib.p.automatic', items: [{ id: 'services.open', icon: 'table', size: 'L', short: 'rib.s.servicesSize' }] },
+        { title: 'rib.p.automatic', items: [{ id: 'services.open', icon: 'table', size: 'S', short: 'rib.s.servicesSize' }] },
       ],
     },
     {
@@ -221,7 +221,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
         },
         { title: 'rib.p.detail', items: [tool('cloud', 'tool.cloud', 'warning', 'S')] },
         { title: 'rib.p.text', items: [tool('note', 'edit.addNote', 'text', 'L'), tool('callout', 'tool.callout', 'text', 'S')] },
-        { title: 'rib.p.tags', items: [tool('tag', 'tool.tag', 'tag', 'L'), { id: 'settings.openingTags', icon: 'tag', size: 'S', pressed: () => ui.openingTags }] },
+        { title: 'rib.p.tags', items: [tool('tag', 'tool.tag', 'tag', 'L'), { id: 'settings.openingTags', icon: 'tag', size: 'S', short: 'rib.s.openingTagsShort', pressed: () => ui.openingTags }] },
       ],
     },
     {
@@ -232,7 +232,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
         { title: 'rib.p.norms', items: [{ id: 'rules.edit', icon: 'warning', size: 'L' }, { id: 'rules.report', icon: 'download', size: 'S' }] },
         { title: 'rib.p.simulations', items: [{ id: 'sim.open', icon: 'sun', size: 'L' }] },
         { title: 'rib.p.quantities', items: [{ id: 'budget.open', icon: 'table', size: 'L' }, { id: 'view.schedules', icon: 'table', size: 'S' }] },
-        { title: 'rib.p.coordination', items: [{ id: 'services.open', icon: 'table', size: 'L' }] },
+        { title: 'rib.p.coordination', items: [{ id: 'services.open', icon: 'table', size: 'L', short: 'rib.s.servicesCheck' }] },
       ],
     },
     {
@@ -349,6 +349,7 @@ function contextTab(
   // Named short on the ribbon (rib.ctx.<id>); the menu's full name is the button's tip.
   const own = entries.filter((e) => ELEMENT_ACTIONS.has(e.id)).map((e): RibbonItem => ({ id: `ctx.${e.id}`, icon: e.icon, size: 'S', short: `rib.ctx.${e.id}` as MessageKey }));
   const walls = ids.some((id) => doc.walls.some((w) => w.id === id));
+  const rooms = ids.some((id) => doc.rooms.some((r) => r.id === id));
   const movable = entries.some((e) => e.id === 'move');
   return [
     {
@@ -359,7 +360,8 @@ function contextTab(
       panels: [
         select,
         { title: 'rib.p.properties', items: [{ id: 'settings.panel', icon: 'panel', size: 'L', short: 'rib.s.properties', pressed: () => !app.shell.panel.hidden }] },
-        ...(own.length > 0 ? [{ title: 'rib.p.element' as MessageKey, items: own }] : []),
+        // Rooms selected: a zone made of them.
+        ...(own.length > 0 || rooms ? [{ title: 'rib.p.element' as MessageKey, items: [...own, ...(rooms ? [{ id: 'zone.make', icon: 'tag', size: 'S' } as RibbonItem] : [])] }] : []),
         ...(movable
           ? [
               {
