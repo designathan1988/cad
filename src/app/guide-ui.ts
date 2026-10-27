@@ -1,10 +1,11 @@
 // Guides set from a wall's face or another guide (tools/guide-tool.ts): starting, moving, placing, dropping, clearing. Functions over the app (app.ts delegates).
 
+import { t } from '../ui/i18n';
 import { parseLength } from '../core/measure';
-import { type Point2 } from '../core/vector';
+import { type Point2, distance, normalize, sub } from '../core/vector';
 import { draftAt, type GuideBase, newGuide } from '../tools/guide-tool';
 import { addGuide, clearGuides } from '../elements/guide/commands';
-import { GUIDE_PREFIX, type Guide } from '../elements/guide/schema';
+import { GUIDE_PREFIX, type Guide, isLineGuide } from '../elements/guide/schema';
 import { solidsOf } from '../elements/registry';
 import { guideKind } from '../elements/kinds/guide';
 import { newId } from '../core/id';
@@ -12,8 +13,63 @@ import type { App } from './app';
 
 /** The guides of the level shown, unless hidden, as a move being dragged takes them. Plan only: they
  * are neither drawn nor snapped to in 3D. */
+export type GuideMode = 'line' | 'point' | 'circle';
+
+/** The guide tool in one of its modes: a line by two points, a point, or a circle by centre and radius. */
+export function setGuideTool(app: App, mode: GuideMode): void {
+  app.setTool('guide');
+  app.ui.guideMode = mode;
+  app.ui.guideFrom = null;
+  app.render();
+}
+
+/** A click with the guide tool: a point guide at once; a line's or a circle's first point, then the guide. */
+export function guideClick(app: App, p: Point2): void {
+  const ui = app.ui;
+  const make = (g: Omit<Guide, 'id' | 'levelId'>) => {
+    app.store.dispatch(addGuide({ id: newId(GUIDE_PREFIX), levelId: ui.levelId, ...g }));
+    ui.guideFrom = null;
+    ui.info = t('hint.guideMade');
+    app.render();
+  };
+  if (ui.guideMode === 'point') return make({ point: { x: p.x, y: p.y }, dir: { x: 1, y: 0 }, shape: 'point' });
+  const from = ui.guideFrom;
+  if (!from) {
+    ui.guideFrom = p;
+    ui.info = null;
+    return app.render();
+  }
+  if (distance(from, p) < MIN_GUIDE_RUN) return;
+  if (ui.guideMode === 'circle') return make({ point: from, dir: { x: 1, y: 0 }, shape: 'circle', radius: distance(from, p) });
+  return make({ point: from, dir: normalize(sub(p, from)) });
+}
+
+/** A circle guide's radius typed, from its centre. */
+export function guideRadius(app: App, radius: number): boolean {
+  const from = app.ui.guideFrom;
+  if (app.ui.tool !== 'guide' || app.ui.guideMode !== 'circle' || !from || radius < MIN_GUIDE_RUN) return false;
+  app.store.dispatch(addGuide({ id: newId(GUIDE_PREFIX), levelId: app.ui.levelId, point: from, dir: { x: 1, y: 0 }, shape: 'circle', radius }));
+  app.ui.guideFrom = null;
+  app.ui.info = t('hint.guideMade');
+  app.render();
+  return true;
+}
+
+/** Two points nearer than this make no guide (m). */
+const MIN_GUIDE_RUN = 0.01;
+
+/** The level's line guides shown (a point's or a circle's are guideShapes'). */
 export function levelGuides(app: App): Guide[] {
-  return app.ui.view === 'plan' ? solidsOf<Guide>(app.visibleGeometry().kinds, guideKind) : [];
+  return app.ui.view === 'plan' ? solidsOf<Guide>(app.visibleGeometry().kinds, guideKind).filter(isLineGuide) : [];
+}
+
+/** The level's point and circle guides shown: points to snap to, circles to snap onto. */
+export function guideShapes(app: App): { points: { point: Point2; kind: 'center' | 'node' }[]; circles: { center: Point2; radius: number }[] } {
+  const all = app.ui.view === 'plan' ? solidsOf<Guide>(app.visibleGeometry().kinds, guideKind) : [];
+  return {
+    points: all.flatMap((g): { point: Point2; kind: 'center' | 'node' }[] => (g.shape === 'point' ? [{ point: g.point, kind: 'node' }] : g.shape === 'circle' ? [{ point: g.point, kind: 'center' }] : [])),
+    circles: all.flatMap((g) => (g.shape === 'circle' ? [{ center: g.point, radius: g.radius! }] : [])),
+  };
 }
 
 /** Starts a guide off a wall's face or a guide, at the distance the pointer at p sets (guide-tool.ts). */

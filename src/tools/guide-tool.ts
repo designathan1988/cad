@@ -59,7 +59,8 @@ export function guideBaseAt(doc: Doc, levelId: string, p: Point2, mpp: number, s
   if (wall) return wall.base;
   let guide: { base: GuideBase; off: number } | null = null;
   for (const g of shown.guides ? doc.guides : []) {
-    if (g.levelId !== levelId) continue;
+    // A point or a circle is no line to set a guide off.
+    if (g.levelId !== levelId || g.shape) continue;
     const off = Math.abs(cross(g.dir, sub(p, g.point)));
     if (off <= r && (!guide || off < guide.off)) guide = { base: { point: g.point, dir: g.dir, faces: [0, 0], guideId: g.id }, off };
   }

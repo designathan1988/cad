@@ -236,18 +236,27 @@ export function submitMeasure(app: App, text: string): boolean {
   const point = parsePointFrom(text, app.ui.drawFrom);
   if (point.ok) {
     const wall = app.ui.tool === 'wall' && app.ui.wall.kind !== 'bend';
-    if (!wall && app.ui.tool !== 'floor' && app.ui.tool !== 'room' && app.ui.tool !== 'measure' && app.ui.tool !== 'dimension') {
+    if (!wall && app.ui.tool !== 'floor' && app.ui.tool !== 'room' && app.ui.tool !== 'measure' && app.ui.tool !== 'dimension' && app.ui.tool !== 'guide') {
       app.ui.error = t('hint.pointHere', { text });
       app.renderChrome();
       return false;
     }
     app.ui.error = null;
-    if (wall) app.wallEvent({ kind: 'click', point: point.value });
+    if (app.ui.tool === 'guide') app.guideClick(point.value);
+    else if (wall) app.wallEvent({ kind: 'click', point: point.value });
     else if (app.ui.tool === 'measure') app.measureEvent({ kind: 'click', point: point.value });
     else if (app.ui.tool === 'dimension') app.dimensionEvent({ kind: 'click', point: point.value });
     else if (app.ui.tool === 'floor') app.floorClick(point.value, 0, true);
     else app.roomClick(point.value);
     return true;
+  }
+  // A circle guide's radius.
+  if (app.ui.tool === 'guide' && app.ui.guideMode === 'circle' && app.ui.guideFrom) {
+    const radius = parseLength(text);
+    if (radius.ok && app.guideRadius(radius.value)) {
+      app.ui.error = null;
+      return true;
+    }
   }
   const r = parseLengthAngle(text);
   if (!r.ok || r.value.length < MIN_WALL_LENGTH) {

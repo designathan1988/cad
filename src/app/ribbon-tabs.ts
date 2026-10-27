@@ -86,7 +86,14 @@ function tabsOf(app: App): readonly RibbonTab[] {
         { title: 'rib.p.rooms', items: [tool('room', 'tool.room', 'room', 'L'), tool('separator', 'tool.separator', 'split', 'S'), { id: 'zone.make', icon: 'tag', size: 'S' }] },
         {
           title: 'rib.p.reference',
-          items: [tool('grid', 'tool.grid', 'hash', 'S'), { id: 'level.edit', icon: 'levelsAll', size: 'S' }, { id: 'edit.clearGuides', icon: 'guide', size: 'S' }],
+          items: [
+            tool('grid', 'tool.grid', 'hash', 'S'),
+            { id: 'level.edit', icon: 'levelsAll', size: 'S' },
+            { id: 'edit.clearGuides', icon: 'guide', size: 'S' },
+            { id: 'tool.guideLine', icon: 'guide', size: 'S', pressed: () => ui.tool === 'guide' && ui.guideMode === 'line' },
+            { id: 'tool.guidePoint', icon: 'center', size: 'S', pressed: () => ui.tool === 'guide' && ui.guideMode === 'point' },
+            { id: 'tool.guideCircle', icon: 'radius', size: 'S', pressed: () => ui.tool === 'guide' && ui.guideMode === 'circle' },
+          ],
         },
       ],
     },

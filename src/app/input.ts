@@ -266,6 +266,8 @@ export function wireInput(app: App): void {
           ? ui.dimension.a
           : ui.tool === 'grid'
             ? ui.gridFrom
+            : ui.tool === 'guide'
+              ? ui.guideFrom
             : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain'
               ? ui.beamFrom
               : ui.tool === 'roof'
@@ -284,6 +286,8 @@ export function wireInput(app: App): void {
     const walls = app.store.get().walls;
     const onFace = ui.tool === 'wall' && ui.defaults.referenceLine !== 'centerline' && below !== null;
     const from = tape ?? modifyFrom ?? (draft ? (draft.at(-1) ?? null) : w.kind === 'drawing' ? w.last : null);
+    // Point and circle guides: points to snap to, circles to snap onto.
+    const guideShape = app.guideShapes();
     ui.drawFrom = from;
     // A lock holds while the point is drawn from where it was set; a new point lets it go.
     if (ui.lock && (!from || distance(ui.lock.at, from) > 1e-9)) ui.lock = null;
@@ -317,7 +321,8 @@ export function wireInput(app: App): void {
       orthogonal: shift && !ui.lock,
       ...(ui.lock ? { lock: ui.lock.dir } : {}),
       acquired: ui.acquired,
-      points: elementPoints(),
+      points: [...elementPoints(), ...guideShape.points],
+      circles: guideShape.circles,
       parts: ui.snapParts,
       skip: ui.snapSkip,
       // The axes as lines to snap onto, as guides are, and where they cross.
@@ -442,7 +447,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
+    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -704,6 +709,11 @@ export function wireInput(app: App): void {
     if (ui.tool === 'column') {
       const at = aimAt3d(e);
       if (at) app.columnClick(snapped(e)?.point ?? at.p);
+      return;
+    }
+    if (ui.tool === 'guide') {
+      const at = worldAt(e);
+      if (at && ui.view === 'plan') app.guideClick(snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'object') {

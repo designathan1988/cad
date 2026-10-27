@@ -200,7 +200,7 @@ export function wireKeys(app: App, k: KeyContext): void {
     // temporary dimensions or in the panel, so 1 and 2 keep switching the view.
     // In the door and window tools a digit is always a measure, aimed or not: it never switches the view
     // (the tester's K2: "1" turned to 3D).
-    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'modify' || app.openingKind() !== null;
+    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'modify' || (ui.tool === 'guide' && ui.guideFrom !== null) || app.openingKind() !== null;
     // Right after a copy, its series is typed there: "3x", "/3".
     if (/^[\d/]$/.test(e.key) && ui.tool === 'select' && app.seriesReady()) {
       e.preventDefault();
@@ -239,6 +239,11 @@ export function wireKeys(app: App, k: KeyContext): void {
       if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'grid') return app.gridEscape();
       if (ui.tool === 'column' || ui.tool === 'object' || ui.tool === 'note' || ui.tool === 'levelMark') return app.setTool('select');
+      if (ui.tool === 'guide') {
+        if (!ui.guideFrom) return app.setTool('select');
+        ui.guideFrom = null;
+        return app.render();
+      }
       if (ui.tool === 'railing') {
         if (ui.railingDraft.length === 0) return app.setTool('select');
         return app.railingFinish();

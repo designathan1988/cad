@@ -87,6 +87,8 @@ export interface SnapInput {
   readonly lock?: Point2;
   /** Points the pointer rested on (acquired): the point aligns with them across or up, as with walls' ends. */
   readonly acquired?: readonly Point2[];
+  /** Circle guides: the point goes onto one near it, and to where one crosses a line guide or a wall. */
+  readonly circles?: readonly { readonly center: Point2; readonly radius: number }[];
 }
 
 /** A line without ends: a point of it and its unit direction. */
@@ -177,7 +179,7 @@ export function snap(input: SnapInput): Snap {
   if (nearMark) return { point: nearMark, kind: marks.find((m) => m.point === nearMark)!.kind };
   // Where a guide crosses another guide or a wall's line: what guides are set for (a corridor's wall
   // starts where its guide meets the wall across).
-  const crossings = guides.flatMap((g, k) => [
+  const crossings: Point2[] = guides.flatMap((g, k) => [
     ...guides.slice(k + 1).flatMap((h) => lineCrossing(g.point, g.dir, h.point, h.dir) ?? []),
     // A guide meets an arc wall where it cuts the circle, within its sweep.
     ...input.segments.flatMap((s) => {
@@ -188,6 +190,15 @@ export function snap(input: SnapInput): Snap {
       return p && dot(sub(p, s.start), sub(p, s.end)) <= 1e-12 ? [p] : [];
     }),
   ]);
+  // A circle guide where it crosses a line guide or a straight wall.
+  for (const c of input.circles ?? []) {
+    const circle = { center: c.center, radius: c.radius } as Arc;
+    for (const g of guides) crossings.push(...circleCrossings(circle, g.point, g.dir));
+    for (const s of input.segments) {
+      if (s.bulge || distance(s.start, s.end) === 0) continue;
+      for (const p of circleCrossings(circle, s.start, normalize(sub(s.end, s.start)))) if (dot(sub(p, s.start), sub(p, s.end)) <= 1e-12) crossings.push(p);
+    }
+  }
   const nearCross = closest(crossings, cursor, r, [], fresh);
   if (nearCross) return { point: nearCross, kind: 'guideCross' };
   // Where two walls' lines cross near the cursor, on them or on their extensions (Revit's SI): a wall
@@ -322,6 +333,15 @@ export function snap(input: SnapInput): Snap {
     const onRay = crossing && dot(sub(crossing, from!), ray!) > 0 && distance(crossing, cursor) <= slack ? crossing : null;
     const along = Math.round(dot(sub(cursor, g.point), g.dir) / GRID_STEP) * GRID_STEP;
     const q = onRay ?? add(g.point, scale(g.dir, along));
+    if (!fresh(q)) continue;
+    return { point: q, kind: 'onGuide' };
+  }
+
+  // On a circle guide: the cursor's foot on it.
+  for (const c of input.circles ?? []) {
+    const d = distance(cursor, c.center);
+    if (d < 1e-9 || Math.abs(d - c.radius) > r) continue;
+    const q = add(c.center, scale(sub(cursor, c.center), c.radius / d));
     if (!fresh(q)) continue;
     return { point: q, kind: 'onGuide' };
   }

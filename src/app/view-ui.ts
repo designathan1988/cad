@@ -266,7 +266,7 @@ export function elevation(app: App, side: 'north' | 'south' | 'east' | 'west'): 
  */
 export function sectionAtGuide(app: App, flip = false): void {
   const doc = app.store.get();
-  const g = doc.guides.find((x) => app.ui.selection.has(x.id));
+  const g = doc.guides.find((x) => app.ui.selection.has(x.id) && !x.shape);
   if (!g) {
     app.ui.info = t('hint.sectionNoGuide');
     return app.renderChrome();

@@ -1,6 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import type { GuideMode } from './guide-ui';
 import { setVariables } from '../core/measure';
 import type { KeyMap } from './keymap';
 import { arrangeNeeds, arrangeSteps, type ArrangeHow, type Box as ArrangeBox, boxOf } from '../tools/arrange';
@@ -113,6 +114,9 @@ export interface UiState {
   acquired: Point2[];
   /** Where the point being drawn goes from, as last snapped; null when nothing is being drawn. */
   drawFrom: Point2 | null;
+  /** The guide tool's mode, and its first point (a line's, a circle's centre). */
+  guideMode: GuideMode;
+  guideFrom: Point2 | null;
   /** A move's smart guides (tools/smart-guides.ts): alignments and equal gaps, while it is dragged. */
   smart: { readonly lines: readonly { a: Point2; b: Point2 }[]; readonly gaps: readonly { a: Point2; b: Point2 }[] } | null;
   defaults: WallDefaults;
@@ -248,6 +252,8 @@ export class App {
       acquired: [],
       drawFrom: null,
       smart: null,
+      guideMode: 'line',
+      guideFrom: null,
       defaults: { wallTypeId: doc.wallTypes[0]!.id, referenceLine: 'centerline', baseOffset: 0, top: { kind: 'level', offset: 0 } },
       wall: IDLE,
       opening: OPENING_IDLE,
@@ -647,6 +653,7 @@ export class App {
     this.ui.wall = IDLE;
     // A lock and the points rested on belong to what was being drawn.
     this.ui.lock = null;
+    this.ui.guideFrom = null;
     this.ui.acquired = [];
     this.ui.roomSpace = null;
     this.ui.tapToConfirm = false;
@@ -850,6 +857,22 @@ export class App {
    * are neither drawn nor snapped to in 3D. */
   levelGuides(): Guide[] {
     return guides.levelGuides(this);
+  }
+
+  guideShapes(): ReturnType<typeof guides.guideShapes> {
+    return guides.guideShapes(this);
+  }
+
+  setGuideTool(mode: GuideMode): void {
+    return guides.setGuideTool(this, mode);
+  }
+
+  guideClick(p: Point2): void {
+    return guides.guideClick(this, p);
+  }
+
+  guideRadius(radius: number): boolean {
+    return guides.guideRadius(this, radius);
   }
 
   /** A level mark where the menu was opened (or the middle of the view), selected: it says the level's height. */

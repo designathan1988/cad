@@ -124,6 +124,8 @@ export interface PlanOverlay {
   readonly draft: readonly Point2[] | null;
   /** Points the pointer rested on, to align with (snap.ts, acquired): a small plus each. */
   readonly acquired?: readonly Point2[];
+  /** A circle guide being drawn: its centre and the radius to the pointer, dashed. */
+  readonly circleDraft?: { readonly center: Point2; readonly radius: number } | null;
   /** A move's smart guides: dashed alignments, and equal gaps each with its length. */
   readonly smart?: { readonly lines: readonly { a: Point2; b: Point2 }[]; readonly gaps: readonly { a: Point2; b: Point2; text: string }[] } | null;
   /** Its corners so far, each marked: a typed first corner shows before the pointer moves. */
@@ -606,6 +608,17 @@ export class PlanView {
         ctx.stroke();
         this.label({ x: (gp.a.x + gp.b.x) / 2, y: (gp.a.y + gp.b.y) / 2 }, gp.text, color('--snap'), color('--canvas'), this.font('600', '--fs-xs'));
       }
+      ctx.restore();
+    }
+    if (o.circleDraft) {
+      const c = this.toScreen(o.circleDraft.center);
+      ctx.save();
+      ctx.strokeStyle = color('--wall-sel');
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, o.circleDraft.radius * this.scale, 0, Math.PI * 2);
+      ctx.stroke();
       ctx.restore();
     }
     if (o.acquired?.length) {
