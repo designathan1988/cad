@@ -30,7 +30,7 @@ describe('callouts', () => {
 
   it('moved or turned, its arrow goes along; read from a file, a bad arrow drops the note', () => {
     expect(noteKind.moved(callout, { x: 1, y: 2 }).leader).toEqual({ x: 4, y: 3 });
-    const mirrored = noteKind.mapped(callout, { map: (p) => ({ x: -p.x, y: p.y }), factor: 1, mirror: true } as never, 'note_d');
+    const mirrored = noteKind.mapped(callout, { map: (p: { x: number; y: number }) => ({ x: -p.x, y: p.y }), factor: 1, mirror: true } as never, 'note_d');
     expect(mirrored.leader).toEqual({ x: -3, y: 1 });
     expect(noteKind.valid(callout)).toBe(true);
     expect(noteKind.valid({ ...callout, leader: { x: 'a', y: 1 } })).toBe(false);
