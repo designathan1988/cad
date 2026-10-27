@@ -11,7 +11,8 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { GradientEquirectTexture, WebGLPathTracer } from 'three-gpu-pathtracer';
+import { DenoiseMaterial, GradientEquirectTexture, WebGLPathTracer } from 'three-gpu-pathtracer';
+import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
 import { GenerateMeshBVHWorker } from 'three-mesh-bvh/worker';
 import type { RenderQuality, VisualStyle } from '../app/view-3d';
 import type { Point2 } from '../core/vector';
@@ -258,6 +259,8 @@ export class Scene3D {
   /** The traced view's glass: clear, transmitting, of window glass's index (1.5). */
   private readonly tracedGlass = new THREE.MeshPhysicalMaterial({ color: 0xf2f8fa, roughness: 0.02, metalness: 0, transmission: 1, ior: 1.5, thickness: 0.006, side: THREE.DoubleSide });
   /** Frosted glass, traced: light through it, scattered. */
+  /** The traced view's ground (traceCopies): matte, a warm grey. */
+  private readonly tracedGround = new THREE.MeshStandardMaterial({ color: 0xb8b2a6, roughness: 1, metalness: 0 });
   private readonly tracedFrosted = new THREE.MeshPhysicalMaterial({ color: 0xf4f8fa, roughness: 0.45, metalness: 0, transmission: 1, ior: 1.5, thickness: 0.006, side: THREE.DoubleSide });
   private traced = { content: -1, camera: '', light: '' };
   /** Bumped whenever an element's meshes are made or dropped: the tracer's scene is built again. */
@@ -635,6 +638,30 @@ export class Scene3D {
       // samples the realistic view is drawn instead (trace returns false).
       t.dynamicLowRes = false;
       t.rasterizeScene = false;
+      // Fireflies (bright specks from glossy bounces) filtered as the samples add up.
+      t.filterGlossyFactor = 0.5;
+      // Shown through an edge-keeping denoise (glslSmartDeNoise): strong while there are few samples, faded
+      // out as they add up, so the first seconds are not grain and the finished picture is not blurred.
+      const denoiseMaterial = new DenoiseMaterial({ blending: THREE.NoBlending, premultipliedAlpha: true });
+      // Its colours as the tracer's own display gives them (no tone mapping, no colour space step of its own).
+      denoiseMaterial.fragmentShader = denoiseMaterial.fragmentShader.replace('#include <tonemapping_fragment>', '').replace('#include <colorspace_fragment>', '');
+      const denoise = new FullScreenQuad(denoiseMaterial);
+      t.renderToCanvasCallback = (target, renderer, quad) => {
+        const n = t.samples;
+        // Strong at first, easing to a light edge-keeping pass that stays (a few hundred samples still grain a matte floor).
+        const strength = Math.max(0.3, 1 - n / 1024);
+        void quad;
+        const m = denoise.material as DenoiseMaterial & { uniforms: Record<string, { value: unknown }> };
+        m.uniforms.map!.value = target.texture;
+        m.uniforms.sigma!.value = 2.5 + 3 * strength;
+        m.uniforms.kSigma!.value = 1;
+        m.uniforms.threshold!.value = 0.12 + 0.12 * strength;
+        m.uniforms.opacity!.value = 1;
+        const auto = renderer.autoClear;
+        renderer.autoClear = false;
+        denoise.render(renderer);
+        renderer.autoClear = auto;
+      };
       // Its scene's bounding volumes built in a worker: built here, the page stood still for seconds.
       t.setBVHWorker(new GenerateMeshBVHWorker());
       // Its shader's switches as this view will have them, before the first compile: the library starts
@@ -737,6 +764,18 @@ export class Scene3D {
           out.add(new THREE.Mesh(pattern ? patternUv(geometry, pattern) : geometry, glass ? (material.userData.frosted === true ? this.tracedFrosted : this.tracedGlass) : pattern ? this.tracedPattern(material as THREE.MeshStandardMaterial) : material));
         }
       });
+    // A ground under everything, matte, a little below the lowest thing: what stands has somewhere to cast
+    // its shadow and to sit on (without it the model floated in the sky). Under a terrain, the terrain shows.
+    const box = new THREE.Box3().setFromObject(out);
+    if (!box.isEmpty()) {
+      const size = Math.max(200, box.getSize(new THREE.Vector3()).length() * 6);
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(size, size).rotateX(-Math.PI / 2), this.tracedGround);
+      ground.position.set((box.min.x + box.max.x) / 2, box.min.y - 0.004, (box.min.z + box.max.z) / 2);
+      ground.updateMatrixWorld();
+      ground.geometry.applyMatrix4(ground.matrixWorld);
+      ground.position.set(0, 0, 0);
+      out.add(ground);
+    }
     // The luminaires' lights, where they are.
     for (const { group } of this.walls.values())
       group.traverseVisible((o) => {
