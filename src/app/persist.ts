@@ -30,6 +30,8 @@ export interface Prefs {
   openingTags?: boolean;
   /** Points snap (S): off, it stays off. */
   snaps?: boolean;
+  /** Collisions (app/collision.ts): off, it stays off. */
+  collisions?: boolean;
   /** Into how many parts a segment's division points cut it (snap.ts): 3 when not set. */
   snapParts?: number;
   /** Shortcuts the user remapped or turned off (app/keymap.ts): an action's id, its key or null. */

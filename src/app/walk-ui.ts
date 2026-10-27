@@ -121,7 +121,7 @@ export function placeWalker(app: App): void {
 
 /** Walking through walls and things, or stopped by them (C while walking); said in a toast. */
 export function toggleWalkThrough(app: App): void {
-  app.walkThrough = !app.walkThrough;
+  // The same setting as moving things (app/collision.ts): one switch for both.
+  app.toggleCollisions();
   app.toast(t(app.walkThrough ? 'toast.walkThrough' : 'toast.walkSolid'));
-  app.renderChrome();
 }

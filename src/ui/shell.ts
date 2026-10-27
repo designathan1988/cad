@@ -203,7 +203,8 @@ export function buildShell(root: HTMLElement) {
   const snapBtn = iconButton('magnet');
   // The snaps' division of segments (app.setSnapParts), beside their toggle.
   const snapParts = el('select', { class: 'snap-parts' });
-  const snapBox = el('div', { class: 'snap-box' }, snapBtn, snapParts);
+  const collideBtn = iconButton('collide');
+  const snapBox = el('div', { class: 'snap-box' }, snapBtn, snapParts, collideBtn);
   const coords = el('div', { class: 'coords' });
   foot.append(instr, keys, measureBox, snapBox, coords);
 
@@ -249,7 +250,7 @@ export function buildShell(root: HTMLElement) {
   const parts = {
     homeBtn, projectName, savedNote, undo, redo, level, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
     panelToggle, tabs, fileMenu, ribbon, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, viewCorner, toolDone, levelsShown, explode, cut, xray, box, ortho, look, light, only3d, onlyPlan, planScale, visBtn, shownReset: shown.reset, dims, browser, sidebar,
-    emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, snapParts, coords, helpBack, fitFoot, fitViewBar,
+    emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, snapParts, collideBtn, coords, helpBack, fitFoot, fitViewBar,
   };
 
   const relabel = () => {
@@ -300,6 +301,7 @@ export function buildShell(root: HTMLElement) {
     labelled(box, 'view3d.box', 'view3d.boxTip');
     labelled(ortho, 'view3d.ortho', 'view3d.orthoTip');
     tip(snapBtn, 'foot.snap');
+    tip(collideBtn, 'foot.collisions');
     emptyHint.textContent = t('empty.hint');
     tempReset.textContent = t('temp.reset');
     walkStick.setAttribute('aria-label', t('walk.stick'));

@@ -74,6 +74,7 @@ export function wireButtons(app: App, palette: () => void): void {
     { passive: false },
   );
   shell.snapBtn.addEventListener('click', () => app.toggleSnaps());
+  shell.collideBtn.addEventListener('click', () => app.toggleCollisions());
   shell.toolDone.addEventListener('click', () => app.actionList().find((a) => a.id === 'tool.select')?.run());
   shell.snapParts.addEventListener('change', () => app.setSnapParts(Number(shell.snapParts.value)));
   for (const [mode, b] of Object.entries(shell.levelsShown)) b.addEventListener('click', () => app.setView3D({ levels: mode as LevelsShown }));

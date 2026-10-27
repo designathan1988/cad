@@ -3,6 +3,7 @@
 // way back to the type's value. Calculated parameters are shown, not edited. Several objects of one
 // definition are edited together; of several definitions, only their place.
 
+import { collisionsOn } from '../../core/collisions';
 import { LENGTH_LIMITS, sizeParams } from './evaluate';
 import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
@@ -128,6 +129,8 @@ export function objectFields(items: readonly ObjectItem[], doc: Doc, dispatch: (
     label: 'object.elevation',
     kind: 'number',
     icon: 'height',
+    // Not below its floor while collisions are on (app/collision.ts).
+    min: () => (collisionsOn() ? 0 : -Infinity),
     get: (x) => x.object.elevation,
     set: (v) => dispatch(setObjectValues(ids.map((id) => ({ id, values: {}, elevation: v })))),
   });

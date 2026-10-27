@@ -7,6 +7,7 @@
 // with snaps. Drag on empty space: window selection (left to right: wholly inside) or crossing
 // selection (right to left: anything touched), as in Revit and AutoCAD. Esc cancels any drag.
 
+import { clampMove, collisionFor, type Shape } from './collision';
 import { boxOf, type Box } from '../tools/arrange';
 import { smartGuides } from '../tools/smart-guides';
 import { add, distance, dot, normalize, type Point2, scale, sub, vec } from '../core/vector';
@@ -117,6 +118,8 @@ export function selectGestures(app: App): SelectGestures {
   const { ui } = app;
   let pending: Pending | null = null;
   /** The boxes a move aligns with, taken when it starts. */
+  // The moving things' shapes and what stops them, found once per drag (app/collision.ts).
+  let collide: { shapes: Shape[]; obstacles: Shape[] } | null = null;
   let smart: { box: Box; others: Box[] } | null = null;
 
   return {
@@ -210,6 +213,11 @@ export function selectGestures(app: App): SelectGestures {
           delta = vec(found.delta.x, found.delta.y);
           ui.smart = { lines: found.lines, gaps: found.gaps };
         }
+        // With collisions on, what moves stops at what it would go into (walls, other objects), sliding along it.
+        if (ui.collisions && d.ids.length === 0 && d.kinds.size > 0) {
+          collide ??= collisionFor(app, d.kinds);
+          delta = clampMove(collide.shapes, collide.obstacles, delta);
+        }
         // Alone, only these walls move: the walls they met keep their ends, and the joins open.
         const walls = alone
           ? doc.walls.map((w) => (d.ids.includes(w.id) ? { ...w, start: add(w.start, delta), end: add(w.end, delta) } : w))
@@ -265,6 +273,7 @@ export function selectGestures(app: App): SelectGestures {
     },
 
     up(shift) {
+      collide = null;
       const d = ui.drag;
       const clicked = pending?.kind === 'wall' && !d;
       pending = null;

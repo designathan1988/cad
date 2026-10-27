@@ -1,5 +1,6 @@
 // What is selected and what is done to it: all walls, the next one, the arrows, copy and paste, delete, select similar, hide or isolate for a while. Functions over the app (app.ts delegates).
 
+import { clampMove, collisionFor } from './collision';
 import { type Point2 } from '../core/vector';
 import { deleteElements } from '../elements/opening/commands';
 import { isGuideId } from '../elements/guide/schema';
@@ -51,8 +52,15 @@ export function stepSelectionHere(app: App, dir: 1 | -1): void {
 }
 
 /** Moves the selection by a step from the keyboard (tools/nudge.ts): one undo step. */
-export function nudgeSelection(app: App, step: Point2): void {
+export function nudgeSelection(app: App, step0: Point2): void {
   const doc = app.store.get();
+  // With collisions on, things alone (no walls) stop at what they would go into.
+  let step = step0;
+  if (app.ui.collisions && ![...app.ui.selection].some((id) => doc.walls.some((w) => w.id === id))) {
+    const c = collisionFor(app, app.ui.selection);
+    step = clampMove(c.shapes, c.obstacles, step0);
+    if (step.x === 0 && step.y === 0) return;
+  }
   const next = nudge(doc, app.geometry, [...app.ui.selection], step);
   if (next !== doc) app.store.dispatch({ label: 'cmd.nudge', apply: () => next });
 }

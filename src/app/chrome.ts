@@ -84,6 +84,7 @@ export function renderChrome(app: App): void {
     shell.theme.dataset.icon = themeIcon;
   }
   shell.snapBtn.setAttribute('aria-pressed', String(ui.snaps));
+  shell.collideBtn.setAttribute('aria-pressed', String(ui.collisions));
   if (shell.snapParts.dataset.lang !== getLang()) {
     shell.snapParts.dataset.lang = getLang();
     shell.snapParts.replaceChildren(...SNAP_PARTS.map((n) => new Option(t('foot.parts', { n }), String(n))));

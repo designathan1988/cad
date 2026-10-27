@@ -1,6 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import { setCollisions } from '../core/collisions';
 import { made, nextOf, type NextSlot } from './next-element';
 import { autoRoute } from './mep-route';
 import * as terrains from './terrain-ui';
@@ -133,6 +134,8 @@ export interface UiState {
   /** Elements hidden or isolated for a while (Shift+H, Shift+I): in the views only, never saved. */
   temp: TemporaryView | null;
   snaps: boolean;
+  /** What is moved or placed is stopped by what it would go into, nothing below the floor (app/collision.ts). */
+  collisions: boolean;
   /** Into how many parts segments are divided for snapping (snap.ts, division points). */
   snapParts: number;
   /** Snap points Tab has passed over under the pointer (snap.ts, skip); emptied once it moves on. */
@@ -315,6 +318,7 @@ export class App {
       hidden: new Set(),
       temp: null,
       snaps: prefs.snaps !== false,
+      collisions: (setCollisions(prefs.collisions !== false), prefs.collisions !== false),
       snapParts: prefs.snapParts ?? 3,
       snapSkip: [],
       lock: null,
@@ -936,7 +940,7 @@ export class App {
   }
 
   /** Walking through walls and things (C while walking): off, the walker is stopped by them. */
-  walkThrough = false;
+  walkThrough = loadPrefs().collisions === false;
 
   toggleWalkThrough(): void {
     return walking.toggleWalkThrough(this);
@@ -1447,6 +1451,16 @@ export class App {
     this.ui.snapParts = Math.min(10, Math.max(2, Math.round(n)));
     savePrefs({ snapParts: this.ui.snapParts });
     this.toast(t('toast.snapParts', { n: this.ui.snapParts }));
+    this.render();
+  }
+
+  toggleCollisions(): void {
+    this.ui.collisions = !this.ui.collisions;
+    setCollisions(this.ui.collisions);
+    savePrefs({ collisions: this.ui.collisions });
+    // Walking is stopped by walls and things as moving is, or goes through them.
+    this.walkThrough = !this.ui.collisions;
+    this.toast(t(this.ui.collisions ? 'toast.collisionsOn' : 'toast.collisionsOff'));
     this.render();
   }
 

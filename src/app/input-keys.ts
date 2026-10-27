@@ -380,6 +380,7 @@ export function wireKeys(app: App, k: KeyContext): void {
     // the arrows move the selection by 5 cm (the snap grid), 1 cm with Alt (tools/nudge.ts).
     if (key === 'n') return app.stepSelection(e.shiftKey ? -1 : 1);
     if (key === 's') return app.toggleSnaps();
+    if (key === 'k' && !ctrl && !e.shiftKey) return app.toggleCollisions();
     if (key === '1') return app.setView('3d');
     if (key === '3') return app.enterWalk();
     if (key === '2') return app.setView('plan');

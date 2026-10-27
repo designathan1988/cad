@@ -1,5 +1,7 @@
 // The tools that place the registry's kinds (elements/registry.ts): guardrails, stairs, roofs, beams, columns, grid axes, dimensions, texts and level marks. Functions over the app (app.ts delegates).
 
+import { kindOfKey, withList } from '../elements/registry';
+import { freePlace, obstacleShapes, shapesOf } from './collision';
 import { addSections } from '../elements/section/commands';
 import { boundsOf, deriveGeometry } from './geometry';
 import { DEPTH_MAX, elevationsAround, elevationsInside, lookOf, nextSectionName, SECTION_PREFIX, type SectionMark } from '../elements/section/schema';
@@ -227,7 +229,19 @@ export function objectClick(app: App, p: Point2): void {
   const def = doc.definitions.find((d) => d.id === app.ui.objectDef);
   if (!def) return;
   // Its type, elevation and parameters as the next object is set (next-element.ts), turned as the tool is.
-  app.store.dispatch(addObject(made<ObjectInstance>(app, 'objects', { id: newId(OBJECT_PREFIX), at: { x: p.x, y: p.y }, angle: app.ui.objectAngle })));
+  let o = made<ObjectInstance>(app, 'objects', { id: newId(OBJECT_PREFIX), at: { x: p.x, y: p.y }, angle: app.ui.objectAngle });
+  // With collisions on, not into a wall or another object: moved to the nearest clear place, not below its floor.
+  if (app.ui.collisions) {
+    o = { ...o, elevation: Math.max(0, o.elevation) };
+    const kind = kindOfKey('objects');
+    const solid = kind.derive(withList(doc, kind, [...doc.objects, o]), o, app.geometry);
+    if (solid && kind.span) {
+      const shapes = shapesOf(kind.outlines(solid), kind.span(solid));
+      const d = freePlace(shapes, obstacleShapes(app.geometry, o.levelId, new Set()));
+      o = { ...o, at: { x: o.at.x + d.x, y: o.at.y + d.y } };
+    }
+  }
+  app.store.dispatch(addObject(o));
   app.ui.info = t('hint.objectMade', { name: words(def.name) });
   app.render();
 }

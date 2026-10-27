@@ -188,6 +188,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('file.exportIfc', 'export.ifc', file, () => app.exportIfc(), { keywords: 'IFC BIM Revit ArchiCAD openBIM export exportar modelo' }),
     make('file.printPlan', 'print.open', file, open.print, { keys: 'Ctrl+P', keywords: 'PDF imprimir print planta plan escala scale papel paper' }),
     make('settings.snaps', 'pal.snaps', settings, () => app.toggleSnaps(), { keys: 'S' }),
+    make('settings.collisions', 'pal.collisions', settings, () => app.toggleCollisions(), { keys: 'K', keywords: 'colisão collision atravessar through física physics' }),
     make('settings.theme', 'pal.theme', settings, () => app.toggleTheme()),
     make('settings.language', 'pal.language', settings, () => app.setLanguage(app.otherLanguage()), { keys: 'Shift+L', keywords: 'English Português' }),
     make('settings.panel', 'pal.panel', settings, () => app.togglePanel()),
