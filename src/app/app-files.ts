@@ -153,6 +153,25 @@ export async function exportObj(app: App): Promise<void> {
   }
 }
 
+/**
+ * The 3D view as a picture (render/scene-3d.ts snapshot): 3840 pixels on its long side, the camera,
+ * the sun and its shadows as shown; as PNG. From the 3D view only: the plan has its print.
+ */
+export async function saveImage3d(app: App): Promise<void> {
+  if (app.ui.view !== '3d') {
+    app.toast(t('image.open3d'));
+    return;
+  }
+  const blob = await app.scene.snapshot(3840);
+  if (!blob) {
+    app.toast(t('export.failed', { what: 'PNG', error: t('image.none') }));
+    return;
+  }
+  const file = `${app.fileBase()} - 3D.png`;
+  app.download(file, blob, 'image/png');
+  app.toast(t('image.saved', { file }));
+}
+
 /** The plan of the level shown as DXF R12 (io/export-dxf.ts), for a CAD program. */
 export function exportDxf(app: App): void {
   const doc = app.store.get();

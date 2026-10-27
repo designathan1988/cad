@@ -200,6 +200,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('view.points', 'poi.dialogOpen', views, () => app.openPoints()),
     make('view.schedules', 'schedule.open', views, () => app.openSchedules(), { keywords: 'schedule quantitativos tabela CSV portas janelas cômodos paredes áreas' }),
     make('view.sections', 'section.dialogOpen', views, () => app.openSections(), { keywords: 'corte cortes section sections elevação elevações elevation fachada facade' }),
+    make('view.image', 'image.save', views, () => void app.saveImage3d(), { keywords: 'imagem image PNG render renderização foto picture 3D captura screenshot' }),
     make('site.edit', 'site.open', views, () => app.openSite(), { keywords: 'sol sun sombra shadow insolação latitude longitude norte north data hora lugar site' }),
     make('view.sheets', 'sheet.open', views, () => app.openSheets(), { keywords: 'prancha pranchas sheet sheets carimbo title block folha PDF documentação' }),
     make('tool.section', 'tool.section', tools, () => app.setTool('section'), { keywords: 'corte section linha de corte cut line' }),

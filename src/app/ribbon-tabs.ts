@@ -167,7 +167,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
         { title: 'rib.p.navigate', items: [{ id: 'view.frameAll', icon: 'frame', size: 'S' }, { id: 'view.frameSelection', icon: 'zoomSel', size: 'S' }] },
         {
           title: 'rib.p.saved',
-          items: [{ id: 'view.save', icon: 'plus', size: 'S' }, { id: 'view.tourEdit', icon: 'play', size: 'S' }, { id: 'view.points', icon: 'pin', size: 'S' }, { id: 'site.edit', icon: 'sun', size: 'S' }],
+          items: [{ id: 'view.save', icon: 'plus', size: 'S' }, { id: 'view.tourEdit', icon: 'play', size: 'S' }, { id: 'view.points', icon: 'pin', size: 'S' }, { id: 'site.edit', icon: 'sun', size: 'S' }, { id: 'view.image', icon: 'download', size: 'S' }],
         },
         {
           title: 'rib.p.elevations',

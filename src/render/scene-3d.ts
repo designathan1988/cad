@@ -632,6 +632,48 @@ export class Scene3D {
   }
 
   /**
+   * The view as it is, drawn once larger (its long side `long` pixels, the drawing buffer's limit
+   * at most) for a picture: the same camera, framing, sun and shadows; the view back to the screen's
+   * size after. A PNG, or null when the browser gives none.
+   */
+  async snapshot(long: number): Promise<Blob | null> {
+    const w = this.canvas.clientWidth;
+    const h = this.canvas.clientHeight;
+    if (w === 0 || h === 0) return null;
+    const gl = this.renderer.getContext();
+    const max = Math.min(gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) as number, ...(gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array));
+    const k = Math.min(long, max) / Math.max(w, h);
+    const W = Math.round(w * k);
+    const H = Math.round(h * k);
+    const ratio = this.renderer.getPixelRatio();
+    this.renderer.setPixelRatio(1);
+    this.renderer.setSize(W, H, false);
+    if (this.shift.x !== 0 || this.shift.y !== 0) this.camera.setViewOffset(W, H, this.shift.x * k, this.shift.y * k, W, H);
+    this.camera.updateProjectionMatrix();
+    // The shadows as fine as the picture: their map four times the screen's, as far as the card goes;
+    // at the screen's size their edges came out in steps.
+    const shadow = this.sun.shadow;
+    const screenMap = shadow.mapSize.x;
+    const fine = Math.min(screenMap * 4, gl.getParameter(gl.MAX_TEXTURE_SIZE) as number);
+    const remap = (size: number) => {
+      shadow.mapSize.set(size, size);
+      shadow.map?.dispose();
+      shadow.map = null;
+    };
+    if (this.shadows && fine > screenMap) remap(fine);
+    this.renderer.render(this.scene, this.camera);
+    // Taken now, before the next frame clears the drawing buffer.
+    const blob = new Promise<Blob | null>((done) => this.canvas.toBlob(done, 'image/png'));
+    if (shadow.mapSize.x !== screenMap) remap(screenMap);
+    this.renderer.setPixelRatio(ratio);
+    this.renderer.setSize(w, h, false);
+    // The next frame sets the projection for the screen again.
+    this.offsetDirty = true;
+    this.invalidate();
+    return blob;
+  }
+
+  /**
    * Brings the meshes in line with the geometry: only walls whose shape or state changed are rebuilt.
    * `lift`: how far up each level is drawn (an exploded view), by level id.
    */

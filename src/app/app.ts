@@ -1502,6 +1502,11 @@ export class App {
     return files.exportGlb(this);
   }
 
+  /** The 3D view as a PNG picture, larger than the screen, with its sun and shadows. */
+  saveImage3d(): Promise<void> {
+    return files.saveImage3d(this);
+  }
+
   /** The model as OBJ, for a renderer or another modeller. */
   exportObj(): Promise<void> {
     return files.exportObj(this);
