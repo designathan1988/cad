@@ -2,6 +2,8 @@
 // the file, language and theme buttons. Each sends what it says to the app.
 
 import { t } from '../ui/i18n';
+import { setDrawing } from '../ui/print-dialog';
+import { drawingOf } from './document';
 import type { App } from './app';
 import { EDIT_LEVELS } from './app';
 import { showLevels } from '../ui/levels-dialog';
@@ -80,6 +82,9 @@ export function wireButtons(app: App, palette: () => void): void {
   shell.ortho.addEventListener('click', () => app.setView3D({ ortho: !ui.view3d.ortho }));
   shell.look.style.select.addEventListener('change', () => app.setView3D({ style: shell.look.style.select.value as VisualStyle }));
   shell.look.quality.select.addEventListener('change', () => app.setView3D({ quality: shell.look.quality.select.value as RenderQuality }));
+  shell.planScale.select.addEventListener('change', () => app.store.dispatch(setDrawing({ ...drawingOf(app.store.get()), scale: Number(shell.planScale.select.value) })));
+  shell.visBtn.addEventListener('click', () => app.actionList().find((a) => a.id === 'view.overrides')?.run());
+  shell.shownReset.addEventListener('click', () => app.actionList().find((a) => a.id === 'view.tempReset')?.run());
   shell.light.button.addEventListener('click', () => {
     shell.light.panel.hidden = !shell.light.panel.hidden;
     app.renderChrome();

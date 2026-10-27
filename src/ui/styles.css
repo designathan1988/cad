@@ -21,6 +21,7 @@
   --ribbon-h: 92px;
   --strip-h: 36px;
   --opt-h: 30px;
+  --vcb-h: 36px;
   --foot-h: 36px;
   /* Where the drawing starts under the frame: a panel over the drawing (narrow windows) starts there. */
   --chrome-top: calc(var(--top-h) + var(--tabs-h) + var(--ribbon-h) + var(--opt-h) + var(--strip-h));
@@ -257,7 +258,7 @@ textarea {
 #app {
   display: grid;
   /* minmax(0, 1fr): the middle row never grows past the window, so the footer stays visible. */
-  grid-template-rows: var(--top-h) var(--tabs-h) var(--ribbon-h) var(--opt-h) var(--strip-h) minmax(0, 1fr) var(--foot-h);
+  grid-template-rows: var(--top-h) var(--tabs-h) var(--ribbon-h) var(--opt-h) var(--strip-h) minmax(0, 1fr) var(--vcb-h) var(--foot-h);
   grid-template-columns: minmax(0, 1fr) auto;
   height: 100%;
 }
@@ -580,20 +581,36 @@ button.project-name:hover {
 .float-bar[hidden] {
   display: none;
 }
-/* The 3D view's controls, at the top of the drawing, in its middle. */
+/* The view's control bar (shell.ts): a row of its own under the drawing, as the interface model's;
+   one line, what does not fit scrolls sideways. */
 .view-bar {
-  position: absolute;
-  top: var(--sp-3);
-  left: 50%;
-  transform: translateX(-50%);
+  grid-row: 7;
+  grid-column: 1;
+  position: relative;
   display: flex;
+  align-items: center;
   gap: var(--sp-2);
-  padding: var(--sp-1);
-  border: var(--line) solid var(--border);
-  border-radius: var(--radius-lg);
+  min-width: 0;
+  padding: 0 var(--sp-2);
   background: var(--bg);
-  box-shadow: var(--shadow);
+  border-top: var(--line) solid var(--border);
   z-index: 4;
+}
+.view-bar-group {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.view-bar-group[hidden] {
+  display: none;
+}
+.view-bar-sep {
+  align-self: stretch;
+  margin: var(--sp-1) 0;
+  border-left: var(--line) solid var(--border);
+}
+.view-bar .light-btn[hidden] {
+  display: none;
 }
 .view-bar[hidden] {
   display: none;
@@ -616,10 +633,15 @@ button.project-name:hover {
   background: var(--hover);
   color: var(--text);
 }
+/* The light's sliders open up from its button. */
+.light-wrap {
+  position: relative;
+  display: flex;
+}
 .light-panel {
   position: absolute;
-  top: calc(100% + var(--sp-1));
-  right: 0;
+  bottom: calc(100% + var(--sp-2));
+  left: 0;
   display: grid;
   gap: var(--sp-2);
   padding: var(--sp-3);
@@ -3271,11 +3293,11 @@ textarea.text-field {
   grid-column: 1;
 }
 .panel {
-  grid-row: 5 / 7;
+  grid-row: 5 / 8;
   grid-column: 2;
 }
 .foot {
-  grid-row: 7;
+  grid-row: 8;
   grid-column: 1 / -1;
 }
 @media (pointer: coarse) {

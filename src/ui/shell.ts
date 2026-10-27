@@ -130,9 +130,9 @@ export function buildShell(root: HTMLElement) {
   const tempLabel = el('span');
   const tempReset = el('button', { type: 'button', class: 'btn' });
   tempChip.append(tempLabel, tempReset);
-  // The 3D view's own controls (view-3d.ts): which levels show, exploded, cut. In 3D only.
+  // The view's control bar, under the drawing (the interface model's): the plan's scale; the 3D view's
+  // levels, toggles, style, quality and light (view-3d.ts); both views' visibility.
   const viewBar = el('div', { class: 'view-bar', role: 'toolbar' });
-  viewBar.hidden = true;
   const levelsBox = el('div', { class: 'segmented', role: 'group' });
   const barButton = (box: HTMLElement, ic: IconName) => {
     const b = el('button', { type: 'button', class: 'has-icon' });
@@ -173,8 +173,19 @@ export function buildShell(root: HTMLElement) {
   const light = { button: lightBtn, panel: el('div', { class: 'light-panel', role: 'group' }), brightness: lightSlider(), sun: lightSlider() };
   light.panel.hidden = true;
   light.panel.append(light.brightness.row, light.sun.row);
-  viewBar.append(levelsBox, togglesBox, look.style.box, look.quality.box, lightBtn, light.panel);
-  viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, viewBar, emptyHint, tempChip, walkStick, tourBar, pointCard, toast, browser);
+  // The plan's scale (the drawing's, drawing/schema.ts), a list as the model's "Escala 1:100".
+  const planScale = lookSelect('scale');
+  // Both views: the categories' visibility and overrides (the dialog), and everything back after a hide.
+  const visBtn = el('button', { type: 'button', class: 'has-icon light-btn' });
+  visBtn.innerHTML = icon('levelsAll', 16);
+  visBtn.append(el('span', { class: 'label' }));
+  const shown = { reset: el('button', { type: 'button', class: 'has-icon light-btn' }) };
+  shown.reset.innerHTML = icon('close', 16);
+  shown.reset.append(el('span', { class: 'label' }));
+  const only3d = el('div', { class: 'view-bar-group' }, levelsBox, togglesBox, look.style.box, look.quality.box, el('span', { class: 'light-wrap' }, lightBtn, light.panel));
+  const onlyPlan = el('div', { class: 'view-bar-group' }, planScale.box);
+  viewBar.append(onlyPlan, only3d, el('span', { class: 'view-bar-sep' }), visBtn, shown.reset);
+  viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, emptyHint, tempChip, walkStick, tourBar, pointCard, toast, browser);
 
   const panel = el('aside', { class: 'panel', 'aria-label': 'Properties' });
 
@@ -190,7 +201,7 @@ export function buildShell(root: HTMLElement) {
 
   const helpBack = el('div', { class: 'dialog-back' });
   helpBack.hidden = true;
-  root.append(top, tabs, ribbon, optBar, strip, viewport, panel, foot, helpBack);
+  root.append(top, tabs, ribbon, optBar, strip, viewport, viewBar, panel, foot, helpBack);
 
   // The footer's tip comes first: the key hints that leave it no room go, the first ones first (Esc,
   // last, is the one most needed). At 1280 px the wall tool's tip was cut after a few words. The keys
@@ -211,7 +222,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, savedNote, undo, redo, level, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
-    panelToggle, tabs, fileMenu, ribbon, optBar, strip, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, look, light, dims, browser, sidebar,
+    panelToggle, tabs, fileMenu, ribbon, optBar, strip, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, levelsShown, explode, cut, xray, box, ortho, look, light, only3d, onlyPlan, planScale, visBtn, shownReset: shown.reset, dims, browser, sidebar,
     emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, coords, helpBack, fitFoot,
   };
 

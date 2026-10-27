@@ -14,7 +14,8 @@ import { icon } from '../ui/icons';
 import { el } from '../ui/controls';
 import { keyHint } from '../ui/shell';
 import { kindOfId, levelOfSolid } from '../elements/registry';
-import { elementIds, wallNumber } from './document';
+import { drawingOf, elementIds, wallNumber } from './document';
+import { SCALES } from '../elements/drawing/schema';
 import { boundsOf, openingOutline } from './geometry';
 import { renderBrowser } from '../ui/browser';
 import { type RibbonItem, renderRibbonTab, renderRibbonTabs } from '../ui/ribbon';
@@ -80,8 +81,21 @@ export function renderChrome(app: App): void {
     shell.theme.dataset.icon = themeIcon;
   }
   shell.snapBtn.setAttribute('aria-pressed', String(ui.snaps));
-  // The 3D view's own controls, in 3D only.
-  shell.viewBar.hidden = ui.view !== '3d';
+  // The view's control bar: the 3D's groups in 3D, the plan's scale in plan; visibility in both.
+  shell.only3d.hidden = ui.view !== '3d';
+  shell.onlyPlan.hidden = ui.view === '3d';
+  if (shell.planScale.select.dataset.lang !== getLang()) {
+    shell.planScale.select.dataset.lang = getLang();
+    shell.planScale.caption.textContent = t('vcb.scale');
+    shell.planScale.box.title = t('vcb.scaleTip');
+    shell.planScale.select.replaceChildren(...SCALES.map((d) => new Option(`1:${d}`, String(d))));
+    shell.visBtn.querySelector('.label')!.textContent = t('vcb.visibility');
+    shell.visBtn.title = t('ovr.open');
+    shell.shownReset.querySelector('.label')!.textContent = t('vcb.showAll');
+    shell.shownReset.title = t('temp.reset');
+  }
+  shell.planScale.select.value = String(drawingOf(doc).scale);
+  shell.shownReset.hidden = ui.temp === null;
   for (const [mode, b] of Object.entries(shell.levelsShown)) b.setAttribute('aria-pressed', String(ui.view3d.levels === mode));
   // Pressed only while it spreads something: with one level shown it is off, and says why when clicked.
   const spread = exploding(doc.levels, ui.levelId, ui.view3d);

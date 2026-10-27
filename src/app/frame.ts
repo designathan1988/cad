@@ -63,15 +63,8 @@ export function renderFrame(app: App): void {
   // The view cube and the 3D view's centre stay in the part of the viewport the panel leaves free.
   const covered = app.covered();
   app.cube.root.style.right = `${20 + covered.right}px`;
-  // Where the free part is narrow (a drawer open on a small window) the cube came over the 3D view's
-  // bar: then it goes under the bar.
+  // The view's bar is under the drawing now (its own row): nothing of it over the cube.
   app.cube.root.style.top = '';
-  if (!plan && !shell.viewBar.hidden) {
-    const bar = shell.viewBar.getBoundingClientRect();
-    const cube = app.cube.root.getBoundingClientRect();
-    const vp = shell.viewport.getBoundingClientRect();
-    if (bar.width > 0 && cube.left < bar.right && cube.right > bar.left && cube.top < bar.bottom) app.cube.root.style.top = `${bar.bottom - vp.top + 8}px`;
-  }
   app.scene.setCovered(covered);
   const preview = new Set([...app.previewWall(), ...app.previewOpening()].map((w) => w.id));
   const guide = app.openingKind() ? ruleGuide(app.store.get(), app.geometry, OPENING_PREVIEW_ID) : null;
