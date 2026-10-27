@@ -113,7 +113,7 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 42: tags by elements with their values (`tags`, elements/tag). Older files have none.
  * Version 43: a room's interior elevations, marks kept to a level (`levelId`, elements/section). Older marks have none: every level.
  */
-export const CURRENT_VERSION = 58;
+export const CURRENT_VERSION = 59;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -291,7 +291,10 @@ export function repairProject(raw: unknown): ReadResult {
   // Every layer's material is there: the file's, else a built-in one, else a plain one of that name.
   const read = keep(raw.materials, isMaterial, 'droppedMaterials');
   // Before version 30 no material had a pattern: the built-in ones that have one now get it.
-  const materials = [...(raw.materials === undefined ? BUILT_IN_MATERIALS : raw.version < 30 ? read.map(withBuiltInPattern) : read)];
+  // Before version 59 the stones had no pattern: the built-in ones (marble, granite, quartz, terrazzo) get their veins and speckles.
+  const stones = new Set(['marble', 'graniteBlack', 'quartz', 'terrazzo']);
+  const fileMaterials = raw.version < 30 ? read.map(withBuiltInPattern) : raw.version < 59 ? read.map((m) => (stones.has(m.id) ? withBuiltInPattern(m) : m)) : read;
+  const materials = [...(raw.materials === undefined ? BUILT_IN_MATERIALS : fileMaterials)];
   for (const id of new Set(wallTypes.flatMap((t) => t.layers.map((l) => l.materialId)))) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   // Units that are not ones (a unit it does not know, decimals out of range): metres again, and said.
   if (raw.units !== undefined && !isUnits(raw.units)) fixes.push({ kind: 'resetUnits', count: 1 });

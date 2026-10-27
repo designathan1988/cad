@@ -30,6 +30,7 @@
   --rb-field-w: 136px;
   --rb-field-label-w-sm: 104px;
   --rb-field-w-sm: 112px;
+  --objs-dialog-h: 900px;
   --search-w: 300px;
   --control-h: 32px;
   --control-h-sm: 32px;
@@ -1986,6 +1987,14 @@ button.project-name:hover {
   min-height: 0;
   overflow-y: auto;
   padding: var(--sp-3) var(--sp-4);
+}
+/* The objects' dialog keeps its height while the list is searched: its buttons stay where they were. */
+.objs-dialog {
+  height: min(var(--objs-dialog-h), calc(100vh - 2 * var(--sp-4)));
+}
+.objs-dialog .types-body {
+  flex: 1;
+  min-height: 0;
 }
 .types-dialog .actions {
   /* On a phone the seven buttons go on two lines: squeezed on one, "Colocar" read "Colo". */

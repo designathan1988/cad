@@ -50,6 +50,8 @@ export function paintPattern(p: SurfacePattern, color: string): { readonly canva
         ctx.fillStyle = fill;
         ctx.fillRect(x, y, w, h);
         if (p.kind === 'wood') grain(ctx, x, y, w, h, base, i);
+        else if (p.kind === 'marble') veins(ctx, x, y, w, h, base, i);
+        else if (p.kind === 'granite') speckles(ctx, x, y, w, h, base, i);
       }
     }
   });
@@ -86,6 +88,62 @@ function grain(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h
 }
 
 /** The pattern as a repeating texture, in sRGB, its period in metres. */
+/** A number in [0, 1) from n and k, the same every time (a slab's veins drawn alike on each repaint). */
+const hash = (n: number, k: number): number => {
+  const x = Math.sin(n * 127.1 + k * 311.7) * 43758.5453;
+  return x - Math.floor(x);
+};
+
+/**
+ * A marble slab's veins: a few long wandering curves across it, darker than the stone, each a thin main
+ * line with fainter offshoots; the slab clipped so they stop at its edges.
+ */
+function veins(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string, n: number): void {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  const count = 2 + Math.floor(hash(n, 1) * 3);
+  for (let k = 0; k < count; k++) {
+    // From one side to the other, bending three times.
+    const across = hash(n, k + 10) > 0.5;
+    const start = { x: across ? x : x + w * hash(n, k + 20), y: across ? y + h * hash(n, k + 30) : y };
+    const end = { x: across ? x + w : x + w * hash(n, k + 40), y: across ? y + h * hash(n, k + 50) : y + h };
+    const bend = (t: number, j: number) => ({
+      x: start.x + (end.x - start.x) * t + (hash(n, k * 7 + j) - 0.5) * w * 0.35,
+      y: start.y + (end.y - start.y) * t + (hash(n, k * 11 + j) - 0.5) * h * 0.35,
+    });
+    const [c1, c2, c3] = [bend(0.3, 1), bend(0.55, 2), bend(0.8, 3)];
+    for (const [width, alpha, shift] of [
+      [Math.max(1, Math.min(w, h) * 0.006), 0.55, 0],
+      [Math.max(1, Math.min(w, h) * 0.018), 0.12, 0],
+      [Math.max(1, Math.min(w, h) * 0.003), 0.35, Math.min(w, h) * 0.02],
+    ] as const) {
+      ctx.strokeStyle = tint(color, -0.45);
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(start.x + shift, start.y);
+      ctx.bezierCurveTo(c1.x + shift, c1.y, c2.x, c2.y + shift, c3.x, c3.y);
+      ctx.quadraticCurveTo((c3.x + end.x) / 2 + shift, (c3.y + end.y) / 2, end.x, end.y);
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+/** A granite slab's grain: speckles lighter and darker than the stone, all over it. */
+function speckles(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string, n: number): void {
+  const count = Math.round((w * h) / 30);
+  const size = Math.max(1, Math.min(w, h) * 0.004);
+  for (let k = 0; k < count; k++) {
+    const r = hash(n, k);
+    ctx.fillStyle = r < 0.45 ? tint(color, 0.55) : r < 0.85 ? tint(color, -0.5) : tint(color, 0.25);
+    ctx.fillRect(x + hash(n, k + 0.31) * w, y + hash(n, k + 0.67) * h, size * (0.6 + r), size * (0.6 + hash(n, k + 0.13)));
+  }
+}
+
 export function patternTexture(p: SurfacePattern, color: string, anisotropy: number): { readonly texture: THREE.CanvasTexture; readonly period: THREE.Vector2 } {
   const { canvas, period } = paintPattern(p, color);
   const texture = new THREE.CanvasTexture(canvas);

@@ -171,7 +171,7 @@ export function showObjects(app: App, first?: string): void {
     linkBtn.disabled = !def;
     return el(
       'div',
-      { class: 'dialog dialog-wide types-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('objs.title') },
+      { class: 'dialog dialog-wide types-dialog objs-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('objs.title') },
       el('h2', {}, t('objs.title')),
       el('div', { class: 'types-body' }, list, detail),
       el('div', { class: 'actions' }, add, dup, del, exportBtn, importBtn, linkBtn, fileInput, el('span', { class: 'spacer' }), edit, place, btn(t('help.close'), 'close', close)),
