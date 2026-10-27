@@ -8,7 +8,7 @@ import { analyticModel, clashesOf, isometricSvg, waterproofing } from '../../src
 import { balance, loadTable, protect, voltageDrop } from '../../src/elements/mep/electrical';
 import { fittingsOf, networksOf } from '../../src/elements/mep/network';
 import { GROUP_OF, isMepPoint, isMepRun, type MepPoint, type MepRun } from '../../src/elements/mep/schema';
-import { hazenWilliams, pressures, probableFlow, sewerFalls } from '../../src/elements/mep/water';
+import { hazenWilliams, mostUhc, neededDiameter, pressures, probableFlow, sewerFalls } from '../../src/elements/mep/water';
 import { readProject, writeProject } from '../../src/io/project-file';
 import { runVertices } from '../../src/app/mep-ui';
 import { mepPointKind, mepRunKind } from '../../src/elements/kinds/mep';
@@ -179,6 +179,25 @@ describe('water and sewer', () => {
     expect(p!.loss).toBeCloseTo(loss, 9);
     expect(p!.dynamicKpa).toBeCloseTo((3.4 - loss) * 9.80665, 6);
     expect(p!.ok).toBe(true);
+  });
+
+  it('UHC and diameters (NBR 8160): a toilet asks a 100 mm branch; 25 units pass a 75; 250 at 1 % pass a 100', () => {
+    const withToilet: Doc = { ...house, mepPoints: house.mepPoints.map((p) => (p.id === 'ralo' ? { ...p, fixture: 'toilet' as const } : p)) };
+    const [s] = sewerFalls(withToilet).stretches;
+    expect([s!.uhc, s!.needed, s!.sized]).toEqual([6, 0.1, true]);
+    expect(sewerFalls(withToilet).unsized).toEqual([]);
+    // The same on a 75 mm pipe: the toilet's branch is 100.
+    const narrow: Doc = { ...withToilet, mepRuns: withToilet.mepRuns.map((r) => (r.id === 's1' ? { ...r, diameter: 0.075 } : r)) };
+    expect(sewerFalls(narrow).stretches[0]!.sized).toBe(false);
+    // A drain with no fixture said: no units, and said.
+    expect(sewerFalls(house).unsized.map((p) => p.id)).toEqual(['ralo']);
+    expect(neededDiameter(20, 2, 0.04)).toBe(0.075);
+    expect(neededDiameter(25, 2, 0.04)).toBe(0.1);
+    // DN 100 at 1 %: 180 as a collector (more than the branch's 160); 250 needs DN 150.
+    expect(mostUhc(0.1, 1)).toBe(180);
+    expect(neededDiameter(250, 1, 0)).toBe(0.15);
+    // At 0.5 % DN 100 and 150 are not allowed as collectors: only DN 200 there.
+    expect(neededDiameter(500, 0.5, 0)).toBe(0.2);
   });
 
   it('the sewer\'s falls: 2 % on a 100 mm pipe holds, a flat one does not', () => {

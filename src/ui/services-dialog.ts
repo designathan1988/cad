@@ -165,13 +165,28 @@ export function showServices(app: App, first: Tab = 'systems'): void {
           el('h3', {}, t(`services.disc.${group}` as MessageKey)),
           ...(f.stretches.length === 0 ? [note('services.noStretches')] : []),
           ...(f.stretches.length > 0
-            ? [table([t('services.stretch'), t('services.diameter'), t('services.length'), t('services.fall'), t('services.least'), ''], f.stretches.map((s) => [link(app.reportTitle(s.runId), s.runId), `${Math.round(s.diameter * 1000)} mm`, `${num(s.length, 2)} m`, `${num(s.slope, 2)} %`, `${num(s.least, 0)} %`, mark(s.ok)]), [1, 2, 3, 4])]
+            ? [
+                table(
+                  [t('services.stretch'), t('services.diameter'), t('services.length'), t('services.fall'), t('services.least'), '', ...(group === 'sewer' ? ['UHC', t('services.neededDn'), ''] : [])],
+                  f.stretches.map((s) => [
+                    link(app.reportTitle(s.runId), s.runId),
+                    `${Math.round(s.diameter * 1000)} mm`,
+                    `${num(s.length, 2)} m`,
+                    `${num(s.slope, 2)} %`,
+                    `${num(s.least, 0)} %`,
+                    mark(s.ok),
+                    ...(group === 'sewer' ? [s.uhc > 0 ? num(s.uhc, 0) : '—', s.needed === null ? (s.uhc > 0 ? t('services.pastTables') : '—') : `DN ${Math.round(s.needed * 1000)}`, s.uhc > 0 ? mark(s.sized) : '—'] : []),
+                  ]),
+                  [1, 2, 3, 4, 6, 7],
+                ),
+              ]
             : []),
           ...(f.stretches.length > 0 && !f.hasOutlet ? [note('services.noOutlet')] : []),
           ...(f.unreached.length > 0 ? [el('p', { class: 'services-bad' }, t('services.drainsLoose', { n: f.unreached.length }))] : []),
+          ...(f.unsized.length > 0 ? [el('p', { class: 'services-bad' }, t('services.unsized', { n: f.unsized.length })), el('div', {}, ...f.unsized.map((p) => link(app.reportTitle(p.id), p.id)))] : []),
         );
       });
-      body = el('div', { class: 'budget-scroll' }, ...blocks, note('services.sewerNote'));
+      body = el('div', { class: 'budget-scroll' }, ...blocks, note('services.sewerNote'), note('services.uhcNote'));
     } else if (tab === 'clashes') {
       const c = clashesOf(doc, g);
       body = el(

@@ -10,7 +10,7 @@ import { type MessageKey, num, t } from '../../ui/i18n';
 import type { Doc } from '../../app/document';
 import type { ElementKind, PlanPaint } from '../contract';
 import type { Material } from '../material/schema';
-import { type Discipline, GROUP_OF, isMepPoint, isMepRun, MEP_POINT_PREFIX, MEP_RUN_PREFIX, type MepPoint, type MepRun, POINT_KIND_LIST, POINT_KINDS, type PointKind, RUN_KINDS, type RunKind, type RunVertex, systemIn, systemsOf } from '../mep/schema';
+import { type Discipline, type Fixture, FIXTURE_LIST, GROUP_OF, isMepPoint, isMepRun, MEP_POINT_PREFIX, MEP_RUN_PREFIX, type MepPoint, type MepRun, POINT_KIND_LIST, POINT_KINDS, type PointKind, RUN_KINDS, type RunKind, type RunVertex, systemIn, systemsOf } from '../mep/schema';
 import { segmentDistance } from '../dimension/anchor';
 import { nearSegment } from './paint';
 
@@ -176,6 +176,19 @@ export const mepPointKind: ElementKind<MepPoint, MepPointSolid> = {
         : []),
       ...(water
         ? ([{ id: 'mepWeight', label: 'mep.weight', kind: 'number', min: 0, unit: '', get: (s: MepPointSolid) => s.point.weight ?? POINT_KINDS[s.point.kind].weight ?? 0, set: (v: number) => dispatch(updatePoints(ids, { weight: v })) }] as const)
+        : []),
+      // A sewer drain: the fixture it takes (NBR 8160 table 3), for the pipes' units and diameters.
+      ...(items.every((s) => s.discipline === 'sewer' && !POINT_KINDS[s.point.kind].source)
+        ? ([
+            {
+              id: 'mepFixture',
+              label: 'mep.fixture',
+              kind: 'select',
+              options: [{ value: '', label: t('mep.fixture.none') }, ...FIXTURE_LIST.map((f) => ({ value: f, label: t(`mep.fixture.${f}` as MessageKey) }))],
+              get: (s: MepPointSolid) => s.point.fixture ?? '',
+              set: (v: string) => dispatch(updatePoints(ids, { fixture: v === '' ? undefined : (v as Fixture) })),
+            },
+          ] as const)
         : []),
       ...(one ? ([{ id: 'mepLabel', label: 'mep.label', kind: 'text', get: (s: MepPointSolid) => s.point.label ?? '', set: (v: string) => dispatch(updatePoints(ids, { label: v.trim() || undefined })) }] as const) : []),
       { id: 'mepAbs', label: 'mep.absolute', kind: 'readout', text: (xs) => same(xs, (s) => `${num(s.z, 2)} m`) },

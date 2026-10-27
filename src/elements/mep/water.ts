@@ -9,7 +9,7 @@
 
 import type { Doc } from '../../app/document';
 import { fromSources, type Network, networksOf, pathTo, sourcesOf } from './network';
-import { type MepPoint, pointLoad, POINT_KINDS } from './schema';
+import { FIXTURES, type MepPoint, pointLoad, POINT_KINDS } from './schema';
 
 export const MIN_DYNAMIC = 10;
 export const MAX_STATIC = 400;
@@ -87,19 +87,67 @@ export interface SewerStretch {
   readonly length: number;
   readonly diameter: number;
   readonly ok: boolean;
+  /** The fixtures' contribution units it carries (those up it), and the least diameter they ask (m); 0 and null with none. */
+  readonly uhc: number;
+  readonly needed: number | null;
+  readonly sized: boolean;
+}
+
+/** NBR 8160 (1999) table 5: a branch's nominal diameter (m) and the most UHC it takes. */
+export const BRANCH_UHC: readonly (readonly [number, number])[] = [
+  [0.04, 3],
+  [0.05, 6],
+  [0.075, 20],
+  [0.1, 160],
+];
+/**
+ * NBR 8160 (1999) table 7: a sub-collector's or the building drain's nominal diameter (m) and the most UHC
+ * it takes at a least fall of 0.5, 1, 2 and 4 % (none: not allowed at that fall). Up to DN 200, as reproduced.
+ */
+export const COLLECTOR_UHC: readonly (readonly [number, readonly (number | null)[]])[] = [
+  [0.1, [null, 180, 216, 250]],
+  [0.15, [null, 700, 840, 1000]],
+  [0.2, [1400, 1600, 1920, 2300]],
+];
+const FALLS = [0.5, 1, 2, 4];
+
+/** The most UHC a pipe of a diameter takes at a fall: as a branch (table 5), from DN 100 the more of that and a collector (table 7). */
+export function mostUhc(d: number, slope: number): number {
+  const branch = BRANCH_UHC.find(([dn]) => Math.abs(dn - d) < 1e-6)?.[1] ?? 0;
+  const col = FALLS.reduce((k, f, i) => (slope >= f - 1e-6 ? i : k), -1);
+  const collector = col < 0 ? 0 : (COLLECTOR_UHC.find(([dn]) => Math.abs(dn - d) < 1e-6)?.[1][col] ?? 0);
+  return Math.max(branch, collector ?? 0);
+}
+
+/** The least nominal diameter for so many UHC at a fall, never under the largest fixture's branch; null past the tables. */
+export function neededDiameter(uhc: number, slope: number, least: number): number | null {
+  for (const d of [0.04, 0.05, 0.075, 0.1, 0.15, 0.2]) if (d >= least - 1e-9 && mostUhc(d, slope) >= uhc) return d;
+  return null;
 }
 
 /** The least fall (%) for a sewer pipe's diameter. */
 export const leastFall = (d: number): number => (d <= 0.075 + 1e-9 ? 2 : 1);
 
 /** Each sloping stretch of the sewer (and of the rain), its fall towards its way out; drains no pipe takes away. */
-export function sewerFalls(doc: Doc, group: 'sewer' | 'rain' = 'sewer'): { stretches: SewerStretch[]; unreached: MepPoint[]; hasOutlet: boolean } {
+export function sewerFalls(doc: Doc, group: 'sewer' | 'rain' = 'sewer'): { stretches: SewerStretch[]; unreached: MepPoint[]; hasOutlet: boolean; unsized: MepPoint[] } {
   const net: Network | undefined = networksOf(doc).get(group);
-  if (!net) return { stretches: [], unreached: [], hasOutlet: false };
+  if (!net) return { stretches: [], unreached: [], hasOutlet: false, unsized: [] };
   const sources = sourcesOf(net);
-  const { dist } = fromSources(net, sources);
+  const { dist, via } = fromSources(net, sources);
+  // Each fixture's units and branch on every edge of its way out.
+  const units = new Map<number, number>();
+  const branch = new Map<number, number>();
+  for (const p of net.points) {
+    const f = p.fixture ? FIXTURES[p.fixture] : null;
+    const node = net.pointNode.get(p.id);
+    if (!f || node === undefined || !dist.has(node)) continue;
+    for (const k of pathTo(net, via, node)) {
+      units.set(k, (units.get(k) ?? 0) + f.uhc);
+      branch.set(k, Math.max(branch.get(k) ?? 0, f.dn));
+    }
+  }
   const stretches: SewerStretch[] = [];
-  for (const e of net.edges) {
+  for (const [k, e] of net.edges.entries()) {
     if (!e.runId) continue;
     const a = net.nodes[e.a]!;
     const b = net.nodes[e.b]!;
@@ -109,8 +157,12 @@ export function sewerFalls(doc: Doc, group: 'sewer' | 'rain' = 'sewer'): { stret
     const [up, down] = sources.length > 0 && dist.has(e.a) && dist.has(e.b) ? (dist.get(e.a)! >= dist.get(e.b)! ? [a, b] : [b, a]) : a.z >= b.z ? [a, b] : [b, a];
     const slope = ((up.z - down.z) / plan) * 100;
     const least = leastFall(e.diameter);
-    stretches.push({ runId: e.runId, slope, least, length: plan, diameter: e.diameter, ok: slope >= least - 1e-6 });
+    const uhc = units.get(k) ?? 0;
+    const needed = uhc > 0 ? neededDiameter(uhc, slope, branch.get(k) ?? 0) : null;
+    stretches.push({ runId: e.runId, slope, least, length: plan, diameter: e.diameter, ok: slope >= least - 1e-6, uhc, needed, sized: needed === null ? uhc === 0 : e.diameter >= needed - 1e-6 });
   }
   const unreached = net.points.filter((p) => !POINT_KINDS[p.kind].source && !dist.has(net.pointNode.get(p.id)!));
-  return { stretches, unreached, hasOutlet: sources.length > 0 };
+  // The sewer's drains that say no fixture: their units are not counted.
+  const unsized = group === 'sewer' ? net.points.filter((p) => !POINT_KINDS[p.kind].source && !p.fixture) : [];
+  return { stretches, unreached, hasOutlet: sources.length > 0, unsized };
 }

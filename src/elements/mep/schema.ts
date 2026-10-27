@@ -125,8 +125,29 @@ export interface MepPoint {
   readonly circuit?: string;
   /** Its relative weight (NBR 5626), for a water outlet. */
   readonly weight?: number;
+  /** The fixture a sewer point drains (NBR 8160 table 3): its contribution units and least branch. */
+  readonly fixture?: Fixture;
   readonly label?: string;
 }
+
+/**
+ * NBR 8160 (1999) table 3, as reproduced in a design memorial (to confirm in the edition in force): each
+ * fixture's Hunter contribution units (UHC) and the least nominal diameter of its discharge branch (m).
+ * A floor drain (caixa sifonada) is sized by the fixtures it takes, so it is no line of its own.
+ */
+export const FIXTURES = {
+  toilet: { uhc: 6, dn: 0.1 },
+  bathtub: { uhc: 2, dn: 0.04 },
+  bidet: { uhc: 1, dn: 0.04 },
+  shower: { uhc: 2, dn: 0.04 },
+  basin: { uhc: 1, dn: 0.04 },
+  kitchenSink: { uhc: 3, dn: 0.05 },
+  laundryTub: { uhc: 3, dn: 0.04 },
+  dishwasher: { uhc: 2, dn: 0.05 },
+  washingMachine: { uhc: 3, dn: 0.05 },
+} as const;
+export type Fixture = keyof typeof FIXTURES;
+export const FIXTURE_LIST = Object.keys(FIXTURES) as Fixture[];
 
 export type RunKind = 'pipe' | 'conduit' | 'cable' | 'duct';
 export const RUN_KINDS: readonly RunKind[] = ['pipe', 'conduit', 'cable', 'duct'];
@@ -183,6 +204,7 @@ export const isMepPoint = (p: unknown): p is MepPoint =>
   (p.voltage === undefined || (finite(p.voltage) && p.voltage > 0)) &&
   (p.circuit === undefined || typeof p.circuit === 'string') &&
   (p.weight === undefined || (finite(p.weight) && p.weight >= 0)) &&
+  (p.fixture === undefined || (FIXTURE_LIST as readonly unknown[]).includes(p.fixture)) &&
   (p.label === undefined || typeof p.label === 'string');
 
 export const isMepRun = (r: unknown): r is MepRun =>
