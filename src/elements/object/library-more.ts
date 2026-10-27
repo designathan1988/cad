@@ -42,7 +42,7 @@ export const SOFA: ObjectDefinition = {
     mat('matPes', 'Pés', 'Legs', 'wood'),
   ],
   parts: [
-    { kind: 'box', name: { pt: 'Base', en: 'Base' }, x: '-largura/2', y: '-profundidade/2', z: 0.08, w: 'largura', d: 'profundidade', h: 'assento - 0.2', material: 'matEstofado' },
+    { kind: 'box', name: { pt: 'Base', en: 'Base' }, x: '-largura/2', y: '-profundidade/2', z: 0.08, w: 'largura', d: 'profundidade', h: 'assento - 0.2', material: 'matEstofado', round: 0.03 },
     {
       kind: 'box',
       name: { pt: 'Almofada', en: 'Cushion' },
@@ -53,10 +53,10 @@ export const SOFA: ObjectDefinition = {
       w: '(largura - 2 * braco) / lugares - 0.01',
       d: 'profundidade - 0.24',
       h: 0.12,
-      material: 'matEstofado',
+      material: 'matEstofado', round: 0.04,
     },
-    { kind: 'box', name: { pt: 'Encosto', en: 'Back' }, x: '-largura/2 + braco', y: 'profundidade/2 - 0.2', z: 'assento - 0.12', w: 'largura - 2 * braco', d: 0.2, h: 'altura - assento + 0.12', material: 'matEstofado' },
-    { kind: 'box', name: { pt: 'Braço', en: 'Arm' }, when: 'braco > 0', repeat: { count: 2, dx: 'largura - braco' }, x: '-largura/2', y: '-profundidade/2', z: 0.08, w: 'braco', d: 'profundidade', h: 'assento + 0.2 - 0.08', material: 'matEstofado' },
+    { kind: 'box', name: { pt: 'Encosto', en: 'Back' }, x: '-largura/2 + braco', y: 'profundidade/2 - 0.2', z: 'assento - 0.12', w: 'largura - 2 * braco', d: 0.2, h: 'altura - assento + 0.12', material: 'matEstofado', round: 0.05 },
+    { kind: 'box', name: { pt: 'Braço', en: 'Arm' }, when: 'braco > 0', repeat: { count: 2, dx: 'largura - braco' }, x: '-largura/2', y: '-profundidade/2', z: 0.08, w: 'braco', d: 'profundidade', h: 'assento + 0.2 - 0.08', material: 'matEstofado', round: 0.05 },
     { kind: 'cylinder', name: { pt: 'Pé', en: 'Leg' }, repeat: { count: 4 }, x: 'if(i % 2 == 0, -largura/2 + 0.06, largura/2 - 0.06)', y: 'if(i < 2, -profundidade/2 + 0.06, profundidade/2 - 0.06)', z: 0, r: 0.02, h: 0.08, material: 'matPes' },
   ],
   handles: boxHandles('altura'),
@@ -81,9 +81,9 @@ export const BED: ObjectDefinition = {
     mat('matColchao', 'Colchão', 'Mattress', 'fabric'),
   ],
   parts: [
-    { kind: 'box', name: { pt: 'Estrado', en: 'Frame' }, x: '-largura/2', y: '-profundidade/2', z: 0.1, w: 'largura', d: 'profundidade', h: 'altura - 0.3', material: 'matEstrutura' },
-    { kind: 'box', name: { pt: 'Colchão', en: 'Mattress' }, x: '-largura/2 + 0.02', y: '-profundidade/2 + 0.02', z: 'altura - 0.22', w: 'largura - 0.04', d: 'profundidade - 0.06', h: 0.22, material: 'matColchao' },
-    { kind: 'box', name: { pt: 'Cabeceira', en: 'Headboard' }, when: 'cabeceira > 0', x: '-largura/2', y: 'profundidade/2', z: 0, w: 'largura', d: 0.05, h: 'cabeceira', material: 'matEstrutura' },
+    { kind: 'box', name: { pt: 'Estrado', en: 'Frame' }, x: '-largura/2', y: '-profundidade/2', z: 0.1, w: 'largura', d: 'profundidade', h: 'altura - 0.3', material: 'matEstrutura', round: 0.015 },
+    { kind: 'box', name: { pt: 'Colchão', en: 'Mattress' }, x: '-largura/2 + 0.02', y: '-profundidade/2 + 0.02', z: 'altura - 0.22', w: 'largura - 0.04', d: 'profundidade - 0.06', h: 0.22, material: 'matColchao', round: 0.05 },
+    { kind: 'box', name: { pt: 'Cabeceira', en: 'Headboard' }, when: 'cabeceira > 0', x: '-largura/2', y: 'profundidade/2', z: 0, w: 'largura', d: 0.05, h: 'cabeceira', material: 'matEstrutura', round: 0.02 },
     {
       kind: 'box',
       name: { pt: 'Travesseiro', en: 'Pillow' },
@@ -94,7 +94,7 @@ export const BED: ObjectDefinition = {
       w: '(largura - 0.1) / travesseiros - 0.04',
       d: 0.32,
       h: 0.1,
-      material: 'matColchao',
+      material: 'matColchao', round: 0.04,
     },
   ],
   handles: [
@@ -181,8 +181,8 @@ export const TOILET: ObjectDefinition = {
   parts: [
     { kind: 'cylinder', name: { pt: 'Pé', en: 'Foot' }, x: 0, y: '-profundidade/2 + largura/2 + 0.04', z: 0, r: 'largura * 0.3', r2: 'largura * 0.42', h: 'altura - 0.06', material: 'matLouca' },
     { kind: 'cylinder', name: { pt: 'Bacia', en: 'Bowl' }, x: 0, y: '-profundidade/2 + largura/2 + 0.02', z: 'altura - 0.08', r: 'largura / 2', h: 0.08, material: 'matLouca' },
-    { kind: 'box', name: { pt: 'Caixa acoplada', en: 'Cistern' }, when: 'caixa', x: '-largura/2 - 0.02', y: 'profundidade/2 - 0.18', z: 'altura - 0.06', w: 'largura + 0.04', d: 0.18, h: 0.4, material: 'matLouca' },
-    { kind: 'box', name: { pt: 'Base', en: 'Base' }, x: '-largura * 0.3', y: '-profundidade/2 + 0.1', z: 0, w: 'largura * 0.6', d: 'profundidade - 0.12', h: 'altura - 0.06', material: 'matLouca' },
+    { kind: 'box', name: { pt: 'Caixa acoplada', en: 'Cistern' }, when: 'caixa', x: '-largura/2 - 0.02', y: 'profundidade/2 - 0.18', z: 'altura - 0.06', w: 'largura + 0.04', d: 0.18, h: 0.4, material: 'matLouca', round: 0.03 },
+    { kind: 'box', name: { pt: 'Base', en: 'Base' }, x: '-largura * 0.3', y: '-profundidade/2 + 0.1', z: 0, w: 'largura * 0.6', d: 'profundidade - 0.12', h: 'altura - 0.06', material: 'matLouca', round: 0.03 },
   ],
   handles: [
     { param: 'profundidade', axis: 'y', at: [0, '-profundidade/2', 'altura'], shift: 0.5, sign: -1 },
@@ -272,9 +272,9 @@ export const FRIDGE: ObjectDefinition = {
     mat('matMetal', 'Puxadores', 'Handles', 'metal'),
   ],
   parts: [
-    { kind: 'box', name: { pt: 'Corpo', en: 'Body' }, x: '-largura/2', y: '-profundidade/2 + 0.05', z: 0, w: 'largura', d: 'profundidade - 0.05', h: 'altura', material: 'matCorpo' },
-    { kind: 'box', name: { pt: 'Porta de baixo', en: 'Lower door' }, x: '-largura/2', y: '-profundidade/2', z: 0.05, w: 'largura', d: 0.045, h: 'altura - congelador - 0.06', material: 'matCorpo' },
-    { kind: 'box', name: { pt: 'Porta do congelador', en: 'Freezer door' }, x: '-largura/2', y: '-profundidade/2', z: 'altura - congelador', w: 'largura', d: 0.045, h: 'congelador - 0.01', material: 'matCorpo' },
+    { kind: 'box', name: { pt: 'Corpo', en: 'Body' }, x: '-largura/2', y: '-profundidade/2 + 0.05', z: 0, w: 'largura', d: 'profundidade - 0.05', h: 'altura', material: 'matCorpo', round: 0.02 },
+    { kind: 'box', name: { pt: 'Porta de baixo', en: 'Lower door' }, x: '-largura/2', y: '-profundidade/2', z: 0.05, w: 'largura', d: 0.045, h: 'altura - congelador - 0.06', material: 'matCorpo', round: 0.012 },
+    { kind: 'box', name: { pt: 'Porta do congelador', en: 'Freezer door' }, x: '-largura/2', y: '-profundidade/2', z: 'altura - congelador', w: 'largura', d: 0.045, h: 'congelador - 0.01', material: 'matCorpo', round: 0.012 },
     { kind: 'box', name: { pt: 'Puxador', en: 'Handle' }, repeat: { count: 2 }, x: 'largura/2 - 0.06', y: '-profundidade/2 - 0.03', z: 'if(i == 0, 0.5, altura - congelador + 0.1)', w: 0.02, d: 0.03, h: 'if(i == 0, 0.6, 0.3)', material: 'matMetal' },
   ],
   handles: boxHandles('altura'),
@@ -298,7 +298,7 @@ export const COOKER: ObjectDefinition = {
     mat('matMesa', 'Mesa', 'Top', 'glass'),
   ],
   parts: [
-    { kind: 'box', name: { pt: 'Corpo', en: 'Body' }, x: '-largura/2', y: '-profundidade/2', z: 0, w: 'largura', d: 'profundidade', h: 'altura - 0.01', material: 'matCorpo' },
+    { kind: 'box', name: { pt: 'Corpo', en: 'Body' }, x: '-largura/2', y: '-profundidade/2', z: 0, w: 'largura', d: 'profundidade', h: 'altura - 0.01', material: 'matCorpo', round: 0.008 },
     { kind: 'box', name: { pt: 'Mesa', en: 'Top' }, x: '-largura/2', y: '-profundidade/2', z: 'altura - 0.01', w: 'largura', d: 'profundidade', h: 0.01, material: 'matMesa' },
     {
       kind: 'cylinder',

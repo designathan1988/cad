@@ -9,8 +9,12 @@ import { isLayerSet, isRoomOverride, isWallOverride } from '../app/layer-sets';
 import { isVariableName } from '../core/measure';
 import { isOpeningStyle, operationsOf } from '../elements/opening/style';
 import { LIBRARY } from '../elements/object/library';
-import { LIBRARY_MORE, POT_PLANT, TREE } from '../elements/object/library-more';
+import { BED, COOKER, FRIDGE, LIBRARY_MORE, POT_PLANT, SOFA, TOILET, TREE } from '../elements/object/library-more';
 import type { ObjectDefinition } from '../elements/object/schema';
+
+/** The library's definitions that version 46 gave rounded edges, and one as it was before. */
+const ROUNDED = [SOFA, BED, TOILET, FRIDGE, COOKER];
+const unrounded = (d: ObjectDefinition): ObjectDefinition => ({ ...d, parts: d.parts.map((p) => (p.kind === 'box' && p.round !== undefined ? (({ round: _, ...rest }) => rest)(p) : p)) });
 
 /** The library's tree and potted plant as they were before version 45 (cones), by their parts. */
 const isOldTree = (d: ObjectDefinition) => d.parts.length === 3 && d.parts.every((p) => p.kind === 'cylinder');
@@ -98,7 +102,7 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 42: tags by elements with their values (`tags`, elements/tag). Older files have none.
  * Version 43: a room's interior elevations, marks kept to a level (`levelId`, elements/section). Older marks have none: every level.
  */
-export const CURRENT_VERSION = 45;
+export const CURRENT_VERSION = 46;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -286,7 +290,10 @@ export function repairProject(raw: unknown): ReadResult {
   const since44 = raw.version < 44 ? [...since29, ...LIBRARY_LIGHTS.filter((d) => !since29.some((k) => k.id === d.id))] : since29;
   // Version 45 drew the tree and the potted plant in rounded masses: the library's own, as they came,
   // take the new ones (one changed by hand, its parts not those, is kept).
-  const definitions = raw.version < 45 ? since44.map((d) => (d.id === TREE.id && isOldTree(d) ? TREE : d.id === POT_PLANT.id && isOldPotPlant(d) ? POT_PLANT : d)) : since44;
+  const since45 = raw.version < 45 ? since44.map((d) => (d.id === TREE.id && isOldTree(d) ? TREE : d.id === POT_PLANT.id && isOldPotPlant(d) ? POT_PLANT : d)) : since44;
+  // Version 46 rounded the edges of the upholstery, the mattress, the china and the appliances: the
+  // library's own, still as they came (the same but for the rounding), take the rounded ones.
+  const definitions = raw.version < 46 ? since45.map((d) => ROUNDED.find((r) => r.id === d.id && JSON.stringify(unrounded(r)) === JSON.stringify(d)) ?? d) : since45;
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));

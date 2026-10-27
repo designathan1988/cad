@@ -4,6 +4,7 @@
 // derivation to the next while the object, its level, the definitions and the materials are the same.
 
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { Doc } from '../../app/document';
 import { insideRing } from '../room/derive';
 import type { BaseGeometry, ElementKind, KindSolid } from '../contract';
@@ -82,7 +83,9 @@ export function pieceGeometry(piece: Piece): THREE.BufferGeometry {
     piece.kind === 'mesh'
       ? meshGeometry(piece)
       : piece.kind === 'box'
-        ? new THREE.BoxGeometry(piece.w, piece.h, piece.d)
+        ? piece.round > 1e-4
+          ? new RoundedBoxGeometry(piece.w, piece.h, piece.d, 3, piece.round)
+          : new THREE.BoxGeometry(piece.w, piece.h, piece.d)
         : piece.kind === 'sphere'
           ? new THREE.SphereGeometry(1, 28, 18).scale(piece.r, piece.h / 2, piece.r)
           : new THREE.CylinderGeometry(piece.r2, piece.r, piece.h, 24);

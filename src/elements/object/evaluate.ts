@@ -10,7 +10,7 @@ import type { Expr, HandleDef, MeshData, ObjectDefinition, ObjectInstance, Param
 
 /** A piece in the world: a box (its centre, size and turn) or an upright cylinder (its base's centre). */
 export type Piece =
-  | { readonly kind: 'box'; readonly cx: number; readonly cy: number; readonly z: number; readonly w: number; readonly d: number; readonly h: number; readonly angle: number; readonly material: Material }
+  | { readonly kind: 'box'; readonly cx: number; readonly cy: number; readonly z: number; readonly w: number; readonly d: number; readonly h: number; readonly angle: number; readonly material: Material; /** Its edges' radius, 0 square; never more than half its least side. */ readonly round: number }
   | { readonly kind: 'cylinder'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly r2: number; readonly h: number; readonly material: Material }
   /** A rounded mass (an ellipsoid) on its base's centre: r across, h up. */
   | { readonly kind: 'sphere'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly h: number; readonly material: Material }
@@ -180,7 +180,8 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         // A box of no size is nothing to draw (a door of a cabinet too narrow for one): left out quietly.
         if (w <= 1e-6 || d <= 1e-6 || h <= 1e-6) continue;
         const centre = apply(frame, { x: ox + w / 2, y: oy + d / 2, z: oz });
-        pieces.push({ kind: 'box', cx: centre.x, cy: centre.y, z: centre.z, w, d, h, angle: frame.angle, material: materialOf(part) });
+        const round = part.round === undefined ? 0 : (num(part.round, at, `${label} edge radius`) ?? 0);
+        pieces.push({ kind: 'box', cx: centre.x, cy: centre.y, z: centre.z, w, d, h, angle: frame.angle, material: materialOf(part), round: Math.max(0, Math.min(round, Math.min(w, d, h) / 2 - 1e-4)) });
       } else if (part.kind === 'cylinder') {
         const r = num(part.r, at, `${label} radius`);
         const h = num(part.h, at, `${label} height`);

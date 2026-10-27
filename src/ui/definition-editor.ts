@@ -204,8 +204,18 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
               input(exprText(p.r2), (v) => (v.trim() === '' ? set({ ...draft, parts: replaceAt(draft.parts, i, withoutKey(p, 'r2') as Part) }) : upd({ r2: exprOf(v) } as Partial<Part>)), `k${i}:r2`, `${t('ed.r2')}: ${t('ed.part')} ${i + 1}`, 'ed-names'),
             )
           : null;
+      // A box's edges' radius: empty, square; another, a cushion's or an appliance's rounded ones.
+      const round =
+        p.kind === 'box'
+          ? el(
+              'label',
+              { class: 'ed-cell' },
+              el('span', {}, t('ed.round')),
+              input(exprText(p.round), (v) => (v.trim() === '' ? set({ ...draft, parts: replaceAt(draft.parts, i, withoutKey(p, 'round') as Part) }) : upd({ round: exprOf(v) } as Partial<Part>)), `k${i}:round`, `${t('ed.round')}: ${t('ed.part')} ${i + 1}`, 'ed-names'),
+            )
+          : null;
       const size =
-        p.kind === 'box' || p.kind === 'mesh' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h'))] : p.kind === 'cylinder' ? [ex('r', t('ed.r')), top!, ex('h', t('ed.h'))] : p.kind === 'sphere' ? [ex('r', t('ed.r')), ex('h', t('ed.h'))] : [ex('angle', t('ed.angle'))];
+        p.kind === 'box' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h')), round!] : p.kind === 'mesh' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h'))] : p.kind === 'cylinder' ? [ex('r', t('ed.r')), top!, ex('h', t('ed.h'))] : p.kind === 'sphere' ? [ex('r', t('ed.r')), ex('h', t('ed.h'))] : [ex('angle', t('ed.angle'))];
       const rep = p.repeat;
       const repIn = (key: 'count' | 'dx' | 'dy' | 'dz', label: string) =>
         el(

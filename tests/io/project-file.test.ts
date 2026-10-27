@@ -172,4 +172,19 @@ describe('version 5', () => {
       { kind: 'droppedGuides', count: 1 },
     ]);
   });
+
+  it("a version 45 file's library sofa, as it came, gets the rounded edges; one changed by hand is kept", () => {
+    const doc = newDocument();
+    const sofa = doc.definitions.find((d) => d.id === 'def_sofa')!;
+    const bed = doc.definitions.find((d) => d.id === 'def_bed')!;
+    const square = (d: typeof sofa) => ({ ...d, parts: d.parts.map((p) => (p.kind === 'box' ? (({ round: _, ...rest }) => rest)(p) : p)) });
+    expect(sofa.parts.some((p) => p.kind === 'box' && p.round !== undefined)).toBe(true);
+    const changedBed = { ...square(bed), name: { pt: 'Minha cama', en: 'My bed' } };
+    const old = { ...doc, version: 45, definitions: doc.definitions.map((d) => (d.id === sofa.id ? square(d) : d.id === bed.id ? changedBed : d)) };
+    const r = readProject(JSON.stringify(old));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.doc.definitions.find((d) => d.id === sofa.id)).toEqual(sofa);
+    expect(r.doc.definitions.find((d) => d.id === bed.id)).toEqual(changedBed);
+  });
 });
