@@ -266,7 +266,8 @@ export const OVEN_TOWER: ObjectDefinition = {
   handles: boxHandles('altura'),
   types: [
     { id: 'white', name: w('Branca, inox', 'White, stainless'), values: {} },
-    { id: 'black', name: w('Preta', 'Black'), values: { matCorpo: 'lacquerBlack', matAparelho: 'plasticBlack' } },
+    { id: 'black', name: w('Preta, inox', 'Black, stainless'), values: { matCorpo: 'lacquerBlack' } },
+    { id: 'oak', name: w('Carvalho, aparelhos pretos', 'Oak, black appliances'), values: { matCorpo: 'oak', matAparelho: 'blackSteel' } },
   ],
 };
 

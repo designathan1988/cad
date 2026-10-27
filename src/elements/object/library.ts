@@ -81,6 +81,8 @@ export const BOOKCASE: ObjectDefinition = {
     len('vao', 'Vão entre prateleiras', 'Shelf spacing', 0.35, 0.18, 0.6, BUILD),
     { name: 'fundo', label: { pt: 'Com fundo', en: 'With back' }, kind: 'bool', default: 1, group: { pt: 'Construção', en: 'Construction' } },
     { name: 'prateleiras', label: { pt: 'Prateleiras', en: 'Shelves' }, kind: 'integer', default: 0, formula: 'max(0, floor((altura - 2 * espessura) / vao) - 1)', group: { pt: 'Construção', en: 'Construction' } },
+    { name: 'livros', label: { pt: 'Com livros', en: 'With books' }, kind: 'bool', default: 1, group: { pt: 'Construção', en: 'Construction' } },
+    { name: 'porNivel', label: { pt: 'Livros por prateleira', en: 'Books a shelf' }, kind: 'integer', default: 0, formula: 'floor((largura - 2 * espessura) * 0.72 / 0.032)', group: { pt: 'Construção', en: 'Construction' } },
     mat('matChapa', 'Chapas', 'Boards', 'mdfWhite'),
   ],
   parts: [
@@ -100,6 +102,14 @@ export const BOOKCASE: ObjectDefinition = {
       h: 'espessura',
       material: 'matChapa',
     },
+    // Books on every level, of varied heights and depths, from the left; a gap left of each row's end, a few leaning.
+    { kind: 'box', name: { pt: 'Livro', en: 'Book' }, when: 'livros && i % 4 == 0', repeat: { count: 'porNivel * (prateleiras + 1)' }, x: '-largura/2 + espessura + 0.01 + (i % porNivel) * 0.032', y: '-profundidade/2 + 0.02 + ((i * 3) % 4) * 0.008', z: 'espessura + floor(i / porNivel) * ((altura - 2 * espessura - prateleiras * espessura) / (prateleiras + 1) + espessura)', w: 0.028, d: 'min(profundidade - 0.05, 0.16 + ((i * 7) % 3) * 0.03)', h: 'min((altura - 2 * espessura - prateleiras * espessura) / (prateleiras + 1) - 0.03, 0.2 + ((i * 5) % 4) * 0.025)', material: 'lacquerTerracotta', round: 0.002 },
+    // Books on every level, of varied heights and depths, from the left; a gap left of each row's end, a few leaning.
+    { kind: 'box', name: { pt: 'Livro', en: 'Book' }, when: 'livros && i % 4 == 1', repeat: { count: 'porNivel * (prateleiras + 1)' }, x: '-largura/2 + espessura + 0.01 + (i % porNivel) * 0.032', y: '-profundidade/2 + 0.02 + ((i * 3) % 4) * 0.008', z: 'espessura + floor(i / porNivel) * ((altura - 2 * espessura - prateleiras * espessura) / (prateleiras + 1) + espessura)', w: 0.028, d: 'min(profundidade - 0.05, 0.16 + ((i * 7) % 3) * 0.03)', h: 'min((altura - 2 * espessura - prateleiras * espessura) / (prateleiras + 1) - 0.03, 0.2 + ((i * 5) % 4) * 0.025)', material: 'lacquerSage', round: 0.002 },
+    // Books on every level, of varied heights and depths, from the left; a gap left of each row's end, a few leaning.
+    { kind: 'box', name: { pt: 'Livro', en: 'Book' }, when: 'livros && i % 4 == 2', repeat: { count: 'porNivel * (prateleiras + 1)' }, x: '-largura/2 + espessura + 0.01 + (i % porNivel) * 0.032', y: '-profundidade/2 + 0.02 + ((i * 3) % 4) * 0.008', z: 'espessura + floor(i / porNivel) * ((altura - 2 * espessura - prateleiras * espessura) / (prateleiras + 1) + espessura)', w: 0.028, d: 'min(profundidade - 0.05, 0.16 + ((i * 7) % 3) * 0.03)', h: 'min((altura - 2 * espessura - prateleiras * espessura) / (prateleiras + 1) - 0.03, 0.2 + ((i * 5) % 4) * 0.025)', material: 'linen', round: 0.002 },
+    // Books on every level, of varied heights and depths, from the left; a gap left of each row's end, a few leaning.
+    { kind: 'box', name: { pt: 'Livro', en: 'Book' }, when: 'livros && i % 4 == 3', repeat: { count: 'porNivel * (prateleiras + 1)' }, x: '-largura/2 + espessura + 0.01 + (i % porNivel) * 0.032', y: '-profundidade/2 + 0.02 + ((i * 3) % 4) * 0.008', z: 'espessura + floor(i / porNivel) * ((altura - 2 * espessura - prateleiras * espessura) / (prateleiras + 1) + espessura)', w: 0.028, d: 'min(profundidade - 0.05, 0.16 + ((i * 7) % 3) * 0.03)', h: 'min((altura - 2 * espessura - prateleiras * espessura) / (prateleiras + 1) - 0.03, 0.2 + ((i * 5) % 4) * 0.025)', material: 'velvet', round: 0.002 },
   ],
   handles: [
     { param: 'largura', axis: 'x', at: ['largura/2', 0, 'altura'], shift: 0.5 },

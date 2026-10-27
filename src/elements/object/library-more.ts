@@ -302,15 +302,24 @@ export const FRIDGE: ObjectDefinition = {
     mat('matMetal', 'Puxadores', 'Handles', 'metal'),
   ],
   parts: [
-    { kind: 'box', name: { pt: 'Corpo', en: 'Body' }, x: '-largura/2', y: '-profundidade/2 + 0.05', z: 0, w: 'largura', d: 'profundidade - 0.05', h: 'altura', material: 'matCorpo', round: 0.02 },
-    { kind: 'box', name: { pt: 'Porta de baixo', en: 'Lower door' }, x: '-largura/2', y: '-profundidade/2', z: 0.05, w: 'largura', d: 0.045, h: 'altura - congelador - 0.06', material: 'matCorpo', round: 0.012 },
-    { kind: 'box', name: { pt: 'Porta do congelador', en: 'Freezer door' }, x: '-largura/2', y: '-profundidade/2', z: 'altura - congelador', w: 'largura', d: 0.045, h: 'congelador - 0.01', material: 'matCorpo', round: 0.012 },
-    { kind: 'box', name: { pt: 'Puxador', en: 'Handle' }, repeat: { count: 2 }, x: 'largura/2 - 0.06', y: '-profundidade/2 - 0.03', z: 'if(i == 0, 0.5, altura - congelador + 0.1)', w: 0.02, d: 0.03, h: 'if(i == 0, 0.6, 0.3)', material: 'matMetal' },
+    { kind: 'box', name: { pt: 'Corpo', en: 'Body' }, x: '-largura/2', y: '-profundidade/2 + 0.05', z: 0.04, w: 'largura', d: 'profundidade - 0.05', h: 'altura - 0.04', material: 'matCorpo', round: 0.02 },
+    // The plinth with its vent grille and its feet.
+    { kind: 'box', name: { pt: 'Rodapé', en: 'Plinth' }, x: '-largura/2 + 0.02', y: '-profundidade/2 + 0.05', z: 0, w: 'largura - 0.04', d: 0.03, h: 0.1, material: 'plasticBlack' },
+    { kind: 'box', name: { pt: 'Grelha', en: 'Grille' }, repeat: { count: 'floor((largura - 0.1) / 0.02)' }, x: '-largura/2 + 0.05 + i * 0.02', y: '-profundidade/2 + 0.045', z: 0.02, w: 0.008, d: 0.006, h: 0.06, material: 'graniteBlack' },
+    // The doors, a gap between them; the freezer's above.
+    { kind: 'box', name: { pt: 'Porta de baixo', en: 'Lower door' }, x: '-largura/2', y: '-profundidade/2', z: 0.1, w: 'largura', d: 0.05, h: 'altura - congelador - 0.11', material: 'matCorpo', round: 0.014 },
+    { kind: 'box', name: { pt: 'Porta do congelador', en: 'Freezer door' }, x: '-largura/2', y: '-profundidade/2', z: 'altura - congelador', w: 'largura', d: 0.05, h: 'congelador', material: 'matCorpo', round: 0.014 },
+    // A water dispenser in the lower door.
+    { kind: 'box', name: { pt: 'Dispenser', en: 'Dispenser' }, when: 'largura >= 0.75', x: '-largura/4 - 0.09', y: '-profundidade/2 - 0.004', z: 'altura - congelador - 0.45', w: 0.18, d: 0.006, h: 0.26, material: 'plasticBlack', round: 0.004 },
+    // Bar handles on their stand-offs, at the hinge's far side.
+    { kind: 'cylinder', name: { pt: 'Puxador', en: 'Handle' }, repeat: { count: 2 }, x: 'largura/2 - 0.06', y: '-profundidade/2 - 0.04', z: 'if(i == 0, altura - congelador - 0.7, altura - congelador + 0.06)', r: 0.011, h: 'if(i == 0, 0.6, min(0.3, congelador - 0.12))', material: 'matMetal' },
+    { kind: 'box', name: { pt: 'Suporte do puxador', en: 'Handle stand-off' }, repeat: { count: 4 }, x: 'largura/2 - 0.067', y: '-profundidade/2 - 0.04', z: 'if(i < 2, altura - congelador - 0.7 + (i % 2) * 0.57, altura - congelador + 0.06 + (i % 2) * (min(0.3, congelador - 0.12) - 0.03))', w: 0.014, d: 0.04, h: 0.03, material: 'matMetal' },
   ],
   handles: boxHandles('altura'),
   types: [
     { id: 'duplex', name: { pt: 'Duplex 70', en: 'Two doors 70' }, values: {} },
     { id: 'big', name: { pt: 'Duplex 90', en: 'Two doors 90' }, values: { largura: 0.9, altura: 1.9 } },
+    { id: 'steel', name: { pt: 'Inox 80, com dispenser', en: 'Stainless 80, dispenser' }, values: { largura: 0.8, altura: 1.9, matCorpo: 'stainless', matMetal: 'blackSteel' } },
   ],
 };
 
@@ -394,34 +403,25 @@ export const TREE: ObjectDefinition = {
     mat('matCopa', 'Copa', 'Crown', 'foliage'),
     mat('matTronco', 'Tronco', 'Trunk', 'bark'),
   ],
-  // A trunk narrowing up into the crown, and the crown as masses of leaves: a core, a ring of six lower
-  // ones round it, three higher, a top; each rounded, as foliage reads from afar.
+  // A trunk narrowing up, its main branches leaning out into the crown, and the crown as many leaf
+  // clusters over a rounded shell, each its own size and place (golden-angle spiral, so none line up),
+  // with a darker inner mass so it does not read hollow.
   parts: [
-    { kind: 'cylinder', name: { pt: 'Tronco', en: 'Trunk' }, x: 0, y: 0, z: 0, r: 'tronco / 2', r2: 'tronco / 2 * 0.55', h: 'fuste + (altura - fuste) * 0.45', material: 'matTronco' },
-    { kind: 'sphere', name: { pt: 'Copa', en: 'Crown' }, x: 0, y: 0, z: 'fuste + (altura - fuste) * 0.1', r: 'largura * 0.36', h: '(altura - fuste) * 0.72', material: 'matCopa' },
+    { kind: 'cylinder', name: { pt: 'Tronco', en: 'Trunk' }, x: 0, y: 0, z: 0, r: 'tronco / 2', r2: 'tronco / 2 * 0.6', h: 'fuste + (altura - fuste) * 0.25', material: 'matTronco' },
+    { kind: 'cylinder', name: { pt: 'Galho', en: 'Branch' }, repeat: { count: 4 }, x: 0, y: 0, z: 'fuste * 0.85 + i * (altura - fuste) * 0.06', r: 'tronco / 2 * 0.45', r2: 'tronco / 2 * 0.15', h: '(altura - fuste) * 0.45', tilt: 35, turn: 'i * 97', material: 'matTronco' },
+    { kind: 'sphere', name: { pt: 'Copa (miolo)', en: 'Crown (core)' }, x: 0, y: 0, z: 'fuste + (altura - fuste) * 0.12', r: 'largura * 0.38', h: '(altura - fuste) * 0.76', material: 'matCopa' },
     {
       kind: 'sphere',
-      name: { pt: 'Copa (lados)', en: 'Crown (sides)' },
-      repeat: { count: 6 },
-      x: 'largura * 0.25 * cos(i * 60 + 20)',
-      y: 'largura * 0.25 * sin(i * 60 + 20)',
-      z: 'fuste + (altura - fuste) * (0.12 + 0.07 * (i % 2))',
-      r: 'largura * 0.25',
-      h: '(altura - fuste) * 0.45',
+      name: { pt: 'Copa (tufos)', en: 'Crown (clusters)' },
+      repeat: { count: 22 },
+      // On a spheroid round the crown's centre, by the golden angle; heights from low to the top.
+      x: 'largura * 0.36 * sqrt(1 - (1 - 2 * (i + 0.5) / 22) * (1 - 2 * (i + 0.5) / 22)) * cos(i * 137.5)',
+      y: 'largura * 0.36 * sqrt(1 - (1 - 2 * (i + 0.5) / 22) * (1 - 2 * (i + 0.5) / 22)) * sin(i * 137.5)',
+      z: 'fuste + (altura - fuste) * (0.5 - 0.36 * (1 - 2 * (i + 0.5) / 22)) - (altura - fuste) * (0.12 + 0.04 * ((i * 7) % 3))',
+      r: 'largura * (0.15 + 0.03 * ((i * 5) % 3))',
+      h: '(altura - fuste) * (0.24 + 0.05 * ((i * 3) % 3))',
       material: 'matCopa',
     },
-    {
-      kind: 'sphere',
-      name: { pt: 'Copa (alto)', en: 'Crown (upper)' },
-      repeat: { count: 3 },
-      x: 'largura * 0.15 * cos(i * 120 + 50)',
-      y: 'largura * 0.15 * sin(i * 120 + 50)',
-      z: 'fuste + (altura - fuste) * 0.4',
-      r: 'largura * 0.24',
-      h: '(altura - fuste) * 0.42',
-      material: 'matCopa',
-    },
-    { kind: 'sphere', name: { pt: 'Copa (topo)', en: 'Crown (top)' }, x: 0, y: 0, z: 'altura - (altura - fuste) * 0.4', r: 'largura * 0.22', h: '(altura - fuste) * 0.4', material: 'matCopa' },
   ],
   handles: [
     { param: 'largura', axis: 'x', at: ['largura/2', 0, 'fuste + (altura - fuste) * 0.45'], shift: 0 },

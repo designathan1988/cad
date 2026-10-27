@@ -79,7 +79,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 65;
+  readonly version: 66;
   readonly name: string;
   /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
   readonly units: Units;
@@ -186,7 +186,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 65,
+    version: 66,
     name: '',
     units: DEFAULT_UNITS,
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],

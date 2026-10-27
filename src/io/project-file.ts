@@ -9,6 +9,7 @@ import { MORE_WALL_TYPES } from '../elements/wall/library-types';
 import { FAMILY_BATCHES } from '../elements/object/library-families';
 import { LIBRARY_SECTORS } from '../elements/object/library-sectors';
 import { BEFORE_65 } from '../elements/object/library-before65';
+import { BEFORE_66 } from '../elements/object/library-before66';
 import { isSite } from '../app/sun';
 import { isSheet, isViewport } from '../elements/sheet/schema';
 import { isLayerSet, isRoomOverride, isWallOverride } from '../app/layer-sets';
@@ -117,7 +118,7 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 42: tags by elements with their values (`tags`, elements/tag). Older files have none.
  * Version 43: a room's interior elevations, marks kept to a level (`levelId`, elements/section). Older marks have none: every level.
  */
-export const CURRENT_VERSION = 65;
+export const CURRENT_VERSION = 66;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -337,10 +338,14 @@ export function repairProject(raw: unknown): ReadResult {
   const sectors = fileVersion >= 60 && fileVersion <= 64 ? batched.map((d) => LIBRARY_SECTORS.find((s) => s.id === d.id) ?? d) : batched;
   // Before version 65 the cooker was a box with discs, the potted plant balls, the carved basin barely cut: one
   // stored as the library had it then is the library's now; one the user changed is kept (library-before65.ts).
-  const definitions = fileVersion < 65 ? sectors.map((d) => {
-    const was = BEFORE_65.find((b) => b.id === d.id);
-    return was && JSON.stringify(was) === JSON.stringify(d) ? (LIBRARY_NOW.find((l) => l.id === d.id) ?? d) : d;
-  }) : sectors;
+  // Version 66 the same for the bookcase (books), the fridge, the tree and the oven tower (library-before66.ts).
+  const redrawn = (list: readonly ObjectDefinition[], before: readonly ObjectDefinition[]) =>
+    list.map((d) => {
+      const was = before.find((b) => b.id === d.id);
+      return was && JSON.stringify(was) === JSON.stringify(d) ? (LIBRARY_NOW.find((l) => l.id === d.id) ?? d) : d;
+    });
+  const since65 = fileVersion < 65 ? redrawn(sectors, BEFORE_65) : sectors;
+  const definitions = fileVersion < 66 ? redrawn(since65, BEFORE_66) : since65;
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));
