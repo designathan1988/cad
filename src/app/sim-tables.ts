@@ -96,7 +96,7 @@ export function simBlock(section: SimSection, doc: Doc, g: DerivedGeometry, titl
     const rows = typesInUse(doc, g).map(({ id, exterior }) => {
       const type = doc.wallTypes.find((x) => x.id === id)!;
       const r = thermalOf(type, doc.materials, s);
-      if (r.missing.length > 0) return [typeName(doc, id), t(exterior ? 'sim.yes' : 'sim.no'), t('sim.missing', { what: r.missing.map((m) => matName(doc, m)).join(', ') }), '', '', '', '', ''];
+      if (r.missing.length > 0) return [typeName(doc, id), t(exterior ? 'sim.yes' : 'sim.no'), t('sim.missing', { what: r.missing.map((m) => matName(doc, m)).join(', ') }), '', '', '', '', '', '', ''];
       return [
         typeName(doc, id),
         t(exterior ? 'sim.yes' : 'sim.no'),
@@ -105,13 +105,15 @@ export function simBlock(section: SimSection, doc: Doc, g: DerivedGeometry, titl
         `${num(r.capacity!, 0)} kJ/m²K`,
         r.limitCT === null ? '—' : `≥ ${num(r.limitCT, 0)}`,
         num(r.absorptance, 2),
+        `${num(r.lag!, 1)} h`,
+        `${num(r.solarFactor!, 1)} %`,
         exterior ? mark(Boolean(r.okU) && r.okCT !== false) : '—',
       ];
     });
     return {
-      tables: rows.length > 0 ? [{ head: [t('sim.type'), t('sim.exterior'), 'U', t('sim.limit'), 'CT', t('sim.limit'), 'α', t('sim.status')], rows, numeric: [2, 3, 4, 5, 6] }] : [],
+      tables: rows.length > 0 ? [{ head: [t('sim.type'), t('sim.exterior'), 'U', t('sim.limit'), 'CT', t('sim.limit'), 'α', 'φ', 'FSo', t('sim.status')], rows, numeric: [2, 3, 4, 5, 6, 7, 8] }] : [],
       empty: t('sim.noWalls'),
-      premises: [t('sim.thermalPremise', { rsi: num(R_SI, 2), rse: num(R_SE, 2), zone: s.zone }), t('sim.thermalLimits'), t('sim.absorptance')],
+      premises: [t('sim.thermalPremise', { rsi: num(R_SI, 2), rse: num(R_SE, 2), zone: s.zone }), t('sim.thermalLimits'), t('sim.absorptance'), t('sim.lagPremise')],
     };
   }
   if (section === 'condensation') {

@@ -185,6 +185,8 @@ export class PlanView {
   drawing: DrawingSettings = DEFAULT_DRAWING;
   /** Graphic overrides: walls of a type filled with a colour (app/layer-sets.ts); empty when off. */
   overrides: ReadonlyMap<string, string> = new Map();
+  /** Graphic overrides of rooms: a use filled with a colour (app/layer-sets.ts); empty when off. */
+  roomOverrides: ReadonlyMap<string, string> = new Map();
   /**
    * Drawn for paper (app/print.ts), not for the screen: its size in pen units, device pixels a unit,
    * the scale printed and the paper's colours. No grid; pens, texts and hatches keep their size on paper.
@@ -372,6 +374,18 @@ export class PlanView {
     const shownLit = (id: string) => o.selected.has(id) || o.hover === id;
     // Floors (contract.ts: under) and rooms lie under the walls.
     for (const x of kinds) if (x.kind.layer === 'under') x.kind.plan(paint, x.solid, shownLit(x.id));
+    // Rooms of a use in their override colour, translucent over their floor (app/layer-sets.ts).
+    if (this.roomOverrides.size > 0)
+      for (const r of g.rooms.values()) {
+        const c = r.enclosed && r.room.use ? this.roomOverrides.get(r.room.use) : undefined;
+        if (!c) continue;
+        trace(r.outline);
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = c;
+        ctx.fill();
+        ctx.restore();
+      }
     // A simulation's map over the floors and rooms, under the walls: its cells scaled to the plan, smoothed.
     if (o.heat) {
       const h = o.heat;

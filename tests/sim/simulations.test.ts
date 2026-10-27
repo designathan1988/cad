@@ -6,7 +6,7 @@ import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 import { DEFAULT_SITE } from '../../src/app/sun';
 import { newOpening } from '../../src/elements/opening/schema';
-import { acousticOf, glaserOf, limitsFor, reverberationOf, saturation, thermalOf } from '../../src/sim/envelope';
+import { acousticOf, glaserOf, lagOf, limitsFor, reverberationOf, saturation, thermalOf } from '../../src/sim/envelope';
 import { daylightOf, exteriorWindows, hoursOf, roomSun, sunDays, sunSlots } from '../../src/sim/exposure';
 import { absorptanceOf } from '../../src/sim/physics';
 import { risksOf } from '../../src/sim/risks';
@@ -37,6 +37,16 @@ describe('the envelope', () => {
     expect([t.limitU, t.okU]).toEqual([2.5, false]);
     expect(limitsFor(2, 0.2)).toEqual({ u: 2.5, ct: 130 });
     expect(limitsFor(8, 0.2)).toEqual({ u: 3.7, ct: null });
+  });
+
+  it('thermal lag: NBR 15220-2\'s example C.1 (rendered solid brick) gives 3.3 h; one material by √(Rt·CT)', () => {
+    // Rt 0.1296, CT 220, the 2 cm render outside: CText 40, Rext 0.02/1.15, λρc 1.15·2000·1.00.
+    const phi = lagOf(0.1296, 220, { ct: 40, r: 0.02 / 1.15, lrc: 1.15 * 2000 * 1.0 });
+    expect(Math.round(phi * 10) / 10).toBe(3.3);
+    expect(lagOf(0.2 / 1.75, 460, null)).toBeCloseTo(0.7284 * Math.sqrt((0.2 / 1.75) * 460), 9);
+    const t = thermalOf(type('wt_masonry15'), doc0.materials, DEFAULT_SIM);
+    expect(t.lag).toBeGreaterThan(2);
+    expect(t.solarFactor).toBeCloseTo(4 * t.transmittance! * t.absorptance, 9);
   });
 
   it('absorptance from the colour: white none, black all', () => {

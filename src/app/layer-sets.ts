@@ -1,11 +1,13 @@
 // Layer combinations and graphic overrides (phase 9; ArchiCAD's layer combinations, Revit's filters):
 // named sets of the categories hidden, kept in the project, applied with a click; and walls of a type
-// drawn in a colour of their own in plan (walls to demolish in red), on or off. Each change one command.
+// drawn in a colour of their own in plan (walls to demolish in red), rooms of a use too (the wet areas
+// in blue), on or off. Each change one command.
 
 import type { Command } from '../core/store';
 import { isColor } from '../elements/material/schema';
 import type { Doc } from './document';
 import type { Category } from './geometry';
+import { ROOM_USES } from '../elements/room/schema';
 
 export const CATEGORIES: readonly Category[] = ['walls', 'openings', 'rooms', 'floors', 'objects', 'services', 'guides'];
 
@@ -22,6 +24,33 @@ export interface WallOverride {
   /** The plan's fill for walls of that type, #rrggbb. */
   readonly color: string;
 }
+
+/** Rooms of a use filled in plan with a colour of their own (the wet areas in blue, the bedrooms in green). */
+export interface RoomOverride {
+  readonly id: string;
+  readonly use: string;
+  /** #rrggbb, drawn translucent over the room's floor. */
+  readonly color: string;
+}
+
+export const isRoomOverride = (x: unknown): x is RoomOverride => {
+  const o = x as Partial<RoomOverride> | null;
+  return !!o && typeof o === 'object' && typeof o.id === 'string' && typeof o.use === 'string' && (ROOM_USES as readonly string[]).includes(o.use) && isColor(o.color);
+};
+
+/** The room overrides as a whole (none left: none kept). */
+export const setRoomOverrides = (overrides: readonly RoomOverride[]): Command<Doc> => ({
+  label: 'cmd.setOverrides',
+  apply: (doc) => {
+    if (!overrides.every(isRoomOverride) || JSON.stringify(doc.roomOverrides ?? []) === JSON.stringify(overrides)) return doc;
+    if (overrides.length > 0) return { ...doc, roomOverrides: overrides };
+    const { roomOverrides: _gone, ...without } = doc;
+    return without;
+  },
+});
+
+/** The colour rooms of each use are filled with in plan, when the overrides are on. */
+export const roomOverrideColours = (doc: Pick<Doc, 'roomOverrides'>): ReadonlyMap<string, string> => new Map((doc.roomOverrides ?? []).map((o) => [o.use, o.color]));
 
 export const isCategoryList = (x: unknown): x is Category[] => Array.isArray(x) && x.every((c) => (CATEGORIES as readonly unknown[]).includes(c));
 

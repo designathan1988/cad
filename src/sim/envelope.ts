@@ -31,6 +31,10 @@ export interface Thermal {
   readonly capacity: number | null;
   /** The exterior face's solar absorptance, estimated from its colour. */
   readonly absorptance: number;
+  /** h: the thermal lag (NBR 15220-2 section 7); null when a layer has no physics. */
+  readonly lag: number | null;
+  /** %: the opaque solar factor, 4·U·α (NBR 15220-2 section 8, Rse 0.04). */
+  readonly solarFactor: number | null;
   /** Materials with no physics: the results wait for them. */
   readonly missing: readonly string[];
   /** NBR 15575-4's simplified limits for the zone (to confirm in the edition in force). */
@@ -38,6 +42,20 @@ export interface Thermal {
   readonly limitCT: number | null;
   readonly okU: boolean | null;
   readonly okCT: boolean | null;
+}
+
+/**
+ * Thermal lag (h), NBR 15220-2 section 7: one material through, φ = 0.7284·√(Rt·CT); layered,
+ * φ = 1.382·Rt·√(B1 + B2), B0 = CT − CText, B1 = 0.226·B0/Rt, B2 = 0.205·((λρc)ext/Rt)·(Rext − (Rt − Rext)/10),
+ * B2 none when negative. Rt surface to surface (m²K/W); capacities kJ/(m²K); the exterior layer's
+ * λ (W/mK), ρ (kg/m³), c (kJ/kgK) and resistance. Checked against the norm's example C.1 (3.3 h).
+ */
+export function lagOf(rt: number, ct: number, exterior: { ct: number; r: number; lrc: number } | null): number {
+  if (exterior === null) return 0.7284 * Math.sqrt(rt * ct);
+  const b0 = ct - exterior.ct;
+  const b1 = (0.226 * b0) / rt;
+  const b2 = Math.max(0, 0.205 * (exterior.lrc / rt) * (exterior.r - (rt - exterior.r) / 10));
+  return 1.382 * rt * Math.sqrt(Math.max(0, b1 + b2));
 }
 
 /** NBR 15575-4 (2013), simplified procedure, external walls: U by zone and absorptance; CT ≥ 130 but in zone 8. */
@@ -52,16 +70,24 @@ export function thermalOf(type: WallType, materials: readonly Material[], s: Sim
   const outer = materialIn(materials, type.layers[0]?.materialId ?? '');
   const absorptance = absorptanceOf(outer.color);
   const limits = limitsFor(s.zone, absorptance);
-  if (missing.length > 0) return { typeId: type.id, resistance: null, transmittance: null, capacity: null, absorptance, missing, limitU: limits.u, limitCT: limits.ct, okU: null, okCT: null };
-  const resistance = R_SI + R_SE + layers.reduce((t, l) => t + l.thickness / l.physics!.conductivity, 0);
+  if (missing.length > 0) return { typeId: type.id, resistance: null, transmittance: null, capacity: null, absorptance, lag: null, solarFactor: null, missing, limitU: limits.u, limitCT: limits.ct, okU: null, okCT: null };
+  const surfaces = layers.reduce((t, l) => t + l.thickness / l.physics!.conductivity, 0);
+  const resistance = R_SI + R_SE + surfaces;
   const capacity = layers.reduce((t, l) => t + l.thickness * l.physics!.specificHeat * l.physics!.density, 0);
   const transmittance = 1 / resistance;
+  // One material through it, or layers: the exterior one (the type's first) its own terms.
+  const one = new Set(layers.map((l) => l.materialId)).size === 1;
+  const ext = layers[0]!;
+  const e = ext.physics!;
+  const lag = lagOf(surfaces, capacity, one ? null : { ct: ext.thickness * e.specificHeat * e.density, r: ext.thickness / e.conductivity, lrc: e.conductivity * e.density * e.specificHeat });
   return {
     typeId: type.id,
     resistance,
     transmittance,
     capacity,
     absorptance,
+    lag,
+    solarFactor: 4 * transmittance * absorptance,
     missing,
     limitU: limits.u,
     limitCT: limits.ct,

@@ -2,7 +2,7 @@
 // always derived from it.
 
 import type { Site } from './sun';
-import type { LayerSet, WallOverride } from './layer-sets';
+import type { LayerSet, RoomOverride, WallOverride } from './layer-sets';
 import type { Separator } from '../elements/separator/schema';
 import type { Cloud } from '../elements/cloud/schema';
 import type { Curtain } from '../elements/curtain/schema';
@@ -71,7 +71,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 39;
+  readonly version: 40;
   readonly name: string;
   /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
   readonly units: Units;
@@ -150,6 +150,8 @@ export interface Doc {
   readonly layerSets?: readonly LayerSet[];
   /** Walls of a type filled in plan with a colour of their own (app/layer-sets.ts). */
   readonly overrides?: readonly WallOverride[];
+  /** Rooms of a use filled in plan with a colour of their own (app/layer-sets.ts). */
+  readonly roomOverrides?: readonly RoomOverride[];
   /** Where it is and the sun shown (app/sun.ts); the view's fixed light when not set. */
   readonly site?: Site;
   /** Sheets: papers with a title block and views placed on them (elements/sheet, app/sheets.ts). */
@@ -172,7 +174,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 39,
+    version: 40,
     name: '',
     units: DEFAULT_UNITS,
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],

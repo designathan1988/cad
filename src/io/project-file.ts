@@ -5,7 +5,7 @@
 
 import { isSite } from '../app/sun';
 import { isSheet, isViewport } from '../elements/sheet/schema';
-import { isLayerSet, isWallOverride } from '../app/layer-sets';
+import { isLayerSet, isRoomOverride, isWallOverride } from '../app/layer-sets';
 import { isVariableName } from '../core/measure';
 import { isOpeningStyle, operationsOf } from '../elements/opening/style';
 import { LIBRARY } from '../elements/object/library';
@@ -87,8 +87,9 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 37: building services (`mepPoints`, `mepRuns`, `systems`, elements/mep). Older files have none.
  * Version 38: the simulations' settings (`simulation`, sim/settings.ts) and a material's own physics. Older files have neither.
  * Version 39: revision clouds (`clouds`, elements/cloud). Older files have none.
+ * Version 40: rooms of a use in a colour of their own (`roomOverrides`, app/layer-sets.ts). Older files have none.
  */
-export const CURRENT_VERSION = 39;
+export const CURRENT_VERSION = 40;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -292,6 +293,7 @@ export function repairProject(raw: unknown): ReadResult {
     // Its layer combinations and graphic overrides, the bad ones left out.
     ...(Array.isArray(raw.layerSets) && raw.layerSets.some(isLayerSet) ? { layerSets: (raw.layerSets as unknown[]).filter(isLayerSet) } : {}),
     ...(Array.isArray(raw.overrides) && raw.overrides.some(isWallOverride) ? { overrides: (raw.overrides as unknown[]).filter(isWallOverride) } : {}),
+    ...(Array.isArray(raw.roomOverrides) && raw.roomOverrides.some(isRoomOverride) ? { roomOverrides: (raw.roomOverrides as unknown[]).filter(isRoomOverride) } : {}),
     // Its site and sun, when it set one that is one.
     ...(isSite(raw.site) ? { site: raw.site } : {}),
     ...(isSimSettings(raw.simulation) ? { simulation: raw.simulation } : {}),

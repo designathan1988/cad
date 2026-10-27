@@ -1,13 +1,14 @@
 // Graphic overrides (phase 9): walls of a type filled in plan with a colour of their own (walls to
-// demolish in red, new ones in green), shown or not as the view says. A row a type: its type, its
-// colour, its remove button; one command each change (app/layer-sets.ts).
+// demolish in red, new ones in green), rooms of a use too, shown or not as the view says. A row a type
+// or a use: it, its colour, its remove button; one command each change (app/layer-sets.ts).
 
 import type { App } from '../app/app';
-import { setOverrides, type WallOverride } from '../app/layer-sets';
+import { type RoomOverride, setOverrides, setRoomOverrides, type WallOverride } from '../app/layer-sets';
+import { ROOM_USES } from '../elements/room/schema';
 import { newId } from '../core/id';
 import { el, select } from './controls';
 import { openProjectDialog } from './dialog';
-import { name, t } from './i18n';
+import { type MessageKey, name, t } from './i18n';
 import { icon } from './icons';
 
 export function showOverrides(app: App): void {
@@ -42,6 +43,36 @@ export function showOverrides(app: App): void {
     const free = doc.wallTypes.find((w) => !list.some((o) => o.wallTypeId === w.id)) ?? doc.wallTypes[0];
     add.toggleAttribute('disabled', !free);
     add.addEventListener('click', () => free && set([...list, { id: newId('override'), wallTypeId: free.id, color: '#d64545' }]));
+    // Rooms of a use: a row a use, its colour, its remove button.
+    const rooms = doc.roomOverrides ?? [];
+    const setRooms = (next: readonly RoomOverride[]) => app.store.dispatch(setRoomOverrides(next));
+    const roomRows = rooms.map((o, i) => {
+      const use = select(
+        ROOM_USES.map((u) => ({ value: u, label: t(`use.${u}` as MessageKey) })),
+        o.use,
+        (v) => setRooms(rooms.map((x, k) => (k === i ? { ...x, use: v } : x))),
+      );
+      const sel = use.querySelector('select')!;
+      sel.setAttribute('aria-label', t('ovr.useN', { n: i + 1 }));
+      sel.dataset.focus = `use:${o.id}`;
+      const colour = el('input', { type: 'color', class: 'mat-color', 'aria-label': t('ovr.roomColourN', { n: i + 1 }) });
+      colour.value = o.color;
+      colour.dataset.focus = `rcolour:${o.id}`;
+      colour.addEventListener('change', () => setRooms(rooms.map((x, k) => (k === i ? { ...x, color: colour.value } : x))));
+      const del = el('button', { type: 'button', class: 'icon-btn', 'aria-label': t('ovr.roomRemoveN', { n: i + 1 }), title: t('ovr.roomRemoveN', { n: i + 1 }) });
+      del.innerHTML = icon('trash', 16);
+      del.dataset.focus = `rdel:${o.id}`;
+      del.addEventListener('click', () => setRooms(rooms.filter((_, k) => k !== i)));
+      return el('div', { class: 'vars-row' }, use, colour, del);
+    });
+    const addRoom = el('button', { type: 'button', class: 'icon-btn text-btn vars-add' });
+    addRoom.innerHTML = icon('plus', 16);
+    addRoom.append(t('ovr.addRoom'));
+    addRoom.dataset.focus = 'addRoom';
+    // The first use without one, in blue (the wet areas are the usual first).
+    const freeUse = ROOM_USES.find((u) => !rooms.some((o) => o.use === u) && u === 'bathroom') ?? ROOM_USES.find((u) => !rooms.some((o) => o.use === u));
+    addRoom.toggleAttribute('disabled', !freeUse);
+    addRoom.addEventListener('click', () => freeUse && setRooms([...rooms, { id: newId('override'), use: freeUse, color: '#3b82f6' }]));
     const on = el('button', { type: 'button', class: 'icon-btn text-btn', 'aria-pressed': String(app.ui.overridesOn) }, t(app.ui.overridesOn ? 'ovr.shown' : 'ovr.hiddenNow'));
     on.dataset.focus = 'on';
     on.addEventListener('click', () => {
@@ -56,7 +87,18 @@ export function showOverrides(app: App): void {
       'div',
       { class: 'dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('ovr.title') },
       el('h2', {}, t('ovr.title')),
-      el('div', { class: 'units-body' }, ...(rows.length ? rows : [el('p', { class: 'mat-note' }, t('ovr.empty'))]), add, el('p', { class: 'mat-note' }, t('ovr.note'))),
+      el(
+        'div',
+        { class: 'units-body' },
+        el('h3', {}, t('ovr.walls')),
+        ...(rows.length ? rows : [el('p', { class: 'mat-note' }, t('ovr.empty'))]),
+        add,
+        el('p', { class: 'mat-note' }, t('ovr.note')),
+        el('h3', {}, t('ovr.rooms')),
+        ...(roomRows.length ? roomRows : [el('p', { class: 'mat-note' }, t('ovr.roomsEmpty'))]),
+        addRoom,
+        el('p', { class: 'mat-note' }, t('ovr.roomsNote')),
+      ),
       el('div', { class: 'actions' }, on, el('span', { class: 'spacer' }), done),
     );
   });

@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/app/document';
-import { deleteLayerSet, isLayerSet, nextName, overrideColours, saveLayerSet, setOverrides } from '../../src/app/layer-sets';
+import { deleteLayerSet, isLayerSet, isRoomOverride, nextName, overrideColours, roomOverrideColours, saveLayerSet, setOverrides, setRoomOverrides } from '../../src/app/layer-sets';
 import { isSavedView } from '../../src/app/saved-views';
 import { readProject, writeProject } from '../../src/io/project-file';
 
@@ -58,5 +58,17 @@ describe('in the file', () => {
     // A view saved before these has neither, and is still one.
     const { hidden: _h, overrides: _o, ...old } = view;
     expect(isSavedView(old)).toBe(true);
+  });
+});
+
+describe('room overrides', () => {
+  it('rooms of a use in a colour: set, kept in the file, a use that is not one refused; none left, none kept', () => {
+    const doc = setRoomOverrides([{ id: 'override_a', use: 'bathroom', color: '#3b82f6' }]).apply(newDocument());
+    expect(roomOverrideColours(doc).get('bathroom')).toBe('#3b82f6');
+    const r = readProject(writeProject(doc));
+    expect(r.ok && r.doc.roomOverrides).toEqual([{ id: 'override_a', use: 'bathroom', color: '#3b82f6' }]);
+    expect(isRoomOverride({ id: 'x', use: 'castle', color: '#000000' })).toBe(false);
+    expect(setRoomOverrides([{ id: 'x', use: 'castle', color: '#000000' }]).apply(doc)).toBe(doc);
+    expect('roomOverrides' in setRoomOverrides([]).apply(doc)).toBe(false);
   });
 });

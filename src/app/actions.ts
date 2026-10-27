@@ -252,7 +252,7 @@ export function appActions(app: App, open: Openers): Action[] {
     })(),
     make('settings.variables', 'vars.open', settings, open.variables, { keywords: 'variáveis variables pé-direito módulo module medida measure nome name' }),
     make('view.overrides', 'ovr.open', views, () => app.openOverrides(), { keywords: 'substituição override filtro filter cor color demolir demolish' }),
-    make('view.overridesToggle', app.ui.overridesOn ? 'ovr.turnOff' : 'ovr.turnOn', views, () => app.toggleOverrides(), { enabled: (doc.overrides ?? []).length > 0 }),
+    make('view.overridesToggle', app.ui.overridesOn ? 'ovr.turnOff' : 'ovr.turnOn', views, () => app.toggleOverrides(), { enabled: (doc.overrides ?? []).length + (doc.roomOverrides ?? []).length > 0 }),
     make('layers.save', 'layers.save', views, () => app.saveLayerSet(), { keywords: 'camadas layers combinação combination salvar save' }),
     ...(doc.layerSets ?? []).map((s) => ({ ...make(`layers.apply.${s.id}`, 'layers.apply', views, () => app.applyLayerSet(s.id)), label: t('layers.apply', { name: s.name }) })),
     make('settings.keys', 'keys.open', settings, open.keys, { keywords: 'atalhos shortcuts teclado keyboard teclas keys remapear remap desligar' }),
