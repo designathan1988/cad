@@ -34,6 +34,10 @@ export interface RibbonPanel {
 export interface RibbonTab {
   readonly id: string;
   readonly title: MessageKey;
+  /** Its name as written, for one named by what it is for (Modify | Wall). */
+  readonly text?: string;
+  /** A contextual tab (Revit's Modify | …): shown for the selection, coloured apart. */
+  readonly context?: boolean;
   readonly panels: readonly RibbonPanel[];
 }
 
@@ -161,7 +165,7 @@ export function renderRibbonTab(box: HTMLElement, tab: RibbonTab, actions: Reado
 /** The tabs' buttons: the File menu first, then one per tab, the chosen one pressed. */
 export function renderRibbonTabs(box: HTMLElement, tabs: readonly RibbonTab[], chosen: string, onChoose: (id: string) => void, file: HTMLButtonElement): void {
   const buttons = tabs.map((tab) => {
-    const b = el('button', { type: 'button', role: 'tab', class: 'rb-tab', 'aria-selected': String(tab.id === chosen) }, t(tab.title));
+    const b = el('button', { type: 'button', role: 'tab', class: tab.context ? 'rb-tab rb-tab-context' : 'rb-tab', 'aria-selected': String(tab.id === chosen) }, tab.text ?? t(tab.title));
     b.dataset.tab = tab.id;
     b.addEventListener('click', () => onChoose(tab.id));
     return b;

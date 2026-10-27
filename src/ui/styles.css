@@ -3021,6 +3021,15 @@ textarea.text-field {
   height: calc(var(--opt-h) - 2 * var(--sp-1));
 }
 
+/* The contextual tab (Modify | Wall): last, in the accent, as Revit marks its own apart. */
+.rb-tab-context {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+.rb-tab-context[aria-selected='true'] {
+  color: var(--accent-text);
+}
+
 /* The ribbon: panels side by side, each with its title under it; what does not fit scrolls sideways. */
 .ribbon {
   grid-row: 3;

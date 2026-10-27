@@ -2146,9 +2146,19 @@ export class App {
   /** The ribbon's tab shown, kept between visits, and what it was last drawn from (chrome.ts). */
   ribbonTab = loadPrefs().ribbonTab ?? 'home';
   ribbonKey = '';
+  /** The user left the contextual tab for another while the selection lasts (chrome.ts, renderRibbon). */
+  ribbonAway = false;
+  /** The selection the contextual tab was last shown for: a new one brings it forward again. */
+  ribbonSelected = '';
+
   chooseRibbonTab(id: string): void {
-    this.ribbonTab = id;
-    savePrefs({ ribbonTab: id });
+    // The contextual tab is the selection's, not a tab to come back to.
+    if (id === 'context') this.ribbonAway = false;
+    else {
+      this.ribbonAway = this.ui.selection.size > 0;
+      this.ribbonTab = id;
+      savePrefs({ ribbonTab: id });
+    }
     this.renderChrome();
   }
 

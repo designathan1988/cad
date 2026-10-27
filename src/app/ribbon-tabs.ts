@@ -10,6 +10,9 @@ import type { MessageKey } from '../ui/i18n';
 import type { App } from './app';
 import type { ModifyKind } from '../tools/modify-tool';
 import type { ToolId } from '../ui/shell';
+import { t } from '../ui/i18n';
+import { kindOfId } from '../elements/registry';
+import { contextEntries } from './context-menu';
 
 /** Every button with its short name (rib.s.<action>): the palette's full name stays its tooltip. */
 export function ribbonTabs(app: App): readonly RibbonTab[] {
@@ -95,10 +98,8 @@ function tabsOf(app: App): readonly RibbonTab[] {
             tool('railing', 'tool.railing', 'railing', 'S'),
           ],
         },
-        {
-          title: 'rib.p.modify',
-          items: [modify('move', 'move'), { ...modify('copy', 'copy'), short: 'rib.s.duplicate' }, modify('rotate', 'rotate'), modify('mirror', 'mirror'), modify('scale', 'scale'), modify('offset', 'offset'), tool('split', 'edit.split', 'split', 'S'), tool('corner', 'edit.corner', 'corner', 'S'), { id: 'edit.delete', icon: 'trash', size: 'S' }],
-        },
+        // The edits of a selection are on its own tab (Modify | …); these two work by clicking a wall.
+        { title: 'rib.p.geometry', items: [tool('split', 'edit.split', 'split', 'S'), tool('corner', 'edit.corner', 'corner', 'S')] },
         { title: 'rib.p.annotation', items: [tool('dimension', 'tool.dimension', 'dimension', 'L'), tool('note', 'edit.addNote', 'text', 'S'), tool('tag', 'tool.tag', 'tag', 'S'), tool('measure', 'tool.measure', 'ruler', 'S')] },
         {
           title: 'rib.p.views',
@@ -110,7 +111,6 @@ function tabsOf(app: App): readonly RibbonTab[] {
             { id: 'view.sheets', icon: 'frame', size: 'S' },
           ],
         },
-        { title: 'rib.p.visibility', items: [{ id: 'view.tempHide', icon: 'flip', size: 'S' }, { id: 'view.tempIsolate', icon: 'center', size: 'S' }, { id: 'view.tempReset', icon: 'close', size: 'S' }] },
       ],
     },
     {
@@ -246,6 +246,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
             { id: 'view.overridesToggle', icon: 'flip', size: 'S', short: 'rib.s.overridesToggle' },
             { id: 'layers.save', icon: 'plus', size: 'S', short: 'rib.s.layersSave' },
             { id: 'settings.refLines', icon: 'refCenter', size: 'S', pressed: () => ui.refLines },
+            { id: 'view.tempReset', icon: 'close', size: 'S' },
           ],
         },
         {
@@ -317,36 +318,70 @@ function tabsOf(app: App): readonly RibbonTab[] {
       title: 'rib.tab.approval',
       panels: [{ title: 'rib.p.process', items: [{ id: 'approval.open', icon: 'folder', size: 'L' }, { id: 'rules.report', icon: 'download', size: 'S' }] }],
     },
+    // Modify | <what is selected> (Revit's contextual tab): only while something is selected, last.
+    ...contextTab(app, select, tool, modify),
+  ];
+}
+
+/** The context's own actions on the ribbon (context-menu.ts): what a wall, a door, a room offers. */
+const ELEMENT_ACTIONS = new Set(['flipWall', 'editType', 'toggleOpen', 'flipHinge', 'flipSwing', 'centerOpening', 'addFloor', 'addCeiling', 'distribute', 'walkHere', 'addPoint', 'section']);
+
+/**
+ * The contextual tab, Modify | its kind ("Modificar | Parede"), while something is selected with Select:
+ * the selection's own actions first (those of the context menu, by their ids `ctx.<id>`), then the
+ * edits that apply to it: the Modify tools when they can take it, the walls' geometry with walls,
+ * aligning with two or more, the clipboard, hiding for a while, and the selection's own.
+ */
+function contextTab(
+  app: App,
+  select: RibbonTab['panels'][number],
+  tool: (id: ToolId, action: string, icon: RibbonItem['icon'], size: 'L' | 'S', short?: MessageKey) => RibbonItem,
+  modify: (kind: ModifyKind, icon: RibbonItem['icon']) => RibbonItem,
+): RibbonTab[] {
+  const { ui } = app;
+  if (ui.tool !== 'select' || ui.selection.size === 0) return [];
+  const doc = app.store.get();
+  const ids = [...ui.selection];
+  const kinds = new Set(ids.map((id) => kindOfId(id)));
+  const kind = kinds.size === 1 ? [...kinds][0] : null;
+  const what = kind ? (ids.length === 1 ? t(kind.one) : t(kind.many, { n: ids.length })) : t('rib.tab.contextMany', { n: ids.length });
+  const entries = contextEntries(app, () => app.openCommands());
+  // Named short on the ribbon (rib.ctx.<id>); the menu's full name is the button's tip.
+  const own = entries.filter((e) => ELEMENT_ACTIONS.has(e.id)).map((e): RibbonItem => ({ id: `ctx.${e.id}`, icon: e.icon, size: 'S', short: `rib.ctx.${e.id}` as MessageKey }));
+  const walls = ids.some((id) => doc.walls.some((w) => w.id === id));
+  const movable = entries.some((e) => e.id === 'move');
+  return [
     {
-      id: 'modify',
-      title: 'rib.tab.modify',
+      id: 'context',
+      title: 'rib.tab.context',
+      text: t('rib.tab.contextOf', { what }),
+      context: true,
       panels: [
         select,
-        { title: 'rib.p.clipboard', items: [{ id: 'edit.paste', icon: 'plus', size: 'L' }, { id: 'edit.copyClip', icon: 'copy', size: 'S' }] },
-        { title: 'rib.p.geometry', items: [tool('split', 'edit.split', 'split', 'S'), tool('corner', 'edit.corner', 'corner', 'S'), { id: 'edit.merge', icon: 'merge', size: 'S' }] },
-        {
-          title: 'rib.p.modify',
-          items: [modify('move', 'move'), { ...modify('copy', 'copy'), short: 'rib.s.duplicate' }, modify('rotate', 'rotate'), modify('mirror', 'mirror'), modify('scale', 'scale'), modify('offset', 'offset')],
-        },
-        {
-          title: 'rib.p.arrange',
-          items: [
-            { id: 'arrange.left', icon: 'alignLeft', size: 'S' },
-            { id: 'arrange.centerX', icon: 'alignCenterX', size: 'S' },
-            { id: 'arrange.right', icon: 'alignRight', size: 'S' },
-            { id: 'arrange.top', icon: 'alignTop', size: 'S' },
-            { id: 'arrange.centerY', icon: 'alignCenterY', size: 'S' },
-            { id: 'arrange.bottom', icon: 'alignBottom', size: 'S' },
-            { id: 'arrange.spreadX', icon: 'distribute', size: 'S' },
-            { id: 'arrange.spreadY', icon: 'distributeY', size: 'S' },
-          ],
-        },
+        { title: 'rib.p.properties', items: [{ id: 'settings.panel', icon: 'panel', size: 'L', short: 'rib.s.properties', pressed: () => !app.shell.panel.hidden }] },
+        ...(own.length > 0 ? [{ title: 'rib.p.element' as MessageKey, items: own }] : []),
+        ...(movable
+          ? [
+              {
+                title: 'rib.p.modify' as MessageKey,
+                items: [modify('move', 'move'), { ...modify('copy', 'copy'), short: 'rib.s.duplicate' as MessageKey }, modify('rotate', 'rotate'), modify('mirror', 'mirror'), modify('scale', 'scale'), ...(walls ? [modify('offset', 'offset')] : [])],
+              },
+            ]
+          : []),
+        ...(walls ? [{ title: 'rib.p.geometry' as MessageKey, items: [tool('split', 'edit.split', 'split', 'S'), tool('corner', 'edit.corner', 'corner', 'S'), { id: 'edit.merge', icon: 'merge', size: 'S' } as RibbonItem] }] : []),
+        ...(ids.length > 1
+          ? [
+              {
+                title: 'rib.p.arrange' as MessageKey,
+                items: (['left', 'centerX', 'right', 'top', 'centerY', 'bottom', 'spreadX', 'spreadY'] as const).map(
+                  (k): RibbonItem => ({ id: `arrange.${k}`, icon: ({ left: 'alignLeft', centerX: 'alignCenterX', right: 'alignRight', top: 'alignTop', centerY: 'alignCenterY', bottom: 'alignBottom', spreadX: 'distribute', spreadY: 'distributeY' } as const)[k], size: 'S' }),
+                ),
+              },
+            ]
+          : []),
+        { title: 'rib.p.clipboard', items: [{ id: 'edit.copyClip', icon: 'copy', size: 'L' }, { id: 'edit.paste', icon: 'plus', size: 'S' }] },
         { title: 'rib.p.visibility', items: [{ id: 'view.tempHide', icon: 'flip', size: 'S' }, { id: 'view.tempIsolate', icon: 'center', size: 'S' }, { id: 'view.tempReset', icon: 'close', size: 'S' }] },
-        { title: 'rib.p.measure', items: [tool('measure', 'tool.measure', 'ruler', 'S'), tool('dimension', 'tool.dimension', 'dimension', 'S')] },
-        {
-          title: 'rib.p.selection',
-          items: [{ id: 'edit.selectAll', icon: 'pointer', size: 'S' }, { id: 'edit.selectSimilar', icon: 'zoomSel', size: 'S' }, { id: 'edit.delete', icon: 'trash', size: 'S' }],
-        },
+        { title: 'rib.p.selection', items: [{ id: 'edit.selectSimilar', icon: 'zoomSel', size: 'S' }, { id: 'view.frameSelection', icon: 'zoomSel', size: 'S' }, { id: 'edit.delete', icon: 'trash', size: 'S' }] },
       ],
     },
   ];

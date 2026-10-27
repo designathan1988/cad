@@ -530,20 +530,30 @@ export function renderRibbon(app: App): void {
   const { shell } = app;
   const list = app.actionList();
   const actions = new Map(list.map((a) => [a.id, a]));
+  // The selection's own actions (the context menu's), for the contextual tab: ctx.<id>.
+  if (app.ui.selection.size > 0)
+    for (const e of contextEntries(app, () => app.openCommands())) actions.set(`ctx.${e.id}`, { id: `ctx.${e.id}`, label: e.label, group: 'edit', keywords: '', ...(e.keys ? { keys: e.keys } : {}), enabled: true, run: e.run });
   const tabs = ribbonTabs(app);
-  if (!tabs.some((x) => x.id === app.ribbonTab)) app.ribbonTab = tabs[0]!.id;
-  const tab = tabs.find((x) => x.id === app.ribbonTab)!;
+  if (!tabs.some((x) => x.id === app.ribbonTab) || app.ribbonTab === 'context') app.ribbonTab = tabs[0]!.id;
+  // Something selected: its contextual tab comes forward, unless the user went to another tab since;
+  // nothing selected, that choice is forgotten and the tab chosen before is back.
+  const contextual = tabs.find((x) => x.context);
+  const selected = [...app.ui.selection].join(' ');
+  if (!contextual || selected !== app.ribbonSelected) app.ribbonAway = false;
+  app.ribbonSelected = selected;
+  const shown = contextual && !app.ribbonAway ? contextual.id : app.ribbonTab;
+  const tab = tabs.find((x) => x.id === shown)!;
   renderOptBar(app, tabs, actions);
   const states = tab.panels.flatMap((p) => p.items.map((i) => {
     const a = actions.get(i.id);
     return a ? [i.id, a.label, a.keys ?? '', a.enabled, i.pressed?.() ?? null] : [i.id];
   }));
-  const key = JSON.stringify([getLang(), app.ribbonTab, states]);
+  const key = JSON.stringify([getLang(), shown, tabs.map((x) => x.text ?? x.id), states]);
   if (key === app.ribbonKey) return;
   app.ribbonKey = key;
   // Keep the focus on the same button across the rebuild.
   const focused = document.activeElement instanceof HTMLElement && shell.ribbon.contains(document.activeElement) ? document.activeElement.dataset.action : undefined;
-  renderRibbonTabs(shell.tabs, tabs, app.ribbonTab, (id) => app.chooseRibbonTab(id), shell.fileMenu);
+  renderRibbonTabs(shell.tabs, tabs, shown, (id) => app.chooseRibbonTab(id), shell.fileMenu);
   renderRibbonTab(shell.ribbon, tab, actions);
   if (focused) shell.ribbon.querySelector<HTMLElement>(`[data-action="${focused}"]`)?.focus();
 }
