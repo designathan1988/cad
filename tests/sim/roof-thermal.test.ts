@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUILT_IN_MATERIALS } from '../../src/elements/material/schema';
 import { ROOF_COVERING } from '../../src/elements/roof/schema';
-import { roofThermalOf, zoneRoof } from '../../src/sim/envelope';
+import { impactOf, roofThermalOf, zoneRoof } from '../../src/sim/envelope';
 import { type Doc, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 import { simBlock } from '../../src/app/sim-tables';
@@ -46,5 +46,16 @@ describe('roof thermal (NBR 15220-2, flow down; NBR 15220-3 table C.2)', () => {
     const r = roofThermalOf({ materialId: 'nope', thickness: 0.01 }, null, BUILT_IN_MATERIALS, 3);
     expect(r.transmittance).toBeNull();
     expect(r.missing).toEqual(['nope']);
+  });
+
+  it('impact sound of a floor: Ln,w = 164 − 35·log m″ in 100–600 kg/m², against NBR 15575-3', () => {
+    // 15 cm of concrete (2300 kg/m³): 345 kg/m², 75 dB, the minimum level.
+    const slab = impactOf([{ materialId: 'concrete', thickness: 0.15 }], BUILT_IN_MATERIALS);
+    expect(slab.mass!).toBeCloseTo(345, 6);
+    expect(slab.lnw!).toBeCloseTo(164 - 35 * Math.log10(345), 9);
+    expect(slab.level).toBe('minimum');
+    // 25 cm: 575 kg/m², 67 dB, still the minimum; 4 cm, 92 kg/m², outside the expression.
+    expect(impactOf([{ materialId: 'concrete', thickness: 0.25 }], BUILT_IN_MATERIALS).level).toBe('minimum');
+    expect(impactOf([{ materialId: 'concrete', thickness: 0.04 }], BUILT_IN_MATERIALS).lnw).toBeNull();
   });
 });

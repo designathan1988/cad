@@ -346,6 +346,23 @@ export function reverberationOf(
   });
 }
 
+/**
+ * A floor's impact sound (EN ISO 12354-2's simplified expression for a bare concrete floor, as given in
+ * the literature, e.g. IST Lisbon's thesis on dwellings' sound insulation): Ln,w = 164 − 35·log m″ (dB),
+ * m″ its mass per area (kg/m²), for 100 to 600 kg/m²; outside it, null. Against NBR 15575-3's levels for a
+ * floor between dwellings (L'nT,w: superior ≤ 55, intermediate ≤ 65, minimum ≤ 80 dB).
+ */
+export function impactOf(layers: readonly { readonly materialId: string; readonly thickness: number }[], materials: readonly Material[]): { mass: number | null; lnw: number | null; level: 'superior' | 'intermediate' | 'minimum' | 'fails' | null; missing: string[] } {
+  const ls = layers.map((l) => ({ ...l, physics: physicsOf(materialIn(materials, l.materialId)) }));
+  const missing = [...new Set(ls.filter((l) => !l.physics).map((l) => l.materialId))];
+  if (missing.length > 0) return { mass: null, lnw: null, level: null, missing };
+  const mass = ls.reduce((t, l) => t + l.thickness * l.physics!.density, 0);
+  if (mass < 100 || mass > 600) return { mass, lnw: null, level: null, missing };
+  const lnw = 164 - 35 * Math.log10(mass);
+  const level = lnw <= 55 ? 'superior' : lnw <= 65 ? 'intermediate' : lnw <= 80 ? 'minimum' : 'fails';
+  return { mass, lnw, level, missing };
+}
+
 export function acousticOf(type: WallType, materials: readonly Material[]): Acoustic {
   const layers = layersOf(type, materials);
   const missing = [...new Set(layers.filter((l) => !l.physics).map((l) => l.materialId))];

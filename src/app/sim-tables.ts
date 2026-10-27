@@ -3,9 +3,9 @@
 // A cell naming an element carries its id, so the dialog can select it. Each section ends with its
 // premises: every result is an estimate, said with what it assumed.
 
-import { type MessageKey, materialLabel, name, num, t } from '../ui/i18n';
+import { type MessageKey, materialLabel, name, name as wordsOf, num, t } from '../ui/i18n';
 import { materialIn } from '../elements/material/schema';
-import { acousticOf, glaserOf, guidelineOf, openableShare, R_ATTIC, R_SE, R_SI, R_SI_DOWN, reverberationOf, ROOF_CLASSES, roofThermalOf, thermalOf, VENT_SIZES, ventVerdict, WALL_CLASSES, zoneRoof, zoneShading, zoneVents, zoneWall } from '../sim/envelope';
+import { acousticOf, glaserOf, guidelineOf, impactOf, openableShare, R_ATTIC, R_SE, R_SI, R_SI_DOWN, reverberationOf, ROOF_CLASSES, roofThermalOf, thermalOf, VENT_SIZES, ventVerdict, WALL_CLASSES, zoneRoof, zoneShading, zoneVents, zoneWall } from '../sim/envelope';
 import { ROOF_COVERING } from '../elements/roof/schema';
 import { CEILING_THICKNESS } from '../elements/room/schema';
 import { roomsBeside } from './quantities';
@@ -239,10 +239,31 @@ export function simBlock(section: SimSection, doc: Doc, g: DerivedGeometry, titl
       rows: reverberationOf(rooms, (id) => holes.get(id) ?? { windows: 0, doors: 0 }).map((r) => [{ text: title(r.roomId), id: r.roomId }, `${num(r.volume, 1)} m³`, `${num(r.absorption, 2)} m²`, `${num(r.time, 2)} s`]),
       numeric: [1, 2, 3],
     };
+    // The floors between levels (not the lowest's, not a ceiling): their impact sound.
+    const lowest = doc.levels.length > 0 ? Math.min(...doc.levels.map((l) => l.elevation)) : 0;
+    const impact: SimTable = {
+      title: t('sim.impactTitle'),
+      head: [t('sim.floor'), t('sim.level'), t('sim.mass'), 'Ln,w', t('sim.status')],
+      rows: doc.floors.flatMap((f, i) => {
+        const level = levelOf(doc, f.levelId);
+        if (f.kind === 'ceiling' || !level || level.elevation <= lowest + 1e-6) return [];
+        const r = impactOf(f.layers ?? [{ materialId: 'concrete', thickness: f.thickness }], doc.materials);
+        const name = { text: `${t('sim.floor')} ${i + 1}`, id: f.id };
+        if (r.missing.length > 0) return [[name, wordsOf(level.name), t('sim.missing', { what: r.missing.map((m) => matName(doc, m)).join(', ') }), '', '']];
+        return [[
+          name,
+          wordsOf(level.name),
+          `${num(r.mass!, 0)} kg/m²`,
+          r.lnw === null ? t('sim.impactOutside') : `${num(r.lnw, 0)} dB`,
+          r.level === null ? '—' : { text: t(`sim.impact.${r.level}` as MessageKey), ok: r.level !== 'fails' },
+        ]];
+      }),
+      numeric: [2, 3],
+    };
     return {
-      tables: [...(rows.length > 0 ? [{ head: [t('sim.type'), t('sim.mass'), 'Rw', 'R 500 Hz'], rows, numeric: [1, 2, 3] }] : []), ...(reverb.rows.length > 0 ? [reverb] : [])],
+      tables: [...(rows.length > 0 ? [{ head: [t('sim.type'), t('sim.mass'), 'Rw', 'R 500 Hz'], rows, numeric: [1, 2, 3] }] : []), ...(reverb.rows.length > 0 ? [reverb] : []), ...(impact.rows.length > 0 ? [impact] : [])],
       empty: t('sim.noWalls'),
-      premises: [t('sim.acousticPremise'), t('sim.acousticReference'), t('sim.reverbPremise')],
+      premises: [t('sim.acousticPremise'), t('sim.acousticReference'), t('sim.reverbPremise'), ...(impact.rows.length > 0 ? [t('sim.impactPremise')] : [])],
     };
   }
   if (section === 'wifi') {
