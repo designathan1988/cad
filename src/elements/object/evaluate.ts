@@ -12,6 +12,8 @@ import type { Expr, HandleDef, MeshData, ObjectDefinition, ObjectInstance, Param
 export type Piece =
   | { readonly kind: 'box'; readonly cx: number; readonly cy: number; readonly z: number; readonly w: number; readonly d: number; readonly h: number; readonly angle: number; readonly material: Material }
   | { readonly kind: 'cylinder'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly r2: number; readonly h: number; readonly material: Material }
+  /** A rounded mass (an ellipsoid) on its base's centre: r across, h up. */
+  | { readonly kind: 'sphere'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly h: number; readonly material: Material }
   /** A mesh stretched to its box (centre, size and turn, as a box's). */
   | { readonly kind: 'mesh'; readonly cx: number; readonly cy: number; readonly z: number; readonly w: number; readonly d: number; readonly h: number; readonly angle: number; readonly mesh: MeshData; readonly material: Material };
 
@@ -186,6 +188,12 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         if (r === null || h === null || r2 === null || h <= 1e-6 || Math.max(r, r2) <= 1e-6) continue;
         const centre = apply(frame, { x: ox, y: oy, z: oz });
         pieces.push({ kind: 'cylinder', cx: centre.x, cy: centre.y, z: centre.z, r: Math.max(0, r), r2: Math.max(0, r2), h, material: materialOf(part) });
+      } else if (part.kind === 'sphere') {
+        const r = num(part.r, at, `${label} radius`);
+        const h = num(part.h, at, `${label} height`);
+        if (r === null || h === null || h <= 1e-6 || r <= 1e-6) continue;
+        const centre = apply(frame, { x: ox, y: oy, z: oz });
+        pieces.push({ kind: 'sphere', cx: centre.x, cy: centre.y, z: centre.z, r, h, material: materialOf(part) });
       } else {
         const inner = c.definitions.find((d) => d.id === part.definition);
         if (!inner) {
@@ -258,8 +266,8 @@ function placeHandle(h: HandleDef, env: Env, frame: Frame, problems: string[]): 
 
 /** A piece's outline in plan: a box's four corners, a cylinder's circle as a polygon. */
 export function pieceOutline(p: Piece): { x: number; y: number }[] {
-  if (p.kind === 'cylinder') {
-    const r = Math.max(p.r, p.r2);
+  if (p.kind === 'cylinder' || p.kind === 'sphere') {
+    const r = p.kind === 'cylinder' ? Math.max(p.r, p.r2) : p.r;
     return Array.from({ length: 24 }, (_, k) => ({ x: p.cx + r * Math.cos((k / 24) * 2 * Math.PI), y: p.cy + r * Math.sin((k / 24) * 2 * Math.PI) }));
   }
   const c = Math.cos(p.angle);

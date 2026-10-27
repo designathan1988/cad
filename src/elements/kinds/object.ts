@@ -78,8 +78,15 @@ function build(object: ObjectInstance, def: ObjectDefinition, ev: ObjectEval, fl
 /** A piece's geometry where it is, in three.js's axes: plan x, y and height z are x, −z and y; a turn in
  * plan (counter-clockwise) is one about y. For the 3D, the GLB and the definition editor alike. */
 export function pieceGeometry(piece: Piece): THREE.BufferGeometry {
-  const geometry = piece.kind === 'mesh' ? meshGeometry(piece) : piece.kind === 'box' ? new THREE.BoxGeometry(piece.w, piece.h, piece.d) : new THREE.CylinderGeometry(piece.r2, piece.r, piece.h, 24);
-  if (piece.kind !== 'cylinder') geometry.rotateY(piece.angle);
+  const geometry =
+    piece.kind === 'mesh'
+      ? meshGeometry(piece)
+      : piece.kind === 'box'
+        ? new THREE.BoxGeometry(piece.w, piece.h, piece.d)
+        : piece.kind === 'sphere'
+          ? new THREE.SphereGeometry(1, 28, 18).scale(piece.r, piece.h / 2, piece.r)
+          : new THREE.CylinderGeometry(piece.r2, piece.r, piece.h, 24);
+  if (piece.kind === 'box' || piece.kind === 'mesh') geometry.rotateY(piece.angle);
   geometry.translate(piece.cx, piece.z + piece.h / 2, -piece.cy);
   return geometry;
 }

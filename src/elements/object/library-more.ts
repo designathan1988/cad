@@ -362,10 +362,34 @@ export const TREE: ObjectDefinition = {
     mat('matCopa', 'Copa', 'Crown', 'foliage'),
     mat('matTronco', 'Tronco', 'Trunk', 'bark'),
   ],
+  // A trunk narrowing up into the crown, and the crown as masses of leaves: a core, a ring of six lower
+  // ones round it, three higher, a top; each rounded, as foliage reads from afar.
   parts: [
-    { kind: 'cylinder', name: { pt: 'Tronco', en: 'Trunk' }, x: 0, y: 0, z: 0, r: 'tronco / 2', r2: 'tronco / 2 * 0.7', h: 'fuste + (altura - fuste) * 0.3', material: 'matTronco' },
-    { kind: 'cylinder', name: { pt: 'Copa', en: 'Crown' }, x: 0, y: 0, z: 'fuste', r: 'largura / 2 * 0.8', r2: 'largura / 2', h: '(altura - fuste) * 0.45', material: 'matCopa' },
-    { kind: 'cylinder', name: { pt: 'Copa (topo)', en: 'Crown (top)' }, x: 0, y: 0, z: 'fuste + (altura - fuste) * 0.45', r: 'largura / 2', r2: 'largura / 2 * 0.25', h: '(altura - fuste) * 0.55', material: 'matCopa' },
+    { kind: 'cylinder', name: { pt: 'Tronco', en: 'Trunk' }, x: 0, y: 0, z: 0, r: 'tronco / 2', r2: 'tronco / 2 * 0.55', h: 'fuste + (altura - fuste) * 0.45', material: 'matTronco' },
+    { kind: 'sphere', name: { pt: 'Copa', en: 'Crown' }, x: 0, y: 0, z: 'fuste + (altura - fuste) * 0.1', r: 'largura * 0.36', h: '(altura - fuste) * 0.72', material: 'matCopa' },
+    {
+      kind: 'sphere',
+      name: { pt: 'Copa (lados)', en: 'Crown (sides)' },
+      repeat: { count: 6 },
+      x: 'largura * 0.25 * cos(i * 60 + 20)',
+      y: 'largura * 0.25 * sin(i * 60 + 20)',
+      z: 'fuste + (altura - fuste) * (0.12 + 0.07 * (i % 2))',
+      r: 'largura * 0.25',
+      h: '(altura - fuste) * 0.45',
+      material: 'matCopa',
+    },
+    {
+      kind: 'sphere',
+      name: { pt: 'Copa (alto)', en: 'Crown (upper)' },
+      repeat: { count: 3 },
+      x: 'largura * 0.15 * cos(i * 120 + 50)',
+      y: 'largura * 0.15 * sin(i * 120 + 50)',
+      z: 'fuste + (altura - fuste) * 0.4',
+      r: 'largura * 0.24',
+      h: '(altura - fuste) * 0.42',
+      material: 'matCopa',
+    },
+    { kind: 'sphere', name: { pt: 'Copa (topo)', en: 'Crown (top)' }, x: 0, y: 0, z: 'altura - (altura - fuste) * 0.4', r: 'largura * 0.22', h: '(altura - fuste) * 0.4', material: 'matCopa' },
   ],
   handles: [
     { param: 'largura', axis: 'x', at: ['largura/2', 0, 'fuste + (altura - fuste) * 0.45'], shift: 0 },
@@ -390,7 +414,19 @@ export const POT_PLANT: ObjectDefinition = {
   ],
   parts: [
     { kind: 'cylinder', name: { pt: 'Vaso', en: 'Pot' }, x: 0, y: 0, z: 0, r: 'largura / 2 * 0.75', r2: 'largura / 2', h: 'vaso', material: 'matVaso' },
-    { kind: 'cylinder', name: { pt: 'Folhagem', en: 'Foliage' }, x: 0, y: 0, z: 'vaso', r: 'largura / 2 * 0.9', r2: 'largura / 2 * 0.35', h: 'altura - vaso', material: 'matPlanta' },
+    // Leaves in rounded tufts over the pot: a core and three round it, a little lower.
+    { kind: 'sphere', name: { pt: 'Folhagem', en: 'Foliage' }, x: 0, y: 0, z: 'vaso * 0.9', r: 'largura * 0.5', h: '(altura - vaso) * 1.05', material: 'matPlanta' },
+    {
+      kind: 'sphere',
+      name: { pt: 'Folhagem (tufos)', en: 'Foliage (tufts)' },
+      repeat: { count: 3 },
+      x: 'largura * 0.28 * cos(i * 120 + 30)',
+      y: 'largura * 0.28 * sin(i * 120 + 30)',
+      z: 'vaso * 0.95',
+      r: 'largura * 0.36',
+      h: '(altura - vaso) * 0.7',
+      material: 'matPlanta',
+    },
   ],
   handles: [
     { param: 'largura', axis: 'x', at: ['largura/2', 0, 'vaso'], shift: 0 },

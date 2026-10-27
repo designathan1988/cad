@@ -16,6 +16,7 @@ function isPart(p: unknown): p is Part {
   if (p.repeat !== undefined && !(isObject(p.repeat) && isExpr(p.repeat.count))) return false;
   if (p.kind === 'box') return isExpr(p.w) && isExpr(p.d) && isExpr(p.h);
   if (p.kind === 'cylinder') return isExpr(p.r) && isExpr(p.h) && (p.r2 === undefined || isExpr(p.r2));
+  if (p.kind === 'sphere') return isExpr(p.r) && isExpr(p.h);
   if (p.kind === 'object') return typeof p.definition === 'string' && (p.values === undefined || isObject(p.values));
   if (p.kind === 'mesh') return typeof p.mesh === 'string' && isExpr(p.w) && isExpr(p.d) && isExpr(p.h);
   return false;

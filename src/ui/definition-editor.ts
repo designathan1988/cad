@@ -205,7 +205,7 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
             )
           : null;
       const size =
-        p.kind === 'box' || p.kind === 'mesh' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h'))] : p.kind === 'cylinder' ? [ex('r', t('ed.r')), top!, ex('h', t('ed.h'))] : [ex('angle', t('ed.angle'))];
+        p.kind === 'box' || p.kind === 'mesh' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h'))] : p.kind === 'cylinder' ? [ex('r', t('ed.r')), top!, ex('h', t('ed.h'))] : p.kind === 'sphere' ? [ex('r', t('ed.r')), ex('h', t('ed.h'))] : [ex('angle', t('ed.angle'))];
       const rep = p.repeat;
       const repIn = (key: 'count' | 'dx' | 'dy' | 'dz', label: string) =>
         el(
@@ -240,7 +240,9 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
         ? { kind, name: { pt: 'Caixa', en: 'Box' }, x: 0, y: 0, z: 0, w: 0.2, d: 0.2, h: 0.2 }
         : kind === 'cylinder'
           ? { kind, name: { pt: 'Cilindro', en: 'Cylinder' }, x: 0, y: 0, z: 0, r: 0.1, h: 0.2 }
-          : { kind, name: { pt: 'Objeto', en: 'Object' }, definition: defs[0]?.id ?? '', x: 0, y: 0, z: 0 };
+          : kind === 'sphere'
+            ? { kind, name: { pt: 'Esfera', en: 'Sphere' }, x: 0, y: 0, z: 0, r: 0.1, h: 0.2 }
+            : { kind, name: { pt: 'Objeto', en: 'Object' }, definition: defs[0]?.id ?? '', x: 0, y: 0, z: 0 };
     // Its light, a luminaire's: where (as a part's x, y, z), its power and its colour temperature.
     const light = draft.light;
     const lightCard = light
@@ -278,6 +280,7 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
         { class: 'ed-adds' },
         addButton(t('ed.addBox'), 'addBox', () => set({ ...draft, parts: [...draft.parts, blank('box')] })),
         addButton(t('ed.addCylinder'), 'addCyl', () => set({ ...draft, parts: [...draft.parts, blank('cylinder')] })),
+        addButton(t('ed.addSphere'), 'addSphere', () => set({ ...draft, parts: [...draft.parts, blank('sphere')] })),
         ...(defs.length ? [addButton(t('ed.addObject'), 'addObj', () => set({ ...draft, parts: [...draft.parts, blank('object')] }))] : []),
         ...(light ? [] : [addButton(t('ed.addLight'), 'addLight', () => set({ ...draft, light: { x: 0, y: 0, z: 2, watts: 9, kelvin: 3000 } }))]),
       ),

@@ -61,6 +61,8 @@ export type Part =
   | (PartCommon & { readonly kind: 'box'; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly w: Expr; readonly d: Expr; readonly h: Expr })
   /** An upright cylinder from the centre of its base. */
   | (PartCommon & { readonly kind: 'cylinder'; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly r: Expr; readonly h: Expr; /** Its top's radius: a cone, a lampshade (its base's when not set). */ readonly r2?: Expr })
+  /** A rounded mass from the centre of its base: r across, h up (a sphere when h is 2r; a tree's crown, a shrub, a lamp's globe). */
+  | (PartCommon & { readonly kind: 'sphere'; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly r: Expr; readonly h: Expr })
   /** A mesh of the definition's (a model imported from glTF or OBJ), stretched to fill the box from its
    * lower corner (x, y, z), w along x, d along y, h up: its proportions are its parameters. */
   | (PartCommon & { readonly kind: 'mesh'; readonly mesh: string; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly w: Expr; readonly d: Expr; readonly h: Expr })

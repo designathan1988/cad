@@ -9,7 +9,12 @@ import { isLayerSet, isRoomOverride, isWallOverride } from '../app/layer-sets';
 import { isVariableName } from '../core/measure';
 import { isOpeningStyle, operationsOf } from '../elements/opening/style';
 import { LIBRARY } from '../elements/object/library';
-import { LIBRARY_MORE } from '../elements/object/library-more';
+import { LIBRARY_MORE, POT_PLANT, TREE } from '../elements/object/library-more';
+import type { ObjectDefinition } from '../elements/object/schema';
+
+/** The library's tree and potted plant as they were before version 45 (cones), by their parts. */
+const isOldTree = (d: ObjectDefinition) => d.parts.length === 3 && d.parts.every((p) => p.kind === 'cylinder');
+const isOldPotPlant = (d: ObjectDefinition) => d.parts.length === 2 && d.parts.every((p) => p.kind === 'cylinder');
 import { LIBRARY_LIGHTS } from '../elements/object/library-lights';
 import { definitionMaterials } from '../elements/object/materials';
 import { isDefinition } from '../elements/object/valid';
@@ -93,7 +98,7 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 42: tags by elements with their values (`tags`, elements/tag). Older files have none.
  * Version 43: a room's interior elevations, marks kept to a level (`levelId`, elements/section). Older marks have none: every level.
  */
-export const CURRENT_VERSION = 44;
+export const CURRENT_VERSION = 45;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -278,7 +283,10 @@ export function repairProject(raw: unknown): ReadResult {
   const kept = raw.definitions === undefined ? [...LIBRARY] : keep(raw.definitions, isDefinition, 'droppedDefinitions');
   const since29 = raw.version < 29 ? [...kept, ...LIBRARY_MORE.filter((d) => !kept.some((k) => k.id === d.id))] : kept;
   // Version 44 brought the lights (library-lights.ts): a file from before gets them.
-  const definitions = raw.version < 44 ? [...since29, ...LIBRARY_LIGHTS.filter((d) => !since29.some((k) => k.id === d.id))] : since29;
+  const since44 = raw.version < 44 ? [...since29, ...LIBRARY_LIGHTS.filter((d) => !since29.some((k) => k.id === d.id))] : since29;
+  // Version 45 drew the tree and the potted plant in rounded masses: the library's own, as they came,
+  // take the new ones (one changed by hand, its parts not those, is kept).
+  const definitions = raw.version < 45 ? since44.map((d) => (d.id === TREE.id && isOldTree(d) ? TREE : d.id === POT_PLANT.id && isOldPotPlant(d) ? POT_PLANT : d)) : since44;
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));
