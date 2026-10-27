@@ -6,7 +6,9 @@ import { describe, expect, it } from 'vitest';
 import { BUILT_IN_MATERIALS } from '../../src/elements/material/schema';
 import { boxCorners, evaluateObject, pieceSpan, type Piece } from '../../src/elements/object/evaluate';
 import { LIBRARY } from '../../src/elements/object/library';
-import { HOUSE_BED, LIBRARY_SECTORS, TOY_CHEST, WHITEBOARD } from '../../src/elements/object/library-sectors';
+import * as THREE from 'three';
+import { byMaterial, cutGeometries } from '../../src/elements/kinds/object';
+import { GONDOLA, HOUSE_BED, LIBRARY_SECTORS, TOY_CHEST, WHITEBOARD } from '../../src/elements/object/library-sectors';
 import type { ObjectDefinition } from '../../src/elements/object/schema';
 
 const context = { definitions: LIBRARY, materials: BUILT_IN_MATERIALS };
@@ -32,6 +34,20 @@ describe('the sectors at the ends of their ranges', () => {
       }
     });
   }
+});
+
+describe('drawn in 3D', () => {
+  it('a gondola of 160 pieces is one geometry a material, with every triangle', () => {
+    const ev = at(GONDOLA, 'goods', {});
+    const parts = cutGeometries(ev.pieces);
+    const triangles = (g: THREE.BufferGeometry) => (g.index ? g.index.count : g.getAttribute('position').count) / 3;
+    const before = parts.reduce((s, p) => s + triangles(p.geometry), 0);
+    const materials = new Set(ev.pieces.map((p) => p.material.id));
+    expect(ev.pieces.length).toBeGreaterThan(150);
+    const merged = byMaterial(parts);
+    expect(merged.length).toBe(materials.size);
+    expect(merged.reduce((s, p) => s + triangles(p.geometry), 0)).toBe(before);
+  });
 });
 
 describe('an object never folds up', () => {

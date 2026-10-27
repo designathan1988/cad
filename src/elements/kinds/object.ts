@@ -6,6 +6,8 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import type { Material } from '../material/schema';
 import type { Doc } from '../../app/document';
 import { insideRing } from '../room/derive';
 import type { BaseGeometry, ElementKind, KindSolid } from '../contract';
@@ -112,6 +114,53 @@ export function cutGeometries(pieces: readonly Piece[]): { piece: Piece; geometr
     return { piece, geometry };
   });
   for (const h of holes) h.brush.geometry.dispose();
+  return out;
+}
+
+/**
+ * An object's pieces as the 3D draws them: those of one material made one geometry, so the object is one
+ * draw call a material instead of one a piece (a shelf of goods is hundreds of pieces, a classroom of
+ * desks near a thousand; each a draw call kept the view slow). A piece a void was cut from keeps its own
+ * geometry: its lines are found by its creases (creaseEdges), not by its faces. Merged geometries keep
+ * position and normal, and uv where every piece has it (a pattern's is laid again in the world anyway).
+ */
+export function byMaterial(parts: readonly { piece: Piece; geometry: THREE.BufferGeometry }[]): { material: Material; geometry: THREE.BufferGeometry }[] {
+  const groups = new Map<string, { material: Material; geometries: THREE.BufferGeometry[] }>();
+  const out: { material: Material; geometry: THREE.BufferGeometry }[] = [];
+  for (const { piece, geometry } of parts) {
+    if (geometry.userData.cut === true) {
+      out.push({ material: piece.material, geometry });
+      continue;
+    }
+    const key = JSON.stringify(piece.material);
+    let g = groups.get(key);
+    if (!g) groups.set(key, (g = { material: piece.material, geometries: [] }));
+    g.geometries.push(geometry);
+  }
+  for (const { material, geometries } of groups.values()) {
+    if (geometries.length === 1) {
+      out.unshift({ material, geometry: geometries[0]! });
+      continue;
+    }
+    const uv = geometries.every((g) => g.getAttribute('uv') !== undefined);
+    const flat = geometries.map((g) => {
+      const f = g.index ? g.toNonIndexed() : g.clone();
+      for (const name of Object.keys(f.attributes)) if (name !== 'position' && name !== 'normal' && !(uv && name === 'uv')) f.deleteAttribute(name);
+      if (f.getAttribute('normal') === undefined) f.computeVertexNormals();
+      f.morphAttributes = {};
+      f.clearGroups();
+      return f;
+    });
+    const merged = mergeGeometries(flat, false);
+    for (const f of flat) f.dispose();
+    // mergeGeometries gives null for attributes that do not agree: kept apart then, never lost.
+    if (!merged) {
+      for (const g of geometries) out.unshift({ material, geometry: g });
+      continue;
+    }
+    for (const g of geometries) g.dispose();
+    out.unshift({ material, geometry: merged });
+  }
   return out;
 }
 
@@ -321,9 +370,9 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
     }
   },
   solid: (s) =>
-    cutGeometries(s.eval.pieces).map(({ piece, geometry }, i): KindSolid => {
+    byMaterial(cutGeometries(s.eval.pieces)).map(({ material, geometry }, i): KindSolid => {
       // Its lights go with its first piece (a luminaire's: contract.ts, lights).
-      return { geometry, y: s.floor, material: piece.material, edges: true, ...(i === 0 && s.eval.lights.length > 0 ? { lights: s.eval.lights } : {}) };
+      return { geometry, y: s.floor, material, edges: true, ...(i === 0 && s.eval.lights.length > 0 ? { lights: s.eval.lights } : {}) };
     }),
   dxfLayers: [{ name: 'A-FURN', colour: 8 }],
   dxf: (s, out) => {
