@@ -3,6 +3,7 @@
 // later gets a place here when it gets its action. Pressed states read the app's own.
 
 import { words } from '../elements/object/fields';
+import type { ObjectDefinition } from '../elements/object/schema';
 import type { RibbonItem, RibbonTab } from '../ui/ribbon';
 import type { MessageKey } from '../ui/i18n';
 import type { App } from './app';
@@ -15,6 +16,23 @@ export function ribbonTabs(app: App): readonly RibbonTab[] {
     ...tab,
     panels: tab.panels.map((p) => ({ ...p, items: p.items.map((i) => (i.text ? i : { ...i, short: i.short ?? (`rib.s.${i.id}` as MessageKey) })) })),
   }));
+}
+
+/** At most this many objects on the ribbon: the rest are in the objects dialog, which places them too. */
+export const RIBBON_OBJECTS = 8;
+
+/**
+ * The objects the ribbon shows, in the library's order: the one being placed and those the project has
+ * placed first, then the library's first ones up to RIBBON_OBJECTS. A long library no longer pushes the
+ * other panels out of sight.
+ */
+export function ribbonObjects(app: Pick<App, 'store' | 'ui'>): readonly ObjectDefinition[] {
+  const doc = app.store.get();
+  const wanted = new Set<string>();
+  if (app.ui.tool === 'object' && app.ui.objectDef) wanted.add(app.ui.objectDef);
+  for (const o of doc.objects) if (wanted.size < RIBBON_OBJECTS) wanted.add(o.definitionId);
+  for (const d of doc.definitions) if (wanted.size < RIBBON_OBJECTS) wanted.add(d.id);
+  return doc.definitions.filter((d) => wanted.has(d.id));
 }
 
 function tabsOf(app: App): readonly RibbonTab[] {
@@ -58,9 +76,12 @@ function tabsOf(app: App): readonly RibbonTab[] {
         { title: 'rib.p.circulation', items: [tool('stair', 'tool.stair', 'stair', 'L'), tool('railing', 'tool.railing', 'railing', 'S')] },
         {
           title: 'rib.p.objects',
-          items: app.store.get().definitions.map(
-            (d): RibbonItem => ({ id: `tool.object.${d.id}`, icon: 'box', size: 'S', text: words(d.name), pressed: () => ui.tool === 'object' && ui.objectDef === d.id }),
-          ),
+          items: [
+            ...ribbonObjects(app).map(
+              (d): RibbonItem => ({ id: `tool.object.${d.id}`, icon: 'box', size: 'S', text: words(d.name), pressed: () => ui.tool === 'object' && ui.objectDef === d.id }),
+            ),
+            { id: 'objects.edit', icon: 'plus', size: 'S', short: 'rib.s.objectsMore' },
+          ],
         },
         { title: 'rib.p.rooms', items: [tool('room', 'tool.room', 'room', 'L'), tool('separator', 'tool.separator', 'split', 'S'), { id: 'zone.make', icon: 'tag', size: 'S' }] },
         {

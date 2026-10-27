@@ -1,5 +1,5 @@
 // The materials dialog (docs/plano-de-escopo.md, phase 2): the project's materials, and the chosen one's
-// name, colour, finish and cut pattern. New, duplicate and delete (not one wall layers are made of, nor
+// name, colour, finish, cut pattern and surface pattern (tiles, boards, bricks). New, duplicate and delete (not one wall layers are made of, nor
 // the last). Every change is one command, and every layer made of the material follows at once, in plan
 // and in 3D. Laid out as the wall types dialog: the list on the left, the chosen one beside it.
 
@@ -7,6 +7,7 @@ import type { App } from '../app/app';
 import { newId } from '../core/id';
 import { addMaterial, deleteMaterial, materialDeleteBlocker, materialUses, type MaterialPatch, updateMaterial } from '../elements/material/commands';
 import { CUT_PATTERNS, type CutPattern, type MaterialId } from '../elements/material/schema';
+import { JOINT_MAX, PATTERN_DEFAULTS, PATTERN_KINDS, PATTERN_LAYOUTS, PIECE_MAX, PIECE_MIN, type PatternKind, type PatternLayout, type SurfacePattern } from '../elements/material/pattern';
 import { el, numberField, select } from './controls';
 import { openProjectDialog } from './dialog';
 import { textField } from './fields';
@@ -61,6 +62,43 @@ export function showMaterials(app: App, first?: MaterialId): void {
         mat.cut,
         (v: CutPattern) => update({ cut: v }),
       );
+      // Its surface pattern: none, or tiles, boards or bricks laid as the kind first lays them, then each
+      // of their measures. A change of kind starts from that kind's own (a board is not a tile).
+      const pat = mat.pattern;
+      const kind = select(
+        [{ value: 'none', label: t('pat.none') }, ...PATTERN_KINDS.map((k) => ({ value: k, label: t(`pat.${k}` as MessageKey) }))],
+        pat?.kind ?? 'none',
+        (v: PatternKind | 'none') => update({ pattern: v === 'none' ? null : PATTERN_DEFAULTS[v] }),
+      );
+      const rows = [row(t('pat.kind'), kind, 'patKind')];
+      if (pat) {
+        const set = (p: Partial<SurfacePattern>) => update({ pattern: { ...pat, ...p } });
+        const layout = select(
+          PATTERN_LAYOUTS.map((l) => ({ value: l, label: t(`pat.layout.${l}` as MessageKey) })),
+          pat.layout,
+          (v: PatternLayout) => set({ layout: v }),
+        );
+        const joint = el('input', { type: 'color', class: 'mat-color' });
+        joint.value = pat.jointColor;
+        joint.addEventListener('change', () => set({ jointColor: joint.value }));
+        rows.push(
+          row(t('pat.layout'), layout, 'patLayout'),
+          row(t('pat.length'), numberField(pat.length, (v) => set({ length: v }), PIECE_MIN, 3, 'm', PIECE_MAX), 'patLength'),
+          row(t('pat.width'), numberField(pat.width, (v) => set({ width: v }), PIECE_MIN, 3, 'm', PIECE_MAX), 'patWidth'),
+          row(t('pat.joint'), numberField(pat.joint, (v) => set({ joint: v }), 0, 3, 'm', JOINT_MAX), 'patJoint'),
+          row(t('pat.jointColor'), joint, 'patJointColor'),
+        );
+        if (pat.layout === 'checker') {
+          const other = el('input', { type: 'color', class: 'mat-color' });
+          other.value = pat.color2 ?? mat.color;
+          other.addEventListener('change', () => set({ color2: other.value }));
+          rows.push(row(t('pat.color2'), other, 'patColor2'));
+        }
+        rows.push(
+          row(t('pat.variation'), numberField(pat.variation, (v) => set({ variation: v }), 0, 2, '', 1), 'patVariation'),
+          row(t('pat.angle'), numberField(pat.angle, (v) => set({ angle: v }), -360, 0, '°', 360), 'patAngle'),
+        );
+      }
       detail.append(
         el('h3', {}, materialLabel(mat)),
         row(t('mats.name'), name, 'name'),
@@ -68,6 +106,7 @@ export function showMaterials(app: App, first?: MaterialId): void {
         row(t('mats.roughness'), rough, 'roughness'),
         row(t('mats.metalness'), metal, 'metalness'),
         row(t('mats.cut'), cut, 'cut'),
+        ...rows,
         el('p', { class: 'mat-note' }, t('mats.note')),
       );
     }

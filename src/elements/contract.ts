@@ -51,6 +51,8 @@ export interface KindSolid {
   readonly material: 'side' | 'floor' | 'roof' | Material;
   /** Its edges drawn, as walls' are. */
   readonly edges: boolean;
+  /** Lights it gives (a luminaire's), in plan coordinates and height above its `y`. */
+  readonly lights?: readonly { readonly x: number; readonly y: number; readonly z: number; readonly lumens: number; readonly color: string }[];
 }
 
 /** Where a click finds it among the rest: first (a dimension's line, over what it measures), before the

@@ -1,5 +1,5 @@
 // The project's objects (phase 4): its library of parametric definitions. Each with how many are placed;
-// new, duplicate, edit (definition-editor.ts), delete (not one placed or nested in another), and library
+// place, new, duplicate, edit (definition-editor.ts), delete (not one placed or nested in another), and library
 // files: export the definitions as JSON, import a file of them (checked as the project file checks them,
 // an id the project already has gets a new one). Laid out as the wall types and the materials.
 
@@ -74,8 +74,11 @@ export function showObjects(app: App, first?: string): void {
       return b;
     };
     // Editing opens the editor in this dialog's place; it comes back here when closed.
-    const edit = btn(t('objs.edit'), 'edit', () => def && (close(), editDefinition(app, def, false, () => showObjects(app, def.id))), true);
+    const edit = btn(t('objs.edit'), 'edit', () => def && (close(), editDefinition(app, def, false, () => showObjects(app, def.id))));
     edit.toggleAttribute('disabled', !def);
+    // Placing it: the ribbon shows only some of the library (app/ribbon-tabs.ts), this places any.
+    const place = btn(t('objs.place'), 'place', () => def && (close(), app.placeObject(def.id)), true);
+    place.toggleAttribute('disabled', !def);
     const add = btn(t('objs.new'), 'new', () => {
       const fresh = blankDefinition(doc.definitions.length + 1);
       close();
@@ -107,7 +110,7 @@ export function showObjects(app: App, first?: string): void {
       { class: 'dialog dialog-wide types-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('objs.title') },
       el('h2', {}, t('objs.title')),
       el('div', { class: 'types-body' }, list, detail),
-      el('div', { class: 'actions' }, add, dup, del, exportBtn, importBtn, fileInput, el('span', { class: 'spacer' }), edit, btn(t('help.close'), 'close', close)),
+      el('div', { class: 'actions' }, add, dup, del, exportBtn, importBtn, fileInput, el('span', { class: 'spacer' }), edit, place, btn(t('help.close'), 'close', close)),
     );
   };
   const dialog = openProjectDialog(app, render, () => `def:${chosen}`);

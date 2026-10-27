@@ -72,7 +72,8 @@ export function objectFields(items: readonly ObjectItem[], doc: Doc, dispatch: (
           icon: p.kind !== 'length' ? 'hash' : vertical.has(p.name) ? 'height' : 'width',
           ...(p.min !== undefined ? { min: p.min } : {}),
           ...(p.kind === 'length' ? {} : { unit: '' }),
-          ...(p.kind === 'integer' ? { decimals: 0 } : {}),
+          // A plain number shows as many decimals as its step has (a lamp's 9 W, not 9,00 W).
+          ...(p.kind === 'integer' ? { decimals: 0 } : p.kind === 'number' && p.step !== undefined ? { decimals: stepDecimals(p.step) } : {}),
           get: (x) => x.eval.env[p.name] ?? 0,
           set,
         });
@@ -133,3 +134,8 @@ function shown(kind: string, values: readonly number[]): string {
   return kind === 'length' ? lengthText(v) : String(Math.round(v * 1000) / 1000).replace('.', getLang() === 'pt' ? ',' : '.');
 }
 
+/** How many decimals a step has: 1 and 100 none, 0.5 one, 0.25 two (at most three). */
+export function stepDecimals(step: number): number {
+  for (let d = 0; d < 3; d++) if (Math.abs(step * 10 ** d - Math.round(step * 10 ** d)) < 1e-9) return d;
+  return 3;
+}

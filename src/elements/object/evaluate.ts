@@ -11,7 +11,16 @@ import type { Expr, HandleDef, ObjectDefinition, ObjectInstance, ParamDef, Part,
 /** A piece in the world: a box (its centre, size and turn) or an upright cylinder (its base's centre). */
 export type Piece =
   | { readonly kind: 'box'; readonly cx: number; readonly cy: number; readonly z: number; readonly w: number; readonly d: number; readonly h: number; readonly angle: number; readonly material: Material }
-  | { readonly kind: 'cylinder'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly h: number; readonly material: Material };
+  | { readonly kind: 'cylinder'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly r2: number; readonly h: number; readonly material: Material };
+
+/** A light in the world: where (z above the level's floor), how many lumens, its colour (#rrggbb). */
+export interface PlacedLight {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly lumens: number;
+  readonly color: string;
+}
 
 export interface PlacedHandle {
   readonly param: string;
@@ -34,6 +43,8 @@ export interface ObjectEval {
   readonly problems: readonly string[];
   /** Its rules' messages that hold now. */
   readonly warnings: readonly Words[];
+  /** The lights it gives, its nested objects' too. */
+  readonly lights: readonly PlacedLight[];
 }
 
 /** Where a definition looks for others (nested parts) and for materials. */
@@ -112,6 +123,7 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
   const problems: string[] = [];
   const { env, materials } = values(def, given, problems);
   const pieces: Piece[] = [];
+  const lights: PlacedLight[] = [];
   const num = (e: Expr, at: Env, what: string): number | null => {
     const v: Value = evaluateFormula(e, at);
     if (v.ok) return v.value;
@@ -156,9 +168,10 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
       } else if (part.kind === 'cylinder') {
         const r = num(part.r, at, `${label} radius`);
         const h = num(part.h, at, `${label} height`);
-        if (r === null || h === null || r <= 1e-6 || h <= 1e-6) continue;
+        const r2 = part.r2 === undefined ? r : num(part.r2, at, `${label} top radius`);
+        if (r === null || h === null || r2 === null || h <= 1e-6 || Math.max(r, r2) <= 1e-6) continue;
         const centre = apply(frame, { x: ox, y: oy, z: oz });
-        pieces.push({ kind: 'cylinder', cx: centre.x, cy: centre.y, z: centre.z, r, h, material: materialOf(part) });
+        pieces.push({ kind: 'cylinder', cx: centre.x, cy: centre.y, z: centre.z, r: Math.max(0, r), r2: Math.max(0, r2), h, material: materialOf(part) });
       } else {
         const inner = c.definitions.find((d) => d.id === part.definition);
         if (!inner) {
@@ -182,6 +195,7 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         const origin = apply(frame, { x: ox, y: oy, z: oz });
         const inside = evaluateIn(inner, childValues, { ...origin, angle: frame.angle + (turn * Math.PI) / 180 }, c, depth + 1);
         pieces.push(...inside.pieces);
+        lights.push(...inside.lights);
         problems.push(...inside.problems.map((p) => `${label} › ${p}`));
       }
     }
@@ -192,7 +206,26 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
     if (!v.ok) problems.push(`rule ${r.when}: ${v.error}`);
     return v.ok && v.value !== 0;
   }).map((r) => r.message) : [];
-  return { env, materials, pieces, handles, problems, warnings };
+  // Its own light, where its formulas put it.
+  if (def.light) {
+    const l = def.light;
+    const [x, y, z, watts, kelvin] = [l.x, l.y, l.z, l.watts, l.kelvin ?? 3000].map((e) => evaluateFormula(e, env));
+    if ([x, y, z, watts, kelvin].every((v) => v!.ok)) {
+      const [vx, vy, vz, vw, vk] = [x, y, z, watts, kelvin].map((v) => (v as { value: number }).value) as [number, number, number, number, number];
+      lights.push({ ...apply(frame, { x: vx, y: vy, z: vz }), lumens: Math.max(0, vw) * 100, color: kelvinColour(vk) });
+    } else problems.push('light: a formula fails');
+  }
+  return { env, materials, pieces, handles, problems, warnings, lights };
+}
+
+/** A light's colour from its temperature (K), as a #rrggbb (Tanner Helland's fit, 1000 K to 12000 K). */
+export function kelvinColour(k: number): string {
+  const t = Math.min(12000, Math.max(1000, k)) / 100;
+  const r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -0.1332047592);
+  const g = t <= 66 ? 99.4708025861 * Math.log(t) - 161.1195681661 : 288.1221695283 * Math.pow(t - 60, -0.0755148492);
+  const b = t >= 66 ? 255 : t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307;
+  const hex = (v: number) => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0');
+  return `#${hex(r)}${hex(g)}${hex(b)}`;
 }
 
 function placeHandle(h: HandleDef, env: Env, frame: Frame, problems: string[]): PlacedHandle[] {
@@ -211,7 +244,10 @@ function placeHandle(h: HandleDef, env: Env, frame: Frame, problems: string[]): 
 
 /** A piece's outline in plan: a box's four corners, a cylinder's circle as a polygon. */
 export function pieceOutline(p: Piece): { x: number; y: number }[] {
-  if (p.kind === 'cylinder') return Array.from({ length: 24 }, (_, k) => ({ x: p.cx + p.r * Math.cos((k / 24) * 2 * Math.PI), y: p.cy + p.r * Math.sin((k / 24) * 2 * Math.PI) }));
+  if (p.kind === 'cylinder') {
+    const r = Math.max(p.r, p.r2);
+    return Array.from({ length: 24 }, (_, k) => ({ x: p.cx + r * Math.cos((k / 24) * 2 * Math.PI), y: p.cy + r * Math.sin((k / 24) * 2 * Math.PI) }));
+  }
   const c = Math.cos(p.angle);
   const s = Math.sin(p.angle);
   return [

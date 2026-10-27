@@ -110,13 +110,14 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
     }
   },
   solid: (s) =>
-    s.eval.pieces.map((piece): KindSolid => {
+    s.eval.pieces.map((piece, i): KindSolid => {
       const geometry =
-        piece.kind === 'box' ? new THREE.BoxGeometry(piece.w, piece.h, piece.d) : new THREE.CylinderGeometry(piece.r, piece.r, piece.h, 24);
+        piece.kind === 'box' ? new THREE.BoxGeometry(piece.w, piece.h, piece.d) : new THREE.CylinderGeometry(piece.r2, piece.r, piece.h, 24);
       // Plan x, y and height z are three.js x, −z and y; a turn in plan (counter-clockwise) is one about y.
       if (piece.kind === 'box') geometry.rotateY(piece.angle);
       geometry.translate(piece.cx, piece.z + piece.h / 2, -piece.cy);
-      return { geometry, y: s.floor, material: piece.material, edges: true };
+      // Its lights go with its first piece (a luminaire's: contract.ts, lights).
+      return { geometry, y: s.floor, material: piece.material, edges: true, ...(i === 0 && s.eval.lights.length > 0 ? { lights: s.eval.lights } : {}) };
     }),
   dxfLayers: [{ name: 'A-FURN', colour: 8 }],
   dxf: (s, out) => {

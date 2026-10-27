@@ -175,7 +175,7 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
     if (name === old || name === '') return draw();
     const re = new RegExp(`(?<![\\wÀ-ÿ])${old}(?![\\wÀ-ÿ])`, 'g');
     const swap = (e: Expr): Expr => (typeof e === 'string' ? e.replace(re, name) : e);
-    const swapAll = <T>(x: T): T => JSON.parse(JSON.stringify(x), (k, v) => (typeof v === 'string' && ['x', 'y', 'z', 'w', 'd', 'h', 'r', 'count', 'dx', 'dy', 'dz', 'when', 'angle', 'formula'].includes(k) ? swap(v) : v)) as T;
+    const swapAll = <T>(x: T): T => JSON.parse(JSON.stringify(x), (k, v) => (typeof v === 'string' && ['x', 'y', 'z', 'w', 'd', 'h', 'r', 'r2', 'count', 'dx', 'dy', 'dz', 'when', 'angle', 'formula', 'watts', 'kelvin'].includes(k) ? swap(v) : v)) as T;
     set({
       ...draft,
       params: draft.params.map((p, k) => (k === i ? { ...p, name } : swapAll(p))),
@@ -183,6 +183,7 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
       handles: draft.handles.map((h) => ({ ...h, param: h.param === old ? name : h.param, at: h.at.map(swap) as unknown as HandleDef['at'] })),
       types: draft.types.map((ty) => ({ ...ty, values: Object.fromEntries(Object.entries(ty.values).map(([k, v]) => [k === old ? name : k, v])) })),
       ...(draft.rules ? { rules: draft.rules.map((r) => ({ ...r, when: swap(r.when) as string })) } : {}),
+      ...(draft.light ? { light: swapAll(draft.light) } : {}),
     });
   };
 
@@ -192,8 +193,18 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
       const upd = (q: Partial<Part>) => set({ ...draft, parts: replaceAt(draft.parts, i, { ...p, ...q } as Part) });
       const ex = (key: string, label: string) =>
         el('label', { class: 'ed-cell' }, el('span', {}, label), input(exprText((p as unknown as Record<string, Expr>)[key]), (v) => upd({ [key]: exprOf(v) } as Partial<Part>), `k${i}:${key}`, `${label}: ${t('ed.part')} ${i + 1}`, 'ed-names'));
+      // A cylinder's top radius: empty, the base's (a cylinder); another, a cone or a lampshade.
+      const top =
+        p.kind === 'cylinder'
+          ? el(
+              'label',
+              { class: 'ed-cell' },
+              el('span', {}, t('ed.r2')),
+              input(exprText(p.r2), (v) => (v.trim() === '' ? set({ ...draft, parts: replaceAt(draft.parts, i, withoutKey(p, 'r2') as Part) }) : upd({ r2: exprOf(v) } as Partial<Part>)), `k${i}:r2`, `${t('ed.r2')}: ${t('ed.part')} ${i + 1}`, 'ed-names'),
+            )
+          : null;
       const size =
-        p.kind === 'box' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h'))] : p.kind === 'cylinder' ? [ex('r', t('ed.r')), ex('h', t('ed.h'))] : [ex('angle', t('ed.angle'))];
+        p.kind === 'box' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h'))] : p.kind === 'cylinder' ? [ex('r', t('ed.r')), top!, ex('h', t('ed.h'))] : [ex('angle', t('ed.angle'))];
       const rep = p.repeat;
       const repIn = (key: 'count' | 'dx' | 'dy' | 'dz', label: string) =>
         el(
@@ -229,14 +240,45 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
         : kind === 'cylinder'
           ? { kind, name: { pt: 'Cilindro', en: 'Cylinder' }, x: 0, y: 0, z: 0, r: 0.1, h: 0.2 }
           : { kind, name: { pt: 'Objeto', en: 'Object' }, definition: defs[0]?.id ?? '', x: 0, y: 0, z: 0 };
+    // Its light, a luminaire's: where (as a part's x, y, z), its power and its colour temperature.
+    const light = draft.light;
+    const lightCard = light
+      ? el(
+          'div',
+          { class: 'ed-card', role: 'group', 'aria-label': t('ed.light') },
+          el('div', { class: 'ed-card-head' }, el('b', {}, t('ed.light')), remove(t('ed.removeLight'), 'light:remove', () => set(withoutKey(draft, 'light')))),
+          el(
+            'div',
+            { class: 'ed-grid' },
+            ...(
+              [
+                ['x', 'x'],
+                ['y', 'y'],
+                ['z', 'z'],
+                ['watts', t('ed.watts')],
+                ['kelvin', t('ed.kelvin')],
+              ] as const
+            ).map(([key, label]) =>
+              el(
+                'label',
+                { class: 'ed-cell' },
+                el('span', {}, label),
+                input(exprText(light[key]), (v) => (key === 'kelvin' && v.trim() === '' ? set({ ...draft, light: withoutKey(light, 'kelvin') }) : set({ ...draft, light: { ...light, [key]: exprOf(v) } })), `light:${key}`, `${label}: ${t('ed.light')}`, 'ed-names'),
+              ),
+            ),
+          ),
+        )
+      : null;
     return [
       ...cards,
+      ...(lightCard ? [lightCard] : []),
       el(
         'div',
         { class: 'ed-adds' },
         addButton(t('ed.addBox'), 'addBox', () => set({ ...draft, parts: [...draft.parts, blank('box')] })),
         addButton(t('ed.addCylinder'), 'addCyl', () => set({ ...draft, parts: [...draft.parts, blank('cylinder')] })),
         ...(defs.length ? [addButton(t('ed.addObject'), 'addObj', () => set({ ...draft, parts: [...draft.parts, blank('object')] }))] : []),
+        ...(light ? [] : [addButton(t('ed.addLight'), 'addLight', () => set({ ...draft, light: { x: 0, y: 0, z: 2, watts: 9, kelvin: 3000 } }))]),
       ),
       el('p', { class: 'mat-note' }, t('ed.partsNote')),
     ];
@@ -464,7 +506,7 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
       }
       const box = new THREE.Box3();
       for (const p of ev.pieces) {
-        const g = p.kind === 'box' ? new THREE.BoxGeometry(p.w, p.h, p.d) : new THREE.CylinderGeometry(p.r, p.r, p.h, 24);
+        const g = p.kind === 'box' ? new THREE.BoxGeometry(p.w, p.h, p.d) : new THREE.CylinderGeometry(p.r2, p.r, p.h, 24);
         if (p.kind === 'box') g.rotateY(p.angle);
         g.translate(p.cx, p.z + p.h / 2, -p.cy);
         const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: p.material.color, roughness: p.material.roughness, metalness: p.material.metalness }));

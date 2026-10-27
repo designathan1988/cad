@@ -5,11 +5,13 @@
 
 import { isOpeningStyle, operationsOf } from '../elements/opening/style';
 import { LIBRARY } from '../elements/object/library';
+import { LIBRARY_MORE } from '../elements/object/library-more';
 import { definitionMaterials } from '../elements/object/materials';
 import { isDefinition } from '../elements/object/valid';
 import { objectKind } from '../elements/kinds/object';
 import { DEFAULT_UNITS, isUnits } from '../ui/units';
 import { BUILT_IN_MATERIALS, CUT_PATTERNS, isColor, type Material, materialFor } from '../elements/material/schema';
+import { isPattern } from '../elements/material/pattern';
 import { type Doc, type Level, ownValuesOnly } from '../app/document';
 import type { AnyKind, KindKey } from '../elements/contract';
 import { KINDS } from '../elements/registry';
@@ -59,8 +61,12 @@ import { isRule as isNormRule } from '../rules/schema';
  *   Older walls have neither.
  * Version 27: the project's norm rules (`rules`, rules/schema.ts). Older files have none: the defaults.
  * Version 28: curtain walls (`curtains`, elements/curtain). Older files have none.
+ * Version 29: the library's other categories (object/library-more.ts). An older file gets those it
+ *   has not (a sofa, a bed, kitchen units, fixtures, appliances, a lamp, plants), with their materials.
+ * Version 30: materials' surface patterns (material/pattern.ts). An older file's built-in tiles, wood
+ *   and brick get theirs.
  */
-export const CURRENT_VERSION = 28;
+export const CURRENT_VERSION = 30;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
@@ -97,7 +103,13 @@ const isTop = (r: unknown): boolean =>
       (r.kind === 'toLevel' && typeof r.levelId === 'string' && finite(r.offset)) ||
       r.kind === 'roof'));
 
-/** A material: a name, a #rrggbb colour, a finish between 0 and 1, a cut pattern. */
+/** A built-in material of an older file with the pattern it has now (tiles, wood, brick). */
+const withBuiltInPattern = (m: Material): Material => {
+  const pattern = BUILT_IN_MATERIALS.find((b) => b.id === m.id)?.pattern;
+  return pattern && !m.pattern ? { ...m, pattern } : m;
+};
+
+/** A material: a name, a #rrggbb colour, a finish between 0 and 1, a cut pattern, maybe a surface pattern. */
 export const isMaterial = (m: unknown): m is Material =>
   isObject(m) &&
   typeof m.id === 'string' &&
@@ -110,7 +122,8 @@ export const isMaterial = (m: unknown): m is Material =>
   finite(m.metalness) &&
   m.metalness >= 0 &&
   m.metalness <= 1 &&
-  (CUT_PATTERNS as readonly unknown[]).includes(m.cut);
+  (CUT_PATTERNS as readonly unknown[]).includes(m.cut) &&
+  (m.pattern === undefined || isPattern(m.pattern));
 
 export const isWallType = (t: unknown): t is WallType =>
   isObject(t) &&
@@ -216,13 +229,15 @@ export function repairProject(raw: unknown): ReadResult {
   const openings = keep(raw.openings, isOpening, 'droppedOpenings');
   // Every layer's material is there: the file's, else a built-in one, else a plain one of that name.
   const read = keep(raw.materials, isMaterial, 'droppedMaterials');
-  const materials = [...(raw.materials === undefined ? BUILT_IN_MATERIALS : read)];
+  // Before version 30 no material had a pattern: the built-in ones that have one now get it.
+  const materials = [...(raw.materials === undefined ? BUILT_IN_MATERIALS : raw.version < 30 ? read.map(withBuiltInPattern) : read)];
   for (const id of new Set(wallTypes.flatMap((t) => t.layers.map((l) => l.materialId)))) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   // Units that are not ones (a unit it does not know, decimals out of range): metres again, and said.
   if (raw.units !== undefined && !isUnits(raw.units)) fixes.push({ kind: 'resetUnits', count: 1 });
   // The objects' definitions: the file's, or the library for a file from before them; and the
   // materials they use, as the layers' (a definition is data: a material it names is kept with it).
-  const definitions = raw.definitions === undefined ? [...LIBRARY] : keep(raw.definitions, isDefinition, 'droppedDefinitions');
+  const kept = raw.definitions === undefined ? [...LIBRARY] : keep(raw.definitions, isDefinition, 'droppedDefinitions');
+  const definitions = raw.version < 29 ? [...kept, ...LIBRARY_MORE.filter((d) => !kept.some((k) => k.id === d.id))] : kept;
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));

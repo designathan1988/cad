@@ -60,7 +60,7 @@ export type Part =
   /** A box from its lower corner (x, y, z), w along x, d along y, h up. */
   | (PartCommon & { readonly kind: 'box'; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly w: Expr; readonly d: Expr; readonly h: Expr })
   /** An upright cylinder from the centre of its base. */
-  | (PartCommon & { readonly kind: 'cylinder'; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly r: Expr; readonly h: Expr })
+  | (PartCommon & { readonly kind: 'cylinder'; readonly x: Expr; readonly y: Expr; readonly z: Expr; readonly r: Expr; readonly h: Expr; /** Its top's radius: a cone, a lampshade (its base's when not set). */ readonly r2?: Expr })
   /** Another definition inside this one (the handle in the door, the chair at the table), at (x, y, z),
    * turned `angle` degrees, its parameters given by formulas of this one's. */
   | (PartCommon & {
@@ -108,6 +108,16 @@ export interface ObjectDefinition {
   readonly handles: readonly HandleDef[];
   readonly types: readonly ObjectType[];
   readonly rules?: readonly RuleDef[];
+  /** A light it gives (a luminaire): where, how strong (watts of LED, about 100 lm each) and how warm (K). */
+  readonly light?: LightDef;
+}
+
+export interface LightDef {
+  readonly x: Expr;
+  readonly y: Expr;
+  readonly z: Expr;
+  readonly watts: Expr;
+  readonly kelvin?: Expr;
 }
 
 export interface ObjectInstance {

@@ -1,7 +1,10 @@
 // Materials as data (docs/plano-de-escopo.md, phase 2): what a wall layer is made of, kept in the
 // project. Its colour and finish (roughness, metalness: physically based, as three.js and glTF read
 // them) paint the layer in 3D and in the GLB; its colour and cut pattern fill it in plan where the
-// walls are cut. Changing a material changes every layer made of it, in plan and in 3D.
+// walls are cut. Changing a material changes every layer made of it, in plan and in 3D. A pattern
+// (pattern.ts: tiles, boards, bricks) is painted on its faces in 3D.
+
+import { PATTERN_DEFAULTS, type SurfacePattern } from './pattern';
 
 export type MaterialId = string;
 
@@ -21,24 +24,31 @@ export interface Material {
   /** 0 (not metal) to 1 (metal). */
   readonly metalness: number;
   readonly cut: CutPattern;
+  /** What its faces show in 3D: tiles, boards or bricks (none: its colour alone). */
+  readonly pattern?: SurfacePattern;
 }
 
 /** The materials a new project has, and those an older file gets for the names it used. */
 export const BUILT_IN_MATERIALS: readonly Material[] = [
   { id: 'plaster', name: '', color: '#e7e1d6', roughness: 0.9, metalness: 0, cut: 'solid' },
-  { id: 'brick', name: '', color: '#b9653f', roughness: 0.85, metalness: 0, cut: 'brick' },
+  { id: 'brick', name: '', color: '#b9653f', roughness: 0.85, metalness: 0, cut: 'brick', pattern: PATTERN_DEFAULTS.brick },
   { id: 'concrete', name: '', color: '#a3a29d', roughness: 0.8, metalness: 0, cut: 'concrete' },
   { id: 'gypsum', name: '', color: '#f2f0ea', roughness: 0.9, metalness: 0, cut: 'solid' },
   { id: 'insulation', name: '', color: '#f1d36e', roughness: 0.95, metalness: 0, cut: 'insulation' },
   // What the objects of the library are made of (elements/object/library.ts).
-  { id: 'wood', name: '', color: '#a87a52', roughness: 0.7, metalness: 0, cut: 'wood' },
+  { id: 'wood', name: '', color: '#a87a52', roughness: 0.7, metalness: 0, cut: 'wood', pattern: PATTERN_DEFAULTS.wood },
   { id: 'mdfWhite', name: '', color: '#eeece6', roughness: 0.6, metalness: 0, cut: 'solid' },
   { id: 'metal', name: '', color: '#8e949b', roughness: 0.35, metalness: 0.8, cut: 'solid' },
   { id: 'glass', name: '', color: '#bfd9e8', roughness: 0.05, metalness: 0, cut: 'none' },
   // What floors are built of (room/schema.ts FLOOR_BUILDUPS).
-  { id: 'tile', name: '', color: '#d9d4cb', roughness: 0.3, metalness: 0, cut: 'solid' },
+  { id: 'tile', name: '', color: '#d9d4cb', roughness: 0.3, metalness: 0, cut: 'solid', pattern: PATTERN_DEFAULTS.tiles },
   { id: 'screed', name: '', color: '#b8b3aa', roughness: 0.9, metalness: 0, cut: 'concrete' },
   { id: 'gravel', name: '', color: '#8f8a80', roughness: 1, metalness: 0, cut: 'concrete' },
+  // What the library's other objects are made of (object/library-more.ts).
+  { id: 'fabric', name: '', color: '#8b8f98', roughness: 0.95, metalness: 0, cut: 'solid' },
+  { id: 'ceramic', name: '', color: '#f3f2ee', roughness: 0.15, metalness: 0, cut: 'solid' },
+  { id: 'foliage', name: '', color: '#5e8a4c', roughness: 0.9, metalness: 0, cut: 'none' },
+  { id: 'bark', name: '', color: '#96765a', roughness: 0.95, metalness: 0, cut: 'wood' },
 ];
 
 /** A material for a name an older file used and the built-in ones do not have: grey, plain. */

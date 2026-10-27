@@ -6,25 +6,29 @@
 import { definitionMaterials } from '../object/materials';
 import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
+import { isPattern } from './pattern';
 import { CUT_PATTERNS, isColor, type Material, type MaterialId } from './schema';
 
 const unit = (n: number) => Number.isFinite(n) && n >= 0 && n <= 1;
-const usable = (m: Material): boolean => isColor(m.color) && unit(m.roughness) && unit(m.metalness) && CUT_PATTERNS.includes(m.cut);
+const usable = (m: Material): boolean => isColor(m.color) && unit(m.roughness) && unit(m.metalness) && CUT_PATTERNS.includes(m.cut) && (m.pattern === undefined || isPattern(m.pattern));
 
 export const addMaterial = (m: Material): Command<Doc> => ({
   label: 'cmd.addMaterial',
   apply: (doc) => (!usable(m) || doc.materials.some((x) => x.id === m.id) ? doc : { ...doc, materials: [...doc.materials, { ...m, name: m.name.trim() }] }),
 });
 
-export type MaterialPatch = Partial<Omit<Material, 'id'>>;
+export type MaterialPatch = Partial<Omit<Material, 'id' | 'pattern'>> & { readonly pattern?: Material['pattern'] | null };
 
-/** Name, colour, finish or cut pattern. The same values, or unusable ones, change nothing. */
+/** Name, colour, finish, cut pattern or surface pattern (null: none). The same values, or unusable ones, change nothing. */
 export const updateMaterial = (id: MaterialId, patch: MaterialPatch): Command<Doc> => ({
   label: 'cmd.updateMaterial',
   apply: (doc) => {
     const old = doc.materials.find((m) => m.id === id);
     if (!old) return doc;
-    const next: Material = { ...old, ...patch, name: (patch.name ?? old.name).trim() };
+    const { pattern, ...rest } = patch;
+    const merged: Material = { ...old, ...rest, name: (patch.name ?? old.name).trim() };
+    const { pattern: _was, ...plain } = merged;
+    const next: Material = pattern === null ? plain : pattern !== undefined ? { ...merged, pattern } : merged;
     if (!usable(next) || JSON.stringify(next) === JSON.stringify(old)) return doc;
     return { ...doc, materials: doc.materials.map((m) => (m.id === id ? next : m)) };
   },

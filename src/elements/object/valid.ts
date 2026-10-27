@@ -15,7 +15,7 @@ function isPart(p: unknown): p is Part {
   if (p.material !== undefined && typeof p.material !== 'string') return false;
   if (p.repeat !== undefined && !(isObject(p.repeat) && isExpr(p.repeat.count))) return false;
   if (p.kind === 'box') return isExpr(p.w) && isExpr(p.d) && isExpr(p.h);
-  if (p.kind === 'cylinder') return isExpr(p.r) && isExpr(p.h);
+  if (p.kind === 'cylinder') return isExpr(p.r) && isExpr(p.h) && (p.r2 === undefined || isExpr(p.r2));
   if (p.kind === 'object') return typeof p.definition === 'string' && (p.values === undefined || isObject(p.values));
   return false;
 }
@@ -35,7 +35,8 @@ export function isDefinition(d: unknown): d is ObjectDefinition {
     Array.isArray(d.types) &&
     d.types.length > 0 &&
     d.types.every((t) => isObject(t) && typeof t.id === 'string' && isWords(t.name) && isObject(t.values)) &&
-    (d.rules === undefined || (Array.isArray(d.rules) && d.rules.every((r) => isObject(r) && typeof r.when === 'string' && isWords(r.message))))
+    (d.rules === undefined || (Array.isArray(d.rules) && d.rules.every((r) => isObject(r) && typeof r.when === 'string' && isWords(r.message)))) &&
+    (d.light === undefined || (isObject(d.light) && isExpr(d.light.x) && isExpr(d.light.y) && isExpr(d.light.z) && isExpr(d.light.watts) && (d.light.kelvin === undefined || isExpr(d.light.kelvin))))
   );
 }
 

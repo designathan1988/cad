@@ -3,6 +3,7 @@
 // Each convex piece is a prism; pieces are disjoint by construction, so no 3D boolean exists.
 
 import * as THREE from 'three';
+import { patternTexture } from './pattern-texture';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Point2 } from '../core/vector';
 import type { DerivedGeometry, OpeningSolid, WallSolid } from '../app/geometry';
@@ -27,6 +28,54 @@ const WALK_FOV = 65;
 const XRAY_OPACITY = 0.28;
 /** How much the project's glass hides what is behind it. */
 const GLASS_OPACITY = 0.45;
+interface PatternUniforms {
+  key: string;
+  readonly uPatMap: { value: THREE.Texture | null };
+  readonly uPatPeriod: { value: THREE.Vector2 };
+  readonly uPatAngle: { value: number };
+}
+
+/**
+ * A material that can show a pattern (render/pattern-texture.ts) laid in the world's metres, whatever
+ * the geometry's own coordinates: a face looking up or down takes it in plan, one looking sideways along
+ * its length and up (box mapping by the face's normal). Walls, floors and objects alike, none of them
+ * with texture coordinates of their own. Off until the material has a pattern (its PATTERN define).
+ */
+function patterned(x: THREE.MeshStandardMaterial): void {
+  const u: PatternUniforms = { key: '', uPatMap: { value: null }, uPatPeriod: { value: new THREE.Vector2(1, 1) }, uPatAngle: { value: 0 } };
+  x.userData.pattern = u;
+  x.onBeforeCompile = (shader) => {
+    shader.uniforms.uPatMap = u.uPatMap;
+    shader.uniforms.uPatPeriod = u.uPatPeriod;
+    shader.uniforms.uPatAngle = u.uPatAngle;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\n#ifdef PATTERN\nvarying vec3 vPatPos;\nvarying vec3 vPatNormal;\n#endif')
+      .replace(
+        '#include <project_vertex>',
+        '#include <project_vertex>\n#ifdef PATTERN\nvPatPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvPatNormal = normalize(mat3(modelMatrix) * objectNormal);\n#endif',
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\n#ifdef PATTERN\nvarying vec3 vPatPos;\nvarying vec3 vPatNormal;\nuniform sampler2D uPatMap;\nuniform vec2 uPatPeriod;\nuniform float uPatAngle;\n#endif')
+      .replace(
+        '#include <map_fragment>',
+        [
+          '#include <map_fragment>',
+          '#ifdef PATTERN',
+          'vec3 patN = abs(normalize(vPatNormal));',
+          // Plan x and y are three.js x and −z; the height is y.
+          'vec2 patP = patN.y >= max(patN.x, patN.z) ? vec2(vPatPos.x, -vPatPos.z) : (patN.x >= patN.z ? vec2(-vPatPos.z, vPatPos.y) : vec2(vPatPos.x, vPatPos.y));',
+          'float patC = cos(uPatAngle);',
+          'float patS = sin(uPatAngle);',
+          'patP = vec2(patC * patP.x + patS * patP.y, -patS * patP.x + patC * patP.y);',
+          'diffuseColor.rgb *= texture2D(uPatMap, patP / uPatPeriod).rgb;',
+          '#endif',
+        ].join('\n'),
+      );
+  };
+}
+
+/** A luminaire's point light per lumen: 900 lm give the floor 1.75 m under it about 0.5, a third of the sun. */
+const LAMP_SCALE = (0.5 * 1.75 * 1.75) / 900;
 
 /** Opaque in its middle, fading to nothing at its edge: the ground runs off into the background. */
 function groundFade(): THREE.Texture {
@@ -216,9 +265,13 @@ export class Scene3D {
       x = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide });
       this.prepare(x);
       this.faint(x, this.xrayOn);
+      patterned(x);
       this.layerMaterials.set(m.id, x);
     }
-    if (x.color.getHexString() !== m.color.slice(1).toLowerCase()) x.color.set(m.color);
+    // A pattern carries the colour itself (its pieces' tones): the material is white under it.
+    const colour = m.pattern ? '#ffffff' : m.color;
+    if (x.color.getHexString() !== colour.slice(1).toLowerCase()) x.color.set(colour);
+    this.setPattern(x, m);
     x.roughness = m.roughness;
     x.metalness = m.metalness;
     // The project's glass is seen through (a curtain wall's panels, an object's glass part).
@@ -228,6 +281,27 @@ export class Scene3D {
       this.faint(x, this.xrayOn);
     }
     return x;
+  }
+
+  /** A material's pattern painted again when it or the colour changed, or taken off. */
+  private setPattern(x: THREE.MeshStandardMaterial, m: Material): void {
+    const key = m.pattern ? JSON.stringify([m.pattern, m.color]) : '';
+    const u = x.userData.pattern as PatternUniforms;
+    if (u.key === key) return;
+    u.key = key;
+    (u.uPatMap.value as THREE.Texture | null)?.dispose();
+    u.uPatMap.value = null;
+    if (m.pattern) {
+      const { texture, period } = patternTexture(m.pattern, m.color, Math.min(8, this.renderer.capabilities.getMaxAnisotropy()));
+      u.uPatMap.value = texture;
+      u.uPatPeriod.value.copy(period);
+      u.uPatAngle.value = (m.pattern.angle * Math.PI) / 180;
+    }
+    const on = m.pattern !== undefined;
+    if ((x.defines?.PATTERN !== undefined) !== on) {
+      x.defines = on ? { ...x.defines, PATTERN: '' } : Object.fromEntries(Object.entries(x.defines ?? {}).filter(([k]) => k !== 'PATTERN'));
+      x.needsUpdate = true;
+    }
   }
 
   private faint(m: THREE.Material, on: boolean): void {
@@ -602,6 +676,15 @@ export class Scene3D {
         mesh.position.y = part.y;
         if (part.edges) mesh.add(this.outline(part.geometry));
         group.add(mesh);
+        // A luminaire's light in the view: a point light falling off as light does, its strength from
+        // its lumens. The view is lit as by day (the sun's 1.5 is not lux): a lamp in candelas washed the
+        // floor under it out to white, so its lumens are scaled for 900 lm to light the floor 1.75 m
+        // under it at about a third of the sun. It goes through walls: the view casts no shadows.
+        for (const l of part.lights ?? []) {
+          const light = new THREE.PointLight(l.color, l.lumens * LAMP_SCALE, 0, 2);
+          light.position.set(l.x, part.y + l.z, -l.y);
+          group.add(light);
+        }
       }
       group.userData.wallId = x.id;
       this.scene.add(group);
@@ -884,7 +967,10 @@ export class Scene3D {
   dispose(): void {
     for (const w of this.walls.values()) this.drop(w.group);
     Object.values(this.materials).forEach((m) => m.dispose());
-    this.layerMaterials.forEach((m) => m.dispose());
+    this.layerMaterials.forEach((m) => {
+      (m.userData.pattern as PatternUniforms | undefined)?.uPatMap.value?.dispose();
+      m.dispose();
+    });
     for (const l of this.edges.values()) l.geometry.dispose();
     this.edgeMaterial.dispose();
     this.controls.dispose();
