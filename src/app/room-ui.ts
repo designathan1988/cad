@@ -1,14 +1,14 @@
 // Rooms and floors from the plan: the room tool, the floor tool, holes, a room's floor and ceiling. Functions over the app (app.ts delegates).
 
-import { CEILING_THICKNESS } from '../elements/room/schema';
 import { distance, type Point2 } from '../core/vector';
 import { defaultName, name, t } from '../ui/i18n';
 import { levelOf } from './document';
+import { made, nextOf } from './next-element';
+import type { Floor, Room } from '../elements/room/schema';
 import { deriveGeometry } from './geometry';
 import { newId } from '../core/id';
 import { addFloor, addFloorHole, addRoom } from '../elements/room/commands';
 import { insideRing, signedArea } from '../elements/room/derive';
-import { FLOOR_DEFAULTS } from '../elements/room/schema';
 import type { App } from './app';
 
 /** The smallest space the level's walls close in around p, when no room is in it: where the room tool would make one. */
@@ -30,7 +30,8 @@ export function roomClick(app: App, p: Point2): void {
     return app.refresh();
   }
   const n = doc.rooms.filter((r) => r.levelId === app.ui.levelId).length + 1;
-  const room = { id: newId('room'), levelId: app.ui.levelId, seed: p, name: defaultName.room(n), number: String(n) };
+  // Its use, height and finishes as the next room is set (next-element.ts); its name and number its own.
+  const room = made<Room>(app, 'rooms', { id: newId('room'), seed: p, name: defaultName.room(n), number: String(n) });
   const probe = deriveGeometry({ ...doc, rooms: [room] }).rooms.get(room.id);
   if (!probe?.enclosed) {
     app.ui.error = t('hint.roomNotEnclosed');
@@ -98,7 +99,9 @@ export function addCeilingToRoom(app: App, roomId: string): void {
   if (!room || doc.floors.some((f) => f.kind === 'ceiling' && f.source.kind === 'room' && f.source.roomId === roomId)) return;
   const height = room.height ?? levelOf(doc, room.levelId)?.height ?? 2.8;
   const id = newId('floor');
-  app.store.dispatch(addFloor({ id, levelId: room.levelId, source: { kind: 'room', roomId }, thickness: CEILING_THICKNESS, offset: height + CEILING_THICKNESS, kind: 'ceiling' }));
+  // The next ceiling's thickness (next-element.ts), at the room's ceiling height.
+  const thickness = (nextOf(app, 'ceilings') as unknown as Floor).thickness;
+  app.store.dispatch(addFloor(made<Floor>(app, 'ceilings', { id, levelId: room.levelId, source: { kind: 'room', roomId }, thickness, offset: height + thickness, kind: 'ceiling' })));
   app.ui.selection = new Set([id]);
   app.ui.info = t('hint.ceilingAdded', { room: name(room.name) });
   app.refresh();
@@ -109,7 +112,7 @@ export function addFloorToRoom(app: App, roomId: string): void {
   const room = app.store.get().rooms.find((r) => r.id === roomId);
   if (!room || app.store.get().floors.some((f) => f.kind !== 'ceiling' && f.source.kind === 'room' && f.source.roomId === roomId)) return;
   const id = newId('floor');
-  app.store.dispatch(addFloor({ id, levelId: room.levelId, source: { kind: 'room', roomId }, ...FLOOR_DEFAULTS }));
+  app.store.dispatch(addFloor(made<Floor>(app, 'floors', { id, levelId: room.levelId, source: { kind: 'room', roomId } })));
   app.ui.selection = new Set([id]);
   app.ui.info = t('hint.floorAdded', { room: name(room.name) });
   app.refresh();
@@ -148,13 +151,12 @@ export function floorFinish(app: App): void {
   const id = newId('floor');
   // A ceiling by its outline: at its level's height, as a room's is with none of its own.
   if (app.ui.ceilingTool) {
-    const height = levelOf(app.store.get(), app.ui.levelId)?.height ?? 2.8;
-    app.store.dispatch(addFloor({ id, levelId: app.ui.levelId, source: { kind: 'outline', points }, thickness: CEILING_THICKNESS, offset: height + CEILING_THICKNESS, kind: 'ceiling' }));
+    app.store.dispatch(addFloor(made<Floor>(app, 'ceilings', { id, source: { kind: 'outline', points }, kind: 'ceiling' })));
     app.ui.selection = new Set([id]);
     app.ui.info = t('hint.ceilingOutlineAdded', { n: points.length });
     return app.refresh();
   }
-  app.store.dispatch(addFloor({ id, levelId: app.ui.levelId, source: { kind: 'outline', points }, ...FLOOR_DEFAULTS }));
+  app.store.dispatch(addFloor(made<Floor>(app, 'floors', { id, source: { kind: 'outline', points } })));
   app.ui.selection = new Set([id]);
   app.ui.info = t('hint.floorOutlineAdded', { n: points.length });
   app.refresh();

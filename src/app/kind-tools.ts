@@ -14,22 +14,22 @@ import { t } from '../ui/i18n';
 import { solidsOf } from '../elements/registry';
 import { gridKind } from '../elements/kinds/grid';
 import { addRailing } from '../elements/railing/commands';
-import { RAILING_HEIGHT, RAILING_PREFIX } from '../elements/railing/schema';
+import { RAILING_PREFIX } from '../elements/railing/schema';
 import { addStair } from '../elements/stair/commands';
-import { STAIR_PREFIX, STAIR_TREAD, STAIR_WIDTH } from '../elements/stair/schema';
+import { STAIR_PREFIX } from '../elements/stair/schema';
 import { addRoof } from '../elements/roof/commands';
 import { isConvex } from '../elements/roof/geometry';
-import { edgesFor, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, ROOF_PREFIX, ROOF_THICKNESS, type RoofKind } from '../elements/roof/schema';
+import { edgesFor, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, ROOF_PREFIX, type RoofKind } from '../elements/roof/schema';
 import { addBeam } from '../elements/beam/commands';
 import { addSeparator } from '../elements/separator/commands';
 import { addCloud } from '../elements/cloud/commands';
 import { CLOUD_PREFIX, nextRevision } from '../elements/cloud/schema';
 import { addCurtain } from '../elements/curtain/commands';
-import { CURTAIN_DEFAULTS, CURTAIN_PREFIX } from '../elements/curtain/schema';
+import { CURTAIN_PREFIX } from '../elements/curtain/schema';
 import { SEPARATOR_PREFIX } from '../elements/separator/schema';
-import { BEAM_DEPTH, BEAM_PREFIX, BEAM_WIDTH } from '../elements/beam/schema';
+import { BEAM_PREFIX } from '../elements/beam/schema';
 import { addColumn } from '../elements/column/commands';
-import { COLUMN_PREFIX, COLUMN_SIZE } from '../elements/column/schema';
+import { COLUMN_PREFIX } from '../elements/column/schema';
 import { addNote } from '../elements/note/commands';
 import { addDimension } from '../elements/dimension/commands';
 import { anchorAt, offsetThrough, placeDimension } from '../elements/dimension/anchor';
@@ -41,6 +41,14 @@ import { LEVEL_MARK_HEIGHT, NOTE_HEIGHT, NOTE_PREFIX } from '../elements/note/sc
 import { newId } from '../core/id';
 import { signedArea } from '../elements/room/derive';
 import type { App } from './app';
+import { made, nextOf } from './next-element';
+import type { Railing } from '../elements/railing/schema';
+import type { Stair } from '../elements/stair/schema';
+import type { Roof } from '../elements/roof/schema';
+import type { Curtain } from '../elements/curtain/schema';
+import type { ObjectInstance } from '../elements/object/schema';
+import type { Column } from '../elements/column/schema';
+import type { Beam } from '../elements/beam/schema';
 import { addMeasure } from '../elements/measure/commands';
 import { arcWallAt } from '../elements/measure/place';
 import { MEASURE_PREFIX } from '../elements/measure/schema';
@@ -93,10 +101,9 @@ export function railingFinish(app: App): void {
   const points = app.ui.railingDraft;
   app.ui.railingDraft = [];
   if (points.length < 2) return app.render();
-  const last = app.store.get().railings.at(-1);
   const id = newId(RAILING_PREFIX);
-  // Like the last one made; balusters at first, as the norm asks of an opening (railingGap).
-  app.store.dispatch(addRailing({ id, levelId: app.ui.levelId, points, height: last?.height ?? RAILING_HEIGHT, baseOffset: 0, infill: last?.infill ?? 'balusters' }));
+  // As the next guardrail is set (next-element.ts): the last one made, else balusters, as the norm asks of an opening (railingGap).
+  app.store.dispatch(addRailing(made<Railing>(app, 'railings', { id, points })));
   app.ui.info = t('hint.railingMade');
   app.render();
 }
@@ -112,20 +119,8 @@ export function stairClick(app: App, p: Point2): void {
     return app.render();
   }
   if (distance(from, p) < 0.05) return;
-  const last = app.store.get().stairs.at(-1);
   const id = newId(STAIR_PREFIX);
-  app.store.dispatch(
-    addStair({
-      id,
-      levelId: app.ui.levelId,
-      kind: last?.kind ?? 'straight',
-      at: from,
-      angle: Math.atan2(p.y - from.y, p.x - from.x),
-      width: last?.width ?? STAIR_WIDTH,
-      tread: last?.tread ?? STAIR_TREAD,
-      turn: last?.turn ?? 'left',
-    }),
-  );
+  app.store.dispatch(addStair(made<Stair>(app, 'stairs', { id, at: from, angle: Math.atan2(p.y - from.y, p.x - from.x) })));
   app.setTool('select');
   app.ui.selection = new Set([id]);
   app.ui.info = t('hint.stairMade');
@@ -151,9 +146,11 @@ export function roofFinish(app: App): void {
   const outline = signedArea(raw) < 0 ? [...raw].reverse() : raw;
   const kind: RoofKind = isConvex(outline) ? 'hip' : 'flat';
   const id = newId(ROOF_PREFIX);
-  app.store.dispatch(
-    addRoof({ id, levelId: app.ui.levelId, outline, edges: edgesFor(kind, outline, ROOF_GRADE, ROOF_OVERHANG), kind, thickness: ROOF_THICKNESS, baseOffset: 0, ...(kind === 'flat' ? { parapet: ROOF_PARAPET } : {}) }),
-  );
+  // The next roof's (next-element.ts) grade, overhang, thickness and covering; hipped when it can be.
+  const next = nextOf(app, 'roofs') as unknown as Roof;
+  const edge = next.edges.find((e) => e.grade !== null) ?? next.edges[0];
+  const { parapet: _p, ...rest } = made<Roof>(app, 'roofs', { id, outline, kind, edges: edgesFor(kind, outline, edge?.grade ?? ROOF_GRADE, edge?.overhang ?? ROOF_OVERHANG) });
+  app.store.dispatch(addRoof(kind === 'flat' ? { ...rest, parapet: next.parapet ?? ROOF_PARAPET } : rest));
   app.setTool('select');
   app.ui.selection = new Set([id]);
   app.ui.info = t(kind === 'hip' ? 'hint.roofMade' : 'hint.roofFlat');
@@ -168,8 +165,7 @@ export function beamClick(app: App, p: Point2): void {
     return app.render();
   }
   if (distance(from, p) < MIN_WALL_LENGTH) return;
-  const last = app.store.get().beams.at(-1);
-  app.store.dispatch(addBeam({ id: newId(BEAM_PREFIX), levelId: app.ui.levelId, start: from, end: p, width: last?.width ?? BEAM_WIDTH, depth: last?.depth ?? BEAM_DEPTH }));
+  app.store.dispatch(addBeam(made<Beam>(app, 'beams', { id: newId(BEAM_PREFIX), start: from, end: p })));
   // On from its end, as walls are drawn in a chain.
   app.ui.beamFrom = p;
   app.ui.info = t('hint.beamMade');
@@ -213,7 +209,7 @@ export function curtainClick(app: App, p: Point2): void {
     return app.render();
   }
   if (distance(from, p) < MIN_WALL_LENGTH) return;
-  app.store.dispatch(addCurtain({ id: newId(CURTAIN_PREFIX), levelId: app.ui.levelId, start: from, end: p, ...CURTAIN_DEFAULTS }));
+  app.store.dispatch(addCurtain(made<Curtain>(app, 'curtains', { id: newId(CURTAIN_PREFIX), start: from, end: p })));
   app.ui.beamFrom = p;
   app.ui.info = t('hint.curtainMade');
   app.render();
@@ -227,18 +223,16 @@ export function objectClick(app: App, p: Point2): void {
   const doc = app.store.get();
   const def = doc.definitions.find((d) => d.id === app.ui.objectDef);
   if (!def) return;
-  app.store.dispatch(addObject({ id: newId(OBJECT_PREFIX), levelId: app.ui.levelId, definitionId: def.id, typeId: def.types[0]!.id, at: { x: p.x, y: p.y }, angle: app.ui.objectAngle, elevation: 0, values: {} }));
+  // Its type, elevation and parameters as the next object is set (next-element.ts), turned as the tool is.
+  app.store.dispatch(addObject(made<ObjectInstance>(app, 'objects', { id: newId(OBJECT_PREFIX), at: { x: p.x, y: p.y }, angle: app.ui.objectAngle })));
   app.ui.info = t('hint.objectMade', { name: words(def.name) });
   app.render();
 }
 
 /** The column tool: a click stands a column there, the section of the last one made. */
 export function columnClick(app: App, p: Point2): void {
-  const last = app.store.get().columns.at(-1);
   const id = newId(COLUMN_PREFIX);
-  app.store.dispatch(
-    addColumn({ id, levelId: app.ui.levelId, at: { x: p.x, y: p.y }, width: last?.width ?? COLUMN_SIZE, depth: last?.depth ?? COLUMN_SIZE, angle: last?.angle ?? 0 }),
-  );
+  app.store.dispatch(addColumn(made<Column>(app, 'columns', { id, at: { x: p.x, y: p.y } })));
   app.ui.info = t('hint.columnMade');
   app.render();
 }

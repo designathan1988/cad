@@ -24,7 +24,7 @@ export function buildShell(root: HTMLElement) {
   const top = el('header', { class: 'top titlebar' });
   const left = el('div', { class: 'left' });
   const homeBtn = iconButton('folder', 'icon-btn app-mark');
-  const open = iconButton('fileNew', 'icon-btn quick');
+  const open = iconButton('fileOpen', 'icon-btn quick');
   const save = iconButton('download', 'icon-btn quick');
   const undo = iconButton('undo');
   const redo = iconButton('redo');

@@ -5,6 +5,7 @@
 // vertex takes its height: so they connect (network.ts). Sewer and rain fall the way they are drawn,
 // by their diameter's least fall. Functions over the app (app.ts delegates).
 
+import { made } from './next-element';
 import { newId } from '../core/id';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
@@ -49,7 +50,8 @@ export function mepPointClick(app: App, p: Point2): void {
     kind === 'ventTerminal'
       ? coverAt(doc, [...(app.geometry.kinds.get('roofs')?.values() ?? [])] as RoofFaces[], p) + VENT_ABOVE - (doc.levels.find((l) => l.id === app.ui.levelId)?.elevation ?? 0)
       : kindHeight(doc, app.ui.levelId, kind);
-  const point: MepPoint = { id: newId(MEP_POINT_PREFIX), levelId: app.ui.levelId, at: { x: p.x, y: p.y }, height, kind, systemId: systemFor(doc, kind) };
+  // Its height, power, circuit and fixture as the next point of its kind is set (next-element.ts); a vent terminal's over the roof.
+  const point = made<MepPoint>(app, 'mepPoints', { id: newId(MEP_POINT_PREFIX), at: { x: p.x, y: p.y }, kind, ...(kind === 'ventTerminal' ? { height } : {}) });
   app.store.dispatch({ label: 'cmd.addMep', apply: (d) => ({ ...d, mepPoints: [...d.mepPoints, point] }) });
   app.ui.info = t('hint.mepPlaced', { what: t(`mep.kind.${kind}`) });
   app.render();

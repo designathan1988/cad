@@ -25,6 +25,9 @@
   --chrome-top: calc(var(--top-h) + var(--tabs-h) + var(--ribbon-h));
   --rb-large-w: 64px;
   --rb-small-h: 24px;
+  /* A field on the ribbon (a tool's next element): its label, then its control. */
+  --rb-field-label-w: 136px;
+  --rb-field-w: 136px;
   --search-w: 300px;
   --control-h: 32px;
   --control-h-sm: 32px;
@@ -3152,6 +3155,8 @@ textarea.text-field {
 }
 .rb-tab-context[aria-selected='true'] {
   color: var(--accent-text);
+  font-weight: 600;
+  box-shadow: inset 0 var(--line-2) 0 var(--accent);
 }
 
 /* The ribbon: panels side by side, each with its title under it; what does not fit scrolls sideways. */
@@ -3241,6 +3246,61 @@ textarea.text-field {
 .rb-small[aria-disabled='true'] {
   opacity: 0.4;
   cursor: default;
+}
+/* A tool's tab: the next element's fields, three rows to a column, before the panel's buttons
+   (ribbon.ts, fields.ts ribbonFieldRows). As short as the small buttons beside them. */
+.rb-fields {
+  --field-h: var(--rb-small-h);
+  display: grid;
+  grid-template-rows: repeat(3, var(--rb-small-h));
+  grid-auto-flow: column;
+  gap: var(--line) var(--sp-3);
+}
+.rb-field {
+  display: grid;
+  grid-template-columns: var(--rb-field-label-w) var(--rb-field-w);
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+}
+.rb-field-label {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-width: 0;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.rb-field-label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rb-field-label .icon {
+  flex: none;
+}
+.rb-field .num-field input,
+.rb-field .select select,
+.rb-field .search-select {
+  font-size: var(--fs-sm);
+}
+/* A segmented choice takes the width its options need. */
+.rb-field-segmented {
+  grid-template-columns: var(--rb-field-label-w) auto;
+}
+/* On the ribbon a choice keeps one line, as short as the rows: its words whole, side by side. */
+.rb-field .segmented {
+  padding: 0;
+}
+.rb-field .segmented button,
+.rb-field .segmented button:not(.has-icon) {
+  flex: none;
+  height: var(--rb-small-h);
+  min-height: 0;
+  padding: 0 var(--sp-2);
+  white-space: nowrap;
+}
+.rb-field .segmented button:not(.has-icon) .label {
+  display: inline;
 }
 /* A button with a list (Objects): its caret, and the list under it, over the drawing. */
 .rb-caret {
@@ -3344,6 +3404,10 @@ textarea.text-field {
   /* Touch: a column of small buttons would be three 44 px rows; they go side by side instead. */
   .rb-column {
     flex-direction: row;
+  }
+  /* And two rows of fields, 44 px each, under the panel's title. */
+  .rb-fields {
+    grid-template-rows: repeat(2, var(--rb-small-h));
   }
 }
 

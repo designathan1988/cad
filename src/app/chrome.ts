@@ -156,7 +156,7 @@ export function renderChrome(app: App): void {
   shell.level.value = ui.levelId;
   // Gone once the wall tool is on: "press W" no longer applies, and the footer says what to click.
   // Only on an empty project: a column, a roof or a note drawn first is under it otherwise.
-  shell.emptyHint.hidden = doc.walls.length > 0 || elementIds(doc).size > 0 || ui.tool === 'wall';
+  shell.emptyHint.hidden = doc.walls.length > 0 || elementIds(doc).size > 0 || ui.tool !== 'select';
   // Hidden or isolated for a while: the drawing framed, and a way back, as Revit's cyan frame says.
   shell.viewport.classList.toggle('temp-view', ui.temp !== null);
   shell.tempChip.hidden = ui.temp === null;
@@ -575,10 +575,11 @@ export function renderRibbon(app: App): void {
     for (const e of contextEntries(app, () => app.openCommands())) actions.set(`ctx.${e.id}`, { id: `ctx.${e.id}`, label: e.label, group: 'edit', keywords: '', ...(e.keys ? { keys: e.keys } : {}), enabled: true, run: e.run });
   const tabs = ribbonTabs(app);
   if (!tabs.some((x) => x.id === app.ribbonTab) || app.ribbonTab === 'context') app.ribbonTab = tabs[0]!.id;
-  // Something selected: its contextual tab comes forward, unless the user went to another tab since;
-  // nothing selected, that choice is forgotten and the tab chosen before is back.
+  // Something selected, or a placing tool chosen: its contextual tab comes forward (Revit's Modify | …,
+  // Modify | Place …), unless the user went to another tab since; neither, that choice is forgotten and
+  // the tab chosen before is back. Another tool or selection brings it forward again.
   const contextual = tabs.find((x) => x.context);
-  const selected = [...app.ui.selection].join(' ');
+  const selected = `${app.ui.tool} ${[...app.ui.selection].join(' ')}`;
   if (!contextual || selected !== app.ribbonSelected) app.ribbonAway = false;
   app.ribbonSelected = selected;
   const shown = contextual && !app.ribbonAway ? contextual.id : app.ribbonTab;
@@ -588,14 +589,17 @@ export function renderRibbon(app: App): void {
     const a = actions.get(i.id);
     return a ? [i.id, a.label, a.keys ?? '', a.enabled, i.pressed?.() ?? null] : [i.id];
   }));
-  const key = JSON.stringify([getLang(), shown, tabs.map((x) => x.text ?? x.id), states]);
+  const key = JSON.stringify([getLang(), shown, tabs.map((x) => x.text ?? x.id), states, tab.panels.map((p) => p.key ?? '')]);
   if (key === app.ribbonKey) return;
   app.ribbonKey = key;
-  // Keep the focus on the same button across the rebuild.
-  const focused = document.activeElement instanceof HTMLElement && shell.ribbon.contains(document.activeElement) ? document.activeElement.dataset.action : undefined;
+  // Keep the focus on the same button, or in the same field, across the rebuild.
+  const active = document.activeElement instanceof HTMLElement && shell.ribbon.contains(document.activeElement) ? document.activeElement : null;
+  const focused = active?.dataset.action;
+  const field = active?.closest<HTMLElement>('[data-rf]')?.dataset.rf;
   renderRibbonTabs(shell.tabs, tabs, shown, (id) => app.chooseRibbonTab(id), shell.fileMenu);
   renderRibbonTab(shell.ribbon, tab, actions);
   if (focused) shell.ribbon.querySelector<HTMLElement>(`[data-action="${focused}"]`)?.focus();
+  else if (field) shell.ribbon.querySelector<HTMLElement>(`[data-rf="${field}"] input, [data-rf="${field}"] select, [data-rf="${field}"] button`)?.focus();
 }
 
 /** The way out of the tool in use, on the view's bar: shown while one is, named in the interface's language. */

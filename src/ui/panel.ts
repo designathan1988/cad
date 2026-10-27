@@ -14,7 +14,7 @@ import type { JoinWarning } from '../elements/wall/join/types';
 import type { StackedStep } from '../app/stacked';
 import type { ReferenceLine } from '../elements/wall/schema';
 import { el } from './controls';
-import { fieldsSection } from './fields';
+import { type Field, fieldsSection } from './fields';
 import { name, num, t, type MessageKey } from './i18n';
 import { icon, type IconName } from './icons';
 import type { AnyKind } from '../elements/contract';
@@ -34,6 +34,8 @@ export interface PanelInput {
   readonly openingWarnings: readonly OpeningWarning[];
   /** The door or window tool is active: its next opening's size. */
   readonly openingTool: { readonly kind: OpeningKind; readonly size: OpeningSize } | null;
+  /** A placing tool's next element (app/next-element.ts): its title, icon and fields, set before the click. */
+  readonly next: { readonly icon: IconName; readonly title: string; readonly fields: readonly Field<unknown>[]; readonly items: readonly unknown[] } | null;
   /** How many elements are selected, of every kind: the panel edits one kind at a time. */
   readonly total: number;
   /** The first registry kind with a selected element (elements/registry.ts), and those, as derived. */
@@ -176,6 +178,10 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     nodes.push(head('wall', t('panel.nextWall')), el('div', { class: 'panel-hint' }, t('panel.nextWallHint')));
     const s = fieldsSection(t('panel.general'), true, nextWallFields(doc, act.updateDefaults), [d]);
     nodes.push(s);
+  } else if (input.next) {
+    // What the tool will make, as its ribbon tab shows it: changed here, the next one is made so.
+    nodes.push(head(input.next.icon, input.next.title), el('div', { class: 'panel-hint' }, t('panel.nextHint')));
+    nodes.push(fieldsSection(t('panel.general'), true, input.next.fields, input.next.items));
   } else {
     nodes.push(head('pointer', t('panel.properties')));
     const empty = el('div', { class: 'empty-state' });

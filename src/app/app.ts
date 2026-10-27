@@ -1,6 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import { made, type NextSlot } from './next-element';
 import { autoRoute } from './mep-route';
 import * as terrains from './terrain-ui';
 import * as mepUi from './mep-ui';
@@ -518,7 +519,8 @@ export class App {
     const at = this.ui.tool === 'object' && this.ui.view === 'plan' ? (this.ui.snap?.point ?? this.ui.cursor) : null;
     const def = doc.definitions.find((d) => d.id === this.ui.objectDef);
     if (!at || !def) return null;
-    const preview: ObjectInstance = { id: OBJECT_PREVIEW, levelId: this.ui.levelId, definitionId: def.id, typeId: def.types[0]!.id, at: { x: at.x, y: at.y }, angle: this.ui.objectAngle, elevation: 0, values: {} };
+    // As it will be placed: the next object's type and values (next-element.ts).
+    const preview = made<ObjectInstance>(this, 'objects', { id: OBJECT_PREVIEW, at: { x: at.x, y: at.y }, angle: this.ui.objectAngle });
     return { ...doc, objects: [...doc.objects, preview] };
   }
 
@@ -2165,6 +2167,8 @@ export class App {
   /** The ribbon's tab shown, kept between visits, and what it was last drawn from (chrome.ts). */
   ribbonTab = loadPrefs().ribbonTab ?? 'home';
   ribbonKey = '';
+  /** The next element each placing tool makes, as the user set it (next-element.ts); unset, the last one made. */
+  next: Partial<Record<NextSlot, unknown>> = {};
   /** The user left the contextual tab for another while the selection lasts (chrome.ts, renderRibbon). */
   ribbonAway = false;
   /** The selection the contextual tab was last shown for: a new one brings it forward again. */
@@ -2174,7 +2178,7 @@ export class App {
     // The contextual tab is the selection's, not a tab to come back to.
     if (id === 'context') this.ribbonAway = false;
     else {
-      this.ribbonAway = this.ui.selection.size > 0;
+      this.ribbonAway = this.ui.selection.size > 0 || this.ui.tool !== 'select';
       this.ribbonTab = id;
       savePrefs({ ribbonTab: id });
     }

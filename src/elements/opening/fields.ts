@@ -316,7 +316,7 @@ export function arrangeFields(doc: Doc, list: readonly Opening[], placed: Readon
 }
 
 /** The size of the next opening the tool places (one set of values, not elements). */
-export function nextOpeningFields(kind: OpeningKind, set: (patch: Partial<OpeningSize>) => void): Field<OpeningSize>[] {
+export function nextOpeningFields(kind: OpeningKind, set: (patch: Partial<OpeningSize>) => void, size?: OpeningSize): Field<OpeningSize>[] {
   return [
     // A model sets the size it is usually made in too.
     modelField([{ kind, style: undefined }], (style) => {
@@ -326,7 +326,29 @@ export function nextOpeningFields(kind: OpeningKind, set: (patch: Partial<Openin
     { id: 'width', label: 'panel.width', kind: 'number', min: 0.01, get: (s) => s.width, set: (v) => set({ width: v }) },
     { id: 'height', label: 'panel.height', kind: 'number', min: 0.01, get: (s) => s.height, set: (v) => set({ height: v }) },
     { id: 'sill', label: 'panel.sill', kind: 'number', min: 0, when: () => kind !== 'door', get: (s) => s.sill, set: (v) => set({ sill: v }) },
+    ...(size ? nextStyleFields(kind, size, set) : []),
   ];
+}
+
+/**
+ * The next opening's make (its operation, leaves, frame, casing, transom, screen, threshold), as a placed
+ * one's (styleFields), read from and set on the tool's size: one of a model only (a plain one has none).
+ */
+function nextStyleFields(kind: OpeningKind, size: OpeningSize, set: (patch: Partial<OpeningSize>) => void): Field<OpeningSize>[] {
+  const style = size.style;
+  if (!style) return [];
+  const as = (s: OpeningSize) => ({ opening: { id: 'next', kind, style: s.style ?? style } }) as unknown as OpeningSolid;
+  // The changes styleFields asks of the "selected" opening, made to the next one's style.
+  const fields = styleFields([as(size)], (_ids, patch) => {
+    const out = typeof patch === 'function' ? patch({ id: 'next', kind, style } as unknown as Opening) : patch;
+    if (out.style) set({ style: out.style });
+  });
+  return fields.flatMap((f): Field<OpeningSize>[] => {
+    if (f.kind === 'note' || f.kind === 'readout' || f.kind === 'action') return [];
+    const when = f.when;
+    const get = f.get as (x: OpeningSolid) => never;
+    return [{ ...f, ...(when ? { when: (items: readonly OpeningSize[]) => when(items.map(as)) } : {}), get: (s: OpeningSize) => get(as(s)) } as unknown as Field<OpeningSize>];
+  });
 }
 
 /** An opening's model as said: the catalog's name, the operation's for one changed by hand, or plain. */

@@ -28,7 +28,13 @@ export interface RibbonItem {
 
 export interface RibbonPanel {
   readonly title: MessageKey;
+  /** Its name as written, for one named by what it is for (the element being placed). */
+  readonly text?: string;
   readonly items: readonly RibbonItem[];
+  /** Fields before its buttons (ui/fields.ts ribbonFieldRows): a tool's next element, set before the click. */
+  readonly fields?: () => readonly HTMLElement[];
+  /** What its fields show, so the ribbon is drawn again when that changes. */
+  readonly key?: string;
 }
 
 export interface RibbonTab {
@@ -139,6 +145,8 @@ function openMenu(anchor: HTMLButtonElement, items: readonly RibbonItem[], actio
 export function renderRibbonTab(box: HTMLElement, tab: RibbonTab, actions: ReadonlyMap<string, Action>): void {
   const panels = tab.panels.flatMap((p) => {
     const body = el('div', { class: 'rb-body' });
+    const rows = p.fields?.() ?? [];
+    if (rows.length > 0) body.append(el('div', { class: 'rb-fields' }, ...rows));
     let column: HTMLElement | null = null;
     for (const item of p.items) {
       const action = actions.get(item.id);
@@ -156,7 +164,8 @@ export function renderRibbonTab(box: HTMLElement, tab: RibbonTab, actions: Reado
       column.append(b);
     }
     if (body.childElementCount === 0) return [];
-    return [el('div', { class: 'rb-panel', role: 'group', 'aria-label': t(p.title) }, body, el('div', { class: 'rb-title', 'aria-hidden': 'true' }, t(p.title)))];
+    const title = p.text ?? t(p.title);
+    return [el('div', { class: 'rb-panel', role: 'group', 'aria-label': title }, body, el('div', { class: 'rb-title', 'aria-hidden': 'true' }, title))];
   });
   box.replaceChildren(...panels);
   box.setAttribute('aria-label', t(tab.title));

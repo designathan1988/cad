@@ -38,6 +38,8 @@ const paths = {
   arrowDown: 'M12 5v14M19 12l-7 7-7-7',
   plus: 'M12 5v14M5 12h14',
   fileNew: 'M14 3H6v18h12V7zM14 3v4h4M12 11v6M9 14h6',
+  // A page with an arrow out of it: a file opened (fileNew's plus would say a new one).
+  fileOpen: 'M14 3H6v18h12V7zM14 3v4h4M12 18v-7M9 14l3-3 3 3',
   zoomSel: 'M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M11 9a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 13l2 2',
   frame: 'M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2z',
   magnet: 'M6 4h4v8a2 2 0 0 0 4 0V4h4v8a6 6 0 0 1-12 0zM6 8h4M14 8h4',

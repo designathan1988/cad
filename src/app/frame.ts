@@ -19,7 +19,7 @@ import { alignWalls, distributeWalls } from '../tools/arrange-walls';
 import { guideLine, guideMeasure } from '../tools/guide-tool';
 import { OPENING_PREVIEW_ID, ruleGuide } from './opening-ui';
 import { toolCursor } from '../ui/cursors';
-import { getLang, name, t } from '../ui/i18n';
+import { getLang, type MessageKey, name, t } from '../ui/i18n';
 import { renderPanel } from '../ui/panel';
 import { makeDetail } from '../ui/sheets-dialog';
 import { snapLabel } from '../tools/snap';
@@ -38,9 +38,22 @@ import { money } from '../ui/budget-dialog';
 import { newId } from '../core/id';
 import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
 import type { App } from './app';
+import { kindOfKey } from '../elements/registry';
+import { nextFields, type NextSlot } from './next-element';
+import { lowerFirst } from './ribbon-tabs';
+import { words } from '../elements/object/fields';
 import { PREVIEW_ID, SNAP_OF } from './app';
 import { simHeat } from './sim-map';
 import { cloudRing } from '../elements/cloud/schema';
+
+/** The panel's title over a placing tool's next element: its kind's name, an object's its own. */
+function nextTitle(app: App, slot: NextSlot): string {
+  if (slot === 'ceilings') return t('panel.nextCeiling');
+  const def = slot === 'objects' ? app.store.get().definitions.find((d) => d.id === app.ui.objectDef) : undefined;
+  // A services point by its kind (a light point, a socket), an object by its name, the others by their kind's.
+  const what = def ? words(def.name) : slot === 'mepPoints' ? t(`mep.kind.${app.ui.mepKind}` as MessageKey) : t(kindOfKey(slot).one);
+  return t('panel.nextElement', { what: lowerFirst(what) });
+}
 
 export function renderFrame(app: App): void {
   const { ui, shell } = app;
@@ -341,7 +354,9 @@ export function renderFrame(app: App): void {
   // close an open list and drop the focus of a field being typed in.
   const doc = app.store.get();
   const openingKey = JSON.stringify([ui.openingDefaults, app.geometry.openingWarnings, app.selectedOpenings().map((o) => [o.start, o.end])]);
-  const panelKey = [ui.tool, [...ui.selection].sort().join(','), getLang(), JSON.stringify(ui.defaults), JSON.stringify(app.geometry.warnings), openingKey].join('|');
+  // A placing tool's next element (next-element.ts): its fields, and what they show.
+  const next = ui.selection.size === 0 ? nextFields(app) : null;
+  const panelKey = [ui.tool, [...ui.selection].sort().join(','), getLang(), JSON.stringify(ui.defaults), JSON.stringify(app.geometry.warnings), openingKey, next?.key ?? ''].join('|');
   const placing = app.openingKind();
   if (doc === app.panelDoc && panelKey === app.panelKey) return app.afterPanel();
   app.panelDoc = doc;
@@ -359,6 +374,7 @@ export function renderFrame(app: App): void {
       placed: app.geometry.openings,
       openingWarnings: app.geometry.openingWarnings,
       openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing] } : null,
+      next: next ? { icon: kindOfKey(next.slot === 'ceilings' ? 'floors' : next.slot).icon, title: nextTitle(app, next.slot), fields: next.fields, items: next.items } : null,
       total: ui.selection.size,
       // The first registry kind with a selected element, and those of its elements, as derived.
       kind: (() => {
