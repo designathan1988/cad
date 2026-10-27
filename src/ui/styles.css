@@ -1887,6 +1887,16 @@ button.project-name:hover {
   flex: 1 1 auto;
   min-width: 0;
 }
+/* The diagnostics panel's explanation under a problem, and its fix. */
+.debug-why {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-2) var(--sp-2) var(--sp-6);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
 .units-body {
   padding: var(--sp-3) var(--sp-4);
 }

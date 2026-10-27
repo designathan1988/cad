@@ -4,6 +4,7 @@
 
 import type { App } from '../app/app';
 import { type Diagnostic, nameOf } from '../app/diagnostics';
+import { fixFor, whyKey } from '../app/diagnostic-fixes';
 import { clearErrors, loggedErrors } from '../app/error-log';
 import { referenceLength } from '../elements/opening/derive';
 import { el } from './controls';
@@ -42,6 +43,18 @@ export function renderDebugPanel(app: App, box: HTMLElement): void {
     );
     row.addEventListener('click', () => app.showElements(d.ids));
     list.append(row);
+    // Why it happens, and its one-click fix when there is a safe one (app/diagnostic-fixes.ts).
+    const why = whyKey(d.kind);
+    const fix = fixFor(d, doc, app.geometry);
+    if (why || fix) {
+      const more = el('div', { class: 'debug-why' }, ...(why ? [el('span', {}, t(why))] : []));
+      if (fix) {
+        const b = el('button', { type: 'button', class: 'btn debug-fix' }, t(fix.label));
+        b.addEventListener('click', () => app.store.dispatch(fix.command));
+        more.append(b);
+      }
+      list.append(more);
+    }
   }
 
   const errors = loggedErrors();
