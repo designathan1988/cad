@@ -28,6 +28,8 @@
   /* A field on the ribbon (a tool's next element): its label, then its control. */
   --rb-field-label-w: 136px;
   --rb-field-w: 136px;
+  --rb-field-label-w-sm: 104px;
+  --rb-field-w-sm: 112px;
   --search-w: 300px;
   --control-h: 32px;
   --control-h-sm: 32px;
@@ -3282,6 +3284,13 @@ textarea.text-field {
 .rb-field .select select,
 .rb-field .search-select {
   font-size: var(--fs-sm);
+}
+/* Narrower windows: the fields' labels and controls shorter, so a tool's tab fits more of itself. */
+@media (max-width: 108rem) {
+  .rb-fields {
+    --rb-field-label-w: var(--rb-field-label-w-sm);
+    --rb-field-w: var(--rb-field-w-sm);
+  }
 }
 /* A segmented choice takes the width its options need. */
 .rb-field-segmented {
