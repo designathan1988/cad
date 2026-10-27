@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import type { Point2 } from '../../core/vector';
 import { num, t } from '../../ui/i18n';
-import type { ElementKind, PlanPaint } from '../contract';
+import type { BaseGeometry, ElementKind, PlanPaint } from '../contract';
 import type { Material } from '../material/schema';
 import { insideRing } from '../room/derive';
 import { deriveTerrain, type TerrainSolid } from '../terrain/derive';
@@ -14,6 +14,25 @@ import { isTerrain, type Terrain, TERRAIN_PREFIX } from '../terrain/schema';
 
 /** The ground's colour in 3D. */
 const GRASS: Material = { id: 'terrain', name: '', color: '#8ea86a', roughness: 0.95, metalness: 0, cut: 'solid' };
+const builtCache = new WeakMap<Terrain, TerrainSolid>();
+/** A terrain's surface and contours, built once while the terrain is the same. */
+const built = (x: Terrain): TerrainSolid => builtCache.get(x) ?? (builtCache.set(x, deriveTerrain(x)), builtCache.get(x)!);
+
+/**
+ * Under a building the ground is dug to its floor (Revit's building pad): the surface is not drawn in
+ * the enclosed rooms of the terrain's level (a triangle whose middle is in one), so a floor shows there,
+ * not the grass through it. The soil block under it stays whole.
+ */
+export function underBuilding(s: TerrainSolid, g: BaseGeometry): TerrainSolid {
+  const rooms = [...g.rooms.values()].filter((r) => r.room.levelId === s.terrain.levelId && r.enclosed).map((r) => r.outline);
+  if (rooms.length === 0) return s;
+  const shown = s.tris.filter((r) => {
+    const mid = { x: (r[0] + r[3] + r[6]) / 3, y: (r[1] + r[4] + r[7]) / 3 };
+    return !rooms.some((o) => insideRing(o, mid));
+  });
+  return shown.length === s.tris.length ? s : { ...s, shown };
+}
+
 /** The soil under it: its sides and its bottom, as a site model's block of earth. */
 const SOIL: Material = { id: 'terrain-soil', name: '', color: '#7a5a3c', roughness: 1, metalness: 0, cut: 'solid' };
 /** How far under its lowest point the soil block goes (m). */
@@ -88,8 +107,9 @@ export const terrainKind: ElementKind<Terrain, TerrainSolid> = {
   exportName: 'terrain.title',
   exportColour: 'floor',
   valid: (x): x is Terrain => isTerrain(x),
-  memo: 'element',
-  derive: (_doc, x) => deriveTerrain(x),
+  // The surface's heavy part kept while the terrain is the same (built); the part under the rooms
+  // left out each time, as the rooms change.
+  derive: (_doc, x, g) => underBuilding(built(x), g),
   element: (s) => s.terrain,
   outlines: (s) => [s.terrain.outline],
   hit: (s, p) => insideRing(s.terrain.outline, p),
@@ -102,8 +122,9 @@ export const terrainKind: ElementKind<Terrain, TerrainSolid> = {
   },
   plan: (p, s, lit) => drawTerrain(p, s, lit),
   solid: (s) => {
-    const pos = new Float32Array(s.tris.length * 9);
-    s.tris.forEach((r, i) => {
+    const tris = s.shown ?? s.tris;
+    const pos = new Float32Array(tris.length * 9);
+    tris.forEach((r, i) => {
       for (let k = 0; k < 3; k++) {
         // Plan (x, y, z) to three.js (x, z, −y).
         pos[i * 9 + k * 3] = r[k * 3]!;

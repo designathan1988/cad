@@ -17,6 +17,8 @@ export interface TerrainSolid {
   readonly contours: readonly { readonly z: number; readonly segments: readonly (readonly [Point2, Point2])[] }[];
   readonly bottom: number;
   readonly top: number;
+  /** The surface as drawn in 3D: `tris` but those under a building (kinds/terrain.ts); all of them when absent. */
+  readonly shown?: TerrainSolid['tris'];
 }
 
 /** Cells across the larger side: fine enough for a lot, few enough to stay quick. */

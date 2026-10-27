@@ -72,6 +72,27 @@ describe('terrain', () => {
     expect(floorOf({ ...doc, objects: [{ ...object, at: { x: 30, y: 30 } }] })).toBe(0);
   });
 
+  it('under a building the ground is dug: no surface in its enclosed rooms, the soil whole', () => {
+    const w = (id: string, a: [number, number], b: [number, number]): DocWall => ({ id, wallTypeId: 'wt_masonry15', start: { x: a[0], y: a[1] }, end: { x: b[0], y: b[1] }, referenceLine: 'centerline', levelId: 'lvl_ground' });
+    const doc: Doc = {
+      ...newDocument(),
+      walls: [w('a', [5, 5], [9, 5]), w('b', [9, 5], [9, 9]), w('c', [9, 9], [5, 9]), w('d', [5, 9], [5, 5])],
+      rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 7, y: 7 }, name: 'Sala', number: '1' }],
+      terrains: [{ id: 'terrain_1', levelId: 'lvl_ground', outline: square(20), spots: [{ x: 0, y: 0, z: 1 }], interval: 0.5 }],
+    };
+    const s = deriveGeometry(doc).kinds.get('terrains')!.get('terrain_1') as ReturnType<typeof deriveTerrain>;
+    expect(s.shown).toBeDefined();
+    expect(s.shown!.length).toBeLessThan(s.tris.length);
+    // None left with its middle in the room (inside the walls' faces, 5.075 to 8.925).
+    const inRoom = (r: (typeof s.tris)[number]) => {
+      const x = (r[0] + r[3] + r[6]) / 3;
+      const y = (r[1] + r[4] + r[7]) / 3;
+      return x > 5.1 && x < 8.9 && y > 5.1 && y < 8.9;
+    };
+    expect(s.shown!.some(inRoom)).toBe(false);
+    expect(s.tris.some(inRoom)).toBe(true);
+  });
+
   it('an L-shaped lot: the surface is the L, not its box', () => {
     const l = [
       { x: 0, y: 0 },
