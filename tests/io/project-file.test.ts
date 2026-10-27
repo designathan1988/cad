@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/app/document';
 import { CURRENT_VERSION, isLevel, readProject, writeProject } from '../../src/io/project-file';
+import { BEFORE_65 } from '../../src/elements/object/library-before65';
 
 const wall = (id: string, x: number) => ({
   id,
@@ -239,5 +240,20 @@ describe('version 5', () => {
     const cylinder = { ...point, parts: [{ kind: 'cylinder', name: { pt: 'Bulbo', en: 'Bulb' }, x: 0, y: 0, z: 'altura - 0.03', r: 0.03, h: 0.06, material: 'matBulbo' }] };
     const r = readProject(JSON.stringify({ ...doc, version: 47, definitions: doc.definitions.map((d) => (d.id === point.id ? cylinder : d)) }));
     expect(r.ok && r.doc.definitions.find((d) => d.id === point.id)).toEqual(point);
+  });
+
+  it('a file before version 65 gets the cooker, potted plant and carved basin redrawn, unless the user changed them', () => {
+    const doc = newDocument();
+    const cooker = doc.definitions.find((d) => d.id === 'def_cooker')!;
+    const plant = doc.definitions.find((d) => d.id === 'def_pot_plant')!;
+    const oldCooker = BEFORE_65.find((d) => d.id === cooker.id)!;
+    const oldPlant = BEFORE_65.find((d) => d.id === plant.id)!;
+    const mine = { ...oldPlant, name: { pt: 'Minha planta', en: 'My plant' } };
+    const old = { ...doc, version: 64, definitions: doc.definitions.map((d) => (d.id === cooker.id ? oldCooker : d.id === plant.id ? mine : d)) };
+    const r = readProject(JSON.stringify(old));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.doc.definitions.find((d) => d.id === cooker.id)).toEqual(cooker);
+    expect(r.doc.definitions.find((d) => d.id === plant.id)).toEqual(mine);
   });
 });

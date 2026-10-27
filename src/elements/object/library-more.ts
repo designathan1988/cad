@@ -324,29 +324,31 @@ export const COOKER: ObjectDefinition = {
     len('altura', 'Altura', 'Height', 0.85, 0.8, 0.95),
     { name: 'bocas', label: { pt: 'Bocas', en: 'Burners' }, kind: 'integer', default: 4, min: 2, max: 6, group: { pt: 'Construção', en: 'Construction' } },
     { name: 'porLinha', label: { pt: 'Bocas por fileira', en: 'Burners per row' }, kind: 'integer', default: 2, formula: 'ceil(bocas / 2)', group: { pt: 'Construção', en: 'Construction' } },
-    mat('matCorpo', 'Corpo', 'Body', 'metal'),
+    mat('matCorpo', 'Corpo', 'Body', 'stainless'),
     mat('matMesa', 'Mesa', 'Top', 'glass'),
   ],
   parts: [
-    { kind: 'box', name: { pt: 'Corpo', en: 'Body' }, x: '-largura/2', y: '-profundidade/2', z: 0, w: 'largura', d: 'profundidade', h: 'altura - 0.01', material: 'matCorpo', round: 0.008 },
-    { kind: 'box', name: { pt: 'Mesa', en: 'Top' }, x: '-largura/2', y: '-profundidade/2', z: 'altura - 0.01', w: 'largura', d: 'profundidade', h: 0.01, material: 'matMesa' },
-    {
-      kind: 'cylinder',
-      name: { pt: 'Boca', en: 'Burner' },
-      repeat: { count: 'bocas' },
-      x: '-largura/2 + largura / porLinha * ((i % porLinha) + 0.5)',
-      y: 'if(i < porLinha, -profundidade/4, profundidade/4)',
-      z: 'altura',
-      r: 'min(0.05, largura / porLinha / 4)',
-      h: 0.025,
-      material: 'matCorpo',
-    },
-    { kind: 'box', name: { pt: 'Porta do forno', en: 'Oven door' }, x: '-largura/2 + 0.03', y: '-profundidade/2 - 0.02', z: 0.12, w: 'largura - 0.06', d: 0.02, h: 'altura - 0.3', material: 'matMesa' },
+    // The body on its plinth, the black glass top, the back panel with its knobs.
+    { kind: 'box', name: { pt: 'Rodapé', en: 'Plinth' }, x: '-largura/2 + 0.02', y: '-profundidade/2 + 0.04', z: 0, w: 'largura - 0.04', d: 'profundidade - 0.06', h: 0.08, material: 'plasticBlack' },
+    { kind: 'box', name: { pt: 'Corpo', en: 'Body' }, x: '-largura/2', y: '-profundidade/2', z: 0.08, w: 'largura', d: 'profundidade', h: 'altura - 0.1', material: 'matCorpo', round: 0.006 },
+    { kind: 'box', name: { pt: 'Mesa', en: 'Top' }, x: '-largura/2', y: '-profundidade/2', z: 'altura - 0.02', w: 'largura', d: 'profundidade - 0.08', h: 0.02, material: 'graniteBlack', round: 0.004 },
+    { kind: 'box', name: { pt: 'Painel', en: 'Back panel' }, x: '-largura/2', y: 'profundidade/2 - 0.08', z: 'altura - 0.02', w: 'largura', d: 0.08, h: 0.06, material: 'matCorpo', round: 0.006 },
+    { kind: 'cylinder', name: { pt: 'Botão', en: 'Knob' }, repeat: { count: 'bocas + 1' }, x: '-largura/2 + largura / (bocas + 2) * (i + 1)', y: 'profundidade/2 - 0.08', z: 'altura + 0.015', r: 0.017, h: 0.022, tilt: -90, material: 'plasticBlack' },
+    // Each burner: its ring of flame holes, its cap, the cast-iron grate over it.
+    { kind: 'cylinder', name: { pt: 'Queimador', en: 'Burner' }, repeat: { count: 'bocas' }, x: '-largura/2 + largura / porLinha * ((i % porLinha) + 0.5)', y: 'if(i < porLinha, -profundidade/4, profundidade/4 - 0.04)', z: 'altura', r: 'min(0.045, largura / porLinha / 5)', h: 0.018, material: 'aluminium' },
+    { kind: 'cylinder', name: { pt: 'Espalhador', en: 'Burner cap' }, repeat: { count: 'bocas' }, x: '-largura/2 + largura / porLinha * ((i % porLinha) + 0.5)', y: 'if(i < porLinha, -profundidade/4, profundidade/4 - 0.04)', z: 'altura + 0.018', r: 'min(0.032, largura / porLinha / 7)', h: 0.008, material: 'plasticBlack' },
+    { kind: 'box', name: { pt: 'Grelha', en: 'Grate' }, repeat: { count: 'bocas * 2' }, x: '-largura/2 + largura / porLinha * ((floor(i / 2) % porLinha) + 0.5) - if(i % 2 == 0, 0.09, 0.006)', y: 'if(floor(i / 2) < porLinha, -profundidade/4, profundidade/4 - 0.04) - if(i % 2 == 0, 0.006, 0.09)', z: 'altura + 0.03', w: 'if(i % 2 == 0, 0.18, 0.012)', d: 'if(i % 2 == 0, 0.012, 0.18)', h: 0.012, material: 'plasticBlack', round: 0.003 },
+    // The oven door: its window, its bar handle; a drawer under it.
+    { kind: 'box', name: { pt: 'Porta do forno', en: 'Oven door' }, x: '-largura/2 + 0.015', y: '-profundidade/2 - 0.02', z: 0.2, w: 'largura - 0.03', d: 0.022, h: 'altura - 0.36', material: 'matCorpo', round: 0.004 },
+    { kind: 'box', name: { pt: 'Visor', en: 'Oven window' }, x: '-largura/2 + 0.07', y: '-profundidade/2 - 0.023', z: 0.26, w: 'largura - 0.14', d: 0.004, h: 'altura - 0.5', material: 'graniteBlack' },
+    { kind: 'cylinder', name: { pt: 'Puxador', en: 'Handle' }, x: '-largura/2 + 0.06', y: '-profundidade/2 - 0.05', z: 'altura - 0.21', r: 0.009, h: 'largura - 0.12', roll: 90, material: 'aluminium' },
+    { kind: 'box', name: { pt: 'Gaveta', en: 'Drawer' }, x: '-largura/2 + 0.015', y: '-profundidade/2 - 0.02', z: 0.09, w: 'largura - 0.03', d: 0.022, h: 0.1, material: 'matCorpo', round: 0.004 },
   ],
   handles: boxHandles('altura'),
   types: [
     { id: 'f4', name: { pt: 'Quatro bocas', en: 'Four burners' }, values: {} },
     { id: 'f5', name: { pt: 'Cinco bocas', en: 'Five burners' }, values: { largura: 0.75, bocas: 5 } },
+    { id: 'f6w', name: { pt: 'Seis bocas, branco', en: 'Six burners, white' }, values: { largura: 0.9, bocas: 6, matCorpo: 'lacquerWhite' } },
   ],
 };
 
@@ -444,19 +446,11 @@ export const POT_PLANT: ObjectDefinition = {
   ],
   parts: [
     { kind: 'cylinder', name: { pt: 'Vaso', en: 'Pot' }, x: 0, y: 0, z: 0, r: 'largura / 2 * 0.75', r2: 'largura / 2', h: 'vaso', material: 'matVaso' },
-    // Leaves in rounded tufts over the pot: a core and three round it, a little lower.
-    { kind: 'sphere', name: { pt: 'Folhagem', en: 'Foliage' }, x: 0, y: 0, z: 'vaso * 0.9', r: 'largura * 0.5', h: '(altura - vaso) * 1.05', material: 'matPlanta' },
-    {
-      kind: 'sphere',
-      name: { pt: 'Folhagem (tufos)', en: 'Foliage (tufts)' },
-      repeat: { count: 3 },
-      x: 'largura * 0.28 * cos(i * 120 + 30)',
-      y: 'largura * 0.28 * sin(i * 120 + 30)',
-      z: 'vaso * 0.95',
-      r: 'largura * 0.36',
-      h: '(altura - vaso) * 0.7',
-      material: 'matPlanta',
-    },
+    { kind: 'cylinder', name: { pt: 'Borda', en: 'Rim' }, x: 0, y: 0, z: 'vaso - 0.03', r: 'largura / 2 + 0.01', h: 0.03, material: 'matVaso' },
+    { kind: 'cylinder', name: { pt: 'Terra', en: 'Soil' }, x: 0, y: 0, z: 'vaso - 0.02', r: 'largura / 2 - 0.01', h: 0.022, material: 'soil' },
+    // Leaves: long ellipsoid blades fanned round the stem, the inner ones upright and taller, the outer ones arching out.
+    { kind: 'sphere', name: { pt: 'Folha', en: 'Leaf' }, repeat: { count: 7 }, x: 'largura * 0.08 * cos(i * 51)', y: 'largura * 0.08 * sin(i * 51)', z: 'vaso - 0.01', r: 'max(0.03, largura * 0.11)', d: 'max(0.012, largura * 0.03)', h: '(altura - vaso) * 0.95', tilt: 8, turn: 'i * 51 - 90', material: 'matPlanta' },
+    { kind: 'sphere', name: { pt: 'Folha', en: 'Leaf' }, repeat: { count: 9 }, x: 'largura * 0.14 * cos(i * 40 + 20)', y: 'largura * 0.14 * sin(i * 40 + 20)', z: 'vaso - 0.01', r: 'max(0.03, largura * 0.12)', d: 'max(0.012, largura * 0.03)', h: '(altura - vaso) * 0.75', tilt: 26, turn: 'i * 40 + 20 - 90', material: 'matPlanta' },
   ],
   handles: [
     { param: 'largura', axis: 'x', at: ['largura/2', 0, 'vaso'], shift: 0 },

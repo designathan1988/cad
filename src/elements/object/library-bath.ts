@@ -48,7 +48,9 @@ export const VANITY_SINK: ObjectDefinition = {
     { kind: 'box', name: w('Fundo da cuba', 'Basin bottom'), when: 'cuba == 1', repeat: { count: 'if(duas, 2, 1)', dx: 'largura / 2' }, x: 'if(duas, -largura/4, 0) - 0.21', y: '-profundidade/2 + 0.09', z: 'altura - 0.16', w: 0.42, d: 0.3, h: 0.012, material: 'matCuba', round: 0.004 },
     // Carved: the counter thickened, a sloping trough cut into it toward a slot at the back.
     { kind: 'box', name: w('Bancada esculpida', 'Carved block'), when: 'cuba == 2', x: '-largura/2', y: '-profundidade/2', z: 'altura - 0.15', w: 'largura', d: 'profundidade', h: 0.12, material: 'matBancada' },
-    { kind: 'box', name: w('Rampa', 'Trough'), when: 'cuba == 2', cut: true, repeat: { count: 'if(duas, 2, 1)', dx: 'largura / 2' }, x: 'if(duas, -largura/4, 0) - 0.25', y: '-profundidade/2 + 0.07', z: 'altura - 0.04', w: 0.5, d: 0.5, h: 0.2, tilt: -6 },
+    { kind: 'box', name: w('Rampa', 'Trough'), when: 'cuba == 2', cut: true, repeat: { count: 'if(duas, 2, 1)', dx: 'largura / 2' }, x: 'if(duas, -largura/4, 0) - 0.25', y: '-profundidade/2 + 0.07', z: 'altura - 0.075', w: 0.5, d: 'profundidade - 0.14', h: 0.2, tilt: 5 },
+    // The slot the water runs into at the trough's low back end.
+    { kind: 'box', name: w('Ralo linear', 'Drain slot'), when: 'cuba == 2', repeat: { count: 'if(duas, 2, 1)', dx: 'largura / 2' }, x: 'if(duas, -largura/4, 0) - 0.22', y: 'profundidade/2 - 0.1', z: 'altura - 0.072 - (profundidade - 0.17) * 0.0875', w: 0.44, d: 0.025, h: 0.004, material: 'plasticBlack' },
     // The tap on the wall above each basin, its lever.
     { kind: 'cylinder', name: w('Bica', 'Spout'), repeat: { count: 'if(duas, 2, 1)', dx: 'largura / 2' }, x: 'if(duas, -largura/4, 0)', y: 'profundidade/2 + 0.01', z: 'altura + if(cuba == 0, 0.27, 0.16)', r: 0.011, h: 'if(cuba == 0, 0.2, 0.17)', tilt: -90, material: 'matMetal' },
     { kind: 'cylinder', name: w('Registro', 'Lever'), repeat: { count: 'if(duas, 2, 1)', dx: 'largura / 2' }, x: 'if(duas, -largura/4, 0) + 0.12', y: 'profundidade/2 + 0.01', z: 'altura + if(cuba == 0, 0.27, 0.16)', r: 0.024, h: 0.03, tilt: -90, material: 'matMetal' },
