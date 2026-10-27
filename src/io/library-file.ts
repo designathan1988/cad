@@ -74,13 +74,13 @@ export function libraryOf(doc: Doc, ids: readonly string[] | null, materialIds: 
 }
 
 export type MergeResult =
-  | { readonly ok: true; readonly doc: Doc; readonly definitions: number; readonly materials: number; readonly bad: number }
+  | { readonly ok: true; readonly doc: Doc; readonly definitions: number; readonly materials: number; readonly bad: number; /** Definitions the project had already, the same: not brought in again. */ readonly same: number }
   | { readonly ok: false; readonly error: 'notLibrary' };
 
 /**
  * A library read into the project: its valid definitions and materials added. A material whose id the
- * project has is the project's when the same, else comes in under a new id; a definition whose id the
- * project has comes in under a new one. What refers to either follows. A plain list of definitions
+ * project has is the project's when the same, else comes in under a new id; a definition likewise (the
+ * same library read twice brought every object in twice). What refers to either follows. A plain list of definitions
  * (the first library files) is read too.
  */
 export function mergeLibrary(doc: Doc, raw: unknown): MergeResult {
@@ -103,15 +103,32 @@ export function mergeLibrary(doc: Doc, raw: unknown): MergeResult {
     matIds.set(m.id, id);
     addedMats.push({ ...m, id });
   }
-  // Definitions: a taken id gets a new one; the definitions of the library that nest it follow.
+  // Definitions: the same one under its id is the project's; another under a taken id gets a new one; the
+  // definitions of the library that nest it follow.
   const taken = new Set(doc.definitions.map((d) => d.id));
   const defIds = new Map<string, string>();
+  const kept = new Set<string>();
   for (const d of good) {
+    const mine = doc.definitions.find((x) => x.id === d.id);
+    if (mine && JSON.stringify(mine) === JSON.stringify(mapMaterials(d, good, (id) => matIds.get(id) ?? id))) kept.add(d.id);
+  }
+  // The same only if what it nests is too: a door the same as the project's, nesting a handle the project
+  // has changed since, is the library's door with the library's handle, not the project's.
+  const nests = (d: ObjectDefinition) => d.parts.flatMap((p) => (p.kind === 'object' && good.some((x) => x.id === p.definition) ? [p.definition] : []));
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const d of good) if (kept.has(d.id) && nests(d).some((n) => !kept.has(n))) changed = kept.delete(d.id);
+  }
+  for (const d of good) {
+    if (kept.has(d.id)) {
+      defIds.set(d.id, d.id);
+      continue;
+    }
     const id = taken.has(d.id) ? newId(DEFINITION_PREFIX) : d.id;
     taken.add(id);
     defIds.set(d.id, id);
   }
-  const added = good.map((d): ObjectDefinition => {
+  const added = good.filter((d) => !kept.has(d.id)).map((d): ObjectDefinition => {
     const moved = mapMaterials(d, good, (id) => matIds.get(id) ?? id);
     return {
       ...moved,
@@ -125,6 +142,7 @@ export function mergeLibrary(doc: Doc, raw: unknown): MergeResult {
     definitions: added.length,
     materials: addedMats.length,
     bad: list.length - good.length + mats.length - goodMats.length,
+    same: kept.size,
   };
 }
 

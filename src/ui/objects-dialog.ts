@@ -201,5 +201,5 @@ async function importLibrary(app: App, file: File): Promise<string> {
       return x.ok ? x.doc : doc;
     },
   });
-  return t('lib.imported', { defs: r.definitions, mats: r.materials, bad: r.bad });
+  return t('lib.imported', { defs: r.definitions, mats: r.materials, bad: r.bad, same: r.same });
 }

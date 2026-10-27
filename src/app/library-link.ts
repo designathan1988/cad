@@ -52,7 +52,7 @@ export async function openLibraryLink(app: App): Promise<void> {
       return x.ok ? x.doc : doc;
     },
   });
-  app.toast(t('lib.fromLink', { defs: r.definitions, mats: r.materials, bad: r.bad }));
+  app.toast(t('lib.fromLink', { defs: r.definitions, mats: r.materials, bad: r.bad, same: r.same }));
 }
 
 /** Links opened when the app starts, and pasted into a tab already open. */

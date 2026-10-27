@@ -85,6 +85,20 @@ describe('library files', () => {
     expect(d!.parts[0]!.material).toBe('wood');
   });
 
+  it('the same library read twice: the second time nothing comes in again, said as already here', () => {
+    const once = mergeLibrary({ ...newDocument(), definitions: [] }, libraryOf(source, ['def_door']));
+    if (!once.ok) throw new Error('not read');
+    const twice = mergeLibrary(once.doc, libraryOf(source, ['def_door']));
+    if (!twice.ok) throw new Error('not read');
+    expect([twice.definitions, twice.materials, twice.same]).toEqual([0, 0, 2]);
+    expect(twice.doc.definitions).toHaveLength(once.doc.definitions.length);
+    // One changed in the project since: the library's comes in beside it, under a new id.
+    const changed: Doc = { ...once.doc, definitions: once.doc.definitions.map((d) => (d.id === 'def_handle' ? { ...d, name: words('Meu puxador') } : d)) };
+    const third = mergeLibrary(changed, libraryOf(source, ['def_door']));
+    if (!third.ok) throw new Error('not read');
+    expect([third.definitions, third.same]).toEqual([2, 0]);
+  });
+
   it('the first library files (a list of definitions) are read; what is not a library is not', () => {
     const r = mergeLibrary({ ...newDocument(), definitions: [] }, [handle, { id: 'bad' }]);
     expect(r.ok && [r.definitions, r.bad]).toEqual([1, 1]);
