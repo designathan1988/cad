@@ -28,7 +28,14 @@ export interface Stair {
   readonly railing?: boolean;
   /** A ramp's grade (%). */
   readonly grade?: number;
+  /** Whether the floor it reaches is left open over it (its well); open when not set. */
+  readonly well?: boolean;
+  /** Risers in the first flight of an L or a U (the rest after the landing); half when not set. */
+  readonly split?: number;
 }
+
+/** How far (m) a floor's top may be from a stair's top and still be the floor it reaches. */
+export const WELL_REACH = 0.3;
 
 /** A ramp's grade (%), the rise between its landings and a landing's length (m), as NBR 9050 has them. */
 export const RAMP_GRADE = 8.33;

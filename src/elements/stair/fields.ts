@@ -4,11 +4,13 @@ import { lengthText } from '../../ui/units';
 import type { Field } from '../../ui/fields';
 import { num, t } from '../../ui/i18n';
 import type { StairPatch } from './commands';
-import type { StairSolid } from './geometry';
+import { firstFlight, type StairSolid } from './geometry';
 import { RAMP_GRADE, type StairKind } from './schema';
 
 export interface StairFieldActions {
   readonly updateStairs: (ids: readonly string[], patch: StairPatch) => void;
+  /** A guardrail round the stair's well, on the floor it reaches; null when it cannot have one (no level there, no well, one already). */
+  readonly wellRailing?: (s: StairSolid) => (() => void) | null;
 }
 
 export function stairFields(stairs: readonly StairSolid[], act: StairFieldActions): Field<StairSolid>[] {
@@ -71,6 +73,40 @@ export function stairFields(stairs: readonly StairSolid[], act: StairFieldAction
         { value: 'right', label: t('stair.turn.right') },
       ],
       labelled: true,
+    },
+    // An L's or a U's flights: the steps before the landing (the rest after it).
+    {
+      id: 'split',
+      label: 'stair.split',
+      icon: 'hash',
+      kind: 'number',
+      unit: '',
+      decimals: 0,
+      min: 1,
+      when: (items) => items.every((s) => s.stair.kind === 'l' || s.stair.kind === 'u'),
+      get: (s) => firstFlight(s.stair, s.risers),
+      set: (v) => act.updateStairs(ids, { split: Math.round(v) }),
+    },
+    {
+      id: 'well',
+      label: 'stair.well',
+      kind: 'segmented',
+      get: (s) => (s.stair.well === false ? 'no' : 'yes'),
+      set: (v) => act.updateStairs(ids, { well: v === 'yes' }),
+      options: [
+        { value: 'yes', label: t('stair.well.yes') },
+        { value: 'no', label: t('stair.well.no') },
+      ],
+      labelled: true,
+    },
+    {
+      id: 'wellRailing',
+      label: 'stair.wellRailing',
+      kind: 'action',
+      sub: true,
+      when: (items) => items.length === 1 && act.wellRailing !== undefined,
+      enabled: (items) => act.wellRailing?.(items[0]!) != null,
+      run: () => act.wellRailing?.(stairs[0]!)?.(),
     },
     {
       id: 'railing',

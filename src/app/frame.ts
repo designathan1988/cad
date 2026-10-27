@@ -1,5 +1,6 @@
 // One frame of the views: the plan's overlay (selection, previews, snaps, tags, temporary dimensions and their value fields) or the 3D's, and the panel. Functions over the app (app.ts delegates).
 
+import { findingText } from '../ui/rules-dialog';
 import { keepSelectionInView3d } from './view-ui';
 import { objectHandles } from './object-handles';
 import { areaText, lengthNum, lengthText, typingExamples } from '../ui/units';
@@ -144,6 +145,7 @@ export function renderFrame(app: App): void {
       axisLine: marks?.axis ?? null,
       refLines: app.refLines(),
       openingTags: app.openingTags(),
+      normMarks: app.normMarks(),
       ray: marks?.ref ? { start: marks.base, end: marks.ref } : null,
       handles: app.handles(),
       objectHandles: objectHandles(app),
@@ -298,6 +300,7 @@ export function renderFrame(app: App): void {
         return null;
       })(),
       stacked: stackedSteps(doc),
+      norms: app.normFindings().filter((f) => ui.selection.has(f.elementId)).map(findingText),
     },
     {
       updateWalls: (patch) => app.store.dispatch(updateWalls([...ui.selection], patch)),

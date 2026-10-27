@@ -1966,6 +1966,65 @@ button.project-name:hover {
   color: var(--text-2);
   font-size: var(--fs-sm);
 }
+/* The norms dialog (rules-dialog.ts): on, what, minimum, maximum, source; then what is outside them. */
+.rules {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1.3fr) var(--levels-col) var(--levels-col) minmax(0, 1fr);
+  gap: var(--sp-2) var(--sp-2);
+  align-items: center;
+  padding: var(--sp-3) var(--sp-4);
+}
+@media (max-width: 720px) {
+  .rules {
+    grid-template-columns: max-content minmax(0, 1.2fr) repeat(2, minmax(0, 1fr)) minmax(0, 1fr);
+  }
+}
+.rules input[type='checkbox'] {
+  justify-self: center;
+  width: var(--sp-4);
+  height: var(--sp-4);
+  accent-color: var(--accent);
+}
+.rules-none {
+  color: var(--text-3);
+  padding-left: var(--sp-2);
+}
+.rules-off {
+  color: var(--text-3);
+}
+.rules-title {
+  margin: var(--sp-2) var(--sp-4) 0;
+  font-size: var(--fs-md);
+}
+.rules-findings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-4) var(--sp-3);
+  max-height: 30vh;
+  overflow-y: auto;
+}
+.rules-finding {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-start;
+  padding: var(--sp-2);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rules-finding:hover {
+  background: var(--hover);
+}
+.rules-finding svg {
+  flex: none;
+  color: var(--warn);
+  margin-top: var(--sp-1);
+}
 .text-field {
   height: var(--field-h);
   padding: 0 var(--sp-2);

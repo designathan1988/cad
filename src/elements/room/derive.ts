@@ -142,6 +142,27 @@ export function labelPoint(ring: readonly Point2[]): Point2 {
   return { x: best.x, y: best.y };
 }
 
+/**
+ * An outline with holes less the `cuts` (a stair's well through a floor): the largest part that is left,
+ * its holes with it, counter-clockwise outline and clockwise holes. Null when nothing is left.
+ */
+export function cutOut(
+  outline: readonly Point2[],
+  holes: readonly (readonly Point2[])[],
+  cuts: readonly (readonly Point2[])[],
+): { outline: Point2[]; holes: Point2[][] } | null {
+  if (outline.length < 3) return null;
+  const rest = difference([toRing(outline), ...holes.map(toRing)], ...cuts.map((c) => [toRing(c)]));
+  const parts = rest.map((poly) => poly.map(fromRing)).filter((p) => p[0]!.length >= 3);
+  if (parts.length === 0) return null;
+  const best = parts.reduce((a, b) => (Math.abs(signedArea(b[0]!)) > Math.abs(signedArea(a[0]!)) ? b : a));
+  const [out, ...inner] = best;
+  return {
+    outline: signedArea(out!) < 0 ? [...out!].reverse() : out!,
+    holes: inner.filter((h) => h.length >= 3).map((h) => (signedArea(h) > 0 ? [...h].reverse() : h)),
+  };
+}
+
 /** Parts smaller than this (m²) are slivers along shared edges, not space. */
 const SLIVER = 0.05;
 

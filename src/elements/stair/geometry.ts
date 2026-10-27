@@ -2,6 +2,7 @@
 // its height and its step depth. Each step rises the same (the height over the number of risers nearest
 // STAIR_RISER). Pure.
 
+import { union } from 'polyclip-ts';
 import { add, type Point2, scale } from '../../core/vector';
 import { RAIL_HEIGHT, RAMP_GRADE, RAMP_LANDING, RAMP_RISE, type Stair, STAIR_RISER } from './schema';
 
@@ -45,6 +46,29 @@ function ccw(poly: Point2[]): Point2[] {
     s += p.x * q.y - q.x * p.y;
   }
   return s < 0 ? poly.reverse() : poly;
+}
+
+/** The steps of an L's or a U's first flight: its own split, else half, leaving one at least after the landing. */
+export const firstFlight = (stair: Stair, risers: number): number => Math.min(Math.max(1, Math.round(stair.split ?? Math.floor(risers / 2))), Math.max(1, risers - 2));
+
+/**
+ * The stair's footprint, its steps and landings united (counter-clockwise, the outer ring of the
+ * largest part): the well the floor it reaches leaves open. A U with a shorter second flight leaves the
+ * corner past it closed, as built.
+ */
+export function stairWell(s: StairSolid): Point2[] {
+  const rings = s.parts.filter((p) => p.polygon.length >= 3).map((p) => [p.polygon.map((q): [number, number] => [q.x, q.y])]);
+  if (rings.length === 0) return [];
+  const [first, ...rest] = rings;
+  const parts = union(first!, ...rest);
+  const area = (r: readonly [number, number][]) => r.reduce((a, [x, y], i) => a + x * r[(i + 1) % r.length]![1] - r[(i + 1) % r.length]![0] * y, 0) / 2;
+  const outer = parts.map((p) => p[0]!).reduce((a, b) => (Math.abs(area(b)) > Math.abs(area(a)) ? b : a));
+  const pts = outer.map(([x, y]) => ({ x, y }));
+  // polyclip closes its rings; and points on a straight side (where two steps met) say nothing.
+  if (pts.length > 1 && pts[0]!.x === pts.at(-1)!.x && pts[0]!.y === pts.at(-1)!.y) pts.pop();
+  const straight = (a: Point2, b: Point2, c: Point2) => Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) < 1e-9;
+  const ring = pts.filter((p, i) => !straight(pts[(i + pts.length - 1) % pts.length]!, p, pts[(i + 1) % pts.length]!));
+  return area(ring.map((p): [number, number] => [p.x, p.y])) < 0 ? ring.reverse() : ring;
 }
 
 /** `levelHeight`: the height it climbs when it sets none; `bottom`: its level's floor. */
@@ -105,7 +129,7 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
     flight(stair.at, u, risers, 0, 0);
   } else if (stair.kind === 'l') {
     // The first flight, a square landing, the second flight to the turn's side.
-    const k = Math.max(1, Math.floor(risers / 2));
+    const k = firstFlight(stair, risers);
     flight(stair.at, u, k, 0, 0);
     const end = add(stair.at, scale(u, k * t));
     parts.push({ polygon: rect(end, u, { x: -u.y, y: u.x }, w, w), top: (k + 1) * riser, landing: true });
@@ -113,7 +137,7 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
     flight(o2, side, risers - k - 1, 0, k + 1);
   } else if (stair.kind === 'u') {
     // Up, a landing as wide as both flights, back down the other way beside the first.
-    const k = Math.max(1, Math.floor(risers / 2));
+    const k = firstFlight(stair, risers);
     flight(stair.at, u, k, 0, 0);
     const end = add(stair.at, scale(u, k * t));
     const mid = add(end, scale(side, w / 2));

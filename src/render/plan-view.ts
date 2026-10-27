@@ -102,6 +102,8 @@ export interface PlanOverlay {
   readonly anchor?: Point2 | null;
   /** Wall numbers at the middle of the walls selected or under the pointer, as snap labels name them. */
   readonly wallTags?: readonly { readonly at: Point2; readonly text: string }[];
+  /** Where something is outside the norms (rules/): a warning sign there. */
+  readonly normMarks?: readonly Point2[];
   /** Doors' and windows' type marks beside them (opening/marks.ts); `width` is the opening's (m). */
   readonly openingTags?: readonly { readonly at: Point2; readonly text: string; readonly width: number }[];
   /**
@@ -491,6 +493,8 @@ export class PlanView {
     this.drawRoomTags(o.roomLabels, color, [...this.dimValueBoxes(o.dims ?? []), ...kept.flatMap((k) => k.boxes)], o.dims ?? [], kept.flatMap((k) => k.lines));
     // Dimensions over the room tags (contract.ts: layer top): a value under a room's name was lost.
     for (const x of kinds) if (x.kind.layer === 'top') x.kind.plan(paint, x.solid, shownLit(x.id));
+    // Outside the norms: the warning sign, over the rest.
+    for (const m of o.normMarks ?? []) this.warnSign(this.toScreen(m), color('--warn'), color('--canvas'));
     if (draft) drawDimension(paint, draft, draft.text, color('--wall-sel'));
     if (o.draft && o.draft.length > 0) {
       ctx.save();

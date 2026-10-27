@@ -9,6 +9,11 @@ import { stairFields } from '../stair/fields';
 import { type StairSolid, stairSolid } from '../stair/geometry';
 import { type Stair, STAIR_PREFIX } from '../stair/schema';
 import { trace } from './paint';
+import { newId } from '../../core/id';
+import { addRailing } from '../railing/commands';
+import { RAILING_HEIGHT, RAILING_PREFIX, wellPath } from '../railing/schema';
+import { stairWell } from '../stair/geometry';
+import { arrivalOf, levelReached } from '../stair/well';
 
 export const stairKind: ElementKind<Stair, StairSolid> = {
   key: 'stairs',
@@ -34,7 +39,9 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
     s.tread > 0 &&
     (s.turn === 'left' || s.turn === 'right') &&
     (s.height === undefined || (finite(s.height) && s.height > 0)) &&
-    (s.railing === undefined || typeof s.railing === 'boolean'),
+    (s.railing === undefined || typeof s.railing === 'boolean') &&
+    (s.well === undefined || typeof s.well === 'boolean') &&
+    (s.split === undefined || (finite(s.split) && s.split >= 1)),
   // From its level's floor, up its level's height unless it sets its own.
   memo: 'level',
   derive: (doc, s) => {
@@ -105,5 +112,17 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
     for (const p of s.parts) out.polyline('A-FLOR-STRS', p.polygon, true);
     if (s.walk.length >= 2) out.polyline('A-FLOR-STRS', s.walk, false);
   },
-  fields: (items, { dispatch }) => stairFields(items, { updateStairs: (ids, patch) => dispatch(updateStairs(ids, patch)) }),
+  fields: (items, { dispatch, doc }) =>
+    stairFields(items, {
+      updateStairs: (ids, patch) => dispatch(updateStairs(ids, patch)),
+      // Round its well, on the level it reaches: when it has one there and none is round it yet.
+      wellRailing: (s) => {
+        const level = levelReached(doc, s.stair);
+        const arrival = arrivalOf(s);
+        if (!level || !arrival || s.stair.well === false || doc.railings.some((r) => r.host?.stairId === s.stair.id)) return null;
+        const points = wellPath(stairWell(s), arrival[0], arrival[1]);
+        if (points.length < 2) return null;
+        return () => dispatch(addRailing({ id: newId(RAILING_PREFIX), levelId: level, points, height: RAILING_HEIGHT, baseOffset: 0, host: { stairId: s.stair.id } }));
+      },
+    }),
 };

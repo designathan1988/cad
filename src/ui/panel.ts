@@ -40,6 +40,8 @@ export interface PanelInput {
   readonly kind: { readonly kind: AnyKind; readonly items: readonly unknown[] } | null;
   /** Walls whose exterior face does not meet the face of the wall they stand on (app/stacked.ts). */
   readonly stacked: readonly StackedStep[];
+  /** What of the selection is outside the norms (rules/check.ts), as lines to read. */
+  readonly norms: readonly string[];
 }
 
 export interface PanelActions {
@@ -164,6 +166,13 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     empty.innerHTML = icon('pointer', 22);
     empty.append(el('strong', {}, t('panel.nothing')), el('span', {}, t('panel.nothingHint')));
     nodes.push(empty);
+  }
+  // What of the selection is outside the project's norms (rules/), each with its source.
+  if (input.norms.length > 0) {
+    const box = el('div', { class: 'warn-list', role: 'status' });
+    box.innerHTML = icon('warning', 16);
+    box.append(el('div', {}, el('strong', {}, t('rules.outside')), ...input.norms.map((line) => el('div', {}, line))));
+    nodes.push(box);
   }
   // A control of the panel that had the focus has it again in the panel drawn anew: a list changed with
   // the arrow keys took one step, then the focus fell to the page and the next keys went to the app.

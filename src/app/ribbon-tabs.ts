@@ -158,7 +158,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
             { id: 'level.edit', icon: 'levelsAll', size: 'S' },
           ],
         },
-        { title: 'rib.p.project', items: [{ id: 'file.projects', icon: 'folder', size: 'L' }, { id: 'view.schedules', icon: 'table', size: 'S' }] },
+        { title: 'rib.p.project', items: [{ id: 'file.projects', icon: 'folder', size: 'L' }, { id: 'view.schedules', icon: 'table', size: 'S' }, { id: 'rules.edit', icon: 'warning', size: 'S' }] },
         { title: 'rib.p.export', items: [{ id: 'file.exportGlb', icon: 'cube', size: 'S' }, { id: 'file.exportDxf', icon: 'map', size: 'S' }, { id: 'file.save', icon: 'download', size: 'S' }] },
       ],
     },

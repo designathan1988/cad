@@ -17,12 +17,14 @@ export type StairPatch = {
   readonly height?: number;
   readonly railing?: boolean;
   readonly grade?: number;
+  readonly well?: boolean;
+  readonly split?: number;
 };
 
 export const updateStairs = (ids: readonly string[], patch: StairPatch): Command<Doc> => ({
   label: 'cmd.updateStair',
   apply: (doc) => {
-    if ([patch.width, patch.tread, patch.height, patch.grade].some((v) => v !== undefined && !(Number.isFinite(v) && v > 0))) return doc;
+    if ([patch.width, patch.tread, patch.height, patch.grade, patch.split].some((v) => v !== undefined && !(Number.isFinite(v) && v > 0))) return doc;
     let changed = false;
     const stairs = doc.stairs.map((s) => {
       if (!ids.includes(s.id)) return s;

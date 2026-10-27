@@ -41,7 +41,7 @@ import { buildShell, type Shell, type ToolId, type ViewId } from '../ui/shell';
 import { type Snap } from '../tools/snap';
 import { IDLE, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, dragTransform, hull } from './select-drag';
-import { filterKinds, hasSolid, kindLists, kindOfId, levelOfSolid, moveKinds } from '../elements/registry';
+import { filterKinds, hasSolid, kindLists, kindOfId, levelOfElement, levelOfSolid, listOf, moveKinds } from '../elements/registry';
 import { type Grid } from '../elements/grid/schema';
 import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState } from '../tools/dimension-tool';
 import { geometryOf, keepRooms, moveRooms } from './carry';
@@ -61,6 +61,9 @@ export const SNAP_OF = {
 } as const;
 import { applyTemporary, boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, type TemporaryView } from './geometry';
 import { type Diagnostic, diagnose } from './diagnostics';
+import { checkRules, type Finding } from '../rules/check';
+import { type Rule, rulesOf } from '../rules/schema';
+import { showRules } from '../ui/rules-dialog';
 import { renderDebugPanel } from '../ui/debug-panel';
 import { markPoint, openingMarks } from '../elements/opening/marks';
 import { loadPrefs, savePrefs, scheduleSave, wireSaving } from './persist';
@@ -1380,6 +1383,57 @@ export class App {
   diagnostics(): Diagnostic[] {
     if (this.diagnosed?.g !== this.geometry) this.diagnosed = { g: this.geometry, list: diagnose(this.geometry) };
     return this.diagnosed.list;
+  }
+
+  // ---- norms (rules/) -----------------------------------------------------------------------------
+
+  private normed: { g: DerivedGeometry; rules: readonly Rule[]; list: Finding[] } | null = null;
+
+  /** What is outside the project's norm rules (rules/check.ts), once per geometry and rules. */
+  normFindings(): Finding[] {
+    const rules = rulesOf(this.store.get());
+    if (this.normed?.g !== this.geometry || this.normed.rules !== rules) this.normed = { g: this.geometry, rules, list: checkRules(this.geometry, rules) };
+    return this.normed.list;
+  }
+
+  openRules(): void {
+    showRules(this);
+  }
+
+  /** Where the plan signs what is outside the norms on the level shown: a door's middle, else the element's corner. */
+  normMarks(): Point2[] {
+    const ids = new Set(this.normFindings().map((f) => f.elementId));
+    const out: Point2[] = [];
+    for (const id of ids) {
+      const o = this.geometry.openings.get(id);
+      if (o?.frame) {
+        const wall = this.store.get().walls.find((w) => w.id === o.opening.wallId);
+        if (wall?.levelId === this.ui.levelId) out.push({ x: (o.frame.start.x + o.frame.end.x) / 2, y: (o.frame.start.y + o.frame.end.y) / 2 });
+        continue;
+      }
+      const k = kindOfId(id);
+      const solid = k ? this.geometry.kinds.get(k.key)?.get(id) : undefined;
+      if (!k || !solid || levelOfSolid(k, solid) !== this.ui.levelId) continue;
+      const pts = k.outlines(solid).flat();
+      if (pts.length > 0) out.push({ x: Math.max(...pts.map((p) => p.x)), y: Math.max(...pts.map((p) => p.y)) });
+    }
+    return out;
+  }
+
+  /** An element's name as the panel titles it: its kind's (Escada, Porta). */
+  elementTitle(id: string): string {
+    const k = kindOfId(id);
+    return k ? t(k.one) : id;
+  }
+
+  /** The plan or the 3D on the level an element is on (chosen from a list, it may be on another). */
+  showElementLevel(id: string): void {
+    const k = kindOfId(id);
+    const doc = this.store.get();
+    const e = k ? listOf(doc, k).find((x) => x.id === id) : undefined;
+    const level = k && e ? levelOfElement(k, e, doc) : null;
+    if (level && level !== this.ui.levelId) this.ui.levelId = level;
+    this.refresh();
   }
 
   toggleDebug(open = !this.debugOpen): void {

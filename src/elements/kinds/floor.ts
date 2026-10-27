@@ -8,7 +8,9 @@ import { slabGeometry } from '../../render/prisms';
 import { name, t } from '../../ui/i18n';
 import type { ElementKind } from '../contract';
 import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor } from '../room/commands';
-import { deriveFloor, type FloorSolid, insideRing, riseAt } from '../room/derive';
+import { cutOut, deriveFloor, type FloorSolid, insideRing, riseAt } from '../room/derive';
+import { wellsReaching } from '../stair/well';
+import { signedArea } from '../wall/geometry/convex';
 import { floorFields } from '../room/fields';
 import type { Floor } from '../room/schema';
 import { trace } from './paint';
@@ -49,7 +51,12 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
     (f.slope === undefined || (isObject(f.slope) && finite(f.slope.grade) && finite(f.slope.dir))) &&
     (f.kind === undefined || f.kind === 'ceiling'),
   derive: (doc, f, g) => {
-    const s = deriveFloor(f, g.rooms, (id) => doc.levels.find((l) => l.id === id)?.elevation ?? 0);
+    let s = deriveFloor(f, g.rooms, (id) => doc.levels.find((l) => l.id === id)?.elevation ?? 0);
+    // A stair reaching it from below leaves it open over its steps (its well): the floor above, and
+    // the ceiling hung under it, which the stair goes through too.
+    const wells = wellsReaching(doc, s.top).map((w) => w.well);
+    const cut = wells.length > 0 ? cutOut(s.outline, s.holes, wells) : null;
+    if (cut) s = { ...s, ...cut, area: Math.max(0, Math.abs(signedArea(cut.outline)) - cut.holes.reduce((a, h) => a + Math.abs(signedArea(h)), 0)) };
     return f.layers ? { ...s, layerMaterials: f.layers.map((l) => materialIn(doc.materials, l.materialId)) } : s;
   },
   element: (s) => s.floor,
@@ -139,17 +146,19 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
     ctx.strokeStyle = lit ? p.color('--wall-sel') : p.color('--text-3');
     ctx.lineWidth = 1;
     ctx.stroke();
-    // Each hole crossed corner to corner.
+    // Each hole crossed corner to corner: between its outermost corners on each diagonal (a stair's
+    // well with a notch had its middle points crossed, askew).
     ctx.setLineDash([]);
     ctx.beginPath();
     for (const h of f.holes) {
       if (h.length < 3) continue;
       const pts = h.map((v) => p.toScreen(v));
-      ctx.moveTo(pts[0]!.x, pts[0]!.y);
-      ctx.lineTo(pts[Math.floor(pts.length / 2)]!.x, pts[Math.floor(pts.length / 2)]!.y);
-      if (pts.length >= 4) {
-        ctx.moveTo(pts[1]!.x, pts[1]!.y);
-        ctx.lineTo(pts[Math.floor(pts.length / 2) + 1]!.x, pts[Math.floor(pts.length / 2) + 1]!.y);
+      const most = (f: (q: { x: number; y: number }) => number, sign: number) => pts.reduce((a, b) => (sign * f(b) > sign * f(a) ? b : a));
+      for (const f of [(q: { x: number; y: number }) => q.x + q.y, (q: { x: number; y: number }) => q.x - q.y]) {
+        const a = most(f, -1);
+        const b = most(f, 1);
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
       }
     }
     ctx.stroke();

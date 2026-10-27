@@ -21,6 +21,7 @@ import { distributeOpenings } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
+import { isRule as isNormRule } from '../rules/schema';
 
 /**
  * Version 1: walls, openings, rooms and floors, each list optional when empty in older saves.
@@ -56,8 +57,9 @@ import type { DocWall } from '../app/document';
  *   and build-up (`tiling`, `layers`). Older files have none.
  * Version 26: a wall's top up to another level or under the roof (`top` kinds 'toLevel', 'roof').
  *   Older walls have neither.
+ * Version 27: the project's norm rules (`rules`, rules/schema.ts). Older files have none: the defaults.
  */
-export const CURRENT_VERSION = 26;
+export const CURRENT_VERSION = 27;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
@@ -223,8 +225,14 @@ export function repairProject(raw: unknown): ReadResult {
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));
+  // The registry's elements that are there and valid, by id: what one of them may be held by.
+  const rawIds = new Set(
+    KINDS.filter((k) => !k.walled).flatMap((k) => (Array.isArray(raw[k.key]) ? (raw[k.key] as unknown[]) : []).filter((x) => k.valid(x)).map((x) => (x as { id: string }).id)),
+  );
   let doc: Doc = {
     version: CURRENT_VERSION,
+    // Its own rules, the bad ones left out (the defaults when it has none).
+    ...(Array.isArray(raw.rules) ? { rules: (raw.rules as unknown[]).filter(isNormRule) } : {}),
     name: typeof raw.name === 'string' ? raw.name : '',
     units: isUnits(raw.units) ? { length: raw.units.length, decimals: raw.units.decimals } : DEFAULT_UNITS,
     levels,
@@ -255,7 +263,8 @@ export function repairProject(raw: unknown): ReadResult {
         const fix = kindFix(k);
         const all = keep(raw[k.key], k.valid, fix) as { readonly levelId: string }[];
         // An axis is on every level: none is gone with one.
-        const held = (x: { readonly levelId: string }) => (k.holders?.(x) ?? []).every((h: string) => wallIds.has(h) || openingIds.has(h));
+        // Held by a wall or an opening, or by another element of the file (a guardrail by its stair).
+        const held = (x: { readonly levelId: string }) => (k.holders?.(x) ?? []).every((h: string) => wallIds.has(h) || openingIds.has(h) || rawIds.has(h));
         const there = (x: { readonly levelId: string }) => (k.everyLevel === true || levelIds.has(x.levelId)) && held(x);
         const gone = all.filter((x) => !there(x)).length;
         if (gone > 0) fixes.push({ kind: fix, count: gone });

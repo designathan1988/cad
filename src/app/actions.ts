@@ -193,6 +193,8 @@ export function appActions(app: App, open: Openers): Action[] {
       run: () => app.goToView(v.id),
     })),
     make('level.edit', 'levels.edit', levels, open.levels),
+    // The norms the model is checked against, and what is outside them.
+    make('rules.edit', 'rules.open', edit, () => app.openRules(), { keywords: `${tBoth('rules.title')} norma norm NBR regra rule acessibilidade accessibility escada stair` }),
     make('type.edit', 'types.edit', edit, open.wallTypes, { keywords: tBoth('types.title') }),
     make('material.edit', 'mats.edit', edit, open.materials, { keywords: tBoth('mats.title') }),
     make('objects.edit', 'objs.open', edit, open.objects, { keywords: `${tBoth('objs.title')} biblioteca library família family editor` }),
