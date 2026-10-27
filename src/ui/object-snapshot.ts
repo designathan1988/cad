@@ -40,6 +40,15 @@ function stageOf(): Stage | null {
 export function objectSnapshot(def: ObjectDefinition, doc: Doc, w: number, h: number, typeId = def.types[0]?.id ?? ''): string | null {
   const ev = evaluateObject(def, { id: 'snapshot', levelId: '', definitionId: def.id, typeId, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
   if (ev.pieces.length === 0) return null;
+  // Glass seen through, as in the 3D view (scene-3d.ts).
+  return meshSnapshot(cutGeometries(ev.pieces).map(({ piece: p, geometry }) => previewMesh(geometry, p.material, SEE_THROUGH[p.material.id])), w, h);
+}
+
+/**
+ * Meshes pictured on the stage, framed whole from a three-quarter view above (yaw, pitch in radians), as a
+ * data URL; null with no WebGL. The meshes are the stage's until the next picture (then disposed).
+ */
+export function meshSnapshot(meshes: readonly THREE.Mesh[], w: number, h: number, yaw = 0.65, pitch = 0.45): string | null {
   const s = stageOf();
   if (!s) return null;
   for (const c of [...s.group.children]) {
@@ -49,10 +58,7 @@ export function objectSnapshot(def: ObjectDefinition, doc: Doc, w: number, h: nu
     s.group.remove(c);
   }
   const box = new THREE.Box3();
-  for (const { piece: p, geometry } of cutGeometries(ev.pieces)) {
-    // Glass seen through, as in the 3D view (scene-3d.ts).
-    const see = SEE_THROUGH[p.material.id];
-    const mesh = previewMesh(geometry, p.material, see);
+  for (const mesh of meshes) {
     s.group.add(mesh);
     box.expandByObject(mesh);
   }
@@ -61,8 +67,6 @@ export function objectSnapshot(def: ObjectDefinition, doc: Doc, w: number, h: nu
   s.renderer.setSize(w, h, false);
   s.camera.aspect = w / h;
   const dist = (radius / Math.sin((s.camera.fov * Math.PI) / 360)) * 1.05;
-  const yaw = 0.65;
-  const pitch = 0.45;
   s.camera.position.set(centre.x + dist * Math.cos(pitch) * Math.sin(yaw), centre.y + dist * Math.sin(pitch), centre.z + dist * Math.cos(pitch) * Math.cos(yaw));
   s.camera.lookAt(centre);
   s.camera.updateProjectionMatrix();

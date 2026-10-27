@@ -273,6 +273,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
           items: [
             { id: 'material.edit', icon: 'slab', size: 'L' },
             { id: 'objects.edit', icon: 'box', size: 'L' },
+            { id: 'openings.store', icon: 'door', size: 'S' },
             { id: 'type.edit', icon: 'wall', size: 'S' },
             { id: 'units.edit', icon: 'ruler', size: 'S' },
             { id: 'level.edit', icon: 'levelsAll', size: 'S' },
@@ -386,7 +387,8 @@ function placeTab(
   })();
   const typeFields = next ? next.fields.filter((f) => TYPE_FIELDS.has(f.id)) : [];
   const ownFields = next ? next.fields.filter((f) => !TYPE_FIELDS.has(f.id)) : [];
-  const typeEdit: RibbonItem[] = ui.tool === 'wall' ? [{ id: 'type.edit', icon: 'wall', size: 'S' }] : ui.tool === 'object' ? [{ id: 'objects.edit', icon: 'box', size: 'S', short: 'rib.s.objectsEdit' }] : [];
+  const typeEdit: RibbonItem[] =
+    ui.tool === 'wall' ? [{ id: 'type.edit', icon: 'wall', size: 'S' }] : ui.tool === 'object' ? [{ id: 'objects.edit', icon: 'box', size: 'S', short: 'rib.s.objectsEdit' }] : ui.tool === 'door' || ui.tool === 'window' ? [{ id: 'openings.store', icon: ui.tool, size: 'S' }] : [];
   const properties: RibbonItem = { id: 'settings.panel', icon: 'panel', size: 'S', short: 'rib.s.properties', pressed: () => !app.shell.panel.hidden };
   const name = placeName(app);
   // The tool's own ways, as the other tabs have them.

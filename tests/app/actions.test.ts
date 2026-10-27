@@ -15,7 +15,7 @@ function fakeApp(selection: string[] = [], view: '3d' | 'plan' = 'plan') {
   const store = createStore(addLevel('lvl_up', 'Upper').apply(newDocument()));
   return { store, ui: { selection: new Set(selection), view, levelId: 'lvl_ground', hidden: new Set(), view3d: VIEW_3D_DEFAULT }, canMergeSelection: () => false, arrangeItems: () => [] } as unknown as App;
 }
-const openers = { help: () => {}, levels: () => {}, wallTypes: () => {}, materials: () => {}, units: () => {}, objects: () => {}, tour: () => {}, openFile: () => {}, projects: () => {}, print: () => {}, drawing: () => {}, keys: () => {}, variables: () => {} };
+const openers = { help: () => {}, levels: () => {}, wallTypes: () => {}, materials: () => {}, units: () => {}, objects: () => {}, openings: () => {}, tour: () => {}, openFile: () => {}, projects: () => {}, print: () => {}, drawing: () => {}, keys: () => {}, variables: () => {} };
 
 describe('palette actions', () => {
   afterEach(() => setLang('en'));

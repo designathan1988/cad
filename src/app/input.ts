@@ -11,6 +11,7 @@ import { wallNumber } from './document';
 import type { MessageKey } from '../ui/i18n';
 import { geometryOf } from './carry';
 import { showObjects } from '../ui/objects-dialog';
+import { showOpenings } from '../ui/openings-dialog';
 import { endHandleDrag, moveHandleDrag, objectHandleAt, startHandleDrag } from './object-handles';
 import { showUnits } from '../ui/units-dialog';
 import { showDrawingSettings, showPrint } from '../ui/print-dialog';
@@ -63,6 +64,7 @@ export function wireInput(app: App): void {
     materials: () => showMaterials(app),
     units: () => showUnits(app),
     objects: () => showObjects(app),
+    openings: () => showOpenings(app, app.openingKind() ?? undefined),
     tour: () => startTour(app),
     openFile: () => shell.fileInput.click(),
     projects: () => showProjectsDialog(app),
