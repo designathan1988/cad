@@ -195,7 +195,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
         { title: 'rib.p.hvac', items: [point('acUnit', 'cube'), run('sys_hvac')] },
         { title: 'rib.p.fire', items: [point('hydrant', 'warning'), run('sys_fire')] },
         { title: 'rib.p.solar', items: [point('solarPanel', 'sun'), run('sys_solar')] },
-        { title: 'rib.p.automatic', items: [{ id: 'services.open', icon: 'table', size: 'S', short: 'rib.s.servicesSize' }] },
+        { title: 'rib.p.automatic', items: [{ id: 'mep.autoRoute', icon: 'guide', size: 'S', short: 'rib.s.autoRoute' }, { id: 'services.open', icon: 'table', size: 'S', short: 'rib.s.servicesSize' }] },
       ],
     },
     {

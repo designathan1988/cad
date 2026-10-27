@@ -1,6 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import { autoRoute } from './mep-route';
 import * as terrains from './terrain-ui';
 import * as mepUi from './mep-ui';
 import { type PointKind, systemIn } from '../elements/mep/schema';
@@ -1176,6 +1177,16 @@ export class App {
 
   mepRunClick(p: Point2, mpp: number): void {
     return mepUi.mepRunClick(this, p, mpp);
+  }
+
+  /** The current system's points on this level that no run reaches, joined by runs (mep-route.ts), one step to undo. */
+  autoRoute(): void {
+    const runs = autoRoute(this.store.get(), this.ui.mepSystem, this.ui.levelId);
+    const sys = systemIn(this.store.get(), this.ui.mepSystem);
+    const what = sys ? sys.name : this.ui.mepSystem;
+    if (runs.length === 0) return this.toast(t('mep.autoRouteNone', { system: what }));
+    this.store.dispatch({ label: 'cmd.autoRoute', apply: (x) => ({ ...x, mepRuns: [...x.mepRuns, ...runs] }) });
+    this.toast(runs.length === 1 ? t('mep.autoRouteDoneOne', { system: what }) : t('mep.autoRouteDone', { n: runs.length, system: what }));
   }
 
   mepRunFinish(): void {
