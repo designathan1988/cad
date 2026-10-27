@@ -168,6 +168,8 @@ export async function saveImage3d(app: App): Promise<void> {
     app.toast(t('image.open3d'));
     return;
   }
+  // Traced, it takes the GPU a while (from seconds to about a minute): said before it starts.
+  if (app.ui.view3d.style === 'photo') app.toast(t('image.tracing'));
   const blob = await app.scene.snapshot(3840);
   if (!blob) {
     app.toast(t('export.failed', { what: 'PNG', error: t('image.none') }));

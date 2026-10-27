@@ -373,6 +373,11 @@ export class App {
     this.shell = buildShell(root);
     this.plan = new PlanView(this.shell.planCanvas);
     this.scene = new Scene3D(this.shell.glCanvas);
+    // The photorealistic view's first minutes (its shader compiled in the background): said beside the style.
+    this.scene.onTracePreparing = (on) => {
+      this.shell.look.preparing.hidden = !on;
+      this.shell.look.preparing.textContent = t('view3d.preparing');
+    };
     this.overlay3d = new Overlay3D(this.shell.overlay3d);
     this.cube = new ViewCube(
       (dir) => this.scene.frame(boundsOf(this.geometry), this.height(), dir),

@@ -153,7 +153,8 @@ export function buildShell(root: HTMLElement) {
     box.insertAdjacentHTML('beforeend', icon('chevronDown', 14));
     return { box, caption, select };
   };
-  const look = { style: lookSelect('cube'), quality: lookSelect('sun') };
+  const look = { style: lookSelect('cube'), quality: lookSelect('sun'), preparing: el('span', { class: 'look-preparing', role: 'status' }) };
+  look.preparing.hidden = true;
   // The light: a button opening the view's brightness and the sun's strength, a slider each.
   const lightBtn = el('button', { type: 'button', class: 'has-icon light-btn' });
   lightBtn.innerHTML = icon('sun', 16);
@@ -177,7 +178,7 @@ export function buildShell(root: HTMLElement) {
   const shown = { reset: el('button', { type: 'button', class: 'has-icon light-btn' }) };
   shown.reset.innerHTML = icon('close', 16);
   shown.reset.append(el('span', { class: 'label' }));
-  const only3d = el('div', { class: 'view-bar-group view-bar-3d' }, levelsBox, togglesBox, look.style.box, look.quality.box, el('span', { class: 'light-wrap' }, lightBtn, light.panel));
+  const only3d = el('div', { class: 'view-bar-group view-bar-3d' }, levelsBox, togglesBox, look.style.box, look.preparing, look.quality.box, el('span', { class: 'light-wrap' }, lightBtn, light.panel));
   const onlyPlan = el('div', { class: 'view-bar-group' }, planScale.box);
   // The way out of the tool in use (it was the options bar's), shown while one is.
   const toolDone = el('button', { type: 'button', class: 'has-icon light-btn tool-done' });

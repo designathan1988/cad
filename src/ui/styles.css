@@ -602,6 +602,15 @@ button.project-name:hover {
 .view-bar.fit-3 .light-btn .label {
   display: none;
 }
+/* While the photorealistic view is being prepared (app.ts): said beside the style, in the accent. */
+.look-preparing {
+  color: var(--accent-text);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.look-preparing[hidden] {
+  display: none;
+}
 .view-bar-group {
   display: flex;
   align-items: center;

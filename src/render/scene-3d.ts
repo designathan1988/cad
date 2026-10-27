@@ -11,6 +11,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GradientEquirectTexture, WebGLPathTracer } from 'three-gpu-pathtracer';
+import { GenerateMeshBVHWorker } from 'three-mesh-bvh/worker';
 import type { RenderQuality, VisualStyle } from '../app/view-3d';
 import type { Point2 } from '../core/vector';
 import type { DerivedGeometry, OpeningSolid, WallSolid } from '../app/geometry';
@@ -45,12 +46,16 @@ const QUALITY: Readonly<Record<RenderQuality, { readonly ratio: number; readonly
   high: { ratio: 1, max: 2, shadow: 4096, soft: true, ao: true, aoSamples: 16, aoBlend: 0.8 },
   ultra: { ratio: 2, max: 3, shadow: 4096, soft: true, ao: true, aoSamples: 24, aoBlend: 0.9 },
 };
+/** The tracer as it is: its JavaScript has isCompiling (WebGLPathTracer.js), its typings do not. */
+type Compiling = WebGLPathTracer & { readonly isCompiling: boolean };
 /** The photorealistic style by quality: the share of the screen's pixels traced, the samples it stops at. */
-const TRACE: Readonly<Record<RenderQuality, { readonly scale: number; readonly samples: number }>> = {
-  low: { scale: 0.5, samples: 64 },
-  medium: { scale: 0.75, samples: 256 },
-  high: { scale: 1, samples: 1024 },
-  ultra: { scale: 1, samples: 4096 },
+// The saved picture's own count (picture): it is 3840 pixels wide, and the view's count there was the
+// GPU's minutes (1024 at high, 150 s); these come out clean at that size in a fraction of it.
+const TRACE: Readonly<Record<RenderQuality, { readonly scale: number; readonly samples: number; readonly picture: number }>> = {
+  low: { scale: 0.5, samples: 64, picture: 64 },
+  medium: { scale: 0.75, samples: 256, picture: 128 },
+  high: { scale: 1, samples: 1024, picture: 256 },
+  ultra: { scale: 1, samples: 4096, picture: 512 },
 };
 /** How much of a wall shows in x-ray. */
 const XRAY_OPACITY = 0.28;
@@ -273,11 +278,16 @@ export class Scene3D {
    * everywhere a hemisphere light gives the raster view. */
   private traceSky: GradientEquirectTexture | null = null;
   private traceScene: THREE.Scene | null = null;
+  /** The tracer's scene while it is being built (in a worker), until it is ready. */
+  private traceBuild: Promise<void> | null = null;
   private readonly tracedPatterns = new WeakMap<THREE.Material, THREE.MeshStandardMaterial>();
   private traced = { content: -1, camera: '', light: '' };
   /** Bumped whenever an element's meshes are made or dropped: the tracer's scene is built again. */
   private contentVersion = 0;
   onChange: () => void = () => {};
+  /** Told when the photorealistic view starts or stops preparing (its scene built, its shader compiled). */
+  onTracePreparing: (preparing: boolean) => void = () => {};
+  private preparing = false;
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -592,6 +602,10 @@ export class Scene3D {
           swapped.push([mesh, mesh.material]);
           mesh.material = this.hiddenFace;
         });
+    if (this.style !== 'photo' && this.preparing) {
+      this.preparing = false;
+      this.onTracePreparing(false);
+    }
     if (this.style === 'photo' && !this.xrayOn && this.clip.length === 0 && this.trace()) {
       for (const [mesh, m] of swapped) mesh.material = m;
       return;
@@ -615,13 +629,28 @@ export class Scene3D {
    * browser cannot trace (the realistic raster view is drawn instead).
    */
   private trace(): boolean {
+    const drawn = this.traceStep();
+    if (drawn === this.preparing) {
+      this.preparing = !drawn;
+      this.onTracePreparing(this.preparing);
+    }
+    return drawn;
+  }
+
+  private traceStep(): boolean {
     if (!this.tracer) {
       const t = new WebGLPathTracer(this.renderer);
       t.bounces = 5;
       t.minSamples = 1;
       t.renderDelay = 0;
       t.fadeDuration = 300;
-      t.dynamicLowRes = true;
+      // No coarse preview of its own: it drew with the shader still compiling, which made the browser
+      // compile it at once (37 s with the page standing still, on Windows). Until the trace has its first
+      // samples the realistic view is drawn instead (trace returns false).
+      t.dynamicLowRes = false;
+      t.rasterizeScene = false;
+      // Its scene's bounding volumes built in a worker: built here, the page stood still for seconds.
+      t.setBVHWorker(new GenerateMeshBVHWorker());
       this.tracer = t;
       const sky = new GradientEquirectTexture(256);
       sky.topColor.set(0x9fbfe6);
@@ -632,12 +661,22 @@ export class Scene3D {
     }
     const t = this.tracer;
     t.renderScale = TRACE[this.quality].scale;
+    // The scene given again when an element changed, built in the background: until it is, the
+    // realistic view is drawn (false), and the trace takes over when it is ready.
+    if (this.traceBuild) return false;
     if (this.traced.content !== this.contentVersion) {
-      this.traceScene?.traverse((o) => (o as THREE.Mesh).isMesh && (o as THREE.Mesh).geometry.dispose());
-      this.traceScene = Object.assign(new THREE.Scene(), { children: [this.traceCopies(), this.sun], environment: this.traceSky, background: this.traceSky });
-      this.traceScene.environmentIntensity = this.brightness;
-      t.setScene(this.traceScene, this.camera);
-      this.traced = { content: this.contentVersion, camera: '', light: '' };
+      const version = this.contentVersion;
+      const old = this.traceScene;
+      const scene = Object.assign(new THREE.Scene(), { children: [this.traceCopies(), this.sun], environment: this.traceSky, background: this.traceSky });
+      scene.environmentIntensity = this.brightness;
+      this.traceBuild = t.setSceneAsync(scene, this.camera).then(() => {
+        old?.traverse((o) => (o as THREE.Mesh).isMesh && (o as THREE.Mesh).geometry.dispose());
+        this.traceScene = scene;
+        this.traced = { content: version, camera: '', light: '' };
+        this.traceBuild = null;
+        this.invalidate();
+      });
+      return false;
     }
     const camera = `${this.camera.matrixWorld.elements.join()}|${this.camera.projectionMatrix.elements.join()}`;
     if (camera !== this.traced.camera) {
@@ -652,6 +691,12 @@ export class Scene3D {
       this.traced.light = light;
     }
     t.renderSample();
+    // Its shader compiles in the background the first time (KHR_parallel_shader_compile): looked at
+    // again shortly, the realistic view drawn meanwhile.
+    if ((t as Compiling).isCompiling || t.samples < 1) {
+      setTimeout(() => this.invalidate(), 250);
+      return false;
+    }
     // Drawing on, a sample a frame, until the quality's count.
     if (t.samples < TRACE[this.quality].samples) this.invalidate();
     return true;
@@ -1021,6 +1066,19 @@ export class Scene3D {
    * size after. A PNG, or null when the browser gives none.
    */
   async snapshot(long: number): Promise<Blob | null> {
+    // Traced, the scene first built as it is now (in the background, as for the view).
+    if (this.style === 'photo') {
+      for (let n = 0; n < 5 && (this.traceBuild || this.traced.content !== this.contentVersion); n++) {
+        if (!this.traceBuild) this.trace();
+        await this.traceBuild;
+      }
+      // And its shader compiled (the first time, in the background): set going by a first sample, waited
+      // for two minutes at most.
+      this.tracer?.renderSample();
+      for (const until = performance.now() + 120_000; this.tracer && (this.tracer as Compiling).isCompiling && performance.now() < until; ) {
+        await new Promise((r) => setTimeout(r, 200));
+      }
+    }
     const w = this.canvas.clientWidth;
     const h = this.canvas.clientHeight;
     if (w === 0 || h === 0) return null;
@@ -1046,7 +1104,7 @@ export class Scene3D {
     };
     if (this.shadows && fine > screenMap) remap(fine);
     this.draw(W, H, true);
-    // Traced, the picture keeps sampling until it is clean (the quality's count, a minute at most): one
+    // Traced, the picture keeps sampling until it is clean (the quality's picture count, a minute of queuing at most): one
     // frame of the tracer is a sample, noise.
     if (this.style === 'photo' && this.tracer && this.traceScene) {
       // No fade from its coarse preview: timed by the clock, it had barely begun when the samples, queued
@@ -1054,7 +1112,7 @@ export class Scene3D {
       const fade = this.tracer.fadeDuration;
       this.tracer.fadeDuration = 0;
       const until = performance.now() + 60_000;
-      while (this.tracer.samples < TRACE[this.quality].samples && performance.now() < until) this.tracer.renderSample();
+      while (this.tracer.samples < TRACE[this.quality].picture && performance.now() < until) this.tracer.renderSample();
       this.tracer.fadeDuration = fade;
     }
     // Taken now, before the next frame clears the drawing buffer.
