@@ -10,6 +10,7 @@ import { fittingsOf, networksOf } from '../elements/mep/network';
 import { GROUP_OF, systemsOf } from '../elements/mep/schema';
 import { DEFAULT_RAIN, MAX_STATIC, MIN_DYNAMIC, pressures, sewerFalls, sewerStacks } from '../elements/mep/water';
 import type { RoofSolid } from '../elements/roof/geometry';
+import { DOWNPIPE_LEAST, GUTTER_FALL, gutters } from '../elements/mep/gutters';
 import { simSettingsOf } from '../app/sim-tables';
 import { el, numberField, searchSelect, segmented, select } from './controls';
 import { RAIN_PLACES, rainOf, type RainReturn } from '../elements/mep/rain-places';
@@ -245,6 +246,27 @@ export function showServices(app: App, first: Tab = 'systems'): void {
           note('services.stackNote', { n: doc.levels.length }),
         ];
       };
+      // The roofs' eave gutters (NBR 10844 table 3), from their sloped faces, at the design rain.
+      const guttersBlock = (): HTMLElement[] => {
+        const roofs = [...(g.kinds.get('roofs')?.values() ?? [])] as RoofSolid[];
+        const list = gutters(roofs, doc.simulation?.rain ?? DEFAULT_RAIN);
+        if (list.length === 0) return [];
+        return [
+          el('h3', {}, t('services.gutters')),
+          table(
+            [t('services.gutterFace'), t('services.eaves'), t('services.contribution'), t('services.flow'), t('services.gutterMin')],
+            list.map((x) => [
+              link(`${app.reportTitle(x.roofId)} · ${t('services.slopeN', { n: x.face })}`, x.roofId),
+              `${num(x.eaves, 2)} m`,
+              `${num(x.area, 2)} m²`,
+              `${num(x.flow, 0)} L/min`,
+              x.diameter === null ? t('services.pastTables') : `${Math.round(x.diameter * 1000)} mm`,
+            ]),
+            [1, 2, 3, 4],
+          ),
+          note('services.gutterNote', { fall: num(GUTTER_FALL, 1), pipe: Math.round(DOWNPIPE_LEAST * 1000) }),
+        ];
+      };
       const blocks = (['sewer', 'rain'] as const).map((group) => {
         const f = sewerFalls(doc, group);
         return el(
@@ -277,7 +299,7 @@ export function showServices(app: App, first: Tab = 'systems'): void {
           ...(f.stretches.length > 0 && !f.hasOutlet ? [note('services.noOutlet')] : []),
           ...(f.unreached.length > 0 ? [el('p', { class: 'services-bad' }, t('services.drainsLoose', { n: f.unreached.length }))] : []),
           ...(f.unsized.length > 0 ? [el('p', { class: 'services-bad' }, t(group === 'sewer' ? 'services.unsized' : 'services.rainUnsized', { n: f.unsized.length })), el('div', {}, ...f.unsized.map((p) => link(app.reportTitle(p.id), p.id)))] : []),
-          ...(group === 'sewer' ? stacksBlock() : []),
+          ...(group === 'sewer' ? stacksBlock() : guttersBlock()),
         );
       });
       body = el('div', { class: 'budget-scroll' }, ...blocks, note('services.sewerNote'), note('services.uhcNote'), note('services.rainNote'));

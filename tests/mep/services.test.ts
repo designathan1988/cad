@@ -13,6 +13,9 @@ import { DEFAULT_SIM } from '../../src/sim/settings';
 import { RAIN_PLACES, rainOf } from '../../src/elements/mep/rain-places';
 import { readProject, writeProject } from '../../src/io/project-file';
 import { runVertices } from '../../src/app/mep-ui';
+import { gutters } from '../../src/elements/mep/gutters';
+import { roofSolid } from '../../src/elements/roof/geometry';
+import { edgesFor, type Roof } from '../../src/elements/roof/schema';
 import { mepPointKind, mepRunKind } from '../../src/elements/kinds/mep';
 
 const pt = (id: string, kind: MepPoint['kind'], x: number, y: number, height: number, systemId: string, extra: Partial<MepPoint> = {}): MepPoint => ({ id, levelId: 'lvl_ground', at: { x, y }, height, kind, systemId, ...extra });
@@ -312,6 +315,33 @@ describe('water and sewer', () => {
     // Table 7 to DN 400.
     expect(neededDiameter(2000, 1, 0)).toBe(0.25);
     expect(neededDiameter(11000, 4, 0)).toBe(0.4);
+  });
+
+  it('eave gutters (NBR 10844): each sloped face\'s contribution area, its flow and the least gutter of table 3', () => {
+    // A 10 × 6 m roof at 30 %, no overhang: each slope 3 m deep in plan, rising 0.90.
+    const outline = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 6 }, { x: 0, y: 6 }];
+    const roof = (kind: Roof['kind']): Roof => ({ id: `roof_${kind}`, levelId: 'lvl_ground', outline, edges: edgesFor(kind, outline, 30, 0), kind, thickness: 0.12, baseOffset: 0 });
+    const gable = gutters([roofSolid(roof('gable'), 2.8)], 150);
+    expect(gable).toHaveLength(2);
+    for (const x of gable) {
+      expect(x.eaves).toBeCloseTo(10, 6);
+      expect(x.plan).toBeCloseTo(30, 6);
+      // (a + h/2)·b = (3 + 0.45) × 10.
+      expect(x.area).toBeCloseTo(34.5, 6);
+      expect(x.flow).toBeCloseTo((150 * 34.5) / 60, 6);
+      expect(x.diameter).toBe(0.1);
+    }
+    // Four slopes: the hip ends triangles 6 m wide, 3 deep: 9 m² in plan and half of 6 × 0.90 / 2 upright.
+    const hip = gutters([roofSolid(roof('hip'), 2.8)], 150);
+    expect(hip).toHaveLength(4);
+    const ends = hip.filter((x) => Math.abs(x.eaves - 6) < 1e-6);
+    expect(ends).toHaveLength(2);
+    for (const x of ends) expect(x.area).toBeCloseTo(9 + 1.35, 6);
+    // A heavy rain on the long slopes asks a 150 mm gutter; a flat roof none.
+    expect(gutters([roofSolid(roof('gable'), 2.8)], 600)[0]!.diameter).toBe(0.15);
+    expect(gutters([roofSolid(roof('flat'), 2.8)], 150)).toEqual([]);
+    // Past table 3: none.
+    expect(gutters([roofSolid(roof('gable'), 2.8)], 2000)[0]!.diameter).toBeNull();
   });
 
   it('the sewer\'s falls: 2 % on a 100 mm pipe holds, a flat one does not', () => {
