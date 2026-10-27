@@ -91,6 +91,8 @@
   --text-2: #5c606b;
   --text-3: #6b6f78;
   --accent: #2563eb;
+  /* The accent a step darker: a pressed or hovered main button. */
+  --accent-strong: color-mix(in srgb, var(--accent) 85%, #000000);
   --accent-soft: #e3ecfd;
   --accent-text: #1d4ed8;
   --accent-contrast: #ffffff;
@@ -173,7 +175,7 @@
   --3d-ground: #4a4d54;
   /* Darker in the dark theme: the light wall line must read on every layer, with room for antialiasing. */
   --layer-structure: #6f655a;
-  --material-shade: 0.62;
+  --material-shade: 0.5;
   --hatch: rgb(236 236 240 / 0.42);
   --warn: #fb923c;
   --error: #f87171;
@@ -1985,8 +1987,9 @@ textarea.text-field {
 /* Diagnostics (F7, debug-panel.ts): over the drawing's left side, under the top bar; scrolls inside. */
 .debug-panel {
   position: fixed;
-  top: calc(var(--topbar-h, var(--control-h)) + var(--sp-4));
-  left: calc(var(--rail-w, var(--control-h)) + var(--sp-3));
+  /* Under the title bar, the ribbon and the views' strip (the old rail at the left is gone). */
+  top: calc(var(--chrome-top) + var(--sp-4));
+  left: var(--sp-3);
   width: min(var(--debug-w), calc(100vw - 2 * var(--sp-4)));
   max-height: calc(100vh - 2 * var(--sp-4) - var(--control-h) * 2);
   overflow-y: auto;
@@ -2220,7 +2223,7 @@ textarea.text-field {
 }
 .rb-file:hover {
   color: var(--accent-contrast);
-  background: color-mix(in srgb, var(--accent) 85%, #000000);
+  background: var(--accent-strong);
 }
 
 /* The ribbon: panels side by side, each with its title under it; what does not fit scrolls sideways. */

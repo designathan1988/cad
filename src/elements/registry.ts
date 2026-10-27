@@ -76,7 +76,14 @@ export function deriveKinds(doc: Doc, g: BaseGeometry): KindSolids {
 
 /** The derived forms, keeping only those `keep` says. */
 export function filterKinds(solids: KindSolids, keep: (k: AnyKind, s: unknown) => boolean): KindSolids {
-  return new Map(KINDS.map((k) => [k.key, new Map([...(solids.get(k.key) ?? new Map())].filter(([, s]) => keep(k, s)))]));
+  return new Map(
+    KINDS.map((k) => {
+      const all = solids.get(k.key) ?? new Map<string, unknown>();
+      const kept = [...all].filter(([, s]) => keep(k, s));
+      // A kind that loses nothing keeps its own map: what was drawn of it stays as it was.
+      return [k.key, kept.length === all.size ? all : new Map(kept)];
+    }),
+  );
 }
 
 /** Every derived element, with its kind. */

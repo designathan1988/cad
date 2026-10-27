@@ -7,7 +7,7 @@ import { validateDocument } from '../../src/app/persist';
 import { newOpening } from '../../src/elements/opening/schema';
 
 const wall = {
-  id: 'w',
+  id: 'wall_w',
   wallTypeId: 'wt_concrete20',
   start: { x: 0, y: 0 },
   end: { x: 4, y: 0 },
@@ -23,12 +23,13 @@ describe('validateDocument', () => {
   });
 
   it('valid openings load as saved', () => {
-    const doc = { ...newDocument(), walls: [wall], openings: [newOpening('o', 'w', 'door', { kind: 'fromStart', distance: 0.5 })] };
+    // Typed ids (io/typed-ids.ts): ones without their kind's prefix are renamed on reading.
+    const doc = { ...newDocument(), walls: [wall], openings: [newOpening('opening_o', 'wall_w', 'door', { kind: 'fromStart', distance: 0.5 })] };
     expect(validateDocument(JSON.parse(JSON.stringify(doc)))).toEqual(doc);
   });
 
   it('an opening with a bad size, kind or rule is refused', () => {
-    const good = newOpening('o', 'w', 'window', { kind: 'centered' });
+    const good = newOpening('opening_o', 'wall_w', 'window', { kind: 'centered' });
     const bad = [
       { ...good, width: 0 },
       { ...good, height: -1 },

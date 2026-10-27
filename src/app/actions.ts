@@ -85,7 +85,8 @@ export function appActions(app: App, open: Openers): Action[] {
       id: `tool.object.${d.id}`,
       label: t('pal.object', { name: words(d.name) }),
       group: t(tools),
-      keywords: `${d.name.pt} ${d.name.en} objeto object mobiliário furniture`,
+      // Found by either language's words, "place" as "colocar".
+      keywords: `${tBoth('pal.object', { name: words(d.name) })} ${d.name.pt} ${d.name.en} inserir insert objeto object mobiliário furniture`,
       enabled: true,
       run: () => app.placeObject(d.id),
     })),

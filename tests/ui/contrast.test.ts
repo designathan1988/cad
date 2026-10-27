@@ -3,6 +3,7 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { BUILT_IN_MATERIALS, shade } from '../../src/elements/material/schema';
 
 const css = readFileSync(new URL('../../src/ui/styles.css', import.meta.url), 'utf8');
 
@@ -18,7 +19,10 @@ const light = tokens(':root');
 // The dark theme overrides some tokens; the rest are the light ones.
 const dark = new Map([...light, ...tokens(":root[data-theme='dark']")]);
 
-function luminance(hex: string): number {
+function luminance(colour: string): number {
+  // rgb(r g b), as the plan writes a shaded material, read as #rrggbb.
+  const rgb = /^rgb\((\d+) (\d+) (\d+)\)$/.exec(colour);
+  const hex = rgb ? `#${rgb.slice(1).map((v) => Number(v).toString(16).padStart(2, '0')).join('')}` : colour;
   const m = /^#([0-9a-f]{6})$/i.exec(hex);
   if (!m) throw new Error(`not a #rrggbb colour: ${hex}`);
   const [r, g, b] = [0, 2, 4].map((i) => parseInt(m[1]!.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
@@ -53,9 +57,6 @@ const pairs: [string, string, number, string][] = [
   // is 1 px and antialiasing takes some of it (the tester measured 2.95 on a pixel at a 3.1 token
   // pair): 4.5 between the tokens keeps it above 3 on screen.
   ['--wall-line', '--layer-structure', 4.5, 'line on a core layer'],
-  ['--wall-line', '--layer-substrate', 4.5, 'line on a substrate layer'],
-  ['--wall-line', '--layer-thermal', 4.5, 'line on an insulation layer'],
-  ['--wall-line', '--layer-finish', 4.5, 'line on a finish layer'],
 ];
 
 describe('contrast of the design tokens', () => {
@@ -68,6 +69,17 @@ describe('contrast of the design tokens', () => {
         .map(([fg, bg, min, what]) => ({ what, fg, bg, min, got: ratio(theme.get(fg)!, theme.get(bg)!) }))
         .filter((p) => p.got < p.min)
         .map((p) => `${p.what}: ${p.fg} on ${p.bg} ${p.got.toFixed(2)} < ${p.min}`);
+      expect(low).toEqual([]);
+    });
+
+    // Since materials are data, each layer is painted in its material's colour (darker in the dark
+    // theme: --material-shade, plan-view.ts): the line between layers on every built-in one.
+    it(`${name} theme: the wall line on every built-in material as the plan paints it`, () => {
+      const k = Number(theme.get('--material-shade'));
+      const low = BUILT_IN_MATERIALS.filter((m) => m.cut !== 'none')
+        .map((m) => ({ id: m.id, got: ratio(theme.get('--wall-line')!, shade(m.color, k)) }))
+        .filter((p) => p.got < 3)
+        .map((p) => `${p.id}: ${p.got.toFixed(2)} < 3`);
       expect(low).toEqual([]);
     });
   }

@@ -13,7 +13,7 @@ const wall = (id: string, x: number) => ({
 
 describe('project files', () => {
   it('a written project reads back the same', () => {
-    const doc = { ...newDocument(), name: 'House', walls: [wall('a', 0)] as never };
+    const doc = { ...newDocument(), name: 'House', walls: [wall('wall_a', 0)] as never };
     const r = readProject(writeProject(doc));
     expect(r.ok && r.doc).toEqual(doc);
     expect(r.ok && r.fixes).toEqual([]);
@@ -50,31 +50,31 @@ describe('project files', () => {
   });
 
   it('opening groups and the new rules read back; a bad group is dropped and reported', () => {
-    const opening = (id: string, rule: unknown) => ({ id, wallId: 'a', kind: 'window', width: 1, height: 1, sill: 1, hinge: 'start', swing: 'left', rule });
-    const group = { id: 'g', wallId: 'a', members: ['o1', 'o2'], spacing: { kind: 'fixed', gap: 0.5, anchor: 'centered', distance: 0 } };
+    const opening = (id: string, rule: unknown) => ({ id, wallId: 'wall_a', kind: 'window', width: 1, height: 1, sill: 1, hinge: 'start', swing: 'left', rule });
+    const group = { id: 'group_g', wallId: 'wall_a', members: ['opening_o1', 'opening_o2'], spacing: { kind: 'fixed', gap: 0.5, anchor: 'centered', distance: 0 } };
     const doc = {
       ...newDocument(),
-      walls: [wall('a', 0)],
-      openings: [opening('o1', { kind: 'inGroup', groupId: 'g' }), opening('o2', { kind: 'inGroup', groupId: 'g' }), opening('o3', { kind: 'aligned', openingId: 'o1', edge: 'center' })],
-      openingGroups: [group, { id: 'bad', wallId: 'a', members: 'o1', spacing: { kind: 'equal' } }],
+      walls: [wall('wall_a', 0)],
+      openings: [opening('opening_o1', { kind: 'inGroup', groupId: 'group_g' }), opening('opening_o2', { kind: 'inGroup', groupId: 'group_g' }), opening('opening_o3', { kind: 'aligned', openingId: 'opening_o1', edge: 'center' })],
+      openingGroups: [group, { id: 'group_bad', wallId: 'wall_a', members: 'opening_o1', spacing: { kind: 'equal' } }],
     };
     const r = readProject(JSON.stringify(doc));
-    expect(r.ok && r.doc.openings.map((o) => o.id)).toEqual(['o1', 'o2', 'o3']);
+    expect(r.ok && r.doc.openings.map((o) => o.id)).toEqual(['opening_o1', 'opening_o2', 'opening_o3']);
     expect(r.ok && r.doc.openingGroups).toEqual([group]);
     expect(r.ok && r.fixes).toEqual([{ kind: 'droppedGroups', count: 1 }]);
   });
 
   it('bad elements are dropped and reported, the rest of the project is kept', () => {
-    const doc = { ...newDocument(), walls: [wall('a', 0), { id: 'b', start: { x: 'oops' } }, wall('c', 2)] };
+    const doc = { ...newDocument(), walls: [wall('wall_a', 0), { id: 'b', start: { x: 'oops' } }, wall('wall_c', 2)] };
     const r = readProject(JSON.stringify(doc));
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.doc.walls.map((w) => w.id)).toEqual(['a', 'c']);
+    expect(r.doc.walls.map((w) => w.id)).toEqual(['wall_a', 'wall_c']);
     expect(r.fixes).toEqual([{ kind: 'droppedWalls', count: 1 }]);
   });
 
   it('a wall on a level that does not exist moves to the first level, and says so', () => {
-    const doc = { ...newDocument(), walls: [{ ...wall('a', 0), levelId: 'nowhere' }] };
+    const doc = { ...newDocument(), walls: [{ ...wall('wall_a', 0), levelId: 'nowhere' }] };
     const r = readProject(JSON.stringify(doc));
     expect(r.ok && r.doc.walls[0]!.levelId).toBe('lvl_ground');
     expect(r.ok && r.fixes).toEqual([{ kind: 'movedToFirstLevel', count: 1 }]);
@@ -95,22 +95,22 @@ describe('version 3', () => {
     const doc = {
       ...newDocument(),
       wallTypes: [...newDocument().wallTypes, { id: 'wt_p', name: 'Parapet', layers: [{ thickness: 0.15, function: 'structure', materialId: 'brick' }], top: { kind: 'fixed', height: 1.1 } }],
-      walls: [{ id: 'p', wallTypeId: 'wt_p', start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground' }],
+      walls: [{ id: 'wall_p', wallTypeId: 'wt_p', start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground' }],
     };
     const r = readProject(writeProject(doc as never));
     expect(r.ok && r.doc).toEqual({ ...doc, version: CURRENT_VERSION });
   });
 
   it('a wall with a malformed top is dropped and reported, not read', () => {
-    const doc = { ...newDocument(), walls: [{ ...wall('a', 0), top: { kind: 'level' } }, wall('b', 2)] };
+    const doc = { ...newDocument(), walls: [{ ...wall('wall_a', 0), top: { kind: 'level' } }, wall('wall_b', 2)] };
     const r = readProject(JSON.stringify(doc));
-    expect(r.ok && r.doc.walls.map((w) => w.id)).toEqual(['b']);
+    expect(r.ok && r.doc.walls.map((w) => w.id)).toEqual(['wall_b']);
     expect(r.ok && r.fixes).toEqual([{ kind: 'droppedWalls', count: 1 }]);
   });
 });
 
 describe('version 4', () => {
-  const group = { id: 'g', wallId: 'a', members: ['x', 'y'], spacing: { kind: 'equal' } };
+  const group = { id: 'group_g', wallId: 'wall_a', members: ['x', 'y'], spacing: { kind: 'equal' } };
   it("a group's stretch reads back as it is; a version 3 group has none and keeps the whole wall", () => {
     expect(CURRENT_VERSION).toBeGreaterThanOrEqual(4);
     const doc = { ...newDocument(), openingGroups: [{ ...group, between: [null, 'c'] }] };
@@ -132,8 +132,8 @@ describe('version 4', () => {
 describe('walls from before version 3', () => {
   it('keep only the heights that differ from their type: the rest follow the type from now on', () => {
     const old = (id: string, x: number) => ({ ...wall(id, x), baseOffset: 0, top: { kind: 'level', offset: 0 } });
-    const own = { ...old('own', 0), baseOffset: 0.1 };
-    const doc = { ...newDocument(), version: 2, walls: [old('a', 0), own] };
+    const own = { ...old('wall_own', 0), baseOffset: 0.1 };
+    const doc = { ...newDocument(), version: 2, walls: [old('wall_a', 0), own] };
     const r = readProject(JSON.stringify(doc));
     if (!r.ok) throw new Error('not read');
     expect(r.doc.walls[0]).not.toHaveProperty('top');
@@ -144,7 +144,7 @@ describe('walls from before version 3', () => {
   });
 
   it('in a version 3 file too, a value equal to the type is not kept: the wall follows the type', () => {
-    const doc = { ...newDocument(), walls: [{ ...wall('a', 0), baseOffset: 0, top: { kind: 'level', offset: 0 } }, { ...wall('b', 2), top: { kind: 'fixed', height: 2.5 } }] };
+    const doc = { ...newDocument(), walls: [{ ...wall('wall_a', 0), baseOffset: 0, top: { kind: 'level', offset: 0 } }, { ...wall('wall_b', 2), top: { kind: 'fixed', height: 2.5 } }] };
     const r = readProject(writeProject(doc as never));
     if (!r.ok) throw new Error('not read');
     expect(r.doc.walls[0]).not.toHaveProperty('top');

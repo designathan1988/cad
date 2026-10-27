@@ -41,7 +41,9 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: str
   const walls = selection.filter((id) => doc.walls.some((w) => w.id === id));
   const merge = selection.length === 2 && walls.length === 2 && canMerge(doc, walls[0]!, walls[1]!) ? (['merge'] as const) : [];
   const guides = levelId !== undefined && doc.guides.some((g) => g.levelId === levelId) ? (['clearGuides'] as const) : [];
-  if (selection.length === 0) return ['drawWall', 'addNote', 'addLevelMark', 'walkHere', 'addPoint', 'frameAll', ...guides, 'commands'];
+  // Six at most: a text where the menu was opened (the level mark is in the ribbon); the commands give
+  // way to clearing the guides (Ctrl+K is in the footer).
+  if (selection.length === 0) return ['drawWall', 'addNote', 'walkHere', 'addPoint', 'frameAll', ...(guides.length > 0 ? guides : (['commands'] as const))];
   // Move first, for what the Modify tools take (walls, doors and windows, rooms, outline floors, guides); the five of them
   // are in the tool bar, as Revit's Modify panel, so this menu keeps to six.
   const modify: ContextId[] = canTransform(doc, selection) ? ['move'] : [];
@@ -66,7 +68,9 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: str
     const ceiled = doc.floors.some((f) => f.kind === 'ceiling' && f.source.kind === 'room' && f.source.roomId === id);
     // Walking from inside a room, where the menu was opened (the most natural place to start), and a
     // point of interest there. Framing a room is F; the menu keeps to six.
-    return [...modify, ...(floored ? [] : (['addFloor'] as const)), ...(ceiled ? [] : (['addCeiling'] as const)), 'walkHere', 'addPoint', 'properties', 'delete'];
+    // Six at most: with both a floor and a ceiling to make, the point of interest gives way (Vista has it).
+    const make = [...(floored ? [] : (['addFloor'] as const)), ...(ceiled ? [] : (['addCeiling'] as const))];
+    return [...modify, ...make, 'walkHere', ...(make.length < 2 ? (['addPoint'] as const) : []), 'properties', 'delete'];
   }
   return [...modify, 'selectSimilar', ...common];
 }

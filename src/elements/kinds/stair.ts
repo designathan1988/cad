@@ -53,6 +53,16 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
     const x = t.map({ x: s.at.x + Math.cos(s.angle), y: s.at.y + Math.sin(s.angle) });
     return { ...s, id, at, angle: Math.atan2(x.y - at.y, x.x - at.x), width: s.width * t.factor, ...(t.mirror ? { turn: s.turn === 'left' ? 'right' : 'left' } : {}) };
   },
+  // A room's name keeps off it: written over the steps it could not be read.
+  keepOut: (p, s) => {
+    const pts = s.parts.flatMap((q) => q.polygon.map(p.toScreen));
+    if (pts.length === 0) return null;
+    const xs = pts.map((v) => v.x);
+    const ys = pts.map((v) => v.y);
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    return { boxes: [{ x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y }], lines: [] };
+  },
   // Each step and landing outlined, the walking line from the first step to the top, an arrow there.
   plan: (p, s, lit) => {
     const { ctx } = p;
