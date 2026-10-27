@@ -30,6 +30,7 @@ export const POINT_LETTERS: Readonly<Record<PointKind, string>> = {
   hotOutlet: 'Q',
   drain: 'E',
   sewerOutlet: 'CI',
+  ventTerminal: 'TV',
   rainDrain: 'P',
   rainOutlet: 'CA',
   gasMeter: 'MG',
@@ -177,8 +178,8 @@ export const mepPointKind: ElementKind<MepPoint, MepPointSolid> = {
       ...(water
         ? ([{ id: 'mepWeight', label: 'mep.weight', kind: 'number', min: 0, unit: '', get: (s: MepPointSolid) => s.point.weight ?? POINT_KINDS[s.point.kind].weight ?? 0, set: (v: number) => dispatch(updatePoints(ids, { weight: v })) }] as const)
         : []),
-      // A sewer drain: the fixture it takes (NBR 8160 table 3), for the pipes' units and diameters.
-      ...(items.every((s) => s.discipline === 'sewer' && !POINT_KINDS[s.point.kind].source)
+      // A sewer drain: the fixture it takes (NBR 8160 table 3), for the pipes' units and diameters (a vent terminal takes none).
+      ...(items.every((s) => s.discipline === 'sewer' && !POINT_KINDS[s.point.kind].source && s.point.kind !== 'ventTerminal')
         ? ([
             {
               id: 'mepFixture',

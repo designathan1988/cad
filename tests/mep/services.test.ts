@@ -8,7 +8,7 @@ import { analyticModel, clashesOf, isometricSvg, waterproofing } from '../../src
 import { balance, generalDemand, loadTable, protect, showerFactor, voltageDrop } from '../../src/elements/mep/electrical';
 import { fittingsOf, networksOf } from '../../src/elements/mep/network';
 import { GROUP_OF, isMepPoint, isMepRun, type MepPoint, type MepRun } from '../../src/elements/mep/schema';
-import { hazenWilliams, mostUhc, neededDiameter, pressures, probableFlow, rainCapacity, rainDiameter, sewerFalls, sewerStacks, stackDiameter, ventDiameter } from '../../src/elements/mep/water';
+import { hazenWilliams, mostUhc, neededDiameter, pressures, probableFlow, rainCapacity, rainDiameter, sewerFalls, sewerStacks, stackDiameter, trapReach, ventBranchDiameter, ventDiameter } from '../../src/elements/mep/water';
 import { DEFAULT_SIM } from '../../src/sim/settings';
 import { RAIN_PLACES, rainOf } from '../../src/elements/mep/rain-places';
 import { readProject, writeProject } from '../../src/io/project-file';
@@ -65,7 +65,9 @@ describe('networks', () => {
   });
 
   it('a sewer run falls the way it is drawn, by its least fall, from the drain down to the way out', () => {
-    const v = runVertices(house, 'lvl_ground', 'sys_sewer', [
+    // Drawn where no sewer pipe is yet.
+    const bare: Doc = { ...house, mepRuns: house.mepRuns.filter((r) => r.id !== 's1') };
+    const v = runVertices(bare, 'lvl_ground', 'sys_sewer', [
       { x: 0, y: 0 },
       { x: 5, y: 0 },
     ]);
@@ -76,6 +78,27 @@ describe('networks', () => {
       [5, 0, -0.25],
       [5, 0, -0.4],
     ]);
+  });
+
+  it('a sewer run drawn into a pipe ends at its height, its fall kept; at a drain with a pipe it joins that pipe', () => {
+    // From a vent terminal at 3.40, 0.60 m from the drain, to the drain, whose pipe leaves it at −0.20.
+    const doc: Doc = { ...house, mepPoints: [...house.mepPoints, pt('tv', 'ventTerminal', -0.6, 0, 3.4, 'sys_sewer')] };
+    const v = runVertices(doc, 'lvl_ground', 'sys_sewer', [
+      { x: -0.6, y: 0 },
+      { x: 0, y: 0 },
+    ]);
+    // Up at the terminal, 1 % over 0.60 m down into the pipe's −0.20: no drop added at the drain, it has one.
+    expect(v.map((p) => [p.x, p.y, Math.round(p.z * 1000) / 1000])).toEqual([
+      [-0.6, 0, 3.4],
+      [-0.6, 0, -0.194],
+      [0, 0, -0.2],
+    ]);
+    // Drawn into a pipe's bare vertex the same: the box's pipe end at −0.30, 2 m away.
+    const w = runVertices(house, 'lvl_ground', 'sys_sewer', [
+      { x: 5, y: 2 },
+      { x: 5, y: 0 },
+    ]);
+    expect(w.map((p) => Math.round(p.z * 1000) / 1000)).toEqual([-0.28, -0.3]);
   });
 
   it('a point raised in the panel takes the run\'s vertex on it along', () => {
@@ -309,6 +332,34 @@ describe('water and sewer', () => {
     // It vents the 100 mm collector carrying 6 UHC: table 2's row DN 100 up to 43 UHC, a 50 mm vent up to 11 m.
     expect(v.stacks[0]).toMatchObject({ kind: 'vent', uhc: 6, vented: 0.1, needed: 0.05, sized: true, through: true });
     expect(v.vented).toBe(true);
+    // Its group (table 8): the toilet it vents, 6 UHC with a toilet, DN 50; its trap 0.20 down to the vent's foot (table 1: 2.40 m for DN 100).
+    expect(v.stacks[0]!.group).toEqual({ uhc: 6, toilet: true, needed: 0.05 });
+    expect(v.traps).toHaveLength(1);
+    expect(v.traps[0]).toMatchObject({ dn: 0.1, most: 2.4, vent: 0, ok: true });
+    expect(v.traps[0]!.distance).toBeCloseTo(0.2, 9);
+    // In the two-storey house the toilet's trap is vented by the stack out over the roof: 0.10 down and 0.60 along.
+    expect(sewerStacks(twoStorey, []).traps[0]!.distance).toBeCloseTo(0.7, 9);
+    // Under the roof the stack vents nothing: no vent reached.
+    expect(covered.traps[0]).toMatchObject({ distance: null, vent: null, ok: false });
+    // A kitchen sink by its own branch onto the collector 1.50 m along: past the 1.20 m of DN 50; the vent's group now 9 UHC.
+    const withSink: Doc = {
+      ...withVent,
+      mepPoints: [...withVent.mepPoints, pt('pia', 'drain', 1.5, 0.6, 0, 'sys_sewer', { fixture: 'kitchenSink' })],
+      mepRuns: [...withVent.mepRuns, run('rp', 'sys_sewer', 0.05, [1.5, 0.6, -0.2], [1.5, 0, -0.23])],
+    };
+    const s = sewerStacks(withSink, []);
+    const sink = s.traps.find((x) => x.point.id === 'pia')!;
+    expect(sink).toMatchObject({ dn: 0.05, most: 1.2, vent: 0, ok: false });
+    expect(sink.distance).toBeGreaterThan(1.5);
+    expect(s.stacks[0]!.group).toEqual({ uhc: 9, toilet: true, needed: 0.05 });
+    // Table 8 as it reads: without a toilet up to 12, 18, 36; with one up to 17 and 60.
+    expect([ventBranchDiameter(12, false), ventBranchDiameter(13, false), ventBranchDiameter(36, false), ventBranchDiameter(37, false)]).toEqual([0.04, 0.05, 0.075, null]);
+    expect([ventBranchDiameter(17, true), ventBranchDiameter(18, true), ventBranchDiameter(60, true), ventBranchDiameter(61, true)]).toEqual([0.05, 0.075, 0.075, null]);
+    // Table 1 by the branch.
+    expect([trapReach(0.04), trapReach(0.05), trapReach(0.075), trapReach(0.1)]).toEqual([1, 1.2, 1.8, 2.4]);
+    // A 40 mm vent over a group with a toilet is under table 8's DN 50: not sized.
+    const thin: Doc = { ...withToilet, mepRuns: [...withToilet.mepRuns, run('v1', 'sys_sewer', 0.04, [0, 0, -0.2], [0, 0, 3.2])] };
+    expect(sewerStacks(thin, []).stacks[0]!.sized).toBe(false);
     // Table 6 by storeys, never under the largest branch; table 2 by the vented pipe, its UHC and length.
     expect([stackDiameter(30, 3, 0), stackDiameter(31, 3, 0), stackDiameter(31, 4, 0), stackDiameter(241, 3, 0), stackDiameter(6, 2, 0.1), stackDiameter(9000, 4, 0)]).toEqual([0.075, 0.1, 0.075, 0.15, 0.1, null]);
     expect([ventDiameter(0.075, 21, 40), ventDiameter(0.075, 21, 10), ventDiameter(0.1, 600, 10), ventDiameter(0.04, 8, 50)]).toEqual([0.075, 0.04, null, null]);

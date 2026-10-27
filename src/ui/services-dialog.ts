@@ -219,31 +219,53 @@ export function showServices(app: App, first: Tab = 'systems'): void {
       };
       // The sewer's stacks and vents (NBR 8160 tables 6 and 2), each with its open end over the roof.
       const stacksBlock = (): HTMLElement[] => {
-        const { stacks, vented, fixtures } = sewerStacks(doc, [...(g.kinds.get('roofs')?.values() ?? [])] as RoofSolid[]);
+        const { stacks, vented, fixtures, traps } = sewerStacks(doc, [...(g.kinds.get('roofs')?.values() ?? [])] as RoofSolid[]);
         if (stacks.length === 0 && fixtures === 0) return [];
+        const dn = (d: number) => `DN ${Math.round(d * 1000)}`;
         return [
           el('h3', {}, t('services.stacks')),
           ...(stacks.length > 0
             ? [
                 table(
-                  [t('services.stretch'), t('services.stackKind'), t('services.diameter'), t('services.length'), 'UHC', t('services.neededDn'), '', t('services.aboveRoof'), ''],
+                  [t('services.stretch'), t('services.stackKind'), t('services.diameter'), t('services.length'), 'UHC', t('services.neededDn'), t('services.ventGroup'), '', t('services.aboveRoof'), ''],
                   stacks.map((s) => [
                     link(app.reportTitle(s.runIds[0]!), s.runIds[0]!),
                     t(`services.stack.${s.kind}` as MessageKey),
                     `${Math.round(s.diameter * 1000)} mm`,
                     `${num(s.length, 2)} m`,
                     s.uhc > 0 ? num(s.uhc, 0) : '—',
-                    s.needed === null ? (s.uhc > 0 ? t('services.pastTables') : '—') : `DN ${Math.round(s.needed * 1000)}`,
-                    s.uhc > 0 ? mark(s.sized) : '—',
+                    s.needed === null ? (s.uhc > 0 ? t('services.pastTables') : '—') : dn(s.needed),
+                    // A vent's group of fixtures (table 8): "14 UHC com bacia → DN 50".
+                    s.group ? `${t(s.group.toilet ? 'services.groupToilet' : 'services.groupPlain', { uhc: num(s.group.uhc, 0) })} → ${s.group.needed === null ? t('services.pastTables') : dn(s.group.needed)}` : '—',
+                    s.uhc > 0 || s.group ? mark(s.sized) : '—',
                     `${num(s.above, 2)} m`,
                     mark(s.through),
                   ]),
-                  [2, 3, 4, 5, 7],
+                  [2, 3, 4, 5, 8],
                 ),
               ]
             : []),
           ...(vented ? [] : [el('p', { class: 'services-bad' }, t('services.noVent'))]),
           note('services.stackNote', { n: doc.levels.length }),
+          // Each fixture's trap and how far along the pipes its vent is (table 1).
+          ...(traps.length > 0
+            ? [
+                el('h3', {}, t('services.traps')),
+                table(
+                  [t('services.trapFixture'), t('services.branchDn'), t('services.toVent'), t('services.trapMost'), '', t('services.ventBy')],
+                  traps.map((x) => [
+                    link(`${app.reportTitle(x.point.id)} · ${t(`mep.fixture.${x.point.fixture!}` as MessageKey)}`, x.point.id),
+                    dn(x.dn),
+                    x.distance === null ? t('services.noVentReached') : `${num(x.distance, 2)} m`,
+                    `${num(x.most, 2)} m`,
+                    mark(x.ok),
+                    x.vent === null ? '—' : link(app.reportTitle(stacks[x.vent]!.runIds[0]!), stacks[x.vent]!.runIds[0]!),
+                  ]),
+                  [1, 2, 3],
+                ),
+                note('services.trapNote'),
+              ]
+            : []),
         ];
       };
       // The roofs' eave gutters (NBR 10844 table 3), from their sloped faces, at the design rain.

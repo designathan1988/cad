@@ -66,6 +66,7 @@ export type PointKind =
   | 'hotOutlet'
   | 'drain'
   | 'sewerOutlet'
+  | 'ventTerminal'
   | 'rainDrain'
   | 'rainOutlet'
   | 'gasMeter'
@@ -98,6 +99,9 @@ export const POINT_KINDS: Readonly<Record<PointKind, { readonly discipline: Disc
   hotOutlet: { discipline: 'hotWater', height: 0.6, weight: 0.3 },
   drain: { discipline: 'sewer', height: 0 },
   sewerOutlet: { discipline: 'sewer', height: -0.4, source: true },
+  // A vent pipe's open end (terminal de ventilação): a sewer pipe drawn to it rises to it. Placed 0.30 m over
+  // the roof over it (NBR 8160 4.3.6; mep-ui.ts); `above` is its height over the ceiling without a roof.
+  ventTerminal: { discipline: 'sewer', height: null, above: 0.3 },
   rainDrain: { discipline: 'rain', height: 0 },
   // The rain's own way out (a sand box to the street): NBR 8160 keeps it apart from the sewer.
   rainOutlet: { discipline: 'rain', height: -0.4, source: true },

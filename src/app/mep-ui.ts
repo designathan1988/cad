@@ -10,7 +10,7 @@ import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { GROUP_OF, MEP_POINT_PREFIX, MEP_RUN_PREFIX, type MepPoint, type MepRun, POINT_KINDS, type PointKind, RUN_DEFAULTS, type RunVertex, systemIn, systemsOf } from '../elements/mep/schema';
 import { t } from '../ui/i18n';
-import { leastFall } from '../elements/mep/water';
+import { coverAt, leastFall, type RoofFaces, VENT_ABOVE } from '../elements/mep/water';
 import type { Doc } from './document';
 import type { App } from './app';
 
@@ -44,7 +44,12 @@ export function startMepRun(app: App, systemId: string): void {
 export function mepPointClick(app: App, p: Point2): void {
   const doc = app.store.get();
   const kind = app.ui.mepKind;
-  const point: MepPoint = { id: newId(MEP_POINT_PREFIX), levelId: app.ui.levelId, at: { x: p.x, y: p.y }, height: kindHeight(doc, app.ui.levelId, kind), kind, systemId: systemFor(doc, kind) };
+  // A vent terminal stands 0.30 m over the roof over it (or over the top level's ceiling).
+  const height =
+    kind === 'ventTerminal'
+      ? coverAt(doc, [...(app.geometry.kinds.get('roofs')?.values() ?? [])] as RoofFaces[], p) + VENT_ABOVE - (doc.levels.find((l) => l.id === app.ui.levelId)?.elevation ?? 0)
+      : kindHeight(doc, app.ui.levelId, kind);
+  const point: MepPoint = { id: newId(MEP_POINT_PREFIX), levelId: app.ui.levelId, at: { x: p.x, y: p.y }, height, kind, systemId: systemFor(doc, kind) };
   app.store.dispatch({ label: 'cmd.addMep', apply: (d) => ({ ...d, mepPoints: [...d.mepPoints, point] }) });
   app.ui.info = t('hint.mepPlaced', { what: t(`mep.kind.${kind}`) });
   app.render();
@@ -75,14 +80,30 @@ export function runVertices(doc: Doc, levelId: string, systemId: string, plan: r
   const falls = discipline === 'sewer' || discipline === 'rain';
   const fall = falls ? leastFall(RUN_DEFAULTS[discipline].diameter) / 100 : 0;
   let along = 0;
-  const out: RunVertex[] = plan.map((q, i) => {
+  let out: RunVertex[] = plan.map((q, i) => {
     if (i > 0) along += distance(q, plan[i - 1]!);
     return { x: q.x, y: q.y, z: base - fall * along };
   });
+  // The pipe already at a plan point (at a point, the one at the height nearest the run's, not its drop).
+  const pipeAt = (at: RunVertex): RunVertex | null =>
+    vertices.filter((x) => distance(x, at) <= MEET).reduce<RunVertex | null>((a, b) => (a === null || Math.abs(b.z - at.z) < Math.abs(a.z - at.z) ? b : a), null);
+  // A falling run drawn into a pipe ends at that pipe's height, its fall kept the whole way (else the
+  // last stretch would jump or lie flat); drawn out of one, it starts at it.
+  const into = falls ? pipeAt(out.at(-1)!) : null;
+  const from = falls && !into ? pipeAt(out[0]!) : null;
+  const shift = into ? into.z - out.at(-1)!.z : from ? from.z - out[0]!.z : 0;
+  if (shift !== 0) out = out.map((v) => ({ ...v, z: v.z + shift }));
   // Each end: on a point, it goes to it and down (or up) to its height; on a run's vertex, it takes its height.
   const meet = (i: 0 | -1) => {
     const at = out.at(i)!;
     const point = points.find((x) => distance(x.at, at) <= MEET);
+    // A falling run met at a point by a pipe there joins that pipe: the point's drop is that pipe's.
+    const joined = falls && point ? pipeAt(at) : null;
+    if (joined) {
+      if (i === 0) out[0] = { ...joined };
+      else out[out.length - 1] = { ...joined };
+      return;
+    }
     if (point) {
       const end = { x: point.at.x, y: point.at.y, z: at.z };
       const drop = { x: point.at.x, y: point.at.y, z: point.height };

@@ -6,7 +6,8 @@
 // less the losses. NBR 5626 asks at least 10 kPa at an outlet in use and at most 400 kPa standing
 // (values to confirm in the edition in force). Sewer: each sloping stretch's fall towards the way out,
 // at least 2 % up to 75 mm and 1 % from 100 mm (NBR 8160, to confirm); its stacks and vent pipes, the
-// upright pipes, sized by NBR 8160 (1999) tables 6 and 2 and their open ends over the roof. Pure.
+// upright pipes, sized by NBR 8160 (1999) tables 6 and 2 and their open ends over the roof; each trap's
+// distance to its vent (table 1) and the vent branches (table 8). Pure.
 
 import type { Doc } from '../../app/document';
 import { fromSources, type Network, networksOf, pathTo, REACH, sourcesOf } from './network';
@@ -276,7 +277,7 @@ export function sewerFalls(doc: Doc, group: 'sewer' | 'rain' = 'sewer'): { stret
   }
   const unreached = net.points.filter((p) => !POINT_KINDS[p.kind].source && !dist.has(net.pointNode.get(p.id)!));
   // The sewer's drains that say no fixture, the rain's no area: what they take is not counted.
-  const unsized = net.points.filter((p) => !POINT_KINDS[p.kind].source && (group === 'sewer' ? !p.fixture : !p.area));
+  const unsized = net.points.filter((p) => !POINT_KINDS[p.kind].source && p.kind !== 'ventTerminal' && (group === 'sewer' ? !p.fixture : !p.area));
   return { stretches, unreached, hasOutlet: sources.length > 0, unsized };
 }
 
@@ -348,6 +349,47 @@ export function ventDiameter(vented: number, uhc: number, length: number): numbe
 /** NBR 8160 4.3.6 b): a vent's open end at least this far over the roof (2 m on a roof slab used for more; not known here). */
 export const VENT_ABOVE = 0.3;
 
+/** NBR 8160 (1999) table 1: a trap's discharge branch nominal diameter (m) and how far (m) at most it is from the vent that serves it. */
+export const TRAP_TO_VENT: readonly (readonly [number, number])[] = [
+  [0.04, 1.0],
+  [0.05, 1.2],
+  [0.075, 1.8],
+  [0.1, 2.4],
+];
+/** The farthest a trap of a branch diameter may be from its vent; a branch past the table takes its last row. */
+export const trapReach = (dn: number): number => (TRAP_TO_VENT.find(([d]) => d >= dn - 1e-9) ?? TRAP_TO_VENT[TRAP_TO_VENT.length - 1]!)[1];
+
+/**
+ * NBR 8160 (1999) table 8: a vent branch's nominal diameter (m) for the group of fixtures it vents, by their
+ * UHC, with a toilet among them (up to 17: DN 50; 18 to 60: DN 75) or not (up to 12: DN 40; 13 to 18: DN 50;
+ * 19 to 36: DN 75); null past the table.
+ */
+export function ventBranchDiameter(uhc: number, toilet: boolean): number | null {
+  if (toilet) return uhc <= 17 ? 0.05 : uhc <= 60 ? 0.075 : null;
+  return uhc <= 12 ? 0.04 : uhc <= 18 ? 0.05 : uhc <= 36 ? 0.075 : null;
+}
+
+/** A fixture's trap and the vent that serves it: the nearest upright pipe open to the air, along the pipes. */
+export interface TrapVent {
+  readonly point: MepPoint;
+  /** Its discharge branch's diameter (table 3, m), and how far along the pipes its vent is (m; null: none reached). */
+  readonly dn: number;
+  readonly distance: number | null;
+  readonly most: number;
+  /** The index in `stacks` of the pipe that vents it; null with none. */
+  readonly vent: number | null;
+  readonly ok: boolean;
+}
+
+/** Roofs as their sloped faces: each a plan polygon and its height over a point of it (absolute, m). */
+export type RoofFaces = { readonly faces: readonly { readonly polygon: readonly { x: number; y: number }[]; readonly z: (p: { x: number; y: number }) => number }[] };
+
+/** What covers a plan point: the highest roof face over it or, under none, the top level's ceiling (absolute, m). */
+export function coverAt(doc: Doc, roofs: readonly RoofFaces[], at: { x: number; y: number }): number {
+  const covers = roofs.flatMap((r) => r.faces.filter((f) => insideRing(f.polygon, at)).map((f) => f.z(at)));
+  return covers.length > 0 ? Math.max(...covers) : Math.max(0, ...doc.levels.map((l) => l.elevation + l.height));
+}
+
 export interface Stack {
   /** A stack (tubo de queda) carries the fixtures' sewage down; a vent (tubo ventilador) carries none, only air. */
   readonly kind: 'stack' | 'vent';
@@ -368,6 +410,11 @@ export interface Stack {
   readonly cover: number;
   readonly above: number;
   readonly through: boolean;
+  /**
+   * A vent's group (table 8): the fixtures whose traps it is the nearest vent of, their UHC and whether a
+   * toilet is among them, and the vent branch diameter they ask; null for a stack or a vent with none.
+   */
+  readonly group: { readonly uhc: number; readonly toilet: boolean; readonly needed: number | null } | null;
 }
 
 /**
@@ -378,9 +425,9 @@ export interface Stack {
  * (4.3.11 asks one even of a one-storey building). Roof faces give the cover; without one over it, the top
  * level's ceiling.
  */
-export function sewerStacks(doc: Doc, roofs: readonly { readonly faces: readonly { readonly polygon: readonly { x: number; y: number }[]; readonly z: (p: { x: number; y: number }) => number }[] }[]): { stacks: Stack[]; vented: boolean; fixtures: number } {
+export function sewerStacks(doc: Doc, roofs: readonly RoofFaces[]): { stacks: Stack[]; vented: boolean; fixtures: number; traps: TrapVent[] } {
   const net = networksOf(doc).get('sewer');
-  if (!net) return { stacks: [], vented: true, fixtures: 0 };
+  if (!net) return { stacks: [], vented: true, fixtures: 0, traps: [] };
   const { dist, via } = fromSources(net, sourcesOf(net));
   const { units, branch } = fixtureLoads(net, dist, via);
   const fixtures = net.points.filter((p) => p.fixture).length;
@@ -404,8 +451,7 @@ export function sewerStacks(doc: Doc, roofs: readonly { readonly faces: readonly
   const chains = new Map<number, typeof vertical>();
   for (const v of vertical) chains.set(root(v.e.a), [...(chains.get(root(v.e.a)) ?? []), v]);
   const storeys = doc.levels.length;
-  const ceiling = Math.max(0, ...doc.levels.map((l) => l.elevation + l.height));
-  const stacks: Stack[] = [];
+  const found: { stack: Omit<Stack, 'group'>; nodes: readonly number[] }[] = [];
   for (const chain of chains.values()) {
     const nodes = [...new Set(chain.flatMap(({ e }) => [e.a, e.b]))];
     const zs = nodes.map((n) => net.nodes[n]!.z);
@@ -426,25 +472,54 @@ export function sewerStacks(doc: Doc, roofs: readonly { readonly faces: readonly
     const vented = kind === 'stack' ? diameter : Math.max(0, ...below.map(({ e }) => e.diameter));
     const least = Math.max(0, ...chain.map(({ k }) => branch.get(k) ?? 0));
     const needed = uhc <= 0 ? null : kind === 'stack' ? stackDiameter(uhc, storeys, least) : ventDiameter(vented, uhc, length);
-    const covers = roofs.flatMap((r) => r.faces.filter((f) => insideRing(f.polygon, at)).map((f) => f.z(at)));
-    const cover = covers.length > 0 ? Math.max(...covers) : ceiling;
-    stacks.push({
-      kind,
-      runIds: [...new Set(chain.map(({ e }) => e.runId!))],
-      at,
-      bottom,
-      top,
-      length,
-      diameter,
-      uhc,
-      vented,
-      needed,
-      sized: needed === null ? uhc <= 0 : diameter >= needed - 1e-6,
-      cover,
-      above: top - cover,
-      through: top - cover >= VENT_ABOVE - 1e-6,
+    const cover = coverAt(doc, roofs, at);
+    found.push({
+      stack: {
+        kind,
+        runIds: [...new Set(chain.map(({ e }) => e.runId!))],
+        at,
+        bottom,
+        top,
+        length,
+        diameter,
+        uhc,
+        vented,
+        needed,
+        sized: needed === null ? uhc <= 0 : diameter >= needed - 1e-6,
+        cover,
+        above: top - cover,
+        through: top - cover >= VENT_ABOVE - 1e-6,
+      },
+      nodes,
     });
   }
-  stacks.sort((a, b) => a.at.x - b.at.x || a.at.y - b.at.y);
-  return { stacks, vented: fixtures === 0 || stacks.some((s) => s.through), fixtures };
+  found.sort((a, b) => a.stack.at.x - b.stack.at.x || a.stack.at.y - b.stack.at.y);
+  // Each trap's vent (table 1): the nearest along the pipes of the vent pipes and the stacks out over the
+  // roof (a stack open to the air vents what joins it), measured from the fixture's point.
+  const reach = found.map((f) => (f.stack.kind === 'vent' || f.stack.through ? fromSources(net, f.nodes).dist : null));
+  const traps: TrapVent[] = [];
+  for (const p of net.points) {
+    const f = p.fixture ? FIXTURES[p.fixture] : null;
+    const node = net.pointNode.get(p.id);
+    if (!f || node === undefined) continue;
+    let vent: number | null = null;
+    let distance: number | null = null;
+    reach.forEach((d, i) => {
+      const x = d?.get(node);
+      if (x !== undefined && (distance === null || x < distance - 1e-9)) (distance = x), (vent = i);
+    });
+    const most = trapReach(f.dn);
+    traps.push({ point: p, dn: f.dn, distance, most, vent, ok: distance !== null && distance <= most + 1e-6 });
+  }
+  // A vent's group (table 8): the fixtures it is the nearest vent of; its diameter not under that branch's.
+  const stacks: Stack[] = found.map(({ stack }, i) => {
+    const mine = traps.filter((x) => x.vent === i);
+    if (stack.kind !== 'vent' || mine.length === 0) return { ...stack, group: null };
+    const uhc = mine.reduce((t, x) => t + FIXTURES[x.point.fixture!].uhc, 0);
+    const toilet = mine.some((x) => x.point.fixture === 'toilet');
+    const branchNeeded = ventBranchDiameter(uhc, toilet);
+    const sized = stack.sized && branchNeeded !== null && stack.diameter >= branchNeeded - 1e-6;
+    return { ...stack, sized, group: { uhc, toilet, needed: branchNeeded } };
+  });
+  return { stacks, vented: fixtures === 0 || stacks.some((s) => s.through), fixtures, traps };
 }

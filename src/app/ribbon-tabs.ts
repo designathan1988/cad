@@ -139,6 +139,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
           items: [
             { id: 'mep.point.drain', icon: 'center', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'drain' },
             { id: 'mep.point.sewerOutlet', icon: 'box', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'sewerOutlet' },
+            { id: 'mep.point.ventTerminal', icon: 'arrowUp', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'ventTerminal' },
             { id: 'mep.point.rainDrain', icon: 'center', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'rainDrain' },
             { id: 'mep.point.rainOutlet', icon: 'box', size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === 'rainOutlet' },
             { id: 'mep.run.sys_sewer', icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === 'sys_sewer' },
