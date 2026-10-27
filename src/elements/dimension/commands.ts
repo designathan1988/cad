@@ -2,6 +2,8 @@
 
 import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
+import { deriveGeometry } from '../../app/geometry';
+import { placeDimension } from './anchor';
 import type { Dimension } from './schema';
 
 export const addDimension = (dim: Dimension): Command<Doc> => ({
@@ -30,6 +32,52 @@ export const setDimensionDistance = (ids: readonly string[], distance: number): 
       if (offset === d.offset) return d;
       changed = true;
       return { ...d, offset };
+    });
+    return changed ? { ...doc, dimensions } : doc;
+  },
+});
+
+/** Dimensions made together (automatic dimensioning): one step. */
+export const addDimensions = (dims: readonly Dimension[]): Command<Doc> => ({
+  label: 'cmd.autoDimension',
+  apply: (doc) => (dims.length === 0 ? doc : { ...doc, dimensions: [...doc.dimensions, ...dims] }),
+});
+
+/** Locked at the length each measures now, or unlocked; one whose end is gone is left as it is. */
+export const lockDimensions = (ids: readonly string[], lock: boolean): Command<Doc> => ({
+  label: lock ? 'cmd.lockDimension' : 'cmd.unlockDimension',
+  apply: (doc) => {
+    const g = lock ? deriveGeometry(doc) : null;
+    let changed = false;
+    const dimensions = doc.dimensions.map((d) => {
+      if (!ids.includes(d.id)) return d;
+      if (!lock) {
+        if (d.locked === undefined) return d;
+        changed = true;
+        const { locked: _, ...rest } = d;
+        return rest;
+      }
+      const at = placeDimension(doc, g!, d);
+      if (!at || d.locked === at.length) return d;
+      changed = true;
+      return { ...d, locked: at.length };
+    });
+    return changed ? { ...doc, dimensions } : doc;
+  },
+});
+
+/** The chains of these dimensions made equal (EQ) or not: every member of each. */
+export const setDimensionsEqual = (ids: readonly string[], equal: boolean): Command<Doc> => ({
+  label: equal ? 'cmd.equalDimensions' : 'cmd.unequalDimensions',
+  apply: (doc) => {
+    const chains = new Set(doc.dimensions.filter((d) => ids.includes(d.id) && d.chain !== undefined).map((d) => d.chain!));
+    let changed = false;
+    const dimensions = doc.dimensions.map((d) => {
+      if (d.chain === undefined || !chains.has(d.chain) || (d.eq === true) === equal) return d;
+      changed = true;
+      if (equal) return { ...d, eq: true as const };
+      const { eq: _, ...rest } = d;
+      return rest;
     });
     return changed ? { ...doc, dimensions } : doc;
   },

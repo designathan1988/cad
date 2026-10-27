@@ -7,7 +7,7 @@ import { finite, isObject, isPoint } from '../../core/guards';
 import type { Point2 } from '../../core/vector';
 import type { ElementKind, PlanPaint } from '../contract';
 import { placeDimension, resolve, segmentDistance } from '../dimension/anchor';
-import { setDimensionDistance } from '../dimension/commands';
+import { lockDimensions, setDimensionDistance, setDimensionsEqual } from '../dimension/commands';
 import { dimensionFields } from '../dimension/fields';
 import { anchorElement, DIM_PREFIX, type DimAnchor, type Dimension } from '../dimension/schema';
 import { throughElement } from './paint';
@@ -48,7 +48,16 @@ export const dimensionKind: ElementKind<Dimension, DimensionSolid> = {
   dropped: 'fix.droppedDimensions',
   exportName: 'dim.title',
   exportColour: 'structure',
-  valid: (d): d is Dimension => isObject(d) && typeof d.id === 'string' && typeof d.levelId === 'string' && isAnchor(d.a) && isAnchor(d.b) && finite(d.offset),
+  valid: (d): d is Dimension =>
+    isObject(d) &&
+    typeof d.id === 'string' &&
+    typeof d.levelId === 'string' &&
+    isAnchor(d.a) &&
+    isAnchor(d.b) &&
+    finite(d.offset) &&
+    (d.locked === undefined || (finite(d.locked) && d.locked > 0)) &&
+    (d.chain === undefined || typeof d.chain === 'string') &&
+    (d.eq === undefined || d.eq === true),
   derive: (doc, d, g) => ({ dim: d, at: placeDimension(doc, g, d) }),
   element: (s) => s.dim,
   holders: (d) => [anchorElement(d.a), anchorElement(d.b)].filter((x): x is string => x !== null),
@@ -103,9 +112,9 @@ export const dimensionKind: ElementKind<Dimension, DimensionSolid> = {
     return a && b ? { ...d, id: c.id, a, b, offset: wholeOffset } : null;
   },
   plan: (p, s, lit) => {
-    if (s.at) drawDimension(p, s.at, lengthNum(s.at.length), lit ? p.color('--wall-sel') : p.color('--text-2'));
+    if (s.at) drawDimension(p, s.at, valueText(s), lit ? p.color('--wall-sel') : p.color('--text-2'), s.dim.locked !== undefined);
   },
-  keepOut: (p, s) => (s.at ? { boxes: [valueBox(p, s.at, lengthNum(s.at.length))], lines: [{ a: p.toScreen(s.at.la), b: p.toScreen(s.at.lb) }] } : null),
+  keepOut: (p, s) => (s.at ? { boxes: [valueBox(p, s.at, valueText(s))], lines: [{ a: p.toScreen(s.at.la), b: p.toScreen(s.at.lb) }] } : null),
   // As lines and a text, as R12 readers all draw them: the extension lines, the dimension line, a tick at
   // each end, the value over the middle.
   dxf: (s, out) => {
@@ -127,7 +136,7 @@ export const dimensionKind: ElementKind<Dimension, DimensionSolid> = {
     let angle = (Math.atan2(uy, ux) * 180) / Math.PI;
     if (angle > 90) angle -= 180;
     if (angle <= -90) angle += 180;
-    out.text('A-ANNO-DIMS', { x: (d.la.x + d.lb.x) / 2 + nx * DXF_H, y: (d.la.y + d.lb.y) / 2 + ny * DXF_H }, DXF_H, lengthNum(d.length), angle);
+    out.text('A-ANNO-DIMS', { x: (d.la.x + d.lb.x) / 2 + nx * DXF_H, y: (d.la.y + d.lb.y) / 2 + ny * DXF_H }, DXF_H, valueText(s), angle);
   },
   // What each measures now: null when an end's element is gone.
   fields: (items, { dispatch }) =>
@@ -135,11 +144,18 @@ export const dimensionKind: ElementKind<Dimension, DimensionSolid> = {
       dimensionFields(
         items.map((s) => s.dim),
         (d) => items.find((s) => s.dim === d)?.at?.length ?? null,
-        { setDimensionDistance: (ids, distance) => dispatch(setDimensionDistance(ids, distance)) },
+        {
+          setDimensionDistance: (ids, distance) => dispatch(setDimensionDistance(ids, distance)),
+          lock: (ids, on) => dispatch(lockDimensions(ids, on)),
+          equal: (ids, on) => dispatch(setDimensionsEqual(ids, on)),
+        },
       ),
       (s: DimensionSolid) => s.dim,
     ),
 };
+
+/** What a dimension says: its length, or EQ for a member of an equal chain. */
+const valueText = (s: DimensionSolid): string => (s.dim.eq && s.dim.chain ? 'EQ' : s.at ? lengthNum(s.at.length) : '');
 
 /** The screen pieces of a dimension: its points, its line, the side it stands on and its value's place. */
 function onScreen(p: PlanPaint, d: Placed) {
@@ -167,7 +183,7 @@ function valueBox(p: PlanPaint, d: Placed, text: string): { x: number; y: number
 }
 
 /** A dimension in plan: its extension lines, its line with a tick at each end, and its value. Also the one being made. */
-export function drawDimension(p: PlanPaint, d: Placed, text: string, colour: string): void {
+export function drawDimension(p: PlanPaint, d: Placed, text: string, colour: string, locked = false): void {
   const { ctx } = p;
   const { a, b, la, lb, len, u, off, n, mid } = onScreen(p, d);
   if (len < 1) return;
@@ -211,5 +227,15 @@ export function drawDimension(p: PlanPaint, d: Placed, text: string, colour: str
   ctx.textBaseline = 'middle';
   // Too short for its value: the value stays, the line shows what it is of.
   ctx.fillText(text, 0, 0);
+  if (locked) {
+    // A padlock before the value: its body and its shackle.
+    const x = -tw / 2 - 9;
+    ctx.fillRect(x - 3.5, -1.5, 7, 5.5);
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = colour;
+    ctx.beginPath();
+    ctx.arc(x, -1.5, 2.4, Math.PI, 0);
+    ctx.stroke();
+  }
   ctx.restore();
 }

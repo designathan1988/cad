@@ -25,6 +25,15 @@ export interface Dimension {
   readonly b: DimAnchor;
   /** The dimension line's distance from the line a → b (m), to its left (negative: its right). */
   readonly offset: number;
+  /**
+   * Locked (Revit's padlock): the length it keeps (m). A change that would make it measure otherwise
+   * moves what holds its other end along with it (constraints.ts); one that cannot is refused.
+   */
+  readonly locked?: number;
+  /** One of a string of dimensions end to end (a chain): the string's id. Its members follow each other in the list. */
+  readonly chain?: string;
+  /** Equal (EQ): every member of its chain measures the same, what holds the points between them moved to keep it so. */
+  readonly eq?: true;
 }
 
 export const isDimId = (id: string): boolean => id.startsWith(`${DIM_PREFIX}_`);

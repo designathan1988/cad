@@ -1,6 +1,11 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
+import { autoDimensions } from '../elements/dimension/auto';
+import { addDimensions } from '../elements/dimension/commands';
+import { lengthText } from '../ui/units';
+import { settleDimensions } from '../elements/dimension/constraints';
+import type { Dimension } from '../elements/dimension/schema';
 import type { SectionMark } from '../elements/section/schema';
 import { deleteLayerSet, nextName, saveLayerSet } from './layer-sets';
 import type { GuideMode } from './guide-ui';
@@ -227,14 +232,26 @@ export class App {
     const store = createStore(boot.doc);
     this.store = {
       ...store,
-      dispatch: (c) =>
+      // Locked and equal dimensions are kept too (elements/dimension/constraints.ts): what holds them
+      // follows, or the change is refused and said.
+      dispatch: (c) => {
+        let refused: Dimension | null = null;
         store.dispatch({
           label: c.label,
           apply: (before) => {
-            const next = c.apply(before);
-            return next === before || next.walls === before.walls ? next : keepRooms(before, keepOpenings(before, next)).doc;
+            const changed = c.apply(before);
+            if (changed === before) return changed;
+            const settled = settleDimensions(before, changed);
+            if (!settled.ok) {
+              refused = settled.dim;
+              return before;
+            }
+            const next = settled.doc;
+            return next.walls === before.walls ? next : keepRooms(before, keepOpenings(before, next)).doc;
           },
-        }),
+        });
+        if (refused) this.toast(t((refused as Dimension).eq ? 'dim.refusedEqual' : 'dim.refusedLocked', { length: lengthText((refused as Dimension).locked ?? 0) }));
+      },
     };
     const doc = this.store.get();
     this.ui = {
@@ -1144,6 +1161,19 @@ export class App {
   /** The four elevations round the building, those not made yet (elements/section). */
   addElevations(): void {
     return kindTools.addElevations(this);
+  }
+
+  /**
+   * Automatic dimensioning (elements/dimension/auto.ts): chains along the selected walls' outer faces,
+   * or along every outer wall of the level when no wall is selected.
+   */
+  autoDimension(): void {
+    const doc = this.store.get();
+    const ids = [...this.ui.selection].filter((id) => doc.walls.some((w) => w.id === id && w.levelId === this.ui.levelId));
+    const dims = autoDimensions(doc, deriveGeometry(doc), this.ui.levelId, ids.length > 0 ? ids : null, newId);
+    if (dims.length === 0) return this.toast(t('dim.autoNone'));
+    this.store.dispatch(addDimensions(dims));
+    this.toast(t('dim.autoMade', { n: dims.length }));
   }
 
   /** The axes as drawn now (a move being dragged or the Modify tool taking them): what snapping sees; plan only. */
