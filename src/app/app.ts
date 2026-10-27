@@ -79,6 +79,7 @@ import { type Diagnostic, diagnose } from './diagnostics';
 import { checkRules, type Finding, LOT_ELEMENT } from '../rules/check';
 import { complianceHtml } from './documents';
 import { showLot } from '../ui/lot-dialog';
+import { showBudget } from '../ui/budget-dialog';
 import { type Rule, rulesOf } from '../rules/schema';
 import { showRules } from '../ui/rules-dialog';
 import { renderDebugPanel } from '../ui/debug-panel';
@@ -1647,6 +1648,11 @@ export class App {
   /** The lot and its table of areas (ui/lot-dialog.ts). */
   openLot(): void {
     showLot(this);
+  }
+
+  /** The CUB estimate, the budget, its ABC curve and schedule (ui/budget-dialog.ts). */
+  openBudget(): void {
+    showBudget(this);
   }
 
   /** An element as a report names it: a room by its number and name, a wall by its number, the lot. */

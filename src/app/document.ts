@@ -12,6 +12,7 @@ import type { Terrain } from '../elements/terrain/schema';
 import type { Sheet } from '../elements/sheet/schema';
 import type { Rule, RulePack } from '../rules/schema';
 import type { Lot } from './lot';
+import type { Costs } from '../costs/schema';
 import { DEFAULT_DRAWING, type DrawingSettings } from '../elements/drawing/schema';
 import { LIBRARY } from '../elements/object/library';
 import type { ObjectDefinition, ObjectInstance } from '../elements/object/schema';
@@ -66,7 +67,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 34;
+  readonly version: 35;
   readonly name: string;
   /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
   readonly units: Units;
@@ -126,6 +127,8 @@ export interface Doc {
   readonly rulePacks?: readonly RulePack[];
   /** The lot: its address, registry, zone and parameters (app/lot.ts). */
   readonly lot?: Lot;
+  /** The CUB, the price base, the budget's lines, BDI, other costs and stages (costs/schema.ts). */
+  readonly costs?: Costs;
   /** The plan's scale and the pens (elements/drawing/schema.ts); the defaults when it sets none. */
   readonly drawing?: DrawingSettings;
   /** Named lengths (m) typed by name in any measure: the ceiling height, a module (core/measure.ts). */
@@ -154,7 +157,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 34,
+    version: 35,
     name: '',
     units: DEFAULT_UNITS,
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],

@@ -65,6 +65,7 @@
   --dialog-w: 420px;
   --dialog-w-lg: 560px;
   --dialog-w-xl: 980px;
+  --dialog-w-budget: 1180px;
   --schedule-h: 60vh;
   --debug-w: 440px;
   --dialog-w-xl: 860px;
@@ -1723,6 +1724,10 @@ button.project-name:hover {
 .dialog-xl {
   width: min(var(--dialog-w-xl), calc(100vw - 2 * var(--sp-4)));
 }
+/* The budget's sheet has nine columns: wider than the other tables. */
+.dialog-xl.budget-dialog {
+  width: min(var(--dialog-w-budget), calc(100vw - 2 * var(--sp-4)));
+}
 .schedule-tabs {
   padding: var(--sp-3) var(--sp-4) 0;
 }
@@ -2352,6 +2357,114 @@ button.project-name:hover {
   gap: var(--sp-2);
   align-items: center;
   padding: 0 var(--sp-4) var(--sp-3);
+}
+/* The budget dialog (ui/budget-dialog.ts): its bars of controls, the sheet scrolling, the totals. */
+.budget-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4) var(--sp-3);
+}
+.budget-body h3 {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-md);
+}
+.budget-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  align-items: center;
+}
+.budget-bar input[type='search'] {
+  flex: 1 1 var(--lot-col);
+}
+.budget-base {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  flex: 1 1 auto;
+}
+.budget-bdi {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+.budget-results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.budget-result {
+  text-align: left;
+  font-size: var(--fs-sm);
+}
+.budget-scroll {
+  max-height: 46vh;
+  overflow: auto;
+  padding: 0 var(--sp-4);
+}
+.budget-body .budget-scroll {
+  padding: 0;
+}
+.budget-sheet td {
+  vertical-align: top;
+  /* The price's source and its buttons wrap under it: on one line they widened the sheet past the dialog. */
+  white-space: normal;
+}
+.budget-dialog .schedule-table .num-field {
+  width: calc(6 * var(--sp-4));
+}
+.budget-sheet .budget-money {
+  white-space: nowrap;
+}
+.budget-sheet .budget-stage .select {
+  min-width: calc(7 * var(--sp-4));
+}
+.budget-small {
+  display: block;
+  margin-left: auto;
+  padding: 0;
+  font-size: var(--fs-xs);
+  text-align: right;
+}
+/* Narrow fields: a code of six digits, a unit, a price; the description takes the rest. */
+.budget-sheet .budget-code {
+  width: calc(5 * var(--sp-4));
+}
+.budget-sheet .budget-desc {
+  width: 100%;
+  min-width: calc(8 * var(--sp-4));
+}
+.budget-sheet .budget-unit {
+  width: calc(3 * var(--sp-4));
+}
+.budget-sheet .num-field {
+  width: calc(7 * var(--sp-4));
+}
+.budget-sheet .select {
+  max-width: calc(9 * var(--sp-4));
+}
+.budget-from {
+  display: block;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+.budget-extras {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  align-items: flex-start;
+}
+.budget-extra {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+.budget-total {
+  width: auto;
+  align-self: flex-end;
+}
+.lot-body .budget-total {
+  margin-top: var(--sp-3);
 }
 /* The lot dialog (ui/lot-dialog.ts): its fields two to a row, then the table of areas. */
 .lot-body {

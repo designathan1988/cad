@@ -29,6 +29,7 @@ import type { WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
 import { DEFAULT_RULES, isRule as isNormRule, isRulePack, type Rule as NormRule } from '../rules/schema';
 import { isLot } from '../app/lot';
+import { isCosts } from '../costs/schema';
 import { isDrawingSettings } from '../elements/drawing/schema';
 
 /**
@@ -77,8 +78,9 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 33: the terrain (`terrains`, elements/terrain) and the site's sun (`site`). Older files have neither.
  * Version 34: rule packs (`rulePacks`), rules on rooms and on the lot, and the lot (`lot`, app/lot.ts).
  *   An older file with rules of its own gets the new default rules it lacks, its old ones in their pack.
+ * Version 35: the costs (`costs`, costs/schema.ts): the CUB, a price base, the budget. Older files have none.
  */
-export const CURRENT_VERSION = 34;
+export const CURRENT_VERSION = 35;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -273,6 +275,7 @@ export function repairProject(raw: unknown): ReadResult {
     ...(Array.isArray(raw.rules) ? { rules: upgradeRules((raw.rules as unknown[]).filter(isNormRule), raw.version) } : {}),
     ...(Array.isArray(raw.rulePacks) ? { rulePacks: (raw.rulePacks as unknown[]).filter(isRulePack) } : {}),
     ...(isLot(raw.lot) ? { lot: raw.lot } : {}),
+    ...(isCosts(raw.costs) ? { costs: raw.costs } : {}),
     // Its scale and pens, when it set them and they are ones (the defaults otherwise).
     ...(isDrawingSettings(raw.drawing) ? { drawing: raw.drawing } : {}),
     // Its layer combinations and graphic overrides, the bad ones left out.

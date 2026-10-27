@@ -32,6 +32,8 @@ import { cutAt } from './view-3d';
 import { changeReferenceLine, changeWallType, moveWalls, roomFace } from '../tools/edit';
 import { insideRing } from '../elements/room/derive';
 import { loadPrefs, savePrefs } from './persist';
+import { budgetOf } from '../costs/budget';
+import { money } from '../ui/budget-dialog';
 import { newId } from '../core/id';
 import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
 import type { App } from './app';
@@ -364,7 +366,13 @@ export function renderFrame(app: App): void {
         const rooms = [...app.geometry.rooms.values()].filter((r) => r.enclosed);
         const inRoom = (levelId: string, p: { x: number; y: number }) => rooms.some((r) => r.room.levelId === levelId && insideRing(r.outline, p));
         const keep = loadPrefs().keepClear !== false;
+        // With a priced budget, what the change did to it, at once (costs/budget.ts).
+        const before = doc.costs && doc.costs.lines.length > 0 ? budgetOf(doc, app.geometry).total : null;
         app.store.dispatch(setWalls(changeWallType(doc, ids, typeId, (w) => (keep ? roomFace(doc, w, inRoom) : null)), 'cmd.wallType'));
+        if (before !== null) {
+          const delta = budgetOf(app.store.get(), app.geometry).total - before;
+          if (Math.abs(delta) >= 0.005) app.toast(t('budget.delta', { d: `${delta > 0 ? '+' : '−'}${money(Math.abs(delta))}` }));
+        }
       },
       keepClear: loadPrefs().keepClear !== false,
       setKeepClear: (on) => {
