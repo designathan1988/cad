@@ -176,6 +176,8 @@ export function renderChrome(app: App): void {
       : ui.tool === 'floor'
         ? ui.holeFor
           ? t('hint.holeStart')
+          : ui.terrainFor
+            ? t('hint.terrainOutline')
           : ui.ceilingTool
             ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.ceilingPlace')
             : t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')

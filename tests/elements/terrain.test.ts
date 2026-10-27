@@ -1,7 +1,9 @@
 // The terrain (phase 11): heights between spot heights, its surface cut to its outline, its contour lines.
 
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
+import { type Doc, type DocWall, newDocument } from '../../src/app/document';
+import { deriveGeometry } from '../../src/app/geometry';
+import { earthworksOf } from '../../src/elements/terrain/earthworks';
 import { deriveTerrain } from '../../src/elements/terrain/derive';
 import { heightAt, isTerrain, type Terrain } from '../../src/elements/terrain/schema';
 import { readProject, writeProject } from '../../src/io/project-file';
@@ -81,5 +83,31 @@ describe('terrain', () => {
     expect(isTerrain({ ...t, interval: 0 })).toBe(false);
     const r = readProject(writeProject({ ...newDocument(), terrains: [t] }));
     expect(r.ok && r.doc.terrains).toEqual([t]);
+  });
+});
+
+describe('cut and fill', () => {
+  const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({ id, wallTypeId: 'wt_masonry15', start: { x: a[0], y: a[1] }, end: { x: b[0], y: b[1] }, referenceLine: 'centerline', levelId: 'lvl_ground', baseOffset: 0, top: { kind: 'level', offset: 0 } });
+  const house = (z: number): Doc => ({
+    ...newDocument(),
+    walls: [wall('s', [0, 0], [4, 0]), wall('e', [4, 0], [4, 3]), wall('n', [4, 3], [0, 3]), wall('w', [0, 3], [0, 0])],
+    rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Sala', number: '1' }],
+    terrains: [{ id: 'terrain_1', levelId: 'lvl_ground', outline: square(20), spots: [{ x: 10, y: 10, z }], interval: 0.5 }],
+  });
+
+  it('flat ground 50 cm over the floor: the whole footprint cut 50 cm deep; 30 cm under it, filled', () => {
+    // The walls' outer faces: 4.15 × 3.15 m; the 10 cm grid's cells along the edge make it a little off.
+    const a = earthworksOf(house(0.5), deriveGeometry(house(0.5)))!;
+    expect(a.area).toBeCloseTo(4.15 * 3.15, 0);
+    expect(Math.abs(a.cut - 0.5 * 4.15 * 3.15)).toBeLessThan(0.15);
+    expect(a.fill).toBe(0);
+    const b = earthworksOf(house(-0.3), deriveGeometry(house(-0.3)))!;
+    expect(b.cut).toBe(0);
+    expect(Math.abs(b.fill - 0.3 * 4.15 * 3.15)).toBeLessThan(0.1);
+  });
+
+  it('no spot height, no answer', () => {
+    const doc: Doc = { ...house(0), terrains: [] };
+    expect(earthworksOf(doc, deriveGeometry(doc))).toBeNull();
   });
 });

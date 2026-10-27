@@ -9,6 +9,7 @@ import type { ElementKind, PlanPaint } from '../contract';
 import type { Material } from '../material/schema';
 import { insideRing } from '../room/derive';
 import { deriveTerrain, type TerrainSolid } from '../terrain/derive';
+import { earthworksOf } from '../terrain/earthworks';
 import { isTerrain, type Terrain, TERRAIN_PREFIX } from '../terrain/schema';
 
 /** The ground's colour in 3D. */
@@ -77,9 +78,11 @@ export const terrainKind: ElementKind<Terrain, TerrainSolid> = {
     for (const c of s.contours) for (const [a, b] of c.segments) out.line('C-TOPO', a, b);
     for (const sp of s.terrain.spots) out.text('C-TOPO', sp, 0.15, num(sp.z, 2));
   },
-  fields: (items, { dispatch, addSpot }) => {
+  fields: (items, { dispatch, addSpot, outlineTerrain, doc, geometry }) => {
     const ids = items.map((s) => s.terrain.id);
     const one = items.length === 1 ? items[0]! : null;
+    // Cut and fill under the lowest level's footprint (terrain/earthworks.ts): the model's, not one terrain's.
+    const earth = geometry ? earthworksOf(doc, geometry) : null;
     return [
       { id: 'spots', label: 'terrain.spots', kind: 'readout', text: (xs) => (xs.length === 1 ? String(xs[0]!.terrain.spots.length) : '—') },
       {
@@ -88,8 +91,15 @@ export const terrainKind: ElementKind<Terrain, TerrainSolid> = {
         kind: 'readout',
         text: (xs) => (xs.length === 1 ? `${num(xs[0]!.bottom, 2)} … ${num(xs[0]!.top, 2)} m` : '—'),
       },
+      ...(earth
+        ? ([
+            { id: 'cut', label: 'terrain.cut', kind: 'readout', text: () => `${num(earth.cut, 2)} m³` },
+            { id: 'fill', label: 'terrain.fill', kind: 'readout', text: () => `${num(earth.fill, 2)} m³` },
+          ] as const)
+        : []),
       { id: 'interval', label: 'terrain.interval', kind: 'number', min: 0.05, get: (s) => s.terrain.interval, set: (v) => dispatch(setTerrains(ids, (x) => ({ ...x, interval: v }), 'cmd.updateTerrain')) },
       ...(one && addSpot ? [{ id: 'addSpot', label: 'terrain.addSpot', kind: 'action', run: () => addSpot(one.terrain.id) } as const] : []),
+      ...(one && outlineTerrain ? [{ id: 'outline', label: 'terrain.outline', kind: 'action', run: () => outlineTerrain(one.terrain.id) } as const] : []),
       {
         id: 'dropSpot',
         label: 'terrain.dropSpot',

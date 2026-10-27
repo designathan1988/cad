@@ -185,6 +185,8 @@ export interface UiState {
   holeFor: string | null;
   /** The floor tool making ceilings (a ceiling by a room or by an outline drawn), not floors. */
   ceilingTool: boolean;
+  /** The floor tool drawing a terrain's new outline (app/room-ui.ts). */
+  terrainFor: string | null;
   /** Corners of a roof's outline being drawn. */
   roofDraft: Point2[];
   /** The stair tool's first point (the first step's front), before its direction is clicked. */
@@ -333,6 +335,7 @@ export class App {
       opened: new Set(),
       holeFor: null,
       ceilingTool: false,
+      terrainFor: null,
       roofDraft: [],
       stairFrom: null,
       railingDraft: [],
@@ -596,6 +599,10 @@ export class App {
     return roomsUi.startCeiling(this);
   }
 
+  startTerrainOutline(id: string): void {
+    return roomsUi.startTerrainOutline(this, id);
+  }
+
   selectedOpenings(): OpeningSolid[] {
     return [...this.ui.selection].filter(isOpeningId).flatMap((id) => this.geometry.openings.get(id) ?? []);
   }
@@ -736,6 +743,7 @@ export class App {
     this.ui.beamFrom = null;
     this.ui.holeFor = null;
     this.ui.ceilingTool = false;
+    this.ui.terrainFor = null;
     this.ui.roofDraft = [];
     this.ui.stairFrom = null;
     this.ui.railingDraft = [];

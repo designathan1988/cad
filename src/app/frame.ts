@@ -434,6 +434,8 @@ export function renderFrame(app: App): void {
       openSection: (id) => app.openSections(id),
       calibrate: (id) => app.startCalibration(id),
       addSpot: (id) => app.startSpot(id),
+      outlineTerrain: (id) => app.startTerrainOutline(id),
+      geometry: app.geometry,
       room: {
         updateRoom: (id, patch) => app.store.dispatch(updateRoom(id, patch)),
         updateRooms: (ids, patch) => app.store.dispatch(updateRooms(ids, patch)),

@@ -93,6 +93,10 @@ export interface KindFieldContext {
   readonly calibrate?: (id: string) => void;
   /** A spot height put on a terrain with its tool (app/terrain-ui.ts). */
   readonly addSpot?: (id: string) => void;
+  /** A terrain's outline drawn again (app/room-ui.ts). */
+  readonly outlineTerrain?: (id: string) => void;
+  /** The model's derived geometry, for a readout measured on it (a terrain's cut and fill). */
+  readonly geometry?: DerivedGeometry;
 }
 
 /** Where a kind's text sits on screen, and its lines: what the room tags keep off. */
