@@ -13,6 +13,7 @@ import { geometryOf } from './carry';
 import { showObjects } from '../ui/objects-dialog';
 import { showOpenings } from '../ui/openings-dialog';
 import { showFloors } from '../ui/floors-dialog';
+import { presetSlotOf, showPresets } from '../ui/presets-dialog';
 import { endHandleDrag, moveHandleDrag, objectHandleAt, startHandleDrag } from './object-handles';
 import { showUnits } from '../ui/units-dialog';
 import { showDrawingSettings, showPrint } from '../ui/print-dialog';
@@ -67,6 +68,7 @@ export function wireInput(app: App): void {
     objects: () => showObjects(app),
     openings: () => showOpenings(app, app.openingKind() ?? undefined),
     floors: () => showFloors(app),
+    presets: () => showPresets(app, presetSlotOf(app.ui.tool)),
     tour: () => startTour(app),
     openFile: () => shell.fileInput.click(),
     projects: () => showProjectsDialog(app),

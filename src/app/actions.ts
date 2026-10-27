@@ -38,6 +38,7 @@ export interface Openers {
   readonly objects: () => void;
   readonly openings: () => void;
   readonly floors: () => void;
+  readonly presets: () => void;
   readonly tour: () => void;
   readonly openFile: () => void;
   readonly projects: () => void;
@@ -249,6 +250,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('type.edit', 'types.edit', edit, open.wallTypes, { keywords: tBoth('types.title') }),
     make('material.edit', 'mats.edit', edit, open.materials, { keywords: tBoth('mats.title') }),
     make('objects.edit', 'objs.open', edit, open.objects, { keywords: `${tBoth('objs.title')} biblioteca library família family editor` }),
+    make('presets.store', 'prstore.open', edit, open.presets, { keywords: `${tBoth('prstore.title')} pilar column viga beam escada stair rampa ramp guarda-corpo railing modelo model` }),
     make('floors.store', 'flstore.open', edit, open.floors, { keywords: `${tBoth('flstore.title')} piso floor laje slab contrapiso screed composição build-up` }),
     make('openings.store', 'opstore.open', edit, open.openings, { keywords: `${tBoth('opstore.title')} catálogo catalog modelo model porta door janela window` }),
     make('units.edit', 'units.edit', edit, open.units, { keywords: `${tBoth('units.title')} ${tBoth('units.cm')} ${tBoth('units.mm')}` }),
