@@ -85,8 +85,8 @@ export function wireButtons(app: App, palette: () => void): void {
   shell.ortho.addEventListener('click', () => app.setView3D({ ortho: !ui.view3d.ortho }));
   shell.look.style.select.addEventListener('change', () => {
     const style = shell.look.style.select.value as VisualStyle;
-    // Said before it starts: the first time on a computer the graphics card compiles the ray tracing, and
-    // the screen can stand still while it does (measured: about half a minute); the browser keeps it after.
+    // Said before it starts: the realistic view stays until the trace is clean, longer the first time on a
+    // computer while the graphics card compiles the ray tracing (the browser keeps it after).
     if (style === 'photo') app.toast(t('view3d.photoFirst'));
     app.setView3D({ style });
   });

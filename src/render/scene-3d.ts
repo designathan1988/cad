@@ -12,6 +12,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { DenoiseMaterial, GradientEquirectTexture, WebGLPathTracer } from 'three-gpu-pathtracer';
+import { clampedSamples, oneShadowRay } from './trace-shader';
 import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
 import { GenerateMeshBVHWorker } from 'three-mesh-bvh/worker';
 import type { RenderQuality, VisualStyle } from '../app/view-3d';
@@ -53,11 +54,13 @@ type Compiling = WebGLPathTracer & { readonly isCompiling: boolean };
 /** The photorealistic style by quality: the share of the screen's pixels traced, the samples it stops at. */
 // The saved picture's own count (picture): it is 3840 pixels wide, and the view's count there was the
 // GPU's minutes (1024 at high, 150 s); these come out clean at that size in a fraction of it.
-const TRACE: Readonly<Record<RenderQuality, { readonly scale: number; readonly samples: number; readonly picture: number }>> = {
-  low: { scale: 0.5, samples: 64, picture: 64 },
-  medium: { scale: 0.75, samples: 256, picture: 128 },
-  high: { scale: 1, samples: 1024, picture: 256 },
-  ultra: { scale: 1, samples: 4096, picture: 512 },
+// The trace shown from its `shown` samples on, the realistic view drawn until then: its first samples are
+// grain (black specks, half-lit walls) that no denoise takes away without smearing the textures.
+const TRACE: Readonly<Record<RenderQuality, { readonly scale: number; readonly samples: number; readonly picture: number; readonly shown: number }>> = {
+  low: { scale: 0.5, samples: 64, picture: 64, shown: 24 },
+  medium: { scale: 0.75, samples: 256, picture: 128, shown: 48 },
+  high: { scale: 1, samples: 1024, picture: 256, shown: 64 },
+  ultra: { scale: 1, samples: 4096, picture: 512, shown: 96 },
 };
 /** The traced view's exposure (its tone mapping), against its light being far brighter than the raster view's. */
 const TRACE_EXPOSURE = 0.55;
@@ -251,6 +254,8 @@ export class Scene3D {
   private raf = 0;
   /** The photorealistic style's path tracer, made the first time it is chosen; what it was last given. */
   private tracer: WebGLPathTracer | null = null;
+  /** The tracer's shader, for its firefly clamp (trace-shader.ts). */
+  private traceShader: THREE.ShaderMaterial | null = null;
   /** Its sky, an equirectangular gradient (it cannot read the realistic style's PMREM): the light from
    * everywhere a hemisphere light gives the raster view. */
   private traceSky: GradientEquirectTexture | null = null;
@@ -264,6 +269,12 @@ export class Scene3D {
   /** The traced view's ground (traceCopies): matte, a warm grey. */
   private readonly tracedGround = new THREE.MeshStandardMaterial({ color: 0xb8b2a6, roughness: 1, metalness: 0 });
   private readonly tracedFrosted = new THREE.MeshPhysicalMaterial({ color: 0xf4f8fa, roughness: 0.45, metalness: 0, transmission: 1, ior: 1.5, thickness: 0.006, side: THREE.DoubleSide });
+  /**
+   * The traced view's ground drawn in the raster view the photorealistic style shows while the trace
+   * gathers its samples (after a move): with the trace's sky behind, the change to the traced picture is
+   * a sharpening, not a jump from the theme's dark background and a black hole in a room with no floor.
+   */
+  private readonly photoGround = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), this.tracedGround);
   private traced = { content: -1, camera: '', light: '' };
   /** Bumped whenever an element's meshes are made or dropped: the tracer's scene is built again. */
   private contentVersion = 0;
@@ -271,6 +282,8 @@ export class Scene3D {
   /** Told when the photorealistic view starts or stops preparing (its scene built, its shader compiled). */
   onTracePreparing: (preparing: boolean) => void = () => {};
   private preparing = false;
+  /** Whether the photorealistic view has shown a traced picture yet. */
+  private traceShown = false;
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -318,6 +331,9 @@ export class Scene3D {
     // stands on a grid, as a CAD viewport does, not on a grey plane the terrain would cut through.
     this.ground.visible = false;
     this.scene.add(this.ground);
+    this.photoGround.receiveShadow = true;
+    this.photoGround.visible = false;
+    this.scene.add(this.photoGround);
     this.renderer.localClippingEnabled = true;
     for (const m of Object.values(this.materials)) this.prepare(m);
     this.edgeMaterial.clippingPlanes = this.clip;
@@ -601,6 +617,20 @@ export class Scene3D {
       for (const [mesh, m] of swapped) mesh.material = m;
       return;
     }
+    // The photorealistic style's raster frames on the trace's sky and ground (photoGround).
+    const photo = this.style === 'photo';
+    const background = this.scene.background;
+    const grid = this.grid.visible;
+    const shadowGround = this.shadowGround.visible;
+    if (photo) {
+      this.scene.background = this.photoSky();
+      const size = Math.max(200, this.ground.scale.x * 6);
+      this.photoGround.scale.set(size, 1, size);
+      this.photoGround.position.set(this.ground.position.x, this.ground.position.y - 0.002, this.ground.position.z);
+      this.photoGround.visible = true;
+      this.grid.visible = false;
+      this.shadowGround.visible = false;
+    }
     const fx = this.effects(w, h);
     if (fx) {
       if (resized) {
@@ -609,6 +639,12 @@ export class Scene3D {
       }
       fx.render();
     } else this.renderer.render(this.scene, this.camera);
+    if (photo) {
+      this.scene.background = background;
+      this.photoGround.visible = false;
+      this.grid.visible = grid;
+      this.shadowGround.visible = shadowGround;
+    }
     for (const [mesh, m] of swapped) mesh.material = m;
   }
 
@@ -621,11 +657,33 @@ export class Scene3D {
    */
   private trace(): boolean {
     const drawn = this.traceStep();
-    if (drawn === this.preparing) {
-      this.preparing = !drawn;
-      this.onTracePreparing(this.preparing);
+    if (drawn) this.traceShown = true;
+    // Said until its first picture: later, the realistic view between a move and the trace's clean samples
+    // is a moment, not a preparation (said each time, the word blinked on the bar as the view turned).
+    const preparing = !drawn && !this.traceShown;
+    if (preparing !== this.preparing) {
+      this.preparing = preparing;
+      this.onTracePreparing(preparing);
     }
     return drawn;
+  }
+
+  /** The traced view's sky, made the first time it is asked (the raster frames between traces show it too). */
+  private photoSky(): GradientEquirectTexture {
+    if (!this.traceSky) {
+      const sky = new GradientEquirectTexture(256);
+      sky.topColor.set(0x9fbfe6);
+      sky.bottomColor.set(0xe9e3d6);
+      sky.exponent = 0.6;
+      sky.update();
+      this.traceSky = sky;
+    }
+    return this.traceSky;
+  }
+
+  /** A traced sample's brightest: the sun's light on a white wall, a bright sky's at least (trace-shader.ts). */
+  private fireflyClamp(): number {
+    return Math.max(this.sun.intensity, 2 * this.brightness);
   }
 
   private traceStep(): boolean {
@@ -677,17 +735,25 @@ export class Scene3D {
       // with depth of field and fog on and no background, sets them right on its first frame, and each
       // change compiles the shader again (minutes on Windows the first time). Only the camera's type
       // (perspective, parallel) changes later.
-      const shader = (t as unknown as { _pathTracer: { material: { setDefine(name: string, value: number): void } } })._pathTracer.material;
+      const shader = (t as unknown as { _pathTracer: { material: THREE.ShaderMaterial & { setDefine(name: string, value: number): void } } })._pathTracer.material;
       shader.setDefine('FEATURE_DOF', 0);
       shader.setDefine('FEATURE_BACKGROUND_MAP', 1);
       shader.setDefine('FEATURE_FOG', 0);
+      // One shadow ray for the direct light instead of two: a scene traversal less to compile (trace-shader.ts).
+      shader.fragmentShader = clampedSamples(oneShadowRay(shader.fragmentShader));
+      shader.uniforms['fireflyClamp'] = { value: this.fireflyClamp() };
+      shader.needsUpdate = true;
+      this.traceShader = shader;
+      // Shown smoothly enlarged: the library reads its targets nearest (a medium-quality trace, at three
+      // quarters of the screen's pixels, then had stair-stepped shadow edges). Linear needs float filtering.
+      if (this.renderer.extensions.has('OES_texture_float_linear')) {
+        const targets = t as unknown as { _pathTracer: { _primaryTarget: THREE.WebGLRenderTarget; _blendTargets: THREE.WebGLRenderTarget[] } };
+        for (const target of [targets._pathTracer._primaryTarget, ...targets._pathTracer._blendTargets]) {
+          target.texture.minFilter = THREE.LinearFilter;
+          target.texture.magFilter = THREE.LinearFilter;
+        }
+      }
       this.tracer = t;
-      const sky = new GradientEquirectTexture(256);
-      sky.topColor.set(0x9fbfe6);
-      sky.bottomColor.set(0xe9e3d6);
-      sky.exponent = 0.6;
-      sky.update();
-      this.traceSky = sky;
     }
     const t = this.tracer;
     t.renderScale = TRACE[this.quality].scale;
@@ -697,7 +763,7 @@ export class Scene3D {
     if (this.traced.content !== this.contentVersion) {
       const version = this.contentVersion;
       const old = this.traceScene;
-      const scene = Object.assign(new THREE.Scene(), { children: [this.traceCopies(), this.sun], environment: this.traceSky, background: this.traceSky });
+      const scene = Object.assign(new THREE.Scene(), { children: [this.traceCopies(), this.sun], environment: this.photoSky(), background: this.photoSky() });
       scene.environmentIntensity = this.brightness;
       this.traceBuild = t.setSceneAsync(scene, this.camera).then(() => {
         old?.traverse((o) => (o as THREE.Mesh).isMesh && (o as THREE.Mesh).geometry.dispose());
@@ -716,6 +782,7 @@ export class Scene3D {
     const light = `${this.sun.position.toArray().join()}|${this.sun.intensity}|${this.brightness}`;
     if (light !== this.traced.light && this.traceScene) {
       this.traceScene.environmentIntensity = this.brightness;
+      if (this.traceShader) this.traceShader.uniforms['fireflyClamp']!.value = this.fireflyClamp();
       t.updateLights();
       t.updateEnvironment();
       this.traced.light = light;
@@ -723,8 +790,13 @@ export class Scene3D {
     t.renderSample();
     // Its shader compiles in the background the first time (KHR_parallel_shader_compile): looked at
     // again shortly, the realistic view drawn meanwhile.
-    if ((t as Compiling).isCompiling || t.samples < 1) {
+    if ((t as Compiling).isCompiling) {
       setTimeout(() => this.invalidate(), 250);
+      return false;
+    }
+    // Its first samples traced on, the realistic view kept until they are enough to show clean.
+    if (t.samples < TRACE[this.quality].shown) {
+      this.invalidate();
       return false;
     }
     // Drawing on, a sample a frame, until the quality's count.
