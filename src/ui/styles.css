@@ -926,8 +926,14 @@ button.project-name:hover {
   color: var(--text-3);
 }
 .rows label .field-label {
+  /* A long name takes a second line, then gives way: cut to one line, "Espessura do …" said nothing. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.2;
 }
 .rows label.scrub {
   cursor: ew-resize;

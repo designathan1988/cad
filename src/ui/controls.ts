@@ -46,6 +46,8 @@ export function row(label: string | { text: string; icon: IconName }, control: H
   const id = opts.id ?? `f_${Math.random().toString(36).slice(2, 8)}`;
   const l = el('label', { for: id, class: [opts.sub ? 'sub' : '', opts.wide ? 'wide' : ''].filter(Boolean).join(' ') });
   if (opts.wide) control.classList.add('wide-control');
+  // The whole name on hover, where the column cuts it.
+  l.title = typeof label === 'string' ? label : label.text;
   if (typeof label === 'string') l.append(label);
   else {
     l.insertAdjacentHTML('beforeend', icon(label.icon, 14).replace('class="icon"', 'class="icon field-icon"'));
