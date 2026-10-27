@@ -257,6 +257,9 @@ export function renderFrame(app: App): void {
   } else {
     const shown = app.visibleGeometry();
     app.scene.setXray(ui.view3d.xray);
+    // A renovation's walls by phase, as the plan draws them while the overrides are on.
+    const css = getComputedStyle(document.documentElement);
+    app.scene.setPhases(ui.overridesOn ? wallPhases(app.store.get()) : new Map(), (p) => css.getPropertyValue(`--phase-${p}`).trim());
     app.scene.setDoorsOpen(app.walker !== null, ui.opened);
     app.scene.setBox(ui.view3d.box);
     app.scene.setOrtho(ui.view3d.ortho);

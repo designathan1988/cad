@@ -114,6 +114,9 @@ export class Scene3D {
   private readonly shapeKeys = new WeakMap<object, string>();
   /** One three.js material per project material (elements/material), its colour and finish kept up to date. */
   private readonly layerMaterials = new Map<string, THREE.MeshStandardMaterial>();
+  /** A renovation's walls by phase (app/layer-sets.ts: wallPhases), with the overrides on; each phase's material in its token's colour. */
+  private phases: ReadonlyMap<string, 'new' | 'existing' | 'demolish'> = new Map();
+  private readonly phaseMaterials = new Map<string, THREE.MeshStandardMaterial>();
   private xrayOn = false;
   private readonly materials = {
     side: new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide }),
@@ -333,8 +336,31 @@ export class Scene3D {
    * X-ray (view-3d.ts): the walls and floors faint, writing no depth, so what is behind them shows; the
    * lines stay solid, so the shapes still read. Glass and leaves keep their own look.
    */
+  /**
+   * The walls drawn by their phase in a renovation (with the overrides on), each phase in its colour
+   * (`colour`: its token's); the walls to be demolished seen through, as glass is. Empty: by their layers.
+   */
+  setPhases(phases: ReadonlyMap<string, 'new' | 'existing' | 'demolish'>, colour: (phase: 'new' | 'existing' | 'demolish') => string): void {
+    this.phases = phases;
+    for (const p of new Set(phases.values())) {
+      let m = this.phaseMaterials.get(p);
+      if (!m) {
+        m = new THREE.MeshStandardMaterial({ roughness: 0.85, side: THREE.DoubleSide });
+        this.prepare(m);
+        m.userData.clear = p === 'demolish';
+        this.faint(m, this.xrayOn);
+        this.phaseMaterials.set(p, m);
+      }
+      const c = colour(p);
+      if (c && `#${m.color.getHexString()}` !== c.toLowerCase()) {
+        m.color.set(c);
+        this.invalidate();
+      }
+    }
+  }
+
   setXray(on: boolean): void {
-    const faint = [this.materials.side, this.materials.top, this.materials.floor, this.materials.sideSel, this.materials.topSel, ...this.layerMaterials.values()];
+    const faint = [this.materials.side, this.materials.top, this.materials.floor, this.materials.sideSel, this.materials.topSel, ...this.layerMaterials.values(), ...this.phaseMaterials.values()];
     if (faint[0]!.transparent === on && (on ? faint[0]!.opacity === XRAY_OPACITY : true)) return;
     this.xrayOn = on;
     for (const m of faint) this.faint(m, on);
@@ -762,14 +788,16 @@ export class Scene3D {
       // What shows of a wall depends on its neighbours too (faces.ts): their faces are in the key.
       const mine = faces.get(s.wall.id) ?? [];
       if (shape === undefined) this.shapeKeys.set(s, (shape = wallMeshKey('', s.blocks, s.materials) + JSON.stringify(mine)));
-      const key = state + shape;
+      // A wall's phase (its id's, an arc's segments being "id#k") colours it whole.
+      const phase = this.phases.get(s.wall.id.split('#')[0]!);
+      const key = state + (phase ?? '') + shape;
       const old = this.walls.get(s.wall.id);
       if (old?.key === key) {
         place(s.wall.id, s.wall.levelId);
         continue;
       }
       if (old) this.drop(old.group);
-      const group = this.build(s, state, mine);
+      const group = this.build(s, state, mine, phase);
       group.userData.wallId = s.wall.id;
       this.scene.add(group);
       this.walls.set(s.wall.id, { group, key });
@@ -925,10 +953,11 @@ export class Scene3D {
     return faces;
   }
 
-  private build(s: WallSolid, state: 'p' | 's' | 'n', faces: readonly PrismFaces[]): THREE.Group {
+  private build(s: WallSolid, state: 'p' | 's' | 'n', faces: readonly PrismFaces[], phase?: 'new' | 'existing' | 'demolish'): THREE.Group {
     const group = new THREE.Group();
-    // Each block in its layer's material, as in plan (wall-paint.ts).
-    const material = (paint: Paint): THREE.Material => (typeof paint === 'string' ? this.materials[paint] : this.layerMaterial(paint));
+    // Each block in its layer's material, as in plan (wall-paint.ts); a wall with a phase all in its phase's.
+    const byPhase = phase && state === 'n' ? this.phaseMaterials.get(phase) : undefined;
+    const material = (paint: Paint): THREE.Material => byPhase ?? (typeof paint === 'string' ? this.materials[paint] : this.layerMaterial(paint));
     s.blocks.forEach((b, i) => {
       const { side, top } = blockPaint(s.materials, b.layerIndex, state);
       const f = faces[i];
