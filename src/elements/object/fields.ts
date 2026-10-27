@@ -3,7 +3,7 @@
 // way back to the type's value. Calculated parameters are shown, not edited. Several objects of one
 // definition are edited together; of several definitions, only their place.
 
-import { LENGTH_LIMITS } from './evaluate';
+import { LENGTH_LIMITS, sizeParams } from './evaluate';
 import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
 import type { Field } from '../../ui/fields';
@@ -23,13 +23,17 @@ export interface ObjectItem {
 export const words = (w: Words): string => (getLang() === 'pt' ? w.pt : w.en);
 
 /**
- * The lengths of a definition measured up and down: those in a part's height or level, or dragged by a
- * vertical handle. Their fields get the height icon; the rest, the width one.
+ * The lengths of a definition measured up and down: dragged by a vertical handle, or in an upright part's
+ * height or level (a rail lying along the width has its length in its height: not counted). One dragged
+ * along x or y is across, whatever parts use it. Their fields get the height icon; the rest, the width one.
  */
 function verticalParams(def: ObjectDefinition): Set<string> {
-  const exprs = [...def.parts.flatMap((p) => [p.z, 'h' in p ? p.h : 0]), ...(def.handles ?? []).filter((h) => h.axis === 'z').map((h) => h.param)];
+  const handles = def.handles ?? [];
+  const across = new Set(handles.filter((h) => h.axis !== 'z').map((h) => h.param));
+  const upright = def.parts.filter((p) => !('tilt' in p && p.tilt !== undefined) && !('roll' in p && p.roll !== undefined));
+  const exprs = [...upright.flatMap((p) => [p.z, 'h' in p ? p.h : 0]), ...handles.filter((h) => h.axis === 'z').map((h) => h.param)];
   const text = exprs.map(String).join(' ');
-  return new Set(def.params.filter((p) => new RegExp(`\\b${p.name}\\b`).test(text)).map((p) => p.name));
+  return new Set(def.params.filter((p) => !across.has(p.name) && new RegExp(`\\b${p.name}\\b`).test(text)).map((p) => p.name));
 }
 
 export function objectFields(items: readonly ObjectItem[], doc: Doc, dispatch: (c: Command<Doc>) => void): Field<ObjectItem>[] {
@@ -43,6 +47,7 @@ export function objectFields(items: readonly ObjectItem[], doc: Doc, dispatch: (
   if (oneDefinition) {
     const def = first.def;
     const vertical = verticalParams(def);
+    const sizes = sizeParams(def);
     fields.push({
       id: 'objType',
       label: 'object.type',
@@ -71,8 +76,8 @@ export function objectFields(items: readonly ObjectItem[], doc: Doc, dispatch: (
           ...own,
           kind: 'number',
           icon: p.kind !== 'length' ? 'hash' : vertical.has(p.name) ? 'height' : 'width',
-          // A length's least is a millimetre (its range is the usual one, not a lock); a count's, its own.
-          ...(p.kind === 'length' ? { min: LENGTH_LIMITS.min } : p.min !== undefined && (p.kind === 'integer' || p.min >= 0) ? { min: p.kind === 'integer' ? p.min : 0 } : {}),
+          // The object's own size: its least (below, it folds up); another length, a millimetre; a count, its own.
+          ...(p.kind === 'length' ? { min: sizes.has(p.name) && p.min !== undefined ? p.min : LENGTH_LIMITS.min } : p.min !== undefined && (p.kind === 'integer' || p.min >= 0) ? { min: p.kind === 'integer' ? p.min : 0 } : {}),
           ...(p.kind === 'length' ? {} : { unit: '' }),
           // A plain number shows as many decimals as its step has (a lamp's 9 W, not 9,00 W).
           ...(p.kind === 'integer' ? { decimals: 0 } : p.kind === 'number' && p.step !== undefined ? { decimals: stepDecimals(p.step) } : {}),

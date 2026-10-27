@@ -54,6 +54,8 @@ export interface ObjectEval {
   readonly warnings: readonly Words[];
   /** The lights it gives, its nested objects' too. */
   readonly lights: readonly PlacedLight[];
+  /** Parts that should be there (their condition holds) left out for having no size, its nested objects' too. */
+  readonly lost: number;
 }
 
 /** Where a definition looks for others (nested parts) and for materials. */
@@ -89,7 +91,7 @@ function values(def: ObjectDefinition, given: Readonly<Record<string, number | s
       problems.push(`${p.name}: not a number`);
       v = typeof p.default === 'number' ? p.default : 0;
     }
-    env[p.name] = held(p, v);
+    env[p.name] = held(p, v, def);
   }
   // Calculated parameters, each once its names are known: as many rounds as there are of them.
   const calculated = def.params.filter((p) => p.formula !== undefined);
@@ -115,17 +117,33 @@ function values(def: ObjectDefinition, given: Readonly<Record<string, number | s
 /** The least and greatest length any object takes (m): a millimetre, a building's length. */
 export const LENGTH_LIMITS = { min: 0.001, max: 500 } as const;
 
+/** The names an object's overall size goes by: its width, depth, length and height. */
+const SIZE_NAMES = new Set(['largura', 'profundidade', 'comprimento', 'altura']);
+
+/**
+ * The lengths that are the object's own size, not one of its parts': its width, depth, length and height,
+ * and any length a handle drags. Below its least the object would fold up (a house bed lower than its
+ * posts, a cabinet narrower than its doors), so that least is a floor for these, not a suggestion.
+ */
+export function sizeParams(def: ObjectDefinition): ReadonlySet<string> {
+  const dragged = new Set(def.handles.map((h) => h.param));
+  return new Set(def.params.filter((p) => p.kind === 'length' && p.formula === undefined && p.min !== undefined && (SIZE_NAMES.has(p.name) || dragged.has(p.name))).map((p) => p.name));
+}
+
 /**
  * A value as the object takes it, on its step; whole for an integer, 0 or 1 for a yes/no. A length's or a
- * number's range is its usual one, not a lock (a sofa of 5 m, a table of 45 cm are the user's to make):
- * it is held only to what makes sense (a length from 1 mm to 500 m; a number not below 0 when its range
- * starts there), and one outside its range is said (outsideRange). A count (integer, choice) keeps its
- * range: formulas rely on it.
+ * number's range is its usual one, not a lock above (a sofa of 5 m is the user's to make): it is held only
+ * to what makes sense (a length from 1 mm to 500 m, and never below its least when it is the object's own
+ * size, given its definition; a number not below 0 when its range starts there), and one outside its range
+ * is said (outsideRange). A count (integer, choice) keeps its range: formulas rely on it.
  */
-export function held(p: ParamDef, v: number): number {
+export function held(p: ParamDef, v: number, def?: ObjectDefinition): number {
   let x = v;
   if (p.kind === 'bool') return x !== 0 ? 1 : 0;
-  if (p.kind === 'length') x = Math.min(LENGTH_LIMITS.max, Math.max(LENGTH_LIMITS.min, x));
+  if (p.kind === 'length') {
+    x = Math.min(LENGTH_LIMITS.max, Math.max(LENGTH_LIMITS.min, x));
+    if (def && p.min !== undefined && sizeParams(def).has(p.name)) x = Math.max(p.min, x);
+  }
   else if (p.kind === 'number') x = p.min !== undefined && p.min >= 0 ? Math.max(0, x) : x;
   else {
     if (p.min !== undefined) x = Math.max(p.min, x);
@@ -136,9 +154,49 @@ export function held(p: ParamDef, v: number): number {
   return x;
 }
 
+/**
+ * An object as it stands. A length made smaller than its type's so far that parts of the object vanish
+ * (a bed so low its headboard has no height left, a cabinet too narrow for its doors) is held at the least
+ * at which the object keeps every part its type has, to the millimetre, and the panel says so: the object
+ * never comes apart, however small the number typed or the handle dragged.
+ */
 export function evaluateObject(def: ObjectDefinition, o: ObjectInstance, c: ObjectContext): ObjectEval {
   const type = def.types.find((t) => t.id === o.typeId) ?? def.types[0];
-  return evaluateIn(def, { ...(type?.values ?? {}), ...o.values }, { x: o.at.x, y: o.at.y, z: o.elevation, angle: o.angle }, c, 0);
+  const typeValues = type?.values ?? {};
+  const frame = { x: o.at.x, y: o.at.y, z: o.elevation, angle: o.angle };
+  const given = { ...typeValues, ...o.values };
+  const ev = evaluateIn(def, given, frame, c, 0);
+  // Its lowest point above its own floor (a part pushed under it: the object folding up).
+  const lowest = (e: ObjectEval) => Math.min(0, ...e.pieces.filter((p) => !p.cut).map((p) => pieceSpan(p).bottom - frame.z));
+  if (ev.lost === 0 && ev.problems.length === 0 && lowest(ev) > -0.005) return ev;
+  // Whole: no more parts lost, nor formulas failing (a spacing so small its count runs away), nor parts
+  // under the floor, than its type.
+  const typical = evaluateIn(def, typeValues, frame, c, 0);
+  const floor = Math.min(-0.005, lowest(typical) - 0.005);
+  const isWhole = (e: ObjectEval) => e.lost <= typical.lost && e.problems.length <= typical.problems.length && lowest(e) >= floor;
+  if (isWhole(ev)) return ev;
+  const kept: Record<string, number | string> = { ...given };
+  const notes: Words[] = [];
+  const whole = (name: string, v: number) => isWhole(evaluateIn(def, { ...kept, [name]: v }, frame, c, 0));
+  for (const p of def.params) {
+    if (p.kind !== 'length' || p.formula !== undefined) continue;
+    const [v, least] = [ev.env[p.name], typical.env[p.name]];
+    if (v === undefined || least === undefined || v >= least || whole(p.name, v) || !whole(p.name, least)) continue;
+    // Between the value that loses parts and the type's that keeps them all, halved down to a micron.
+    let [lo, hi] = [v, least];
+    while (hi - lo > 1e-6) {
+      const mid = (lo + hi) / 2;
+      if (whole(p.name, mid)) hi = mid;
+      else lo = mid;
+    }
+    const held = Math.min(least, Math.ceil(hi * 1000 - 1e-6) / 1000);
+    kept[p.name] = held;
+    const f = held.toFixed(3).replace(/0$/, '');
+    notes.push({ pt: `${p.label.pt} mantida em ${f.replace('.', ',')} m: menor, o objeto perderia partes`, en: `${p.label.en} held at ${f} m: any less and the object would lose parts` });
+  }
+  if (notes.length === 0) return ev;
+  const out = evaluateIn(def, kept, frame, c, 0);
+  return { ...out, warnings: [...notes, ...out.warnings] };
 }
 
 function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number | string>>, frame: Frame, c: ObjectContext, depth: number): ObjectEval {
@@ -146,6 +204,7 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
   const { env, materials } = values(def, given, problems);
   const pieces: Piece[] = [];
   const lights: PlacedLight[] = [];
+  let lost = 0;
   const num = (e: Expr, at: Env, what: string): number | null => {
     const v: Value = evaluateFormula(e, at);
     if (v.ok) return v.value;
@@ -187,7 +246,11 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
           problems.push(`${label}: its mesh ${part.mesh} is not in the object`);
           continue;
         }
-        if (w === null || d === null || h === null || w <= 1e-6 || d <= 1e-6 || h <= 1e-6) continue;
+        if (w === null || d === null || h === null) continue;
+        if (w <= 1e-6 || d <= 1e-6 || h <= 1e-6) {
+          lost++;
+          continue;
+        }
         const centre = apply(frame, { x: ox + w / 2, y: oy + d / 2, z: oz });
         pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'mesh', cx: centre.x, cy: centre.y, z: centre.z, w, d, h, angle: frame.angle, mesh, material: materialOf(part) });
       } else if (part.kind === 'box') {
@@ -195,8 +258,11 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         const d = num(part.d, at, `${label} depth`);
         const h = num(part.h, at, `${label} height`);
         if (w === null || d === null || h === null) continue;
-        // A box of no size is nothing to draw (a door of a cabinet too narrow for one): left out quietly.
-        if (w <= 1e-6 || d <= 1e-6 || h <= 1e-6) continue;
+        // A box of no size is nothing to draw (a door of a cabinet too narrow for one): left out, and counted.
+        if (w <= 1e-6 || d <= 1e-6 || h <= 1e-6) {
+          lost++;
+          continue;
+        }
         const round = part.round === undefined ? 0 : (num(part.round, at, `${label} edge radius`) ?? 0);
         const tilt = ((part.tilt === undefined ? 0 : (num(part.tilt, at, `${label} tilt`) ?? 0)) * Math.PI) / 180;
         const roll = ((part.roll === undefined ? 0 : (num(part.roll, at, `${label} roll`) ?? 0)) * Math.PI) / 180;
@@ -215,7 +281,11 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         const r = num(part.r, at, `${label} radius`);
         const h = num(part.h, at, `${label} height`);
         const r2 = part.r2 === undefined ? r : num(part.r2, at, `${label} top radius`);
-        if (r === null || h === null || r2 === null || h <= 1e-6 || Math.max(r, r2) <= 1e-6) continue;
+        if (r === null || h === null || r2 === null) continue;
+        if (h <= 1e-6 || Math.max(r, r2) <= 1e-6) {
+          lost++;
+          continue;
+        }
         const centre = apply(frame, { x: ox, y: oy, z: oz });
         const tilt = ((part.tilt === undefined ? 0 : (num(part.tilt, at, `${label} tilt`) ?? 0)) * Math.PI) / 180;
         const roll = ((part.roll === undefined ? 0 : (num(part.roll, at, `${label} roll`) ?? 0)) * Math.PI) / 180;
@@ -230,24 +300,38 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         const profile = raw.map((q) => ({ r: Math.max(0, q.r!), z: q.z! - low }));
         const h = Math.max(...profile.map((q) => q.z));
         const r = Math.max(...profile.map((q) => q.r));
-        if (h <= 1e-6 || r <= 1e-6) continue;
+        if (h <= 1e-6 || r <= 1e-6) {
+          lost++;
+          continue;
+        }
         const centre = apply(frame, { x: ox, y: oy, z: oz + low });
         pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'revolve', cx: centre.x, cy: centre.y, z: centre.z, h, r, profile, material: materialOf(part) });
       } else if (part.kind === 'profile') {
         const h = num(part.h, at, `${label} height`);
         const local = part.points.map(([px, py], k) => ({ x: num(px, at, `${label} x${k + 1}`), y: num(py, at, `${label} y${k + 1}`) }));
-        if (h === null || h <= 1e-6 || local.some((q) => q.x === null || q.y === null)) continue;
+        if (h === null || local.some((q) => q.x === null || q.y === null)) continue;
+        if (h <= 1e-6) {
+          lost++;
+          continue;
+        }
         let points = local.map((q) => apply(frame, { x: ox + q.x!, y: oy + q.y!, z: 0 })).map((q) => ({ x: q.x, y: q.y }));
         // Wound counter-clockwise (the extrusion's faces outward), and not a sliver.
         const area = points.reduce((s, q, k) => s + q.x * points[(k + 1) % points.length]!.y - points[(k + 1) % points.length]!.x * q.y, 0) / 2;
-        if (Math.abs(area) < 1e-8) continue;
+        if (Math.abs(area) < 1e-8) {
+          lost++;
+          continue;
+        }
         if (area < 0) points = [...points].reverse();
         const base = apply(frame, { x: ox, y: oy, z: oz });
         pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'profile', cx: base.x, cy: base.y, z: base.z, h, points, material: materialOf(part) });
       } else if (part.kind === 'sphere') {
         const r = num(part.r, at, `${label} radius`);
         const h = num(part.h, at, `${label} height`);
-        if (r === null || h === null || h <= 1e-6 || r <= 1e-6) continue;
+        if (r === null || h === null) continue;
+        if (h <= 1e-6 || r <= 1e-6) {
+          lost++;
+          continue;
+        }
         const centre = apply(frame, { x: ox, y: oy, z: oz });
         const ry = part.d === undefined ? r : (num(part.d, at, `${label} radius along y`) ?? r);
         const deg = (e: Expr | undefined, what: string) => ((e === undefined ? 0 : (num(e, at, `${label} ${what}`) ?? 0)) * Math.PI) / 180;
@@ -279,6 +363,7 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         const inside = evaluateIn(inner, childValues, { ...origin, angle: frame.angle + (turn * Math.PI) / 180 }, c, depth + 1);
         pieces.push(...inside.pieces);
         lights.push(...inside.lights);
+        lost += inside.lost;
         problems.push(...inside.problems.map((p) => `${label} › ${p}`));
       }
     }
@@ -312,7 +397,7 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
       lights.push({ ...apply(frame, { x: vx, y: vy, z: vz }), lumens: Math.max(0, vw) * 100, color: kelvinColour(vk) });
     } else problems.push('light: a formula fails');
   }
-  return { env, materials, pieces, handles, problems, warnings, lights };
+  return { env, materials, pieces, handles, problems, warnings, lights, lost };
 }
 
 /** A light's colour from its temperature (K), as a #rrggbb (Tanner Helland's fit, 1000 K to 12000 K). */

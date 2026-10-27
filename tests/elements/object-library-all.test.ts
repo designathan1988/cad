@@ -32,6 +32,20 @@ describe('the whole library', () => {
         // Nothing under the floor (a leg leaning through it, a part placed below).
         const low = Math.min(...ev.pieces.filter((p) => !p.cut).map((p) => pieceSpan(p).bottom));
         expect(low, `${type.id}: lowest point`).toBeGreaterThan(-0.005);
+        expect(ev.lost, `${type.id}: parts of no size`).toBe(0);
+      }
+    });
+
+    it(`${def.name.en}: any length made tiny keeps the object whole`, () => {
+      for (const p of def.params) {
+        if (p.kind !== 'length' || p.formula !== undefined) continue;
+        for (const type of def.types) {
+          const ev = evaluateObject(def, { id: 'o', levelId: 'l', definitionId: def.id, typeId: type.id, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: { [p.name]: 0.001 } }, context);
+          expect(ev.lost, `${type.id}, ${p.name} = 1 mm`).toBe(0);
+          expect(ev.problems, `${type.id}, ${p.name} = 1 mm`).toEqual([]);
+          const low = Math.min(...ev.pieces.filter((q) => !q.cut).map((q) => pieceSpan(q).bottom));
+          expect(low, `${type.id}, ${p.name} = 1 mm: lowest point`).toBeGreaterThan(-0.005);
+        }
       }
     });
   }

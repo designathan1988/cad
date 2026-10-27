@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { BUILT_IN_MATERIALS } from '../../src/elements/material/schema';
 import { boxCorners, evaluateObject, pieceSpan, type Piece } from '../../src/elements/object/evaluate';
 import { LIBRARY } from '../../src/elements/object/library';
-import { LIBRARY_SECTORS, TOY_CHEST, WHITEBOARD } from '../../src/elements/object/library-sectors';
+import { HOUSE_BED, LIBRARY_SECTORS, TOY_CHEST, WHITEBOARD } from '../../src/elements/object/library-sectors';
 import type { ObjectDefinition } from '../../src/elements/object/schema';
 
 const context = { definitions: LIBRARY, materials: BUILT_IN_MATERIALS };
@@ -34,6 +34,15 @@ describe('the sectors at the ends of their ranges', () => {
   }
 });
 
+describe('an object never folds up', () => {
+  it('a house bed made 1 cm high keeps its least height, its posts and roof whole', () => {
+    const ev = at(HOUSE_BED, 'single', { altura: 0.01 });
+    expect(ev.env['altura']).toBe(1.3);
+    expect(ev.lost).toBe(0);
+    expect(low(ev.pieces)).toBeGreaterThan(-0.005);
+  });
+});
+
 describe('the toy chest lid turns about its hinge', () => {
   it('closed, it lies on the box', () => {
     const ev = at(TOY_CHEST, 'open', { tampa: 0, matTampa: 'lacquerSage' });
@@ -56,8 +65,15 @@ describe('the toy chest lid turns about its hinge', () => {
 });
 
 describe('the mobile whiteboard', () => {
-  it('stands on its castors', () => {
-    expect(low(at(WHITEBOARD, 'mobile', {}).pieces)).toBeCloseTo(0, 3);
+  it('stands on its castors, each under a foot', () => {
+    const pieces = at(WHITEBOARD, 'mobile', {}).pieces;
+    expect(low(pieces)).toBeCloseTo(0, 3);
+    const feet = pieces.filter((p): p is Extract<Piece, { kind: 'box' }> => p.kind === 'box' && p.h === 0.04);
+    const castors = pieces.filter((p) => p.kind === 'sphere');
+    expect(castors.length).toBe(4);
+    for (const c of castors) {
+      expect(feet.some((f) => Math.abs(c.cx - f.cx) <= f.w / 2 + 0.03 && Math.abs(c.cy - f.cy) <= f.d / 2), `castor at ${c.cx}, ${c.cy}`).toBe(true);
+    }
   });
   it('on the wall it has no stand', () => {
     expect(at(WHITEBOARD, 'white', {}).pieces.length).toBeLessThan(at(WHITEBOARD, 'mobile', {}).pieces.length);

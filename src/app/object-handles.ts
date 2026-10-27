@@ -153,7 +153,7 @@ function objectRate(app: App, s: ObjectSolid, handle: ScreenHandle, start: numbe
   const at = handle.index === undefined ? undefined : s.eval.handles[handle.index];
   if (!param || !at) return 1;
   // A step up, or down when the value is at its most.
-  const step = held(param, start + PROBE) !== start ? PROBE : -PROBE;
+  const step = held(param, start + PROBE, s.def) !== start ? PROBE : -PROBE;
   const doc = app.store.get();
   const ev = evaluateObject(s.def, { ...s.object, values: { ...s.object.values, [handle.param]: start + step } }, { definitions: doc.definitions, materials: doc.materials });
   const next = ev.handles[handle.index!];
@@ -224,7 +224,7 @@ export function moveHandleDrag(app: App, d: HandleDrag, p: Point2): HandleDrag {
   const delta = ((p.x - d.from.x) * a.x + (p.y - d.from.y) * a.y) / (a.x * a.x + a.y * a.y) / d.rate;
   // On the 5 mm step with snaps on (or the parameter's own step), within its range.
   const raw = d.start + delta;
-  const value = held(param, app.ui.snaps ? Math.round(raw / 0.005) * 0.005 : raw);
+  const value = held(param, app.ui.snaps ? Math.round(raw / 0.005) * 0.005 : raw, s!.def);
   const moved = (value - d.start) * d.handle.shift;
   return { ...d, value, at: { x: d.startAt.x + d.handle.dir.x * moved, y: d.startAt.y + d.handle.dir.y * moved } };
 }

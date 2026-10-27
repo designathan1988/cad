@@ -460,7 +460,7 @@ export const WHITEBOARD: ObjectDefinition = {
   category: 'equipment',
   folder: 'Escolar',
   params: [
-    choice('tipo', 'Tipo', 'Kind', [['Quadro branco', 'Whiteboard'], ['Lousa verde', 'Chalkboard']]),
+    choice('tipo', 'Superfície', 'Surface', [['Quadro branco', 'Whiteboard'], ['Lousa verde', 'Chalkboard']]),
     len('largura', 'Largura', 'Width', 3, 0.9, 6),
     len('altura', 'Altura', 'Height', 1.2, 0.6, 1.5),
     len('base', 'Altura da borda inferior', 'Lower edge height', 0.9, 0.6, 1.1),
@@ -477,7 +477,7 @@ export const WHITEBOARD: ObjectDefinition = {
     // a rail between the uprights low down.
     { kind: 'box', name: w('Montante', 'Upright'), when: 'cavalete', repeat: { count: 2, dx: 'largura + 0.04' }, x: '-largura/2 - 0.04', y: -0.035, z: 0.1, w: 0.04, d: 0.04, h: 'base + altura - 0.05', material: 'matMoldura', round: 0.006 },
     { kind: 'box', name: w('Pé', 'Foot'), when: 'cavalete', repeat: { count: 2, dx: 'largura + 0.04' }, x: '-largura/2 - 0.045', y: -0.33, z: 0.06, w: 0.05, d: 0.6, h: 0.04, material: 'matMoldura', round: 0.008 },
-    { kind: 'sphere', name: w('Rodízio', 'Castor'), when: 'cavalete', repeat: { count: 4 }, x: 'if(i % 2 == 0, -largura/2 - 0.02, largura/2 + 0.02)', y: 'if(i < 2, -0.6, -0.06)', z: 0, r: 0.03, h: 0.06, material: 'rubber' },
+    { kind: 'sphere', name: w('Rodízio', 'Castor'), when: 'cavalete', repeat: { count: 4 }, x: 'if(i % 2 == 0, -largura/2 - 0.02, largura/2 + 0.02)', y: 'if(i < 2, -0.3, 0.24)', z: 0, r: 0.03, h: 0.06, material: 'rubber' },
     { kind: 'box', name: w('Travessa', 'Rail'), when: 'cavalete', x: '-largura/2', y: -0.03, z: 0.3, w: 'largura', d: 0.03, h: 0.03, material: 'matMoldura', round: 0.006 },
   ],
   handles: [{ param: 'largura', axis: 'x', at: ['largura/2', 0, 'base + altura/2'], shift: 0.5 }],

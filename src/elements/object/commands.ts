@@ -18,7 +18,7 @@ export function valueFor(def: ObjectDefinition, name: string, v: number | string
   if (!p || p.formula !== undefined) return null;
   if (p.kind === 'material') return typeof v === 'string' && v !== '' ? v : null;
   const n = typeof v === 'number' ? v : Number(v);
-  return Number.isFinite(n) ? held(p, n) : null;
+  return Number.isFinite(n) ? held(p, n, def) : null;
 }
 
 /**
