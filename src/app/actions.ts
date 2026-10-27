@@ -170,6 +170,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('file.save', 'pal.save', file, () => app.saveFile(), { keys: 'Ctrl+S' }),
     make('file.exportGlb', 'export.glb', file, () => void app.exportGlb(), { keywords: 'GLB glTF 3D export exportar modelo' }),
     make('file.exportDxf', 'export.dxf', file, () => app.exportDxf(), { keywords: 'DXF CAD AutoCAD planta plan export exportar' }),
+    make('file.exportIfc', 'export.ifc', file, () => app.exportIfc(), { keywords: 'IFC BIM Revit ArchiCAD openBIM export exportar modelo' }),
     make('file.printPlan', 'print.open', file, open.print, { keys: 'Ctrl+P', keywords: 'PDF imprimir print planta plan escala scale papel paper' }),
     make('settings.snaps', 'pal.snaps', settings, () => app.toggleSnaps(), { keys: 'S' }),
     make('settings.theme', 'pal.theme', settings, () => app.toggleTheme()),

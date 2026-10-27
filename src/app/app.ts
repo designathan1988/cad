@@ -1456,6 +1456,11 @@ export class App {
     return files.exportGlb(this);
   }
 
+  /** The whole model as IFC4 (io/export-ifc.ts), for a BIM program. */
+  exportIfc(): void {
+    return files.exportIfc(this);
+  }
+
   /** The plan of the level shown as DXF R12 (io/export-dxf.ts), for a CAD program. */
   exportDxf(): void {
     return files.exportDxf(this);

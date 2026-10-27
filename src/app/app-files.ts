@@ -1,5 +1,9 @@
 // The project as a file: saving, opening, a new one, and the exports (GLB, DXF). Functions over the app (app.ts delegates).
 
+import { exportIfc as ifcOf } from '../io/export-ifc';
+import { deriveGeometry } from './geometry';
+import type { KindKey } from '../elements/contract';
+import { words } from '../elements/object/fields';
 import { areaText } from '../ui/units';
 import { markPrefix, materialLabel, name, t } from '../ui/i18n';
 import { materialIn } from '../elements/material/schema';
@@ -74,6 +78,44 @@ export async function exportGlb(app: App): Promise<void> {
   } catch (e) {
     console.error(e);
     app.toast(t('export.failed', { what: 'GLB', error: e instanceof Error ? e.message : String(e) }));
+  }
+}
+
+/**
+ * The whole model as IFC4 (io/export-ifc.ts), for a BIM program or viewer: its classes, types, layers,
+ * spaces and storeys. Made from the model as it is (not the view's hidden categories).
+ */
+export function exportIfc(app: App): void {
+  const doc = app.store.get();
+  if (doc.walls.length === 0 && !anyKinds(doc)) {
+    app.ui.info = t('export.nothing');
+    return app.renderChrome();
+  }
+  try {
+    const marks = openingMarks(doc.openings, markPrefix());
+    const definition = (id: string) => doc.definitions.find((d) => d.id === id);
+    const text = ifcOf(doc, deriveGeometry(doc), {
+      project: t('app.untitled'),
+      site: t('ifc.site'),
+      building: t('ifc.building'),
+      name,
+      wall: (n) => t('wall.tag', { n }),
+      material: (m) => materialLabel(m),
+      opening: (id, kind) => marks.get(id) ?? t(kind === 'door' ? 'export.door' : 'export.window', { n: '' }).trim(),
+      element: (key, n) => t(kindOfKey(key as KindKey).exportName, { n }),
+      object: (id) => {
+        const d = definition(id);
+        return d ? words(d.name) : id;
+      },
+      category: (id) => definition(id)?.category ?? null,
+      zone: (z) => z,
+    }, new Date());
+    const file = `${app.fileBase()}.ifc`;
+    app.download(file, new Blob([text], { type: 'application/x-step' }), 'application/x-step');
+    app.toast(t('export.ifcSaved', { file }));
+  } catch (e) {
+    console.error(e);
+    app.toast(t('export.failed', { what: 'IFC', error: e instanceof Error ? e.message : String(e) }));
   }
 }
 

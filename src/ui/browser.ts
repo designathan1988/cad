@@ -87,6 +87,7 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
       false,
       item(t('export.glb'), () => void app.exportGlb(), { lead: icon('cube', 16) }),
       item(t('export.dxf'), () => app.exportDxf(), { lead: icon('map', 16) }),
+      item(t('export.ifc'), () => app.exportIfc(), { lead: icon('cube', 16) }),
       item(t('schedule.open'), () => app.openSchedules(), { lead: icon('table', 16) }),
     ),
     section(
