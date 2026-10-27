@@ -17,7 +17,7 @@ import { logoImage, logoReady } from './logo-image';
 import { SCALES, scaleFactor } from '../elements/drawing/schema';
 import type { SectionMark } from '../elements/section/schema';
 import { sheetsOf } from '../elements/sheet/commands';
-import { drawingArea, type FramedViewport, frameOf, type PlanViewport, type ScheduleViewport, type SectionViewport, type Sheet, SHEET_MARGIN, sheetSize, TITLE_H, TITLE_W, type Viewport } from '../elements/sheet/schema';
+import { detailRefs, drawingArea, type FramedViewport, frameOf, type PlanViewport, type ScheduleViewport, type SectionViewport, type Sheet, SHEET_MARGIN, sheetSize, TITLE_H, TITLE_W, type Viewport } from '../elements/sheet/schema';
 import { pageOfRgb, pdfOfPages, rgbOfCanvas } from '../io/pdf';
 import { getLang, type MessageKey, name, num, t } from '../ui/i18n';
 import { scheduleNaming, shownCell } from '../ui/schedules-dialog';
@@ -189,6 +189,10 @@ function paintTable(ctx: CanvasRenderingContext2D, tb: SheetTable, at: Point2, w
 /** What a view shows, said under it: "Planta · Térreo", "Corte A", "Elevação Norte". */
 export function viewTitle(doc: Doc, v: Viewport): string {
   if (v.kind === 'plan') {
+    // An enlarged detail by its number and its callout's first line: "Detalhe 1 · Escada em L".
+    const n = v.detail ? detailRefs(sheetsOf(doc)).get(v.detail)?.n : undefined;
+    const callout = v.detail ? doc.notes.find((x) => x.id === v.detail) : undefined;
+    if (n !== undefined && callout) return t('sheet.detailOf', { n, text: callout.text.split('\n')[0]! });
     const l = doc.levels.find((x) => x.id === v.levelId);
     return l ? t('sheet.planOf', { level: name(l.name) }) : t('sheet.missing');
   }

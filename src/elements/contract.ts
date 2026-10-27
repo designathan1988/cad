@@ -89,6 +89,8 @@ export interface KindFieldContext {
   readonly startFloorHole?: (id: string) => void;
   /** Show a section's or an elevation's drawing (ui/sections-dialog.ts). */
   readonly openSection?: (id: string) => void;
+  /** A callout's enlarged detail made on a sheet, or its sheet shown (ui/sheets-dialog.ts). */
+  readonly detailFor?: (noteId: string) => void;
   /** Make the rooms' four interior elevations (app/kind-tools.ts). */
   readonly interiorElevations?: (roomIds: readonly string[]) => void;
   /** Calibrate a reference by two points of it (app/reference-ui.ts). */

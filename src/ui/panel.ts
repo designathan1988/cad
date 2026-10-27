@@ -61,6 +61,8 @@ export interface PanelActions {
   readonly close: () => void;
   /** A section's drawing shown (its panel's button). */
   readonly openSection?: (id: string) => void;
+  /** A callout's enlarged detail made on a sheet (a note's panel's button). */
+  readonly detailFor?: (id: string) => void;
   /** The rooms' interior elevations made (a room's panel's button). */
   readonly interiorElevations?: (ids: readonly string[]) => void;
   /** A reference's calibration begun (its panel's button). */
@@ -156,7 +158,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     const title = kind.title ? kind.title(items) : { icon: kind.icon, text: n === 1 ? t(kind.one) : t(kind.many, { n }) };
     nodes.push(head(title.icon, title.text));
     part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, { dispatch: act.dispatch, doc, ...(act.room.startFloorHole ? { startFloorHole: act.room.startFloorHole } : {}), ...(act.openSection ? { openSection: act.openSection } : {}), ...(act.interiorElevations ? { interiorElevations: act.interiorElevations } : {}), ...(act.calibrate ? { calibrate: act.calibrate } : {}), ...(act.addSpot ? { addSpot: act.addSpot } : {}), ...(act.outlineTerrain ? { outlineTerrain: act.outlineTerrain } : {}), ...(act.geometry ? { geometry: act.geometry } : {}) }), items));
+    nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, { dispatch: act.dispatch, doc, ...(act.room.startFloorHole ? { startFloorHole: act.room.startFloorHole } : {}), ...(act.openSection ? { openSection: act.openSection } : {}), ...(act.interiorElevations ? { interiorElevations: act.interiorElevations } : {}), ...(act.detailFor ? { detailFor: act.detailFor } : {}), ...(act.calibrate ? { calibrate: act.calibrate } : {}), ...(act.addSpot ? { addSpot: act.addSpot } : {}), ...(act.outlineTerrain ? { outlineTerrain: act.outlineTerrain } : {}), ...(act.geometry ? { geometry: act.geometry } : {}) }), items));
     if (kind.hint) nodes.push(el('div', { class: 'panel-hint' }, t(kind.hint)));
     const problem = kind.warning?.(items, doc) ?? null;
     if (problem) {

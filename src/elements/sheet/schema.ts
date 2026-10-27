@@ -21,6 +21,8 @@ export interface PlanViewport {
   readonly h: number;
   /** The model point at the frame's middle (m). */
   readonly center: Point2;
+  /** An enlarged detail: the callout (a note with a leader) it details, which says its number and sheet. */
+  readonly detail?: string;
 }
 
 /** A section or an elevation (elements/section) at a scale: its frame as a plan's, the drawing's point
@@ -63,6 +65,13 @@ export interface Sheet {
   readonly viewports: readonly Viewport[];
 }
 
+/** The enlarged details by their callout: each numbered from 1 in the sheets' order, with its sheet's number. */
+export function detailRefs(sheets: readonly Sheet[]): Map<string, { n: number; sheet: string }> {
+  const out = new Map<string, { n: number; sheet: string }>();
+  for (const s of sheets) for (const v of s.viewports) if (v.kind === 'plan' && v.detail && !out.has(v.detail)) out.set(v.detail, { n: out.size + 1, sheet: s.number });
+  return out;
+}
+
 /** The margin round the sheet's border and the title block's size (mm). */
 export const SHEET_MARGIN = 10;
 export const TITLE_W = 180;
@@ -80,7 +89,7 @@ export const isViewport = (v: unknown): v is Viewport => {
   if (typeof v !== 'object' || v === null) return false;
   const o = v as Record<string, unknown>;
   if (typeof o.id !== 'string' || !isPoint(o.at) || !finite(o.w) || (o.w as number) <= 0) return false;
-  if (o.kind === 'plan') return typeof o.levelId === 'string' && SCALES.includes(o.den as number) && finite(o.h) && (o.h as number) > 0 && isPoint(o.center);
+  if (o.kind === 'plan') return typeof o.levelId === 'string' && SCALES.includes(o.den as number) && finite(o.h) && (o.h as number) > 0 && isPoint(o.center) && (o.detail === undefined || typeof o.detail === 'string');
   if (o.kind === 'section') return typeof o.sectionId === 'string' && SCALES.includes(o.den as number) && finite(o.h) && (o.h as number) > 0 && isPoint(o.center);
   if (o.kind === 'schedule') return (SHEET_SCHEDULES as readonly unknown[]).includes(o.schedule);
   return false;

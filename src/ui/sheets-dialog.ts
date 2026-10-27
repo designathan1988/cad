@@ -55,6 +55,38 @@ export function freeSpot(app: App, sheet: Sheet, v: Viewport): Viewport | null {
   return null;
 }
 
+/**
+ * A callout's enlarged detail (phase 10): its level's plan at 1:20 round the arrow's point, on the first
+ * sheet with room for it or on a new "Details" sheet; the callout then says its number and sheet. Made
+ * once: asked again, its sheet is shown.
+ */
+export function makeDetail(app: App, noteId: string): void {
+  const doc = app.store.get();
+  const note = doc.notes.find((n) => n.id === noteId);
+  if (!note?.leader) return;
+  const sheets = sheetsOf(doc);
+  const had = sheets.find((s) => s.viewports.some((v) => v.kind === 'plan' && v.detail === noteId));
+  if (had) {
+    showSheets(app, had.id);
+    return;
+  }
+  const view = (s: Pick<Sheet, 'paper' | 'landscape'>): Viewport => {
+    const area = drawingArea(s);
+    return { id: newId('vp'), kind: 'plan', levelId: note.levelId, den: 20, at: { x: area.x0 + 60, y: area.y0 + 45 }, w: 120, h: 90, center: note.leader!, detail: noteId };
+  };
+  for (const sheet of sheets) {
+    const v = freeSpot(app, sheet, view(sheet));
+    if (!v) continue;
+    app.store.dispatch(addViewport(sheet.id, v));
+    showSheets(app, sheet.id);
+    return;
+  }
+  const base = { paper: 'A3', landscape: true } as const;
+  const sheet: Sheet = { id: newId(SHEET_PREFIX), number: nextSheetNumber(sheets), name: t('sheet.details'), ...base, viewports: [view(base)] };
+  app.store.dispatch(addSheet(sheet));
+  showSheets(app, sheet.id);
+}
+
 /** A new sheet: the next number, A3 turned, the current level's plan on it at the project's scale. */
 export function newSheet(app: App): Sheet {
   const doc = app.store.get();

@@ -6,6 +6,8 @@ import type { Note } from './schema';
 export interface NoteFieldActions {
   readonly updateNotes: (ids: readonly string[], patch: { readonly text?: string; readonly height?: number; readonly offset?: number }) => void;
   readonly dropLeaders: (ids: readonly string[]) => void;
+  /** A callout's enlarged detail on a sheet: made, or its sheet shown. */
+  readonly detail?: (id: string) => void;
 }
 
 export function noteFields(notes: readonly Note[], act: NoteFieldActions): Field<Note>[] {
@@ -24,5 +26,7 @@ export function noteFields(notes: readonly Note[], act: NoteFieldActions): Field
     { id: 'height', label: 'note.height', kind: 'number', min: 0.02, get: (n) => n.height, set: (v) => act.updateNotes(ids, { height: v }) },
     // A callout's arrow taken off, the text kept.
     { id: 'leader', label: 'note.dropLeader', kind: 'action', when: (items) => items.some((n) => n.leader), run: () => act.dropLeaders(ids) },
+    // One callout: the plan round its arrow enlarged on a sheet (1:20), its number and sheet said by it.
+    ...(act.detail ? [{ id: 'detail', label: 'note.detail', kind: 'action', when: (items: readonly Note[]) => items.length === 1 && items[0]!.leader !== undefined, run: () => act.detail!(ids[0]!) } as const] : []),
   ];
 }

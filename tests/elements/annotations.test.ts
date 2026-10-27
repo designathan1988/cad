@@ -8,6 +8,7 @@ import { DEFAULT_DRAWING, isDrawingSettings } from '../../src/elements/drawing/s
 import { noteKind } from '../../src/elements/kinds/note';
 import { dropLeaders } from '../../src/elements/note/commands';
 import { leaderStart, type Note } from '../../src/elements/note/schema';
+import { detailRefs, isViewport, type Sheet } from '../../src/elements/sheet/schema';
 import { layoutRoomTags } from '../../src/render/room-tags';
 import { setLang } from '../../src/ui/i18n';
 
@@ -44,6 +45,39 @@ describe('callouts', () => {
     expect(plain.leader).toBeUndefined();
     expect(plain.text).toBe('Ver detalhe');
     expect(dropLeaders(['note_c']).apply({ ...doc, notes: [plain] }).notes[0]).toBe(plain);
+  });
+});
+
+describe('enlarged details', () => {
+  const detail = (id: string, note: string) => ({ id, kind: 'plan' as const, levelId: 'lvl_ground', den: 20, at: { x: 80, y: 60 }, w: 120, h: 90, center: { x: 3, y: 1 }, detail: note });
+  const sheets: Sheet[] = [
+    { id: 'sheet_1', number: 'A-01', name: 'Planta', paper: 'A3', landscape: true, viewports: [{ ...detail('vp_0', 'x'), detail: undefined } as never] },
+    { id: 'sheet_2', number: 'A-02', name: 'Detalhes', paper: 'A3', landscape: true, viewports: [detail('vp_1', 'note_c'), detail('vp_2', 'note_e'), detail('vp_3', 'note_c')] },
+  ];
+
+  it('numbered from 1 in the sheets’ order, each with its sheet; a callout detailed twice keeps its first', () => {
+    const refs = detailRefs(sheets);
+    expect([...refs]).toEqual([
+      ['note_c', { n: 1, sheet: 'A-02' }],
+      ['note_e', { n: 2, sheet: 'A-02' }],
+    ]);
+    expect(isViewport(detail('vp_1', 'note_c'))).toBe(true);
+    expect(isViewport({ ...detail('vp_1', 'note_c'), detail: 7 })).toBe(false);
+  });
+
+  it('the callout says where its detail is, "(1/A-02)", and keeps its own text as it was', () => {
+    const doc = { ...newDocument(), notes: [callout], sheets };
+    const shown = noteKind.derive(doc, callout, undefined as never)!;
+    expect(shown).toMatchObject({ text: 'Ver detalhe', ref: '1/A-02' });
+    expect(noteKind.element(shown)).toEqual(callout);
+    // Its box takes the reference in: wider than the text alone.
+    const wide = noteKind.extent!(shown);
+    const narrow = noteKind.extent!(callout);
+    expect(wide[1]!.x - wide[0]!.x).toBeGreaterThan(narrow[1]!.x - narrow[0]!.x);
+    // A note with no detail, or no arrow, says nothing more.
+    expect(noteKind.derive({ ...doc, sheets: [] }, callout, undefined as never)).toBe(callout);
+    const { leader: _l, ...plain } = callout;
+    expect(noteKind.derive(doc, plain, undefined as never)).toBe(plain);
   });
 });
 

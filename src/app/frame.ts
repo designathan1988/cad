@@ -21,6 +21,7 @@ import { OPENING_PREVIEW_ID, ruleGuide } from './opening-ui';
 import { toolCursor } from '../ui/cursors';
 import { getLang, name, t } from '../ui/i18n';
 import { renderPanel } from '../ui/panel';
+import { makeDetail } from '../ui/sheets-dialog';
 import { snapLabel } from '../tools/snap';
 import { bulgeKeepingSide } from '../tools/arc-edit';
 import { KINDS } from '../elements/registry';
@@ -445,6 +446,7 @@ export function renderFrame(app: App): void {
       close: () => app.togglePanel(false),
       openSection: (id) => app.openSections(id),
       interiorElevations: (ids) => app.addInteriorElevations(ids),
+      detailFor: (id) => makeDetail(app, id),
       calibrate: (id) => app.startCalibration(id),
       addSpot: (id) => app.startSpot(id),
       outlineTerrain: (id) => app.startTerrainOutline(id),

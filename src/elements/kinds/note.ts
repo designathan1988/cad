@@ -8,11 +8,17 @@ import { dropLeaders, updateNotes } from '../note/commands';
 import { noteFields } from '../note/fields';
 import { elevationText, leaderStart, type Note, NOTE_PREFIX, noteBox, shownHeight } from '../note/schema';
 import { nearSegment } from './paint';
+import { detailRefs } from '../sheet/schema';
+
+/** A note as shown: a callout detailed on a sheet says where, "(1/A-02)" after its text (never stored). */
+type ShownNote = Note & { readonly ref?: string };
+/** Its text as written on the plan and in the DXF: with its detail's reference. */
+const shown = (n: ShownNote): Note => (n.ref ? { ...n, text: `${n.text} (${n.ref})` } : n);
 
 /** The box of a note as drawn at `scale` px a metre (its letters never smaller than they read). */
-const boxAt = (n: Note, scale?: number) => noteBox(n, scale ? shownHeight(n, scale) : n.height);
+const boxAt = (n: ShownNote, scale?: number) => noteBox(shown(n), scale ? shownHeight(n, scale) : n.height);
 
-export const noteKind: ElementKind<Note, Note> = {
+export const noteKind: ElementKind<Note, ShownNote> = {
   key: 'notes',
   prefix: NOTE_PREFIX,
   category: null,
@@ -44,11 +50,15 @@ export const noteKind: ElementKind<Note, Note> = {
     (n.leader === undefined || isPoint(n.leader)),
   // A level mark says its level's height plus its own: as its text, so it is drawn, boxed and picked as one.
   derive: (doc, n) => {
-    if (!n.elevation) return n;
+    if (!n.elevation) {
+      // A callout an enlarged detail is made of: its number and its sheet's.
+      const ref = n.leader ? detailRefs(doc.sheets ?? []).get(n.id) : undefined;
+      return ref ? { ...n, ref: `${ref.n}/${ref.sheet}` } : n;
+    }
     const elevation = doc.levels.find((l) => l.id === n.levelId)?.elevation ?? 0;
     return { ...n, text: elevationText(elevation + n.elevation.offset, (m) => num(m)) };
   },
-  element: (n) => n,
+  element: ({ ref: _ref, ...n }) => n,
   outlines: (n, scale) => {
     const b = boxAt(n, scale);
     return [
@@ -67,7 +77,7 @@ export const noteKind: ElementKind<Note, Note> = {
   },
   // Framed with its arrow.
   extent: (n) => {
-    const b = noteBox(n);
+    const b = noteBox(shown(n));
     return [{ x: b.x0, y: b.y0 }, { x: b.x1, y: b.y1 }, ...(n.leader ? [n.leader] : [])];
   },
   // Over everything it is written on.
@@ -90,7 +100,7 @@ export const noteKind: ElementKind<Note, Note> = {
     if (n.leader) drawLeader(p, leaderStart(boxAt(n, p.scale), n.leader), n.leader, colour);
     if (n.elevation) levelMark(p, c, px, n.text);
     else {
-      const lines = n.text.split('\n');
+      const lines = shown(n).text.split('\n');
       ctx.textAlign = 'center';
       const step = px * 1.3;
       lines.forEach((l, i) => ctx.fillText(l, c.x, c.y + (i - (lines.length - 1) / 2) * step));
@@ -115,11 +125,11 @@ export const noteKind: ElementKind<Note, Note> = {
       out.text('A-ANNO-TEXT', { x: n.at.x + r + n.height * 0.3 + n.text.length * n.height * 0.3, y: n.at.y }, n.height, n.text);
       return;
     }
-    const lines = n.text.split('\n');
+    const lines = shown(n).text.split('\n');
     lines.forEach((l, i) => out.text('A-ANNO-TEXT', { x: n.at.x, y: n.at.y - (i - (lines.length - 1) / 2) * n.height * 1.3 }, n.height, l));
     if (n.leader) {
       // The leader and its arrowhead's two sides.
-      const from = leaderStart(noteBox(n), n.leader);
+      const from = leaderStart(noteBox(shown(n)), n.leader);
       out.line('A-ANNO-TEXT', from, n.leader);
       const len = Math.hypot(n.leader.x - from.x, n.leader.y - from.y) || 1;
       const u = { x: (n.leader.x - from.x) / len, y: (n.leader.y - from.y) / len };
@@ -127,7 +137,8 @@ export const noteKind: ElementKind<Note, Note> = {
       for (const s of [1, -1]) out.line('A-ANNO-TEXT', n.leader, { x: n.leader.x - u.x * k - u.y * k * 0.35 * s, y: n.leader.y - u.y * k + u.x * k * 0.35 * s });
     }
   },
-  fields: (items, { dispatch }) => noteFields(items, { updateNotes: (ids, patch) => dispatch(updateNotes(ids, patch)), dropLeaders: (ids) => dispatch(dropLeaders(ids)) }),
+  fields: (items, { dispatch, detailFor }) =>
+    noteFields(items, { updateNotes: (ids, patch) => dispatch(updateNotes(ids, patch)), dropLeaders: (ids) => dispatch(dropLeaders(ids)), ...(detailFor ? { detail: detailFor } : {}) }),
 };
 
 /** A callout's leader: a line from the text's edge to its point, a filled arrowhead there. */
