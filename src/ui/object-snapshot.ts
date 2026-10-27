@@ -36,9 +36,9 @@ function stageOf(): Stage | null {
   return stage;
 }
 
-/** The picture as a data URL, w × h device pixels; null with nothing to draw or no WebGL. */
-export function objectSnapshot(def: ObjectDefinition, doc: Doc, w: number, h: number): string | null {
-  const ev = evaluateObject(def, { id: 'snapshot', levelId: '', definitionId: def.id, typeId: def.types[0]?.id ?? '', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
+/** The picture as a data URL, w × h device pixels, at the given type (its first by default); null with nothing to draw or no WebGL. */
+export function objectSnapshot(def: ObjectDefinition, doc: Doc, w: number, h: number, typeId = def.types[0]?.id ?? ''): string | null {
+  const ev = evaluateObject(def, { id: 'snapshot', levelId: '', definitionId: def.id, typeId, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
   if (ev.pieces.length === 0) return null;
   const s = stageOf();
   if (!s) return null;

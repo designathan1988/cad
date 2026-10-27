@@ -1,7 +1,7 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
-import { made, type NextSlot } from './next-element';
+import { made, nextOf, type NextSlot } from './next-element';
 import { autoRoute } from './mep-route';
 import * as terrains from './terrain-ui';
 import * as mepUi from './mep-ui';
@@ -525,8 +525,10 @@ export class App {
   }
 
   /** The object tool with a definition (the ribbon's and the palette's Place table, Place bookcase…). */
-  placeObject(definitionId: string): void {
+  placeObject(definitionId: string, typeId?: string): void {
     this.ui.objectDef = definitionId;
+    // A type chosen to place (the objects' store): the next object is of it, with its own values.
+    if (typeId !== undefined) this.next = { ...this.next, objects: { ...nextOf(this, 'objects'), typeId, values: {} } };
     this.setTool('object');
   }
 
