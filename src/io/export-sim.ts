@@ -238,7 +238,7 @@ export function fdsInput(doc: Doc, g: DerivedGeometry, title: string, cell = 0.2
     `&MESH IJK=${ijk.join(',')}, XB=${n(x0, 3)},${n(x0 + ijk[0]! * cell, 3)},${n(y0, 3)},${n(y0 + ijk[1]! * cell, 3)},${n(bottom, 3)},${n(bottom + ijk[2]! * cell, 3)} /`,
     `&TIME T_END=600. /`,
     `&SURF ID='PAREDE', COLOR='GRAY' /`,
-    `! The fire (a &SURF with HRRPUA and an &OBST or &VENT for it) and the fuels are for whoever runs it.`,
+    `! The fire (a SURF with HRRPUA and an OBST or VENT for it) and the fuels are for whoever runs it (no ampersand in a comment: only namelists start with one).`,
     `&VENT MB='XMIN', SURF_ID='OPEN' /`,
     `&VENT MB='XMAX', SURF_ID='OPEN' /`,
     `&VENT MB='YMIN', SURF_ID='OPEN' /`,

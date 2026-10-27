@@ -265,6 +265,8 @@ describe('the detailed engines\' inputs', () => {
     expect((fds.match(/^&OBST/gm) ?? []).length).toBe(4);
     expect((fds.match(/^&HOLE/gm) ?? []).length).toBe(1);
     expect(fds).toMatch(/^&MESH IJK=\d+,\d+,\d+/m);
+    // An ampersand only where a namelist starts, and each closed: a comment had three.
+    expect((fds.match(/&/g) ?? []).length).toBe((fds.match(/^&\w+ [^\n]*\/$/gm) ?? []).length);
   });
 });
 
