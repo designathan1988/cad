@@ -95,6 +95,22 @@ export const BUILT_IN_MATERIALS: readonly Material[] = [
   { id: 'soil', name: '', color: '#6b4f3a', roughness: 1, metalness: 0, cut: 'concrete' },
   { id: 'screen', name: '', color: '#0e1013', roughness: 0.1, metalness: 0.2, cut: 'solid' },
   { id: 'bottleGlass', name: '', color: '#2e5a35', roughness: 0.08, metalness: 0, cut: 'none' },
+  // Construction's materials (wall/library-types.ts, room/schema.ts FLOOR_BUILDUPS): blocks, boards, floorings, claddings, each with its pattern.
+  { id: 'concreteBlock', name: '', color: '#b9b6ae', roughness: 0.9, metalness: 0, cut: 'concrete', pattern: { kind: 'brick', layout: 'running', length: 0.39, width: 0.19, joint: 0.01, jointColor: '#a39f96', variation: 0.06, angle: 0 } },
+  { id: 'ceramicBlock', name: '', color: '#b8704c', roughness: 0.85, metalness: 0, cut: 'brick', pattern: { kind: 'brick', layout: 'running', length: 0.29, width: 0.19, joint: 0.01, jointColor: '#cfc6b8', variation: 0.1, angle: 0 } },
+  { id: 'gypsumGreen', name: '', color: '#d8e3d3', roughness: 0.9, metalness: 0, cut: 'solid' },
+  { id: 'osb', name: '', color: '#c9a56c', roughness: 0.8, metalness: 0, cut: 'wood' },
+  { id: 'cementBoard', name: '', color: '#a9a8a2', roughness: 0.85, metalness: 0, cut: 'concrete' },
+  { id: 'eps', name: '', color: '#f2f1ec', roughness: 0.95, metalness: 0, cut: 'insulation' },
+  { id: 'vinylPlank', name: '', color: '#a88563', roughness: 0.5, metalness: 0, cut: 'solid', pattern: { kind: 'wood', layout: 'running', length: 1.22, width: 0.18, joint: 0.0005, jointColor: '#7a5a3d', variation: 0.1, angle: 0 } },
+  { id: 'laminate', name: '', color: '#b99572', roughness: 0.45, metalness: 0, cut: 'wood', pattern: { kind: 'wood', layout: 'running', length: 1.38, width: 0.19, joint: 0.0008, jointColor: '#86664a', variation: 0.12, angle: 0 } },
+  { id: 'parquet', name: '', color: '#9b6c44', roughness: 0.5, metalness: 0, cut: 'wood', pattern: { kind: 'wood', layout: 'herringbone', length: 0.35, width: 0.07, joint: 0.001, jointColor: '#5b3f27', variation: 0.15, angle: 0 } },
+  { id: 'porcelainLarge', name: '', color: '#cfcac2', roughness: 0.25, metalness: 0, cut: 'solid', pattern: { kind: 'tiles', layout: 'running', length: 1.2, width: 0.6, joint: 0.002, jointColor: '#b9b3aa', variation: 0.03, angle: 0 } },
+  { id: 'subwayTile', name: '', color: '#f2f0ec', roughness: 0.2, metalness: 0, cut: 'solid', pattern: { kind: 'tiles', layout: 'running', length: 0.2, width: 0.1, joint: 0.002, jointColor: '#d3cfc6', variation: 0.03, angle: 0 } },
+  { id: 'hydraulicTile', name: '', color: '#cdbc9f', roughness: 0.6, metalness: 0, cut: 'solid', pattern: { kind: 'tiles', layout: 'checker', length: 0.2, width: 0.2, joint: 0.002, jointColor: '#9c8c72', variation: 0.04, angle: 0, color2: '#5e7a6e' } },
+  { id: 'deck', name: '', color: '#8a6243', roughness: 0.7, metalness: 0, cut: 'wood', pattern: { kind: 'wood', layout: 'running', length: 1.5, width: 0.14, joint: 0.006, jointColor: '#2e2219', variation: 0.14, angle: 0 } },
+  { id: 'stoneCladding', name: '', color: '#9e9385', roughness: 0.9, metalness: 0, cut: 'concrete', pattern: { kind: 'brick', layout: 'running', length: 0.3, width: 0.05, joint: 0.004, jointColor: '#6f675c', variation: 0.28, angle: 0 } },
+  { id: 'woodSlats', name: '', color: '#a77b51', roughness: 0.6, metalness: 0, cut: 'wood', pattern: { kind: 'wood', layout: 'stack', length: 2.4, width: 0.04, joint: 0.012, jointColor: '#2a2119', variation: 0.08, angle: 0 } },
 ];
 
 /** The materials seen through in the views, each with its opacity: glass, frosted glass, water. */

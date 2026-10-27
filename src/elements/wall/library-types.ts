@@ -1,0 +1,66 @@
+// The wall types a project starts with besides the first four (app/document.ts), and an older file gets
+// (io/project-file.ts, version 57): Brazilian construction's usual walls, each of its real layers in
+// their materials (element/material/schema.ts), named in English in the document as the first ones are
+// (ui/i18n.ts ptNames gives their Portuguese).
+
+import type { WallType } from './schema';
+
+const plaster = (thickness: number, side: 'finish1' | 'finish2') => ({ thickness, function: side, materialId: 'plaster' }) as const;
+
+export const MORE_WALL_TYPES: readonly WallType[] = [
+  { id: 'wt_ceramicBlock9', name: 'Ceramic block 9 cm', layers: [plaster(0.02, 'finish1'), { thickness: 0.09, function: 'structure', materialId: 'ceramicBlock' }, plaster(0.02, 'finish2')] },
+  { id: 'wt_ceramicBlock14', name: 'Ceramic block 14 cm', layers: [plaster(0.02, 'finish1'), { thickness: 0.14, function: 'structure', materialId: 'ceramicBlock' }, plaster(0.02, 'finish2')] },
+  { id: 'wt_concreteBlock14', name: 'Concrete block 14 cm', layers: [plaster(0.015, 'finish1'), { thickness: 0.14, function: 'structure', materialId: 'concreteBlock' }, plaster(0.015, 'finish2')] },
+  { id: 'wt_concreteBlock19', name: 'Concrete block 19 cm (structural)', layers: [plaster(0.015, 'finish1'), { thickness: 0.19, function: 'structure', materialId: 'concreteBlock' }, plaster(0.015, 'finish2')] },
+  { id: 'wt_brickExposed', name: 'Exposed brick 11 cm', layers: [{ thickness: 0.11, function: 'structure', materialId: 'brick' }] },
+  {
+    id: 'wt_bathroom15',
+    name: 'Masonry 15 cm, tiled one side',
+    layers: [{ thickness: 0.008, function: 'finish1', materialId: 'subwayTile' }, plaster(0.015, 'finish1'), { thickness: 0.12, function: 'structure', materialId: 'ceramicBlock' }, plaster(0.015, 'finish2')],
+  },
+  { id: 'wt_concreteExposed15', name: 'Fair-faced concrete 15 cm', layers: [{ thickness: 0.15, function: 'structure', materialId: 'concretePolished' }] },
+  {
+    id: 'wt_drywallWet',
+    name: 'Drywall 10 cm, moisture-resistant',
+    layers: [{ thickness: 0.0125, function: 'finish1', materialId: 'gypsumGreen' }, { thickness: 0.075, function: 'thermal', materialId: 'insulation' }, { thickness: 0.0125, function: 'finish2', materialId: 'gypsumGreen' }],
+  },
+  {
+    id: 'wt_drywallAcoustic',
+    name: 'Drywall 15 cm, acoustic double',
+    layers: [
+      { thickness: 0.0125, function: 'finish1', materialId: 'gypsum' },
+      { thickness: 0.0125, function: 'substrate', materialId: 'gypsum' },
+      { thickness: 0.1, function: 'thermal', materialId: 'insulation' },
+      { thickness: 0.0125, function: 'substrate', materialId: 'gypsum' },
+      { thickness: 0.0125, function: 'finish2', materialId: 'gypsum' },
+    ],
+  },
+  {
+    id: 'wt_steelFrame',
+    name: 'Steel frame 16 cm, external',
+    layers: [
+      { thickness: 0.012, function: 'finish1', materialId: 'cementBoard' },
+      { thickness: 0.011, function: 'substrate', materialId: 'osb' },
+      { thickness: 0.09, function: 'thermal', materialId: 'insulation' },
+      { thickness: 0.0125, function: 'substrate', materialId: 'gypsum' },
+      { thickness: 0.0125, function: 'finish2', materialId: 'gypsum' },
+    ],
+  },
+  {
+    id: 'wt_etics',
+    name: 'Masonry 20 cm, external insulation',
+    layers: [{ thickness: 0.005, function: 'finish1', materialId: 'plaster' }, { thickness: 0.05, function: 'thermal', materialId: 'eps' }, { thickness: 0.14, function: 'structure', materialId: 'ceramicBlock' }, plaster(0.015, 'finish2')],
+  },
+  { id: 'wt_stone30', name: 'Stone 30 cm', layers: [{ thickness: 0.3, function: 'structure', materialId: 'stone' }] },
+  {
+    id: 'wt_stoneClad',
+    name: 'Masonry 15 cm, stone cladding',
+    layers: [{ thickness: 0.025, function: 'finish1', materialId: 'stoneCladding' }, plaster(0.015, 'finish1'), { thickness: 0.12, function: 'structure', materialId: 'ceramicBlock' }, plaster(0.015, 'finish2')],
+  },
+  {
+    id: 'wt_slatted',
+    name: 'Drywall 10 cm, wood slats',
+    layers: [{ thickness: 0.02, function: 'finish1', materialId: 'woodSlats' }, { thickness: 0.0125, function: 'substrate', materialId: 'gypsum' }, { thickness: 0.05, function: 'thermal', materialId: 'insulation' }, { thickness: 0.0125, function: 'finish2', materialId: 'gypsum' }],
+  },
+  { id: 'wt_boundary', name: 'Boundary wall 15 cm', layers: [{ thickness: 0.01, function: 'finish1', materialId: 'plaster' }, { thickness: 0.14, function: 'structure', materialId: 'concreteBlock' }] },
+];

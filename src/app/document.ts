@@ -1,6 +1,7 @@
 // The project document: only what the user decided. Thickness, heights, joins and geometry are
 // always derived from it.
 
+import { MORE_WALL_TYPES } from '../elements/wall/library-types';
 import type { Site } from './sun';
 import type { LayerSet, RoomOverride, WallOverride } from './layer-sets';
 import type { Separator } from '../elements/separator/schema';
@@ -77,7 +78,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 56;
+  readonly version: 57;
   readonly name: string;
   /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
   readonly units: Units;
@@ -184,7 +185,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 56,
+    version: 57,
     name: '',
     units: DEFAULT_UNITS,
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
@@ -218,6 +219,7 @@ export function newDocument(): Doc {
           { thickness: 0.0125, function: 'finish2', materialId: 'gypsum' },
         ],
       },
+      ...MORE_WALL_TYPES,
     ],
     walls: [],
     openings: [],

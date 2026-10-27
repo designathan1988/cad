@@ -3,6 +3,7 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
+import { MORE_WALL_TYPES } from '../elements/wall/library-types';
 import { FAMILY_BATCHES } from '../elements/object/library-families';
 import { isSite } from '../app/sun';
 import { isSheet, isViewport } from '../elements/sheet/schema';
@@ -112,7 +113,7 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 42: tags by elements with their values (`tags`, elements/tag). Older files have none.
  * Version 43: a room's interior elevations, marks kept to a level (`levelId`, elements/section). Older marks have none: every level.
  */
-export const CURRENT_VERSION = 56;
+export const CURRENT_VERSION = 57;
 
 /** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
 function upgradeRules(rules: NormRule[], version: number): NormRule[] {
@@ -261,7 +262,9 @@ export function repairProject(raw: unknown): ReadResult {
   if (!isObject(raw) || !finite(raw.version)) return { ok: false, error: 'notProject' };
   if (raw.version > CURRENT_VERSION) return { ok: false, error: 'newerVersion' };
   const levels = Array.isArray(raw.levels) ? raw.levels.filter(isLevel) : [];
-  const wallTypes = Array.isArray(raw.wallTypes) ? raw.wallTypes.filter(isWallType) : [];
+  const fileTypes = Array.isArray(raw.wallTypes) ? raw.wallTypes.filter(isWallType) : [];
+  // Version 57 brought more wall types (wall/library-types.ts): a file from before gets those it has not.
+  const wallTypes = fileTypes.length > 0 && raw.version < 57 ? [...fileTypes, ...MORE_WALL_TYPES.filter((t) => !fileTypes.some((k) => k.id === t.id))] : fileTypes;
   if (levels.length === 0) return { ok: false, error: 'noLevels' };
   if (wallTypes.length === 0) return { ok: false, error: 'noWallTypes' };
   const fixes: Fix[] = [];

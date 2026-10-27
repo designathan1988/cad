@@ -96,6 +96,19 @@ export const FLOOR_BUILDUPS: Readonly<Record<string, readonly FloorLayer[]>> = {
     { materialId: 'gravel', thickness: 0.05 },
   ],
   gypsumCeiling: [{ materialId: 'gypsum', thickness: 0.0125 }],
+  porcelainLarge: [{ materialId: 'porcelainLarge', thickness: 0.01 }, { materialId: 'screed', thickness: 0.04 }, { materialId: 'concrete', thickness: 0.1 }],
+  vinyl: [{ materialId: 'vinylPlank', thickness: 0.003 }, { materialId: 'screed', thickness: 0.04 }, { materialId: 'concrete', thickness: 0.1 }],
+  laminate: [{ materialId: 'laminate', thickness: 0.008 }, { materialId: 'screed', thickness: 0.04 }, { materialId: 'concrete', thickness: 0.1 }],
+  parquet: [{ materialId: 'parquet', thickness: 0.02 }, { materialId: 'screed', thickness: 0.04 }, { materialId: 'concrete', thickness: 0.1 }],
+  burntCement: [{ materialId: 'concretePolished', thickness: 0.02 }, { materialId: 'screed', thickness: 0.03 }, { materialId: 'concrete', thickness: 0.1 }],
+  marble: [{ materialId: 'marble', thickness: 0.02 }, { materialId: 'screed', thickness: 0.04 }, { materialId: 'concrete', thickness: 0.1 }],
+  terrazzo: [{ materialId: 'terrazzo', thickness: 0.015 }, { materialId: 'screed', thickness: 0.04 }, { materialId: 'concrete', thickness: 0.1 }],
+  hydraulic: [{ materialId: 'hydraulicTile', thickness: 0.02 }, { materialId: 'screed', thickness: 0.04 }, { materialId: 'concrete', thickness: 0.1 }],
+  carpet: [{ materialId: 'carpet', thickness: 0.01 }, { materialId: 'screed', thickness: 0.04 }, { materialId: 'concrete', thickness: 0.1 }],
+  deck: [{ materialId: 'deck', thickness: 0.025 }, { materialId: 'concrete', thickness: 0.08 }],
+  stoneOutdoor: [{ materialId: 'stone', thickness: 0.03 }, { materialId: 'screed', thickness: 0.04 }, { materialId: 'gravel', thickness: 0.08 }],
+  woodCeiling: [{ materialId: 'woodSlats', thickness: 0.01 }],
+  pvcCeiling: [{ materialId: 'plasticWhite', thickness: 0.008 }],
 };
 
 /** A new ceiling's thickness (m): a plaster board. */
