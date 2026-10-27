@@ -5,7 +5,7 @@
 
 import { newId } from '../core/id';
 import { listProjects, loadProject, openDb, saveProject } from '../io/project-db';
-import { repairProject } from '../io/project-file';
+import { type ReadError, repairProject } from '../io/project-file';
 import { type Doc, newDocument } from './document';
 import { loadDocument, loadPrefs, savePrefs, saveTo } from './persist';
 
@@ -14,17 +14,20 @@ export interface Boot {
   /** The database and the project's id there; null without a database. */
   readonly db: IDBDatabase | null;
   readonly projectId: string | null;
+  /** The last project open, when it could not be read and another was opened instead: its name and why. */
+  readonly notOpened?: { readonly name: string; readonly error: ReadError };
 }
 
 export const PROJECT_PREFIX = 'project';
 
-/** A project read from the database and checked as a file is; null when it is not there or not readable. */
-export async function readStored(db: IDBDatabase, id: string): Promise<Doc | null> {
+/** A project read from the database and checked as a file is; null when it is not there or not readable (`failed` hears why). */
+export async function readStored(db: IDBDatabase, id: string, failed?: (error: ReadError) => void): Promise<Doc | null> {
   const raw = await loadProject(db, id);
   if (!raw) return null;
   const r = repairProject(raw);
   if (!r.ok) {
     console.warn(`The project ${id} could not be read (${r.error}).`);
+    failed?.(r.error);
     return null;
   }
   if (r.fixes.length > 0) console.warn('The project was repaired (bad elements dropped, ids given their kind):', r.fixes);
@@ -43,13 +46,19 @@ export async function boot(): Promise<Boot> {
   }
   // The last one open, or else the last one changed.
   const last = loadPrefs().projectId;
-  const candidates = [...(last ? [last] : []), ...(await listProjects(db)).map((p) => p.id).filter((id) => id !== last)];
+  const list = await listProjects(db);
+  const candidates = [...(last ? [last] : []), ...list.map((p) => p.id).filter((id) => id !== last)];
+  // The last one, when it does not open, is said: another opening in its place, silently, looked
+  // like the work was lost.
+  let notOpened: Boot['notOpened'];
   for (const id of candidates) {
-    const doc = await readStored(db, id);
+    const doc = await readStored(db, id, (error) => {
+      if (id === last) notOpened = { name: list.find((p) => p.id === id)?.name ?? '', error };
+    });
     if (doc) {
       saveTo(db, id);
       savePrefs({ projectId: id });
-      return { doc, db, projectId: id };
+      return { doc, db, projectId: id, ...(notOpened ? { notOpened } : {}) };
     }
   }
   // None yet: the document of before (or a new one) is the first project.
@@ -58,5 +67,5 @@ export async function boot(): Promise<Boot> {
   await saveProject(db, id, doc);
   saveTo(db, id);
   savePrefs({ projectId: id });
-  return { doc, db, projectId: id };
+  return { doc, db, projectId: id, ...(notOpened ? { notOpened } : {}) };
 }

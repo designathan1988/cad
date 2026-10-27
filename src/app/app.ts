@@ -291,6 +291,8 @@ export class App {
     this.applyTheme();
     this.shell.relabel();
     this.cube.relabel();
+    // The last project open could not be read: said, with why, before anything is done in this one.
+    if (boot.notOpened) this.ui.error = t('boot.notOpened', { name: boot.notOpened.name || t('app.untitled'), why: t(`open.${boot.notOpened.error}`) });
     this.refresh();
   }
 
