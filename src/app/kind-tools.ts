@@ -144,10 +144,13 @@ export function roofFinish(app: App): void {
   if (raw.length < 3) return app.render();
   // Counter-clockwise, so side i runs from corner i to corner i + 1 as roof/geometry.ts reads them.
   const outline = signedArea(raw) < 0 ? [...raw].reverse() : raw;
-  const kind: RoofKind = isConvex(outline) ? 'hip' : 'flat';
   const id = newId(ROOF_PREFIX);
-  // The next roof's (next-element.ts) grade, overhang, thickness and covering; hipped when it can be.
+  // The next roof's (next-element.ts) form, grade, overhang, thickness and covering (a model from the store
+  // sets them); a sloped form only over a convex outline, flat otherwise.
   const next = nextOf(app, 'roofs') as unknown as Roof;
+  // Hipped unless a form was chosen for the next roof (a flat roof made last does not make the next flat).
+  const chosen = (app.next.roofs as Roof | undefined)?.kind ?? 'hip';
+  const kind: RoofKind = isConvex(outline) ? chosen : 'flat';
   const edge = next.edges.find((e) => e.grade !== null) ?? next.edges[0];
   const { parapet: _p, ...rest } = made<Roof>(app, 'roofs', { id, outline, kind, edges: edgesFor(kind, outline, edge?.grade ?? ROOF_GRADE, edge?.overhang ?? ROOF_OVERHANG) });
   app.store.dispatch(addRoof(kind === 'flat' ? { ...rest, parapet: next.parapet ?? ROOF_PARAPET } : rest));

@@ -7,12 +7,13 @@ import type { ElementKind } from '../contract';
 import { updateRoofs } from '../roof/commands';
 import { roofFields } from '../roof/fields';
 import { type RoofSolid, roofSolid } from '../roof/geometry';
-import { type Roof, ROOF_PREFIX } from '../roof/schema';
+import { type Roof, ROOF_COVERING, ROOF_PREFIX } from '../roof/schema';
+import { materialIn, type Material } from '../material/schema';
 import { insideRing } from '../room/derive';
 import { trace } from './paint';
 import { wallBand, wallTop } from '../../app/document';
 
-export const roofKind: ElementKind<Roof, RoofSolid> = {
+export const roofKind: ElementKind<Roof, RoofSolid & { readonly covering: Material }> = {
   key: 'roofs',
   prefix: ROOF_PREFIX,
   category: 'walls',
@@ -41,7 +42,8 @@ export const roofKind: ElementKind<Roof, RoofSolid> = {
   // On its level's top; not memoised: a wall put under it (its top on the roof) closes its gable.
   derive: (doc, r) => {
     const level = doc.levels.find((l) => l.id === r.levelId) ?? { elevation: 0, height: 2.8 };
-    const s = roofSolid(r, level.elevation + level.height);
+    // Drawn in its covering's material (the tiles, the metal sheet, the slab), as the project has it.
+    const s = { ...roofSolid(r, level.elevation + level.height), covering: materialIn(doc.materials, (r.covering ?? ROOF_COVERING).materialId) };
     // A gable a wall under the roof already closes (its top on the roof) is that wall: the infill
     // would lie in its face.
     const bands = doc.walls.filter((w) => w.levelId === r.levelId && wallTop(doc, w).kind === 'roof').map((w) => wallBand(doc, w));
@@ -95,7 +97,7 @@ export const roofKind: ElementKind<Roof, RoofSolid> = {
       }
     ctx.restore();
   },
-  solid: (s) => ({ geometry: roofGeometry(s.faces, s.gables, s.parapets, s.roof.thickness), y: 0, material: 'roof', edges: true }),
+  solid: (s) => ({ geometry: roofGeometry(s.faces, s.gables, s.parapets, s.roof.thickness), y: 0, material: s.covering, edges: true }),
   dxfLayers: [{ name: 'A-ROOF', colour: 6 }],
   dxf: (s, out) => {
     out.polyline('A-ROOF', s.outline, true);

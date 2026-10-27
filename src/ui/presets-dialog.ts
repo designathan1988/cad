@@ -45,7 +45,7 @@ function snapshot(app: App, p: Preset, w: number, h: number): string | null {
     mesh.position.y = part.y;
     return mesh;
   });
-  const pitch = p.slot === 'columns' || p.slot === 'beams' ? 0.8 : 0.4;
+  const pitch = p.slot === 'columns' || p.slot === 'beams' ? 0.8 : p.slot === 'roofs' ? 0.55 : 0.4;
   return meshes.length > 0 ? meshSnapshot(meshes, w, h, 0.65, pitch) : null;
 }
 
@@ -56,7 +56,7 @@ function pictureOf(app: App, p: Preset, make: boolean, w = 360, h = 270): string
   return pictures.get(key);
 }
 
-const FOLDERS: readonly PresetSlot[] = ['columns', 'beams', 'stairs', 'railings'];
+const FOLDERS: readonly PresetSlot[] = ['columns', 'beams', 'stairs', 'railings', 'roofs', 'curtains'];
 
 /** The folder of a tool's models, if it has any. */
 export const presetSlotOf = (tool: string): PresetSlot | undefined => FOLDERS.find((f) => PRESET_TOOL[f] === tool);
