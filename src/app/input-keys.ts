@@ -201,7 +201,7 @@ export function wireKeys(app: App, k: KeyContext): void {
       if (ui.tool === 'measure') return ui.measure.kind !== 'idle' ? app.measureEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'grid') return app.gridEscape();
-      if (ui.tool === 'column' || ui.tool === 'object') return app.setTool('select');
+      if (ui.tool === 'column' || ui.tool === 'object' || ui.tool === 'note' || ui.tool === 'levelMark') return app.setTool('select');
       if (ui.tool === 'railing') {
         if (ui.railingDraft.length === 0) return app.setTool('select');
         return app.railingFinish();

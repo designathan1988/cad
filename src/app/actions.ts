@@ -179,8 +179,9 @@ export function appActions(app: App, open: Openers): Action[] {
     make('view.points', 'poi.dialogOpen', views, () => app.openPoints()),
     make('view.schedules', 'schedule.open', views, () => app.openSchedules(), { keywords: 'schedule quantitativos tabela CSV portas janelas cômodos paredes áreas' }),
     make('view.addPoint', 'pal.addPoint', views, () => app.addPointHere()),
-    make('edit.addNote', 'ctx.addNote', edit, () => app.addNoteHere(), { keywords: 'texto text nota note anotação annotation' }),
-    make('edit.addLevelMark', 'ctx.addLevelMark', edit, () => app.addLevelMarkHere(), { keywords: 'cota de nível level mark elevation altura spot' }),
+    // Tools: the text or the level mark goes where the next click is (it went in the middle of the view).
+    make('edit.addNote', 'ctx.addNote', edit, () => app.setTool('note'), { keywords: 'texto text nota note anotação annotation' }),
+    make('edit.addLevelMark', 'ctx.addLevelMark', edit, () => app.setTool('levelMark'), { keywords: 'cota de nível level mark elevation altura spot' }),
     make('view.tourPlay', 'gtour.play', views, () => app.playTour(), { enabled: doc.views.length > 0 }),
     ...doc.views.map((v) => ({
       id: `view.go.${v.id}`,

@@ -186,6 +186,10 @@ export function renderChrome(app: App): void {
                   ? t(ui.beamFrom ? 'hint.beamEnd' : 'hint.beamStart')
                 : ui.tool === 'separator'
                   ? t(ui.beamFrom ? 'hint.separatorEnd' : 'hint.separatorStart')
+                : ui.tool === 'note'
+                  ? t('hint.notePlace')
+                : ui.tool === 'levelMark'
+                  ? t('hint.levelMarkPlace')
                   : ui.tool === 'roof'
                     ? t(ui.roofDraft.length > 0 ? 'hint.roofNext' : 'hint.roofStart')
                     : ui.tool === 'stair'

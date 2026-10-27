@@ -341,7 +341,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
+    if (ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -619,6 +619,13 @@ export function wireInput(app: App): void {
       const at = worldAt(e);
       if (at) app.separatorClick(snapped(e)?.point ?? at.p);
       return;
+    }
+    // A text or a level mark where the click is; then selected, its text ready to type.
+    if (ui.tool === 'note' || ui.tool === 'levelMark') {
+      const at = worldAt(e);
+      if (!at) return;
+      const p = snapped(e)?.point ?? at.p;
+      return ui.tool === 'note' ? app.addNoteHere(p) : app.addLevelMarkHere(p);
     }
     if (ui.tool === 'roof') {
       const at = worldAt(e);

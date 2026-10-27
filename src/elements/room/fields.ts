@@ -200,7 +200,7 @@ function tilingFields(floors: readonly FloorSolid[], ids: readonly FloorId[], ac
   return [
     { id: 'tileWidth', label: 'floor.tileWidth', kind: 'number', icon: 'width', sub: true, min: 0.01, when: tiled, get: (f) => of(f).width, set: (v) => set({ width: v }) },
     { id: 'tileLength', label: 'floor.tileLength', kind: 'number', icon: 'height', sub: true, min: 0.01, when: tiled, get: (f) => of(f).length, set: (v) => set({ length: v }) },
-    { id: 'tileJoint', label: 'floor.tileJoint', kind: 'number', icon: 'split', sub: true, min: 0, when: tiled, get: (f) => of(f).joint, set: (v) => set({ joint: v }) },
+    { id: 'tileJoint', label: 'floor.tileJoint', kind: 'number', icon: 'split', sub: true, min: 0, decimals: 3, when: tiled, get: (f) => of(f).joint, set: (v) => set({ joint: v }) },
     {
       id: 'tilePattern',
       label: 'floor.tilePattern',
@@ -213,6 +213,6 @@ function tilingFields(floors: readonly FloorSolid[], ids: readonly FloorId[], ac
       set: (v) => set({ pattern: v as TilePattern }),
     },
     { id: 'tileAngle', label: 'floor.tileAngle', kind: 'number', icon: 'rotate', unit: '°', sub: true, when: tiled, get: (f) => of(f).angle, set: (v) => set({ angle: v }) },
-    { id: 'tiles', label: 'floor.tiles', kind: 'readout', icon: 'hash', sub: true, when: tiled, text: (fs) => String(fs.reduce((n, f) => n + tilesFor(f.area, of(f)), 0)) },
+    { id: 'tiles', label: 'floor.tiles', kind: 'readout', icon: 'hash', sub: true, when: tiled, text: (fs) => t('floor.tilesN', { n: fs.reduce((n, f) => n + tilesFor(f.area, of(f)), 0) }) },
   ];
 }

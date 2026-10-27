@@ -1,5 +1,7 @@
 // Every text on screen, in English and Portuguese. Code and keys are English.
 
+import { BUILT_IN_MATERIALS } from '../elements/material/schema';
+
 export type Lang = 'en' | 'pt';
 
 const en = {
@@ -1053,6 +1055,8 @@ const en = {
   'separator.title': 'Room separator',
   'separator.titleMany': '{n} room separators',
   'hint.separatorStart': 'Click where the line between rooms starts',
+  'hint.notePlace': 'Click where the text goes; Esc leaves',
+  'hint.levelMarkPlace': 'Click where the level mark goes; Esc leaves',
   'hint.separatorEnd': 'Click where it ends; Esc finishes',
   'hint.separatorMade': 'Separator made. Click where the next ends, or Esc',
   'cmd.addSeparator': 'Add a room separator',
@@ -1087,12 +1091,13 @@ const en = {
   'floor.buildup.groundSlab': 'Ground slab on gravel',
   'floor.buildup.gypsumCeiling': 'Gypsum board',
   'floor.tiled': 'Laid in pieces',
-  'floor.tileWidth': 'Piece width',
-  'floor.tileLength': 'Piece length',
+  'floor.tileWidth': 'Width',
+  'floor.tileLength': 'Length',
   'floor.tileJoint': 'Joint',
   'floor.tilePattern': 'Pattern',
   'floor.tileAngle': 'Angle',
-  'floor.tiles': 'Pieces (10% waste)',
+  'floor.tiles': 'Pieces',
+  'floor.tilesN': '{n}, with 10% waste',
   'tile.grid': 'Straight',
   'tile.running': 'Running bond',
   'tile.herringbone': 'Herringbone',
@@ -1268,7 +1273,7 @@ const en = {
   'toast.saved': 'Project saved',
   'toast.snapsOn': 'Snaps on',
   'toast.snapsOff': 'Snaps off (S turns them on)',
-  'empty.hint': 'Draw the first wall: press W or the wall icon on the left',
+  'empty.hint': 'Draw the first wall: press W, or Wall in the Architecture tab above',
   'tool.doorKey': 'Place door (D)',
   'tool.selectKey': 'Select (V)',
   'tool.wallKey': 'Draw wall (W)',
@@ -2436,6 +2441,8 @@ const pt: Record<MessageKey, string> = {
   'separator.title': 'Separador de cômodo',
   'separator.titleMany': '{n} separadores de cômodo',
   'hint.separatorStart': 'Clique no começo da linha entre os cômodos',
+  'hint.notePlace': 'Clique onde vai o texto; Esc sai',
+  'hint.levelMarkPlace': 'Clique onde vai a cota de nível; Esc sai',
   'hint.separatorEnd': 'Clique no fim; Esc termina',
   'hint.separatorMade': 'Separador feito. Clique no fim do próximo, ou Esc',
   'cmd.addSeparator': 'Adicionar separador de cômodo',
@@ -2470,12 +2477,13 @@ const pt: Record<MessageKey, string> = {
   'floor.buildup.groundSlab': 'Piso sobre brita (térreo)',
   'floor.buildup.gypsumCeiling': 'Placa de gesso',
   'floor.tiled': 'Paginação',
-  'floor.tileWidth': 'Largura da peça',
-  'floor.tileLength': 'Comprimento da peça',
+  'floor.tileWidth': 'Largura',
+  'floor.tileLength': 'Comprimento',
   'floor.tileJoint': 'Junta',
   'floor.tilePattern': 'Padrão',
   'floor.tileAngle': 'Ângulo',
-  'floor.tiles': 'Peças (10% de perda)',
+  'floor.tiles': 'Peças',
+  'floor.tilesN': '{n}, com 10% de perda',
   'tile.grid': 'Reto',
   'tile.running': 'Amarração',
   'tile.herringbone': 'Espinha de peixe',
@@ -2651,7 +2659,7 @@ const pt: Record<MessageKey, string> = {
   'toast.saved': 'Projeto salvo',
   'toast.snapsOn': 'Encaixes ligados',
   'toast.snapsOff': 'Encaixes desligados (S liga de novo)',
-  'empty.hint': 'Desenhe a primeira parede: tecla W ou o ícone de parede, à esquerda',
+  'empty.hint': 'Desenhe a primeira parede: tecla W, ou Parede na aba Arquitetura, acima',
   'tool.doorKey': 'Colocar porta (D)',
   'tool.selectKey': 'Selecionar (V)',
   'tool.wallKey': 'Desenhar parede (W)',
@@ -2821,13 +2829,14 @@ export const name = (stored: string): string => {
   return copy ? `${name(copy[1]!)} (${copy[2]})` : stored;
 };
 
-const BUILT_IN_MATERIALS = new Set(['plaster', 'brick', 'concrete', 'gypsum', 'insulation', 'wood', 'mdfWhite', 'metal', 'glass']);
+// The built-in materials' ids, from their list: one list, so a material added there is named here too.
+const BUILT_IN_IDS = new Set(BUILT_IN_MATERIALS.map((m) => m.id));
 
 /** A layer's material: a built-in one in the language of the moment, the user's own as typed. */
 /** The type marks' prefixes (marks.ts): P and J in Portuguese, D and W in English. */
 export const markPrefix = (): { door: string; window: string } => ({ door: t('mark.door'), window: t('mark.window') });
 
-export const materialName = (id: string): string => (BUILT_IN_MATERIALS.has(id) ? t(`mat.${id}` as MessageKey) : id);
+export const materialName = (id: string): string => (BUILT_IN_IDS.has(id) ? t(`mat.${id}` as MessageKey) : id);
 
 /** A material as shown: its own name, or a built-in one's in the interface's language. */
 export const materialLabel = (m: { readonly id: string; readonly name: string }): string => m.name || materialName(m.id);

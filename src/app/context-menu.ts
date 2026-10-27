@@ -33,7 +33,7 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
   flipSwing: { icon: 'swing' },
   centerOpening: { icon: 'center' },
   addFloor: { icon: 'slab' },
-  addCeiling: { icon: 'slab' },
+  addCeiling: { icon: 'arrowUp' },
   distribute: { icon: 'distribute' },
   frameSelection: { icon: 'zoomSel', keys: 'F' },
   properties: { icon: 'panel' },
