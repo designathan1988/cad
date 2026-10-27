@@ -1,6 +1,7 @@
 // Guardrails (ref/chat.txt:92, 137): along a path on a level (a balcony's edge, a slab's, a void's), a
 // top rail at its height, a mid rail, and posts at its corners and at most POST_SPACING apart. A stair's
-// and a ramp's handrails are their own (elements/stair).
+// and a ramp's handrails are their own (elements/stair); a guardrail can go along one of their sides,
+// rising with it.
 
 import { distance, type Point2 } from '../../core/vector';
 
@@ -20,10 +21,11 @@ export interface Railing {
   readonly baseOffset: number;
   /**
    * Round a stair's well, on the floor it reaches (its path follows the well, all but the side the
-   * stair arrives at), or along a floor's edge (a balcony's, a mezzanine's: all round it): the stored
-   * `points` being only what it had last.
+   * stair arrives at); along one side of a stair or a ramp (`side`: which of its handrail lines,
+   * rising with its steps or its slope); or along a floor's edge (a balcony's, a mezzanine's: all
+   * round it): the stored `points` being only what it had last.
    */
-  readonly host?: { readonly stairId: string } | { readonly floorId: string };
+  readonly host?: { readonly stairId: string; readonly side?: number } | { readonly floorId: string };
   /** What fills it below the top rail: a mid rail (when not set), balusters, or glass panels. */
   readonly infill?: RailingInfill;
 }
@@ -80,15 +82,19 @@ export function wellPath(well: readonly Point2[], a: Point2, b: Point2): Point2[
   ];
 }
 
-/** Where its posts stand: its corners, and between them as evenly as POST_SPACING allows. */
-export function postsOf(r: { readonly points: readonly Point2[] }): Point2[] {
-  const out: Point2[] = [];
+/**
+ * Where its posts stand: its corners, and between them as evenly as POST_SPACING allows; each with its
+ * foot's height above the railing's bottom (`rise`, per point: along a stair's side), 0 when level.
+ */
+export function postsOf(r: { readonly points: readonly Point2[]; readonly rise?: readonly number[] }): (Point2 & { readonly z: number })[] {
+  const out: (Point2 & { z: number })[] = [];
+  const z = (i: number) => r.rise?.[i] ?? 0;
   for (let i = 0; i + 1 < r.points.length; i++) {
     const a = r.points[i]!;
     const b = r.points[i + 1]!;
     const n = Math.max(1, Math.ceil(distance(a, b) / POST_SPACING));
-    for (let k = 0; k < n; k++) out.push({ x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n });
+    for (let k = 0; k < n; k++) out.push({ x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n, z: z(i) + ((z(i + 1) - z(i)) * k) / n });
   }
-  if (r.points.length > 0) out.push(r.points.at(-1)!);
+  if (r.points.length > 0) out.push({ ...r.points.at(-1)!, z: z(r.points.length - 1) });
   return out;
 }

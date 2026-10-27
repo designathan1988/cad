@@ -11,6 +11,8 @@ export interface StairFieldActions {
   readonly updateStairs: (ids: readonly string[], patch: StairPatch) => void;
   /** A guardrail round the stair's well, on the floor it reaches; null when it cannot have one (no level there, no well, one already). */
   readonly wellRailing?: (s: StairSolid) => (() => void) | null;
+  /** Guardrails along its sides that have none, rising with it; null when every side has one. */
+  readonly sideRailings?: (s: StairSolid) => (() => void) | null;
 }
 
 export function stairFields(stairs: readonly StairSolid[], act: StairFieldActions): Field<StairSolid>[] {
@@ -121,6 +123,15 @@ export function stairFields(stairs: readonly StairSolid[], act: StairFieldAction
       when: (items) => items.length === 1 && act.wellRailing !== undefined,
       enabled: (items) => act.wellRailing?.(items[0]!) != null,
       run: () => act.wellRailing?.(stairs[0]!)?.(),
+    },
+    {
+      id: 'sideRailings',
+      label: 'stair.sideRailings',
+      kind: 'action',
+      sub: true,
+      when: (items) => items.length === 1 && act.sideRailings !== undefined,
+      enabled: (items) => act.sideRailings?.(items[0]!) != null,
+      run: () => act.sideRailings?.(stairs[0]!)?.(),
     },
     {
       id: 'railing',

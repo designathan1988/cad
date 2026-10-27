@@ -85,7 +85,9 @@ export function renderChrome(app: App): void {
   shell.explode.setAttribute('aria-pressed', String(spread));
   shell.xray.setAttribute('aria-pressed', String(ui.view3d.xray));
   shell.box.setAttribute('aria-pressed', String(ui.view3d.box !== null));
-  shell.ortho.setAttribute('aria-pressed', String(ui.view3d.ortho));
+  // A walker sees in perspective (scene-3d.ts, startWalk): the parallel view is off while walking, and
+  // back when the walk ends.
+  shell.ortho.setAttribute('aria-pressed', String(ui.view3d.ortho && app.walker === null));
   shell.explode.setAttribute('aria-disabled', String(alone));
   shell.cut.setAttribute('aria-pressed', String(ui.view3d.cut));
   const levelKey = JSON.stringify([getLang(), doc.levels.map((l) => [l.id, l.name, l.elevation])]);

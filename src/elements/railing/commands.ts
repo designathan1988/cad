@@ -9,6 +9,12 @@ export const addRailing = (railing: Railing): Command<Doc> => ({
   apply: (doc) => ({ ...doc, railings: [...doc.railings, railing] }),
 });
 
+/** Several at once, one step to undo (a stair's sides). */
+export const addRailings = (railings: readonly Railing[]): Command<Doc> => ({
+  label: 'cmd.addRailing',
+  apply: (doc) => (railings.length ? { ...doc, railings: [...doc.railings, ...railings] } : doc),
+});
+
 export type RailingPatch = { readonly height?: number; readonly baseOffset?: number; readonly infill?: RailingInfill };
 
 export const updateRailings = (ids: readonly string[], patch: RailingPatch): Command<Doc> => ({

@@ -23,6 +23,8 @@ export interface StairSolid {
   readonly walk: readonly Point2[];
   /** Handrails: polylines (x, y, z), z above the stair's bottom. */
   readonly rails: readonly (readonly { x: number; y: number; z: number }[])[];
+  /** The same lines whether it has handrails or not: where a guardrail along a side goes. */
+  readonly sides: readonly (readonly { x: number; y: number; z: number }[])[];
   readonly bottom: number;
   readonly height: number;
   readonly risers: number;
@@ -127,7 +129,7 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
     }
     walk.push(stair.at, o);
     for (const s of [-1, 1]) rails.push(railPts.map(([p, zz]) => ({ ...add(p, scale(across, (s * w) / 2)), z: zz + RAIL_HEIGHT })));
-    return { stair, parts, walk, rails: stair.railing === false ? [] : rails, bottom, height, risers: runs, riser: rise };
+    return { stair, parts, walk, rails: stair.railing === false ? [] : rails, sides: rails, bottom, height, risers: runs, riser: rise };
   }
   // Three steps fanned about the inner corner of a square of side w, its near edge centred at `near`,
   // climbed along `dir` and turning to `turn`: 30° each, the first by the flight that arrives, the
@@ -206,5 +208,5 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
     }
     rails.push(Array.from({ length: risers + 1 }, (_, i) => ({ ...at(r, start + i * da), z: Math.min(i + 1, risers) * riser + RAIL_HEIGHT })));
   }
-  return { stair, parts, walk, rails: stair.railing === false ? [] : rails, bottom, height, risers, riser };
+  return { stair, parts, walk, rails: stair.railing === false ? [] : rails, sides: rails, bottom, height, risers, riser };
 }

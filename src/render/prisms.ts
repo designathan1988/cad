@@ -220,6 +220,7 @@ export function railingGeometry(
   infill: 'rails' | 'balusters' | 'glass' = 'rails',
   spacing = 0.1,
   baluster = 0.02,
+  rise?: readonly number[],
 ): { frame: THREE.BufferGeometry; glass: THREE.BufferGeometry | null } {
   const pos: number[] = [];
   const v = (x: number, y: number, z: number) => new THREE.Vector3(x, z, -y);
@@ -235,24 +236,27 @@ export function railingGeometry(
     const B = corners(b, zb);
     for (let i = 0; i < 4; i++) quad(A[i]!, B[i]!, B[(i + 1) % 4]!, A[(i + 1) % 4]!);
   };
-  const post = (p: Point2, s = h, top = height) => {
-    const c = [v(p.x - s, p.y - s, 0), v(p.x + s, p.y - s, 0), v(p.x + s, p.y + s, 0), v(p.x - s, p.y + s, 0)];
-    const t = [v(p.x - s, p.y - s, top), v(p.x + s, p.y - s, top), v(p.x + s, p.y + s, top), v(p.x - s, p.y + s, top)];
+  // From its foot (z0) up `top`: on a stair's side the feet rise with the steps.
+  const post = (p: Point2, s = h, top = height, z0 = 0) => {
+    const c = [v(p.x - s, p.y - s, z0), v(p.x + s, p.y - s, z0), v(p.x + s, p.y + s, z0), v(p.x - s, p.y + s, z0)];
+    const t = [v(p.x - s, p.y - s, z0 + top), v(p.x + s, p.y - s, z0 + top), v(p.x + s, p.y + s, z0 + top), v(p.x - s, p.y + s, z0 + top)];
     for (let i = 0; i < 4; i++) quad(c[i]!, c[(i + 1) % 4]!, t[(i + 1) % 4]!, t[i]!);
   };
-  for (const p of posts) post(p);
+  for (const p of posts) post(p, h, height, (p as Point2 & { z?: number }).z ?? 0);
   const glass: number[] = [];
   for (let i = 0; i + 1 < points.length; i++) {
     const a = points[i]!;
     const b = points[i + 1]!;
-    bar(a, height, b, height);
+    const za = rise?.[i] ?? 0;
+    const zb = rise?.[i + 1] ?? 0;
+    bar(a, za + height, b, zb + height);
     const len = Math.hypot(b.x - a.x, b.y - a.y);
-    if (infill === 'rails') bar(a, height / 2, b, height / 2);
+    if (infill === 'rails') bar(a, za + height / 2, b, zb + height / 2);
     else if (infill === 'balusters' && len > spacing) {
       // A bottom rail, and a baluster every `spacing` between it and the top rail.
-      bar(a, 0.1, b, 0.1);
+      bar(a, za + 0.1, b, zb + 0.1);
       const n = Math.floor(len / spacing);
-      for (let k = 1; k < n; k++) post({ x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n }, baluster / 2, height);
+      for (let k = 1; k < n; k++) post({ x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n }, baluster / 2, height, za + ((zb - za) * k) / n);
     } else if (infill === 'glass' && len > 2 * size) {
       // A pane between the posts, from a hand above the floor to under the top rail, on the rail's line.
       const u = { x: (b.x - a.x) / len, y: (b.y - a.y) / len };
@@ -261,11 +265,19 @@ export function railingGeometry(
       const t = 0.006;
       const nx = -u.y * t;
       const ny = u.x * t;
+      // Its foot and top at each end, rising with the steps along a stair's side.
       const z0 = 0.05;
       const z1 = height - h;
       const g = (x: number, y: number, z: number) => [x, z, -y];
       const face = (sx: number, sy: number) =>
-        glass.push(...g(p0.x + sx, p0.y + sy, z0), ...g(p1.x + sx, p1.y + sy, z0), ...g(p1.x + sx, p1.y + sy, z1), ...g(p0.x + sx, p0.y + sy, z0), ...g(p1.x + sx, p1.y + sy, z1), ...g(p0.x + sx, p0.y + sy, z1));
+        glass.push(
+          ...g(p0.x + sx, p0.y + sy, za + z0),
+          ...g(p1.x + sx, p1.y + sy, zb + z0),
+          ...g(p1.x + sx, p1.y + sy, zb + z1),
+          ...g(p0.x + sx, p0.y + sy, za + z0),
+          ...g(p1.x + sx, p1.y + sy, zb + z1),
+          ...g(p0.x + sx, p0.y + sy, za + z1),
+        );
       face(nx, ny);
       face(-nx, -ny);
     }

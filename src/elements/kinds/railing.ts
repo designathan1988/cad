@@ -1,5 +1,6 @@
 // Guardrails in the registry (contract.ts): elements/railing holds the element itself. One held by a
-// stair (round its well, on the floor the stair reaches) takes its path from the well each time.
+// stair takes its path from it each time: round its well, on the floor the stair reaches, or along one
+// of its sides, rising with it.
 
 import { finite, isObject, isPoint } from '../../core/guards';
 import type { Point2 } from '../../core/vector';
@@ -11,6 +12,7 @@ import { BALUSTER_SIZE, BALUSTER_SPACING, postsOf, RAIL_SIZE, type Railing, RAIL
 import type { KindSolid } from '../contract';
 import { type Material, materialIn } from '../material/schema';
 import { stairWell } from '../stair/geometry';
+import { RAIL_HEIGHT } from '../stair/schema';
 import { arrivalOf, solidOfStair } from '../stair/well';
 import { deriveFloor } from '../room/derive';
 import { nearSegment, throughElement, trace } from './paint';
@@ -20,6 +22,8 @@ export interface RailingSolid {
   readonly railing: Railing;
   readonly bottom: number;
   readonly points: readonly Point2[];
+  /** Each point's foot above `bottom` (m), along a stair's or a ramp's side; level when not set. */
+  readonly rise?: readonly number[];
   /** The project's glass, for panes. */
   readonly glass: Material;
 }
@@ -44,7 +48,9 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
     finite(r.height) &&
     r.height > 0 &&
     finite(r.baseOffset) &&
-    (r.host === undefined || (isObject(r.host) && (typeof r.host.stairId === 'string' || typeof r.host.floorId === 'string'))) &&
+    (r.host === undefined ||
+      (isObject(r.host) &&
+        ((typeof r.host.stairId === 'string' && (r.host.side === undefined || (Number.isInteger(r.host.side) && (r.host.side as number) >= 0))) || typeof r.host.floorId === 'string'))) &&
     (r.infill === undefined || r.infill === 'rails' || r.infill === 'balusters' || r.infill === 'glass'),
   // Not memoised: one held by a stair moves with it.
   derive: (doc, r, g) => {
@@ -62,6 +68,22 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
     const stair = host && 'stairId' in host ? doc.stairs.find((s) => s.id === host.stairId) : undefined;
     if (!stair) return { railing: r, bottom, points: r.points, glass };
     const solid = solidOfStair(doc, stair);
+    // Along one of its sides: its handrail's line, the feet at the steps' nosing (the line is a
+    // handrail's height above it), from the stair's bottom.
+    const sideNo = host && 'stairId' in host ? host.side : undefined;
+    const side = sideNo !== undefined ? solid.sides[sideNo] : undefined;
+    // A side the stair no longer has (a U made straight): where it was last, not round the well.
+    if (sideNo !== undefined && (!side || side.length < 2)) return { railing: r, bottom, points: r.points, glass };
+    if (side && side.length >= 2) {
+      const foot = Math.min(...side.map((p) => p.z - RAIL_HEIGHT));
+      return {
+        railing: r,
+        bottom: solid.bottom + foot + r.baseOffset,
+        points: side.map((p) => ({ x: p.x, y: p.y })),
+        rise: side.map((p) => p.z - RAIL_HEIGHT - foot),
+        glass,
+      };
+    }
     const arrival = arrivalOf(solid);
     const path = arrival ? wellPath(stairWell(solid), arrival[0], arrival[1]) : [];
     return { railing: r, bottom, points: path.length >= 2 ? path : r.points, glass };
@@ -72,7 +94,7 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
   outlines: (s) => [s.points],
   hit: (s, p, near) => s.points.slice(1).some((q, i) => nearSegment(p, s.points[i]!, q, near)),
   pick: 'beforeWalls',
-  span: (s) => ({ bottom: s.bottom, top: s.bottom + s.railing.height }),
+  span: (s) => ({ bottom: s.bottom, top: s.bottom + Math.max(0, ...(s.rise ?? [])) + s.railing.height }),
   // Moved on its own, it lets go of its stair: it stays where it was put.
   moved: (r, d) => {
     const { host: _host, ...rest } = r;
@@ -99,7 +121,7 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
   },
   // Its frame; and its glass, when it has panes.
   solid: (s) => {
-    const g = railingGeometry(s.points, postsOf(s), s.railing.height, RAIL_SIZE, s.railing.infill ?? 'rails', BALUSTER_SPACING, BALUSTER_SIZE);
+    const g = railingGeometry(s.points, postsOf(s), s.railing.height, RAIL_SIZE, s.railing.infill ?? 'rails', BALUSTER_SPACING, BALUSTER_SIZE, s.rise);
     const frame: KindSolid = { geometry: g.frame, y: s.bottom, material: 'side', edges: false };
     return g.glass ? [frame, { geometry: g.glass, y: s.bottom, material: s.glass, edges: false }] : frame;
   },
