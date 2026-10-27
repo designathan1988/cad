@@ -3,6 +3,7 @@
 // way back to the type's value. Calculated parameters are shown, not edited. Several objects of one
 // definition are edited together; of several definitions, only their place.
 
+import { LENGTH_LIMITS } from './evaluate';
 import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
 import type { Field } from '../../ui/fields';
@@ -70,7 +71,8 @@ export function objectFields(items: readonly ObjectItem[], doc: Doc, dispatch: (
           ...own,
           kind: 'number',
           icon: p.kind !== 'length' ? 'hash' : vertical.has(p.name) ? 'height' : 'width',
-          ...(p.min !== undefined ? { min: p.min } : {}),
+          // A length's least is a millimetre (its range is the usual one, not a lock); a count's, its own.
+          ...(p.kind === 'length' ? { min: LENGTH_LIMITS.min } : p.min !== undefined && (p.kind === 'integer' || p.min >= 0) ? { min: p.kind === 'integer' ? p.min : 0 } : {}),
           ...(p.kind === 'length' ? {} : { unit: '' }),
           // A plain number shows as many decimals as its step has (a lamp's 9 W, not 9,00 W).
           ...(p.kind === 'integer' ? { decimals: 0 } : p.kind === 'number' && p.step !== undefined ? { decimals: stepDecimals(p.step) } : {}),

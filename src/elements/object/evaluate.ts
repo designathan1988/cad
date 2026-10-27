@@ -112,12 +112,25 @@ function values(def: ObjectDefinition, given: Readonly<Record<string, number | s
   return { env, materials };
 }
 
-/** A value within its parameter's range, on its step; whole for an integer, 0 or 1 for a yes/no. */
+/** The least and greatest length any object takes (m): a millimetre, a building's length. */
+export const LENGTH_LIMITS = { min: 0.001, max: 500 } as const;
+
+/**
+ * A value as the object takes it, on its step; whole for an integer, 0 or 1 for a yes/no. A length's or a
+ * number's range is its usual one, not a lock (a sofa of 5 m, a table of 45 cm are the user's to make):
+ * it is held only to what makes sense (a length from 1 mm to 500 m; a number not below 0 when its range
+ * starts there), and one outside its range is said (outsideRange). A count (integer, choice) keeps its
+ * range: formulas rely on it.
+ */
 export function held(p: ParamDef, v: number): number {
   let x = v;
   if (p.kind === 'bool') return x !== 0 ? 1 : 0;
-  if (p.min !== undefined) x = Math.max(p.min, x);
-  if (p.max !== undefined) x = Math.min(p.max, x);
+  if (p.kind === 'length') x = Math.min(LENGTH_LIMITS.max, Math.max(LENGTH_LIMITS.min, x));
+  else if (p.kind === 'number') x = p.min !== undefined && p.min >= 0 ? Math.max(0, x) : x;
+  else {
+    if (p.min !== undefined) x = Math.max(p.min, x);
+    if (p.max !== undefined) x = Math.min(p.max, x);
+  }
   if (p.step !== undefined && p.step > 0) x = Math.round(x / p.step) * p.step;
   if (p.kind === 'integer' || p.kind === 'choice') x = Math.round(x);
   return x;
@@ -251,11 +264,25 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
     }
   });
   const handles = depth === 0 ? def.handles.flatMap((h) => placeHandle(h, env, frame, problems)) : [];
-  const warnings = depth === 0 ? (def.rules ?? []).filter((r) => {
+  // A length or a number outside its usual range: said, not changed.
+  const outside: Words[] =
+    depth === 0
+      ? def.params.flatMap((p) => {
+          if ((p.kind !== 'length' && p.kind !== 'number') || p.formula !== undefined) return [];
+          const v = env[p.name];
+          if (v === undefined || ((p.min === undefined || v >= p.min - 1e-9) && (p.max === undefined || v <= p.max + 1e-9))) return [];
+          const f = (n: number) => (p.kind === 'length' ? n.toFixed(2).replace('.', ',') : String(n).replace('.', ','));
+          const fe = (n: number) => (p.kind === 'length' ? n.toFixed(2) : String(n));
+          const range = { pt: `${p.min !== undefined ? f(p.min) : '…'} a ${p.max !== undefined ? f(p.max) : '…'}`, en: `${p.min !== undefined ? fe(p.min) : '…'} to ${p.max !== undefined ? fe(p.max) : '…'}` };
+          return [{ pt: `${p.label.pt} fora da faixa usual (${range.pt})`, en: `${p.label.en} outside its usual range (${range.en})` }];
+        })
+      : [];
+  const rules = depth === 0 ? (def.rules ?? []).filter((r) => {
     const v = evaluateFormula(r.when, env);
     if (!v.ok) problems.push(`rule ${r.when}: ${v.error}`);
     return v.ok && v.value !== 0;
   }).map((r) => r.message) : [];
+  const warnings = [...outside, ...rules];
   // Its own light, where its formulas put it.
   if (def.light) {
     const l = def.light;
