@@ -13,6 +13,8 @@ import type { Expr, HandleDef, MeshData, ObjectDefinition, ObjectInstance, Param
 export type Piece = { readonly cut?: boolean } & (
   | { readonly kind: 'box'; readonly cx: number; readonly cy: number; readonly z: number; readonly w: number; readonly d: number; readonly h: number; readonly angle: number; readonly material: Material; /** Its edges' radius, 0 square; never more than half its least side. */ readonly round: number }
   | { readonly kind: 'cylinder'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly r2: number; readonly h: number; readonly material: Material }
+  /** A profile extruded up from z by h: its corners in the world (plan), counter-clockwise. */
+  | { readonly kind: 'profile'; readonly cx: number; readonly cy: number; readonly z: number; readonly h: number; readonly points: readonly { readonly x: number; readonly y: number }[]; readonly material: Material }
   /** A rounded mass (an ellipsoid) on its base's centre: r across, h up. */
   | { readonly kind: 'sphere'; readonly cx: number; readonly cy: number; readonly z: number; readonly r: number; readonly h: number; readonly material: Material }
   /** A mesh stretched to its box (centre, size and turn, as a box's). */
@@ -190,6 +192,17 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         if (r === null || h === null || r2 === null || h <= 1e-6 || Math.max(r, r2) <= 1e-6) continue;
         const centre = apply(frame, { x: ox, y: oy, z: oz });
         pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'cylinder', cx: centre.x, cy: centre.y, z: centre.z, r: Math.max(0, r), r2: Math.max(0, r2), h, material: materialOf(part) });
+      } else if (part.kind === 'profile') {
+        const h = num(part.h, at, `${label} height`);
+        const local = part.points.map(([px, py], k) => ({ x: num(px, at, `${label} x${k + 1}`), y: num(py, at, `${label} y${k + 1}`) }));
+        if (h === null || h <= 1e-6 || local.some((q) => q.x === null || q.y === null)) continue;
+        let points = local.map((q) => apply(frame, { x: ox + q.x!, y: oy + q.y!, z: 0 })).map((q) => ({ x: q.x, y: q.y }));
+        // Wound counter-clockwise (the extrusion's faces outward), and not a sliver.
+        const area = points.reduce((s, q, k) => s + q.x * points[(k + 1) % points.length]!.y - points[(k + 1) % points.length]!.x * q.y, 0) / 2;
+        if (Math.abs(area) < 1e-8) continue;
+        if (area < 0) points = [...points].reverse();
+        const base = apply(frame, { x: ox, y: oy, z: oz });
+        pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'profile', cx: base.x, cy: base.y, z: base.z, h, points, material: materialOf(part) });
       } else if (part.kind === 'sphere') {
         const r = num(part.r, at, `${label} radius`);
         const h = num(part.h, at, `${label} height`);
@@ -268,6 +281,7 @@ function placeHandle(h: HandleDef, env: Env, frame: Frame, problems: string[]): 
 
 /** A piece's outline in plan: a box's four corners, a cylinder's circle as a polygon. */
 export function pieceOutline(p: Piece): { x: number; y: number }[] {
+  if (p.kind === 'profile') return p.points.map((q) => ({ x: q.x, y: q.y }));
   if (p.kind === 'cylinder' || p.kind === 'sphere') {
     const r = p.kind === 'cylinder' ? Math.max(p.r, p.r2) : p.r;
     return Array.from({ length: 24 }, (_, k) => ({ x: p.cx + r * Math.cos((k / 24) * 2 * Math.PI), y: p.cy + r * Math.sin((k / 24) * 2 * Math.PI) }));

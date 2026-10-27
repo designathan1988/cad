@@ -183,6 +183,14 @@ export function creaseEdges(geo: THREE.BufferGeometry, angle = 20): THREE.Buffer
 /** A piece's geometry where it is, in three.js's axes: plan x, y and height z are x, −z and y; a turn in
  * plan (counter-clockwise) is one about y. For the 3D, the GLB and the definition editor alike. */
 export function pieceGeometry(piece: Piece): THREE.BufferGeometry {
+  if (piece.kind === 'profile') {
+    // In plan x and y, extruded along +z by h; turned −90° about x: plan y to −z, the extrusion up.
+    const shape = new THREE.Shape(piece.points.map((q) => new THREE.Vector2(q.x, q.y)));
+    const g = new THREE.ExtrudeGeometry(shape, { depth: piece.h, bevelEnabled: false });
+    g.rotateX(-Math.PI / 2);
+    g.translate(0, piece.z, 0);
+    return g;
+  }
   const geometry =
     piece.kind === 'mesh'
       ? meshGeometry(piece)

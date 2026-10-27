@@ -18,6 +18,7 @@ function isPart(p: unknown): p is Part {
   if (p.kind === 'box') return isExpr(p.w) && isExpr(p.d) && isExpr(p.h) && (p.round === undefined || isExpr(p.round));
   if (p.kind === 'cylinder') return isExpr(p.r) && isExpr(p.h) && (p.r2 === undefined || isExpr(p.r2));
   if (p.kind === 'sphere') return isExpr(p.r) && isExpr(p.h);
+  if (p.kind === 'profile') return Array.isArray(p.points) && p.points.length >= 3 && p.points.every((q) => Array.isArray(q) && q.length === 2 && isExpr(q[0]) && isExpr(q[1])) && isExpr(p.h);
   if (p.kind === 'object') return typeof p.definition === 'string' && (p.values === undefined || isObject(p.values));
   if (p.kind === 'mesh') return typeof p.mesh === 'string' && isExpr(p.w) && isExpr(p.d) && isExpr(p.h);
   return false;

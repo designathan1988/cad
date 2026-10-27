@@ -3436,6 +3436,20 @@ textarea.text-field {
   border-radius: var(--radius);
   background: var(--bg-2);
 }
+/* A profile's corners (definition-editor.ts): a cell across the grid, a line each. */
+.ed-points-cell {
+  grid-column: 1 / -1;
+}
+.ed-points {
+  width: 100%;
+  font: var(--fs-sm) / 1.5 var(--font);
+  color: var(--text);
+  background: var(--field);
+  border: var(--line) solid transparent;
+  border-radius: var(--radius);
+  padding: var(--sp-1) var(--sp-2);
+  resize: vertical;
+}
 /* A part marked as a void, in its card's head (definition-editor.ts). */
 .ed-cut {
   display: inline-flex;

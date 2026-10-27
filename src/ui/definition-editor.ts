@@ -215,7 +215,26 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
             )
           : null;
       const size =
-        p.kind === 'box' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h')), round!] : p.kind === 'mesh' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h'))] : p.kind === 'cylinder' ? [ex('r', t('ed.r')), top!, ex('h', t('ed.h'))] : p.kind === 'sphere' ? [ex('r', t('ed.r')), ex('h', t('ed.h'))] : [ex('angle', t('ed.angle'))];
+        p.kind === 'profile'
+          ? [
+              ex('h', t('ed.h')),
+              (() => {
+                // One corner a line, its x and y as formulas split by ';' (a formula's own commas stay).
+                const area = el('textarea', { class: 'ed-points', rows: '4', spellcheck: 'false', 'data-focus': `k${i}:points`, 'aria-label': `${t('ed.points')}: ${t('ed.part')} ${i + 1}` }) as HTMLTextAreaElement;
+                area.value = p.points.map(([a, b]) => `${exprText(a)}; ${exprText(b)}`).join('\n');
+                area.addEventListener('change', () => {
+                  const points = area.value
+                    .split('\n')
+                    .map((line) => line.split(';'))
+                    .filter((xy) => xy.length === 2 && xy[0]!.trim() !== '' && xy[1]!.trim() !== '')
+                    .map(([a, b]) => [exprOf(a!), exprOf(b!)] as const);
+                  if (points.length >= 3) upd({ points } as Partial<Part>);
+                  else area.value = p.points.map(([a, b]) => `${exprText(a)}; ${exprText(b)}`).join('\n');
+                });
+                return el('label', { class: 'ed-cell ed-points-cell' }, el('span', {}, t('ed.points')), area);
+              })(),
+            ]
+          : p.kind === 'box' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h')), round!] : p.kind === 'mesh' ? [ex('w', t('ed.w')), ex('d', t('ed.d')), ex('h', t('ed.h'))] : p.kind === 'cylinder' ? [ex('r', t('ed.r')), top!, ex('h', t('ed.h'))] : p.kind === 'sphere' ? [ex('r', t('ed.r')), ex('h', t('ed.h'))] : [ex('angle', t('ed.angle'))];
       const rep = p.repeat;
       const repIn = (key: 'count' | 'dx' | 'dy' | 'dz', label: string) =>
         el(
@@ -261,6 +280,8 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
         ? { kind, name: { pt: 'Caixa', en: 'Box' }, x: 0, y: 0, z: 0, w: 0.2, d: 0.2, h: 0.2 }
         : kind === 'cylinder'
           ? { kind, name: { pt: 'Cilindro', en: 'Cylinder' }, x: 0, y: 0, z: 0, r: 0.1, h: 0.2 }
+          : kind === 'profile'
+            ? { kind, name: { pt: 'Perfil', en: 'Profile' }, x: 0, y: 0, z: 0, points: [[0, 0], [0.4, 0], [0.4, 0.2], [0.2, 0.4], [0, 0.4]], h: 0.1 }
           : kind === 'sphere'
             ? { kind, name: { pt: 'Esfera', en: 'Sphere' }, x: 0, y: 0, z: 0, r: 0.1, h: 0.2 }
             : { kind, name: { pt: 'Objeto', en: 'Object' }, definition: defs[0]?.id ?? '', x: 0, y: 0, z: 0 };
@@ -302,6 +323,7 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
         addButton(t('ed.addBox'), 'addBox', () => set({ ...draft, parts: [...draft.parts, blank('box')] })),
         addButton(t('ed.addCylinder'), 'addCyl', () => set({ ...draft, parts: [...draft.parts, blank('cylinder')] })),
         addButton(t('ed.addSphere'), 'addSphere', () => set({ ...draft, parts: [...draft.parts, blank('sphere')] })),
+        addButton(t('ed.addProfile'), 'addProfile', () => set({ ...draft, parts: [...draft.parts, blank('profile')] })),
         ...(defs.length ? [addButton(t('ed.addObject'), 'addObj', () => set({ ...draft, parts: [...draft.parts, blank('object')] }))] : []),
         ...(light ? [] : [addButton(t('ed.addLight'), 'addLight', () => set({ ...draft, light: { x: 0, y: 0, z: 2, watts: 9, kelvin: 3000 } }))]),
       ),
