@@ -658,6 +658,14 @@ export class Scene3D {
       t.rasterizeScene = false;
       // Its scene's bounding volumes built in a worker: built here, the page stood still for seconds.
       t.setBVHWorker(new GenerateMeshBVHWorker());
+      // Its shader's switches as this view will have them, before the first compile: the library starts
+      // with depth of field and fog on and no background, sets them right on its first frame, and each
+      // change compiles the shader again (minutes on Windows the first time). Only the camera's type
+      // (perspective, parallel) changes later.
+      const shader = (t as unknown as { _pathTracer: { material: { setDefine(name: string, value: number): void } } })._pathTracer.material;
+      shader.setDefine('FEATURE_DOF', 0);
+      shader.setDefine('FEATURE_BACKGROUND_MAP', 1);
+      shader.setDefine('FEATURE_FOG', 0);
       this.tracer = t;
       const sky = new GradientEquirectTexture(256);
       sky.topColor.set(0x9fbfe6);
