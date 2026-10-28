@@ -68,23 +68,6 @@ export function wallFields(
         set: (v) => act.setWallType(v),
       },
       {
-        // What stays where it was when the type, and so the thickness, changes: the room's clear size,
-        // the thickness going to the other side, or the reference line, the faces moving about it.
-        id: 'keepOnType',
-        label: 'panel.keepOnType',
-        icon: 'refInterior',
-        kind: 'segmented',
-        sub: true,
-        wide: true,
-        labelled: true,
-        options: [
-          { value: 'clear', label: t('keep.clear'), short: t('keep.clear') },
-          { value: 'line', label: t('keep.line'), short: t('keep.line') },
-        ],
-        get: () => (act.keepClear ? 'clear' : 'line'),
-        set: (v) => act.setKeepClear(v === 'clear'),
-      },
-      {
         id: 'editType',
         label: 'types.editThis',
         kind: 'action',
@@ -105,21 +88,9 @@ export function wallFields(
         // The body stays where it is; the line moves to its face or centre (edit.ts).
         set: (v) => act.setReferenceLine(v as ReferenceLine),
       },
-      {
-        // Its phase in a renovation: drawn in a colour of its own with the overrides on (layer-sets.ts).
-        id: 'phase',
-        label: 'panel.phase',
-        kind: 'segmented',
-        options: [
-          { value: 'new', label: t('phase.new'), short: t('phase.new') },
-          { value: 'existing', label: t('phase.existing'), short: t('phase.existing') },
-          { value: 'demolish', label: t('phase.demolish'), short: t('phase.demolish') },
-        ],
-        labelled: true,
-        wide: true,
-        get: (w) => w.phase ?? 'new',
-        set: (v) => act.updateWalls((v === 'new' ? { phase: undefined } : { phase: v as WallPhase }) as Partial<Omit<DocWall, 'id'>>),
-      },
+      // What a wall is read by first, in the open section (they were under the closed "More options").
+      { id: 'length', label: 'panel.length', kind: 'readout', when: one, text: (ws) => `${lengthText(referenceLength(ws[0]!))}` },
+      { id: 'thickness', label: 'panel.thickness', kind: 'readout', text: (ws) => sameText(ws.map((w) => `${lengthText(thickness(doc, w), 3)}`)) },
     ],
     constraints: [
       {
@@ -219,9 +190,39 @@ export function wallFields(
         set: (v) => act.updateWalls({ top: { kind: 'fixed', height: v } }),
       },
     ],
+    // Less used: the renovation phase and what a change of type keeps (docs/revisao-interface.md, P2).
     more: [
-      { id: 'thickness', label: 'panel.thickness', kind: 'readout', text: (ws) => sameText(ws.map((w) => `${lengthText(thickness(doc, w), 3)}`)) },
-      { id: 'length', label: 'panel.length', kind: 'readout', when: one, text: (ws) => `${lengthText(referenceLength(ws[0]!))}` },
+      {
+        // Its phase in a renovation: drawn in a colour of its own with the overrides on (layer-sets.ts).
+        id: 'phase',
+        label: 'panel.phase',
+        kind: 'segmented',
+        options: [
+          { value: 'new', label: t('phase.new'), short: t('phase.new') },
+          { value: 'existing', label: t('phase.existing'), short: t('phase.existing') },
+          { value: 'demolish', label: t('phase.demolish'), short: t('phase.demolish') },
+        ],
+        labelled: true,
+        wide: true,
+        get: (w) => w.phase ?? 'new',
+        set: (v) => act.updateWalls((v === 'new' ? { phase: undefined } : { phase: v as WallPhase }) as Partial<Omit<DocWall, 'id'>>),
+      },
+      {
+        // What stays where it was when the type, and so the thickness, changes: the room's clear size,
+        // the thickness going to the other side, or the reference line, the faces moving about it.
+        id: 'keepOnType',
+        label: 'panel.keepOnType',
+        icon: 'refInterior',
+        kind: 'segmented',
+        wide: true,
+        labelled: true,
+        options: [
+          { value: 'clear', label: t('keep.clear'), short: t('keep.clear') },
+          { value: 'line', label: t('keep.line'), short: t('keep.line') },
+        ],
+        get: () => (act.keepClear ? 'clear' : 'line'),
+        set: (v) => act.setKeepClear(v === 'clear'),
+      },
       { id: 'chord', label: 'panel.chord', kind: 'readout', when: (ws) => one(ws) && !!ws[0]!.bulge, text: (ws) => `${lengthText(distance(ws[0]!.start, ws[0]!.end))}` },
       {
         id: 'radius',

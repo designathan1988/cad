@@ -2,7 +2,8 @@
 // (elements/*/fields.ts, rendered by fields.ts). It only reads state and sends changes.
 
 import type { EndJoin } from '../elements/wall/schema';
-import { type Doc, type DocWall, type WallDefaults, wallNumber } from '../app/document';
+import { cutHeightOf, type Doc, type DocWall, type Level, type WallDefaults, wallNumber } from '../app/document';
+import { updateLevel } from '../elements/level/commands';
 import type { DerivedGeometry, OpeningSolid } from '../app/geometry';
 import type { OpeningWarning } from '../elements/opening/derive';
 import { nextOpeningPanel, openingPanel, openingTitle, type OpeningPanelActions, type OpeningSize } from '../elements/opening/panel';
@@ -42,6 +43,8 @@ export interface PanelInput {
   readonly kind: { readonly kind: AnyKind; readonly items: readonly unknown[] } | null;
   /** Walls whose exterior face does not meet the face of the wall they stand on (app/stacked.ts). */
   readonly stacked: readonly StackedStep[];
+  /** The level shown: what the panel holds when nothing is selected and no tool places anything. */
+  readonly level?: Level;
 }
 
 export interface PanelActions {
@@ -74,6 +77,8 @@ export interface PanelActions {
   readonly dispatch: (c: Command<Doc>) => void;
   /** Moves the wall so its exterior face meets the face of the wall below it. */
   readonly alignBelow: (step: StackedStep) => void;
+  /** Opens the levels dialog (the level panel's button). */
+  readonly openLevels: () => void;
 }
 
 /** The common value of a field across the selection, or null when it differs. */
@@ -177,6 +182,20 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     // What the tool will make, as its ribbon tab shows it: changed here, the next one is made so.
     nodes.push(head(input.next.icon, input.next.title), el('div', { class: 'panel-hint' }, t('panel.nextHint')));
     nodes.push(fieldsSection(t('panel.general'), true, input.next.fields, input.next.items));
+  } else if (input.level) {
+    // Nothing selected: the level shown, as Revit's palette shows the view; the panel stood there with only
+    // "Nothing selected" (docs/revisao-interface.md, P1).
+    const level = input.level;
+    const set = (patch: Partial<Omit<Level, 'id'>>) => act.dispatch(updateLevel(level.id, patch));
+    const fields: Field<Level>[] = [
+      { id: 'name', label: 'levels.name', kind: 'text', get: (l) => name(l.name), set: (v) => v.trim() !== '' && v.trim() !== name(level.name) && set({ name: v.trim() }) },
+      { id: 'elevation', label: 'levels.elevation', kind: 'number', icon: 'raise', get: (l) => l.elevation, set: (v) => set({ elevation: v }) },
+      { id: 'height', label: 'levels.height', kind: 'number', min: 0.01, get: (l) => l.height, set: (v) => set({ height: v }) },
+      { id: 'cutHeight', label: 'levels.cut', kind: 'number', icon: 'cut', min: 0.01, get: (l) => cutHeightOf(l), set: (v) => set({ cutHeight: v }) },
+      { id: 'levels', label: 'levels.edit', kind: 'action', run: act.openLevels },
+    ];
+    nodes.push(head('slab', t('panel.levelTitle', { name: name(level.name) })), el('div', { class: 'panel-hint' }, t('panel.levelHint')));
+    nodes.push(fieldsSection(t('panel.general'), true, fields, [level]));
   } else {
     nodes.push(head('pointer', t('panel.properties')));
     const empty = el('div', { class: 'empty-state' });

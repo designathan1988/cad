@@ -82,7 +82,7 @@ Gravidade: S1 quebra; S2 errado num caso real; S3 atrapalha; S4 cosmético.
 |---|---|---|
 | P1 · S3 | Sem seleção, o painel ocupa ~300 px só com "Nada selecionado" (captura 05). | Sem seleção mostra o pavimento/vista (como o Revit) ou recolhe para uma borda fina. |
 | P2 · S3 | Opção avançada "Ao trocar o tipo, manter Vão livre/Linha de referência" logo no topo (captura 04). | Para "Mais opções". |
-| P3 · S3 | Valores próprios da parede vs. do tipo não se distinguem (`document.ts:277`, `wallOverrides`). | Marca "alterado do tipo" e botão de voltar ao tipo no campo. |
+| P3 · — | ~~Valores próprios da parede vs. do tipo não se distinguem.~~ **Errado:** o app já marca o campo alterado e tem o botão de voltar ao tipo (`fields.ts:158-182`). Achei isso ao implementar; não é problema. | — |
 | P4 · S3 | A parede é chamada pelo número da ordem de desenho ("Parede 2"), que muda quando outra é apagada (`document.ts:250`). | Marca estável (P1, P2…) atribuída uma vez. |
 
 ### Menus, teclas e retorno
@@ -137,6 +137,11 @@ Conferido no app a 1920×1080, console sem erros. Capturas "depois" 11 a 14.
   lidas do registro de ações (teclas remapeadas aparecem certas); com uma ferramenta de desenho, o botão direito abre
   "Terminar (Enter) / Sair da ferramenta (Esc)". Capturas 19 e 20.
 
+- **P1**: sem seleção, o painel mostra o pavimento atual (nome, cota, pé-direito, altura de corte, editáveis, e "Editar pavimentos…").
+  Testado: pé-direito 2,80 → 3,00 aplicou, Ctrl+Z desfez. Captura 21.
+- **P2**: na parede, comprimento e espessura subiram para "Geral"; "Fase da obra" e "Ao trocar o tipo, manter" desceram para
+  "Mais opções". Captura 22.
+
 Ainda não feito (próximos passos): R3 ferramentas do mesmo tamanho; M3 (opções de porta — Espaço/H — na faixa) e M4 etiqueta
-junto ao cursor; P1-P4 painel de Propriedades; J1 biblioteca não modal; J3/J4 salvar e tela inicial; M5, M7, M8, M9; J5, J6; R8.
+junto ao cursor; P4 marca estável da parede; J1 biblioteca não modal; J3/J4 salvar e tela inicial; M5, M7, M8, M9; J5, J6; R8.
 Visto e não corrigido: a barra inferior se anuncia "Vista 3D" para leitores de tela também na planta.

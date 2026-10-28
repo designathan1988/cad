@@ -336,7 +336,7 @@ export function renderFrame(app: App): void {
   const openingKey = JSON.stringify([ui.openingDefaults, app.geometry.openingWarnings, app.selectedOpenings().map((o) => [o.start, o.end])]);
   // A placing tool's next element (next-element.ts): its fields, and what they show.
   const next = ui.selection.size === 0 ? nextFields(app) : null;
-  const panelKey = [ui.tool, [...ui.selection].sort().join(','), getLang(), JSON.stringify(ui.defaults), JSON.stringify(app.geometry.warnings), openingKey, next?.key ?? ''].join('|');
+  const panelKey = [ui.tool, ui.levelId, [...ui.selection].sort().join(','), getLang(), JSON.stringify(ui.defaults), JSON.stringify(app.geometry.warnings), openingKey, next?.key ?? ''].join('|');
   const placing = app.openingKind();
   if (doc === app.panelDoc && panelKey === app.panelKey) return app.afterPanel();
   app.panelDoc = doc;
@@ -365,6 +365,10 @@ export function renderFrame(app: App): void {
         return null;
       })(),
       stacked: stackedSteps(doc),
+      ...(() => {
+        const level = levelOf(doc, ui.levelId);
+        return level ? { level } : {};
+      })(),
     },
     {
       updateWalls: (patch) => app.store.dispatch(updateWalls([...ui.selection], patch)),
@@ -472,6 +476,7 @@ export function renderFrame(app: App): void {
       },
       dispatch: (c) => app.store.dispatch(c),
       // The wall moved across, with its joins kept as a move keeps them: the face then meets the one below.
+      openLevels: () => app.openLevels(),
       alignBelow: (step) => app.store.dispatch(setWalls(moveWalls(app.store.get(), [step.upperId], step.shift), 'cmd.alignBelow')),
     },
   );
