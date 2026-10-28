@@ -43,7 +43,7 @@ export type Field<T> =
       /** Places shown after the decimal mark (2 unless said; 0 for a count). */
       readonly decimals?: number;
     })
-  | (Common<T> & { readonly kind: 'text'; readonly get: (x: T) => string; readonly set: (v: string) => void })
+  | (Common<T> & { readonly kind: 'text'; readonly get: (x: T) => string; readonly set: (v: string) => void; /** Shown while it is empty: what empty means, or an example. */ readonly placeholder?: string })
   | (Common<T> & {
       readonly kind: 'select' | 'segmented' | 'search';
       readonly get: (x: T) => string;
@@ -212,7 +212,7 @@ function controlFor<T>(field: Field<T>, value: number | string | null, items: re
     case 'number':
       return numberField(value as number | null, field.set, minOf(field, items), field.decimals ?? 2, field.unit ?? 'm');
     case 'text':
-      return textField(value as string | null, field.set);
+      return textField(value as string | null, field.set, field.placeholder);
     case 'select':
       return select(field.options, value as string | null, field.set);
     case 'segmented':
@@ -227,11 +227,11 @@ function controlFor<T>(field: Field<T>, value: number | string | null, items: re
 }
 
 /** A text field that commits on Enter or leaving, and restores on Esc. Null shows "varies". */
-export function textField(value: string | null, onCommit: (v: string) => void): HTMLElement {
+export function textField(value: string | null, onCommit: (v: string) => void, empty = ''): HTMLElement {
   const input = el('input', { type: 'text', class: 'text-field', autocomplete: 'off', spellcheck: 'false' });
   const shown = value ?? '';
   input.value = shown;
-  input.placeholder = value === null ? t('panel.varies') : '';
+  input.placeholder = value === null ? t('panel.varies') : empty;
   const commit = () => {
     if (input.value !== shown) onCommit(input.value);
   };

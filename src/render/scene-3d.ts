@@ -277,6 +277,8 @@ export class Scene3D {
   private readonly photoGround = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), this.tracedGround);
   /** The photorealistic view's ground level (placeGround): the walls' foot, or a terrain's soil. */
   private stand = 0;
+  /** Whether the model stands on a terrain (placeGround): its soil is the ground then. */
+  private onTerrain = false;
   private traced = { content: -1, camera: '', light: '' };
   /** Bumped whenever an element's meshes are made or dropped: the tracer's scene is built again. */
   private contentVersion = 0;
@@ -624,6 +626,10 @@ export class Scene3D {
     const background = this.scene.background;
     const grid = this.grid.visible;
     const shadowGround = this.shadowGround.visible;
+    // The realistic style on its fading ground (off a terrain): a room with no floor showed the background
+    // through it, a black hole among the walls in the dark theme. The other styles stand on the grid.
+    const realGround = this.style === 'realistic' && !this.onTerrain;
+    if (realGround) this.ground.visible = true;
     if (photo) {
       this.scene.background = this.photoSky();
       const size = Math.max(200, this.ground.scale.x * 6);
@@ -641,6 +647,7 @@ export class Scene3D {
       }
       fx.render();
     } else this.renderer.render(this.scene, this.camera);
+    if (realGround) this.ground.visible = false;
     if (photo) {
       this.scene.background = background;
       this.photoGround.visible = false;
@@ -1475,6 +1482,7 @@ export class Scene3D {
     // On a terrain its soil is the ground.
     const terrain = [...eachSolid(g.kinds)].some((x) => x.kind.key === 'terrains');
     this.stand = terrain || solids.length === 0 ? lowest : Math.min(...solids.map((s) => s.bottom));
+    this.onTerrain = terrain;
     this.ground.scale.set(size, size, 1);
     this.ground.position.set((x0 + x1) / 2, lowest - 0.002, -(y0 + y1) / 2);
     // The grid at the ground's height, round the model's middle, a metre a cell.

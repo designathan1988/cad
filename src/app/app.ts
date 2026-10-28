@@ -46,7 +46,8 @@ import { createStore, type Store } from '../core/store';
 import { distance, type Point2 } from '../core/vector';
 import { addOpening, placementProblem, updateOpening, wallRule } from '../elements/opening/commands';
 import type { OpeningSize } from '../elements/opening/panel';
-import { OPENING_MODELS } from '../elements/opening/style';
+import { OPENING_MODELS, swings } from '../elements/opening/style';
+import type { Field } from '../ui/fields';
 import { isOpeningId, newOpening, OPENING_DEFAULTS, OPENING_PREFIX, type Opening, type OpeningKind } from '../elements/opening/schema';
 import { OPENING_IDLE, openingTransition, type OpeningToolEvent, type OpeningToolState } from '../tools/opening-tool';
 import { MEASURE_IDLE, type MeasureEvent, type MeasureMode, type MeasureState, measureTransition } from '../tools/measure-tool';
@@ -561,13 +562,29 @@ export class App {
 
   /** The leaf's side and hinge of the opening about to be placed: toward the pointer, unless flipped (Space, H). */
   private placedSides(kind: OpeningKind, side: 'left' | 'right'): { swing: 'left' | 'right'; hinge: 'start' | 'end' } {
-    const f = kind === 'door' ? this.ui.doorFlip : { swing: false, hinge: false };
+    const f = this.placesLeaf(kind) ? this.ui.doorFlip : { swing: false, hinge: false };
     return { swing: f.swing ? (side === 'left' ? 'right' : 'left') : side, hinge: f.hinge ? 'end' : 'start' };
+  }
+
+  /** Whether the door or window tool places a leaf on hinges (a door, a casement window): its side and hinge can be chosen. */
+  placesLeaf(kind: OpeningKind): boolean {
+    return kind === 'door' || this.ui.openingDefaults[kind].style?.operation === 'casement';
+  }
+
+  /** The next door's (or casement's) side and hinge as fields, for the Place tab and the panel: what Space and H change. */
+  placeSideFields(kind: OpeningKind): Field<unknown>[] {
+    if (!this.placesLeaf(kind)) return [];
+    const f = () => this.ui.doorFlip;
+    return [
+      { id: 'placeSwing', label: 'place.swing', kind: 'segmented', options: [{ value: '0', label: t('place.swingPointer') }, { value: '1', label: t('place.swingAway') }], get: () => (f().swing ? '1' : '0'), set: (v) => void ((v === '1') !== f().swing && this.flipPlacing('swing')) },
+      { id: 'placeHinge', label: 'place.hinge', kind: 'segmented', options: [{ value: '0', label: t('place.hingeNormal') }, { value: '1', label: t('place.hingeOther') }], get: () => (f().hinge ? '1' : '0'), set: (v) => void ((v === '1') !== f().hinge && this.flipPlacing('hinge')) },
+    ];
   }
 
   /** Space or H with the door tool: the next door opens to the other side, or hangs on the other jamb; true when it was the door tool. */
   flipPlacing(which: 'swing' | 'hinge'): boolean {
-    if (this.openingKind() !== 'door') return false;
+    const kind = this.openingKind();
+    if (!kind || !this.placesLeaf(kind)) return false;
     const f = this.ui.doorFlip;
     this.ui.doorFlip = which === 'swing' ? { ...f, swing: !f.swing } : { ...f, hinge: !f.hinge };
     this.refresh();
@@ -2035,13 +2052,13 @@ export class App {
   /** The one element selected, when it is a door. */
   selectedDoor(): boolean {
     const one = this.ui.selection.size === 1 ? [...this.ui.selection][0] : undefined;
-    return this.store.get().openings.some((o) => o.id === one && o.kind === 'door');
+    return this.store.get().openings.some((o) => o.id === one && swings(o));
   }
 
   /** Flips the one door selected: the side it opens to, or its hinge to the other jamb. False if none. */
   flipDoor(which: 'swing' | 'hinge', id?: string): boolean {
     const one = id ?? (this.ui.selection.size === 1 ? [...this.ui.selection][0] : undefined);
-    const o = this.store.get().openings.find((x) => x.id === one && x.kind === 'door');
+    const o = this.store.get().openings.find((x) => x.id === one && swings(x));
     if (!o) return false;
     this.store.dispatch(updateOpening(o.id, which === 'swing' ? { swing: o.swing === 'left' ? 'right' : 'left' } : { hinge: o.hinge === 'start' ? 'end' : 'start' }));
     return true;

@@ -91,6 +91,9 @@ export function leafRange(op: Operation): readonly [number, number] {
 }
 
 /** The window operations whose panes stand side by side and one over another: their mullions and transoms placed at will. */
+/** Whether it hangs a leaf on hinges (a door, a casement window): its side and hinge can be flipped. */
+export const swings = (o: Pick<Opening, 'kind' | 'style'>): boolean => o.kind === 'door' || o.style?.operation === 'casement';
+
 export const PANED: readonly Operation[] = ['fixed', 'casement', 'awning', 'hopper'];
 
 /** A style kept to what its kind and operation allow: a door's operation on a window becomes its first one. */

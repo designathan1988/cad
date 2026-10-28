@@ -315,7 +315,7 @@ export function renderChrome(app: App): void {
         snapKey,
         keyHint('Esc', t(mod.state.step === 'base' ? 'key.exit' : 'key.back')),
       ]
-    : placing === 'door'
+    : placing && app.placesLeaf(placing)
     ? [keyHint(t('key.spaceKey'), t('key.flipSwing')), keyHint('H', t('key.flipHinge')), keyHint('Esc', t('key.exit'))]
     : placing || ui.tool === 'room'
     ? [keyHint('Esc', t('key.exit'))]

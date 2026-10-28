@@ -383,15 +383,8 @@ function placeTab(
         ui.openingDefaults = { ...ui.openingDefaults, [kind]: { ...ui.openingDefaults[kind], ...patch } };
         app.refresh();
       };
-      // A door's side and hinge, chosen before the click as Space and H do (app.flipPlacing).
-      const sides: Field<unknown>[] =
-        kind === 'door'
-          ? [
-              { id: 'placeSwing', label: 'place.swing', kind: 'segmented', options: [{ value: '0', label: t('place.swingPointer') }, { value: '1', label: t('place.swingAway') }], get: () => (ui.doorFlip.swing ? '1' : '0'), set: (v) => (v === '1') !== ui.doorFlip.swing && app.flipPlacing('swing') },
-              { id: 'placeHinge', label: 'place.hinge', kind: 'segmented', options: [{ value: '0', label: t('place.hingeNormal') }, { value: '1', label: t('place.hingeOther') }], get: () => (ui.doorFlip.hinge ? '1' : '0'), set: (v) => (v === '1') !== ui.doorFlip.hinge && app.flipPlacing('hinge') },
-            ]
-          : [];
-      return { fields: [...(nextOpeningFields(kind, set, ui.openingDefaults[kind]) as Field<unknown>[]), ...sides], items: [ui.openingDefaults[kind]], key: `${JSON.stringify(ui.openingDefaults[kind])}|${JSON.stringify(ui.doorFlip)}` };
+      // The leaf's side and hinge first: past the screen's edge with the rest, they were out of sight.
+      return { fields: [...app.placeSideFields(kind), ...(nextOpeningFields(kind, set, ui.openingDefaults[kind]) as Field<unknown>[])], items: [ui.openingDefaults[kind]], key: `${JSON.stringify(ui.openingDefaults[kind])}|${JSON.stringify(ui.doorFlip)}` };
     }
     return nextFields(app);
   })();

@@ -33,7 +33,7 @@ export interface PanelInput {
   readonly placed: ReadonlyMap<OpeningId, OpeningSolid>;
   readonly openingWarnings: readonly OpeningWarning[];
   /** The door or window tool is active: its next opening's size. */
-  readonly openingTool: { readonly kind: OpeningKind; readonly size: OpeningSize } | null;
+  readonly openingTool: { readonly kind: OpeningKind; readonly size: OpeningSize; readonly sides: readonly Field<unknown>[] } | null;
   /** A placing tool's next element (app/next-element.ts): its title, icon and fields, set before the click. */
   readonly next: { readonly icon: IconName; readonly title: string; readonly fields: readonly Field<unknown>[]; readonly items: readonly unknown[] } | null;
   /** How many elements are selected, of every kind: the panel edits one kind at a time. */
@@ -170,9 +170,11 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
       nodes.push(box);
     }
   } else if (input.openingTool) {
-    const { kind, size } = input.openingTool;
+    const { kind, size, sides } = input.openingTool;
     nodes.push(head(kind, t(kind === 'door' ? 'panel.nextDoor' : 'panel.nextWindow')));
     nodes.push(...nextOpeningPanel(kind, size, (patch) => act.updateOpeningDefaults(kind, patch)));
+    // Its leaf's side and hinge (a door, a casement), as Space and H.
+    if (sides.length > 0) nodes.push(fieldsSection(t('panel.door.leaf'), true, sides, [size]));
   } else if (input.drawing) {
     const d = input.defaults;
     nodes.push(head('wall', t('panel.nextWall')), el('div', { class: 'panel-hint' }, t('panel.nextWallHint')));

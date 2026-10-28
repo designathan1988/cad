@@ -373,7 +373,7 @@ export function renderFrame(app: App): void {
       levelRooms: [...app.geometry.rooms.values()].filter((r) => r.room.levelId === ui.levelId),
       placed: app.geometry.openings,
       openingWarnings: app.geometry.openingWarnings,
-      openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing] } : null,
+      openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing], sides: app.placeSideFields(placing) } : null,
       next: next ? { icon: kindOfKey(next.slot === 'ceilings' ? 'floors' : next.slot).icon, title: nextTitle(app, next.slot), fields: next.fields, items: next.items } : null,
       total: ui.selection.size,
       // The first registry kind with a selected element, and those of its elements, as derived.
