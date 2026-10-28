@@ -33,7 +33,10 @@ openings lists back over the moved ones); fixed in registry.ts kindLists (non-wa
 Checked in the app at 1280: door slide alone, typed distance, H, Ctrl+Z/Y, ?, wall move + undo/redo, wall takes its door; at
 1920: split keeps the plan. Committed 2d16f98. Then headless (owner's order): merge, flip, axis moves alone, door slides
 alone, reload keeps the project, wall move/undo at 880 all OK; fixed float bar over the views' card and an axis bubble, and
-the axis hint text (948333c). NOT checked: mirror, star F-0138, next-wall panel, scale list F-0019, file download/open v68.
+the axis hint text (948333c). Then headless, all OK with no new code defect: mirror (copy), star of 8 walls (arms 20° apart
+split clean: F-0138 not reproduced), next-wall fields (ribbon = panel; -0.30 top reaches the drawn wall), scale list inside a
+saved view (F-0019: plan follows), download v68 + open + download again: only the name differs. Known, not fixed: a mirrored
+wall over a column with no warning (overlaps-without-warning break).
 Fixed, tsc passes, committed with the above: F-0003, F-0010, F-0021, F-0030, F-0107, F-0136, F-0139, F-0045,
 F-0068 (file v68 migration), F-0008 (keepOpenings: own wall only), F-0006, F-0042, F-0050, F-0051 (axis moves alone), F-0101,
 F-0106, F-0087, F-0013, F-0019. To do: delete src/elements/grid/carry.ts and what only it used; test in the app (880/1280/1920 px,
