@@ -5,7 +5,7 @@
 import { drawLeader } from '../elements/kinds/note';
 import { drawSectionMark } from '../elements/kinds/section';
 import type { SectionMark } from '../elements/section/schema';
-import { DEFAULT_DRAWING, type Detail, detailOf, type DrawingSettings, PEN_UNIT_MM, type PenRole, scaleFactor, TEXT_MM } from '../elements/drawing/schema';
+import { DEFAULT_DRAWING, type Detail, detailOf, type DrawingSettings, PEN_UNIT_MM, type PenRole } from '../elements/drawing/schema';
 import { drawObjectHandles, type ScreenHandle } from '../app/object-handles';
 import { drawAxis } from '../elements/kinds/grid';
 import { drawDimension, type Placed } from '../elements/kinds/dimension';
@@ -184,19 +184,10 @@ export class PlanView {
   phases: ReadonlyMap<string, 'new' | 'existing' | 'demolish'> = new Map();
   /** Graphic overrides of rooms: a use filled with a colour (app/layer-sets.ts); empty when off. */
   roomOverrides: ReadonlyMap<string, string> = new Map();
-  /**
-   * Drawn for paper (app/print.ts), not for the screen: its size in pen units, device pixels a unit,
-   * the scale printed and the paper's colours. No grid; pens, texts and hatches keep their size on paper.
-   */
-  printing: { readonly w: number; readonly h: number; readonly ratio: number; readonly den: number; readonly color: (name: string) => string } | null = null;
   private readonly ctx: CanvasRenderingContext2D;
 
-  /** `context`: drawn on it instead of the canvas's own (a vector page, io/pdf-canvas.ts). */
-  constructor(
-    readonly canvas: HTMLCanvasElement,
-    context?: CanvasRenderingContext2D,
-  ) {
-    const ctx = context ?? canvas.getContext('2d');
+  constructor(readonly canvas: HTMLCanvasElement) {
+    const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('2D canvas unavailable');
     this.ctx = ctx;
   }
@@ -210,7 +201,6 @@ export class PlanView {
    * by half the panel's width, a jump the user saw on every panel shown or hidden.
    */
   private get size() {
-    if (this.printing) return { w: this.printing.w, h: this.printing.h };
     const w = this.canvas.clientWidth;
     const h = this.canvas.clientHeight;
     if (w > 0 && h > 0 && (w !== this.seen.w || h !== this.seen.h)) {
@@ -269,14 +259,14 @@ export class PlanView {
     return this.drawing.pens[role] / PEN_UNIT_MM;
   }
 
-  /** What the scale shows: the printed one's, or the project's on screen. */
+  /** What the project's scale shows. */
   get detail(): Detail {
-    return detailOf(this.printing?.den ?? this.drawing.scale);
+    return detailOf(this.drawing.scale);
   }
 
   draw(g: DerivedGeometry, o: PlanOverlay): void {
     const { canvas, ctx } = this;
-    const dpr = this.printing?.ratio ?? (window.devicePixelRatio || 1);
+    const dpr = window.devicePixelRatio || 1;
     const { w, h } = this.size;
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
       canvas.width = Math.round(w * dpr);
@@ -284,10 +274,10 @@ export class PlanView {
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const css = getComputedStyle(document.documentElement);
-    const color = this.printing?.color ?? ((name: string) => css.getPropertyValue(name).trim());
+    const color = (name: string) => css.getPropertyValue(name).trim();
     ctx.fillStyle = color('--canvas');
     ctx.fillRect(0, 0, w, h);
-    if (!this.printing) this.drawGrid(color('--grid-minor'), color('--grid-major'), color('--axis-x'), color('--axis-y'));
+    this.drawGrid(color('--grid-minor'), color('--grid-major'), color('--axis-x'), color('--axis-y'));
 
     const solids = [...g.solids.values()];
     const normal = solids.filter((s) => !o.preview.has(s.wall.id));
@@ -349,7 +339,7 @@ export class PlanView {
       ctx.fill('nonzero');
     }
     // The registry's kinds (elements/registry.ts), each drawing itself; lit when selected or under the pointer.
-    const family = (this.printing ? css : getComputedStyle(this.canvas)).getPropertyValue('--font').trim() || 'sans-serif';
+    const family = getComputedStyle(this.canvas).getPropertyValue('--font').trim() || 'sans-serif';
     const paint = {
       ctx,
       toScreen: (v: Point2) => this.toScreen(v),
@@ -414,7 +404,7 @@ export class PlanView {
     // the walls are one colour, as before.
     const thick = (s: (typeof solids)[number]) => s.layers.reduce((t, l) => t + l.thickness, 0);
     // And only where the scale draws them (1:50 and larger): at 1:100 a wall is its outline, filled.
-    const detail = this.detail === 'fine' && (this.printing !== null || byLayers(normal.filter((s) => s.layers.length > 0 && s.plan === 'cut').map(thick), this.scale));
+    const detail = this.detail === 'fine' && (byLayers(normal.filter((s) => s.layers.length > 0 && s.plan === 'cut').map(thick), this.scale));
     // An overridden wall is its colour alone: no layers, no hatches.
     // A wall's own id (an arc's segments are "id#k", geometry/arc.ts) and its phase's colour, if phases are drawn.
     const phaseOf = (s: (typeof solids)[number]) => this.phases.get(s.wall.id.split('#')[0]!);
@@ -770,10 +760,7 @@ export class PlanView {
   /** A grid axis: a dash-dot line between its bubbles, each a circle with its name, past its ends. */
   private font(weight: string, size: string): string {
     const css = getComputedStyle(document.documentElement);
-    // On paper a text keeps its size in millimetres whatever the scale (drawing/schema.ts, TEXT_MM).
-    const p = this.printing;
-    const px = p ? `${(TEXT_MM[size] ?? 2.5) / (PEN_UNIT_MM * scaleFactor(p.den))}px` : css.getPropertyValue(size).trim();
-    return `${weight} ${px} ${css.getPropertyValue('--font').trim()}`;
+    return `${weight} ${css.getPropertyValue(size).trim()} ${css.getPropertyValue('--font').trim()}`;
   }
 
   /** The live measure, off the segment along its normal, and moved further out while it would cover the snap label. */
