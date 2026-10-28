@@ -41,7 +41,7 @@ import type { PickOrder } from '../elements/contract';
 import { distance, normalize, sub } from '../core/vector';
 import { outerSides } from '../elements/wall/geometry/seams';
 import { wireKeys } from './input-keys';
-import { pointTape, pointTool } from './point-tools';
+import { pointBusy, pointTape, pointTool } from './point-tools';
 import { wireButtons } from './input-buttons';
 
 /** How near (screen pixels) the pointer must come to a wall, a door or a window to take it. */
@@ -261,8 +261,6 @@ export function wireInput(app: App): void {
         ? ui.measure.a
         : ui.tool === 'measure' && ui.measure.kind === 'chain'
           ? ui.measure.points.at(-1)!
-        : ui.tool === 'dimension' && ui.dimension.kind === 'from'
-          ? ui.dimension.a
           : pointTape(app);
     const measuring = ui.tool === 'measure' || ui.tool === 'dimension';
     const modifyFrom = ui.tool === 'modify' && ui.modify && ui.modify.state.step !== 'base' ? ui.modify.state.base : null;
@@ -427,7 +425,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (pointTool(app) || ui.tool === 'measure' || ui.tool === 'dimension') {
+    if (pointTool(app) || ui.tool === 'measure') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -562,12 +560,8 @@ export function wireInput(app: App): void {
       }
       return true;
     }
-    if (ui.tool === 'dimension' && ui.dimension.kind !== 'idle') {
-      app.dimensionEvent({ kind: 'escape' });
-      return true;
-    }
     const drawing = pointTool(app);
-    if (drawing?.rightClick && drawing.points(app).length > 0) {
+    if (drawing?.rightClick && pointBusy(app, drawing)) {
       drawing.rightClick(app);
       return true;
     }
@@ -646,11 +640,6 @@ export function wireInput(app: App): void {
     if (ui.tool === 'measure') {
       const at = worldAt(e);
       if (at) app.measureEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
-      return;
-    }
-    if (ui.tool === 'dimension') {
-      const at = worldAt(e);
-      if (at) app.dimensionEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
       return;
     }
     if (ui.tool === 'object') {

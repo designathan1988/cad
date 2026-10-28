@@ -27,7 +27,10 @@ export interface PointTool {
   readonly click: (app: App, p: Point2, mpp: number, raw: Point2) => void;
   /** The line drawn when it is not the points and the pointer in order (an angle mark's arms). */
   readonly draft?: (app: App, at: Point2 | null) => Point2[] | null;
-  /** Esc with something drawn (with nothing, Esc closes the tool). */
+  /** Whether something is under way, for Esc and a right click: its points when not set (a dimension
+   * placing its line has none left to place but is not done). */
+  readonly busy?: (app: App) => boolean;
+  /** Esc with something under way (with nothing, Esc closes the tool). */
   readonly escape: (app: App) => void;
   /** Esc's name in the footer while something is drawn. */
   readonly escapeIs: 'key.back' | 'key.finish' | 'key.exit';
@@ -74,6 +77,21 @@ const oneClick = (aim: PointTool['aim'], click: (app: App, p: Point2) => void, h
 });
 
 export const POINT_TOOLS: Partial<Record<ToolId, PointTool>> = {
+  // Two points, then where its line goes (tools/dimension-tool.ts holds the steps).
+  dimension: {
+    aim: 'plan',
+    points: (app) => (app.ui.dimension.kind === 'from' ? [app.ui.dimension.a] : []),
+    busy: (app) => app.ui.dimension.kind !== 'idle',
+    drafted: false,
+    click: (app, p) => app.dimensionEvent({ kind: 'click', point: p }),
+    escape: (app) => app.dimensionEvent({ kind: 'escape' }),
+    escapeIs: 'key.back',
+    rightClick: (app) => app.dimensionEvent({ kind: 'escape' }),
+    hint: (app) => {
+      const kind = app.ui.dimension.kind;
+      return kind === 'idle' ? 'hint.dimensionStart' : kind === 'from' ? 'hint.dimensionEnd' : 'hint.dimensionPlace';
+    },
+  },
   column: oneClick('3d', (app, p) => app.columnClick(p), 'hint.columnPlace'),
   // Then selected, its text ready to type.
   note: oneClick('plan', (app, p) => app.addNoteHere(p), 'hint.notePlace'),
@@ -206,6 +224,9 @@ export const POINT_TOOLS: Partial<Record<ToolId, PointTool>> = {
 
 /** The point tool in use, with something drawn or not. */
 export const pointTool = (app: App): PointTool | undefined => POINT_TOOLS[app.ui.tool];
+
+/** Whether the tool has something under way: Esc and a right click take it back first. */
+export const pointBusy = (app: App, tool: PointTool): boolean => (tool.busy ? tool.busy(app) : tool.points(app).length > 0);
 
 /** Where the tape runs from: the tool's last point. */
 export const pointTape = (app: App): Point2 | null => {

@@ -146,7 +146,7 @@ export function renderFrame(app: App): void {
       guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
       snap:
         // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-        (pointTool(app) || ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+        (pointTool(app) || ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
           ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null), ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
           : null,
       measure: guideDim

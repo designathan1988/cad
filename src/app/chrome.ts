@@ -23,7 +23,7 @@ import { exploding, RENDER_QUALITIES, shownLevels, VISUAL_STYLES } from './view-
 import { contextEntries } from './context-menu';
 import { tipOf } from './actions';
 import { placeBarY } from '../ui/bar-place';
-import { pointTool } from './point-tools';
+import { pointBusy, pointTool } from './point-tools';
 import { GRID_BUBBLE_PX } from '../elements/kinds/grid';
 import { signedArea } from '../elements/room/derive';
 import type { App } from './app';
@@ -256,8 +256,6 @@ export function renderChrome(app: App): void {
             : t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace', { key: app.keyName('tool.floor') })
         : ui.tool === 'measure'
           ? app.measureHint()
-          : ui.tool === 'dimension'
-            ? t(ui.dimension.kind === 'idle' ? 'hint.dimensionStart' : ui.dimension.kind === 'from' ? 'hint.dimensionEnd' : 'hint.dimensionPlace')
             : ui.tool === 'object'
               ? t('hint.object', { name: objectName(app) })
               : pointing
@@ -306,8 +304,6 @@ export function renderChrome(app: App): void {
     ? [keyHint(t('key.spaceKey'), t('key.flipSwing')), keyHint('H', t('key.flipHinge')), keyHint('Esc', t('key.exit'))]
     : placing || ui.tool === 'room'
     ? [keyHint('Esc', t('key.exit'))]
-    : ui.tool === 'dimension'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.dimension.kind === 'idle' ? 'key.exit' : 'key.back'))]
     : ui.tool === 'object'
     ? [keyHint(t('key.spaceKey'), t('key.turn90')), ...snapKeys, keyHint('Esc', t('key.exit'))]
     : pointing
@@ -315,7 +311,7 @@ export function renderChrome(app: App): void {
         ...(pointing.enterShown ? [keyHint('Enter', t('key.finish'))] : []),
         ...(pointing.straight !== false ? [keyHint('Shift', t('key.straight')), ...lockKeys] : []),
         ...snapKeys,
-        keyHint('Esc', t(pointing.points(app).length > 0 ? pointing.escapeIs : 'key.exit')),
+        keyHint('Esc', t(pointBusy(app, pointing) ? pointing.escapeIs : 'key.exit')),
       ]
     : ui.tool === 'measure'
     ? [
