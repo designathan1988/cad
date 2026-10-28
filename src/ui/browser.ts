@@ -3,20 +3,11 @@
 
 import type { App } from '../app/app';
 import { typeUsage } from '../app/browser-data';
-import type { Category } from '../app/geometry';
+import { CATEGORIES } from '../app/geometry';
 import { el, section } from './controls';
-import { name, t, type MessageKey } from './i18n';
+import { name, t } from './i18n';
 import { icon } from './icons';
 import { layerSwatch } from './swatch';
-
-const CATEGORIES: readonly { id: Category; key: MessageKey }[] = [
-  { id: 'walls', key: 'layer.walls' },
-  { id: 'openings', key: 'layer.openings' },
-  { id: 'rooms', key: 'layer.rooms' },
-  { id: 'floors', key: 'layer.floors' },
-  { id: 'objects', key: 'layer.objects' },
-  { id: 'guides', key: 'layer.guides' },
-];
 
 /** A full-width button row in a browser section. */
 function item(label: string, onClick: () => void, extra: { pressed?: boolean; current?: boolean; disabled?: boolean; lead?: string; trail?: string } = {}): HTMLElement {
@@ -80,7 +71,7 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
     section(
       t('browser.layers'),
       true,
-      ...CATEGORIES.map((c) => item(t(c.key), () => app.toggleCategory(c.id), { pressed: !ui.hidden.has(c.id), trail: ui.hidden.has(c.id) ? t('layer.hidden') : t('layer.shown') })),
+      ...CATEGORIES.map((c) => item(t(`layer.${c}`), () => app.toggleCategory(c), { pressed: !ui.hidden.has(c), trail: ui.hidden.has(c) ? t('layer.hidden') : t('layer.shown') })),
       // Every wall's reference line and direction, as ArchiCAD's view option (the selected ones' always show).
       item(t('layer.refLines'), () => app.toggleRefLines(), { pressed: ui.refLines, trail: ui.refLines ? t('layer.shown') : t('layer.hidden') }),
       item(t('layer.openingTags'), () => app.toggleOpeningTags(), { pressed: ui.openingTags, trail: ui.openingTags ? t('layer.shown') : t('layer.hidden') }),

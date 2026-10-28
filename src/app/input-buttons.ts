@@ -83,7 +83,12 @@ export function wireButtons(app: App, palette: () => void): void {
     app.setView3D({ style });
   });
   shell.look.quality.select.addEventListener('change', () => app.setView3D({ quality: shell.look.quality.select.value as RenderQuality }));
-  shell.planScale.select.addEventListener('change', () => app.store.dispatch(setDrawing({ ...drawingOf(app.store.get()), scale: Number(shell.planScale.select.value) })));
+  // As the drawing dialog does: a scale chosen here is the one the plan is drawn at, a saved view's own
+  // scale let go (else the plan stayed at the view's while the list said the new one).
+  shell.planScale.select.addEventListener('change', () => {
+    app.ui.viewDen = null;
+    app.store.dispatch(setDrawing({ ...drawingOf(app.store.get()), scale: Number(shell.planScale.select.value) }));
+  });
   shell.visBtn.addEventListener('click', () => app.actionList().find((a) => a.id === 'view.overrides')?.run());
   shell.shownReset.addEventListener('click', () => app.actionList().find((a) => a.id === 'view.tempReset')?.run());
   shell.light.button.addEventListener('click', () => {

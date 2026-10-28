@@ -17,7 +17,7 @@ import {
   groupFields,
   kindName,
   leafFields,
-  nextOpeningFields,
+  nextOpening,
   openingFields,
   type OpeningPanelActions,
   type OpeningSize,
@@ -72,5 +72,6 @@ export function openingTitle(selected: readonly OpeningSolid[]): string {
 
 export function nextOpeningPanel(kind: OpeningKind, size: OpeningSize, set: (patch: Partial<OpeningSize>) => void): HTMLElement[] {
   // Each tool keeps its own sizes: a door's do not change the next window.
-  return [el('div', { class: 'panel-hint' }, t(kind === 'door' ? 'panel.nextDoorHint' : 'panel.nextWindowHint')), fieldsSection(t('panel.general'), true, nextOpeningFields(kind, set, size), [size])];
+  const next = nextOpening(kind, size, set);
+  return [el('div', { class: 'panel-hint' }, t(kind === 'door' ? 'panel.nextDoorHint' : 'panel.nextWindowHint')), fieldsSection(t('panel.general'), true, next.fields, [next.item])];
 }

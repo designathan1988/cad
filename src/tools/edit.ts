@@ -26,10 +26,27 @@ function onBody(p: Point2, a: Point2, b: Point2): boolean {
 const NEAR_PARALLEL = 0.05;
 
 /** Where the line through p along u meets the line through q along v; null when they are about parallel. */
-function meet(p: Point2, u: Point2, q: Point2, v: Point2): Point2 | null {
+export function meet(p: Point2, u: Point2, q: Point2, v: Point2): Point2 | null {
   if (Math.abs(cross(normalize(u), normalize(v))) < NEAR_PARALLEL) return null;
   return intersectLines(p, u, q, v);
 }
+
+/** How far an end may slide along its own line to follow a moved wall: this many times the move itself. */
+const SLIDE_LIMIT = 4;
+
+/**
+ * Where an end p, sliding along its own line (from `other` through p), meets a wall's new line `next`;
+ * null when the lines are about parallel (meet) or the meeting lies further from p than SLIDE_LIMIT
+ * times `moveBy`, the wall's own move: two walls almost in line meet kilometres away (an end of one sent
+ * to 10¹⁴ m when the other moved 0.7 m), and the end must not go there. The one test for every slide.
+ */
+function slideOnto(p: Point2, other: Point2, next: Ends, moveBy: number): Point2 | null {
+  const hit = meet(other, sub(p, other), next.start, sub(next.end, next.start));
+  return hit && distance(hit, p) <= SLIDE_LIMIT * moveBy + POINT_TOLERANCE ? hit : null;
+}
+
+/** How far a wall went: the larger of its two ends' moves. */
+const movedBy = (was: Ends, now: Ends): number => Math.max(distance(was.start, now.start), distance(was.end, now.end));
 
 /** Whether q is on the line through a and b: a corner taken there tilts nothing, and stays exact. */
 const onLine = (q: Point2, a: Point2, b: Point2): boolean => Math.abs(cross(normalize(sub(b, a)), sub(q, a))) <= POINT_TOLERANCE;
@@ -67,7 +84,7 @@ function follow(walls: readonly DocWall[], moved: ReadonlyMap<WallId, Ends>, map
         const mapped = map(end);
         const hit =
           lines && keptDirection(before, next) && !w.bulge && !before.bulge && !onLine(mapped, other, p)
-            ? meet(other, sub(p, other), next.start, sub(next.end, next.start))
+            ? slideOnto(p, other, next, movedBy(before, next))
             : null;
         if (hit) return hit;
         corner ??= mapped;
@@ -76,7 +93,8 @@ function follow(walls: readonly DocWall[], moved: ReadonlyMap<WallId, Ends>, map
       for (const [id, next] of moved) {
         const before = walls.find((x) => x.id === id)!;
         if (before.levelId !== w.levelId || !onBody(p, before.start, before.end)) continue;
-        const hit = intersectLines(other, sub(p, other), next.start, sub(next.end, next.start));
+        // Too near parallel, or too far along: the end stays where it is rather than fly off.
+        const hit = slideOnto(p, other, next, movedBy(before, next));
         if (hit) return hit;
       }
       return p;
@@ -116,7 +134,7 @@ export function transformWalls(doc: Doc, ids: readonly WallId[], map: (p: Point2
         if (set.has(o.id) || o.bulge || o.levelId !== w.levelId) continue;
         const far = distance(o.start, p) <= POINT_TOLERANCE ? o.end : distance(o.end, p) <= POINT_TOLERANCE ? o.start : null;
         if (!far || onLine(mapped, far, p)) continue;
-        const hit = meet(next.start, sub(next.end, next.start), far, sub(p, far));
+        const hit = slideOnto(p, far, next, movedBy(w, next));
         if (hit) return hit;
       }
       return null;
@@ -149,7 +167,8 @@ function keepOnHosts(doc: Doc, ids: readonly WallId[], walls: readonly DocWall[]
         const u = normalize(sub(h.end, h.start));
         const t = dot(sub(from, h.start), u);
         if (t <= POINT_TOLERANCE || t >= len - POINT_TOLERANCE || Math.abs(cross(u, sub(from, h.start))) > wallThickness(doc, h) + POINT_TOLERANCE) continue;
-        const hit = intersectLines(to, along, from, u);
+        // Its own line about parallel to the host's: no meeting to keep (meet's guard, as every slide).
+        const hit = meet(to, along, from, u);
         if (!hit) continue;
         const s = dot(sub(hit, h.start), u);
         if (s > POINT_TOLERANCE && s < len - POINT_TOLERANCE) return hit;

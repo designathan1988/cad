@@ -36,6 +36,7 @@ const isOldPotPlant = (d: ObjectDefinition) => d.parts.length === 2 && d.parts.e
 import { LIBRARY_LIGHTS, POINT_LIGHT } from '../elements/object/library-lights';
 import { definitionMaterials } from '../elements/object/materials';
 import { isDefinition } from '../elements/object/valid';
+import { layerThicknessOk } from '../elements/layers/stack';
 import { objectKind } from '../elements/kinds/object';
 import { DEFAULT_UNITS, isUnits } from '../ui/units';
 import { BUILT_IN_MATERIALS, CUT_PATTERNS, isColor, type Material, materialFor } from '../elements/material/schema';
@@ -47,7 +48,7 @@ import { KINDS } from '../elements/registry';
 import { typedIds } from './typed-ids';
 import { isSavedView } from '../app/saved-views';
 import { deriveGeometry } from '../app/geometry';
-import { distributeOpenings } from '../elements/opening/commands';
+import { distributeOpenings, wallRule } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
@@ -112,8 +113,11 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  *   terrain, sheets, points, tags, clouds: KEPT_FIELDS) are carried in `kept` as the file had them, never
  *   read into, and written back the same, at the top of the file where they were. A layer set no longer
  *   hides the services (a category gone with them).
+ * Version 68: a door or window is never placed by another one unless the user says so. An older file's
+ *   openings measured from another opening or aligned with one (made so by the tool, unasked) are held
+ *   by their wall where they are: moving or resizing one no longer moves the others.
  */
-export const CURRENT_VERSION = 67;
+export const CURRENT_VERSION = 68;
 
 /** The file's fields of the areas taken out of the app, as they are in it (Doc.kept). */
 function keptOf(raw: Record<string, unknown>): Readonly<Record<string, unknown>> | null {
@@ -191,7 +195,7 @@ export const isWallType = (t: unknown): t is WallType =>
   typeof t.name === 'string' &&
   Array.isArray(t.layers) &&
   t.layers.length > 0 &&
-  t.layers.every((l: unknown) => isObject(l) && finite(l.thickness) && l.thickness > 0 && typeof l.function === 'string') &&
+  t.layers.every((l: unknown) => isObject(l) && layerThicknessOk(l.thickness) && typeof l.function === 'string') &&
   isTop(t.top) &&
   (t.baseOffset === undefined || finite(t.baseOffset));
 
@@ -415,7 +419,17 @@ export function repairProject(raw: unknown): ReadResult {
   // Every id says its kind (typed-ids.ts): one written without it is renamed, and said.
   const typed = typedIds(doc);
   if (typed.renamed > 0) fixes.push({ kind: 'typedIds', count: typed.renamed });
-  return { ok: true, doc: regroupOffJoints(typed.doc, raw.version), fixes };
+  return { ok: true, doc: heldByWalls(regroupOffJoints(typed.doc, raw.version), raw.version), fixes };
+}
+
+/**
+ * Before version 68 the door and window tools measured an opening from its neighbour, and moving or
+ * resizing that one moved it: each such opening (from another, or aligned with one) is held by its wall
+ * where it is (wallRule, worked out on the file as read, so none moves). Groups stay: distributing is asked for.
+ */
+function heldByWalls(doc: Doc, version: number): Doc {
+  if (version >= 68 || !doc.openings.some((o) => o.rule.kind === 'fromOpening' || o.rule.kind === 'aligned')) return doc;
+  return { ...doc, openings: doc.openings.map((o) => ({ ...o, rule: wallRule(doc, o) })) };
 }
 
 /**

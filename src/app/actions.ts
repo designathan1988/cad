@@ -13,6 +13,7 @@ import { words } from '../elements/object/fields';
 import { tBoth, name, t, type MessageKey } from '../ui/i18n';
 import type { App } from './app';
 import { canTransform } from '../tools/transform';
+import { CATEGORIES } from './geometry';
 
 export interface Action {
   readonly id: string;
@@ -28,6 +29,9 @@ export interface Action {
   readonly enabled: boolean;
   readonly run: () => void;
 }
+
+/** A button's tip for an action: its name, and its key as the user has it when it has one ("Undo (Ctrl+Z)"). */
+export const tipOf = (a: Pick<Action, 'label' | 'keys'>): string => (a.keys ? `${a.label} (${a.keys})` : a.label);
 
 /** What only the input layer can open (dialogs, the file picker). */
 export interface Openers {
@@ -165,6 +169,8 @@ export function appActions(app: App, open: Openers): Action[] {
     make('view.tempHide', 'pal.tempHide', views, () => app.hideTemporarily('hide'), { keys: 'Shift+H', enabled: has }),
     make('view.tempIsolate', 'pal.tempIsolate', views, () => app.hideTemporarily('isolate'), { keys: 'Shift+I', enabled: has }),
     make('view.tempReset', 'pal.tempReset', views, () => app.resetTemporary(), { enabled: ui.temp !== null }),
+    // A selected door's hinge to the other jamb (Space sends its leaf to the other side, as in Revit).
+    make('edit.flipHinge', 'ctx.flipHinge', edit, () => app.flipDoor('hinge'), { keys: 'H', enabled: app.selectedDoor() }),
     make('edit.next', 'pal.stepSelection', edit, () => app.stepSelection(1), { keys: 'N' }),
     make('edit.previous', 'pal.stepBack', edit, () => app.stepSelection(-1), { keys: 'Shift+N' }),
     make('file.projects', 'pal.projects', file, open.projects, { keywords: 'projetos projects lista list abrir open biblioteca library' }),
@@ -179,7 +185,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('settings.browser', 'pal.browser', settings, () => app.toggleBrowser()),
     make('settings.refLines', 'pal.refLines', settings, () => app.toggleRefLines()),
     make('settings.openingTags', 'pal.openingTags', settings, () => app.toggleOpeningTags(), { keywords: 'etiquetas tags marks tipo type portas janelas doors windows' }),
-    ...(['walls', 'openings', 'rooms', 'floors', 'objects', 'guides'] as const).map((c) =>
+    ...CATEGORIES.map((c) =>
       make(`layer.${c}`, ui.hidden.has(c) ? (`pal.show.${c}` as const) : (`pal.hide.${c}` as const), settings, () => app.toggleCategory(c)),
     ),
     ...[...doc.levels]
@@ -248,5 +254,6 @@ export function appActions(app: App, open: Openers): Action[] {
     make('settings.keys', 'keys.open', settings, open.keys, { keywords: 'atalhos shortcuts teclado keyboard teclas keys remapear remap desligar' }),
     make('drawing.edit', 'draw.open', edit, open.drawing, { keywords: `${tBoth('draw.title')} 1:50 1:100 pena pen espessura lineweight` }),
     make('help.shortcuts', 'pal.shortcuts', help, open.help, { keys: '?' }),
+    make('help.commands', 'pal.commands', help, () => app.openCommands(), { keys: 'Ctrl+K' }),
   ];
 }

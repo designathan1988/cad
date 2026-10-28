@@ -2,7 +2,7 @@
 // and top are the wall's own or its type's (app/document.ts): an own one is marked, with the way back.
 
 import { lengthText } from '../../ui/units';
-import { type Doc, type DocWall, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop, type WallPhase } from '../../app/document';
+import { type Doc, type DocWall, LEVEL_HEIGHT, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop, type WallPhase } from '../../app/document';
 import { distance } from '../../core/vector';
 import type { Field } from '../../ui/fields';
 import { name, t, type MessageKey } from '../../ui/i18n';
@@ -275,7 +275,7 @@ function levelAbove(doc: Doc, levelId: string | undefined): string | undefined {
 
 /** A new top of the kind chosen; up to a level, the one given (the one above the walls'). */
 function topRule(kind: string, above: string | undefined): HeightRule {
-  if (kind === 'fixed') return { kind: 'fixed', height: 2.8 };
+  if (kind === 'fixed') return { kind: 'fixed', height: LEVEL_HEIGHT };
   if (kind === 'roof') return { kind: 'roof' };
   if (kind === 'toLevel' && above) return { kind: 'toLevel', levelId: above, offset: 0 };
   return { kind: 'level', offset: 0 };
@@ -284,60 +284,42 @@ function topRule(kind: string, above: string | undefined): HeightRule {
 /** The text when all agree, else "varies". */
 const sameText = (texts: readonly string[]) => (texts.every((x) => x === texts[0]) ? texts[0]! : t('panel.varies'));
 
-/** The settings of the next walls the tool draws: the same choices as a wall's, from the same fields. */
-export function nextWallFields(doc: Doc, update: (patch: Partial<WallDefaults>) => void): Field<WallDefaults>[] {
-  const types = doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name), keywords: w.name, thumb: layerSwatch(w.layers, doc.materials) }));
-  return [
-    { id: 'type', label: 'panel.type', kind: 'search', options: types, get: (d) => d.wallTypeId, set: (v) => update({ wallTypeId: v }) },
-    {
-      id: 'reference',
-      label: 'panel.reference',
-      kind: 'segmented',
-      options: REFS.map((r) => ({ value: r.value, label: t(r.key), short: t(r.short), icon: r.icon })),
-        // The icons alone did not say which line each was: their names beside them, across the panel.
-        labelled: true,
-        wide: true,
-      get: (d) => d.referenceLine,
-      set: (v) => update({ referenceLine: v as ReferenceLine }),
-    },
-    { id: 'baseOffset', label: 'panel.baseOffset', kind: 'number', get: (d) => d.baseOffset, set: (v) => update({ baseOffset: v }) },
-    {
-      id: 'top',
-      label: 'panel.top',
-      kind: 'select',
-      // The next walls go on the level shown: up to a level, the highest other one.
-      options: topOptions(doc),
-      get: (d) => d.top.kind,
-      set: (v) => update({ top: topRule(v, levelAbove(doc, undefined)) }),
-    },
-    {
-      id: 'topLevelId',
-      label: 'panel.topToWhich',
-      kind: 'select',
-      sub: true,
-      when: (ds) => ds[0]!.top.kind === 'toLevel',
-      options: doc.levels.map((l) => ({ value: l.id, label: name(l.name) })),
-      get: (d) => (d.top.kind === 'toLevel' ? d.top.levelId : ''),
-      set: (v) => update({ top: { kind: 'toLevel', levelId: v, offset: 0 } }),
-    },
-    {
-      id: 'topOffset',
-      label: 'panel.offset',
-      kind: 'number',
-      sub: true,
-      when: (ds) => ds[0]!.top.kind === 'level',
-      get: (d) => (d.top.kind === 'level' ? d.top.offset : 0),
-      set: (v) => update({ top: { kind: 'level', offset: v } }),
-    },
-    {
-      id: 'topHeight',
-      label: 'panel.height',
-      kind: 'number',
-      sub: true,
-      min: 0.01,
-      when: (ds) => ds[0]!.top.kind === 'fixed',
-      get: (d) => (d.top.kind === 'fixed' ? d.top.height : 0),
-      set: (v) => update({ top: { kind: 'fixed', height: v } }),
-    },
-  ];
+/** The template's id: never a wall's (theirs start with "wall_"), as next-element.ts's NEXT_ID. */
+const NEXT_WALL_ID = '__next__';
+
+/** The fields a wall not yet drawn has: its type, line, base and top (its level is the one shown; its phase, joins and measures are a placed wall's). */
+const NEXT_WALL = new Set(['type', 'reference', 'baseOffset', 'top', 'topLevelId', 'topLevelOffset', 'topOffset', 'topHeight']);
+
+/**
+ * The next walls the tool draws, as a wall (Revit's type and instance properties before the click; the
+ * other kinds' next element, app/next-element.ts): a template wall made of the tool's settings on the
+ * level shown, with the same fields as a selected wall (wallFields), those a placed wall alone has left
+ * out. A change to the template is a change to the settings.
+ */
+export function nextWall(doc: Doc, defaults: WallDefaults, levelId: string, update: (patch: Partial<WallDefaults>) => void): { readonly fields: Field<DocWall>[]; readonly item: DocWall } {
+  const item: DocWall = { id: NEXT_WALL_ID, wallTypeId: defaults.wallTypeId, referenceLine: defaults.referenceLine, start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, levelId, baseOffset: defaults.baseOffset, top: defaults.top };
+  // The type's own base and top: what "back to the type's" sets.
+  const { baseOffset: _b, top: _t, ...bare } = item;
+  const settings = (patch: Partial<Omit<DocWall, 'id'>>) =>
+    update({
+      ...(patch.wallTypeId !== undefined ? { wallTypeId: patch.wallTypeId } : {}),
+      ...(patch.referenceLine !== undefined ? { referenceLine: patch.referenceLine } : {}),
+      ...(patch.baseOffset !== undefined ? { baseOffset: patch.baseOffset } : {}),
+      ...(patch.top !== undefined ? { top: patch.top } : {}),
+    });
+  const act: WallFieldActions = {
+    updateWalls: settings,
+    setReferenceLine: (line) => update({ referenceLine: line }),
+    setWallType: (typeId) => update({ wallTypeId: typeId }),
+    keepClear: false,
+    setKeepClear: () => undefined,
+    resetToType: (fields) => update(Object.fromEntries(fields.map((f) => [f, f === 'top' ? wallTop(doc, bare) : wallBase(doc, bare)]))),
+    editType: () => undefined,
+    updateRadius: () => undefined,
+    arrangeWalls: () => undefined,
+    setEndJoin: () => undefined,
+  };
+  const all = wallFields(doc, act, [item]);
+  const fields = [...all.general, ...all.constraints].filter((f) => NEXT_WALL.has(f.id));
+  return { fields, item };
 }

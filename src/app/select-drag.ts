@@ -24,7 +24,6 @@ import { insidePolygon } from './geometry';
 import { detachedFrom, ungroupOpenings, wallRule } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import { offsetThrough, placeDimension } from '../elements/dimension/anchor';
-import { wallsOnGrids } from '../elements/grid/carry';
 import { eachSolid, kindIds, kindLists, moveKinds } from '../elements/registry';
 import { setDimensionOffset } from '../elements/dimension/commands';
 import { ruleAt } from '../tools/opening-tool';
@@ -165,13 +164,12 @@ export function selectGestures(app: App): SelectGestures {
       if (pending && !drag) {
         if (distance(screen, pending.screen) < THRESHOLD_PX) return;
         const doc = app.store.get();
-        // The walls on a selected axis go with it (elements/grid/carry.ts).
-        const moving = [...doc.walls.filter((w) => ui.selection.has(w.id)).map((w) => w.id), ...wallsOnGrids(doc, [...ui.selection])];
-        const carried = new Set(wallsOnGrids(doc, [...ui.selection]));
+        // An axis moves alone: the walls and columns on its line are not tied to it (no link the user made).
+        const moving = doc.walls.filter((w) => ui.selection.has(w.id)).map((w) => w.id);
         const going = () => roomsGoingWith(doc, app.geometry, ui.selection);
         const rooms = new Set([...going(), ...doc.rooms.filter((r) => ui.selection.has(r.id)).map((r) => r.id)]);
         // The rooms go as a drag takes them (a turn too: `rooms`), not again as the registry's.
-        const kinds = new Set([...kindIds(doc, [...ui.selection, ...carried])].filter((id) => !rooms.has(id)));
+        const kinds = new Set([...kindIds(doc, [...ui.selection])].filter((id) => !rooms.has(id)));
         const only = ui.selection.size === 1 ? [...ui.selection][0]! : null;
         const sliding = only !== null ? doc.openings.find((o) => o.id === only) : undefined;
         const placed = sliding ? app.geometry.openings.get(sliding.id) : undefined;
@@ -292,8 +290,7 @@ export function selectGestures(app: App): SelectGestures {
     up(shift) {
       collide = null;
       const d = ui.drag;
-      const clicked = pending?.kind === 'wall' && !d;
-      pending = null;
+      const clicked = pending?.kind === 'wall' && !d;      pending = null;
       ui.drag = null;
       ui.snap = null;
       ui.smart = null;

@@ -8,6 +8,7 @@ import { type Beam, BEAM_PREFIX, beamOutline, beamSection } from '../beam/schema
 import type { ElementKind } from '../contract';
 import { insideRing } from '../room/derive';
 import { nearSegment, throughElement, trace } from './paint';
+import { levelOf, NO_LEVEL } from '../../app/document';
 
 export interface BeamSolid {
   readonly beam: Beam;
@@ -78,7 +79,7 @@ export const beamKind: ElementKind<Beam, BeamSolid> = {
   // Hanging from its level's top (plus its adjustment), its depth down; sloping when its end's top differs.
   memo: 'level',
   derive: (doc, b) => {
-    const level = doc.levels.find((l) => l.id === b.levelId) ?? { elevation: 0, height: 2.8 };
+    const level = levelOf(doc, b.levelId) ?? NO_LEVEL;
     const ceiling = level.elevation + level.height;
     const startTop = ceiling + (b.topOffset ?? 0);
     const endTop = ceiling + (b.endOffset ?? b.topOffset ?? 0);
@@ -92,7 +93,6 @@ export const beamKind: ElementKind<Beam, BeamSolid> = {
   span: (s) => ({ bottom: s.bottom, top: s.top }),
   moved: (b, d) => ({ ...b, start: { x: b.start.x + d.x, y: b.start.y + d.y }, end: { x: b.end.x + d.x, y: b.end.y + d.y } }),
   mapped: (b, t, id) => ({ ...b, id, start: t.map(b.start), end: t.map(b.end), width: Math.max(0.05, b.width * t.factor) }),
-  onGrid: (b, onLine) => onLine(b.start) && onLine(b.end),
   similar: (a, b) => Math.abs(a.width - b.width) < 1e-6 && Math.abs(a.depth - b.depth) < 1e-6,
   // Above the cut: dashed, as hidden lines are.
   plan: (p, s, lit) => {

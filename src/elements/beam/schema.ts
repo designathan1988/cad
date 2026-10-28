@@ -1,6 +1,6 @@
 // Beams (ref/chat.txt:86, 134): a bar between two points of a level, hanging from the level's top
 // (plus an adjustment), its width across and its depth down. Above the plan's cut, so drawn dashed in
-// plan, as hidden lines are; solid in 3D. It goes with the grid axis it lies on (elements/grid/carry.ts).
+// plan, as hidden lines are; solid in 3D.
 
 import { add, normalize, perp, type Point2, scale, sub } from '../../core/vector';
 

@@ -6,10 +6,8 @@
 import type { Command } from '../core/store';
 import { isColor } from '../elements/material/schema';
 import type { Doc } from './document';
-import type { Category } from './geometry';
+import { CATEGORIES, type Category } from './geometry';
 import { ROOM_USES } from '../elements/room/schema';
-
-export const CATEGORIES: readonly Category[] = ['walls', 'openings', 'rooms', 'floors', 'objects', 'guides'];
 
 export interface LayerSet {
   readonly id: string;

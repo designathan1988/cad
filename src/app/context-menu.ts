@@ -1,6 +1,7 @@
 // The actions contextIds picks for the selection, made runnable: label, icon, key and what they do.
 // The right-click menu and the floating bar both show these, so the same action has the same name,
-// icon and key in both (ref/chat.txt:200).
+// icon and key in both (ref/chat.txt:200). The key is the action list's (actions.ts), as the user set
+// it: a key changed in the keys dialog shows here as it does in the palette and the ribbon.
 
 import { newId } from '../core/id';
 import { distributeOpenings, updateOpening } from '../elements/opening/commands';
@@ -19,16 +20,17 @@ export interface ContextEntry {
   readonly run: () => void;
 }
 
-const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
-  move: { icon: 'move', keys: 'Shift+M' },
-  copy: { icon: 'copy', keys: 'Shift+C' },
-  rotate: { icon: 'rotate', keys: 'Shift+R' },
-  mirror: { icon: 'mirror', keys: 'Shift+X' },
-  scale: { icon: 'scale', keys: 'Shift+E' },
-  merge: { icon: 'merge', keys: 'Shift+J' },
+/** Each entry's icon, and the action of the action list it is (its key comes from there). */
+const LOOK: Readonly<Record<ContextId, { icon: IconName; action?: string }>> = {
+  move: { icon: 'move', action: 'edit.move' },
+  copy: { icon: 'copy', action: 'edit.copy' },
+  rotate: { icon: 'rotate', action: 'edit.rotate' },
+  mirror: { icon: 'mirror', action: 'edit.mirror' },
+  scale: { icon: 'scale', action: 'edit.scale' },
+  merge: { icon: 'merge', action: 'edit.merge' },
   flipWall: { icon: 'flip' },
-  editType: { icon: 'wall' },
-  flipHinge: { icon: 'door', keys: 'H' },
+  editType: { icon: 'wall', action: 'type.edit' },
+  flipHinge: { icon: 'door', action: 'edit.flipHinge' },
   // Each its own icon: open or close is a door standing ajar; the side it opens to, the swing's arc; the
   // hinge's jamb, a door with its hinge side marked. Two of them shared the arc and could not be told apart.
   toggleOpen: { icon: 'doorOpen' },
@@ -37,19 +39,19 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
   addFloor: { icon: 'slab' },
   addCeiling: { icon: 'arrowUp' },
   distribute: { icon: 'distribute' },
-  frameSelection: { icon: 'zoomSel', keys: 'F' },
+  frameSelection: { icon: 'zoomSel', action: 'view.frameSelection' },
   properties: { icon: 'panel' },
-  clearSelection: { icon: 'close', keys: 'Esc' },
-  delete: { icon: 'trash', keys: 'Del' },
-  drawWall: { icon: 'wall', keys: 'W' },
+  clearSelection: { icon: 'close', action: 'edit.clearSelection' },
+  delete: { icon: 'trash', action: 'edit.delete' },
+  drawWall: { icon: 'wall', action: 'tool.wall' },
   // The same icon as the Home button in the top bar, which does the same.
-  frameAll: { icon: 'home', keys: 'Home' },
-  clearGuides: { icon: 'guide' },
-  section: { icon: 'cut' },
-  selectSimilar: { icon: 'pointer' },
-  addNote: { icon: 'text' },
-  addLevelMark: { icon: 'height' },
-  commands: { icon: 'command', keys: 'Ctrl+K' },
+  frameAll: { icon: 'home', action: 'view.frameAll' },
+  clearGuides: { icon: 'guide', action: 'edit.clearGuides' },
+  section: { icon: 'cut', action: 'view.section' },
+  selectSimilar: { icon: 'pointer', action: 'edit.selectSimilar' },
+  addNote: { icon: 'text', action: 'edit.addNote' },
+  addLevelMark: { icon: 'height', action: 'edit.addLevelMark' },
+  commands: { icon: 'command', action: 'help.commands' },
 };
 
 export function contextEntries(app: App, openCommands: () => void): ContextEntry[] {
@@ -94,10 +96,11 @@ export function contextEntries(app: App, openCommands: () => void): ContextEntry
     })(),
     commands: openCommands,
   };
-  return contextIds(app.store.get(), ids, app.ui.levelId).map((id) => ({
-    id,
-    label: t(`ctx.${id}` as MessageKey),
-    ...LOOK[id],
-    run: run[id],
-  }));
+  // The keys as the action list has them now: the user's, or none when turned off.
+  const keys = new Map(app.actionList().flatMap((a) => (a.keys ? [[a.id, a.keys] as const] : [])));
+  return contextIds(app.store.get(), ids, app.ui.levelId).map((id) => {
+    const { icon, action } = LOOK[id];
+    const key = action ? keys.get(action) : undefined;
+    return { id, label: t(`ctx.${id}` as MessageKey), icon, ...(key ? { keys: key } : {}), run: run[id] };
+  });
 }

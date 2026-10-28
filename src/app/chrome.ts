@@ -13,7 +13,7 @@ import { icon } from '../ui/icons';
 import { el } from '../ui/controls';
 import { keyHint } from '../ui/shell';
 import { kindOfId, levelOfSolid } from '../elements/registry';
-import { drawingOf, elementIds, wallNumber } from './document';
+import { elementIds, wallNumber } from './document';
 import { SCALES } from '../elements/drawing/schema';
 import { boundsOf, openingOutline } from './geometry';
 import { renderBrowser } from '../ui/browser';
@@ -21,6 +21,7 @@ import { renderRibbonTab, renderRibbonTabs } from '../ui/ribbon';
 import { ribbonTabs } from './ribbon-tabs';
 import { exploding, RENDER_QUALITIES, shownLevels, VISUAL_STYLES } from './view-3d';
 import { contextEntries } from './context-menu';
+import { tipOf } from './actions';
 import { placeBarY } from '../ui/bar-place';
 import { signedArea } from '../elements/room/derive';
 import type { App } from './app';
@@ -59,6 +60,33 @@ export function renderChrome(app: App): void {
   shell.redo.disabled = !store.canRedo();
   shell.view3d.setAttribute('aria-pressed', String(ui.view === '3d'));
   shell.viewPlan.setAttribute('aria-pressed', String(ui.view === 'plan'));
+  // The title bar's, the view buttons' and the snaps button's tips: each its action's name and key as the
+  // user has it (a key changed in the keys dialog shows here as in the palette); the command search's key cap
+  // too. Written only when they change.
+  const byId = new Map(app.actionList().map((a) => [a.id, a]));
+  const tipFrom = (b: HTMLElement, id: string, label = true) => {
+    const a = byId.get(id);
+    if (!a || b.title === tipOf(a)) return;
+    b.title = tipOf(a);
+    if (label) b.setAttribute('aria-label', tipOf(a));
+  };
+  tipFrom(shell.undo, 'edit.undo');
+  tipFrom(shell.redo, 'edit.redo');
+  tipFrom(shell.commands, 'help.commands');
+  tipFrom(shell.shortcuts, 'help.shortcuts');
+  tipFrom(shell.lang, 'settings.language');
+  tipFrom(shell.save, 'file.save');
+  tipFrom(shell.open, 'file.open');
+  tipFrom(shell.snapBtn, 'settings.snaps');
+  // Their visible words name them: the key in the tip only.
+  tipFrom(shell.view3d, 'view.3d', false);
+  tipFrom(shell.viewPlan, 'view.plan', false);
+  const commandsKey = byId.get('help.commands')?.keys ?? '';
+  const cap = shell.commands.querySelector<HTMLElement>('.kbd');
+  if (cap && cap.textContent !== commandsKey) {
+    cap.textContent = commandsKey;
+    cap.hidden = commandsKey === '';
+  }
   renderRibbon(app);
   shell.lang.textContent = getLang().toUpperCase();
   // Rewritten only when it changes: replacing the icon under the pointer between press and release
@@ -91,7 +119,8 @@ export function renderChrome(app: App): void {
     shell.shownReset.querySelector('.label')!.textContent = t('vcb.showAll');
     shell.shownReset.title = t('temp.reset');
   }
-  shell.planScale.select.value = String(drawingOf(doc).scale);
+  // The scale the plan is drawn at now: a saved view's own while it is shown.
+  shell.planScale.select.value = String(app.drawingNow().scale);
   shell.shownReset.hidden = ui.temp === null;
   for (const [mode, b] of Object.entries(shell.levelsShown)) b.setAttribute('aria-pressed', String(ui.view3d.levels === mode));
   // Pressed only while it spreads something: with one level shown it is off, and says why when clicked.
@@ -141,6 +170,11 @@ export function renderChrome(app: App): void {
   // Gone once the wall tool is on: "press W" no longer applies, and the footer says what to click.
   // Only on an empty project: a column, a roof or a note drawn first is under it otherwise.
   shell.emptyHint.hidden = doc.walls.length > 0 || elementIds(doc).size > 0 || ui.tool !== 'select';
+  // With the wall tool's key as the user has it.
+  if (!shell.emptyHint.hidden) {
+    const empty = t('empty.hint', { key: app.keyName('tool.wall') });
+    if (shell.emptyHint.textContent !== empty) shell.emptyHint.textContent = empty;
+  }
   // Hidden or isolated for a while: the drawing framed, and a way back, as Revit's cyan frame says.
   shell.viewport.classList.toggle('temp-view', ui.temp !== null);
   shell.tempChip.hidden = ui.temp === null;
@@ -215,7 +249,7 @@ export function renderChrome(app: App): void {
           ? t('hint.holeStart')
           : ui.ceilingTool
             ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.ceilingPlace')
-            : t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
+            : t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace', { key: app.keyName('tool.floor') })
         : ui.tool === 'measure'
           ? app.measureHint()
           : ui.tool === 'dimension'
@@ -269,7 +303,15 @@ export function renderChrome(app: App): void {
   // seemed impossible to turn off.
   // While a point is drawn from another: the arrows lock its direction.
   const lockKeys = ui.drawFrom ? [keyHint('→ ↑', t('key.lockAxis')), keyHint('← ↓', t('key.lockWall'))] : [];
-  const snapKey = keyHint('S', t(ui.snaps ? 'key.snapsOn' : 'key.snapsOff'));
+  // An action's key as the user has it (actions.ts, keymap.ts): a key changed in the keys dialog is taught
+  // here too; one turned off is not offered. The tools' own keys (C, Q, A, Enter, Esc in a tool…) are no
+  // actions and cannot be changed.
+  const actionKeys = new Map(app.actionList().flatMap((a) => (a.keys ? [[a.id, a.keys] as const] : [])));
+  const actionHint = (id: string, what: string) => {
+    const key = actionKeys.get(id);
+    return key ? [keyHint(key, what)] : [];
+  };
+  const snapKeys = actionHint('settings.snaps', t(ui.snaps ? 'key.snapsOn' : 'key.snapsOff'));
   const keys = ui.guide
     ? [keyHint('Enter', t('key.placeGuide')), keyHint('Esc', t('key.cancel'))]
     : ui.tool === 'split' || ui.tool === 'corner'
@@ -281,7 +323,7 @@ export function renderChrome(app: App): void {
         // Offset has no centre and no angle: its distance is square to the wall.
         ...(mod.state.step === 'base' && mod.kind !== 'move' && mod.kind !== 'copy' && mod.kind !== 'offset' ? [keyHint('Enter', t('key.centre'))] : []),
         ...(mod.kind !== 'offset' ? [keyHint('Shift', t('key.straight')), ...lockKeys] : []),
-        snapKey,
+        ...snapKeys,
         keyHint('Esc', t(mod.state.step === 'base' ? 'key.exit' : 'key.back')),
       ]
     : placing && app.placesLeaf(placing)
@@ -289,44 +331,44 @@ export function renderChrome(app: App): void {
     : placing || ui.tool === 'room'
     ? [keyHint('Esc', t('key.exit'))]
     : ui.tool === 'dimension'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.dimension.kind === 'idle' ? 'key.exit' : 'key.back'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.dimension.kind === 'idle' ? 'key.exit' : 'key.back'))]
     : ui.tool === 'grid'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.gridFrom ? 'key.back' : 'key.exit'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.gridFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'section'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.sectionFrom ? 'key.back' : 'key.exit'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.sectionFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'callout'
-    ? [snapKey, keyHint('Esc', t(ui.calloutFrom ? 'key.back' : 'key.exit'))]
+    ? [...snapKeys, keyHint('Esc', t(ui.calloutFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'calibrate'
-    ? [snapKey, keyHint('Esc', t('key.exit'))]
+    ? [...snapKeys, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'column'
-    ? [snapKey, keyHint('Esc', t('key.exit'))]
+    ? [...snapKeys, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'guide'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.guideFrom ? 'key.back' : 'key.exit'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.guideFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'object'
-    ? [keyHint(t('key.spaceKey'), t('key.turn90')), snapKey, keyHint('Esc', t('key.exit'))]
+    ? [keyHint(t('key.spaceKey'), t('key.turn90')), ...snapKeys, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
     : ui.tool === 'mark'
-    ? [snapKey, keyHint('Esc', t(ui.markDraft.length > 0 ? 'key.back' : 'key.exit'))]
+    ? [...snapKeys, keyHint('Esc', t(ui.markDraft.length > 0 ? 'key.back' : 'key.exit'))]
     : ui.tool === 'stair'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.stairFrom ? 'key.back' : 'key.exit'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.stairFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'railing'
-    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.railingDraft.length > 0 ? 'key.finish' : 'key.exit'))]
+    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.railingDraft.length > 0 ? 'key.finish' : 'key.exit'))]
     : ui.tool === 'roof'
-    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.roofDraft.length > 0 ? 'key.back' : 'key.exit'))]
+    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.roofDraft.length > 0 ? 'key.back' : 'key.exit'))]
     : ui.tool === 'measure'
     ? [
         keyHint('C', t(ui.measureMode === 'chain' ? 'key.measureDistance' : 'key.measureChain')),
         ...(ui.measure.kind === 'chain' ? [keyHint('Enter', t('key.finish'))] : []),
         keyHint('Shift', t('key.straight')), ...lockKeys,
         ...altGuide,
-        snapKey,
+        ...snapKeys,
         keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clearMeasure')),
       ]
     : ui.tool === 'floor'
-    ? [keyHint('Enter', t('key.finish')), ...altGuide, snapKey, keyHint('Esc', t('key.exit'))]
+    ? [keyHint('Enter', t('key.finish')), ...altGuide, ...snapKeys, keyHint('Esc', t('key.exit'))]
     : drawing && w.kind === 'rect'
-    ? [keyHint('Q', t('key.rectOff')), keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')), snapKey, keyHint('Esc', t('key.back'))]
+    ? [keyHint('Q', t('key.rectOff')), keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')), ...snapKeys, keyHint('Esc', t('key.back'))]
     : drawing
     ? w.kind !== 'idle'
       ? [
@@ -337,7 +379,7 @@ export function renderChrome(app: App): void {
           keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')),
           keyHint('Shift', t('key.straight')), ...lockKeys,
           ...altGuide,
-          snapKey,
+          ...snapKeys,
           keyHint('Esc', t('key.finish')),
         ]
       : [
@@ -346,7 +388,7 @@ export function renderChrome(app: App): void {
           keyHint('Q', t(rect ? 'key.rectOff' : 'key.rect')),
           keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')),
           ...altGuide,
-          snapKey,
+          ...snapKeys,
           keyHint('Esc', t('key.exit')),
         ]
     : ui.selection.size > 0
@@ -354,15 +396,15 @@ export function renderChrome(app: App): void {
           keyHint('Shift', t('key.addRemove')),
           // Said before the drag, where it is decided: during it was too late to be found.
           ...(app.selectedWalls().length > 0 ? [keyHint('Alt', t('key.dragAlone'))] : []),
-          ...(app.selectedDoor() ? [keyHint(t('key.spaceKey'), t('key.flipSwing')), keyHint('H', t('key.flipHinge'))] : []),
-          keyHint('Del', t('key.delete')),
-          keyHint('F', t('key.frame')),
-          keyHint('Esc', t('key.clear')),
+          ...(app.selectedDoor() ? [keyHint(t('key.spaceKey'), t('key.flipSwing')), ...actionHint('edit.flipHinge', t('key.flipHinge'))] : []),
+          ...actionHint('edit.delete', t('key.delete')),
+          ...actionHint('view.frameSelection', t('key.frame')),
+          ...actionHint('edit.clearSelection', t('key.clear')),
         ]
       : ui.view === '3d'
         ? // In 3D a left drag selects by window, as in plan: how to turn the view was nowhere on screen.
-          [keyHint(t('key.rightDrag'), t('key.orbit')), keyHint(t('key.middleDrag'), t('key.pan')), keyHint('Ctrl K', t('key.commands')), keyHint('?', t('key.shortcuts'))]
-        : [keyHint('Ctrl K', t('key.commands')), keyHint('Ctrl A', t('key.selectAll')), keyHint('?', t('key.shortcuts'))];
+          [keyHint(t('key.rightDrag'), t('key.orbit')), keyHint(t('key.middleDrag'), t('key.pan')), ...actionHint('help.commands', t('key.commands')), ...actionHint('help.shortcuts', t('key.shortcuts'))]
+        : [...actionHint('help.commands', t('key.commands')), ...actionHint('edit.selectAll', t('key.selectAll')), ...actionHint('help.shortcuts', t('key.shortcuts'))];
   shell.keys.replaceChildren(...keys);
   const lengthMode = drawing && w.kind === 'drawing';
   // Where a point is asked for: the wall's start, a floor's corners, a room's point.
@@ -431,7 +473,8 @@ export function measureHint(app: App): string {
 export function placeFloatBar(app: App): void {
   const bar = app.shell.floatBar;
   const entries = app.ui.selection.size > 0 ? contextEntries(app, () => app.openCommands()) : [];
-  const key = `${getLang()}|${entries.map((e) => e.id).join(',')}`;
+  // The keys too: one the user changes (the keys dialog) shows in the buttons' tips at once.
+  const key = `${getLang()}|${entries.map((e) => `${e.id}:${e.keys ?? ''}`).join(',')}`;
   if (key !== app.floatKey) {
     app.floatKey = key;
     bar.replaceChildren(
@@ -440,7 +483,7 @@ export function placeFloatBar(app: App): void {
         b.type = 'button';
         b.className = 'icon-btn';
         b.innerHTML = icon(e.icon);
-        b.title = e.keys ? `${e.label} (${e.keys})` : e.label;
+        b.title = tipOf(e);
         b.setAttribute('aria-label', b.title);
         // The buttons outlive the selection they were made for (they are rebuilt only when the set of
         // actions changes): the action is looked up at the click, for what is selected then. Kept from

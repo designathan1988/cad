@@ -53,11 +53,11 @@ export function newProject(app: App): void {
   const doc = newDocument();
   app.ui.levelId = startLevel(doc);
   savePrefs({ levelId: app.ui.levelId });
-  app.store.dispatch({ label: 'cmd.newProject', apply: () => doc });
+  app.store.dispatch({ label: 'cmd.newProject', apply: () => doc, replaces: true });
   app.framed.plan = false;
   app.framed['3d'] = false;
   app.frameAll();
-  app.toast(t('toast.newUndo'));
+  app.toast(t('toast.newUndo', { key: app.keyName('edit.undo') }));
 }
 
 /** Opens a project file in place of the current project, as one undo step. */
@@ -83,9 +83,10 @@ export async function openFile(app: App, file: File): Promise<void> {
     return;
   }
   // One undo step, like any other change: opening by mistake never loses the project that was open.
-  app.store.dispatch({ label: 'cmd.openProject', apply: () => opened });
+  app.store.dispatch({ label: 'cmd.openProject', apply: () => opened, replaces: true });
   app.framed.plan = false;
   app.framed['3d'] = false;
   app.frameAll();
-  app.toast(fixed > 1 ? t('toast.openedFixed', { n: fixed }) : fixed === 1 ? t('toast.openedFixedOne') : t('toast.openedUndo'));
+  const key = app.keyName('edit.undo');
+  app.toast(fixed > 1 ? t('toast.openedFixed', { n: fixed, key }) : fixed === 1 ? t('toast.openedFixedOne', { key }) : t('toast.openedUndo', { key }));
 }

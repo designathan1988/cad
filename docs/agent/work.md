@@ -68,4 +68,6 @@ app/logo-image.ts (only sheets + lot dialog), io/xlsx.ts (only budget dialog), t
 - [x] 1.1–1.5. Commit next.
 
 ## Next
+Step 2 running: skill phase fix (cursor .whole-review/CURSOR.md, ledger status). Fixed: F-0003, F-0010, F-0021; F-0030 in hand;
+then F-0107, F-0136, F-0139, F-0126, F-0045 (RC1), RC2, wall engine, RC3, the rest; then apptest, finish, commit, push.
 Step 1 committed and pushed (a574453). Step 2: skill extracted to C:/Users/Jonathan/.claude/skills/reviewing-whole-codebase (SKILL.md and both references read whole). It is NOT in this session's skill list and has disable-model-invocation: true, so the owner must restart Claude Code and type /reviewing-whole-codebase fix himself. Then: init --mode fix --goal (the goal of docs/prompt-escopo-fundamental.md, word for word) --check "npx tsc --noEmit"; set-app --start "npm run dev" --url http://localhost:5173/. Playwright is not in the project: the skill installs playwright-core in its own folder in phase apptest.

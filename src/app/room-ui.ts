@@ -2,7 +2,7 @@
 
 import { distance, type Point2 } from '../core/vector';
 import { defaultName, name, t } from '../ui/i18n';
-import { levelOf } from './document';
+import { LEVEL_HEIGHT, levelOf } from './document';
 import { made, nextOf } from './next-element';
 import type { Floor, Room } from '../elements/room/schema';
 import { deriveGeometry } from './geometry';
@@ -97,7 +97,7 @@ export function addCeilingToRoom(app: App, roomId: string): void {
   const doc = app.store.get();
   const room = doc.rooms.find((r) => r.id === roomId);
   if (!room || doc.floors.some((f) => f.kind === 'ceiling' && f.source.kind === 'room' && f.source.roomId === roomId)) return;
-  const height = room.height ?? levelOf(doc, room.levelId)?.height ?? 2.8;
+  const height = room.height ?? levelOf(doc, room.levelId)?.height ?? LEVEL_HEIGHT;
   const id = newId('floor');
   // The next ceiling's thickness (next-element.ts), at the room's ceiling height.
   const thickness = (nextOf(app, 'ceilings') as unknown as Floor).thickness;

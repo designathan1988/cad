@@ -118,7 +118,7 @@ export function seriesReady(app: App): boolean {
 export function copySeries(app: App, n: number, divide: boolean): boolean {
   const c = app.lastCopy;
   if (!c || !app.seriesReady()) {
-    app.ui.error = t('hint.seriesAfterCopy');
+    app.ui.error = t('hint.seriesAfterCopy', { key: app.keyName('edit.copy') });
     app.renderChrome();
     return false;
   }

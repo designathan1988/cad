@@ -10,6 +10,7 @@ import { type Curtain, CURTAIN_PREFIX, isGridRule } from '../curtain/schema';
 import { type Material, materialIn } from '../material/schema';
 import { insideRing } from '../room/derive';
 import { nearSegment, trace } from './paint';
+import { levelOf, NO_LEVEL } from '../../app/document';
 
 /** As built, with the materials its frame and panels are of. */
 export interface CurtainBuilt extends CurtainSolid {
@@ -69,7 +70,7 @@ export const curtainKind: ElementKind<Curtain, CurtainBuilt> = {
     (c.panel === 'glass' || c.panel === 'opaque'),
   memo: 'level',
   derive: (doc, c) => {
-    const level = doc.levels.find((l) => l.id === c.levelId) ?? { elevation: 0, height: 2.8 };
+    const level = levelOf(doc, c.levelId) ?? NO_LEVEL;
     return {
       ...curtainSolid(c, level.height, level.elevation),
       frameMaterial: materialIn(doc.materials, 'metal'),
@@ -83,7 +84,6 @@ export const curtainKind: ElementKind<Curtain, CurtainBuilt> = {
   span: (s) => ({ bottom: s.bottom, top: s.top }),
   moved: (c, d) => ({ ...c, start: { x: c.start.x + d.x, y: c.start.y + d.y }, end: { x: c.end.x + d.x, y: c.end.y + d.y } }),
   mapped: (c, t, id) => ({ ...c, id, start: t.map(c.start), end: t.map(c.end) }),
-  onGrid: (c, onLine) => onLine(c.start) && onLine(c.end),
   similar: (a, b) => JSON.stringify([a.vertical, a.horizontal, a.mullion, a.depth, a.panel]) === JSON.stringify([b.vertical, b.horizontal, b.mullion, b.depth, b.panel]),
   // Cut: its two faces thin, the glass line along its middle, a mullion at each vertical line.
   plan: (p, s, lit) => {

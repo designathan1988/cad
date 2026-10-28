@@ -6,7 +6,7 @@ import { type Insets } from '../render/plan-view';
 import { t } from '../ui/i18n';
 import { type ViewId } from '../ui/shell';
 import { hasSolid } from '../elements/registry';
-import { levelOf } from './document';
+import { levelOf, NO_LEVEL } from './document';
 import { boundsOf } from './geometry';
 import { savePrefs } from './persist';
 import { fitFactor, keepInView } from './keep-in-view';
@@ -208,9 +208,9 @@ export function keepSelectionInView3d(app: App): boolean {
   if (covered.right === 0 && covered.bottom === 0 && !covered.left) return false;
   const box = boundsOf(app.geometry, app.ui.selection);
   if (!box) return false;
-  const level = levelOf(app.store.get(), app.ui.levelId);
-  const z0 = (level?.elevation ?? 0) + app.lift(app.ui.levelId);
-  const z1 = z0 + (level?.height ?? 2.8);
+  const level = levelOf(app.store.get(), app.ui.levelId) ?? NO_LEVEL;
+  const z0 = level.elevation + app.lift(app.ui.levelId);
+  const z1 = z0 + level.height;
   const pts = [box.min, box.max, { x: box.min.x, y: box.max.y }, { x: box.max.x, y: box.min.y }].flatMap((p) => [app.projectAt(p, z0), app.projectAt(p, z1)]).filter((p): p is Point2 => p !== null);
   if (pts.length === 0) return false;
   const vp = app.shell.viewport.getBoundingClientRect();
@@ -286,7 +286,7 @@ export function sectionAtGuide(app: App, flip = false): void {
   app.framed['3d'] = true;
   // From the cut side, looking across the line at what it keeps.
   app.scene.frame(boundsOf(app.visibleGeometry()), app.height(), new THREE.Vector3(-n.x, 0, n.y));
-  app.toast(t('toast.section'));
+  app.toast(t('toast.section', { key: app.keyName('help.commands') }));
   app.render();
 }
 

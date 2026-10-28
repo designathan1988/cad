@@ -293,3 +293,27 @@ describe('the areas taken out of the app (version 67)', () => {
     expect(r.ok && r.doc.layerSets).toEqual([{ id: 'l1', name: 'A', hidden: ['walls'] }]);
   });
 });
+
+describe('version 68', () => {
+  // A window measured from the door beside it, as the tool used to place it: held by its wall where it is.
+  const opening = (id: string, rule: unknown) => ({ id, wallId: 'wall_a', kind: 'window', width: 1, height: 1, sill: 1, hinge: 'start', swing: 'left', rule });
+  const old = (version: number) => ({
+    ...newDocument(),
+    version,
+    walls: [{ ...wall('wall_a', 0), end: { x: 10, y: 0 } }],
+    openings: [opening('opening_d', { kind: 'fromStart', distance: 1 }), opening('opening_w', { kind: 'fromOpening', openingId: 'opening_d', distance: 0.5, toward: 'end' })],
+  });
+
+  it('an older file: an opening measured from another is measured from its wall, in the same place', () => {
+    const r = readProject(JSON.stringify(old(67)));
+    expect(r.ok && r.doc.openings.map((o) => o.rule)).toEqual([
+      { kind: 'fromStart', distance: 1 },
+      { kind: 'fromStart', distance: 2.5 },
+    ]);
+  });
+
+  it('a file of this version keeps a link the user chose', () => {
+    const r = readProject(JSON.stringify(old(68)));
+    expect(r.ok && r.doc.openings[1]!.rule.kind).toBe('fromOpening');
+  });
+});

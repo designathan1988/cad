@@ -19,6 +19,7 @@ import { newId } from '../../core/id';
 import { addRailing } from '../railing/commands';
 import { RAILING_HEIGHT, RAILING_PREFIX } from '../railing/schema';
 import { materialIn } from '../material/schema';
+import { layerThicknessOk } from '../layers/stack';
 
 export const FLOOR_PREFIX = 'floor';
 
@@ -53,7 +54,7 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
     (f.holes === undefined || (Array.isArray(f.holes) && f.holes.every((h) => Array.isArray(h) && h.length >= 3 && h.every(isPoint)))) &&
     (f.slope === undefined || (isObject(f.slope) && finite(f.slope.grade) && finite(f.slope.dir))) &&
     // Its build-up's layers each of some thickness, its tiles of some size (a slab of nothing is not drawn).
-    (f.layers === undefined || (Array.isArray(f.layers) && f.layers.every((l: unknown) => isObject(l) && typeof l.materialId === 'string' && finite(l.thickness) && l.thickness > 0))) &&
+    (f.layers === undefined || (Array.isArray(f.layers) && f.layers.every((l: unknown) => isObject(l) && typeof l.materialId === 'string' && layerThicknessOk(l.thickness)))) &&
     (f.tiling === undefined || (isObject(f.tiling) && finite(f.tiling.width) && f.tiling.width > 0 && finite(f.tiling.length) && f.tiling.length > 0 && finite(f.tiling.joint) && f.tiling.joint >= 0)) &&
     (f.kind === undefined || f.kind === 'ceiling'),
   derive: (doc, f, g) => {

@@ -3,7 +3,7 @@
 // one action taken from the other.
 
 import { describe, expect, it } from 'vitest';
-import { assignKey, comboOf, keyOf, normalizeCombo, resolveKey } from '../../src/app/keymap';
+import { actionOfKey, assignKey, comboOf, keyOf, normalizeCombo, type KeyMap } from '../../src/app/keymap';
 
 const ev = (key: string, mods: { ctrl?: boolean; alt?: boolean; shift?: boolean } = {}) => ({ key, ctrlKey: !!mods.ctrl, metaKey: false, altKey: !!mods.alt, shiftKey: !!mods.shift });
 const actions = [
@@ -12,8 +12,15 @@ const actions = [
   { id: 'tool.door', defaultKeys: 'D' },
   { id: 'file.print', defaultKeys: 'Ctrl+P' },
   { id: 'tool.arc', defaultKeys: 'W, A' },
+  { id: 'edit.redo', defaultKeys: 'Ctrl+Shift+Z' },
   { id: 'edit.paste' },
 ];
+// The actions with their keys under a map, as the action list (app/actions.ts) builds them.
+const keyed = (map: KeyMap) =>
+  actions.map((a) => {
+    const keys = keyOf(a.id, a.defaultKeys, map);
+    return keys === undefined ? a : { ...a, keys };
+  });
 
 describe('keys as written', () => {
   it('modifiers in one order, a letter in capitals', () => {
@@ -42,22 +49,29 @@ describe('the user map', () => {
     expect(keyOf('edit.paste', undefined, { 'edit.paste': 'Ctrl+Shift+V' })).toBe('Ctrl+Shift+V');
   });
 
-  it("a key the user gave runs its action; the action's own key then does nothing; others are the app's", () => {
+  it("a key the user gave runs its action; the action's own key then does nothing; others are their own", () => {
     const map = { 'tool.wall': 'K' };
-    expect(resolveKey('K', actions, map).run?.id).toBe('tool.wall');
-    expect(resolveKey('W', actions, map)).toEqual({ blocked: true });
-    expect(resolveKey('D', actions, map)).toEqual({ blocked: false });
+    expect(actionOfKey('K', keyed(map))?.id).toBe('tool.wall');
+    expect(actionOfKey('W', keyed(map))).toBeUndefined();
+    expect(actionOfKey('D', keyed(map))?.id).toBe('tool.door');
     // Turned off: its key does nothing.
-    expect(resolveKey('D', actions, { 'tool.door': null })).toEqual({ blocked: true });
-    // A two-key sequence is not one key: left to the app.
-    expect(resolveKey('W, A', actions, { 'tool.arc': null }).blocked).toBe(false);
+    expect(actionOfKey('D', keyed({ 'tool.door': null }))).toBeUndefined();
+    // A two-key sequence is not one key: left to the tool.
+    expect(actionOfKey('W', keyed({ 'tool.wall': null }))).toBeUndefined();
+  });
+
+  it("a second key works while its action keeps its own key, and goes with it", () => {
+    expect(actionOfKey('Ctrl+Y', keyed({}))?.id).toBe('edit.redo');
+    expect(actionOfKey('Ctrl+Shift+Z', keyed({}))?.id).toBe('edit.redo');
+    expect(actionOfKey('Ctrl+Y', keyed({ 'edit.redo': 'Ctrl+R' }))).toBeUndefined();
+    expect(actionOfKey('Ctrl+Y', keyed({ 'edit.redo': null }))).toBeUndefined();
   });
 
   it('a key given to one action is taken from the one that had it', () => {
     const { map, taken } = assignKey({}, actions, 'tool.door', 'W');
     expect(map).toEqual({ 'tool.door': 'W', 'tool.wall': null });
     expect(taken.map((a) => a.id)).toEqual(['tool.wall']);
-    expect(resolveKey('W', actions, map).run?.id).toBe('tool.door');
+    expect(actionOfKey('W', keyed(map))?.id).toBe('tool.door');
     // A key no one has: nothing taken.
     expect(assignKey({}, actions, 'edit.paste', 'Ctrl+Shift+V').taken).toEqual([]);
   });

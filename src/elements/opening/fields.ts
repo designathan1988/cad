@@ -1,6 +1,6 @@
 // The fields doors and windows show in the panel, section by section (ui/fields.ts builds the rows):
 // general (kind and size), position (rule and its reference), the door's leaf, the group the
-// selection is in, and arranging several. Also the size of the next opening the tool places.
+// selection is in, and arranging several. Also the next opening the tool places, from the same fields.
 
 import { lengthNum, lengthText } from '../../ui/units';
 import { type Doc, wallNumber } from '../../app/document';
@@ -57,7 +57,7 @@ export function openingFields(selected: readonly OpeningSolid[], update: Opening
       // A door's make is not a window's: the plain one of the new kind.
       set: (k) => update(ids, { kind: k as OpeningKind, height: OPENING_DEFAULTS[k as OpeningKind].height, sill: OPENING_DEFAULTS[k as OpeningKind].sill, style: undefined }),
     },
-    modelField(selected.map((x) => x.opening), (style) => update(ids, { style })) as Field<OpeningSolid>,
+    modelField(selected.map((x) => x.opening), (style) => update(ids, { style })),
     { id: 'width', label: 'panel.width', kind: 'number', min: 0.01, get: (o) => o.opening.width, set: (v) => update(ids, { width: v }) },
     { id: 'height', label: 'panel.height', kind: 'number', min: 0.01, get: (o) => o.opening.height, set: (v) => update(ids, { height: v }) },
     // Doors have no sill: shown unless every selected opening is a door.
@@ -325,40 +325,31 @@ export function arrangeFields(doc: Doc, list: readonly Opening[], placed: Readon
   ];
 }
 
-/** The size of the next opening the tool places (one set of values, not elements). */
-export function nextOpeningFields(kind: OpeningKind, set: (patch: Partial<OpeningSize>) => void, size?: OpeningSize): Field<OpeningSize>[] {
-  return [
-    // A model sets the size it is usually made in too.
-    modelField([{ kind, style: undefined }], (style) => {
-      const m = OPENING_MODELS.find((x) => x.kind === kind && x.style === style);
-      set(m ? { style, width: m.width, height: m.height, sill: m.sill } : { style });
-    }, (s) => s.style) as Field<OpeningSize>,
-    { id: 'width', label: 'panel.width', kind: 'number', min: 0.01, get: (s) => s.width, set: (v) => set({ width: v }) },
-    { id: 'height', label: 'panel.height', kind: 'number', min: 0.01, get: (s) => s.height, set: (v) => set({ height: v }) },
-    { id: 'sill', label: 'panel.sill', kind: 'number', min: 0, when: () => kind !== 'door', get: (s) => s.sill, set: (v) => set({ sill: v }) },
-    ...(size ? nextStyleFields(kind, size, set) : []),
-  ];
-}
+/** The fields of a placed opening that one not yet placed has not: its mark, its kind (the tool's), its notes and actions. */
+const notNextOpening = (f: Field<OpeningSolid>) => f.id === 'mark' || f.id === 'kind' || f.kind === 'note' || f.kind === 'readout' || f.kind === 'action';
 
 /**
- * The next opening's make (its operation, leaves, frame, casing, transom, screen, threshold), as a placed
- * one's (styleFields), read from and set on the tool's size: one of a model only (a plain one has none).
+ * The next opening the tool places, as an opening (as walls' nextWall and the other kinds' next element,
+ * app/next-element.ts): a template of the tool's size and make, shown with a selected opening's fields
+ * (openingFields; styleFields for one with a make), their changes made to the tool's size. A model chosen
+ * for it brings the size it is usually made in too.
  */
-function nextStyleFields(kind: OpeningKind, size: OpeningSize, set: (patch: Partial<OpeningSize>) => void): Field<OpeningSize>[] {
-  const style = size.style;
-  if (!style) return [];
-  const as = (s: OpeningSize) => ({ opening: { id: 'next', kind, style: s.style ?? style } }) as unknown as OpeningSolid;
-  // The changes styleFields asks of the "selected" opening, made to the next one's style.
-  const fields = styleFields([as(size)], (_ids, patch) => {
-    const out = typeof patch === 'function' ? patch({ id: 'next', kind, style } as unknown as Opening) : patch;
-    if (out.style) set({ style: out.style });
-  });
-  return fields.flatMap((f): Field<OpeningSize>[] => {
-    if (f.kind === 'note' || f.kind === 'readout' || f.kind === 'action') return [];
-    const when = f.when;
-    const get = f.get as (x: OpeningSolid) => never;
-    return [{ ...f, ...(when ? { when: (items: readonly OpeningSize[]) => when(items.map(as)) } : {}), get: (s: OpeningSize) => get(as(s)) } as unknown as Field<OpeningSize>];
-  });
+export function nextOpening(kind: OpeningKind, size: OpeningSize, set: (patch: Partial<OpeningSize>) => void): { readonly fields: Field<OpeningSolid>[]; readonly item: OpeningSolid } {
+  const opening = { id: '__next__', kind, width: size.width, height: size.height, sill: size.sill, style: size.style } as unknown as Opening;
+  const item = { opening } as unknown as OpeningSolid;
+  const update: OpeningPanelActions['update'] = (_ids, patch) => {
+    const out = typeof patch === 'function' ? patch(opening) : patch;
+    const model = 'style' in out && !('width' in out) ? OPENING_MODELS.find((m) => m.kind === kind && m.style === out.style) : undefined;
+    set({
+      ...(out.width !== undefined ? { width: out.width } : {}),
+      ...(out.height !== undefined ? { height: out.height } : {}),
+      ...(out.sill !== undefined ? { sill: out.sill } : {}),
+      ...('style' in out ? { style: out.style } : {}),
+      ...(model ? { width: model.width, height: model.height, sill: model.sill } : {}),
+    });
+  };
+  const fields = [...openingFields([item], update), ...(size.style ? styleFields([item], update) : [])].filter((f) => !notNextOpening(f));
+  return { fields, item };
 }
 
 /** An opening's model as said: the catalog's name, the operation's for one changed by hand, or plain. */
@@ -369,7 +360,7 @@ export function modelName(o: Pick<Opening, 'kind' | 'style'>): string {
 }
 
 /** The model from the catalog (style.ts): plain (no style), one of the kind's, or "changed" for one made by hand. */
-function modelField<T>(list: readonly Pick<Opening, 'kind' | 'style'>[], set: (style: OpeningStyle | undefined) => void, styleOf?: (x: T) => OpeningStyle | undefined): Field<T> {
+function modelField(list: readonly Pick<Opening, 'kind' | 'style'>[], set: (style: OpeningStyle | undefined) => void): Field<OpeningSolid> {
   const kind = list[0]?.kind ?? 'door';
   const models = OPENING_MODELS.filter((m) => m.kind === kind);
   const valueOf = (o: Pick<Opening, 'kind' | 'style'>) => (o.style ? (modelOf(o)?.id ?? 'custom') : '');
@@ -384,7 +375,7 @@ function modelField<T>(list: readonly Pick<Opening, 'kind' | 'style'>[], set: (s
       ...models.map((m) => ({ value: m.id, label: t(`model.${m.id}` as MessageKey) })),
       ...(list.some((o) => valueOf(o) === 'custom') ? [{ value: 'custom', label: t('model.custom') }] : []),
     ],
-    get: (x: T) => valueOf(styleOf ? { kind, style: styleOf(x) } : (x as unknown as { opening: Opening }).opening),
+    get: (x) => valueOf(x.opening),
     set: (v) => {
       if (v === 'custom') return;
       set(models.find((m) => m.id === v)?.style);

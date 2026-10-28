@@ -62,7 +62,7 @@ import { type Grid } from '../elements/grid/schema';
 import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState } from '../tools/dimension-tool';
 import { geometryOf, keepRooms, moveRooms } from './carry';
 import { keepOpenings } from './keep-openings';
-import { type Doc, type DocWall, drawingOf, elementIds, levelOf, startLevel, type WallDefaults } from './document';
+import { type Doc, type DocWall, drawingOf, elementIds, LEVEL_HEIGHT, levelOf, startLevel, type WallDefaults } from './document';
 import type { DrawingSettings } from '../elements/drawing/schema';
 
 /** The snap labels that name their wall. */
@@ -259,7 +259,9 @@ export class App {
           label: c.label,
           apply: (before) => {
             const changed = c.apply(before);
-            if (changed === before) return changed;
+            // Another project in place of this one: nothing of it follows from this one's dimensions,
+            // openings or rooms (their ids may well repeat between projects).
+            if (changed === before || c.replaces) return changed;
             const settled = settleDimensions(before, changed);
             if (!settled.ok) {
               refused = settled.dim;
@@ -390,7 +392,7 @@ export class App {
   }
 
   height(): number {
-    return Math.max(2.8, ...[...this.geometry.solids.values()].map((s) => s.top + this.lift(s.wall.levelId)));
+    return Math.max(LEVEL_HEIGHT, ...[...this.geometry.solids.values()].map((s) => s.top + this.lift(s.wall.levelId)));
   }
 
   /** How far up a level is drawn in 3D: exploded, each level above the one below; else not at all. */
@@ -454,9 +456,9 @@ export class App {
       d?.kind === 'move' || d?.kind === 'rotate'
         ? {
             ...doc,
+            ...(d.kind === 'move' ? kindLists(moveKinds(doc, d.kinds, d.delta)) : {}),
             walls: d.walls,
             rooms: moveRooms(doc.rooms, d.rooms, dragTransform(d)),
-                ...(d.kind === 'move' ? kindLists(moveKinds(doc, d.kinds, d.delta)) : {}),
           }
         : d?.kind === 'slide'
           ? { ...doc, openings: d.openings, openingGroups: d.groups }
@@ -1271,7 +1273,7 @@ export class App {
     savePrefs({ snaps: this.ui.snaps });
     // Said, not only shown by the magnet's state: S is one key, easy to press by mistake, and drawing
     // then stops snapping with nothing else to tell why.
-    this.toast(t(this.ui.snaps ? 'toast.snapsOn' : 'toast.snapsOff'));
+    this.toast(t(this.ui.snaps ? 'toast.snapsOn' : 'toast.snapsOff', { key: this.keyName('settings.snaps') }));
     this.render();
   }
 
@@ -1767,6 +1769,14 @@ export class App {
   }
   /** Every action by name (app/actions.ts), set by the input layer: the ribbon and the File menu run them. */
   actionList: () => Action[] = () => [];
+  /**
+   * An action's key as the user has it now (actions.ts through keymap.ts), for a text or a tip that teaches it,
+   * so a key changed in the keys dialog is the one said everywhere; the action's name in quotes when it has none.
+   */
+  keyName(id: string): string {
+    const a = this.actionList().find((x) => x.id === id);
+    return a?.keys ?? `“${a?.label ?? id}”`;
+  }
   /** The ribbon's tab shown, kept between visits, and what it was last drawn from (chrome.ts). */
   ribbonTab = loadPrefs().ribbonTab ?? 'home';
   ribbonKey = '';

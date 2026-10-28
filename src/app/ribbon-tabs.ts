@@ -15,8 +15,8 @@ import { kindOfId } from '../elements/registry';
 import { contextEntries } from './context-menu';
 import { type Field, ribbonFieldRows } from '../ui/fields';
 import type { WallDefaults } from './document';
-import { nextWallFields } from '../elements/wall/fields';
-import { nextOpeningFields, type OpeningSize } from '../elements/opening/fields';
+import { nextWall } from '../elements/wall/fields';
+import { nextOpening, type OpeningSize } from '../elements/opening/fields';
 import { nextFields } from './next-element';
 
 /** Every button with its short name (rib.s.<action>): the palette's full name stays its tooltip. */
@@ -318,7 +318,8 @@ function placeTab(
         ui.defaults = { ...ui.defaults, ...patch };
         app.refresh();
       };
-      return { fields: nextWallFields(doc, update) as Field<unknown>[], items: [ui.defaults], key: JSON.stringify(ui.defaults) };
+      const wall = nextWall(doc, ui.defaults, ui.levelId, update);
+      return { fields: wall.fields as Field<unknown>[], items: [wall.item], key: `${JSON.stringify(ui.defaults)}|${ui.levelId}` };
     }
     if (ui.tool === 'door' || ui.tool === 'window') {
       const kind = ui.tool;
@@ -327,7 +328,8 @@ function placeTab(
         app.refresh();
       };
       // The leaf's side and hinge first: past the screen's edge with the rest, they were out of sight.
-      return { fields: [...app.placeSideFields(kind), ...(nextOpeningFields(kind, set, ui.openingDefaults[kind]) as Field<unknown>[])], items: [ui.openingDefaults[kind]], key: `${JSON.stringify(ui.openingDefaults[kind])}|${JSON.stringify(ui.doorFlip)}` };
+      const opening = nextOpening(kind, ui.openingDefaults[kind], set);
+      return { fields: [...app.placeSideFields(kind), ...(opening.fields as Field<unknown>[])], items: [opening.item], key: `${JSON.stringify(ui.openingDefaults[kind])}|${JSON.stringify(ui.doorFlip)}` };
     }
     return nextFields(app);
   })();

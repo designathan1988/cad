@@ -22,7 +22,7 @@ import { renderPanel } from '../ui/panel';
 import { snapLabel } from '../tools/snap';
 import { bulgeKeepingSide } from '../tools/arc-edit';
 import { KINDS } from '../elements/registry';
-import { drawingOf, levelOf, wallNumber } from './document';
+import { drawingOf, levelOf, NO_LEVEL, wallNumber } from './document';
 import { shownFor } from './geometry';
 import { stackedSteps } from './stacked';
 import { type TempDim, tempDims } from './temp-dims';
@@ -267,12 +267,12 @@ export function renderFrame(app: App): void {
     );
     app.cube.update(app.scene.camera);
     // Where the tool snaps and what it draws, over the 3D view as in plan.
-    const level = levelOf(app.store.get(), ui.levelId);
+    const level = levelOf(app.store.get(), ui.levelId) ?? NO_LEVEL;
     const active = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'modify';
     app.overlayState = {
       project: (p, z) => app.projectAt(p, z),
-      floor: (level?.elevation ?? 0) + app.lift(ui.levelId),
-      height: level?.height ?? 2.8,
+      floor: level.elevation + app.lift(ui.levelId),
+      height: level.height,
       snap: active && ui.snap ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null) } : null,
       axis:
         end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
@@ -336,7 +336,7 @@ export function renderFrame(app: App): void {
   const openingKey = JSON.stringify([ui.openingDefaults, app.geometry.openingWarnings, app.selectedOpenings().map((o) => [o.start, o.end])]);
   // A placing tool's next element (next-element.ts): its fields, and what they show.
   const next = ui.selection.size === 0 ? nextFields(app) : null;
-  const panelKey = [ui.tool, [...ui.selection].sort().join(','), getLang(), JSON.stringify(ui.defaults), JSON.stringify(app.geometry.warnings), openingKey, next?.key ?? ''].join('|');
+  const panelKey = [ui.tool, ui.levelId, [...ui.selection].sort().join(','), getLang(), JSON.stringify(ui.defaults), JSON.stringify(app.geometry.warnings), openingKey, next?.key ?? ''].join('|');
   const placing = app.openingKind();
   if (doc === app.panelDoc && panelKey === app.panelKey) return app.afterPanel();
   app.panelDoc = doc;
@@ -348,6 +348,7 @@ export function renderFrame(app: App): void {
       selected: app.selectedWalls(),
       drawing: ui.tool === 'wall',
       defaults: ui.defaults,
+      levelId: ui.levelId,
       warnings: app.geometry.warnings,
       openings: app.selectedWalls().length === 0 ? app.selectedOpenings() : [],
       levelRooms: [...app.geometry.rooms.values()].filter((r) => r.room.levelId === ui.levelId),

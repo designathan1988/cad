@@ -14,6 +14,7 @@ import { addRailing, addRailings } from '../railing/commands';
 import { RAILING_HEIGHT, RAILING_PREFIX, wellPath } from '../railing/schema';
 import { stairWell } from '../stair/geometry';
 import { arrivalOf, levelReached } from '../stair/well';
+import { levelOf, NO_LEVEL } from '../../app/document';
 
 export const stairKind: ElementKind<Stair, StairSolid> = {
   key: 'stairs',
@@ -46,7 +47,7 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
   // From its level's floor, up its level's height unless it sets its own.
   memo: 'level',
   derive: (doc, s) => {
-    const level = doc.levels.find((l) => l.id === s.levelId) ?? { elevation: 0, height: 2.8 };
+    const level = levelOf(doc, s.levelId) ?? NO_LEVEL;
     return stairSolid(s, level.height, level.elevation);
   },
   element: (s) => s.stair,

@@ -5,6 +5,8 @@ export interface Command<D> {
   /** Message key of what the user did, for the undo tooltip. */
   readonly label: string;
   readonly apply: (doc: D) => D;
+  /** It puts another document in place of this one (a file opened, a new project): not an edit of it. */
+  readonly replaces?: boolean;
 }
 
 export interface Store<D> {

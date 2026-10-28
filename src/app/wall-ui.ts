@@ -17,6 +17,7 @@ import { referenceLength } from '../elements/opening/derive';
 import { newId } from '../core/id';
 import type { App } from './app';
 import { PREVIEW_ID } from './app';
+import { tempDims } from './temp-dims';
 
 export function previewWall(app: App): DocWall[] {
   const w = app.ui.wall;
@@ -275,14 +276,25 @@ export function submitMeasure(app: App, text: string): boolean {
   }
   if (app.openingKind()) {
     // A measure with nothing to measure along: say how to choose a wall without the pointer.
-    app.ui.error = t('hint.openingNoWall');
+    app.ui.error = t('hint.openingNoWall', { next: app.keyName('edit.next'), door: app.keyName('tool.door'), window: app.keyName('tool.window') });
     app.renderChrome();
     return false;
   }
-  // One opening selected: the typed value is its rule's new distance.
+  // One opening selected: the typed value is the gap its temporary dimension shows on the side its rule
+  // is measured from (the face of the wall beside it, or the opening it is measured from), and does what
+  // typing it there does: the footer and the dimension mean the same.
   const openings = app.selectedOpenings();
   if (openings.length === 1 && app.ui.selection.size === 1) {
     const o = openings[0]!.opening;
+    const side = o.rule.kind === 'fromEnd' || o.rule.kind === 'fromOpening' ? o.rule.kind : 'fromStart';
+    const dims = tempDims(app.store.get(), app.geometry, app.ui.selection);
+    const dim = dims.find((d) => d.id === `${o.id}:${side}`) ?? dims.find((d) => d.id === `${o.id}:fromStart`);
+    if (dim) {
+      const command = dim.apply(r.value.length);
+      if (command) app.store.dispatch(command);
+      return true;
+    }
+    // On an arc no dimension is shown: the distance along it from its reference end.
     const rule = hasDistance(o.rule) ? o.rule : ruleKeepingPosition(app.store.get(), o.id, 'fromStart');
     if (rule && hasDistance(rule)) app.store.dispatch(updateOpening(o.id, { rule: { ...rule, distance: r.value.length } }));
     return true;

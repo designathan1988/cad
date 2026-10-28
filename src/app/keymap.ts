@@ -36,15 +36,19 @@ export function keyOf(id: string, own: string | undefined, map: KeyMap | undefin
   return own;
 }
 
+/** A second key an action answers to while it keeps its own (Windows' Ctrl+Y for redo, Backspace for delete). */
+export const SECOND_KEYS: Readonly<Record<string, string>> = { 'edit.redo': 'Ctrl+Y', 'edit.delete': 'Backspace' };
+
 /**
- * What a key does under the user's map: the action the user gave it to (run), or nothing when it is an
- * action's own key and that action has another or none now (blocked). Neither: the app's own handling.
+ * The action a key runs: the one whose key, as the user has it now (`keys`, keyOf), it is; else the one
+ * whose second key it is, while that action keeps its own. An action's own key, once it has another or
+ * none, runs nothing. A sequence ("W, Q") is never one key: the tool reads its second key.
  */
-export function resolveKey<A extends { readonly id: string; readonly defaultKeys?: string }>(combo: string, actions: readonly A[], map: KeyMap): { readonly run?: A; readonly blocked: boolean } {
-  const run = actions.find((a) => typeof map[a.id] === 'string' && normalizeCombo(map[a.id]!) === combo);
-  if (run) return { run, blocked: false };
-  const own = actions.find((a) => a.defaultKeys !== undefined && !a.defaultKeys.includes(',') && normalizeCombo(a.defaultKeys) === combo);
-  return { blocked: own !== undefined && own.id in map };
+export function actionOfKey<A extends { readonly id: string; readonly keys?: string; readonly defaultKeys?: string }>(combo: string, actions: readonly A[]): A | undefined {
+  return (
+    actions.find((a) => a.keys !== undefined && !a.keys.includes(',') && normalizeCombo(a.keys) === combo) ??
+    actions.find((a) => SECOND_KEYS[a.id] !== undefined && a.keys !== undefined && a.keys === a.defaultKeys && normalizeCombo(SECOND_KEYS[a.id]!) === combo)
+  );
 }
 
 /** The map with `id` given `combo`, taken from any other action that had it (theirs turned off). */

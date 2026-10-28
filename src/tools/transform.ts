@@ -7,7 +7,6 @@
 // so its layers, and its doors' hinges, come out mirrored rather than turned over.
 
 import { copyKinds, KINDS, kindOfId, kindsOnLevel, listOf, mapKinds } from '../elements/registry';
-import { wallsOnGrids } from '../elements/grid/carry';
 import { roomsGoingWith } from '../app/carry';
 import type { Doc, DocWall } from '../app/document';
 import type { DerivedGeometry } from '../app/geometry';
@@ -16,6 +15,7 @@ import { GROUP_PREFIX, type GroupSpacing, type Opening, type OpeningGroup, OPENI
 import { aimAt } from '../app/opening-ui';
 import { transformWalls } from './edit';
 import { ruleAt } from './opening-tool';
+import { withSwappedJoins } from '../elements/wall/flip';
 
 export interface Transform {
   /** Where a point goes. */
@@ -152,8 +152,8 @@ export function transformSelection(
   newId: (prefix: string) => string,
   disjoin = false,
 ): TransformResult {
-  // Taken in place, an axis takes the walls on it along; its copy is an axis alone.
-  const set = new Set(copy ? ids : [...ids, ...wallsOnGrids(doc, ids)]);
+  // An axis goes alone: what happens to lie on its line is not tied to it (no link the user made).
+  const set = new Set(ids);
   const wallIds = doc.walls.filter((w) => set.has(w.id)).map((w) => w.id);
   const walls = new Set(wallIds);
   // Before the move carried one only with its wall: Move, Copy and the others did nothing to it.
@@ -174,12 +174,14 @@ export function transformSelection(
     const alone = (w: DocWall): DocWall => {
       const start = t.map(w.start);
       const end = t.map(w.end);
-      return { ...w, ...(t.mirror ? { start: end, end: start } : { start, end }) };
+      return t.mirror ? withSwappedJoins({ ...w, start: end, end: start }) : { ...w, start, end };
     };
+    // Mirrored, a wall's ends trade names: its chosen corner joins go with the corners.
+    const joinsAlong = (list: readonly DocWall[]) => (t.mirror ? list.map((w) => (walls.has(w.id) ? withSwappedJoins(w) : w)) : list);
     const next: Doc = {
       ...doc,
       // A move keeps the joins' lines (edit.ts); a turn, a scale or a mirror takes the corners along.
-      walls: disjoin ? doc.walls.map((w) => (walls.has(w.id) ? alone(w) : w)) : transformWalls(doc, wallIds, t.map, t.mirror, !t.mirror && t.factor === 1),
+      walls: disjoin ? doc.walls.map((w) => (walls.has(w.id) ? alone(w) : w)) : joinsAlong(transformWalls(doc, wallIds, t.map, t.mirror, !t.mirror && t.factor === 1)),
       openings: doc.openings.map((o) => (walls.has(o.wallId) ? mapOpening(o, t, same) : lone.has(o.id) ? { ...o, ...lone.get(o.id)! } : o)),
       openingGroups: doc.openingGroups.map((x) => (walls.has(x.wallId) ? mapGroup(x, t, same, () => true) : x)),
     };
@@ -209,7 +211,7 @@ export function transformSelection(
     .map((w) => {
       const start = t.map(w.start);
       const end = t.map(w.end);
-      return { ...w, id: to(w.id), ...(t.mirror ? { start: end, end: start } : { start, end }) };
+      return t.mirror ? withSwappedJoins({ ...w, id: to(w.id), start: end, end: start }) : { ...w, id: to(w.id), start, end };
     });
   const next: Doc = {
     ...doc,

@@ -11,7 +11,7 @@ import { type Roof, ROOF_COVERING, ROOF_PREFIX } from '../roof/schema';
 import { materialIn, type Material } from '../material/schema';
 import { insideRing } from '../room/derive';
 import { trace } from './paint';
-import { wallBand, wallTop } from '../../app/document';
+import { levelOf, NO_LEVEL, wallBand, wallTop } from '../../app/document';
 
 export const roofKind: ElementKind<Roof, RoofSolid & { readonly covering: Material }> = {
   key: 'roofs',
@@ -41,7 +41,7 @@ export const roofKind: ElementKind<Roof, RoofSolid & { readonly covering: Materi
     (r.covering === undefined || (isObject(r.covering) && typeof r.covering.materialId === 'string' && finite(r.covering.thickness) && r.covering.thickness > 0)),
   // On its level's top; not memoised: a wall put under it (its top on the roof) closes its gable.
   derive: (doc, r) => {
-    const level = doc.levels.find((l) => l.id === r.levelId) ?? { elevation: 0, height: 2.8 };
+    const level = levelOf(doc, r.levelId) ?? NO_LEVEL;
     // Drawn in its covering's material (the tiles, the metal sheet, the slab), as the project has it.
     const s = { ...roofSolid(r, level.elevation + level.height), covering: materialIn(doc.materials, (r.covering ?? ROOF_COVERING).materialId) };
     // A gable a wall under the roof already closes (its top on the roof) is that wall: the infill

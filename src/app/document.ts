@@ -51,6 +51,11 @@ export interface Level {
 export const CUT_HEIGHT = 1.2;
 export const cutHeightOf = (level: Level): number => level.cutHeight ?? CUT_HEIGHT;
 
+/** A storey's floor-to-floor height when nothing else says it (m): a new project's level, a fixed top's first height. */
+export const LEVEL_HEIGHT = 2.8;
+/** What an element on a level that is gone stands on: the project's zero, a storey of LEVEL_HEIGHT. */
+export const NO_LEVEL: Pick<Level, 'elevation' | 'height'> = { elevation: 0, height: LEVEL_HEIGHT };
+
 /**
  * A wall as the user placed it: the engine's wall plus where it stands and how high it goes. Its base
  * offset and top are its own only when set; otherwise its type's (wallBase, wallTop).
@@ -67,7 +72,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 67;
+  readonly version: 68;
   readonly name: string;
   /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
   readonly units: Units;
@@ -171,10 +176,10 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 67,
+    version: 68,
     name: '',
     units: DEFAULT_UNITS,
-    levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
+    levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: LEVEL_HEIGHT }],
     materials: [...BUILT_IN_MATERIALS],
     wallTypes: [
       {
@@ -289,7 +294,7 @@ export function wallOverrides(doc: Doc, wall: DocWall): { top: boolean; baseOffs
  * (the 3D follows the slope: wall/geometry/under-roof.ts).
  */
 export function wallHeights(doc: Doc, wall: DocWall): { bottom: number; top: number } {
-  const level = levelOf(doc, wall.levelId) ?? { elevation: 0, height: 2.8 };
+  const level = levelOf(doc, wall.levelId) ?? NO_LEVEL;
   const bottom = level.elevation + wallBase(doc, wall);
   const top = wallTop(doc, wall);
   const levelTop = level.elevation + level.height;
@@ -310,16 +315,23 @@ export function wallHeights(doc: Doc, wall: DocWall): { bottom: number; top: num
   }
 }
 
-/** The roofs of a level, from below (under-roof.ts); worked out once per roof. */
-const covers = new WeakMap<Roof, RoofCover>();
+/**
+ * The roofs of a level, from below (under-roof.ts); worked out once per roof and level top. The roof
+ * object alone is not enough: a level made higher keeps its roofs as they were, and every height of a
+ * roof comes from its level's top (roofSolid), so the cover is kept with the top it was worked out at.
+ */
+const covers = new WeakMap<Roof, { readonly top: number; readonly cover: RoofCover }>();
 export function roofCoversOf(doc: Doc, levelId: LevelId): RoofCover[] {
-  const level = levelOf(doc, levelId) ?? { elevation: 0, height: 2.8 };
+  const level = levelOf(doc, levelId) ?? NO_LEVEL;
+  const top = level.elevation + level.height;
   return doc.roofs
     .filter((r) => r.levelId === levelId)
     .map((r) => {
-      let c = covers.get(r);
-      if (!c) covers.set(r, (c = roofCovers([roofSolid(r, level.elevation + level.height)])[0]!));
-      return c;
+      const kept = covers.get(r);
+      if (kept && kept.top === top) return kept.cover;
+      const cover = roofCovers([roofSolid(r, top)])[0]!;
+      covers.set(r, { top, cover });
+      return cover;
     });
 }
 

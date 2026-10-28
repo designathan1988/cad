@@ -158,8 +158,12 @@ export const kindIds = (doc: Doc, ids: Iterable<string>): Set<string> => {
   return new Set(KINDS.flatMap((k) => listOf(doc, k).filter((e) => set.has(e.id)).map((e) => e.id)));
 };
 
-/** The registry's lists of a document: to carry them over into another version of it. */
-export const kindLists = (doc: Doc): Partial<Doc> => Object.fromEntries(KINDS.map((k) => [k.key, doc[k.key]])) as Partial<Doc>;
+/**
+ * The registry's lists of a document that `moveKinds` moves: to carry them over into another version of
+ * it. Not the walls and what goes with them (walled): the wall system moves those, and carrying them
+ * over put the walls back where they were.
+ */
+export const kindLists = (doc: Doc): Partial<Doc> => Object.fromEntries(KINDS.filter((k) => !k.walled).map((k) => [k.key, doc[k.key]])) as Partial<Doc>;
 
 /** Whether any registry element is among `ids`. */
 export const hasKinds = (doc: Doc, ids: ReadonlySet<string>): boolean => KINDS.some((k) => listOf(doc, k).some((e) => ids.has(e.id)));
@@ -269,10 +273,6 @@ export function appendKinds(onto: Doc, after: Doc, before: Doc): Doc {
   }
   return next;
 }
-
-/** The ids of the registry elements on the axis line `onLine` (every level). */
-export const kindsOnLine = (doc: Doc, onLine: (p: Point2) => boolean): string[] =>
-  KINDS.flatMap((k) => (k.onGrid ? listOf(doc, k).filter((e) => k.onGrid!(e, onLine)).map((e) => e.id) : []));
 
 /** "Select similar" over the registry: the elements on `levelId` like a selected one of their kind. */
 export function similarKinds(doc: Doc, selected: ReadonlySet<string>, levelId: string): string[] {

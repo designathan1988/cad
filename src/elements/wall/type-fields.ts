@@ -6,6 +6,7 @@ import type { Field } from '../../ui/fields';
 import { name, t } from '../../ui/i18n';
 import type { WallType } from './schema';
 import type { WallTypePatch } from './types';
+import { LEVEL_HEIGHT } from '../../app/document';
 
 export interface WallTypeFieldActions {
   readonly update: (patch: WallTypePatch) => void;
@@ -24,7 +25,7 @@ export function wallTypeFields(act: WallTypeFieldActions): Field<WallType>[] {
         { value: 'fixed', label: t('panel.topFixed') },
       ],
       get: kind,
-      set: (v) => act.update({ top: v === 'fixed' ? { kind: 'fixed', height: 2.8 } : undefined }),
+      set: (v) => act.update({ top: v === 'fixed' ? { kind: 'fixed', height: LEVEL_HEIGHT } : undefined }),
     },
     {
       id: 'topOffset',

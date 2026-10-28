@@ -187,8 +187,6 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   readonly mapped: (e: E, t: Transform, id: string) => E;
   /** A copy as added after `all` (an axis named on from the last). */
   readonly copied?: (all: readonly E[], e: E) => E;
-  /** Lying on a grid axis's line, so it goes with the axis. */
-  readonly onGrid?: (e: E, onLine: (p: Point2) => boolean) => boolean;
   /** "Select similar": the same as `b`. */
   readonly similar?: (a: E, b: E) => boolean;
   readonly plan: (p: PlanPaint, s: S, lit: boolean) => void;

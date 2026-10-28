@@ -1,8 +1,8 @@
 // Grid axes (ref/chat.txt:80, 132): named lines of the structure, 1, 2, 3 one way and A, B, C the
-// other, the same on every level, with a bubble at each end. The walls lying on an axis go with it when
-// it is moved. Part of the project: saved, undone, moved as the rest.
+// other, the same on every level, with a bubble at each end. An axis moves alone: what lies on it is not
+// tied to it. Part of the project: saved, undone, moved as the rest.
 
-import { distance, dot, normalize, type Point2, sub } from '../../core/vector';
+import type { Point2 } from '../../core/vector';
 
 export const GRID_PREFIX = 'grid';
 
@@ -42,13 +42,4 @@ export function nextGridName(grids: readonly Grid[], start: Point2, end: Point2)
   if (upright) return String(numbers.reduce((m, n) => Math.max(m, Number(n)), 0) + 1);
   const last = letters.sort((a, b) => a.length - b.length || a.localeCompare(b)).at(-1);
   return last ? nextLetters(last) : 'A';
-}
-
-/** The walls lying on an axis (both ends on its line, 1 mm): the ones that go with it. */
-export function onGrid<W extends { readonly id: string; readonly start: Point2; readonly end: Point2 }>(g: Grid, walls: readonly W[]): W[] {
-  const len = distance(g.start, g.end);
-  if (len === 0) return [];
-  const dir = normalize(sub(g.end, g.start));
-  const off = (p: Point2) => Math.abs(dir.x * (p.y - g.start.y) - dir.y * (p.x - g.start.x));
-  return walls.filter((w) => off(w.start) < 1e-3 && off(w.end) < 1e-3 && dot(sub(w.end, w.start), sub(w.end, w.start)) > 0);
 }

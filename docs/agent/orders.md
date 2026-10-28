@@ -106,3 +106,53 @@ Objetivo para a skill (cole no `--goal`):
 - o relatório da skill: arquivos e linhas lidos, pesquisa feita, problemas por gravidade, correções com fonte e verificação, rodadas de teste no Chrome com as fotos;
 - o que não foi feito ou não foi verificado, e por quê.
 </pasted_content id="54d2">
+
+
+---
+2026-10-28 16:33:36
+
+@"C:\Users\Jonathan\Documents\Arquivos\reviewing-whole-codebase.zip"
+voce então não instalou a skill direito instale logo a skill e use
+
+
+---
+2026-10-28 16:34:27
+
+Vou digitar
+
+
+---
+2026-10-28 16:34:33
+
+/reviewing-whole-codebase fix
+
+
+---
+2026-10-28 17:15:17
+
+/reviewing-whole-codebase Use a skill e analise a interface da aplicação integralmente. Identifique todos os problemas referentes a usabilidade, hedonic ux, ux, ui, intuitividade, facilidade, praticidade, produtividade, design, e demais áreas. Crie um arquivo registrando todos os problemas encontrados e qual é a solução para cada caso. No final crie uma nova interface para a aplicação com as correções e soluções previstas. Pesquise na internet como as aplicações e softwares relevantes apresentam a sua interface, pesquise sobre melhores práticas, estudo de comportamento do usuário, heurística, hedonic ux, ux, ui, design, usabilidade, e todas as demais áreas. Crie uma worktree para não atrapalhar a outra sessão e não mexer me nada na pasta principal.
+Já adianto que não gostei do painel com o view box do jeito que está; da barra de ferramentas inferior; da forma que as propriedades e configurações são mostradas no painel ribbon, achando melhor as propriedades e configurações irem para a barra de propriedades. Verifique se a ribbon realmente é a melhor interface ou poderia ser feito de um jeito melhor, assim como todos os paineis, menus, barras de ferramentas, janelas, modais, e demais. Verfifique o layout de tudo, como é apresentando, o design, e demais. Eu quero uma interface profissional, não quero que possua cara de formulário como tem hoje, quero que as opções sejam melhor pensadas para apresentação de disposição. Verifique tudo o que relatei e tudo o que não relatei e pense na melhor estratégia.
+
+
+---
+2026-10-28 22:12:42
+
+SE PRECISAR TESTAR ALGO NA APLICAÇAO E NÃO FICAR MEDIDNO, RODANDO TESTE CEGO PODE FAZER
+
+
+---
+2026-10-28 22:14:29
+
+JÁ ACHOU TODOS OS PROBLEMAS NO CÓDIGO USANDO A SKILL? SE JÁ, PARE DE USAR ELA.
+
+
+---
+2026-10-28 22:20:09
+
+Testar e commitar
+
+
+---
+2026-10-28 22:30:11
+
+para de ficar abrindo e fechando a janela do navegador, para de ficar lançando ela na minha cara

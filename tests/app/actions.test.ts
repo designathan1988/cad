@@ -13,7 +13,7 @@ import { VIEW_3D_DEFAULT } from '../../src/app/view-3d';
 // Only what appActions reads; the actions themselves are not run here.
 function fakeApp(selection: string[] = [], view: '3d' | 'plan' = 'plan') {
   const store = createStore(addLevel('lvl_up', 'Upper').apply(newDocument()));
-  return { store, ui: { selection: new Set(selection), view, levelId: 'lvl_ground', hidden: new Set(), view3d: VIEW_3D_DEFAULT }, canMergeSelection: () => false, arrangeItems: () => [] } as unknown as App;
+  return { store, ui: { selection: new Set(selection), view, levelId: 'lvl_ground', hidden: new Set(), view3d: VIEW_3D_DEFAULT }, canMergeSelection: () => false, selectedDoor: () => false, arrangeItems: () => [] } as unknown as App;
 }
 const openers = { help: () => {}, levels: () => {}, wallTypes: () => {}, materials: () => {}, units: () => {}, objects: () => {}, openings: () => {}, floors: () => {}, presets: () => {}, openFile: () => {}, projects: () => {}, drawing: () => {}, keys: () => {}, variables: () => {} };
 
@@ -48,6 +48,8 @@ describe('palette actions', () => {
       'edit.undo': 'Ctrl+Z', 'edit.redo': 'Ctrl+Shift+Z', 'edit.delete': 'Del', 'edit.selectAll': 'Ctrl+A',
       'edit.split': 'Shift+S', 'edit.corner': 'Shift+T', 'edit.merge': 'Shift+J',
       'file.open': 'Ctrl+O', 'file.save': 'Ctrl+S', 'settings.snaps': 'S', 'settings.language': 'Shift+L', 'help.shortcuts': '?',
+      // The right-click menu's and the floating bar's keys are these (context-menu.ts), so they are actions too.
+      'edit.flipHinge': 'H', 'help.commands': 'Ctrl+K',
     });
   });
 

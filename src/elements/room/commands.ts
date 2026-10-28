@@ -1,6 +1,7 @@
 // Commands on rooms and floors. Each returns a new document; the store makes each one undo step.
 
 import { materialFor } from '../material/schema';
+import { stackProblem } from '../layers/stack';
 import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
 import type { Floor, FloorId, FloorLayer, Room, RoomFinishes, RoomId, RoomUse, Tiling } from './schema';
@@ -82,12 +83,13 @@ function withMaterials(doc: Doc, layers: readonly FloorLayer[]): Doc {
 
 /**
  * The floors' build-up (top first) and so their thickness, or none (one slab, its thickness kept).
- * A layer not above zero changes nothing.
+ * A stack that cannot be built (layers/stack.ts: none, or a thickness not finite and above zero)
+ * changes nothing, as a floor holding it would be refused when the file is read.
  */
 export const setFloorLayers = (ids: readonly FloorId[], layers: readonly FloorLayer[] | null): Command<Doc> => ({
   label: 'cmd.updateFloor',
   apply: (doc) => {
-    if (layers && (layers.length === 0 || layers.some((l) => !(l.thickness > 0)))) return doc;
+    if (layers && stackProblem(layers) !== null) return doc;
     let changed = false;
     const floors = doc.floors.map((f) => {
       if (!ids.includes(f.id)) return f;

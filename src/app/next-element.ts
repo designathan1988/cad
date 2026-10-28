@@ -6,7 +6,7 @@
 import type { Field } from '../ui/fields';
 import { kindOfKey, withList } from '../elements/registry';
 import type { KindKey } from '../elements/contract';
-import { levelOf } from './document';
+import { LEVEL_HEIGHT, levelOf } from './document';
 import { COLUMN_SIZE } from '../elements/column/schema';
 import { BEAM_DEPTH, BEAM_WIDTH } from '../elements/beam/schema';
 import { STAIR_TREAD, STAIR_WIDTH } from '../elements/stair/schema';
@@ -24,7 +24,11 @@ const KEY: Readonly<Record<NextSlot, KindKey>> = { columns: 'columns', beams: 'b
 /** The template's id: never an element's (theirs start with their kind's prefix and an underscore). */
 export const NEXT_ID = '__next__';
 
-/** The slot of the tool in use; null for a tool that makes nothing of a kind (or makes walls, doors, windows: WallDefaults, OpeningSize). */
+/**
+ * The slot of the tool in use; null for a tool that makes nothing of a kind. Walls, doors and windows
+ * keep their tool's settings (WallDefaults, OpeningSize) and are shown as a template element of their
+ * own kind with the same fields (wall/fields.ts nextWall, opening/fields.ts nextOpening).
+ */
 export function slotOf(app: App): NextSlot | null {
   const { tool, ceilingTool } = app.ui;
   switch (tool) {
@@ -81,7 +85,7 @@ function blank(app: App, slot: NextSlot): Element {
     case 'floors':
       return { ...base, source: { kind: 'outline', points: square(4) }, ...FLOOR_DEFAULTS };
     case 'ceilings': {
-      const height = levelOf(doc, levelId)?.height ?? 2.8;
+      const height = levelOf(doc, levelId)?.height ?? LEVEL_HEIGHT;
       return { ...base, source: { kind: 'outline', points: square(4) }, thickness: CEILING_THICKNESS, offset: height + CEILING_THICKNESS, kind: 'ceiling' };
     }
     case 'curtains':

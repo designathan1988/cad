@@ -32,6 +32,7 @@ import { showMaterials } from '../ui/materials-dialog';
 import { showPalette } from '../ui/palette';
 import { showProjectsDialog } from '../ui/projects-dialog';
 import { appActions, type Openers } from './actions';
+import { SECOND_KEYS } from './keymap';
 import { contextEntries } from './context-menu';
 import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
@@ -907,7 +908,6 @@ export function wireInput(app: App): void {
     set downAt(v) { downAt = v; },
     gestures,
     guideTools,
-    palette,
     showMarquee,
     // An arrow while drawing: held to x (→) or y (↑), or along (←) or square (↓) to the wall the snap
     // names or the nearest one; the same arrow again lets go.
@@ -1002,29 +1002,20 @@ export function renameInPlace(app: App): void {
 
 export function showHelp(app: App): void {
   const back = app.shell.helpBack;
-  // The same names as the palette, buttons and menus (ref/chat.txt:200): read from the same messages.
+  // An action's row is its id: its name and its key as the user has it now (or none) come from the
+  // action list, as the palette, buttons and menus have them. The rest are the tools' own keys and gestures.
+  const acts = new Map(app.actionList().map((a) => [a.id, a] as const));
+  const action = (id: string): [string, string] => {
+    const a = acts.get(id);
+    const second = a?.keys !== undefined && a.keys === a.defaultKeys ? SECOND_KEYS[id] : undefined;
+    return [a?.keys ? (second ? `${a.keys} / ${second}` : a.keys) : '—', a?.label ?? id];
+  };
   const rows: [string, string][] = [
-    ['V', t('tool.select')],
-    ['W', t('tool.wall')],
-    ['W, A', t('pal.arcWall')],
-    ['W, Q', t('pal.rectWall')],
-    ['D', t('tool.door')],
-    ['Shift+W', t('tool.window')],
-    ['R', t('tool.room')],
-    ['L', t('tool.floor')],
-    ['M', t('tool.measure')],
-    ['Shift+M', t('pal.move')],
-    ['Shift+C', t('pal.copy')],
-    ['Shift+R', t('pal.rotate')],
-    ['Shift+E', t('pal.scale')],
-    ['Shift+X', t('pal.mirror')],
-    ['Shift+S', t('pal.split')],
-    ['Shift+T', t('pal.corner')],
-    ['Shift+J', t('pal.merge')],
-    ['Shift+H', t('pal.tempHide')],
-    ['Shift+I', t('pal.tempIsolate')],
+    ...['tool.select', 'tool.wall', 'tool.arcWall', 'tool.rectWall', 'tool.door', 'tool.window', 'tool.room', 'tool.floor', 'tool.measure'].map(action),
+    ...['edit.move', 'edit.copy', 'edit.rotate', 'edit.scale', 'edit.mirror', 'edit.split', 'edit.corner', 'edit.merge', 'view.tempHide', 'view.tempIsolate'].map(action),
     [t('help.guideKey'), t('help.guide')],
-    ['1 / 2', `${t('view.3d')} / ${t('view.plan')}`],
+    action('view.3d'),
+    action('view.plan'),
     ['Enter', t('help.enter')],
     ['Tab', t('help.tab')],
     ['Esc', t('help.esc')],
@@ -1032,39 +1023,23 @@ export function showHelp(app: App): void {
     [t('key.spaceKey'), t('help.space')],
     [t('help.rightClickKey'), t('help.rightClick')],
     [t('help.dragAloneKey'), t('help.dragAlone')],
-    ['U', t('help.disjoin')],
-    ['Del', t('pal.delete')],
-    ['F', t('pal.frameSelection')],
-    ['Home', t('pal.frameAll')],
+    ['U', t('help.disjoin', { key: app.keyName('edit.move') })],
+    ...['edit.delete', 'view.frameSelection', 'view.frameAll'].map(action),
     ['+ / −', t('help.zoomKeys')],
     ['Shift+↑↓←→', t('help.panKeys')],
-    ['S', t('pal.snaps')],
+    action('settings.snaps'),
     ['Shift', t('help.shift')],
-    ['Ctrl+A', t('pal.selectAll')],
-    ['Ctrl+Z', t('pal.undo')],
-    ['Ctrl+Shift+Z / Ctrl+Y', t('pal.redo')],
-    ['Ctrl+O', t('pal.open')],
-    ['Ctrl+S', t('pal.save')],
-    ['Ctrl+K', t('pal.commands')],
-    ['Shift+L', t('pal.language')],
-    ['N', t('pal.stepSelection')],
-    ['Shift+N', t('pal.stepBack')],
+    ...['edit.selectAll', 'edit.undo', 'edit.redo', 'file.open', 'file.save', 'help.commands', 'settings.language', 'edit.next', 'edit.previous'].map(action),
     [t('help.arrowsKey'), t('help.arrows')],
-    ['?', t('pal.shortcuts')],
+    action('help.shortcuts'),
     [t('help.clickAgainKey'), t('help.clickAgain')],
     [t('help.wheelKey'), t('help.wheel')],
     [t('help.middleKey'), t('help.middle')],
     [t('help.orbitKey'), t('help.orbit')],
   ];
   const close = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
-  // The keys as they are now: an action's own key, or the one the user gave it, or none (keymap.ts).
-  const acts = app.actionList();
-  const now = (k: string, v: string) => {
-    const a = acts.find((x) => x.defaultKeys === k && x.label === v);
-    return a ? (a.keys ?? '—') : k;
-  };
   const dl = el('dl');
-  for (const [k, v] of rows) dl.append(el('dt', {}, el('span', { class: 'kbd' }, now(k, v))), el('dd', {}, v));
+  for (const [k, v] of rows) dl.append(el('dt', {}, el('span', { class: 'kbd' }, k)), el('dd', {}, v));
   // Shortcuts remapped or turned off there (WCAG 2.1.4).
   const custom = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('keys.open'));
   custom.addEventListener('click', () => showKeys(app));

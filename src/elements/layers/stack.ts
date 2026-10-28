@@ -1,6 +1,6 @@
-// A stack of layers, listed from one face to the other: what wall types have now, and floor and slab
-// types will have (ref/chat.txt:87, 135). Pure operations, each returning a new list (or the same list
-// when nothing changes), so every editor of layers shares them.
+// A stack of layers, listed from one face to the other: wall types' layers and floors' build-ups
+// (ref/chat.txt:87, 135). Pure operations, each returning a new list (or the same list when nothing
+// changes), so every editor of layers shares them, and the one rule of a usable stack.
 
 export interface StackLayer {
   readonly thickness: number;
@@ -8,10 +8,13 @@ export interface StackLayer {
 
 export type StackProblem = 'noLayers' | 'badThickness';
 
+/** A layer's thickness that can be built: a number, finite and above zero (Infinity and NaN are not). */
+export const layerThicknessOk = (t: unknown): t is number => typeof t === 'number' && Number.isFinite(t) && t > 0;
+
 /** Why a stack cannot be used: no layer, or a layer whose thickness is not a positive number. */
 export function stackProblem(layers: readonly StackLayer[]): StackProblem | null {
   if (layers.length === 0) return 'noLayers';
-  return layers.every((l) => Number.isFinite(l.thickness) && l.thickness > 0) ? null : 'badThickness';
+  return layers.every((l) => layerThicknessOk(l.thickness)) ? null : 'badThickness';
 }
 
 /** A copy of layer `at`, right after it: a new layer starts from its neighbour. */
