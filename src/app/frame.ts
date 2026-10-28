@@ -338,6 +338,7 @@ export function renderFrame(app: App): void {
       points: app.pointsShown(),
       objectHandles: objectHandles(app),
       hotHandle: app.hotHandle,
+      handles: app.handles(),
     };
     app.overlay3d.draw(app.overlayState);
   }

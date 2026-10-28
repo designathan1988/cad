@@ -705,76 +705,7 @@ export class PlanView {
 
   /** Squares move an end, arrows stretch along the wall, the arc turns the selection. */
   private drawHandles(h: Handles, bg: string, line: string): void {
-    const { ctx } = this;
-    ctx.save();
-    ctx.fillStyle = bg;
-    ctx.strokeStyle = line;
-    ctx.lineWidth = 1.5;
-    for (const s of h.squares) {
-      ctx.fillRect(Math.round(s.at.x) - 4.5, Math.round(s.at.y) - 4.5, 9, 9);
-      ctx.strokeRect(Math.round(s.at.x) - 4.5, Math.round(s.at.y) - 4.5, 9, 9);
-    }
-    for (const a of h.arrows) {
-      // A triangle pointing outward along the wall.
-      const n = { x: -a.dir.y, y: a.dir.x };
-      ctx.beginPath();
-      ctx.moveTo(a.at.x + a.dir.x * 6, a.at.y + a.dir.y * 6);
-      ctx.lineTo(a.at.x - a.dir.x * 4 + n.x * 5, a.at.y - a.dir.y * 4 + n.y * 5);
-      ctx.lineTo(a.at.x - a.dir.x * 4 - n.x * 5, a.at.y - a.dir.y * 4 - n.y * 5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    }
-    if (h.bulge) {
-      // A diamond at the middle of the arc: not a square, which moves an end.
-      const { x, y } = h.bulge.at;
-      ctx.beginPath();
-      ctx.moveTo(x, y - 6);
-      ctx.lineTo(x + 6, y);
-      ctx.lineTo(x, y + 6);
-      ctx.lineTo(x - 6, y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    }
-    for (const f of h.flips) {
-      // A disc with a double arrow along its axis, as Revit's flip controls.
-      const { x, y } = f.at;
-      ctx.beginPath();
-      ctx.arc(x, y, 9, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      const d = f.dir;
-      const n = { x: -d.y, y: d.x };
-      ctx.beginPath();
-      ctx.moveTo(x - d.x * 5, y - d.y * 5);
-      ctx.lineTo(x + d.x * 5, y + d.y * 5);
-      for (const s of [1, -1]) {
-        const tip = { x: x + d.x * 5 * s, y: y + d.y * 5 * s };
-        ctx.moveTo(tip.x - d.x * 3 * s + n.x * 3, tip.y - d.y * 3 * s + n.y * 3);
-        ctx.lineTo(tip.x, tip.y);
-        ctx.lineTo(tip.x - d.x * 3 * s - n.x * 3, tip.y - d.y * 3 * s - n.y * 3);
-      }
-      ctx.stroke();
-    }
-    if (h.rotate) {
-      // A disc with a three-quarter arc and its arrowhead.
-      const { x, y } = h.rotate.at;
-      ctx.beginPath();
-      ctx.arc(x, y, 8, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(x, y, 4.5, -Math.PI * 0.9, Math.PI * 0.6);
-      ctx.stroke();
-      const tip = { x: x + 4.5 * Math.cos(Math.PI * 0.6), y: y + 4.5 * Math.sin(Math.PI * 0.6) };
-      ctx.beginPath();
-      ctx.moveTo(tip.x - 3, tip.y - 1);
-      ctx.lineTo(tip.x, tip.y);
-      ctx.lineTo(tip.x + 1, tip.y - 3);
-      ctx.stroke();
-    }
-    ctx.restore();
+    drawHandles(this.ctx, h, bg, line);
   }
 
   /**
@@ -1292,4 +1223,77 @@ export function snapMark(ctx: CanvasRenderingContext2D, kind: string, p: Point2)
       ctx.moveTo(p.x + r, p.y - r);
       ctx.lineTo(p.x - r, p.y + r);
   }
+}
+
+/** The selection's handles (app/handles.ts) on a 2D canvas, in plan and over the 3D view alike. */
+export function drawHandles(ctx: CanvasRenderingContext2D, h: Handles, bg: string, line: string): void {
+  ctx.save();
+  ctx.fillStyle = bg;
+  ctx.strokeStyle = line;
+  ctx.lineWidth = 1.5;
+  for (const s of h.squares) {
+    ctx.fillRect(Math.round(s.at.x) - 4.5, Math.round(s.at.y) - 4.5, 9, 9);
+    ctx.strokeRect(Math.round(s.at.x) - 4.5, Math.round(s.at.y) - 4.5, 9, 9);
+  }
+  for (const a of h.arrows) {
+    // A triangle pointing outward along the wall.
+    const n = { x: -a.dir.y, y: a.dir.x };
+    ctx.beginPath();
+    ctx.moveTo(a.at.x + a.dir.x * 6, a.at.y + a.dir.y * 6);
+    ctx.lineTo(a.at.x - a.dir.x * 4 + n.x * 5, a.at.y - a.dir.y * 4 + n.y * 5);
+    ctx.lineTo(a.at.x - a.dir.x * 4 - n.x * 5, a.at.y - a.dir.y * 4 - n.y * 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  if (h.bulge) {
+    // A diamond at the middle of the arc: not a square, which moves an end.
+    const { x, y } = h.bulge.at;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 6);
+    ctx.lineTo(x + 6, y);
+    ctx.lineTo(x, y + 6);
+    ctx.lineTo(x - 6, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  for (const f of h.flips) {
+    // A disc with a double arrow along its axis, as Revit's flip controls.
+    const { x, y } = f.at;
+    ctx.beginPath();
+    ctx.arc(x, y, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    const d = f.dir;
+    const n = { x: -d.y, y: d.x };
+    ctx.beginPath();
+    ctx.moveTo(x - d.x * 5, y - d.y * 5);
+    ctx.lineTo(x + d.x * 5, y + d.y * 5);
+    for (const s of [1, -1]) {
+      const tip = { x: x + d.x * 5 * s, y: y + d.y * 5 * s };
+      ctx.moveTo(tip.x - d.x * 3 * s + n.x * 3, tip.y - d.y * 3 * s + n.y * 3);
+      ctx.lineTo(tip.x, tip.y);
+      ctx.lineTo(tip.x - d.x * 3 * s - n.x * 3, tip.y - d.y * 3 * s - n.y * 3);
+    }
+    ctx.stroke();
+  }
+  if (h.rotate) {
+    // A disc with a three-quarter arc and its arrowhead.
+    const { x, y } = h.rotate.at;
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x, y, 4.5, -Math.PI * 0.9, Math.PI * 0.6);
+    ctx.stroke();
+    const tip = { x: x + 4.5 * Math.cos(Math.PI * 0.6), y: y + 4.5 * Math.sin(Math.PI * 0.6) };
+    ctx.beginPath();
+    ctx.moveTo(tip.x - 3, tip.y - 1);
+    ctx.lineTo(tip.x, tip.y);
+    ctx.lineTo(tip.x + 1, tip.y - 3);
+    ctx.stroke();
+  }
+  ctx.restore();
 }

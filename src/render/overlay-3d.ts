@@ -7,7 +7,8 @@ import { snapMark } from './plan-view';
 import { drawObjectHandles, type ScreenHandle } from '../app/object-handles';
 import type { Point2 } from '../core/vector';
 import { BOX_FACES, type BoxFace, boxEdges, faceCenter, type SectionBox } from '../app/section-box';
-import { drawPointDisc } from './plan-view';
+import { drawHandles, drawPointDisc } from './plan-view';
+import type { Handles } from '../app/handles';
 
 export interface Overlay3DState {
   /** World point (plan) to screen, at a height above the project zero; null behind the camera. */
@@ -29,6 +30,8 @@ export interface Overlay3DState {
   /** The selected object's handles on screen (app/object-handles.ts), and the one under the pointer. */
   readonly objectHandles: readonly ScreenHandle[];
   readonly hotHandle: ScreenHandle | null;
+  /** The selected walls' handles on the level's floor (app/handles.ts): their ends, arrows, turn and bend, a door's flips. */
+  readonly handles: Handles;
 }
 
 /** A box handle's radius on screen (px); a press this near takes it (BOX_HANDLE_HIT). */
@@ -95,6 +98,7 @@ export class Overlay3D {
     }
     // The selected object's handles (before the snap, whose drawing ends early behind the camera).
     drawObjectHandles(ctx, s.objectHandles, color('--bg'), color('--wall-sel'), s.hotHandle);
+    drawHandles(ctx, s.handles, color('--bg'), color('--wall-sel'));
     if (s.snap) {
       const p = at(s.snap.point);
       if (!p) return;

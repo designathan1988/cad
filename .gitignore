@@ -7,3 +7,7 @@ dist/
 .stryker-tmp/
 reports/
 backups/
+
+# Browser test captures and the break finder's build (scripts/breaks)
+.playwright-mcp/
+.breaks/

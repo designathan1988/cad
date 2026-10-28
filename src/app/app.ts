@@ -22,7 +22,7 @@ import type { GuideMode } from './guide-ui';
 import { setVariables } from '../core/measure';
 import type { KeyMap } from './keymap';
 import { arrangeNeeds, arrangeSteps, type ArrangeHow, type Box as ArrangeBox, boxOf } from '../tools/arrange';
-import type { ScreenHandle } from './object-handles';
+import { objectHandles, type ScreenHandle } from './object-handles';
 import type { HandleDrag } from './object-handles';
 import { OBJECT_PREVIEW } from './kind-tools';
 import type { ObjectInstance } from '../elements/object/schema';
@@ -404,7 +404,8 @@ export class App {
       this.placeFloatBar();
       // An open point's card follows its disc as the camera moves (orbit, flights, framing).
       if (this.ui.view === '3d') this.placePointCard();
-      if (this.ui.view === '3d' && this.overlayState) this.overlay3d.draw(this.overlayState);
+      // The handles found again where the camera now shows them (screen points: kept, they stayed behind).
+      if (this.ui.view === '3d' && this.overlayState) this.overlay3d.draw({ ...this.overlayState, objectHandles: objectHandles(this), handles: this.handles() });
     };
     this.geometry = deriveGeometry(doc);
     wireSaving();
@@ -2033,13 +2034,16 @@ export class App {
    */
   handles(): Handles {
     const d = this.ui.drag;
-    if (this.ui.tool !== 'select' || this.ui.view !== 'plan' || d?.kind === 'move' || d?.kind === 'marquee' || d?.kind === 'dimLine') return handlesFor([], (p) => p);
+    if (this.ui.tool !== 'select' || this.walker || d?.kind === 'move' || d?.kind === 'marquee' || d?.kind === 'dimLine') return handlesFor([], (p) => p);
     const walls = d ? d.walls : this.store.get().walls;
-    const toScreen = (p: Point2) => this.plan.toScreen(p);
+    // In 3D on the level's floor, where a drag takes its points (input.ts, worldAt): a wall selected there
+    // had no end, arrow or turn to take, only its panel. Behind the camera, off the screen.
+    const floor = this.ui.view === '3d' ? (levelOf(this.store.get(), this.ui.levelId)?.elevation ?? 0) + this.lift(this.ui.levelId) : 0;
+    const toScreen = (p: Point2): Point2 => (this.ui.view === 'plan' ? this.plan.toScreen(p) : (this.projectAt(p, floor) ?? { x: -1e6, y: -1e6 }));
     const h = handlesFor(
-      walls.filter((w) => this.ui.selection.has(w.id)),
+      walls.filter((w) => this.ui.selection.has(w.id) && w.levelId === this.ui.levelId),
       toScreen,
-      this.plan.dimValueBoxes(this.currentDims().map((x) => ({ ...x, text: lengthNum(x.value) }))),
+      this.ui.view === 'plan' ? this.plan.dimValueBoxes(this.currentDims().map((x) => ({ ...x, text: lengthNum(x.value) }))) : [],
     );
     // One door selected, standing still: its flip controls, on the side its leaf sweeps (the side
     // `swing` names is the one its temporary dimension keeps off, opening-ui.ts).
