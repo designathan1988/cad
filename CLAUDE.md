@@ -54,3 +54,31 @@ Quando eu pedir para testar a aplicação, o teste é do jeito que eu mandar. Se
 - Acrescente uma linha para ele em `.claude/memoria/MEMORIA.md`. Antes de criar, procure um arquivo que já trate do assunto e atualize esse; apague o que se provar errado.
 
 @.claude/memoria/MEMORIA.md
+
+## Memória que sobrevive à compactação
+Depois de uma compactação (manual ou automática) só volta do disco este `CLAUDE.md`, o índice acima e a saída dos hooks SessionStart
+(https://code.claude.com/docs/en/context-window#what-survives-compaction). Por isso o trabalho em andamento vive em arquivos do projeto,
+reimpressos por `.claude/settings.json` a cada início, retomada, `/clear` e compactação:
+- `docs/agent/orders.md`: cada mensagem do dono, palavra por palavra, gravada sozinha por `.claude/hooks/orders.cjs`; as mais novas são
+  reimpressas primeiro. Obedeça a mais nova; uma ordem posterior só substitui a anterior onde as duas conflitam.
+- `docs/agent/STATE.md`: o estado do projeto (o que está em andamento, quebrado, sem commit, sem verificação). Reescreva na hora em que
+  uma tarefa começa, termina ou muda, e mantenha abaixo de 9.000 caracteres (o que terminou vai para `docs/agent/history.md`).
+- `docs/agent/work.md`: o caderno da tarefa atual. Quando ela começa: a ordem do dono, o método e os passos. Depois de cada passo: o que
+  foi lido (arquivos e linhas), o que foi achado (arquivo:linha), o que mudou, o commit e o próximo passo.
+- `.claude/hooks/resume.cjs`: depois de compactar, imprime onde o trabalho parou, lido da conversa no disco (lista de tarefas, últimas
+  ferramentas, arquivos lidos e editados, últimas palavras), sem depender do resumo.
+Depois de uma compactação: obedeça às ordens reimpressas, leia o caderno e continue do "Next" dele. Nunca grave memória em
+`~/.claude/projects/.../memory/`.
+
+# Compact instructions
+
+Ao compactar (automático ou /compact; https://code.claude.com/docs/en/costs#reduce-token-usage), o resumo TEM de manter, palavra por
+palavra onde forem ordens:
+- cada ordem e reclamação do dono nesta sessão, da mais nova para a mais antiga, com o que foi feito sobre cada uma (feito, não feito ou
+  em parte, e por quê);
+- a tarefa atual e a condição de parada exatamente como o dono escreveu, e até onde ela foi (números, último commit);
+- tudo o que está quebrado ou foi dito quebrado e não foi confirmado corrigido; cada mudança sem commit (arquivos); cada afirmação não
+  verificada no app;
+- as regras que o dono repetiu (sem suítes de teste, sem perguntar, commit e push, sem heredoc, uma janela do Playwright só, conversa em
+  português).
+Depois de compactar, leia `docs/agent/work.md` inteiro antes de qualquer coisa e mantenha `docs/agent/STATE.md` atual.

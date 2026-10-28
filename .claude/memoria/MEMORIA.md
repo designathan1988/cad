@@ -14,4 +14,5 @@ Aprendizados guardados entre sessões, um por arquivo nesta pasta. Este índice 
 - [Sem heredoc](no-heredoc.md) — NUNCA heredoc no shell; usar Edit/Write ou um script escrito com Write
 - [Plano de escopo](scope-plan.md) — docs/plano-de-escopo.md é a especificação (15 fases, contrato primeiro); construir e testar num projeto novo em branco
 - [Fotorrealista limpo](photoreal-trace.md) — como o traçado evita trava, grão, fireflies, sombra em degraus e luz sob as paredes; nunca FEATURE_MIS 0
+- [Memória que sobrevive à compactação](compaction-memory.md) — o trabalho em andamento fica em docs/agent (orders.md, STATE.md, work.md), reimpresso pelos hooks a cada compactação
 - [Larguras de janela no teste](test-window-sizes.md) — testar também com ~880 e ~1280 px de largura; comparar as capturas para a vista nunca pular ao selecionar
