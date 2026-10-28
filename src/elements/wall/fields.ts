@@ -11,6 +11,7 @@ import { referenceLength } from '../opening/derive';
 import { arcOf } from './geometry/arc';
 import type { EndJoin, HeightRule, ReferenceLine } from './schema';
 import { canAlignWalls, canDistributeWalls } from '../../tools/arrange-walls';
+import { withLiveType } from './types';
 
 export interface WallFieldActions {
   readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
@@ -296,7 +297,9 @@ const NEXT_WALL = new Set(['type', 'reference', 'baseOffset', 'top', 'topLevelId
  * level shown, with the same fields as a selected wall (wallFields), those a placed wall alone has left
  * out. A change to the template is a change to the settings.
  */
-export function nextWall(doc: Doc, defaults: WallDefaults, levelId: string, update: (patch: Partial<WallDefaults>) => void): { readonly fields: Field<DocWall>[]; readonly item: DocWall } {
+export function nextWall(doc: Doc, chosen: WallDefaults, levelId: string, update: (patch: Partial<WallDefaults>) => void): { readonly fields: Field<DocWall>[]; readonly item: DocWall } {
+  // Its type as the wall tool will draw it (types.ts: withLiveType), not one deleted since.
+  const defaults = withLiveType(doc, chosen);
   const item: DocWall = { id: NEXT_WALL_ID, wallTypeId: defaults.wallTypeId, referenceLine: defaults.referenceLine, start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, levelId, baseOffset: defaults.baseOffset, top: defaults.top };
   // The type's own base and top: what "back to the type's" sets.
   const { baseOffset: _b, top: _t, ...bare } = item;

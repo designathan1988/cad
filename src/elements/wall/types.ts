@@ -52,6 +52,14 @@ export const updateWallType = (id: WallTypeId, patch: WallTypePatch): Command<Do
   },
 });
 
+/**
+ * The next walls' settings with a type the project has: the one chosen, or its first when that one is
+ * gone (deleted in the types dialog, undone, another project opened). Drawn with a missing type, every
+ * new wall had no body, only a warning.
+ */
+export const withLiveType = <D extends { readonly wallTypeId: WallTypeId }>(doc: Doc, defaults: D): D =>
+  doc.wallTypes.some((t) => t.id === defaults.wallTypeId) || doc.wallTypes.length === 0 ? defaults : { ...defaults, wallTypeId: doc.wallTypes[0]!.id };
+
 /** Why a type cannot be deleted: walls use it, or it is the last one. Null when it can be. */
 export function typeDeleteBlocker(doc: Doc, id: WallTypeId): 'inUse' | 'last' | 'missing' | null {
   if (!doc.wallTypes.some((t) => t.id === id)) return 'missing';

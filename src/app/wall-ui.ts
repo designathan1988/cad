@@ -6,6 +6,7 @@ import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { addWalls, setWalls } from '../elements/wall/commands';
+import { withLiveType } from '../elements/wall/types';
 import { ruleKeepingPosition, updateOpening } from '../elements/opening/commands';
 import { hasDistance } from '../elements/opening/schema';
 import { t } from '../ui/i18n';
@@ -126,7 +127,8 @@ export function toggleWallFlip(app: App): void {
 }
 
 export function makeWall(app: App, start: Point2, end: Point2, id = newId('wall'), bulge = 0): DocWall {
-  const d = app.ui.defaults;
+  // A type the project has (wall/types.ts: withLiveType), kept as the next walls' too.
+  const d = (app.ui.defaults = withLiveType(app.store.get(), app.ui.defaults));
   const wall: DocWall = {
     id,
     wallTypeId: d.wallTypeId,
