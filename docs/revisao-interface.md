@@ -1,7 +1,7 @@
 # Revisão da interface do cad2 — problemas e soluções
 
-Data: 2026-10-28. Branch `worktree-revisao-interface`. Visto no app (Playwright, 1920×1080 e 390×844, gestos reais) e no código.
-Capturas: `docs/revisao-interface/01…10-*.png`.
+Data: 2026-10-28. Branch `worktree-revisao-interface`. Visto no app (Playwright, 1920×1080, gestos reais) e no código. A aplicação é para desktop: celular fora do escopo.
+Capturas: `docs/revisao-interface/01…09-*.png`.
 
 ## Referências pesquisadas
 
@@ -55,7 +55,6 @@ Gravidade: S1 quebra; S2 errado num caso real; S3 atrapalha; S4 cosmético.
 | R4 · S3 | "Planta" e "3D" aparecem na ribbon E no painel do cubo (captura 05). | Um só seletor Planta/3D na barra superior. |
 | R5 · S3 | A dica inicial manda "Parede na aba Arquitetura", mas o botão Parede está na aba Início, visível (captura 01). | Dica "Comece pela ferramenta Parede (W)" apontando para o botão. |
 | R6 · S3 | Textos cortados nos campos da ribbon ("Abrir, almofadad…", "Maçaneta de alav…"; captura 03). | Some com R1. |
-| R7 · S3 | Na largura de celular a ribbon é cortada e precisa rolar de lado (captura 10; `input-buttons.ts:58-67`). | Barra de ferramentas que vira lista rolável de ícones; ferramentas menos usadas num menu "Mais". |
 | R8 · S4 | O título "cad2" e a fonte vinda do Google em tempo de execução (`index.html:6-10`). | Marca do produto na barra; pilha de fontes do sistema com números tabulares. |
 
 ### Painel do cubo (view cube) — reclamação do dono
