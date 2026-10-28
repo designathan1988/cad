@@ -37,6 +37,10 @@ the axis hint text (948333c). Then headless, all OK with no new code defect: mir
 split clean: F-0138 not reproduced), next-wall fields (ribbon = panel; -0.30 top reaches the drawn wall), scale list inside a
 saved view (F-0019: plan follows), download v68 + open + download again: only the name differs. Known, not fixed: a mirrored
 wall over a column with no warning (overlaps-without-warning break).
+Then F-0049 (curtain grid bounded by 10 cm panels) and F-0057 (level with elements cannot be deleted) fixed and checked
+(c791628). F-0023 (RC3) part 1: app/point-tools.ts holds beam, separator, curtain, railing, roof, stair; checked headless
+(8f16083). Next parts: wall, floor, room, guide, grid, section, callout, mark, measure, dimension, calibrate, column, object,
+note, levelMark, modify, split, corner still in the chains. Then S3, S4 findings. Tests run headless by scratchpad pw/drive.cjs.
 Fixed, tsc passes, committed with the above: F-0003, F-0010, F-0021, F-0030, F-0107, F-0136, F-0139, F-0045,
 F-0068 (file v68 migration), F-0008 (keepOpenings: own wall only), F-0006, F-0042, F-0050, F-0051 (axis moves alone), F-0101,
 F-0106, F-0087, F-0013, F-0019. To do: delete src/elements/grid/carry.ts and what only it used; test in the app (880/1280/1920 px,

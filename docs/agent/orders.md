@@ -168,3 +168,9 @@ pode abrir o navegador, abra em headless, tem um monte de coisas para testar
 2026-10-28 22:38:56
 
 Sim, continuar
+
+
+---
+2026-10-28 22:44:40
+
+Sim, seguir
