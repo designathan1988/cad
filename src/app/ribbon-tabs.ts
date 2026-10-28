@@ -216,12 +216,8 @@ function tabsOf(app: App): readonly RibbonTab[] {
         {
           title: 'rib.p.settings',
           items: [
-            { id: 'material.edit', icon: 'slab', size: 'L' },
-            { id: 'objects.edit', icon: 'box', size: 'L' },
-            { id: 'openings.store', icon: 'door', size: 'S' },
-            { id: 'floors.store', icon: 'slab', size: 'S' },
-            { id: 'presets.store', icon: 'box', size: 'S' },
-            { id: 'type.edit', icon: 'wall', size: 'S' },
+            // One Library for the six catalogs (ui/library-tabs.ts): six buttons for them were here.
+            { id: 'library.open', icon: 'box', size: 'L', short: 'lib.title' },
             { id: 'units.edit', icon: 'ruler', size: 'S' },
             { id: 'level.edit', icon: 'levelsAll', size: 'S' },
             { id: 'drawing.edit', icon: 'scale', size: 'S' },

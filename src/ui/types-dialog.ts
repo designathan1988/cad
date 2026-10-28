@@ -4,6 +4,7 @@
 // wall of it as the main action, and its name, top, base and layers to edit. New, duplicate and delete.
 // Every change is one command, and every wall of the type follows at once, being derived from it.
 
+import { withLibrary } from './library-tabs';
 import type { App } from '../app/app';
 import { newId } from '../core/id';
 import type { Material } from '../elements/material/schema';
@@ -197,7 +198,7 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
       layerEditor(type.layers, doc.materials, (next) => update({ layers: next })),
     );
     work();
-    return el('div', { class: 'dialog objs-store types-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('types.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side));
+    return withLibrary(app, 'types', close, el('div', { class: 'dialog objs-store types-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('types.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side)));
   };
 
   // Where the focus goes when its control is gone or disabled (a type deleted): the chosen type.

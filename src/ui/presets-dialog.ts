@@ -3,6 +3,7 @@
 // next element is), folders by kind, and placing one as the main action (its tool, the next element of
 // that model). Laid out as the objects' store (objects-dialog.ts), with its styles.
 
+import { withLibrary } from './library-tabs';
 import type { App } from '../app/app';
 import { nextOf } from '../app/next-element';
 import type { KindSolid } from '../elements/contract';
@@ -156,7 +157,7 @@ export function showPresets(app: App, slot?: PresetSlot): void {
       side.append(go, el('p', { class: 'objs-in-project' }, t('prstore.after')));
     }
     work();
-    return el('div', { class: 'dialog objs-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('prstore.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side));
+    return withLibrary(app, 'presets', close, el('div', { class: 'dialog objs-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('prstore.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side)));
   };
   const dialog = openProjectDialog(app, render, () => `preset:${chosen}`);
   app.shell.helpBack.querySelector<HTMLElement>(`[data-focus="preset:${chosen}"]`)?.focus({ preventScroll: true });

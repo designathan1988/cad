@@ -2996,6 +2996,48 @@ textarea.text-field {
   height: min(var(--objs-dialog-h), calc(100vh - var(--dialog-top) - var(--sp-4)));
   max-height: none;
 }
+/* The Library (ui/library-tabs.ts): its catalogs as tabs over each one, all of one size so switching
+   tabs never moves the window. */
+.in-library {
+  width: min(var(--objs-dialog-w), calc(100vw - 2 * var(--sp-4)));
+  height: min(var(--objs-dialog-h), calc(100vh - var(--dialog-top) - var(--sp-4)));
+  max-height: none;
+}
+.lib-tabs {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3) 0;
+  border-bottom: var(--line) solid var(--border);
+  background: var(--bg-2, var(--bg));
+}
+.lib-title {
+  margin-right: var(--sp-3);
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+.lib-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-bottom: var(--line-2) solid transparent;
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.lib-tab:hover {
+  color: var(--text);
+}
+.lib-tab[aria-selected='true'] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
 .objs-head {
   display: flex;
   align-items: center;

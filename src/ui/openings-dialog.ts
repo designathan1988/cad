@@ -3,6 +3,7 @@
 // size, how it opens, and placing it as the main action (the door or window tool, its next one of that
 // model and size). Laid out as the objects' store (objects-dialog.ts), with its styles.
 
+import { withLibrary } from './library-tabs';
 import type { App } from '../app/app';
 import type { OpeningKind } from '../elements/opening/schema';
 import { OPENING_MODELS, type OpeningModel } from '../elements/opening/style';
@@ -144,7 +145,7 @@ export function showOpenings(app: App, kind?: OpeningKind): void {
       side.append(go, el('p', { class: 'objs-in-project' }, t('opstore.after')));
     }
     work();
-    return el('div', { class: 'dialog objs-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('opstore.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side));
+    return withLibrary(app, 'openings', close, el('div', { class: 'dialog objs-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('opstore.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side)));
   };
   const dialog = openProjectDialog(app, render, () => `model:${chosen}`);
   app.shell.helpBack.querySelector<HTMLElement>(`[data-focus="model:${chosen}"]`)?.focus({ preventScroll: true });

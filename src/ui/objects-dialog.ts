@@ -3,6 +3,7 @@
 // files: export the definitions as JSON, import a file of them (checked as the project file checks them,
 // an id the project already has gets a new one). Laid out as the wall types and the materials.
 
+import { withLibrary } from './library-tabs';
 import type { App } from '../app/app';
 import type { Doc } from '../app/document';
 import { copyLibraryLink } from '../app/library-link';
@@ -327,11 +328,11 @@ export function showObjects(app: App, first?: string): void {
       );
     }
     work();
-    return el(
-      'div',
-      { class: 'dialog objs-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('objs.title') },
-      head,
-      el('div', { class: 'objs-main' }, nav, grid, side),
+    return withLibrary(
+      app,
+      'objects',
+      close,
+      el('div', { class: 'dialog objs-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('objs.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side)),
     );
   };
   const dialog = openProjectDialog(app, render, () => `def:${chosen}`);

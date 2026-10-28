@@ -3,6 +3,7 @@
 // layers and thickness, and as its main action drawing a floor of it, or, with floors selected, giving
 // them this build-up. Laid out as the objects' store (objects-dialog.ts), with its styles.
 
+import { withLibrary } from './library-tabs';
 import * as THREE from 'three';
 import type { App } from '../app/app';
 import { nextOf } from '../app/next-element';
@@ -143,7 +144,7 @@ export function showFloors(app: App): void {
       side.append(go, el('p', { class: 'objs-in-project' }, selected.length > 0 ? t('flstore.applyNote') : t('flstore.drawNote')));
     }
     work();
-    return el('div', { class: 'dialog objs-store flstore', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('flstore.title') }, head, el('div', { class: 'objs-main' }, grid, side));
+    return withLibrary(app, 'floors', close, el('div', { class: 'dialog objs-store flstore', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('flstore.title') }, head, el('div', { class: 'objs-main' }, grid, side)));
   };
   const dialog = openProjectDialog(app, render, () => `buildup:${chosen}`);
   app.shell.helpBack.querySelector<HTMLElement>(`[data-focus="buildup:${chosen}"]`)?.focus({ preventScroll: true });

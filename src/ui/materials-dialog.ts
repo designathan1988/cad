@@ -3,6 +3,7 @@
 // the last). Every change is one command, and every layer made of the material follows at once, in plan
 // and in 3D. Laid out as the wall types dialog: the list on the left, the chosen one beside it.
 
+import { withLibrary } from './library-tabs';
 import type { App } from '../app/app';
 import { copyLibraryLink } from '../app/library-link';
 import { libraryOf } from '../io/library-file';
@@ -178,12 +179,17 @@ export function showMaterials(app: App, first?: MaterialId): void {
     const link = btn(t('lib.copyLink'), 'link', () => mat && void copyLibraryLink(app, libraryOf(app.store.get(), [], [mat.id])));
     link.disabled = !mat;
 
-    return el(
-      'div',
-      { class: 'dialog dialog-wide types-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('mats.title') },
-      el('h2', {}, t('mats.title')),
-      el('div', { class: 'types-body' }, list, detail),
-      el('div', { class: 'actions' }, add, dup, del, ...(whyNode ? [whyNode] : []), link, el('span', { class: 'spacer' }), btn(t('help.close'), 'close', close)),
+    return withLibrary(
+      app,
+      'materials',
+      close,
+      el(
+        'div',
+        { class: 'dialog dialog-wide types-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('mats.title') },
+        el('h2', {}, t('mats.title')),
+        el('div', { class: 'types-body' }, list, detail),
+        el('div', { class: 'actions' }, add, dup, del, ...(whyNode ? [whyNode] : []), link, el('span', { class: 'spacer' }), btn(t('help.close'), 'close', close)),
+      ),
     );
   };
 

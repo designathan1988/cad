@@ -216,6 +216,8 @@ export function appActions(app: App, open: Openers): Action[] {
       run: () => app.goToView(v.id),
     })),
     make('level.edit', 'levels.edit', levels, open.levels),
+    // The Library: the catalogs as tabs of one window (ui/library-tabs.ts), opened on the wall types.
+    make('library.open', 'lib.open', edit, open.wallTypes, { keywords: `${tBoth('lib.title')} catálogo catalog tipos types materiais materials objetos objects` }),
     make('type.edit', 'types.edit', edit, open.wallTypes, { keywords: tBoth('types.title') }),
     make('material.edit', 'mats.edit', edit, open.materials, { keywords: tBoth('mats.title') }),
     make('objects.edit', 'objs.open', edit, open.objects, { keywords: `${tBoth('objs.title')} biblioteca library família family editor` }),
