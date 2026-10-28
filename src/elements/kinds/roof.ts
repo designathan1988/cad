@@ -1,6 +1,5 @@
 // Roofs in the registry (contract.ts): elements/roof holds the element and its faces.
 
-import { materialLabel } from '../../ui/i18n';
 import { finite, isObject, isPoint } from '../../core/guards';
 import { roofGeometry } from '../../render/prisms';
 import type { ElementKind } from '../contract';
@@ -103,5 +102,5 @@ export const roofKind: ElementKind<Roof, RoofSolid & { readonly covering: Materi
     out.polyline('A-ROOF', s.outline, true);
     if (s.faces.length > 1) for (const f of s.faces) out.polyline('A-ROOF', f.polygon, true);
   },
-  fields: (items, { dispatch, doc }) => roofFields(items, { updateRoofs: (ids, patch) => dispatch(updateRoofs(ids, patch)), materials: doc.materials.map((m) => ({ id: m.id, label: materialLabel(m) })) }),
+  fields: (items, { dispatch }) => roofFields(items, { updateRoofs: (ids, patch) => dispatch(updateRoofs(ids, patch)) }),
 };

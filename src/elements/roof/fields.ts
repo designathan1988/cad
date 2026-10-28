@@ -4,13 +4,11 @@ import { slopeFormat, slopeShown, slopeTyped, slopeUnit } from '../../ui/units';
 import type { Field } from '../../ui/fields';
 import { t } from '../../ui/i18n';
 import type { RoofPatch } from './commands';
-import { ROOF_COVERING, type RoofKind } from './schema';
+import type { RoofKind } from './schema';
 import type { RoofSolid } from './geometry';
 
 export interface RoofFieldActions {
   readonly updateRoofs: (ids: readonly string[], patch: RoofPatch) => void;
-  /** The project's materials, for the covering's list. */
-  readonly materials: readonly { readonly id: string; readonly label: string }[];
 }
 
 export function roofFields(roofs: readonly RoofSolid[], act: RoofFieldActions): Field<RoofSolid>[] {
@@ -42,17 +40,8 @@ export function roofFields(roofs: readonly RoofSolid[], act: RoofFieldActions): 
     { id: 'overhang', label: 'roof.overhang', icon: 'width', kind: 'number', min: 0, get: (r) => r.roof.edges[0]?.overhang ?? 0, set: (v) => act.updateRoofs(ids, { overhang: v }) },
     { id: 'thickness', label: 'roof.thickness', kind: 'number', min: 0.01, get: (r) => r.roof.thickness, set: (v) => act.updateRoofs(ids, { thickness: v }) },
     { id: 'baseOffset', label: 'roof.baseOffset', kind: 'number', get: (r) => r.roof.baseOffset, set: (v) => act.updateRoofs(ids, { baseOffset: v }) },
-    // What it is covered with (its thermal check, Simulations › Thermal): a tile, a slab, a metal sheet.
-    {
-      id: 'covering',
-      label: 'roof.covering',
-      icon: 'roof',
-      kind: 'select',
-      get: (r) => (r.roof.covering ?? ROOF_COVERING).materialId,
-      set: (v) => act.updateRoofs(ids, { covering: { materialId: v } }),
-      options: act.materials.map((m) => ({ value: m.id, label: m.label })),
-    },
-    { id: 'coveringThickness', label: 'roof.coveringThickness', kind: 'number', min: 0.001, sub: true, get: (r) => (r.roof.covering ?? ROOF_COVERING).thickness, set: (v) => act.updateRoofs(ids, { covering: { thickness: v } }) },
+    // What it is covered with (roof/schema.ts: covering) is kept in the data but not shown: only the
+    // thermal check read it, and the simulations left the app (tag escopo-completo-2026-10-28).
     {
       id: 'parapet',
       label: 'roof.parapet',
