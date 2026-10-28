@@ -3,7 +3,7 @@
 Aprendizados guardados entre sessões, um por arquivo nesta pasta. Este índice é importado pelo `CLAUDE.md`; cada linha aponta para o arquivo com o detalhe (o porquê e como aplicar).
 
 - [Falar português](falar-portugues.md) — SEMPRE responder ao usuário em português do Brasil, inclusive relatórios e recaps
-- [Navegador de teste](no-visible-browser.md) — uma janela Playwright visível, mantida aberta e reaproveitada, sem roubar o foco; nunca o painel embutido nem o Chrome; página perdida (about:blank) não se recarrega: parar o teste no app
+- [Navegador de teste](no-visible-browser.md) — uma janela Playwright visível, mantida aberta e reaproveitada, sem roubar o foco; nunca o painel embutido nem o Chrome; página perdida (about:blank) não se recarrega; desde 2026-10-28 os testes rodam em headless (sem janela)
 - [Commit e push no GitHub](commit-push-github.md) — sempre fazer commit e push do cad2 em github.com/designathan1988/cad (origin/main)
 - [Nunca pedir permissão](never-ask-permission.md) — não parar para perguntar nem pedir aprovação; escolher a melhor opção e seguir
 - [Travamento do Playwright](playwright-occlusion-hang.md) — janela do Chrome pequena ou coberta trava cliques; flags em playwright-mcp.config.json; não mexer no CDP; parar chamadas > 30 s

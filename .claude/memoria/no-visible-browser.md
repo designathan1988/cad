@@ -22,4 +22,6 @@ On 2026-10-27 the user rejected a run of my own headless Chromium (scratchpad dr
 
 On 2026-10-28 the Playwright page went to about:blank twice in the middle of my gestures (the browser restarted on its own, maybe another session driving the same server), I reloaded it with browser_navigate, and the user said "para de ficar abrindo e fechando a janela do navegador, para de ficar lançando ela na minha cara". When the page is lost, do NOT reload it: stop browser testing, finish with code reading and tsc, and list in the report what was not checked in the app.
 
+Right after that the owner said "pode abrir o navegador, abra em headless, tem um monte de coisas para testar". So from 2026-10-28 tests run HEADLESS: `--headless` is in .mcp.json (takes effect when the playwright server restarts); until then, scratchpad pw/drive.cjs (playwright-core, channel chrome, headless, persistent profile, mouse paths with jitter, screenshots read one by one) does the gestures without any window.
+
 **How to apply:** open the test window once, then drive it with real gestures; refresh by navigating in the same page. A change to .mcp.json args only takes effect after the user reconnects the playwright server (/mcp) or restarts the session. Related: [[commit-push-github]].

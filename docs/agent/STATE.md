@@ -31,8 +31,9 @@ problemas? se já, pare de usar ela"): hooks uninstalled; its record stays in .w
 2026-10-28 22:30: wall drag never moved the wall (pre-existing since bea7894: registry kindLists carried the walls and
 openings lists back over the moved ones); fixed in registry.ts kindLists (non-walled kinds only) and app.ts preview order.
 Checked in the app at 1280: door slide alone, typed distance, H, Ctrl+Z/Y, ?, wall move + undo/redo, wall takes its door; at
-1920: split keeps the plan. NOT checked (owner said stop opening the browser): merge, flip, mirror, grid axis, star F-0138,
-next-wall panel, scale list F-0019, save/reopen v68, 880 px.
+1920: split keeps the plan. Committed 2d16f98. Then headless (owner's order): merge, flip, axis moves alone, door slides
+alone, reload keeps the project, wall move/undo at 880 all OK; fixed float bar over the views' card and an axis bubble, and
+the axis hint text (948333c). NOT checked: mirror, star F-0138, next-wall panel, scale list F-0019, file download/open v68.
 Fixed, tsc passes, committed with the above: F-0003, F-0010, F-0021, F-0030, F-0107, F-0136, F-0139, F-0045,
 F-0068 (file v68 migration), F-0008 (keepOpenings: own wall only), F-0006, F-0042, F-0050, F-0051 (axis moves alone), F-0101,
 F-0106, F-0087, F-0013, F-0019. To do: delete src/elements/grid/carry.ts and what only it used; test in the app (880/1280/1920 px,

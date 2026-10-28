@@ -156,3 +156,9 @@ Testar e commitar
 2026-10-28 22:30:11
 
 para de ficar abrindo e fechando a janela do navegador, para de ficar lançando ela na minha cara
+
+
+---
+2026-10-28 22:30:48
+
+pode abrir o navegador, abra em headless, tem um monte de coisas para testar
