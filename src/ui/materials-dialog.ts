@@ -11,7 +11,6 @@ import { newId } from '../core/id';
 import { addMaterial, deleteMaterial, materialDeleteBlocker, materialUses, type MaterialPatch, updateMaterial } from '../elements/material/commands';
 import { CUT_PATTERNS, type CutPattern, type MaterialId } from '../elements/material/schema';
 import { JOINT_MAX, PATTERN_DEFAULTS, PATTERN_KINDS, PATTERN_LAYOUTS, PIECE_MAX, PIECE_MIN, type PatternKind, type PatternLayout, type SurfacePattern } from '../elements/material/pattern';
-import { DEFAULT_PHYSICS, type MaterialPhysics, physicsOf } from '../elements/material/physics';
 import { el, numberField, select } from './controls';
 import { openProjectDialog } from './dialog';
 import { textField } from './fields';
@@ -103,33 +102,8 @@ export function showMaterials(app: App, first?: MaterialId): void {
           row(t('pat.angle'), numberField(pat.angle, (v) => set({ angle: v }), -360, 0, '°', 360), 'patAngle'),
         );
       }
-      // Its physics (elements/material/physics.ts): its own, else the table's for a built-in one;
-      // one with neither gets a start to be checked, never a value it is silently given.
-      const physics = physicsOf(mat);
-      const table = DEFAULT_PHYSICS[mat.id];
-      const phys: HTMLElement[] = [el('h4', { class: 'mat-sub' }, t('mats.physics'))];
-      if (physics) {
-        const setP = (p: Partial<MaterialPhysics>) => update({ physics: { ...physics, ...p } });
-        phys.push(
-          row(t('mats.conductivity'), numberField(physics.conductivity, (v) => setP({ conductivity: v }), 0.001, 3, 'W/mK', 500), 'conductivity'),
-          row(t('mats.density'), numberField(physics.density, (v) => setP({ density: v }), 1, 0, 'kg/m³', 20000), 'density'),
-          row(t('mats.specificHeat'), numberField(physics.specificHeat, (v) => setP({ specificHeat: v }), 0.01, 2, 'kJ/kgK', 10), 'specificHeat'),
-          row(t('mats.vapour'), numberField(physics.vapour, (v) => setP({ vapour: v }), 1, 0, 'μ', 1e6), 'vapour'),
-          row(t('mats.wifiLoss'), numberField(physics.wifiLoss, (v) => setP({ wifiLoss: v }), 0, 1, 'dB', 60), 'wifiLoss'),
-          el('p', { class: 'mat-note' }, mat.physics ? t('mats.physicsOwn') : t('mats.physicsTable', { source: table?.source ?? '' })),
-        );
-        if (mat.physics && table) {
-          const back = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('mats.physicsBack'));
-          back.dataset.focus = 'physicsBack';
-          back.addEventListener('click', () => update({ physics: null }));
-          phys.push(back);
-        }
-      } else {
-        const start = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('mats.physicsSet'));
-        start.dataset.focus = 'physicsSet';
-        start.addEventListener('click', () => update({ physics: { conductivity: 1, density: 1500, specificHeat: 1, vapour: 10, wifiLoss: 5 } }));
-        phys.push(el('p', { class: 'mat-note' }, t('mats.physicsNone')), start);
-      }
+      // Its physics (elements/material/physics.ts) fed the simulations, out of the app since 2026-10-28: not
+      // shown, kept in the material as saved. Five fields for a feature that is gone were noise in the form.
       detail.append(
         el('h3', {}, materialLabel(mat)),
         row(t('mats.name'), name, 'name'),
@@ -138,7 +112,6 @@ export function showMaterials(app: App, first?: MaterialId): void {
         row(t('mats.metalness'), metal, 'metalness'),
         row(t('mats.cut'), cut, 'cut'),
         ...rows,
-        ...phys,
         el('p', { class: 'mat-note' }, t('mats.note')),
       );
     }

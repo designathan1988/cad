@@ -89,7 +89,7 @@ export function wireKeys(app: App, k: KeyContext): void {
     }
     if (ctrl && key === 'a') {
       e.preventDefault();
-      return app.selectAllWalls();
+      return app.selectAll();
     }
     if (ctrl && key === 'k') {
       e.preventDefault();
@@ -263,7 +263,8 @@ export function wireKeys(app: App, k: KeyContext): void {
     if (e.key === 'Enter' && app.openingKind() && ui.opening.kind === 'aiming') return app.openingEvent({ kind: 'click' });
     // Backspace while drawing a chain takes its last wall back and goes on from its start (ArchiCAD).
     if (e.key === 'Backspace' && app.undoChainStep()) return;
-    if (e.key === 'Delete' || e.key === 'Backspace') return app.deleteSelection();
+    // Delete only: Backspace, pressed to correct typing, deleted the selection (docs/revisao-interface.md, M8).
+    if (e.key === 'Delete') return app.deleteSelection();
     if (e.key === 'Home') return app.frameAll();
     if (e.key === '?') return showHelp(app);
     if (e.shiftKey && key === 'l') return app.setLanguage(app.otherLanguage());

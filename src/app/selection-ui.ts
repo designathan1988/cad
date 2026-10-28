@@ -28,6 +28,24 @@ export function selectAllWalls(app: App): void {
 }
 
 /**
+ * Ctrl+A: everything the level shown shows (walls, doors and windows, rooms, the registry's kinds), as
+ * the platform's Select All; what is hidden is not taken. It took the walls only (docs/revisao-interface.md, M8).
+ */
+export function selectAllShown(app: App): void {
+  app.setTool('select');
+  const level = app.ui.levelId;
+  const g = app.visibleGeometry();
+  const ids = [
+    ...[...g.solids.values()].filter((s) => s.wall.levelId === level).map((s) => s.wall.id),
+    ...[...g.openings.values()].filter((o) => g.solids.get(o.opening.wallId)?.wall.levelId === level).map((o) => o.opening.id),
+    ...[...g.rooms.values()].filter((r) => r.room.levelId === level).map((r) => r.room.id),
+    ...[...eachSolid(g.kinds)].filter((x) => x.levelId === level).map((x) => x.id),
+  ];
+  app.ui.selection = new Set(ids);
+  app.refresh();
+}
+
+/**
  * The next (or previous) element of the level shown, as the selection: walls by number, then doors
  * and windows, rooms, floors (ref/chat.txt:242). In plan the view slides to show it.
  */

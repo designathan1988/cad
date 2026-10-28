@@ -63,13 +63,18 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string; action?:
 /** The floating bar's few (contextIds): the selection's most used commands. */
 export function contextEntries(app: App, openCommands: () => void): ContextEntry[] {
   const entry = entriesFor(app, openCommands);
-  return contextIds(app.store.get(), [...app.ui.selection], app.ui.levelId).map(entry);
+  return contextIds(app.store.get(), [...app.ui.selection], app.ui.levelId).filter(shownIn(app)).map(entry);
 }
+
+/** Open or close a door is seen in 3D only: in plan it is not offered. */
+const shownIn = (app: App) => (id: ContextId): boolean => id !== 'toggleOpen' || app.ui.view === '3d';
 
 /** The right-click menu's groups (menuGroups): every command that applies, grouped. */
 export function menuEntries(app: App, openCommands: () => void): ContextEntry[][] {
   const entry = entriesFor(app, openCommands);
-  return menuGroups(app.store.get(), [...app.ui.selection], app.ui.levelId).map((g) => g.map(entry));
+  return menuGroups(app.store.get(), [...app.ui.selection], app.ui.levelId)
+    .map((g) => g.filter(shownIn(app)).map(entry))
+    .filter((g) => g.length > 0);
 }
 
 function entriesFor(app: App, openCommands: () => void): (id: ContextId) => ContextEntry {
@@ -85,10 +90,8 @@ function entriesFor(app: App, openCommands: () => void): (id: ContextId) => Cont
     merge: () => app.mergeSelection(),
     flipWall: () => app.store.dispatch(flipWalls(ids)),
     editType: () => app.openWallTypes(app.store.get().walls.find((w) => w.id === one)?.wallTypeId),
-    toggleOpen: () => {
-      if (app.ui.view === 'plan') app.setView('3d');
-      app.toggleOpen(ids);
-    },
+    // Offered in 3D only, where it shows (shown below): it switched the plan to 3D on its own (M9).
+    toggleOpen: () => app.toggleOpen(ids),
     flipHinge: () => opening && app.store.dispatch(updateOpening(opening.id, { hinge: opening.hinge === 'start' ? 'end' : 'start' })),
     flipSwing: () => opening && app.store.dispatch(updateOpening(opening.id, { swing: opening.swing === 'left' ? 'right' : 'left' })),
     centerOpening: () => opening && app.store.dispatch(updateOpening(opening.id, { rule: { kind: 'centered' } })),

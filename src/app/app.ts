@@ -1219,6 +1219,11 @@ export class App {
     return selecting.selectAllWalls(this);
   }
 
+  /** Ctrl+A: everything the level shown shows. */
+  selectAll(): void {
+    return selecting.selectAllShown(this);
+  }
+
   /**
    * The next (or previous) element of the level shown, as the selection: walls by number, then doors
    * and windows, rooms, floors (ref/chat.txt:242). In plan the view slides to show it.
