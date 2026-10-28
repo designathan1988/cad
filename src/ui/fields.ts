@@ -123,6 +123,15 @@ const FIELD_ICONS: Readonly<Record<string, IconName>> = {
   transom: 'window',
   screen: 'window',
   threshold: 'slab',
+  openAmount: 'doorOpen',
+  placeSwing: 'swing',
+  placeHinge: 'door',
+  design: 'door',
+  handle: 'pointer',
+  glazing: 'window',
+  muntins: 'table',
+  leafMaterial: 'door',
+  frameMaterial: 'frame',
 };
 
 /** The label of a row: its icon, then its words. */

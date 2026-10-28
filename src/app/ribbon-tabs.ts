@@ -383,7 +383,15 @@ function placeTab(
         ui.openingDefaults = { ...ui.openingDefaults, [kind]: { ...ui.openingDefaults[kind], ...patch } };
         app.refresh();
       };
-      return { fields: nextOpeningFields(kind, set, ui.openingDefaults[kind]) as Field<unknown>[], items: [ui.openingDefaults[kind]], key: JSON.stringify(ui.openingDefaults[kind]) };
+      // A door's side and hinge, chosen before the click as Space and H do (app.flipPlacing).
+      const sides: Field<unknown>[] =
+        kind === 'door'
+          ? [
+              { id: 'placeSwing', label: 'place.swing', kind: 'segmented', options: [{ value: '0', label: t('place.swingPointer') }, { value: '1', label: t('place.swingAway') }], get: () => (ui.doorFlip.swing ? '1' : '0'), set: (v) => (v === '1') !== ui.doorFlip.swing && app.flipPlacing('swing') },
+              { id: 'placeHinge', label: 'place.hinge', kind: 'segmented', options: [{ value: '0', label: t('place.hingeNormal') }, { value: '1', label: t('place.hingeOther') }], get: () => (ui.doorFlip.hinge ? '1' : '0'), set: (v) => (v === '1') !== ui.doorFlip.hinge && app.flipPlacing('hinge') },
+            ]
+          : [];
+      return { fields: [...(nextOpeningFields(kind, set, ui.openingDefaults[kind]) as Field<unknown>[]), ...sides], items: [ui.openingDefaults[kind]], key: `${JSON.stringify(ui.openingDefaults[kind])}|${JSON.stringify(ui.doorFlip)}` };
     }
     return nextFields(app);
   })();
@@ -525,7 +533,18 @@ function contextTab(
   const ids = [...ui.selection];
   const kinds = new Set(ids.map((id) => kindOfId(id)));
   const kind = kinds.size === 1 ? [...kinds][0] : null;
-  const what = kind ? (ids.length === 1 ? t(kind.one) : t(kind.many, { n: ids.length })) : t('rib.tab.contextMany', { n: ids.length });
+  // Doors and windows are one kind: named by what they are ("Modificar | Porta" said it of windows).
+  const openings = ids.map((id) => doc.openings.find((o) => o.id === id));
+  const allOpenings = openings.every((o) => o !== undefined);
+  const what = allOpenings
+    ? ids.length === 1
+      ? t(openings[0]!.kind === 'door' ? 'panel.door' : 'panel.window')
+      : t('panel.openings', { n: ids.length })
+    : kind
+      ? ids.length === 1
+        ? t(kind.one)
+        : t(kind.many, { n: ids.length })
+      : t('rib.tab.contextMany', { n: ids.length });
   const entries = contextEntries(app, () => app.openCommands());
   // Named short on the ribbon (rib.ctx.<id>); the menu's full name is the button's tip.
   const own = entries.filter((e) => ELEMENT_ACTIONS.has(e.id)).map((e): RibbonItem => ({ id: `ctx.${e.id}`, icon: e.icon, size: 'S', short: `rib.ctx.${e.id}` as MessageKey }));

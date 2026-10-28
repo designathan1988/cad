@@ -15,6 +15,8 @@ export interface HostInfo {
   readonly line?: { readonly start: Point2; readonly end: Point2 };
   /** Where each other wall meets this one inside its length (a T or an X): stations it covers. */
   readonly joints?: ReadonlyMap<WallId, { readonly lo: number; readonly hi: number }>;
+  /** Its length clear of the walls met at its ends (a corner): from the inner face of the one at its start to that of the one at its end. */
+  readonly clear?: { readonly from: number; readonly to: number };
 }
 
 export type OpeningWarningKind =
@@ -52,15 +54,17 @@ export function hostsOf(
   doc: Doc,
   walls: readonly DocWall[] = doc.walls,
   joints?: ReadonlyMap<WallId, ReadonlyMap<WallId, { lo: number; hi: number }>>,
+  ends?: ReadonlyMap<WallId, { from: number; to: number }>,
 ): Map<WallId, HostInfo> {
   return new Map(
     walls.map((w) => {
       const { bottom, top } = wallHeights(doc, w);
       const straight = arcOf({ start: w.start, end: w.end, bulge: w.bulge ?? 0 }) === null;
       const mine = joints?.get(w.id);
+      const clear = ends?.get(w.id);
       return [
         w.id,
-        { length: referenceLength(w), height: top - bottom, ...(straight ? { line: { start: w.start, end: w.end } } : {}), ...(mine ? { joints: mine } : {}) },
+        { length: referenceLength(w), height: top - bottom, ...(straight ? { line: { start: w.start, end: w.end } } : {}), ...(mine ? { joints: mine } : {}), ...(clear ? { clear } : {}) },
       ];
     }),
   );
@@ -71,8 +75,11 @@ export function groupStretch(g: OpeningGroup, host: HostInfo | undefined): { fro
   const length = host?.length ?? 0;
   const [a, b] = g.between ?? [null, null];
   // A bounding wall that no longer meets the host gives the host's end back.
-  const from = a === null ? 0 : (host?.joints?.get(a)?.hi ?? 0);
-  const to = b === null ? length : (host?.joints?.get(b)?.lo ?? length);
+  // At a wall's end, the inner face of the wall met there: the spaces are the room's, not the axis's.
+  const start = host?.clear?.from ?? 0;
+  const end = host?.clear?.to ?? length;
+  const from = a === null ? start : (host?.joints?.get(a)?.hi ?? start);
+  const to = b === null ? end : (host?.joints?.get(b)?.lo ?? end);
   return from < to ? { from, to } : { from: 0, to: length };
 }
 

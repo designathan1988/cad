@@ -526,7 +526,7 @@ export function currentDims(app: App): TempDim[] {
   const d = app.ui.drag;
   if (app.ui.tool !== 'select' || (d && d.kind !== 'slide' && d.kind !== 'move')) return [];
   const doc = app.store.get();
-  const moved = d?.kind === 'slide' ? { ...doc, openings: d.openings } : d?.kind === 'move' ? { ...doc, walls: d.walls } : doc;
+  const moved = d?.kind === 'slide' ? { ...doc, openings: d.openings, openingGroups: d.groups } : d?.kind === 'move' ? { ...doc, walls: d.walls } : doc;
   // Measured only to what shows: an isolated wall measured 2,55 m to a wall hidden for now.
   const temp = app.ui.temp;
   const shown = temp ? { ...moved, walls: moved.walls.filter((w) => shownFor(temp, w.id)), openings: moved.openings.filter((o) => shownFor(temp, o.id) || shownFor(temp, o.wallId)) } : moved;

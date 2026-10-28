@@ -82,7 +82,7 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
   const walls = [...doc.walls, ...extra];
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
   const { pieces, plan, slices, warnings } = wallPieces(walls, types, (w) => wallHeights(doc, w), (w) => planCutHeight(doc, w));
-  const placed = deriveOpenings([...doc.openings, ...extraOpenings], hostsOf(doc, walls, jointsIn(walls, types, pieces)), doc.openingGroups);
+  const placed = deriveOpenings([...doc.openings, ...extraOpenings], hostsOf(doc, walls, jointsIn(walls, types, pieces), endsIn(walls, types, pieces)), doc.openingGroups);
   const byId = new Map(walls.map((w) => [w.id, w]));
   const openings = new Map<OpeningId, OpeningSolid>();
   const cuts = new Map<WallId, OpeningCut[]>();
@@ -306,10 +306,53 @@ function planCutHeight(doc: Doc, wall: DocWall): number {
   return (level?.elevation ?? 0) + (level ? cutHeightOf(level) : CUT_HEIGHT);
 }
 
+/**
+ * Each straight wall's length clear of the walls met at its ends (a corner, an end against another
+ * wall): from the inner face of the one at its start to that of the one at its end, along its
+ * reference line. A distributed group's spaces at the wall's ends are measured to these faces.
+ */
+function endsIn(
+  walls: readonly DocWall[],
+  types: ReadonlyMap<string, WallType>,
+  pieces: ReadonlyMap<WallId, readonly Piece[]>,
+): Map<WallId, { from: number; to: number }> {
+  const out = new Map<WallId, { from: number; to: number }>();
+  for (const host of walls) {
+    if (host.bulge) continue;
+    const shape = shapeOf(host, types.get(host.wallTypeId));
+    if (typeof shape === 'string') continue;
+    const n = wallNormal(shape);
+    const [f0, f1] = faceOffsets(shape);
+    const band = [
+      halfPlaneThrough(add(shape.start, scale(n, f0 - JOINT_REACH)), n),
+      halfPlaneThrough(add(shape.start, scale(n, f1 + JOINT_REACH)), scale(n, -1)),
+    ];
+    const length = wallLength(shape);
+    let from = 0;
+    let to = length;
+    for (const other of walls) {
+      if (other.id === host.id || other.levelId !== host.levelId) continue;
+      const stations = (pieces.get(other.id) ?? [])
+        .map((p) => band.reduce<ConvexPolygon>((poly, h) => (poly.length > 0 ? clipHalfPlane(poly, h) : poly), p.polygon))
+        .filter((poly) => poly.length > 0 && area(poly) > AREA_EPSILON)
+        .flatMap((poly) => poly.map((v) => stationOf(shape, v)));
+      if (stations.length === 0) continue;
+      const lo = Math.min(...stations);
+      const hi = Math.max(...stations);
+      // Over the start or the end, not inside (those are joints): what it covers of the host's length.
+      if (lo <= POINT_TOLERANCE && hi < length / 2) from = Math.max(from, hi);
+      else if (hi >= length - POINT_TOLERANCE && lo > length / 2) to = Math.min(to, lo);
+    }
+    if (from > 0 || to < length) out.set(host.id, { from, to });
+  }
+  return out;
+}
+
 /** Hosts for placing openings, with the joints inside each (which bound a distributed group's stretch). */
 export function hostsIn(doc: Doc, walls: readonly DocWall[] = doc.walls) {
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
-  return hostsOf(doc, walls, jointsIn(walls, types, wallPieces(walls, types, (w) => wallHeights(doc, w), (w) => planCutHeight(doc, w)).pieces));
+  const pieces = wallPieces(walls, types, (w) => wallHeights(doc, w), (w) => planCutHeight(doc, w)).pieces;
+  return hostsOf(doc, walls, jointsIn(walls, types, pieces), endsIn(walls, types, pieces));
 }
 
 /** The opening's outline in plan: the jambs across the wall's thickness. */

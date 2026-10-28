@@ -6,6 +6,8 @@ import { POINT_KIND_LIST, systemsOf } from '../elements/mep/schema';
 import { keyOf } from './keymap';
 import { ARRANGE_HOWS, arrangeNeeds } from '../tools/arrange';
 import { newId } from '../core/id';
+import { distributeOpenings } from '../elements/opening/commands';
+import { GROUP_PREFIX } from '../elements/opening/schema';
 import { addZone } from '../elements/zone/commands';
 import { ZONE_COLOURS, ZONE_PREFIX } from '../elements/zone/schema';
 import { words } from '../elements/object/fields';
@@ -261,7 +263,16 @@ export function appActions(app: App, open: Openers): Action[] {
     // Align and distribute the selection (tools/arrange.ts): enabled when enough of it can.
     ...(() => {
       const n = app.arrangeItems().length;
-      return ARRANGE_HOWS.map((how) => make(`arrange.${how}`, `arrange.${how}` as MessageKey, edit, () => app.arrange(how), { enabled: n >= arrangeNeeds(how), keywords: 'alinhar align distribuir distribute organizar arrange' }));
+      // Doors and windows of one wall slide on it: distributed there, with equal spaces (as the panel's and
+      // the context's Distribute); the buttons were greyed out for them.
+      const ids = [...ui.selection];
+      const sel = ids.map((id) => doc.openings.find((o) => o.id === id));
+      const onOneWall = ids.length >= 2 && sel.every((o) => o !== undefined && o.wallId === sel[0]!.wallId);
+      return ARRANGE_HOWS.map((how) =>
+        onOneWall && (how === 'spreadX' || how === 'spreadY')
+          ? make(`arrange.${how}`, `arrange.${how}` as MessageKey, edit, () => app.store.dispatch(distributeOpenings(newId(GROUP_PREFIX), ids, { kind: 'equal' })), { keywords: 'alinhar align distribuir distribute organizar arrange' })
+          : make(`arrange.${how}`, `arrange.${how}` as MessageKey, edit, () => app.arrange(how), { enabled: n >= arrangeNeeds(how), keywords: 'alinhar align distribuir distribute organizar arrange' }),
+      );
     })(),
     make('settings.variables', 'vars.open', settings, open.variables, { keywords: 'variáveis variables pé-direito módulo module medida measure nome name' }),
     make('view.overrides', 'ovr.open', views, () => app.openOverrides(), { keywords: 'substituição override filtro filter cor color demolir demolish' }),

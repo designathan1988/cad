@@ -187,6 +187,8 @@ export interface UiState {
   /** The object tool's definition (elements/object), and the turn the next object is placed at (radians). */
   objectDef: string;
   objectAngle: number;
+  /** The door tool's next door: its leaf to the side away from the pointer (Space), its hinge on the far jamb (H). */
+  doorFlip: { readonly swing: boolean; readonly hinge: boolean };
   /** An object's handle being dragged (object-handles.ts): its preview until let go. */
   handleDrag: HandleDrag | null;
   /** Doors and windows shown open in 3D (a double click, the selection's Open): the view's, not saved. */
@@ -350,6 +352,7 @@ export class App {
       beamFrom: null,
       objectDef: 'def_table',
       objectAngle: 0,
+      doorFlip: { swing: false, hinge: false },
       handleDrag: null,
       opened: new Set(),
       holeFor: null,
@@ -496,7 +499,7 @@ export class App {
                 ...(d.kind === 'move' ? kindLists(moveKinds(doc, d.kinds, d.delta)) : {}),
           }
         : d?.kind === 'slide'
-          ? { ...doc, openings: d.openings }
+          ? { ...doc, openings: d.openings, openingGroups: d.groups }
           : d?.kind === 'dimLine'
             ? // A dimension's line where it is dragged.
               { ...doc, dimensions: doc.dimensions.map((x) => (x.id === d.id ? { ...x, offset: d.offset } : x)) }
@@ -553,7 +556,22 @@ export class App {
     const kind = this.openingKind();
     const o = this.ui.opening;
     if (!kind || o.kind !== 'aiming') return [];
-    return [newOpening(OPENING_PREVIEW_ID, o.aim.wallId, kind, o.rule, { ...this.ui.openingDefaults[kind], swing: o.aim.side })];
+    return [newOpening(OPENING_PREVIEW_ID, o.aim.wallId, kind, o.rule, { ...this.ui.openingDefaults[kind], ...this.placedSides(kind, o.aim.side) })];
+  }
+
+  /** The leaf's side and hinge of the opening about to be placed: toward the pointer, unless flipped (Space, H). */
+  private placedSides(kind: OpeningKind, side: 'left' | 'right'): { swing: 'left' | 'right'; hinge: 'start' | 'end' } {
+    const f = kind === 'door' ? this.ui.doorFlip : { swing: false, hinge: false };
+    return { swing: f.swing ? (side === 'left' ? 'right' : 'left') : side, hinge: f.hinge ? 'end' : 'start' };
+  }
+
+  /** Space or H with the door tool: the next door opens to the other side, or hangs on the other jamb; true when it was the door tool. */
+  flipPlacing(which: 'swing' | 'hinge'): boolean {
+    if (this.openingKind() !== 'door') return false;
+    const f = this.ui.doorFlip;
+    this.ui.doorFlip = which === 'swing' ? { ...f, swing: !f.swing } : { ...f, hinge: !f.hinge };
+    this.refresh();
+    return true;
   }
 
   openingEvent(event: OpeningToolEvent): void {
@@ -563,7 +581,7 @@ export class App {
     this.ui.opening = r.state;
     if (r.place) {
       const size = this.ui.openingDefaults[kind];
-      const made = newOpening(newId(OPENING_PREFIX), r.place.wallId, kind, r.place.rule, { ...size, swing: r.place.swing });
+      const made = newOpening(newId(OPENING_PREFIX), r.place.wallId, kind, r.place.rule, { ...size, ...this.placedSides(kind, r.place.swing) });
       // Where it was aimed, held by its wall: measured from a neighbour, it moved whenever that one did.
       const opening = { ...made, rule: wallRule(this.store.get(), made) };
       const problem = placementProblem(this.store.get(), opening);

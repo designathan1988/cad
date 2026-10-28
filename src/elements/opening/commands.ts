@@ -33,6 +33,8 @@ function settleGroups(before: Doc, doc: Doc): Doc {
   const byId = new Map(doc.openings.map((o) => [o.id, o]));
   const walls = new Set(doc.walls.map((w) => w.id));
   let changed = false;
+  // A group that lost a member (moved away, given a place of its own, deleted) is undone, the others held
+  // where they were: spread again without it, they all jumped when one was dragged.
   const kept = doc.openingGroups.flatMap((g) => {
     const members = g.members.filter((id) => {
       const o = byId.get(id);
@@ -40,14 +42,14 @@ function settleGroups(before: Doc, doc: Doc): Doc {
     });
     if (members.length === g.members.length && walls.has(g.wallId)) return [g];
     changed = true;
-    return walls.has(g.wallId) ? [{ ...g, members }] : [];
+    return walls.has(g.wallId) ? [{ ...g, members, broken: true }] : [];
   });
-  const lone = new Set(kept.filter((g) => g.members.length < 2).flatMap((g) => g.members));
+  const lone = new Set(kept.filter((g) => g.members.length < 2 || 'broken' in g).flatMap((g) => g.members));
   if (!changed && lone.size === 0) return doc;
   const was = lone.size > 0 ? placedIn(before) : null;
   return {
     ...doc,
-    openingGroups: kept.filter((g) => g.members.length >= 2),
+    openingGroups: kept.filter((g) => g.members.length >= 2 && !('broken' in g)),
     openings: doc.openings.map((o) => (lone.has(o.id) ? { ...o, rule: { kind: 'fromStart' as const, distance: was!.get(o.id)?.start ?? 0 } } : o)),
   };
 }

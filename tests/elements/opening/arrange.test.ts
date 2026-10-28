@@ -153,11 +153,15 @@ describe('distributed groups', () => {
     expect(loose.openings.every((o) => o.rule.kind === 'fromStart')).toBe(true);
   });
 
-  it('a member given another rule leaves the group; the rest share the wall again', () => {
+  // Spread again without it, the others all jumped when one was dragged (the user's report).
+  it('a member given another rule undoes the group; the others stay exactly where they were', () => {
     const d = distributeOpenings('g', ['x', 'y', 'z'], { kind: 'equal' }).apply(three());
+    const [y, z] = [startOf(d, 'y'), startOf(d, 'z')];
     const next = updateOpening('x', { rule: { kind: 'fromEnd', distance: 0 } }).apply(d);
-    expect(next.openingGroups[0]!.members).toEqual(['y', 'z']);
-    near(startOf(next, 'y'), (6 - 2.4) / 3);
+    expect(next.openingGroups).toEqual([]);
+    expect(next.openings.filter((o) => o.rule.kind === 'inGroup')).toEqual([]);
+    near(startOf(next, 'y'), y);
+    near(startOf(next, 'z'), z);
   });
 
   it('a group left with one member is dissolved and that member stays where it was', () => {

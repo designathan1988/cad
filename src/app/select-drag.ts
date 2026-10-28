@@ -21,8 +21,8 @@ import { GRID_STEP, type Snap } from '../tools/snap';
 import type { App } from './app';
 import type { DocWall } from './document';
 import { insidePolygon } from './geometry';
-import { detachedFrom, wallRule } from '../elements/opening/commands';
-import type { Opening } from '../elements/opening/schema';
+import { detachedFrom, ungroupOpenings, wallRule } from '../elements/opening/commands';
+import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import { offsetThrough, placeDimension } from '../elements/dimension/anchor';
 import { wallsOnGrids } from '../elements/grid/carry';
 import { eachSolid, kindIds, kindLists, moveKinds } from '../elements/registry';
@@ -61,7 +61,17 @@ export type Drag =
    * A door or a window slid along its wall (or onto another): `openings` as they would be, `grab` how
    * far along the wall from its centre it was taken, so it does not jump to the pointer.
    */
-  | { readonly kind: 'slide'; readonly id: string; readonly grab: number; readonly walls: readonly DocWall[]; readonly openings: readonly Opening[] }
+  | {
+      readonly kind: 'slide';
+      readonly id: string;
+      readonly grab: number;
+      readonly walls: readonly DocWall[];
+      readonly openings: readonly Opening[];
+      /** The distributed groups with the dragged one's undone (its members held where they were). */
+      readonly groups: readonly OpeningGroup[];
+      /** The dragged one as it was taken: let go unchanged, nothing is done. */
+      readonly still: Opening;
+    }
   /** A dimension's line dragged off what it measures: `offset` as it would be. */
   | { readonly kind: 'dimLine'; readonly id: string; readonly offset: number }
   | { readonly kind: 'marquee'; readonly a: Point2; readonly b: Point2 };
@@ -172,8 +182,12 @@ export function selectGestures(app: App): SelectGestures {
           // Taken where it was pressed: that point's distance along the wall from the opening's centre.
           const f = placed.frame;
           const centre = add(f.start, scale(f.dir, (placed.end - placed.start) / 2));
-          // What was measured from it stays where it is (held by its wall): it moves alone.
-          ui.drag = { kind: 'slide', id: sliding.id, grab: dot(sub(pending.at, centre), f.dir), walls: doc.walls, openings: detachedFrom(doc, sliding.id) };
+          // What was measured from it stays where it is (held by its wall): it moves alone. Taken out of a
+          // distributed group, the group is undone with each member where it is: kept, the others were
+          // spread again over the stretch without it and all jumped.
+          const free = sliding.rule.kind === 'inGroup' ? ungroupOpenings(sliding.rule.groupId).apply(doc) : doc;
+          const openings = detachedFrom(free, sliding.id);
+          ui.drag = { kind: 'slide', id: sliding.id, grab: dot(sub(pending.at, centre), f.dir), walls: doc.walls, openings, groups: free.openingGroups, still: openings.find((o) => o.id === sliding.id)! };
         } else if (pending.kind === 'wall' && moving.length + rooms.size + kinds.size > 0) {
           ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, kinds };
           smart = ui.view === 'plan' ? smartBoxes(app, ui.selection) : null;
@@ -299,9 +313,10 @@ export function selectGestures(app: App): SelectGestures {
       } else if (d?.kind === 'grip' || d?.kind === 'stretch' || d?.kind === 'bulge') app.store.dispatch(setWalls(d.walls));
       else if (d?.kind === 'slide') {
         const o = d.openings.find((x) => x.id === d.id);
-        // It and what was detached from it, one undo step.
+        // It and what was detached from it (its group undone), one undo step; nothing when it was let go where it was.
         const changed = new Map(d.openings.filter((x) => JSON.stringify(x) !== JSON.stringify(app.store.get().openings.find((y) => y.id === x.id))).map((x) => [x.id, x]));
-        if (o && changed.size > 0) app.store.dispatch({ label: 'cmd.updateOpening', apply: (doc) => ({ ...doc, openings: doc.openings.map((x) => changed.get(x.id) ?? x) }) });
+        if (o && JSON.stringify(o) !== JSON.stringify(d.still) && changed.size > 0)
+          app.store.dispatch({ label: 'cmd.updateOpening', apply: (doc) => ({ ...doc, openingGroups: d.groups, openings: doc.openings.map((x) => changed.get(x.id) ?? x) }) });
       }
       else if (d?.kind === 'dimLine') app.store.dispatch(setDimensionOffset(d.id, d.offset));
       else if (d?.kind === 'marquee') selectByMarquee(app, d.a, d.b, shift);

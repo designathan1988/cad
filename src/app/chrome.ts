@@ -315,6 +315,8 @@ export function renderChrome(app: App): void {
         snapKey,
         keyHint('Esc', t(mod.state.step === 'base' ? 'key.exit' : 'key.back')),
       ]
+    : placing === 'door'
+    ? [keyHint(t('key.spaceKey'), t('key.flipSwing')), keyHint('H', t('key.flipHinge')), keyHint('Esc', t('key.exit'))]
     : placing || ui.tool === 'room'
     ? [keyHint('Esc', t('key.exit'))]
     : ui.tool === 'dimension'
@@ -590,7 +592,9 @@ export function renderRibbon(app: App): void {
     const a = actions.get(i.id);
     return a ? [i.id, a.label, a.keys ?? '', a.enabled, i.pressed?.() ?? null] : [i.id];
   }));
-  const key = JSON.stringify([getLang(), shown, tabs.map((x) => x.text ?? x.id), states, tab.panels.map((p) => p.key ?? '')]);
+  // The selection too: the buttons run the actions made for it (the context's close over its ids), and kept
+  // from a selection of two, Distribute on three windows spread two of them.
+  const key = JSON.stringify([getLang(), shown, selected, tabs.map((x) => x.text ?? x.id), states, tab.panels.map((p) => p.key ?? '')]);
   if (key === app.ribbonKey) return;
   app.ribbonKey = key;
   // Keep the focus on the same button, or in the same field, across the rebuild.

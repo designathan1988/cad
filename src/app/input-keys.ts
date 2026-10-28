@@ -364,6 +364,9 @@ export function wireKeys(app: App, k: KeyContext): void {
     // A selected door, flipped from the keyboard: Space sends the leaf to the other side, as in Revit,
     // H the hinge to the other jamb.
     if (e.key === ' ' && ui.tool === 'select' && app.flipDoor('swing')) return e.preventDefault();
+    // And the door about to be placed, the same keys: chosen before the click, seen in its preview.
+    if (e.key === ' ' && app.flipPlacing('swing')) return e.preventDefault();
+    if (key === 'h' && app.flipPlacing('hinge')) return;
     if (key === 'h' && ui.tool === 'select' && app.flipDoor('hinge')) return;
     if (key === 'd') return app.setTool('door');
     if (key === 'r') return app.setTool('room');
