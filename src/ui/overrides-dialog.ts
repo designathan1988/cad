@@ -1,5 +1,5 @@
-// Graphic overrides (phase 9): walls of a type filled in plan with a colour of their own (walls to
-// demolish in red, new ones in green), rooms of a use too, shown or not as the view says. A row a type
+// Graphic overrides (phase 9): walls of a type filled in plan with a colour of their own, rooms of a
+// use too, shown or not as the view says (the phases' colours are styles.css --phase-*). A row a type
 // or a use: it, its colour, its remove button; one command each change (app/layer-sets.ts).
 
 import type { App } from '../app/app';

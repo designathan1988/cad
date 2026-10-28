@@ -632,6 +632,72 @@ button.project-name:hover {
 .light-lists .look-select select {
   flex: 1;
 }
+/* The Visibility popover (ui/visibility-panel.ts): groups of rows, an eye at each row's end. */
+/* An open popover lies over the project browser's drawer (z-index 7) too. */
+.view-bar:has(.light-panel:not([hidden])) {
+  z-index: 8;
+}
+.vis-panel {
+  width: calc(10 * var(--sp-7));
+  max-height: 70vh;
+  overflow-y: auto;
+  gap: var(--sp-3);
+}
+.vis-head {
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+.vis-group {
+  display: grid;
+}
+.vis-title {
+  padding: 0 var(--sp-2) var(--sp-1);
+  color: var(--text-3, var(--text-2));
+  font-size: var(--fs-xs, var(--fs-sm));
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.vis-row,
+.vis-action {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: var(--control-h-sm);
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.vis-row:hover,
+.vis-action:hover {
+  background: var(--hover);
+}
+.vis-label {
+  flex: 1;
+  min-width: 0;
+}
+.vis-row[aria-pressed='false'] {
+  color: var(--text-2);
+}
+.vis-row[aria-pressed='true'] .icon {
+  color: var(--accent);
+}
+.vis-row[aria-current='true'] {
+  font-weight: 600;
+}
+.vis-action {
+  color: var(--accent-text, var(--accent));
+}
+.vis-set {
+  display: flex;
+  align-items: center;
+}
 /* While the photorealistic view is being prepared (app.ts): said beside the style, in the accent. */
 .look-preparing {
   color: var(--accent-text);

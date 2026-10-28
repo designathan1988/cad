@@ -3,20 +3,10 @@
 
 import type { App } from '../app/app';
 import { typeUsage } from '../app/browser-data';
-import type { Category } from '../app/geometry';
 import { el, section } from './controls';
-import { name, t, type MessageKey } from './i18n';
+import { name, t } from './i18n';
 import { icon } from './icons';
 import { layerSwatch } from './swatch';
-
-const CATEGORIES: readonly { id: Category; key: MessageKey }[] = [
-  { id: 'walls', key: 'layer.walls' },
-  { id: 'openings', key: 'layer.openings' },
-  { id: 'rooms', key: 'layer.rooms' },
-  { id: 'floors', key: 'layer.floors' },
-  { id: 'objects', key: 'layer.objects' },
-  { id: 'guides', key: 'layer.guides' },
-];
 
 /** A full-width button row in a browser section. */
 function item(label: string, onClick: () => void, extra: { pressed?: boolean; current?: boolean; disabled?: boolean; lead?: string; trail?: string } = {}): HTMLElement {
@@ -77,25 +67,7 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
       item(t('views.save'), () => app.saveCurrentView(), { lead: icon('plus', 16) }),
       item(t('section.dialogOpen'), () => app.openSections(), { lead: icon('cut', 16) }),
     ),
-    section(
-      t('browser.layers'),
-      true,
-      ...CATEGORIES.map((c) => item(t(c.key), () => app.toggleCategory(c.id), { pressed: !ui.hidden.has(c.id), trail: ui.hidden.has(c.id) ? t('layer.hidden') : t('layer.shown') })),
-      // Every wall's reference line and direction, as ArchiCAD's view option (the selected ones' always show).
-      item(t('layer.refLines'), () => app.toggleRefLines(), { pressed: ui.refLines, trail: ui.refLines ? t('layer.shown') : t('layer.hidden') }),
-      item(t('layer.openingTags'), () => app.toggleOpeningTags(), { pressed: ui.openingTags, trail: ui.openingTags ? t('layer.shown') : t('layer.hidden') }),
-      // Layer combinations: a click shows as it says; × deletes one (an undo step).
-      ...(doc.layerSets ?? []).map((s) => {
-        const del = el('button', { type: 'button', class: 'icon-btn', title: t('layers.delete', { name: s.name }), 'aria-label': t('layers.delete', { name: s.name }) });
-        del.innerHTML = icon('close', 14);
-        del.addEventListener('click', () => app.deleteLayerSet(s.id));
-        const same = s.hidden.length === ui.hidden.size && s.hidden.every((c) => ui.hidden.has(c));
-        const row = el('div', { class: 'browser-row' }, ...([...item(s.name, () => app.applyLayerSet(s.id), { lead: icon('levelsAll', 16), ...(same ? { trail: t('browser.current') } : {}) }).childNodes] as HTMLElement[]), del);
-        return el('div', {}, row);
-      }),
-      item(t('layers.save'), () => app.saveLayerSet(), { lead: icon('plus', 16) }),
-      item(t('ovr.open'), () => app.openOverrides(), { lead: icon('frame', 16), trail: (doc.overrides ?? []).length ? (ui.overridesOn ? t('layer.shown') : t('layer.hidden')) : '' }),
-    ),
+    // What is shown (categories, overrides, combinations) is the Visibility popover's (ui/visibility-panel.ts).
     section(
       t('browser.types'),
       true,

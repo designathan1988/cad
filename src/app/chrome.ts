@@ -17,6 +17,7 @@ import { drawingOf, elementIds, wallNumber } from './document';
 import { SCALES } from '../elements/drawing/schema';
 import { boundsOf, openingOutline } from './geometry';
 import { renderBrowser } from '../ui/browser';
+import { renderVisibility } from '../ui/visibility-panel';
 import { renderRibbonTab, renderRibbonTabs } from '../ui/ribbon';
 import { ribbonTabs } from './ribbon-tabs';
 import { exploding, RENDER_QUALITIES, shownLevels, VISUAL_STYLES } from './view-3d';
@@ -87,11 +88,20 @@ export function renderChrome(app: App): void {
     shell.planScale.box.title = t('vcb.scaleTip');
     shell.planScale.select.replaceChildren(...SCALES.map((d) => new Option(`1:${d}`, String(d))));
     shell.visBtn.querySelector('.label')!.textContent = t('vcb.visibility');
-    shell.visBtn.title = t('ovr.open');
+    shell.visBtn.title = t('vis.title');
     shell.shownReset.querySelector('.label')!.textContent = t('vcb.showAll');
     shell.shownReset.title = t('temp.reset');
   }
   shell.planScale.select.value = String(drawingOf(doc).scale);
+  // The Visibility popover, drawn again only when what it shows changes (not on every pointer move).
+  shell.visBtn.setAttribute('aria-expanded', String(!shell.visPanel.hidden));
+  if (!shell.visPanel.hidden) {
+    const visKey = JSON.stringify([getLang(), [...ui.hidden], ui.refLines, ui.openingTags, ui.overridesOn, doc.layerSets ?? [], (doc.overrides ?? []).length + (doc.roomOverrides ?? []).length]);
+    if (shell.visPanel.dataset.key !== visKey) {
+      shell.visPanel.dataset.key = visKey;
+      renderVisibility(app, shell.visPanel);
+    }
+  } else delete shell.visPanel.dataset.key;
   shell.shownReset.hidden = ui.temp === null;
   for (const [mode, b] of Object.entries(shell.levelsShown)) b.setAttribute('aria-pressed', String(ui.view3d.levels === mode));
   // Pressed only while it spreads something: with one level shown it is off, and says why when clicked.

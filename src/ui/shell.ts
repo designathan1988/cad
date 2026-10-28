@@ -145,6 +145,10 @@ export function buildShell(root: HTMLElement) {
   const visBtn = el('button', { type: 'button', class: 'has-icon light-btn' });
   visBtn.innerHTML = icon('levelsAll', 16);
   visBtn.append(el('span', { class: 'label' }));
+  visBtn.setAttribute('aria-expanded', 'false');
+  // The Visibility popover over the bar (ui/visibility-panel.ts fills it while it is open).
+  const visPanel = el('div', { class: 'light-panel vis-panel', role: 'group' });
+  visPanel.hidden = true;
   const shown = { reset: el('button', { type: 'button', class: 'has-icon light-btn' }) };
   shown.reset.innerHTML = icon('close', 16);
   shown.reset.append(el('span', { class: 'label' }));
@@ -155,7 +159,7 @@ export function buildShell(root: HTMLElement) {
   // The way out of the tool in use (it was the options bar's), shown while one is.
   const toolDone = el('button', { type: 'button', class: 'has-icon light-btn tool-done' });
   toolDone.hidden = true;
-  viewBar.append(onlyPlan, only3d, el('span', { class: 'view-bar-sep' }), visBtn, shown.reset, el('span', { class: 'spacer' }), toolDone);
+  viewBar.append(onlyPlan, only3d, el('span', { class: 'view-bar-sep' }), el('span', { class: 'light-wrap' }, visBtn, visPanel), shown.reset, el('span', { class: 'spacer' }), toolDone);
   // The drawing's corner, top right: the view cube and its home alone (app.ts puts them in; 3D only), as
   // Fusion's and Revit's. The views, the level and the project browser are the title bar's, once: in a
   // card under the cube they mixed navigation with the model's levels and covered the drawing (C1, C2).
@@ -221,7 +225,7 @@ export function buildShell(root: HTMLElement) {
 
   const parts = {
     homeBtn, projectName, savedNote, undo, redo, level, open, fileInput, view3d, viewPlan, commands, shortcuts, lang, theme, save,
-    panelToggle, tabs, fileMenu, ribbon, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, viewCorner, toolDone, levelsShown, explode, cut, xray, box, ortho, look, light, only3d, onlyPlan, planScale, visBtn, shownReset: shown.reset, dims, browser, sidebar,
+    panelToggle, tabs, fileMenu, ribbon, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, viewCorner, toolDone, levelsShown, explode, cut, xray, box, ortho, look, light, only3d, onlyPlan, planScale, visBtn, visPanel, shownReset: shown.reset, dims, browser, sidebar,
     emptyHint, tempChip, tempLabel, tempReset, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, snapParts, collideBtn, coords, helpBack, fitFoot, fitViewBar,
   };
 

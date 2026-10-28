@@ -84,23 +84,34 @@ export function wireButtons(app: App, palette: () => void): void {
   });
   shell.look.quality.select.addEventListener('change', () => app.setView3D({ quality: shell.look.quality.select.value as RenderQuality }));
   shell.planScale.select.addEventListener('change', () => app.store.dispatch(setDrawing({ ...drawingOf(app.store.get()), scale: Number(shell.planScale.select.value) })));
-  shell.visBtn.addEventListener('click', () => app.actionList().find((a) => a.id === 'view.overrides')?.run());
+  // Visibility opens its popover (ui/visibility-panel.ts): the categories, the plan's marks, the overrides
+  // and the combinations; the overrides' editor is one of its rows.
+  shell.visBtn.addEventListener('click', () => {
+    shell.visPanel.hidden = !shell.visPanel.hidden;
+    shell.light.panel.hidden = true;
+    app.renderChrome();
+  });
   shell.shownReset.addEventListener('click', () => app.actionList().find((a) => a.id === 'view.tempReset')?.run());
   shell.light.button.addEventListener('click', () => {
     shell.light.panel.hidden = !shell.light.panel.hidden;
+    shell.visPanel.hidden = true;
     app.renderChrome();
   });
-  // The Display panel is a popover: a click elsewhere or Esc closes it (it stayed open over the drawing).
-  const closeLight = () => {
-    if (shell.light.panel.hidden) return;
-    shell.light.panel.hidden = true;
-    app.renderChrome();
+  // The Display and Visibility panels are popovers: a click elsewhere or Esc closes them (the light's
+  // stayed open over the drawing). A dialog opened from one (the overrides' editor) closes it too.
+  const popovers = [shell.light.panel, shell.visPanel];
+  const closePopovers = (keep?: Node) => {
+    let changed = false;
+    for (const p of popovers) {
+      if (p.hidden || (keep && p.parentElement?.contains(keep))) continue;
+      p.hidden = true;
+      changed = true;
+    }
+    if (changed) app.renderChrome();
   };
-  document.addEventListener('pointerdown', (e) => {
-    if (!(e.target instanceof Node) || !shell.light.button.parentElement?.contains(e.target)) closeLight();
-  });
+  document.addEventListener('pointerdown', (e) => closePopovers(e.target instanceof Node ? e.target : undefined));
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeLight();
+    if (e.key === 'Escape') closePopovers();
   });
   shell.light.brightness.input.addEventListener('input', () => app.setView3D({ brightness: Number(shell.light.brightness.input.value) }));
   shell.light.sun.input.addEventListener('input', () => app.setView3D({ sun: Number(shell.light.sun.input.value) }));
