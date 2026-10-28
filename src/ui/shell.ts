@@ -170,8 +170,11 @@ export function buildShell(root: HTMLElement) {
   // The drawing's corner, top right: the view cube and its home alone (app.ts puts them in; 3D only), as
   // Fusion's and Revit's. The views, the level and the project browser are the title bar's, once: in a
   // card under the cube they mixed navigation with the model's levels and covered the drawing (C1, C2).
-  const viewBox = el('div', { class: 'view-box' }, views, levelBox, sidebar);
+  const viewBox = el('div', { class: 'view-box' }, views, levelBox);
   left.append(el('span', { class: 'sep' }), viewBox);
+  // The project browser's toggle beside the properties' one: the two panels' switches together, icons
+  // mirrored (the left panel, the right panel), as VS Code's layout controls at the title bar's end.
+  panelToggle.before(sidebar);
   const viewCorner = el('div', { class: 'view-corner' });
   viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, emptyHint, tempChip, toast, browser, viewCorner, toolStrip);
 

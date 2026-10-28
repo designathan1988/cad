@@ -25,6 +25,32 @@ Capturas: `docs/revisao-interface/01…09-*.png`.
   sobre quem a usa) pesam quase igual no apelo. "Cara de formulário" fere a identificação profissional.
 - **WCAG 2.2, 2.5.8**: alvos de 24×24 px ou com folga equivalente.
 
+### Densidade (pedido do dono: "tudo muito grande, muito espaçado")
+
+Medido no navegador a 1920×1080:
+
+| | cad2 antes | cad2 agora | VS Code (vscode.dev) |
+|---|---|---|---|
+| Barras (título + abas + ribbon + vista + rodapé) | 40+30+92+36+36 = **234 px** | 34+26+76+30+28 = **194 px** | 35 + 28 (status) |
+| Campo/botão de painel | 32 px | 24 px | botões de 24 px |
+| Texto do corpo | 13 px | 12 px | 13 px; cabeçalhos de seção 11 px |
+| Painel de propriedades | 300 px | 272 px | barra lateral ~300 px |
+
+- O modo compacto do Fluent (learn.microsoft.com, design/style/spacing) alinha controles a 32 px (padrão) e permite 24 px no
+  compacto, para "UI rica em informação". Os espaçamentos recomendados são 8 px entre botões, 12 px entre áreas e 16 px nas bordas.
+- Material e SAP Fiori (densidade compacta) dizem que, com mouse, se diminuem altura e espaçamento em passos de 4 px, sem mexer muito no texto.
+- Por isso foram reduzidos os tokens do CSS (`styles.css :root`): espaçamentos 8/12/16 → 6/10/12, controles 32 → 24–26, barras e
+  ribbon mais baixas, texto 13 → 12 px. O desenho ganhou 40 px de altura e 28 px de largura. Capturas 24 e 25.
+
+### Onde fica o botão do Navegador
+
+- Revit (help.autodesk.com, Revit 2023/2024): por padrão, Propriedades fica acima do Navegador de projeto, no mesmo lado. Os dois
+  podem ser empilhados ou viram abas.
+- VS Code (code.visualstudio.com/docs/configure/custom-layout): os botões que mostram e ocultam os painéis ficam juntos, à direita da
+  barra de título, só com ícone.
+- Decisão: o botão do Navegador fica ao lado do de Propriedades, os dois só com ícone; os ícones espelhados (painel esquerdo /
+  painel direito) dizem qual lado cada um abre. O painel do Navegador continua à esquerda e o de Propriedades à direita.
+
 ## A estratégia (o que muda na disposição)
 
 1. **A ribbon deixa de ter abas que trocam sozinhas e campos.** No lugar: uma barra superior fixa e fina com as ferramentas

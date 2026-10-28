@@ -2,29 +2,29 @@
 :root {
   --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --fs-xs: 11px;
-  --fs-sm: 12px;
-  --fs-md: 13px;
-  --fs-lg: 14px;
+  --fs-sm: 11px;
+  --fs-md: 12px;
+  --fs-lg: 13px;
   --sp-half: 2px;
   --sp-1: 4px;
-  --sp-2: 8px;
-  --sp-3: 12px;
-  --sp-4: 16px;
+  --sp-2: 6px;
+  --sp-3: 10px;
+  --sp-4: 12px;
   --sp-5: 20px;
   --sp-6: 24px;
   --sp-7: 28px;
   --radius-sm: 4px;
   --radius: 6px;
   --radius-lg: 8px;
-  --top-h: 40px;
-  --tabs-h: 30px;
-  --ribbon-h: 92px;
-  --vcb-h: 36px;
-  --foot-h: 36px;
+  --top-h: 34px;
+  --tabs-h: 26px;
+  --ribbon-h: 76px;
+  --vcb-h: 30px;
+  --foot-h: 28px;
   /* Where the drawing starts under the frame: a panel over the drawing (narrow windows) starts there. */
   --chrome-top: calc(var(--top-h) + var(--tabs-h) + var(--ribbon-h));
-  --rb-large-w: 64px;
-  --rb-small-h: 24px;
+  --rb-large-w: 62px;
+  --rb-small-h: 20px;
   /* A field on the ribbon (a tool's next element): its label, then its control. */
   --rb-field-label-w: 136px;
   --rb-field-w: 136px;
@@ -39,9 +39,9 @@
   --objs-card-min: 176px;
   --objs-search-w: 360px;
   --search-w: 300px;
-  --control-h: 32px;
-  --control-h-sm: 32px;
-  --field-h: 32px;
+  --control-h: 26px;
+  --control-h-sm: 24px;
+  --field-h: 24px;
   /* Lines and marks */
   --line: 1px;
   --line-2: 2px;
@@ -50,11 +50,11 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.08);
   /* Component sizes */
   --tool-w: 36px;
-  --label-w: 112px;
+  --label-w: 104px;
   --name-w: 220px;
-  --head-h: 44px;
-  --summary-h: 34px;
-  --wide-btn-h: 32px;
+  --head-h: 34px;
+  --summary-h: 28px;
+  --wide-btn-h: 26px;
   --sep-w: 24px;
   --sep-h: 20px;
   --cube: 60px;
@@ -87,10 +87,10 @@
   --thumb-lg: 72px;
   --field-min-w: 160px;
   --tour-w: 320px;
-  --browser-w: 260px;
+  --browser-w: 240px;
   --tooltip-w: 280px;
   --touch: 44px;
-  --panel-w: 300px;
+  --panel-w: 272px;
   --editor-w: 1280px;
   --editor-body-h: 56vh;
   --editor-preview-h: 300px;
@@ -1012,9 +1012,13 @@ button.project-name:hover {
   color: var(--text);
   background: var(--bg);
 }
-.view-box .browser-toggle {
-  height: var(--control-h-sm);
-  font-size: var(--fs-sm);
+/* An icon alone, beside the properties' toggle; its name is its tip. */
+.titlebar .browser-toggle {
+  justify-content: center;
+  padding: 0;
+}
+.titlebar .browser-toggle .label {
+  display: none;
 }
 .cube-wrap {
   width: var(--cube-wrap);
@@ -2684,6 +2688,16 @@ textarea.text-field {
   font-size: var(--fs-xs);
   line-height: 1;
   color: var(--text-2);
+}
+/* A large button's list mark at its top right corner, so its name keeps its line (a compact ribbon
+   left no room for a third row under the icon and the name). */
+.rb-large:has(> .rb-caret) {
+  position: relative;
+}
+.rb-large > .rb-caret {
+  position: absolute;
+  top: var(--sp-1);
+  right: var(--sp-half);
 }
 .rb-menu {
   position: fixed;
