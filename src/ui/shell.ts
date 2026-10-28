@@ -1,6 +1,6 @@
 // The window layout, as the interface model (Revit's): a dark title bar (the projects, quick access,
 // the project's name, the command search), the ribbon's tabs and the ribbon (ui/ribbon.ts, filled by
-// app/chrome.ts), the options bar, the views' strip over the drawing (level, Plan, 3D, Walk, the project browser), the
+// app/chrome.ts), the options bar, the views' strip over the drawing (level, Plan, 3D, the project browser), the
 // drawing, the properties on the right and the status bar. Builds the DOM once and exposes the parts the
 // app updates; texts are refreshed by relabel() when the language changes.
 
@@ -9,7 +9,7 @@ import { t, type MessageKey } from './i18n';
 import { icon, type IconName } from './icons';
 
 /** `modify`: Move, Copy, Rotate, Scale or Mirror on the selection (tools/modify-tool.ts), a button each. */
-export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'column' | 'beam' | 'separator' | 'cloud' | 'mark' | 'tag' | 'curtain' | 'note' | 'levelMark' | 'roof' | 'stair' | 'railing' | 'grid' | 'object' | 'measure' | 'dimension' | 'modify' | 'split' | 'corner' | 'guide' | 'section' | 'callout' | 'calibrate' | 'spot' | 'mepPoint' | 'mepRun';
+export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'column' | 'beam' | 'separator' | 'mark' | 'curtain' | 'note' | 'levelMark' | 'roof' | 'stair' | 'railing' | 'grid' | 'object' | 'measure' | 'dimension' | 'modify' | 'split' | 'corner' | 'guide' | 'section' | 'callout' | 'calibrate';
 export type ViewId = '3d' | 'plan';
 
 
@@ -44,7 +44,7 @@ export function buildShell(root: HTMLElement) {
   const lang = el('button', { type: 'button', class: 'icon-btn text-btn' });
   const theme = iconButton('moon');
   const panelToggle = iconButton('panel');
-  const fileInput = el('input', { type: 'file', accept: '.json,application/json,.ifc', hidden: '' });
+  const fileInput = el('input', { type: 'file', accept: '.json,application/json', hidden: '' });
   right.append(commands, shortcuts, lang, theme, panelToggle, fileInput);
   top.append(left, center, right);
 
@@ -53,14 +53,14 @@ export function buildShell(root: HTMLElement) {
   const fileMenu = el('button', { type: 'button', class: 'rb-tab rb-file' });
   fileMenu.setAttribute('aria-haspopup', 'menu');
   const ribbon = el('div', { class: 'ribbon', role: 'toolbar' });
-  // The level, Plan, 3D and Walk, and the project browser: in a small box under the view cube (a strip
+  // The level, Plan and 3D, and the project browser: in a small box under the view cube (a strip
   // of their own over the drawing, and an options bar under the ribbon, were two rows for little).
   const levelBox = el('div', { class: 'select level-select' });
   const level = el('select');
   levelBox.append(level);
   levelBox.insertAdjacentHTML('beforeend', icon('chevronDown', 14));
   const views = el('div', { class: 'view-tabs', role: 'group' });
-  const viewBtn = (id: '3d' | 'plan' | 'walk', ic: IconName) => {
+  const viewBtn = (id: '3d' | 'plan', ic: IconName) => {
     const b = el('button', { type: 'button', 'data-view': id, class: 'view-tab has-icon' });
     b.innerHTML = icon(ic, 16);
     b.append(el('span', { class: 'label' }));
@@ -69,7 +69,6 @@ export function buildShell(root: HTMLElement) {
   };
   const viewPlan = viewBtn('plan', 'map');
   const view3d = viewBtn('3d', 'cube');
-  const viewWalk = viewBtn('walk', 'walk');
   const sidebar = el('button', { type: 'button', class: 'icon-btn text-btn browser-toggle' });
   sidebar.innerHTML = icon('sidebar', 16);
   const sidebarLabel = el('span', { class: 'label' });
@@ -88,37 +87,6 @@ export function buildShell(root: HTMLElement) {
   const dims = el('div', { class: 'temp-dims' });
   const emptyHint = el('div', { class: 'empty-hint' });
   const toast = el('div', { class: 'toast', role: 'status', 'aria-live': 'polite' });
-  // Walking (app/walk.ts): a stick to walk with by touch (or a mouse), bottom left of the drawing.
-  const walkStick = el('div', { class: 'walk-stick', role: 'application' });
-  walkStick.hidden = true;
-  const walkKnob = el('div', { class: 'walk-knob' });
-  walkStick.append(walkKnob);
-  // The guided tour playing (app.ts, playTour): the stop's name and caption, previous, pause, next, stop.
-  const tourBar = el('div', { class: 'tour-bar', role: 'region' });
-  tourBar.hidden = true;
-  const tourText = el('div', { class: 'tour-text' });
-  const tourTitle = el('div', { class: 'tour-title' });
-  const tourCaption = el('div', { class: 'tour-caption' });
-  tourText.append(tourTitle, tourCaption);
-  const tourButton = (ic: IconName) => {
-    const b = el('button', { type: 'button', class: 'icon-btn' });
-    b.innerHTML = icon(ic, 18);
-    return b;
-  };
-  const tourPrev = tourButton('chevronLeft');
-  const tourPlay = tourButton('pause');
-  const tourNext = tourButton('chevronRight');
-  const tourStop = tourButton('close');
-  tourBar.append(tourPrev, tourText, tourPlay, tourNext, tourStop);
-  // A point of interest's card (app.ts, placePointCard): its title, its text, edit and close.
-  const pointCard = el('div', { class: 'point-card', role: 'dialog' });
-  pointCard.hidden = true;
-  const pointTitle = el('div', { class: 'point-title' });
-  const pointText = el('div', { class: 'point-text' });
-  const pointEdit = el('button', { type: 'button', class: 'btn' });
-  const pointClose = el('button', { type: 'button', class: 'icon-btn' });
-  pointClose.innerHTML = icon('close', 16);
-  pointCard.append(el('div', { class: 'point-head' }, pointTitle, pointClose), pointText, pointEdit);
   // Hidden or isolated for a while (app.ts, hideTemporarily): what the view leaves out, and the way back.
   const tempChip = el('div', { class: 'temp-chip', role: 'status' });
   tempChip.hidden = true;
@@ -185,12 +153,12 @@ export function buildShell(root: HTMLElement) {
   toolDone.hidden = true;
   viewBar.append(onlyPlan, only3d, el('span', { class: 'view-bar-sep' }), visBtn, shown.reset, el('span', { class: 'spacer' }), toolDone);
   // The drawing's corner, top right, one panel (as a CAD's view cube with its navigation bar under it):
-  // the cube and its home (app.ts puts them first; in 3D only); the three views side by side as icons,
+  // the cube and its home (app.ts puts them first; in 3D only); the two views side by side as icons,
   // each named in its tip; the level by its name, a list; the project browser, named (its icon alone
   // says little).
   const viewBox = el('div', { class: 'view-box' }, views, levelBox, sidebar);
   const viewCorner = el('div', { class: 'view-corner' }, viewBox);
-  viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, emptyHint, tempChip, walkStick, tourBar, pointCard, toast, browser, viewCorner);
+  viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, emptyHint, tempChip, toast, browser, viewCorner);
 
   const panel = el('aside', { class: 'panel', 'aria-label': 'Properties' });
 
@@ -248,9 +216,9 @@ export function buildShell(root: HTMLElement) {
   new ResizeObserver(() => fitViewBar(true)).observe(viewBar);
 
   const parts = {
-    homeBtn, projectName, savedNote, undo, redo, level, open, fileInput, view3d, viewPlan, viewWalk, commands, shortcuts, lang, theme, save,
+    homeBtn, projectName, savedNote, undo, redo, level, open, fileInput, view3d, viewPlan, commands, shortcuts, lang, theme, save,
     panelToggle, tabs, fileMenu, ribbon, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, viewCorner, toolDone, levelsShown, explode, cut, xray, box, ortho, look, light, only3d, onlyPlan, planScale, visBtn, shownReset: shown.reset, dims, browser, sidebar,
-    emptyHint, tempChip, tempLabel, tempReset, walkStick, walkKnob, tourBar, tourTitle, tourCaption, tourPrev, tourPlay, tourNext, tourStop, pointCard, pointTitle, pointText, pointEdit, pointClose, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, snapParts, collideBtn, coords, helpBack, fitFoot, fitViewBar,
+    emptyHint, tempChip, tempLabel, tempReset, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, snapParts, collideBtn, coords, helpBack, fitFoot, fitViewBar,
   };
 
   const relabel = () => {
@@ -280,8 +248,6 @@ export function buildShell(root: HTMLElement) {
     browser.setAttribute('aria-label', t('browser.title'));
     view3d.querySelector('.label')!.textContent = t('view.3d');
     viewPlan.querySelector('.label')!.textContent = t('view.plan');
-    viewWalk.querySelector('.label')!.textContent = t('view.walk');
-    viewWalk.title = t('view.walkTip');
     view3d.title = `${t('view.3d')} (1)`;
     viewPlan.title = `${t('view.plan')} (2)`;
     floatBar.setAttribute('aria-label', t('ctx.label'));
@@ -304,13 +270,6 @@ export function buildShell(root: HTMLElement) {
     tip(collideBtn, 'foot.collisions');
     emptyHint.textContent = t('empty.hint');
     tempReset.textContent = t('temp.reset');
-    walkStick.setAttribute('aria-label', t('walk.stick'));
-    tourBar.setAttribute('aria-label', t('gtour.title'));
-    tip(tourPrev, 'gtour.prev');
-    tip(tourNext, 'gtour.next');
-    tip(tourStop, 'gtour.stop');
-    pointEdit.textContent = t('poi.edit');
-    tip(pointClose, 'poi.close');
     planCanvas.setAttribute('aria-label', t('view.plan'));
     glCanvas.setAttribute('aria-label', t('view.3d'));
     panel.setAttribute('aria-label', t('aria.properties'));

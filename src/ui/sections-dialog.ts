@@ -1,20 +1,15 @@
 // Sections and elevations (phase 10; elements/section, app/section-drawing.ts): the marks listed, the one
-// picked drawn as it prints, from the model as it is now; the four elevations made round the building
-// in one go, a section drawn in plan with its tool, and a drawing put on a sheet at the project's scale.
-// A room's interior elevations are made from its panel and listed here with their level.
+// picked drawn as it prints, from the model as it is now (app/section-view.ts); the four elevations made
+// round the building in one go, and a section drawn in plan with its tool. A room's interior elevations
+// are made from its panel and listed here with their level.
 
 import type { App } from '../app/app';
-import { type Doc, drawingOf, levelOf } from '../app/document';
+import { type Doc, levelOf } from '../app/document';
 import type { SectionMark } from '../elements/section/schema';
-import { levelText, sectionCanvas, sectionOf, sectionViewport } from '../app/sheets';
-import { sectionDxf, toCp1252 } from '../io/export-dxf';
-import { newId } from '../core/id';
-import { addViewport, addSheet, sheetsOf } from '../elements/sheet/commands';
-import { nextSheetNumber, SHEET_PREFIX, type Sheet } from '../elements/sheet/schema';
+import { sectionCanvas, sectionOf } from '../app/section-view';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { name, t } from './i18n';
-import { freeSpot, showSheets } from './sheets-dialog';
 
 /** The preview's size on screen (px). */
 const PREVIEW_W = 640;
@@ -74,34 +69,7 @@ export function showSections(app: App, first?: string): void {
         canvas.className = 'section-preview';
         canvas.setAttribute('role', 'img');
         canvas.setAttribute('aria-label', t(mark.kind === 'section' ? 'section.titleOne' : 'section.elevationOne', { name: mark.name }));
-        const place = el('button', { type: 'button', class: 'btn' }, t('section.place'));
-        place.dataset.focus = 'place';
-        place.addEventListener('click', () => {
-          // On the first sheet with room for it, clear of the views there; on a new sheet when none has.
-          const sheets = sheetsOf(doc);
-          const scale = drawingOf(doc).scale;
-          for (const sheet of sheets) {
-            const v = freeSpot(app, sheet, sectionViewport(app, sheet, mark, scale, newId('vp')));
-            if (!v) continue;
-            app.store.dispatch(addViewport(sheet.id, v));
-            close();
-            showSheets(app, sheet.id);
-            return;
-          }
-          const base = { paper: 'A3', landscape: true } as const;
-          const sheet: Sheet = { id: newId(SHEET_PREFIX), number: nextSheetNumber(sheets), name: t(mark.kind === 'section' ? 'section.titleOne' : 'section.elevationOne', { name: mark.name }), ...base, viewports: [sectionViewport(app, base, mark, scale, newId('vp'))] };
-          app.store.dispatch(addSheet(sheet));
-          close();
-          showSheets(app, sheet.id);
-        });
-        const dxf = el('button', { type: 'button', class: 'btn' }, t('section.dxf'));
-        dxf.dataset.focus = 'dxf';
-        dxf.addEventListener('click', () => {
-          const file = `${app.fileBase()} - ${t(mark.kind === 'section' ? 'section.titleOne' : 'section.elevationOne', { name: mark.name })}.dxf`;
-          app.download(file, new Blob([toCp1252(sectionDxf(d, levelText)) as BlobPart], { type: 'application/dxf' }), 'application/dxf');
-          app.toast(t('export.dxfSaved', { file }));
-        });
-        main = el('div', { class: 'section-main' }, el('div', { class: 'print-page' }, canvas), el('p', { class: 'mat-note' }, t('section.note')), el('div', { class: 'sheet-adds' }, place, dxf));
+        main = el('div', { class: 'section-main' }, el('div', { class: 'print-page' }, canvas), el('p', { class: 'mat-note' }, t('section.note')));
       }
       const done = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
       done.dataset.focus = 'close';

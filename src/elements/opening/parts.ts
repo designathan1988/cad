@@ -3,7 +3,7 @@
 // plain leaf or pane every file before styles had: one slab in the middle of the wall, a door's standing
 // open square to the wall when doors are drawn open. With one (style.ts): the frame in the jambs and
 // head (and a window's sill), the trim on both faces, the transom and its glass, the threshold, and the
-// leaves or panes by how they open; drawn open (walking), swinging leaves stand square to the wall and
+// leaves or panes by how they open; drawn open (opened in the view), swinging leaves stand square to the wall and
 // sliding ones are pushed to one side.
 
 import { add, distance, normalize, type Point2, scale, sub } from '../../core/vector';
@@ -152,7 +152,7 @@ export function openingParts(o: Placed, f: OpeningFrame, forceOpen: boolean): Op
   const door = op.kind === 'door';
   const [o0, o1] = f.faces;
   const mid = (o0 + o1) / 2;
-  // How far it stands open: all the way while walking (or opened in the view), else as it is set.
+  // How far it stands open: all the way when opened in the view, else as it is set.
   const amount = forceOpen ? 1 : Math.max(0, Math.min(1, s?.open ?? 0));
   const open = amount > 0;
   if (!s) {
@@ -287,7 +287,7 @@ export function openingParts(o: Placed, f: OpeningFrame, forceOpen: boolean): Op
   const outside = o0 < o1 ? -1 : 1;
   // Its protection, just outside the exterior face, over the opening between the jambs: a shutter's
   // slats (5 cm apart, laid back 2 cm), or a grille's bars (12 mm, 12 cm apart, two cross bars). A
-  // shutter is drawn closed, and pushed aside when the window is drawn open (walking); a grille stays.
+  // shutter is drawn closed, and pushed aside when the window is drawn open (in the view); a grille stays.
   const face = o0 + outside * 0.03;
   if (s.screen === 'grille') {
     const bars = Math.max(1, Math.floor(width / 0.12 + 1e-9));

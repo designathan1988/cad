@@ -266,3 +266,30 @@ describe('version 5', () => {
     expect(r.ok && r.doc.definitions.find((d) => d.id === bookcase.id)).toEqual(bookcase);
   });
 });
+
+describe('the areas taken out of the app (version 67)', () => {
+  // Services, rules, sheets and the rest as an older file has them: carried as read, written back the same.
+  const areas = {
+    mepPoints: [{ id: 'mpt_1', levelId: 'lvl_ground', at: { x: 1, y: 0 }, height: 0.3, kind: 'socket', systemId: 'sys_power' }],
+    rules: [{ id: 'r1', subject: 'stairRiser', max: 0.18, on: true }],
+    sheets: [{ id: 'sheet_1', number: 'A-01', name: 'Planta', paper: 'A3', landscape: true, viewports: [] }],
+    site: { latitude: -23.55, longitude: -46.63, north: 0, date: '2026-06-21', time: '10:00', utcOffset: -3, shadows: true },
+    costs: { bdi: 22 },
+  };
+
+  it('an older file keeps them, unread, and gives them back at the top, twice over', () => {
+    const old = { ...newDocument(), version: 66, ...areas };
+    const once = JSON.parse(writeProject((readProject(JSON.stringify(old)) as { doc: ReturnType<typeof newDocument> }).doc));
+    const twice = JSON.parse(writeProject((readProject(JSON.stringify(once)) as { doc: ReturnType<typeof newDocument> }).doc));
+    for (const [k, v] of Object.entries(areas)) {
+      expect(once[k]).toEqual(v);
+      expect(twice[k]).toEqual(v);
+    }
+    expect(once.kept).toBeUndefined();
+  });
+
+  it('a layer set hiding the services keeps its other categories', () => {
+    const r = readProject(JSON.stringify({ ...newDocument(), version: 66, layerSets: [{ id: 'l1', name: 'A', hidden: ['services', 'walls'] }] }));
+    expect(r.ok && r.doc.layerSets).toEqual([{ id: 'l1', name: 'A', hidden: ['walls'] }]);
+  });
+});

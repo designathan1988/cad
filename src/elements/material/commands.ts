@@ -7,7 +7,7 @@ import { definitionMaterials } from '../object/materials';
 import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
 import { isPattern } from './pattern';
-import { isPhysics } from '../../sim/physics';
+import { isPhysics } from './physics';
 import { CUT_PATTERNS, isColor, type Material, type MaterialId } from './schema';
 
 const unit = (n: number) => Number.isFinite(n) && n >= 0 && n <= 1;

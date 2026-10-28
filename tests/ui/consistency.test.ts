@@ -34,8 +34,8 @@ describe('names and keys agree', () => {
 
   it('pt: buttons and menu items start with a verb', () => {
     setLang('pt');
-    const firstWords = (['tool.wall', 'tool.door', 'tool.window', 'tool.room', 'tool.floor', 'tour.prev', 'tour.next', 'tour.later', 'ctx.flipHinge', 'ctx.properties', 'ctx.commands'] as MessageKey[]).map((k) => t(k).split(' ')[0]);
-    expect(firstWords).toEqual(['Desenhar', 'Colocar', 'Colocar', 'Criar', 'Criar', 'Voltar', 'Avançar', 'Deixar', 'Trocar', 'Mostrar', 'Abrir']);
+    const firstWords = (['tool.wall', 'tool.door', 'tool.window', 'tool.room', 'tool.floor', 'ctx.flipHinge', 'ctx.properties', 'ctx.commands'] as MessageKey[]).map((k) => t(k).split(' ')[0]);
+    expect(firstWords).toEqual(['Desenhar', 'Colocar', 'Colocar', 'Criar', 'Criar', 'Trocar', 'Mostrar', 'Abrir']);
   });
 });
 

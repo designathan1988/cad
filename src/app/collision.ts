@@ -1,4 +1,4 @@
-// Collisions (on by default, a toggle in the footer, C while walking): what is moved or placed is stopped
+// Collisions (on by default, a toggle in the footer, K): what is moved or placed is stopped
 // by what it would go into — walls (their blocks: a doorway is clear), objects, columns, stairs, railings,
 // curtain walls — where their heights overlap, sliding along it when it can; nothing is set below the floor.
 // Pure: shapes from the derived geometry, a move clamped against them.

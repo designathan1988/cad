@@ -1,10 +1,8 @@
 // One frame of the views: the plan's overlay (selection, previews, snaps, tags, temporary dimensions and their value fields) or the 3D's, and the panel. Functions over the app (app.ts delegates).
 
-import { sunDirection } from './sun';
 import { calibrateDraft } from './reference-ui';
 import { roomTagText } from './room-tag';
 import { overrideColours, wallPhases, roomOverrideColours } from './layer-sets';
-import { findingText } from '../ui/rules-dialog';
 import { keepSelectionInView3d } from './view-ui';
 import { objectHandles } from './object-handles';
 import { angleNum, areaText, lengthNum, lengthText, typingExamples } from '../ui/units';
@@ -19,9 +17,8 @@ import { alignWalls, distributeWalls } from '../tools/arrange-walls';
 import { guideLine, guideMeasure } from '../tools/guide-tool';
 import { OPENING_PREVIEW_ID, ruleGuide } from './opening-ui';
 import { toolCursor } from '../ui/cursors';
-import { getLang, type MessageKey, name, t } from '../ui/i18n';
+import { getLang, name, t } from '../ui/i18n';
 import { renderPanel } from '../ui/panel';
-import { makeDetail } from '../ui/sheets-dialog';
 import { snapLabel } from '../tools/snap';
 import { bulgeKeepingSide } from '../tools/arc-edit';
 import { KINDS } from '../elements/registry';
@@ -33,8 +30,6 @@ import { cutAt } from './view-3d';
 import { changeReferenceLine, changeWallType, moveWalls, roomFace } from '../tools/edit';
 import { insideRing } from '../elements/room/derive';
 import { loadPrefs, savePrefs } from './persist';
-import { budgetOf } from '../costs/budget';
-import { money } from '../ui/budget-dialog';
 import { newId } from '../core/id';
 import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
 import type { App } from './app';
@@ -43,15 +38,13 @@ import { nextFields, type NextSlot } from './next-element';
 import { lowerFirst } from './ribbon-tabs';
 import { words } from '../elements/object/fields';
 import { PREVIEW_ID, SNAP_OF } from './app';
-import { simHeat } from './sim-map';
-import { cloudRing } from '../elements/cloud/schema';
 
 /** The panel's title over a placing tool's next element: its kind's name, an object's its own. */
 function nextTitle(app: App, slot: NextSlot): string {
   if (slot === 'ceilings') return t('panel.nextCeiling');
   const def = slot === 'objects' ? app.store.get().definitions.find((d) => d.id === app.ui.objectDef) : undefined;
-  // A services point by its kind (a light point, a socket), an object by its name, the others by their kind's.
-  const what = def ? words(def.name) : slot === 'mepPoints' ? t(`mep.kind.${app.ui.mepKind}` as MessageKey) : t(kindOfKey(slot).one);
+  // An object by its name, the others by their kind's.
+  const what = def ? words(def.name) : t(kindOfKey(slot).one);
   return t('panel.nextElement', { what: lowerFirst(what) });
 }
 
@@ -152,7 +145,7 @@ export function renderFrame(app: App): void {
       guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
       snap:
         // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-        (ui.tool === 'wall' || ui.tool === 'guide' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'spot' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'mark' || ui.tool === 'curtain' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'mepPoint' || ui.tool === 'mepRun' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+        (ui.tool === 'wall' || ui.tool === 'guide' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'mark' || ui.tool === 'curtain' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
           ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null), ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
           : null,
       measure: guideDim
@@ -186,8 +179,6 @@ export function renderFrame(app: App): void {
       axisLine: marks?.axis ?? null,
       refLines: app.refLines(),
       openingTags: app.openingTags(),
-      normMarks: app.normMarks(),
-      heat: simHeat(app.store.get(), app.geometry, ui.simMap, ui.levelId),
       ray: marks?.ref ? { start: marks.base, end: marks.ref } : null,
       handles: app.handles(),
       objectHandles: objectHandles(app),
@@ -228,9 +219,7 @@ export function renderFrame(app: App): void {
             ? ui.markDraft.length === 2 && ui.markMode === 'angle'
               ? [ui.markDraft[1]!, ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
               : [ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
-          : ui.tool === 'cloud' && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
-            ? [...cloudRing({ a: ui.beamFrom, b: (ui.snap?.point ?? ui.cursor)! }), cloudRing({ a: ui.beamFrom, b: (ui.snap?.point ?? ui.cursor)! })[0]!]
-          : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
+          : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
             ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
             : ui.tool === 'roof' && ui.roofDraft.length > 0
               ? [...ui.roofDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
@@ -238,8 +227,6 @@ export function renderFrame(app: App): void {
                 ? [ui.stairFrom, (ui.snap?.point ?? ui.cursor)!]
                 : ui.tool === 'railing' && ui.railingDraft.length > 0
                   ? [...ui.railingDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
-                  : ui.tool === 'mepRun' && ui.mepDraft.length > 0
-                    ? [...ui.mepDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
                     : null,
       draftCorners: ui.tool === 'floor' ? ui.floorDraft : [],
       openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
@@ -258,22 +245,19 @@ export function renderFrame(app: App): void {
           : null,
       smart: ui.smart && ui.drag?.kind === 'move' ? { lines: ui.smart.lines, gaps: ui.smart.gaps.map((g) => ({ ...g, text: lengthText(distance(g.a, g.b)) })) } : null,
     });
-    app.plan.drawPoints(app.pointsShown());
   } else {
     const shown = app.visibleGeometry();
     app.scene.setXray(ui.view3d.xray);
     // A renovation's walls by phase, as the plan draws them while the overrides are on.
     const css = getComputedStyle(document.documentElement);
     app.scene.setPhases(ui.overridesOn ? wallPhases(app.store.get()) : new Map(), (p) => css.getPropertyValue(`--phase-${p}`).trim());
-    app.scene.setDoorsOpen(app.walker !== null, ui.opened);
+    app.scene.setOpened(ui.opened);
     app.scene.setBox(ui.view3d.box);
     app.scene.setOrtho(ui.view3d.ortho);
     app.scene.setLook(ui.view3d.style, ui.view3d.quality);
     app.scene.setLight(ui.view3d.brightness, ui.view3d.sun);
     app.scene.setSection(ui.view3d.section);
     app.scene.sync(shown, ui.selection, preview, (id) => app.lift(id));
-    const site = app.store.get().site;
-    app.scene.setSun(site ? sunDirection(site) : null, site?.shadows ?? false);
     // Cut at the level's cut height: where it goes through the level's walls, their plan pieces.
     const doc = app.store.get();
     const cut = cutAt(doc.levels, ui.levelId, ui.view3d);
@@ -320,9 +304,7 @@ export function renderFrame(app: App): void {
             ? ui.markDraft.length === 2 && ui.markMode === 'angle'
               ? [ui.markDraft[1]!, ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
               : [ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
-          : ui.tool === 'cloud' && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
-            ? [...cloudRing({ a: ui.beamFrom, b: (ui.snap?.point ?? ui.cursor)! }), cloudRing({ a: ui.beamFrom, b: (ui.snap?.point ?? ui.cursor)! })[0]!]
-          : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
+          : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
             ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
             : ui.tool === 'roof' && ui.roofDraft.length > 0
               ? [...ui.roofDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
@@ -330,12 +312,9 @@ export function renderFrame(app: App): void {
                 ? [ui.stairFrom, (ui.snap?.point ?? ui.cursor)!]
                 : ui.tool === 'railing' && ui.railingDraft.length > 0
                   ? [...ui.railingDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
-                  : ui.tool === 'mepRun' && ui.mepDraft.length > 0
-                    ? [...ui.mepDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
                     : null,
       box: ui.view3d.box,
       boxHot: app.boxHot,
-      points: app.pointsShown(),
       objectHandles: objectHandles(app),
       hotHandle: app.hotHandle,
       handles: app.handles(),
@@ -386,7 +365,6 @@ export function renderFrame(app: App): void {
         return null;
       })(),
       stacked: stackedSteps(doc),
-      norms: app.normFindings().filter((f) => ui.selection.has(f.elementId)).map(findingText),
     },
     {
       updateWalls: (patch) => app.store.dispatch(updateWalls([...ui.selection], patch)),
@@ -401,13 +379,7 @@ export function renderFrame(app: App): void {
         const rooms = [...app.geometry.rooms.values()].filter((r) => r.enclosed);
         const inRoom = (levelId: string, p: { x: number; y: number }) => rooms.some((r) => r.room.levelId === levelId && insideRing(r.outline, p));
         const keep = loadPrefs().keepClear !== false;
-        // With a priced budget, what the change did to it, at once (costs/budget.ts).
-        const before = doc.costs && doc.costs.lines.length > 0 ? budgetOf(doc, app.geometry).total : null;
         app.store.dispatch(setWalls(changeWallType(doc, ids, typeId, (w) => (keep ? roomFace(doc, w, inRoom) : null)), 'cmd.wallType'));
-        if (before !== null) {
-          const delta = budgetOf(app.store.get(), app.geometry).total - before;
-          if (Math.abs(delta) >= 0.005) app.toast(t('budget.delta', { d: `${delta > 0 ? '+' : '−'}${money(Math.abs(delta))}` }));
-        }
       },
       keepClear: loadPrefs().keepClear !== false,
       setKeepClear: (on) => {
@@ -456,10 +428,7 @@ export function renderFrame(app: App): void {
       close: () => app.togglePanel(false),
       openSection: (id) => app.openSections(id),
       interiorElevations: (ids) => app.addInteriorElevations(ids),
-      detailFor: (id) => makeDetail(app, id),
       calibrate: (id) => app.startCalibration(id),
-      addSpot: (id) => app.startSpot(id),
-      outlineTerrain: (id) => app.startTerrainOutline(id),
       geometry: app.geometry,
       room: {
         updateRoom: (id, patch) => app.store.dispatch(updateRoom(id, patch)),

@@ -17,7 +17,7 @@ import type { MessageKey } from '../ui/i18n';
 import type { IconName } from '../ui/icons';
 
 /** The document's lists the registry's kinds keep. */
-export type KindKey = 'tags' | 'measures' | 'clouds' | 'mepPoints' | 'mepRuns' | 'terrains' | 'references' | 'sections' | 'separators' | 'curtains' | 'zones' | 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'objects' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings' | 'walls';
+export type KindKey = 'measures' | 'references' | 'sections' | 'separators' | 'curtains' | 'zones' | 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'objects' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings' | 'walls';
 
 /** The derived geometry before the registry's kinds: what a kind held by walls and doors reads. */
 export type BaseGeometry = Omit<DerivedGeometry, 'kinds'>;
@@ -94,17 +94,11 @@ export interface KindFieldContext {
   readonly startFloorHole?: (id: string) => void;
   /** Show a section's or an elevation's drawing (ui/sections-dialog.ts). */
   readonly openSection?: (id: string) => void;
-  /** A callout's enlarged detail made on a sheet, or its sheet shown (ui/sheets-dialog.ts). */
-  readonly detailFor?: (noteId: string) => void;
   /** Make the rooms' four interior elevations (app/kind-tools.ts). */
   readonly interiorElevations?: (roomIds: readonly string[]) => void;
   /** Calibrate a reference by two points of it (app/reference-ui.ts). */
   readonly calibrate?: (id: string) => void;
-  /** A spot height put on a terrain with its tool (app/terrain-ui.ts). */
-  readonly addSpot?: (id: string) => void;
-  /** A terrain's outline drawn again (app/room-ui.ts). */
-  readonly outlineTerrain?: (id: string) => void;
-  /** The model's derived geometry, for a readout measured on it (a terrain's cut and fill). */
+  /** The model's derived geometry, for a readout measured on it (a dimension's ends). */
   readonly geometry?: DerivedGeometry;
 }
 

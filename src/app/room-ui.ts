@@ -51,7 +51,7 @@ export function roomClick(app: App, p: Point2): void {
  */
 export function floorClick(app: App, p: Point2, mpp: number, typed = false, corner = p): void {
   const draft = app.ui.floorDraft;
-  if (draft.length === 0 && !typed && !app.ui.holeFor && !app.ui.terrainFor) {
+  if (draft.length === 0 && !typed && !app.ui.holeFor) {
     const room = [...app.visibleGeometry().rooms.values()].find((r) => r.enclosed && insideRing(r.outline, p));
     // Making ceilings: the room's ceiling, or the one it has selected.
     if (room && app.ui.ceilingTool) {
@@ -134,20 +134,6 @@ export function floorFinish(app: App): void {
     app.ui.selection = new Set([hole]);
     return app.refresh();
   }
-  // A terrain's new outline, counter-clockwise as a terrain's is; it stays selected.
-  const terrain = app.ui.terrainFor;
-  if (terrain) {
-    app.ui.terrainFor = null;
-    const ring = signedArea(points) < 0 ? [...points].reverse() : points;
-    app.store.dispatch({
-      label: 'cmd.updateTerrain',
-      apply: (doc) => ({ ...doc, terrains: doc.terrains.map((x) => (x.id === terrain ? { ...x, outline: ring } : x)) }),
-    });
-    app.setTool('select');
-    app.ui.selection = new Set([terrain]);
-    app.ui.info = t('hint.terrainOutlined', { n: points.length });
-    return app.refresh();
-  }
   const id = newId('floor');
   // A ceiling by its outline: at its level's height, as a room's is with none of its own.
   if (app.ui.ceilingTool) {
@@ -160,14 +146,6 @@ export function floorFinish(app: App): void {
   app.ui.selection = new Set([id]);
   app.ui.info = t('hint.floorOutlineAdded', { n: points.length });
   app.refresh();
-}
-
-/** A terrain's outline drawn again: the floor tool, its outline then the terrain's. */
-export function startTerrainOutline(app: App, id: string): void {
-  app.setTool('floor');
-  app.ui.terrainFor = id;
-  app.ui.info = t('hint.terrainOutline');
-  app.render();
 }
 
 /** The floor tool making ceilings: a click in a room or an outline drawn. */

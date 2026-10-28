@@ -10,8 +10,6 @@ import { FAMILY_BATCHES } from '../elements/object/library-families';
 import { LIBRARY_SECTORS } from '../elements/object/library-sectors';
 import { BEFORE_65 } from '../elements/object/library-before65';
 import { BEFORE_66 } from '../elements/object/library-before66';
-import { isSite } from '../app/sun';
-import { isSheet, isViewport } from '../elements/sheet/schema';
 import { isLayerSet, isRoomOverride, isWallOverride } from '../app/layer-sets';
 import { isVariableName } from '../core/measure';
 import { isOpeningStyle, operationsOf } from '../elements/opening/style';
@@ -42,24 +40,17 @@ import { objectKind } from '../elements/kinds/object';
 import { DEFAULT_UNITS, isUnits } from '../ui/units';
 import { BUILT_IN_MATERIALS, CUT_PATTERNS, isColor, type Material, materialFor } from '../elements/material/schema';
 import { isPattern } from '../elements/material/pattern';
-import { isPhysics } from '../sim/physics';
-import { isSimSettings } from '../sim/settings';
-import { type Doc, type Level, ownValuesOnly } from '../app/document';
+import { isPhysics } from '../elements/material/physics';
+import { type Doc, KEPT_FIELDS, type Level, ownValuesOnly } from '../app/document';
 import type { AnyKind, KindKey } from '../elements/contract';
 import { KINDS } from '../elements/registry';
 import { typedIds } from './typed-ids';
 import { isSavedView } from '../app/saved-views';
-import { isPointOfInterest } from '../app/points';
 import { deriveGeometry } from '../app/geometry';
 import { distributeOpenings } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
-import { DEFAULT_RULES, isRule as isNormRule, isRulePack, type Rule as NormRule } from '../rules/schema';
-import { isLot } from '../app/lot';
-import { isCosts } from '../costs/schema';
-import { isApproval } from '../approval/schema';
-import { isMepSystem } from '../elements/mep/schema';
 import { isDrawingSettings } from '../elements/drawing/schema';
 
 /**
@@ -117,16 +108,22 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 41: angular, radius, diameter, arc length and coordinate dimensions (`measures`, elements/measure). Older files have none.
  * Version 42: tags by elements with their values (`tags`, elements/tag). Older files have none.
  * Version 43: a room's interior elevations, marks kept to a level (`levelId`, elements/section). Older marks have none: every level.
+ * Version 67: the areas taken out of the app for now (services, simulation, rules, costs, approval, lot and
+ *   terrain, sheets, points, tags, clouds: KEPT_FIELDS) are carried in `kept` as the file had them, never
+ *   read into, and written back the same, at the top of the file where they were. A layer set no longer
+ *   hides the services (a category gone with them).
  */
-export const CURRENT_VERSION = 66;
+export const CURRENT_VERSION = 67;
 
-/** A file's own rules from before version 34: the default ones in their pack, and the new defaults added. */
-function upgradeRules(rules: NormRule[], version: number): NormRule[] {
-  if (version >= 34) return rules;
-  const defaults = new Map(DEFAULT_RULES.map((r) => [r.id, r]));
-  const kept = rules.map((r) => (r.pack === undefined && defaults.has(r.id) ? { ...r, pack: defaults.get(r.id)!.pack! } : r));
-  return [...kept, ...DEFAULT_RULES.filter((d) => !kept.some((r) => r.id === d.id))];
+/** The file's fields of the areas taken out of the app, as they are in it (Doc.kept). */
+function keptOf(raw: Record<string, unknown>): Readonly<Record<string, unknown>> | null {
+  const kept = Object.fromEntries(KEPT_FIELDS.filter((k) => raw[k] !== undefined).map((k) => [k, raw[k]]));
+  return Object.keys(kept).length > 0 ? kept : null;
 }
+
+/** A layer set without the services category, taken out of the app with them (version 67). */
+const withoutServices = (s: unknown): unknown =>
+  isObject(s) && Array.isArray(s.hidden) ? { ...s, hidden: (s.hidden as unknown[]).filter((c) => c !== 'services') } : s;
 
 export type ReadError = 'notJson' | 'notProject' | 'noLevels' | 'noWallTypes' | 'newerVersion';
 export type Fix =
@@ -138,7 +135,7 @@ export type Fix =
 /** The fix for a registry kind's dropped elements: droppedColumns, droppedBeams and so on. */
 type KindFix = `dropped${Capitalize<KindKey>}`;
 /** What reading left out or put right, counted. */
-type Dropped = 'droppedWalls' | 'droppedOpenings' | 'droppedGroups' | 'droppedMaterials' | 'resetUnits' | 'droppedDefinitions' | 'droppedViews' | 'droppedPoints' | KindFix;
+type Dropped = 'droppedWalls' | 'droppedOpenings' | 'droppedGroups' | 'droppedMaterials' | 'resetUnits' | 'droppedDefinitions' | 'droppedViews' | KindFix;
 const kindFix = (k: AnyKind): KindFix => `dropped${k.key[0]!.toUpperCase()}${k.key.slice(1)}` as KindFix;
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -251,7 +248,9 @@ export const isOpening = (o: unknown): o is Opening =>
   (o.style === undefined || (isOpeningStyle(o.style) && operationsOf(o.kind).includes(o.style.operation)));
 
 export function writeProject(doc: Doc): string {
-  return JSON.stringify({ ...doc, version: CURRENT_VERSION }, null, 2);
+  // The areas taken out go back at the top of the file, as it had them (an older app reads them there).
+  const { kept, ...rest } = doc;
+  return JSON.stringify({ ...rest, ...kept, version: CURRENT_VERSION }, null, 2);
 }
 
 export function readProject(text: string): ReadResult {
@@ -353,26 +352,18 @@ export function repairProject(raw: unknown): ReadResult {
   const rawIds = new Set(
     KINDS.filter((k) => !k.walled).flatMap((k) => (Array.isArray(raw[k.key]) ? (raw[k.key] as unknown[]) : []).filter((x) => k.valid(x)).map((x) => (x as { id: string }).id)),
   );
+  const carried = keptOf(raw);
   let doc: Doc = {
     version: CURRENT_VERSION,
-    // Its own rules, the bad ones left out (the defaults when it has none).
-    ...(Array.isArray(raw.rules) ? { rules: upgradeRules((raw.rules as unknown[]).filter(isNormRule), raw.version) } : {}),
-    ...(Array.isArray(raw.rulePacks) ? { rulePacks: (raw.rulePacks as unknown[]).filter(isRulePack) } : {}),
-    ...(isLot(raw.lot) ? { lot: raw.lot } : {}),
-    ...(isCosts(raw.costs) ? { costs: raw.costs } : {}),
-    ...(isApproval(raw.approval) ? { approval: raw.approval } : {}),
-    ...(Array.isArray(raw.systems) && raw.systems.some(isMepSystem) ? { systems: (raw.systems as unknown[]).filter(isMepSystem) } : {}),
+    // The areas taken out of the app, as the file has them (Doc.kept).
+    ...(carried ? { kept: carried } : {}),
     // Its scale and pens, when it set them and they are ones (the defaults otherwise).
     ...(isDrawingSettings(raw.drawing) ? { drawing: raw.drawing } : {}),
     // Its layer combinations and graphic overrides, the bad ones left out.
-    ...(Array.isArray(raw.layerSets) && raw.layerSets.some(isLayerSet) ? { layerSets: (raw.layerSets as unknown[]).filter(isLayerSet) } : {}),
+    // Before version 67 a set could hide the services, taken out of the app since: that category leaves the set.
+    ...(Array.isArray(raw.layerSets) && raw.layerSets.map(withoutServices).some(isLayerSet) ? { layerSets: (raw.layerSets as unknown[]).map(withoutServices).filter(isLayerSet) } : {}),
     ...(Array.isArray(raw.overrides) && raw.overrides.some(isWallOverride) ? { overrides: (raw.overrides as unknown[]).filter(isWallOverride) } : {}),
     ...(Array.isArray(raw.roomOverrides) && raw.roomOverrides.some(isRoomOverride) ? { roomOverrides: (raw.roomOverrides as unknown[]).filter(isRoomOverride) } : {}),
-    // Its site and sun, when it set one that is one.
-    ...(isSite(raw.site) ? { site: raw.site } : {}),
-    ...(isSimSettings(raw.simulation) ? { simulation: raw.simulation } : {}),
-    // Its sheets, the bad ones left out (and on each, the views that are not views).
-    ...(Array.isArray(raw.sheets) ? { sheets: (raw.sheets as unknown[]).flatMap((x): unknown[] => (isObject(x) && Array.isArray(x.viewports) ? [{ ...x, viewports: (x.viewports as unknown[]).filter(isViewport) }] : [])).filter(isSheet) } : {}),
     // Its named lengths, the bad ones left out.
     ...(isObject(raw.variables) ? { variables: Object.fromEntries(Object.entries(raw.variables).filter(([k, v]) => isVariableName(k) && finite(v))) as Record<string, number> } : {}),
     name: typeof raw.name === 'string' ? raw.name : '',
@@ -395,12 +386,6 @@ export function repairProject(raw: unknown): ReadResult {
     views: keep(raw.views, isSavedView, 'droppedViews').filter((v, _, all) => {
       if (levelIds.has(v.levelId)) return true;
       if (v === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedViews', count: all.filter((x) => !levelIds.has(x.levelId)).length });
-      return false;
-    }),
-    // A point on a level that is gone is nowhere: dropped, and said.
-    points: keep(raw.points, isPointOfInterest, 'droppedPoints').filter((p, _, all) => {
-      if (levelIds.has(p.levelId)) return true;
-      if (p === all.find((x) => !levelIds.has(x.levelId))) fixes.push({ kind: 'droppedPoints', count: all.filter((x) => !levelIds.has(x.levelId)).length });
       return false;
     }),
     // The registry's elements (columns, beams, roofs, stairs, guardrails, texts, axes, guides, dimensions, floors, rooms):

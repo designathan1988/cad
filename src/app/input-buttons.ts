@@ -1,8 +1,8 @@
-// The interface's buttons (input.ts): the top bar, the tool bar, the 3D bar, the tour and point cards,
-// the file, language and theme buttons. Each sends what it says to the app.
+// The interface's buttons (input.ts): the top bar, the tool bar, the 3D bar, the file, language and
+// theme buttons. Each sends what it says to the app.
 
 import { t } from '../ui/i18n';
-import { setDrawing } from '../ui/print-dialog';
+import { setDrawing } from '../ui/drawing-dialog';
 import { drawingOf } from './document';
 import type { App } from './app';
 import { EDIT_LEVELS } from './app';
@@ -18,14 +18,6 @@ export function wireButtons(app: App, palette: () => void): void {
   shell.redo.addEventListener('click', () => app.redo());
   shell.homeBtn.addEventListener('click', () => app.openProjects());
   shell.view3d.addEventListener('click', () => app.setView('3d'));
-  shell.viewWalk.addEventListener('click', () => app.toggleWalk());
-  shell.tourPrev.addEventListener('click', () => app.tourStep(-1));
-  shell.tourNext.addEventListener('click', () => app.tourStep(1));
-  shell.tourPlay.addEventListener('click', () => app.tourPause());
-  shell.tourStop.addEventListener('click', () => app.stopTour());
-  shell.pointClose.addEventListener('click', () => app.showPoint(null));
-  shell.pointEdit.addEventListener('click', () => app.openPoints());
-  // The walking stick: pushed up walks forward, sideways steps aside, as far as it is pushed.
   shell.viewPlan.addEventListener('click', () => app.setView('plan'));
   shell.level.addEventListener('change', () => {
     if (shell.level.value === EDIT_LEVELS) {

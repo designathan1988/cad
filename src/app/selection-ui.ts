@@ -5,7 +5,7 @@ import { type Point2 } from '../core/vector';
 import { deleteElements } from '../elements/opening/commands';
 import { isGuideId } from '../elements/guide/schema';
 import { name, t } from '../ui/i18n';
-import { appendKinds, eachSolid, KINDS, kindOfId, listOf } from '../elements/registry';
+import { appendKinds, eachSolid, kindOfId } from '../elements/registry';
 import { isDimId } from '../elements/dimension/schema';
 import { isGridId } from '../elements/grid/schema';
 import { isNoteId } from '../elements/note/schema';
@@ -164,22 +164,6 @@ export function deleteSelection(app: App): void {
   // Said, with the way back: the elements went without a word, and a window selection can take more than was seen.
   app.ui.info = t(n === 1 ? 'hint.deletedOne' : 'hint.deleted', { n });
   app.renderChrome();
-}
-
-/** The elements of a problem selected and framed, on their level. */
-export function showElements(app: App, ids: readonly string[]): void {
-  const doc = app.store.get();
-  const levelOfId = (id: string) =>
-    doc.walls.find((w) => w.id === id)?.levelId ??
-    doc.walls.find((w) => w.id === doc.openings.find((o) => o.id === id)?.wallId)?.levelId ??
-    KINDS.flatMap((k) => listOf(doc, k)).find((x) => x.id === id)?.levelId;
-  const level = ids.map(levelOfId).find((l) => l !== undefined);
-  if (level && level !== app.ui.levelId) app.setLevel(level);
-  app.setTool('select');
-  app.ui.selection.clear();
-  for (const id of ids) app.ui.selection.add(id);
-  app.frameSelection();
-  app.refresh();
 }
 
 /** Every wall of a type on the current level, with the select tool. */

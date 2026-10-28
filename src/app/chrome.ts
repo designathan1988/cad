@@ -1,6 +1,5 @@
 // The interface around the views: the tool bar, the level list, the footer's hints and keys, the float bar, the browser drawer. Functions over the app (app.ts delegates).
 
-import { systemIn } from '../elements/mep/schema';
 import { distance } from '../core/vector';
 import { words } from '../elements/object/fields';
 import { angleNum, areaText, lengthText, typingExamples } from '../ui/units';
@@ -60,20 +59,6 @@ export function renderChrome(app: App): void {
   shell.redo.disabled = !store.canRedo();
   shell.view3d.setAttribute('aria-pressed', String(ui.view === '3d'));
   shell.viewPlan.setAttribute('aria-pressed', String(ui.view === 'plan'));
-  shell.viewWalk.setAttribute('aria-pressed', String(app.walker !== null));
-  shell.walkStick.hidden = app.walker === null;
-  app.placePointCard();
-  // The tour's bar: the stop's name and caption, where it is in the tour, and its buttons.
-  const stop = app.tour ? app.store.get().views[app.tour.index] : undefined;
-  shell.tourBar.hidden = !stop;
-  if (stop && app.tour) {
-    shell.tourTitle.textContent = `${app.tour.index + 1}/${app.store.get().views.length} · ${name(stop.name)}`;
-    shell.tourCaption.textContent = stop.caption ?? '';
-    shell.tourCaption.hidden = !stop.caption;
-    shell.tourPlay.innerHTML = icon(app.tour.playing ? 'pause' : 'play', 18);
-    shell.tourPlay.setAttribute('aria-label', t(app.tour.playing ? 'gtour.pause' : 'gtour.resume'));
-    shell.tourPlay.title = t(app.tour.playing ? 'gtour.pause' : 'gtour.resume');
-  }
   renderRibbon(app);
   shell.lang.textContent = getLang().toUpperCase();
   // Rewritten only when it changes: replacing the icon under the pointer between press and release
@@ -115,9 +100,7 @@ export function renderChrome(app: App): void {
   shell.explode.setAttribute('aria-pressed', String(spread));
   shell.xray.setAttribute('aria-pressed', String(ui.view3d.xray));
   shell.box.setAttribute('aria-pressed', String(ui.view3d.box !== null));
-  // A walker sees in perspective (scene-3d.ts, startWalk): the parallel view is off while walking, and
-  // back when the walk ends.
-  shell.ortho.setAttribute('aria-pressed', String(ui.view3d.ortho && app.walker === null));
+  shell.ortho.setAttribute('aria-pressed', String(ui.view3d.ortho));
   shell.explode.setAttribute('aria-disabled', String(alone));
   shell.cut.setAttribute('aria-pressed', String(ui.view3d.cut));
   // The visual style and the quality: their lists filled in the interface's language, set to the view's.
@@ -230,8 +213,6 @@ export function renderChrome(app: App): void {
       : ui.tool === 'floor'
         ? ui.holeFor
           ? t('hint.holeStart')
-          : ui.terrainFor
-            ? t('hint.terrainOutline')
           : ui.ceilingTool
             ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.ceilingPlace')
             : t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
@@ -247,8 +228,6 @@ export function renderChrome(app: App): void {
               ? t(ui.calloutFrom ? 'hint.calloutText' : 'hint.calloutPoint')
               : ui.tool === 'calibrate'
               ? t(ui.calibrate?.a ? 'hint.calibrateSecond' : 'hint.calibrateFirst')
-              : ui.tool === 'spot'
-              ? t('hint.spot')
               : ui.tool === 'guide'
                 ? t(ui.guideMode === 'point' ? 'hint.guidePoint' : ui.guideMode === 'circle' ? (ui.guideFrom ? 'hint.guideRadius' : 'hint.guideCentre') : ui.guideFrom ? 'hint.guideSecond' : 'hint.guideFirst')
               : ui.tool === 'column'
@@ -259,10 +238,6 @@ export function renderChrome(app: App): void {
                   ? t(ui.beamFrom ? 'hint.beamEnd' : 'hint.beamStart')
                 : ui.tool === 'separator'
                   ? t(ui.beamFrom ? 'hint.separatorEnd' : 'hint.separatorStart')
-                : ui.tool === 'cloud'
-                  ? t(ui.beamFrom ? 'hint.cloudEnd' : 'hint.cloudStart')
-                : ui.tool === 'tag'
-                  ? t(ui.tagFor ? 'hint.tagPlace' : 'hint.tagPick')
                 : ui.tool === 'mark'
                   ? t(ui.markMode === 'radius' ? 'hint.markRadius' : ui.markMode === 'coord' ? (ui.markDraft.length === 0 ? 'hint.markCoordPoint' : 'hint.markCoordLabel') : ui.markDraft.length === 0 ? 'hint.markAngleVertex' : ui.markDraft.length === 1 ? 'hint.markAngleArm1' : 'hint.markAngleArm2')
                 : ui.tool === 'curtain'
@@ -277,11 +252,7 @@ export function renderChrome(app: App): void {
                       ? t(ui.stairFrom ? 'hint.stairDirection' : 'hint.stairStart')
                       : ui.tool === 'railing'
                         ? t(ui.railingDraft.length > 0 ? 'hint.railingNext' : 'hint.railingStart')
-                        : ui.tool === 'mepPoint'
-                          ? t('hint.mepPoint', { what: t(`mep.kind.${ui.mepKind}`) })
-                          : ui.tool === 'mepRun'
-                            ? t(ui.mepDraft.length > 0 ? 'hint.mepRunNext' : 'hint.mepRunStart', { what: systemIn(app.store.get(), ui.mepSystem)?.name ?? '' })
-                            : null;
+                        : null;
   const guideHint = ui.guide
     ? t('hint.guide', {
         d: lengthText(app.guideOffset() ?? 0),
@@ -290,7 +261,7 @@ export function renderChrome(app: App): void {
     : null;
   const mod = ui.tool === 'modify' ? ui.modify : null;
   const modifyHint = mod ? t(`hint.modify.${mod.kind === 'copy' ? 'move' : mod.kind}.${mod.state.step}` as MessageKey) : null;
-  shell.instr.textContent = app.walker ? t('hint.walk', { h: lengthText(app.eyeHeight) }) : (ui.error ?? guideHint ?? modifyHint ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size }));
+  shell.instr.textContent = ui.error ?? guideHint ?? modifyHint ?? ui.info ?? openingHint ?? toolHint ?? t(hintKey, { n: ui.selection.size });
   shell.instr.classList.toggle('error', ui.error !== null);
   // Alt sets a guide in the tools that draw by points (input.ts), in plan.
   const altGuide = ui.view === 'plan' ? [keyHint('Alt', t('key.guide'))] : [];
@@ -299,9 +270,7 @@ export function renderChrome(app: App): void {
   // While a point is drawn from another: the arrows lock its direction.
   const lockKeys = ui.drawFrom ? [keyHint('→ ↑', t('key.lockAxis')), keyHint('← ↓', t('key.lockWall'))] : [];
   const snapKey = keyHint('S', t(ui.snaps ? 'key.snapsOn' : 'key.snapsOff'));
-  const keys = app.walker
-    ? [keyHint('W A S D', t('key.walk')), keyHint('Shift', t('key.run')), keyHint('+ −', t('key.eye')), keyHint('PgUp PgDn', t('key.walkLevel')), keyHint('Esc', t('key.exit'))]
-    : ui.guide
+  const keys = ui.guide
     ? [keyHint('Enter', t('key.placeGuide')), keyHint('Esc', t('key.cancel'))]
     : ui.tool === 'split' || ui.tool === 'corner'
     ? [keyHint('Esc', t('key.exit'))]
@@ -327,7 +296,7 @@ export function renderChrome(app: App): void {
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.sectionFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'callout'
     ? [snapKey, keyHint('Esc', t(ui.calloutFrom ? 'key.back' : 'key.exit'))]
-    : ui.tool === 'calibrate' || ui.tool === 'spot'
+    : ui.tool === 'calibrate'
     ? [snapKey, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'column'
     ? [snapKey, keyHint('Esc', t('key.exit'))]
@@ -335,18 +304,12 @@ export function renderChrome(app: App): void {
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.guideFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'object'
     ? [keyHint(t('key.spaceKey'), t('key.turn90')), snapKey, keyHint('Esc', t('key.exit'))]
-    : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain'
+    : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain'
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
-    : ui.tool === 'tag'
-    ? [keyHint('Esc', t(ui.tagFor ? 'key.back' : 'key.exit'))]
     : ui.tool === 'mark'
     ? [snapKey, keyHint('Esc', t(ui.markDraft.length > 0 ? 'key.back' : 'key.exit'))]
     : ui.tool === 'stair'
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.stairFrom ? 'key.back' : 'key.exit'))]
-    : ui.tool === 'mepPoint'
-    ? [snapKey, keyHint('Esc', t('key.exit'))]
-    : ui.tool === 'mepRun'
-    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.mepDraft.length > 0 ? 'key.finish' : 'key.exit'))]
     : ui.tool === 'railing'
     ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.railingDraft.length > 0 ? 'key.finish' : 'key.exit'))]
     : ui.tool === 'roof'

@@ -7,7 +7,7 @@ import { snapMark } from './plan-view';
 import { drawObjectHandles, type ScreenHandle } from '../app/object-handles';
 import type { Point2 } from '../core/vector';
 import { BOX_FACES, type BoxFace, boxEdges, faceCenter, type SectionBox } from '../app/section-box';
-import { drawHandles, drawPointDisc } from './plan-view';
+import { drawHandles } from './plan-view';
 import type { Handles } from '../app/handles';
 
 export interface Overlay3DState {
@@ -25,8 +25,6 @@ export interface Overlay3DState {
   /** The section box, drawn with a handle at the middle of each face; `boxHot`: the one under the pointer or dragged. */
   readonly box: SectionBox | null;
   readonly boxHot: BoxFace | null;
-  /** Points of interest: where each one's disc stands (plan point and height). */
-  readonly points: readonly { readonly n: number; readonly at: Point2; readonly z: number; readonly open: boolean }[];
   /** The selected object's handles on screen (app/object-handles.ts), and the one under the pointer. */
   readonly objectHandles: readonly ScreenHandle[];
   readonly hotHandle: ScreenHandle | null;
@@ -72,10 +70,6 @@ export class Overlay3D {
       ctx.restore();
     };
     if (s.box) this.drawBox(s.box, s.boxHot, s.project, color('--accent'), color('--bg'));
-    for (const p of s.points) {
-      const q = s.project(p.at, p.z);
-      if (q) drawPointDisc(ctx, q, p.n, p.open, color('--accent'), color('--bg'), color('--font') || 'sans-serif');
-    }
     if (s.draft && s.draft.length > 1) {
       for (let i = 1; i < s.draft.length; i++) line(at(s.draft[i - 1]!), at(s.draft[i]!), color('--wall-sel'), 1.5, [6, 4]);
     }

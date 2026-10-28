@@ -2,7 +2,6 @@
 // command palette lists these; the toolbar, keys and menus do the same things, with the same names
 // and keys (ref/chat.txt:200), because they read them from here.
 
-import { POINT_KIND_LIST, systemsOf } from '../elements/mep/schema';
 import { keyOf } from './keymap';
 import { ARRANGE_HOWS, arrangeNeeds } from '../tools/arrange';
 import { newId } from '../core/id';
@@ -30,7 +29,7 @@ export interface Action {
   readonly run: () => void;
 }
 
-/** What only the input layer can open (dialogs, the file picker, the tour). */
+/** What only the input layer can open (dialogs, the file picker). */
 export interface Openers {
   readonly help: () => void;
   readonly levels: () => void;
@@ -41,10 +40,8 @@ export interface Openers {
   readonly openings: () => void;
   readonly floors: () => void;
   readonly presets: () => void;
-  readonly tour: () => void;
   readonly openFile: () => void;
   readonly projects: () => void;
-  readonly print: () => void;
   readonly drawing: () => void;
   readonly keys: () => void;
   readonly variables: () => void;
@@ -92,19 +89,10 @@ export function appActions(app: App, open: Openers): Action[] {
     make('tool.window', 'tool.window', tools, () => app.setTool('window'), { keys: 'Shift+W' }),
     make('tool.room', 'tool.room', tools, () => app.setTool('room'), { keys: 'R' }),
     make('tool.measure', 'tool.measure', tools, () => app.setTool('measure'), { keys: 'M' }),
-    make('sim.open', 'sim.open', tools, () => app.openSimulations(), { keywords: 'simulações simulations insolação sun hours luz natural daylight térmico thermal transmitância U Glaser condensação mofo acústica acoustic Wi-Fi sinal riscos infiltração fissura EnergyPlus Radiance FDS' }),
-    // The system drawn last (or the one chosen in the ribbon), on the level shown: its points no run reaches joined.
-    make('mep.autoRoute', 'mep.autoRoute', tools, () => app.autoRoute(), { keywords: 'traçado automático auto route rotear rede network instalações tubos eletrodutos ligar pontos' }),
-    make('services.open', 'services.open', tools, () => app.openServices(), { keywords: 'instalações services quadro de cargas load table pressão pressure esgoto sewer conflitos clashes isométrico isometric estrutura structure impermeabilização' }),
-    // Building services (app/mep-ui.ts): a point of each kind, a run of each system.
-    ...POINT_KIND_LIST.map((k) => make(`mep.point.${k}`, `mep.tool.${k}` as MessageKey, tools, () => app.startMepPoint(k), { keywords: `instalação installation ponto point ${tBoth(`mep.kind.${k}` as MessageKey)}` })),
-    ...systemsOf(doc).map((s) => make(`mep.run.${s.id}`, 'mep.runToolOf', tools, () => app.startMepRun(s.id), { vars: { name: s.name }, keywords: 'rede network tubo pipe eletroduto conduit duto duct' })),
     make('tool.railing', 'tool.railing', tools, () => app.setTool('railing'), { keys: 'G', keywords: 'guarda-corpo guarda corpo corrimão railing guardrail parapeito' }),
     make('tool.stair', 'tool.stair', tools, () => app.setTool('stair'), { keys: 'E', keywords: 'escada escadas stair stairs degrau caracol rampa ramp' }),
     make('tool.roof', 'tool.roof', tools, () => app.setTool('roof'), { keys: 'T', keywords: 'telhado telhados roof cobertura água águas platibanda' }),
     make('tool.beam', 'tool.beam', tools, () => app.setTool('beam'), { keys: 'B', keywords: 'viga vigas beam estrutura structure' }),
-    make('tool.tag', 'tool.tag', tools, () => app.setTool('tag'), { keywords: 'etiqueta tag rótulo legenda nome área tipo elemento' }),
-    make('tool.cloud', 'tool.cloud', tools, () => app.setTool('cloud'), { keywords: 'nuvem de revisão revision cloud revisão alteração mudança change' }),
     make('tool.separator', 'tool.separator', tools, () => app.setTool('separator'), { keywords: 'separador separação cômodo ambiente room separation line' }),
     make('tool.curtain', 'tool.curtain', tools, () => app.setTool('curtain'), { keywords: 'parede-cortina pele de vidro fachada curtain wall glazing facade montante caixilho' }),
     make('tool.guideLine', 'tool.guideLine', tools, () => app.setGuideTool('line'), { keywords: 'guia guide linha line dois pontos two points ângulo angle referência reference' }),
@@ -125,7 +113,6 @@ export function appActions(app: App, open: Openers): Action[] {
     })),
     make('view.3d', 'view.3d', views, () => app.setView('3d'), { keys: '1', enabled: ui.view !== '3d' }),
     make('view.plan', 'view.plan', views, () => app.setView('plan'), { keys: '2', enabled: ui.view !== 'plan' }),
-    make('view.walk', 'pal.walk', views, () => app.toggleWalk(), { keys: '3' }),
     make('view.frameSelection', 'pal.frameSelection', views, () => app.frameSelection(), { keys: 'F', enabled: has }),
     make('view.frameAll', 'pal.frameAll', views, () => app.frameAll(), { keys: 'Home' }),
     make('view.levelsAll', 'pal.levelsAll', views, () => app.setView3D({ levels: 'all' }), { enabled: ui.view3d.levels !== 'all' }),
@@ -184,11 +171,6 @@ export function appActions(app: App, open: Openers): Action[] {
     make('file.new', 'pal.new', file, () => app.newProject()),
     make('file.open', 'pal.open', file, open.openFile, { keys: 'Ctrl+O' }),
     make('file.save', 'pal.save', file, () => app.saveFile(), { keys: 'Ctrl+S' }),
-    make('file.exportGlb', 'export.glb', file, () => void app.exportGlb(), { keywords: 'GLB glTF 3D export exportar modelo' }),
-    make('file.exportDxf', 'export.dxf', file, () => app.exportDxf(), { keywords: 'DXF CAD AutoCAD planta plan export exportar' }),
-    make('file.exportObj', 'export.obj', file, () => void app.exportObj(), { keywords: 'OBJ 3D export exportar modelo Wavefront' }),
-    make('file.exportIfc', 'export.ifc', file, () => app.exportIfc(), { keywords: 'IFC BIM Revit ArchiCAD openBIM export exportar modelo' }),
-    make('file.printPlan', 'print.open', file, open.print, { keys: 'Ctrl+P', keywords: 'PDF imprimir print planta plan escala scale papel paper' }),
     make('settings.snaps', 'pal.snaps', settings, () => app.toggleSnaps(), { keys: 'S' }),
     make('settings.collisions', 'pal.collisions', settings, () => app.toggleCollisions(), { keys: 'K', keywords: 'colisão collision atravessar through física physics' }),
     make('settings.theme', 'pal.theme', settings, () => app.toggleTheme()),
@@ -196,9 +178,8 @@ export function appActions(app: App, open: Openers): Action[] {
     make('settings.panel', 'pal.panel', settings, () => app.togglePanel()),
     make('settings.browser', 'pal.browser', settings, () => app.toggleBrowser()),
     make('settings.refLines', 'pal.refLines', settings, () => app.toggleRefLines()),
-    make('settings.debug', 'debug.pal', settings, () => app.toggleDebug(), { keys: 'F7', keywords: 'debug diagnóstico diagnostics erros errors problemas' }),
     make('settings.openingTags', 'pal.openingTags', settings, () => app.toggleOpeningTags(), { keywords: 'etiquetas tags marks tipo type portas janelas doors windows' }),
-    ...(['walls', 'openings', 'rooms', 'floors', 'objects', 'services', 'guides'] as const).map((c) =>
+    ...(['walls', 'openings', 'rooms', 'floors', 'objects', 'guides'] as const).map((c) =>
       make(`layer.${c}`, ui.hidden.has(c) ? (`pal.show.${c}` as const) : (`pal.hide.${c}` as const), settings, () => app.toggleCategory(c)),
     ),
     ...[...doc.levels]
@@ -213,16 +194,9 @@ export function appActions(app: App, open: Openers): Action[] {
         run: () => app.setLevel(l.id),
       })),
     make('view.save', 'views.save', views, () => app.saveCurrentView()),
-    make('view.tourEdit', 'gtour.edit', views, () => app.openTour()),
-    make('view.points', 'poi.dialogOpen', views, () => app.openPoints()),
-    make('view.schedules', 'schedule.open', views, () => app.openSchedules(), { keywords: 'schedule quantitativos tabela CSV portas janelas cômodos paredes áreas' }),
     make('view.sections', 'section.dialogOpen', views, () => app.openSections(), { keywords: 'corte cortes section sections elevação elevações elevation fachada facade' }),
-    make('view.image', 'image.save', views, () => void app.saveImage3d(), { keywords: 'imagem image PNG render renderização foto picture 3D captura screenshot' }),
-    make('site.edit', 'site.open', views, () => app.openSite(), { keywords: 'sol sun sombra shadow insolação latitude longitude norte north data hora lugar site' }),
-    make('view.sheets', 'sheet.open', views, () => app.openSheets(), { keywords: 'prancha pranchas sheet sheets carimbo title block folha PDF documentação' }),
     make('tool.section', 'tool.section', tools, () => app.setTool('section'), { keywords: 'corte section linha de corte cut line' }),
     make('model.import', 'model.import', file, () => app.pickModel(), { keywords: 'glTF GLB OBJ modelo model 3D importar import objeto object biblioteca library' }),
-    make('terrain.add', 'terrain.add', tools, () => app.addTerrain(), { keywords: 'terreno terrain lote lot curvas de nível contour topografia topography' }),
     make('ref.import', 'ref.import', file, () => app.pickReference(), { keywords: 'referência reference imagem image foto PDF DXF calibrar calibrate fundo underlay planta escaneada scan' }),
     make('tool.callout', 'tool.callout', tools, () => app.setTool('callout'), { keywords: 'chamada callout seta leader texto com seta nota anotação' }),
     make('mark.angle', 'mark.angle', tools, () => app.setMarkMode('angle'), { keywords: 'cota angular ângulo angle angular dimension graus' }),
@@ -230,11 +204,9 @@ export function appActions(app: App, open: Openers): Action[] {
     make('mark.coord', 'mark.coord', tools, () => app.setMarkMode('coord'), { keywords: 'cota por coordenada coordenadas coordinate ponto x y' }),
     make('dim.auto', 'dim.auto', tools, () => app.autoDimension(), { keywords: 'cotagem automática auto dimension cotar paredes cotas fachada exterior' }),
     make('section.elevations', 'section.makeElevations', views, () => app.addElevations(), { keywords: 'elevação elevações elevation fachadas facades norte sul leste oeste' }),
-    make('view.addPoint', 'pal.addPoint', views, () => app.addPointHere()),
     // Tools: the text or the level mark goes where the next click is (it went in the middle of the view).
     make('edit.addNote', 'ctx.addNote', edit, () => app.setTool('note'), { keywords: 'texto text nota note anotação annotation' }),
     make('edit.addLevelMark', 'ctx.addLevelMark', edit, () => app.setTool('levelMark'), { keywords: 'cota de nível level mark elevation altura spot' }),
-    make('view.tourPlay', 'gtour.play', views, () => app.playTour(), { enabled: doc.views.length > 0 }),
     ...doc.views.map((v) => ({
       id: `view.go.${v.id}`,
       label: t('pal.goView', { name: name(v.name) }),
@@ -244,12 +216,6 @@ export function appActions(app: App, open: Openers): Action[] {
       run: () => app.goToView(v.id),
     })),
     make('level.edit', 'levels.edit', levels, open.levels),
-    // The norms the model is checked against, and what is outside them.
-    make('approval.open', 'approval.open', edit, () => app.openApproval(), { keywords: 'aprovação approval prefeitura city hall alvará permit habite-se RRT ART CNO cartório registry documentos documents memorial pasta folder' }),
-    make('budget.open', 'budget.open', edit, () => app.openBudget(), { keywords: 'orçamento budget custo cost CUB SINAPI BDI curva ABC cronograma físico-financeiro schedule preço price' }),
-    make('lot.edit', 'lot.open', edit, () => app.openLot(), { keywords: 'lote lot terreno zona zone quadro de áreas area table taxa de ocupação coeficiente aproveitamento permeabilidade recuo setback gabarito matrícula' }),
-    make('rules.report', 'rules.report', edit, () => app.downloadCompliance(), { keywords: 'relatório conformidade compliance report normas norms pendências' }),
-    make('rules.edit', 'rules.open', edit, () => app.openRules(), { keywords: `${tBoth('rules.title')} norma norm NBR regra rule acessibilidade accessibility escada stair` }),
     make('type.edit', 'types.edit', edit, open.wallTypes, { keywords: tBoth('types.title') }),
     make('material.edit', 'mats.edit', edit, open.materials, { keywords: tBoth('mats.title') }),
     make('objects.edit', 'objs.open', edit, open.objects, { keywords: `${tBoth('objs.title')} biblioteca library família family editor` }),
@@ -282,6 +248,5 @@ export function appActions(app: App, open: Openers): Action[] {
     make('settings.keys', 'keys.open', settings, open.keys, { keywords: 'atalhos shortcuts teclado keyboard teclas keys remapear remap desligar' }),
     make('drawing.edit', 'draw.open', edit, open.drawing, { keywords: `${tBoth('draw.title')} 1:50 1:100 pena pen espessura lineweight` }),
     make('help.shortcuts', 'pal.shortcuts', help, open.help, { keys: '?' }),
-    make('help.tour', 'pal.tour', help, open.tour),
   ];
 }

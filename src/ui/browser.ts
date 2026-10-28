@@ -15,7 +15,6 @@ const CATEGORIES: readonly { id: Category; key: MessageKey }[] = [
   { id: 'rooms', key: 'layer.rooms' },
   { id: 'floors', key: 'layer.floors' },
   { id: 'objects', key: 'layer.objects' },
-  { id: 'services', key: 'layer.services' },
   { id: 'guides', key: 'layer.guides' },
 ];
 
@@ -72,25 +71,11 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
       true,
       item(t('view.3d'), () => app.setView('3d'), { current: ui.view === '3d', lead: icon('cube', 16), ...(ui.view === '3d' ? { trail: t('browser.current') } : {}) }),
       item(t('view.plan'), () => app.setView('plan'), { current: ui.view === 'plan', lead: icon('map', 16), ...(ui.view === 'plan' ? { trail: t('browser.current') } : {}) }),
-      item(t('view.walk'), () => app.toggleWalk(), { current: app.walker !== null, lead: icon('walk', 16), ...(app.walker ? { trail: t('browser.current') } : {}) }),
       // Saved views: a click goes back to one; × deletes it (one undo step).
       // A plan view with a scale of its own says it.
       ...doc.views.map((v) => savedItem(name(v.name), v.kind, () => app.goToView(v.id), () => app.deleteSavedView(v.id), v.kind === 'plan' && v.den ? `1:${v.den}` : undefined)),
       item(t('views.save'), () => app.saveCurrentView(), { lead: icon('plus', 16) }),
-      item(t('gtour.edit'), () => app.openTour(), {}),
-      item(t('poi.dialogOpen'), () => app.openPoints(), { lead: icon('pin', 16) }),
-      item(t('schedule.open'), () => app.openSchedules(), { lead: icon('table', 16) }),
       item(t('section.dialogOpen'), () => app.openSections(), { lead: icon('cut', 16) }),
-      item(t('sheet.open'), () => app.openSheets(), { lead: icon('frame', 16) }),
-      ...(doc.views.length > 0 ? [item(t('gtour.play'), () => app.playTour(), { lead: icon('play', 16) })] : []),
-    ),
-    section(
-      t('browser.export'),
-      false,
-      item(t('export.glb'), () => void app.exportGlb(), { lead: icon('cube', 16) }),
-      item(t('export.dxf'), () => app.exportDxf(), { lead: icon('map', 16) }),
-      item(t('export.ifc'), () => app.exportIfc(), { lead: icon('cube', 16) }),
-      item(t('schedule.open'), () => app.openSchedules(), { lead: icon('table', 16) }),
     ),
     section(
       t('browser.layers'),

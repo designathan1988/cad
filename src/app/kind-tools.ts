@@ -24,8 +24,6 @@ import { isConvex } from '../elements/roof/geometry';
 import { edgesFor, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, ROOF_PREFIX, type RoofKind } from '../elements/roof/schema';
 import { addBeam } from '../elements/beam/commands';
 import { addSeparator } from '../elements/separator/commands';
-import { addCloud } from '../elements/cloud/commands';
-import { CLOUD_PREFIX, nextRevision } from '../elements/cloud/schema';
 import { addCurtain } from '../elements/curtain/commands';
 import { CURTAIN_PREFIX } from '../elements/curtain/schema';
 import { SEPARATOR_PREFIX } from '../elements/separator/schema';
@@ -54,9 +52,6 @@ import type { Beam } from '../elements/beam/schema';
 import { addMeasure } from '../elements/measure/commands';
 import { arcWallAt } from '../elements/measure/place';
 import { MEASURE_PREFIX } from '../elements/measure/schema';
-import { addTag } from '../elements/tag/commands';
-import { TAG_PREFIX } from '../elements/tag/schema';
-import { defaultTagText } from '../elements/kinds/tag';
 
 /** A level mark where the menu was opened (or the middle of the view), selected: it says the level's height. */
 export function addLevelMarkHere(app: App, at?: Point2): void {
@@ -188,21 +183,6 @@ export function separatorClick(app: App, p: Point2): void {
   app.store.dispatch(addSeparator({ id: newId(SEPARATOR_PREFIX), levelId: app.ui.levelId, start: from, end: p }));
   app.ui.beamFrom = p;
   app.ui.info = t('hint.separatorMade');
-  app.render();
-}
-
-/** The revision cloud tool: a click at one corner, the next at the opposite one; the next revision's mark. */
-export function cloudClick(app: App, p: Point2): void {
-  const from = app.ui.beamFrom;
-  if (!from) {
-    app.ui.beamFrom = p;
-    return app.render();
-  }
-  if (Math.abs(from.x - p.x) < MIN_WALL_LENGTH || Math.abs(from.y - p.y) < MIN_WALL_LENGTH) return;
-  const doc = app.store.get();
-  app.store.dispatch(addCloud({ id: newId(CLOUD_PREFIX), levelId: app.ui.levelId, a: from, b: p, revision: nextRevision(doc.clouds) }));
-  app.ui.beamFrom = null;
-  app.ui.info = t('hint.cloudMade');
   app.render();
 }
 
@@ -469,22 +449,3 @@ export function markClick(app: App, p: Point2): void {
   done('hint.markMade');
 }
 
-/**
- * The tag tool: a click on an element takes it (not a tag), the next places the tag's text there, with
- * the values that element has (elements/kinds/tag.ts: defaultTagText).
- */
-export function tagClick(app: App, p: Point2, under: string | null): void {
-  const ui = app.ui;
-  if (!ui.tagFor) {
-    if (!under || under.startsWith(`${TAG_PREFIX}_`)) {
-      ui.info = t('hint.tagNone');
-      return app.render();
-    }
-    ui.tagFor = under;
-    return app.render();
-  }
-  app.store.dispatch(addTag({ id: newId(TAG_PREFIX), levelId: ui.levelId, target: ui.tagFor, at: p, text: defaultTagText(ui.tagFor) }));
-  ui.tagFor = null;
-  ui.info = t('hint.tagMade');
-  app.render();
-}

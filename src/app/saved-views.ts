@@ -22,7 +22,7 @@ export type SavedView = Shows &
       readonly name: string;
       readonly kind: '3d';
       readonly levelId: string;
-      /** What the tour says at this stop (tour.ts); none when absent. */
+      /** What the tour said at this stop (the tour is out of the app for now: kept as read). */
       readonly caption?: string;
       /** Camera position and the point it looks at, in three.js coordinates (y up). */
       readonly position: readonly [number, number, number];

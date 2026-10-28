@@ -46,8 +46,6 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
   frameAll: { icon: 'home', keys: 'Home' },
   clearGuides: { icon: 'guide' },
   section: { icon: 'cut' },
-  walkHere: { icon: 'walk', keys: '3' },
-  addPoint: { icon: 'pin' },
   selectSimilar: { icon: 'pointer' },
   addNote: { icon: 'text' },
   addLevelMark: { icon: 'height' },
@@ -85,15 +83,6 @@ export function contextEntries(app: App, openCommands: () => void): ContextEntry
     frameAll: () => app.frameAll(),
     clearGuides: () => app.clearGuides(),
     section: () => app.sectionAtGuide(),
-    addPoint: (() => {
-      const at = app.contextPoint;
-      return () => app.addPointHere(at ?? undefined);
-    })(),
-    walkHere: (() => {
-      // From where the menu was opened; from the floating bar, the selected room's middle.
-      const at = app.contextPoint ?? (one ? app.visibleGeometry().rooms.get(one)?.label : undefined);
-      return () => app.enterWalk(at ?? undefined);
-    })(),
     selectSimilar: () => app.selectSimilar(),
     addNote: (() => {
       const at = app.contextPoint;

@@ -1,5 +1,4 @@
-// A stair's well through the floor it reaches, the guardrail round it, and the norm rules checked on
-// stairs, ramps, guardrails and doors.
+// A stair's well through the floor it reaches, and the guardrail round it.
 
 import { describe, expect, it } from 'vitest';
 import { type Doc, newDocument } from '../../src/app/document';
@@ -13,8 +12,6 @@ import type { Stair } from '../../src/elements/stair/schema';
 import { arrivalOf, levelReached, wellsReaching } from '../../src/elements/stair/well';
 import { signedArea } from '../../src/elements/wall/geometry/convex';
 import { readProject, writeProject } from '../../src/io/project-file';
-import { checkRules, flightRise } from '../../src/rules/check';
-import { DEFAULT_RULES } from '../../src/rules/schema';
 import type { FloorSolid } from '../../src/elements/room/derive';
 
 const upper = { id: 'lvl_up', name: 'Upper', elevation: 2.8, height: 2.8 };
@@ -58,7 +55,6 @@ describe('a stair well', () => {
     expect(firstFlight(stair('u'), 16)).toBe(8);
     expect(firstFlight(stair('u', { split: 5 }), 16)).toBe(5);
     expect(firstFlight(stair('u', { split: 40 }), 16)).toBe(14);
-    expect(flightRise(stairSolid(stair('u', { split: 5 }), 2.8, 0))).toBeCloseTo(10 * 0.175, 9);
   });
 });
 
@@ -74,8 +70,6 @@ describe('winders', () => {
     // Three winders fill the L's corner square, 1 m by 1 m.
     const fans = l.parts.slice(firstFlight(l.stair, 16), firstFlight(l.stair, 16) + 3);
     expect(fans.reduce((a, p) => a + Math.abs(signedArea(p.polygon)), 0)).toBeCloseTo(1, 6);
-    // No landing: the whole climb is one rise.
-    expect(flightRise(u)).toBeCloseTo(2.8, 9);
   });
 });
 
@@ -117,37 +111,5 @@ describe("the guardrail along a floor's edge", () => {
     const raised = { ...doc, floors: [{ ...slab, offset: 0.2 }] };
     expect((deriveGeometry(raised).kinds.get('railings')!.get('railing_e') as RailingSolid).bottom).toBeCloseTo(3, 9);
     expect(railingKind.holders!(r)).toEqual(['floor_f']);
-  });
-});
-
-describe('the norm rules', () => {
-  it('a stair within them has nothing; a steeper one is outside the riser and 2e + p', () => {
-    const ok = checkRules(deriveGeometry(docOf(stair('straight'))), DEFAULT_RULES);
-    expect(ok).toEqual([]);
-    // Risers are laid out near 17.5 cm: 27 cm climbed takes 2 of 13.5 cm, too low, and 2e + p 55 cm.
-    const low = checkRules(deriveGeometry(docOf(stair('straight', { height: 0.27 }))), DEFAULT_RULES).map((f) => f.rule.subject);
-    expect(low).toEqual(['stairRiser', 'stairBlondel']);
-  });
-
-  it('a guardrail under 1.10 m is outside; a rule turned off says nothing', () => {
-    const low = { id: 'railing_l', levelId: 'lvl_ground', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }], height: 0.9, baseOffset: 0, infill: 'balusters' as const };
-    const doc = docOf(stair('straight'), { railings: [low] });
-    expect(checkRules(deriveGeometry(doc), DEFAULT_RULES).map((f) => [f.elementId, f.rule.subject])).toEqual([['railing_l', 'railingHeight']]);
-    const off = DEFAULT_RULES.map((r) => (r.subject === 'railingHeight' ? { ...r, on: false } : r));
-    expect(checkRules(deriveGeometry(doc), off)).toEqual([]);
-  });
-
-  it("a guardrail's opening: a mid rail leaves half its height open (outside 11 cm); balusters and glass are within", () => {
-    const at = (infill?: 'rails' | 'balusters' | 'glass') => ({ id: 'railing_r', levelId: 'lvl_ground', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }], height: 1.1, baseOffset: 0, ...(infill ? { infill } : {}) });
-    const subjects = (r: ReturnType<typeof at>) => checkRules(deriveGeometry(docOf(stair('straight'), { railings: [r] })), DEFAULT_RULES).map((f) => f.rule.subject);
-    expect(subjects(at())).toEqual(['railingGap']);
-    expect(subjects(at('balusters'))).toEqual([]);
-    expect(subjects(at('glass'))).toEqual([]);
-  });
-
-  it("the project's own rules read back; a bad one is left out", () => {
-    const rules = [{ ...DEFAULT_RULES[0]!, max: 0.17 }];
-    const r = readProject(JSON.stringify({ ...newDocument(), rules: [...rules, { id: 'x', subject: 'nope' }] }));
-    expect(r.ok && r.doc.rules).toEqual(rules);
   });
 });

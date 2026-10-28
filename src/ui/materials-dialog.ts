@@ -10,7 +10,7 @@ import { newId } from '../core/id';
 import { addMaterial, deleteMaterial, materialDeleteBlocker, materialUses, type MaterialPatch, updateMaterial } from '../elements/material/commands';
 import { CUT_PATTERNS, type CutPattern, type MaterialId } from '../elements/material/schema';
 import { JOINT_MAX, PATTERN_DEFAULTS, PATTERN_KINDS, PATTERN_LAYOUTS, PIECE_MAX, PIECE_MIN, type PatternKind, type PatternLayout, type SurfacePattern } from '../elements/material/pattern';
-import { DEFAULT_PHYSICS, type MaterialPhysics, physicsOf } from '../sim/physics';
+import { DEFAULT_PHYSICS, type MaterialPhysics, physicsOf } from '../elements/material/physics';
 import { el, numberField, select } from './controls';
 import { openProjectDialog } from './dialog';
 import { textField } from './fields';
@@ -102,7 +102,7 @@ export function showMaterials(app: App, first?: MaterialId): void {
           row(t('pat.angle'), numberField(pat.angle, (v) => set({ angle: v }), -360, 0, '°', 360), 'patAngle'),
         );
       }
-      // Its physics for the simulations (sim/physics.ts): its own, else the table's for a built-in one;
+      // Its physics (elements/material/physics.ts): its own, else the table's for a built-in one;
       // one with neither gets a start to be checked, never a value it is silently given.
       const physics = physicsOf(mat);
       const table = DEFAULT_PHYSICS[mat.id];

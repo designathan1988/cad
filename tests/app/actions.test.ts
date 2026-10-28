@@ -15,7 +15,7 @@ function fakeApp(selection: string[] = [], view: '3d' | 'plan' = 'plan') {
   const store = createStore(addLevel('lvl_up', 'Upper').apply(newDocument()));
   return { store, ui: { selection: new Set(selection), view, levelId: 'lvl_ground', hidden: new Set(), view3d: VIEW_3D_DEFAULT }, canMergeSelection: () => false, arrangeItems: () => [] } as unknown as App;
 }
-const openers = { help: () => {}, levels: () => {}, wallTypes: () => {}, materials: () => {}, units: () => {}, objects: () => {}, openings: () => {}, floors: () => {}, presets: () => {}, tour: () => {}, openFile: () => {}, projects: () => {}, print: () => {}, drawing: () => {}, keys: () => {}, variables: () => {} };
+const openers = { help: () => {}, levels: () => {}, wallTypes: () => {}, materials: () => {}, units: () => {}, objects: () => {}, openings: () => {}, floors: () => {}, presets: () => {}, openFile: () => {}, projects: () => {}, drawing: () => {}, keys: () => {}, variables: () => {} };
 
 describe('palette actions', () => {
   afterEach(() => setLang('en'));
@@ -36,7 +36,7 @@ describe('palette actions', () => {
       'file.new', 'file.open', 'file.save', 'settings.snaps', 'settings.theme', 'settings.language', 'settings.panel', 'settings.browser',
       'layer.walls', 'layer.openings', 'layer.rooms', 'layer.floors', 'layer.guides', 'edit.clearGuides',
       'view.levelsAll', 'view.levelsBelow', 'view.levelsCurrent', 'view.explode', 'view.cut',
-      'level.lvl_ground', 'level.lvl_up', 'level.edit', 'help.shortcuts', 'help.tour',
+      'level.lvl_ground', 'level.lvl_up', 'level.edit', 'help.shortcuts',
     ]) expect(ids).toContain(id);
   });
 

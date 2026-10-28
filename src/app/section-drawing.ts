@@ -30,8 +30,6 @@ export interface Solid3 {
   readonly cut?: { readonly color: string; readonly pattern: CutPattern };
   /** The groups cut together whose outline is drawn with the cut pen (all the walls' layers); its own without. */
   readonly outline?: string;
-  /** The ground (a terrain): drawn, but not the building the dimensions measure. */
-  readonly ground?: true;
   /** A door's or window's part: its opening's floor, bottom and head (absolute heights), dimensioned where the plane cuts it. */
   readonly opening?: { readonly id: string; readonly floor: number; readonly bottom: number; readonly top: number };
 }
@@ -56,7 +54,6 @@ export interface SectionDrawing {
     readonly segments: readonly (readonly [Point2, Point2])[];
     readonly fill?: { readonly color: string; readonly pattern: CutPattern };
     readonly pen?: 'fine';
-    readonly ground?: true;
   }[];
   /** Its extent (m): along the line and up. */
   readonly box: { readonly min: Point2; readonly max: Point2 } | null;
@@ -159,7 +156,7 @@ export function modelSolids(doc: Doc, g: DerivedGeometry, hidden: ReadonlySet<st
     const made = x.kind.solid(x.solid);
     if (!made) continue;
     (Array.isArray(made) ? (made as readonly KindSolid[]) : [made as KindSolid]).forEach((part, i) => {
-      out.push({ group: `${x.id}:${i}`, tris: geometryTriangles(part.geometry, part.y), ...(x.kind.key === 'terrains' ? { ground: true as const } : {}) });
+      out.push({ group: `${x.id}:${i}`, tris: geometryTriangles(part.geometry, part.y) });
     });
   }
   return out;
@@ -397,7 +394,7 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
   const sides: ((v: V) => number)[] = [(v) => m.depth - v.d, (v) => v.s, (v) => len - v.s];
   if (own) sides.push((v) => v.z - own.elevation, (v) => own.elevation + own.height - v.z);
   const faces: SeenFace[] = [];
-  const cuts: { loops: Point2[][]; segments: [Point2, Point2][]; fill?: { color: string; pattern: CutPattern }; pen?: 'fine'; ground?: true }[] = [];
+  const cuts: { loops: Point2[][]; segments: [Point2, Point2][]; fill?: { color: string; pattern: CutPattern }; pen?: 'fine' }[] = [];
   // The cut segments of the groups outlined together (the walls' layers), for their common outline.
   const together = new Map<string, [Point2, Point2][]>();
   const openings = new Map<string, { at: number; floor: number; bottom: number; top: number }>();
@@ -455,7 +452,7 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
       if (solid.outline) {
         cuts.push({ loops: loopsOf(outline), segments: outline, ...(solid.cut ? { fill: solid.cut } : {}), pen: 'fine' });
         together.set(solid.outline, [...(together.get(solid.outline) ?? []), ...cutSegments]);
-      } else cuts.push({ loops: loopsOf(outline), segments: outline, ...(solid.ground ? { ground: true as const } : {}) });
+      } else cuts.push({ loops: loopsOf(outline), segments: outline });
     }
   }
   // Over the layers, the walls' outline: where two layers meet both cut the line, so it is inside.
@@ -465,7 +462,7 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
   }
   faces.sort((a, b) => b.depth - a.depth);
   const levels = (own ? [own] : [...doc.levels].sort((a, b) => a.elevation - b.elevation)).map((l) => ({ name: l.name, z: l.elevation }));
-  const cutPoints = cuts.filter((c) => !c.ground).flatMap((c) => c.segments.flat());
+  const cutPoints = cuts.flatMap((c) => c.segments.flat());
   const cutBox =
     cutPoints.length > 0
       ? { min: { x: Math.min(...cutPoints.map((p) => p.x)), y: Math.min(...cutPoints.map((p) => p.y)) }, max: { x: Math.max(...cutPoints.map((p) => p.x)), y: Math.max(...cutPoints.map((p) => p.y)) } }

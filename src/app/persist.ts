@@ -20,8 +20,6 @@ export interface Prefs {
   panelOpen?: boolean;
   /** The project browser drawer is open. */
   browserOpen?: boolean;
-  /** The first-use tour was taken, skipped or declined: it is not offered again. */
-  tourSeen?: boolean;
   /** How the 3D view shows the levels (view-3d.ts). */
   view3d?: View3D;
   /** Every wall's reference line shown in plan, not only the selected ones'. */
@@ -38,10 +36,6 @@ export interface Prefs {
   keymap?: Record<string, string | null>;
   /** Where the plan was looking (pixels per metre, world point at the centre): a reload framed it all again. */
   planView?: { scale: number; center: { x: number; y: number } };
-  /** Walking: the eyes' height above the floor (m). */
-  eyeHeight?: number;
-  /** A tour's stop, playing by itself (s). */
-  tourSeconds?: number;
   /** The project open last, of those kept in the browser (io/project-db.ts). */
   projectId?: string;
   /** The ribbon's tab shown last (app/ribbon-tabs.ts). */

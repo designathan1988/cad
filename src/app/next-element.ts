@@ -15,12 +15,11 @@ import { edgesFor, ROOF_GRADE, ROOF_OVERHANG, ROOF_THICKNESS } from '../elements
 import { CEILING_THICKNESS, FLOOR_DEFAULTS } from '../elements/room/schema';
 import { CURTAIN_DEFAULTS } from '../elements/curtain/schema';
 import type { App } from './app';
-import { kindHeight, systemFor } from './mep-ui';
 
 /** What a template holds: one per kind, the floor tool's two (floors and ceilings) apart. */
-export type NextSlot = 'columns' | 'beams' | 'stairs' | 'railings' | 'roofs' | 'floors' | 'ceilings' | 'curtains' | 'objects' | 'rooms' | 'mepPoints';
+export type NextSlot = 'columns' | 'beams' | 'stairs' | 'railings' | 'roofs' | 'floors' | 'ceilings' | 'curtains' | 'objects' | 'rooms';
 
-const KEY: Readonly<Record<NextSlot, KindKey>> = { columns: 'columns', beams: 'beams', stairs: 'stairs', railings: 'railings', roofs: 'roofs', floors: 'floors', ceilings: 'floors', curtains: 'curtains', objects: 'objects', rooms: 'rooms', mepPoints: 'mepPoints' };
+const KEY: Readonly<Record<NextSlot, KindKey>> = { columns: 'columns', beams: 'beams', stairs: 'stairs', railings: 'railings', roofs: 'roofs', floors: 'floors', ceilings: 'floors', curtains: 'curtains', objects: 'objects', rooms: 'rooms' };
 
 /** The template's id: never an element's (theirs start with their kind's prefix and an underscore). */
 export const NEXT_ID = '__next__';
@@ -40,13 +39,11 @@ export function slotOf(app: App): NextSlot | null {
     case 'roof':
       return 'roofs';
     case 'floor':
-      return app.ui.holeFor || app.ui.terrainFor ? null : ceilingTool ? 'ceilings' : 'floors';
+      return app.ui.holeFor ? null : ceilingTool ? 'ceilings' : 'floors';
     case 'curtain':
       return 'curtains';
     case 'room':
       return 'rooms';
-    case 'mepPoint':
-      return 'mepPoints';
     case 'object':
       return app.store.get().definitions.some((d) => d.id === app.ui.objectDef) ? 'objects' : null;
     default:
@@ -91,8 +88,6 @@ function blank(app: App, slot: NextSlot): Element {
       return { ...base, start: { x: 0, y: 0 }, end: { x: 3, y: 0 }, ...CURTAIN_DEFAULTS };
     case 'rooms':
       return { ...base, seed: { x: 0, y: 0 }, name: '', number: '' };
-    case 'mepPoints':
-      return { ...base, at: { x: 0, y: 0 }, height: kindHeight(doc, levelId, app.ui.mepKind), kind: app.ui.mepKind, systemId: systemFor(doc, app.ui.mepKind) };
     case 'objects': {
       const def = doc.definitions.find((d) => d.id === app.ui.objectDef)!;
       return { ...base, definitionId: def.id, typeId: def.types[0]!.id, at: { x: 0, y: 0 }, angle: app.ui.objectAngle, elevation: 0, values: {} };
@@ -105,15 +100,15 @@ function last(app: App, slot: NextSlot): Element | undefined {
   const doc = app.store.get();
   const list = doc[KEY[slot]] as unknown as readonly Element[];
   const fits = (e: Element) =>
-    slot === 'floors' ? e['kind'] !== 'ceiling' : slot === 'ceilings' ? e['kind'] === 'ceiling' : slot === 'objects' ? e['definitionId'] === app.ui.objectDef : slot === 'mepPoints' ? e['kind'] === app.ui.mepKind : true;
+    slot === 'floors' ? e['kind'] !== 'ceiling' : slot === 'ceilings' ? e['kind'] === 'ceiling' : slot === 'objects' ? e['definitionId'] === app.ui.objectDef : true;
   return [...list].reverse().find(fits);
 }
 
 /** The template of a slot: as changed by the user, else the last one made, else the kind's defaults. */
 export function nextOf(app: App, slot: NextSlot): Element {
   const kept = app.next[slot] as Element | undefined;
-  // An object's follows the definition being placed, a services point's the kind of point.
-  if (kept && (slot !== 'objects' || kept['definitionId'] === app.ui.objectDef) && (slot !== 'mepPoints' || kept['kind'] === app.ui.mepKind)) return { ...kept, levelId: app.ui.levelId };
+  // An object's follows the definition being placed.
+  if (kept && (slot !== 'objects' || kept['definitionId'] === app.ui.objectDef)) return { ...kept, levelId: app.ui.levelId };
   const from = last(app, slot);
   return from ? { ...from, id: NEXT_ID, levelId: app.ui.levelId } : blank(app, slot);
 }
@@ -130,7 +125,7 @@ export function made<E>(app: App, slot: NextSlot, place: Record<string, unknown>
 
 /** Fields of the selected element that are not for one not yet placed: its measures, its holes, its actions. */
 // A room's name and number are its own (the next is numbered on); a roof's sides are its outline's.
-const NOT_NEXT = new Set(['length', 'area', 'perimeter', 'volume', 'source', 'holes', 'addHole', 'clearHoles', 'tiles', 'edgeRailing', 'interiorElevations', 'runLength', 'warn', 'name', 'number', 'mepKind', 'mepSystem', 'mepLabel']);
+const NOT_NEXT = new Set(['length', 'area', 'perimeter', 'volume', 'source', 'holes', 'addHole', 'clearHoles', 'tiles', 'edgeRailing', 'interiorElevations', 'runLength', 'warn', 'name', 'number']);
 const notNext = (id: string) => NOT_NEXT.has(id) || /^side\d+$/.test(id);
 
 /** The template's fields (those of the kind's panel that a next element has), the derived template they read, and a key of its values. */

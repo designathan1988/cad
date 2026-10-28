@@ -29,8 +29,6 @@ export type ContextId =
   | 'frameAll'
   | 'clearGuides'
   | 'section'
-  | 'walkHere'
-  | 'addPoint'
   | 'selectSimilar'
   | 'addNote'
   | 'addLevelMark'
@@ -43,7 +41,7 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: str
   const guides = levelId !== undefined && doc.guides.some((g) => g.levelId === levelId) ? (['clearGuides'] as const) : [];
   // Six at most: a text where the menu was opened (the level mark is in the ribbon); the commands give
   // way to clearing the guides (Ctrl+K is in the footer).
-  if (selection.length === 0) return ['drawWall', 'addNote', 'walkHere', 'addPoint', 'frameAll', ...(guides.length > 0 ? guides : (['commands'] as const))];
+  if (selection.length === 0) return ['drawWall', 'addNote', 'frameAll', ...(guides.length > 0 ? guides : (['commands'] as const))];
   // Move first, for what the Modify tools take (walls, doors and windows, rooms, outline floors, guides); the five of them
   // are in the tool bar, as Revit's Modify panel, so this menu keeps to six.
   const modify: ContextId[] = canTransform(doc, selection) ? ['move'] : [];
@@ -66,11 +64,8 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: str
   if (doc.rooms.some((r) => r.id === id)) {
     const floored = doc.floors.some((f) => f.kind !== 'ceiling' && f.source.kind === 'room' && f.source.roomId === id);
     const ceiled = doc.floors.some((f) => f.kind === 'ceiling' && f.source.kind === 'room' && f.source.roomId === id);
-    // Walking from inside a room, where the menu was opened (the most natural place to start), and a
-    // point of interest there. Framing a room is F; the menu keeps to six.
-    // Six at most: with both a floor and a ceiling to make, the point of interest gives way (Vista has it).
     const make = [...(floored ? [] : (['addFloor'] as const)), ...(ceiled ? [] : (['addCeiling'] as const))];
-    return [...modify, ...make, 'walkHere', ...(make.length < 2 ? (['addPoint'] as const) : []), 'properties', 'delete'];
+    return [...modify, ...make, 'properties', 'delete'];
   }
   return [...modify, 'selectSimilar', ...common];
 }

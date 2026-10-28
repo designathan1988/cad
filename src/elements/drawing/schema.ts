@@ -5,7 +5,7 @@
 // 1:50 and larger, its outline filled at 1:100, furniture left out at 1:200 and smaller.
 //
 // On screen a pen unit is a pixel (1 px ≙ PEN_UNIT_MM on paper at 1:100: the plan looks as it did); on
-// paper (app/print.ts) the plan is drawn in the same units, scaled to millimetres, so every line,
+// paper (a section's drawing, app/section-view.ts) it is drawn in the same units, scaled to millimetres, so every line,
 // hatch and mark keeps its weight on paper whatever the scale.
 
 export type PenRole = 'cut' | 'seen' | 'fine' | 'annotation';

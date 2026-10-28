@@ -1,9 +1,7 @@
 // Mouse and keyboard. Plan: wheel zooms at the cursor, middle button pans. 3D: wheel zooms at the
 // cursor, middle pans, Shift + middle or right rotates (OrbitControls). Left button is the tool's.
 
-import { showSite } from '../ui/site-dialog';
 import { showSections } from '../ui/sections-dialog';
-import { showSheets } from '../ui/sheets-dialog';
 import { showOverrides } from '../ui/overrides-dialog';
 import { showVariables } from '../ui/variables-dialog';
 import { showKeys } from '../ui/keys-dialog';
@@ -16,7 +14,7 @@ import { showFloors } from '../ui/floors-dialog';
 import { presetSlotOf, showPresets } from '../ui/presets-dialog';
 import { endHandleDrag, moveHandleDrag, objectHandleAt, startHandleDrag } from './object-handles';
 import { showUnits } from '../ui/units-dialog';
-import { showDrawingSettings, showPrint } from '../ui/print-dialog';
+import { showDrawingSettings } from '../ui/drawing-dialog';
 import { type BoxFace, dragDistance, moveFace, type SectionBox } from './section-box';
 import type { Point2 } from '../core/vector';
 import { snap } from '../tools/snap';
@@ -29,15 +27,10 @@ import { levelOf } from './document';
 import { selectGestures } from './select-drag';
 import { insideRing } from '../elements/room/derive';
 import { showLevels } from '../ui/levels-dialog';
-import { showTourDialog } from '../ui/tour-dialog';
-import { showPointsDialog } from '../ui/points-dialog';
-import { showSchedulesDialog } from '../ui/schedules-dialog';
-import { watchErrors } from './error-log';
 import { showWallTypes } from '../ui/types-dialog';
 import { showMaterials } from '../ui/materials-dialog';
 import { showPalette } from '../ui/palette';
 import { showProjectsDialog } from '../ui/projects-dialog';
-import { offerTour, startTour } from '../ui/tour';
 import { appActions, type Openers } from './actions';
 import { contextEntries } from './context-menu';
 import { showMenu } from '../ui/menu';
@@ -69,10 +62,8 @@ export function wireInput(app: App): void {
     openings: () => showOpenings(app, app.openingKind() ?? undefined),
     floors: () => showFloors(app),
     presets: () => showPresets(app, presetSlotOf(app.ui.tool)),
-    tour: () => startTour(app),
     openFile: () => shell.fileInput.click(),
     projects: () => showProjectsDialog(app),
-    print: () => showPrint(app),
     drawing: () => showDrawingSettings(app),
     keys: () => showKeys(app),
     variables: () => showVariables(app),
@@ -83,21 +74,13 @@ export function wireInput(app: App): void {
   app.actionList = () => appActions(app, openers);
   app.openCommands = palette;
   app.openLevels = () => showLevels(app);
-  app.openTour = () => showTourDialog(app);
-  app.openPoints = () => showPointsDialog(app);
-  app.openSchedules = () => showSchedulesDialog(app);
   app.openSections = (id) => showSections(app, id);
-  app.openSheets = (id) => showSheets(app, id);
-  app.openSite = () => showSite(app);
-  watchErrors(() => app.debugOpen && app.toggleDebug(true));
   app.openWallTypes = (typeId) => showWallTypes(app, typeId);
   app.openMaterials = () => showMaterials(app);
   app.openUnits = () => showUnits(app);
   app.openObjects = () => showObjects(app);
-  app.openPrint = () => showPrint(app);
   app.openOverrides = () => showOverrides(app);
   shell.sidebar.addEventListener('click', () => app.toggleBrowser());
-  offerTour(app);
   let panning: { x: number; y: number } | null = null;
   let downAt: { x: number; y: number } | null = null;
   let rightAt: { x: number; y: number } | null = null;
@@ -110,7 +93,7 @@ export function wireInput(app: App): void {
     if (hit && !ui.selection.has(hit)) ui.selection = new Set([hit]);
     if (!hit) ui.selection.clear();
     app.refresh();
-    // Where the menu was opened, for "Walk from here": the pointer leaves the drawing for the menu.
+    // Where the menu was opened, for "Add text": the pointer leaves the drawing for the menu.
     app.contextPoint = worldAt(e)?.p ?? null;
     const entries = contextEntries(app, palette);
     app.contextPoint = null;
@@ -256,10 +239,6 @@ export function wireInput(app: App): void {
           points.push({ point: { x: ring.reduce((t, v) => t + v.x, 0) / ring.length, y: ring.reduce((t, v) => t + v.y, 0) / ring.length }, kind: 'center' });
         }
       }
-      // The services' points and their runs' vertices: a run drawn from a socket or a panel starts on it,
-      // and so joins it (mep-ui.ts: MEET), wherever on its disc the click was.
-      for (const p of doc.mepPoints) if (p.levelId === ui.levelId) points.push({ point: p.at, kind: 'center' });
-      for (const r of doc.mepRuns) if (r.levelId === ui.levelId) for (const v of r.points) points.push({ point: { x: v.x, y: v.y }, kind: 'node' });
       pointCache = { doc, levelId: ui.levelId, points };
     }
     return pointCache.points;
@@ -286,7 +265,7 @@ export function wireInput(app: App): void {
             ? ui.gridFrom
             : ui.tool === 'guide'
               ? ui.guideFrom
-            : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain'
+            : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain'
               ? ui.beamFrom
               : ui.tool === 'roof'
                 ? (ui.roofDraft.at(-1) ?? null)
@@ -294,8 +273,6 @@ export function wireInput(app: App): void {
                   ? ui.stairFrom
                   : ui.tool === 'railing'
                     ? (ui.railingDraft.at(-1) ?? null)
-                  : ui.tool === 'mepRun'
-                    ? (ui.mepDraft.at(-1) ?? null)
                     : null;
     const measuring = ui.tool === 'measure' || ui.tool === 'dimension';
     const modifyFrom = ui.tool === 'modify' && ui.modify && ui.modify.state.step !== 'base' ? ui.modify.state.base : null;
@@ -422,13 +399,6 @@ export function wireInput(app: App): void {
       tabAt = null;
       ui.snapSkip = [];
     }
-    if (app.walker) {
-      if (looking) {
-        app.walkLook(e.clientX - looking.x, e.clientY - looking.y);
-        looking = { x: e.clientX, y: e.clientY };
-      }
-      return;
-    }
     shift = e.shiftKey;
     // The right button pressed while the left one is held (a chord) comes as a move, not a down:
     // during a drag it cancels it, as a right click does.
@@ -467,7 +437,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'spot' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'mark' || ui.tool === 'tag' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'mepPoint' || ui.tool === 'mepRun') {
+    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'mark' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -533,21 +503,7 @@ export function wireInput(app: App): void {
     app.render();
   };
 
-  /** While walking, a drag turns the view (walk.ts). */
-  let looking: { x: number; y: number } | null = null;
   const onDown = (e: PointerEvent) => {
-    // A point of interest's disc: its card opens (or closes), whatever the tool, walking too.
-    if (e.button === 0 && (ui.tool === 'select' || app.walker)) {
-      const poi = app.pointAt(e.clientX, e.clientY);
-      if (poi) return app.showPoint(app.openPointId === poi ? null : poi);
-    }
-    if (app.walker) {
-      if (e.button === 0) {
-        looking = { x: e.clientX, y: e.clientY };
-        (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      }
-      return;
-    }
     shift = e.shiftKey;
     // What the footer said about the last action is old news once the user acts on the drawing again.
     ui.info = null;
@@ -633,18 +589,13 @@ export function wireInput(app: App): void {
       app.render();
       return true;
     }
-    if ((ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain') && ui.beamFrom) {
+    if ((ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom) {
       ui.beamFrom = null;
       app.render();
       return true;
     }
     if (ui.tool === 'mark' && ui.markDraft.length > 0) {
       ui.markDraft = ui.markDraft.slice(0, -1);
-      app.render();
-      return true;
-    }
-    if (ui.tool === 'tag' && ui.tagFor) {
-      ui.tagFor = null;
       app.render();
       return true;
     }
@@ -656,10 +607,6 @@ export function wireInput(app: App): void {
       app.railingFinish();
       return true;
     }
-    if (ui.tool === 'mepRun' && ui.mepDraft.length > 0) {
-      app.mepRunFinish();
-      return true;
-    }
     if (ui.tool === 'measure' && ui.measure.kind !== 'idle') {
       app.measureEvent({ kind: 'escape' });
       return true;
@@ -668,10 +615,6 @@ export function wireInput(app: App): void {
   };
 
   const onUp = (e: PointerEvent) => {
-    if (app.walker) {
-      looking = null;
-      return;
-    }
     if (boxDrag) {
       boxDrag = null;
       app.boxHot = null;
@@ -781,19 +724,9 @@ export function wireInput(app: App): void {
       if (at) app.separatorClick(snapped(e)?.point ?? at.p);
       return;
     }
-    if (ui.tool === 'cloud') {
-      const at = worldAt(e);
-      if (at) app.cloudClick(snapped(e)?.point ?? at.p);
-      return;
-    }
     if (ui.tool === 'mark') {
       const at = worldAt(e);
       if (at && ui.view === 'plan') app.markClick(ui.markMode === 'radius' ? at.p : (snapped(e)?.point ?? at.p));
-      return;
-    }
-    if (ui.tool === 'tag') {
-      const at = worldAt(e);
-      if (at && ui.view === 'plan') app.tagClick(at.p, ui.tagFor ? null : planPick(at.p));
       return;
     }
     if (ui.tool === 'curtain') {
@@ -809,21 +742,6 @@ export function wireInput(app: App): void {
     if (ui.tool === 'calibrate') {
       const at = worldAt(e);
       if (at && ui.view === 'plan') app.calibrateClick(snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'spot') {
-      const at = worldAt(e);
-      if (at && ui.view === 'plan') app.spotClick(snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'mepPoint') {
-      const at = worldAt(e);
-      if (at) app.mepPointClick(snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'mepRun') {
-      const at = worldAt(e);
-      if (at) app.mepRunClick(snapped(e)?.point ?? at.p, at.mpp);
       return;
     }
     // A text or a level mark where the click is; then selected, its text ready to type.
@@ -889,7 +807,7 @@ export function wireInput(app: App): void {
   }
   // A double click on a door or window in 3D opens it, or closes it (the selection's Open does too).
   shell.glCanvas.addEventListener('dblclick', () => {
-    if (ui.tool !== 'select' || app.walker) return;
+    if (ui.tool !== 'select') return;
     const ids = [...ui.selection].filter((id) => app.store.get().openings.some((o) => o.id === id));
     if (ids.length > 0) app.toggleOpen(ids);
   });
@@ -906,30 +824,6 @@ export function wireInput(app: App): void {
 
   // Top bar, tools, floating bar, footer.
   wireButtons(app, palette);
-  const stickAt = (e: PointerEvent) => {
-    const r = shell.walkStick.getBoundingClientRect();
-    const radius = r.width / 2;
-    let dx = (e.clientX - (r.left + radius)) / radius;
-    let dy = (e.clientY - (r.top + radius)) / radius;
-    const len = Math.hypot(dx, dy);
-    if (len > 1) [dx, dy] = [dx / len, dy / len];
-    shell.walkKnob.style.transform = `translate(${dx * radius * 0.6}px, ${dy * radius * 0.6}px)`;
-    app.walkStick = { forward: -dy, side: dx };
-  };
-  shell.walkStick.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    shell.walkStick.setPointerCapture(e.pointerId);
-    stickAt(e);
-  });
-  shell.walkStick.addEventListener('pointermove', (e) => {
-    if (app.walkStick) stickAt(e);
-  });
-  const stickOff = () => {
-    app.walkStick = null;
-    shell.walkKnob.style.transform = '';
-  };
-  shell.walkStick.addEventListener('pointerup', stickOff);
-  shell.walkStick.addEventListener('pointercancel', stickOff);
   // The preview follows what is typed, before Enter: the wall preview is geometry, so refresh it.
   shell.measure.addEventListener('input', () => {
     app.refresh();
@@ -984,9 +878,7 @@ export function wireInput(app: App): void {
     }
   });
 
-  // Walking (walk.ts): the keys held move the walker each frame; let go, it stops.
   window.addEventListener('keyup', (e) => {
-    if (app.walker) app.walkKeys.delete(e.key.toLowerCase());
     // Shift let go: its lock goes with it.
     if (e.key === 'Shift' && ui.lock?.by === 'shift') {
       ui.lock = null;

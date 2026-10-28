@@ -744,107 +744,11 @@ button.project-name:hover {
 .temp-chip[hidden] {
   display: none;
 }
-/* The walking stick: a ring with a knob that follows the finger, back to the middle when let go. */
-.walk-stick {
-  position: absolute;
-  left: var(--sp-5);
-  bottom: var(--sp-5);
-  width: var(--stick);
-  height: var(--stick);
-  border-radius: 50%;
-  border: var(--line-2) solid var(--border-strong);
-  background: color-mix(in srgb, var(--bg) 70%, transparent);
-  touch-action: none;
-  z-index: 4;
-}
-.walk-stick[hidden] {
-  display: none;
-}
-/* The tour playing: a bar at the bottom middle of the drawing, the stop's name over its caption. */
-.tour-bar {
-  position: absolute;
-  left: 50%;
-  bottom: var(--sp-5);
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  max-width: min(var(--dialog-w-lg), calc(100% - 2 * var(--sp-4)));
-  padding: var(--sp-2);
-  border: var(--line) solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  background: var(--bg);
-  box-shadow: var(--shadow);
-  z-index: 5;
-}
-.tour-bar[hidden] {
-  display: none;
-}
-.tour-text {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 0 var(--sp-2);
-}
-.tour-title {
-  font-weight: 600;
-}
-.tour-caption {
-  color: var(--text-2);
-  font-size: var(--fs-sm);
-}
-.tour-caption[hidden] {
-  display: none;
-}
-.tour-rows {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, 2fr) var(--control-h) var(--control-h) var(--control-h);
-  gap: var(--sp-2);
-  align-items: center;
-  padding: var(--sp-3) var(--sp-4);
-}
-.tour-index {
-  color: var(--text-2);
-  font-size: var(--fs-sm);
-}
 .tour-hint,
 .tour-empty {
   padding: 0 var(--sp-4);
   color: var(--text-2);
   font-size: var(--fs-sm);
-}
-/* A point of interest's card, beside its disc. */
-.point-card {
-  position: absolute;
-  width: min(var(--point-card-w), calc(100% - 2 * var(--sp-4)));
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  padding: var(--sp-3);
-  border: var(--line) solid var(--accent);
-  border-radius: var(--radius-lg);
-  background: var(--bg);
-  box-shadow: var(--shadow);
-  z-index: 6;
-}
-.point-card[hidden] {
-  display: none;
-}
-.point-head {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-}
-.point-title {
-  flex: 1 1 auto;
-  font-weight: 600;
-}
-.point-text {
-  color: var(--text-2);
-  font-size: var(--fs-sm);
-  white-space: pre-wrap;
-}
-.point-text[hidden] {
-  display: none;
 }
 .projects-rows {
   display: flex;
@@ -872,30 +776,6 @@ button.project-name:hover {
 }
 .text-btn.danger {
   color: var(--warn);
-}
-.points-rows {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, 2fr) auto var(--control-h);
-  gap: var(--sp-2);
-  align-items: center;
-  padding: var(--sp-3) var(--sp-4);
-}
-.tour-seconds {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  font-size: var(--fs-sm);
-}
-.walk-knob {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: var(--stick-knob);
-  height: var(--stick-knob);
-  margin: calc(var(--stick-knob) / -2) 0 0 calc(var(--stick-knob) / -2);
-  border-radius: 50%;
-  background: var(--accent);
-  pointer-events: none;
 }
 .toast {
   position: absolute;
@@ -1653,62 +1533,6 @@ button.project-name:hover {
   color: var(--text-2);
   font-size: var(--fs-sm);
 }
-
-/* First-use tour */
-.tour-ring {
-  position: fixed;
-  z-index: 29;
-  border: var(--line-2) solid var(--accent);
-  border-radius: var(--radius-lg);
-  pointer-events: none;
-}
-.tour-scrim {
-  position: fixed;
-  z-index: 28;
-  background: var(--scrim);
-}
-.tour-ring[hidden] {
-  display: none;
-}
-.tour-card,
-.tour-offer {
-  width: min(var(--tour-w), calc(100vw - 2 * var(--sp-4)));
-  padding: var(--sp-3) var(--sp-4);
-  border: var(--line) solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  background: var(--bg);
-  box-shadow: var(--shadow);
-}
-.tour-card {
-  position: fixed;
-  z-index: 30;
-}
-.tour-card h2 {
-  margin: var(--sp-1) 0;
-  font-size: var(--fs-lg);
-}
-.tour-card p,
-.tour-offer p {
-  margin: 0 0 var(--sp-3);
-  color: var(--text-2);
-}
-.tour-count {
-  color: var(--text-2);
-  font-size: var(--fs-sm);
-}
-.tour-card .actions,
-.tour-offer .actions {
-  display: flex;
-  gap: var(--sp-1);
-  align-items: center;
-  justify-content: flex-end;
-}
-.tour-offer {
-  position: absolute;
-  left: var(--sp-3);
-  bottom: var(--sp-3);
-  z-index: 6;
-}
 .text-btn.primary {
   background: var(--accent);
   color: var(--accent-contrast);
@@ -1922,62 +1746,6 @@ button.project-name:hover {
 .dialog-xl {
   width: min(var(--dialog-w-xl), calc(100vw - 2 * var(--sp-4)));
 }
-/* The budget's sheet has nine columns: wider than the other tables. */
-.dialog-xl.budget-dialog {
-  width: min(var(--dialog-w-budget), calc(100vw - 2 * var(--sp-4)));
-}
-.schedule-tabs {
-  padding: var(--sp-3) var(--sp-4) 0;
-}
-/* The side panel's segmented buttons share its width and break their words to fit; here each tab takes
-   its own width, whole words in bold when chosen. */
-.schedule-tabs .segmented button {
-  flex: none;
-  padding: 0 var(--sp-3);
-  overflow: visible;
-}
-.schedule-tabs .segmented button .label {
-  display: inline;
-  overflow-wrap: normal;
-  white-space: nowrap;
-}
-.schedule-scroll {
-  max-height: var(--schedule-h);
-  overflow: auto;
-  margin: var(--sp-3) var(--sp-4);
-  border: var(--line) solid var(--border);
-  border-radius: var(--radius);
-}
-.schedule-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--fs-sm);
-  font-variant-numeric: tabular-nums;
-}
-.schedule-table th,
-.schedule-table td {
-  padding: var(--sp-1) var(--sp-2);
-  text-align: left;
-  white-space: nowrap;
-  border-bottom: var(--line) solid var(--border);
-}
-.schedule-table .num {
-  text-align: right;
-}
-.schedule-table thead th {
-  position: sticky;
-  top: 0;
-  background: var(--bg-2);
-  color: var(--text-2);
-  font-weight: 600;
-}
-.schedule-table tfoot td {
-  position: sticky;
-  bottom: 0;
-  background: var(--bg-2);
-  font-weight: 600;
-  border-bottom: 0;
-}
 /* Wall types: the list of types, and the chosen one's fields and layers beside it. */
 /* Wall types, materials, objects: only the body scrolls, the title and the buttons stay in sight (at
    880 px the 16 objects pushed Place and Edit below the fold). */
@@ -2094,26 +1862,6 @@ button.project-name:hover {
   background: var(--field);
   cursor: pointer;
 }
-/* The site dialog's hour through the day: the slider and the hour it is at. */
-.site-hour {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-}
-.site-hour input {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-/* The diagnostics panel's explanation under a problem, and its fix. */
-.debug-why {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: 0 var(--sp-2) var(--sp-2) var(--sp-6);
-  color: var(--text-2);
-  font-size: var(--fs-sm);
-}
 .units-body {
   padding: var(--sp-3) var(--sp-4);
 }
@@ -2186,17 +1934,6 @@ button.project-name:hover {
   padding-top: var(--sp-3);
   border-top: var(--line) solid var(--border);
 }
-/* Printing a plan (print-dialog.ts): the choices beside the page as it will print; one above the other
-   on a narrow window. */
-.print-dialog {
-  width: min(var(--dialog-w-xl), calc(100vw - 2 * var(--sp-4)));
-}
-.print-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-  gap: var(--sp-4);
-  padding: var(--sp-3) var(--sp-4);
-}
 .print-page {
   display: flex;
   align-items: center;
@@ -2205,20 +1942,6 @@ button.project-name:hover {
   border: var(--line) solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-2);
-}
-.print-preview {
-  max-width: 100%;
-  height: auto;
-  background: var(--paper);
-  box-shadow: 0 0 0 var(--line) var(--border);
-}
-.print-warn {
-  color: var(--warn);
-}
-@media (max-width: 720px) {
-  .print-body {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 .mat-note {
   margin: var(--sp-3) 0 0;
@@ -2279,100 +2002,6 @@ button.project-name:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
-.sheet-main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  min-width: 0;
-}
-.sheet-props {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
-  column-gap: var(--sp-4);
-}
-.sheet-props .mat-row {
-  grid-template-columns: 7rem minmax(0, 1fr);
-}
-.sheet-props .segmented button {
-  white-space: nowrap;
-}
-.sheet-tools {
-  display: flex;
-  gap: var(--sp-1);
-  align-items: center;
-}
-.sheet-page {
-  padding: var(--sp-2);
-  border: var(--line) solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-2);
-}
-.sheet-stack {
-  position: relative;
-  line-height: 0;
-}
-.sheet-preview {
-  width: 100%;
-  height: auto;
-  background: var(--paper);
-  box-shadow: 0 0 0 var(--line) var(--border);
-}
-.sheet-over {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  cursor: move;
-  touch-action: none;
-}
-.sheet-adds {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
-}
-.sheet-add {
-  display: flex;
-  flex: 1 1 16rem;
-  gap: var(--sp-1);
-}
-.sheet-add .select {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.sheet-add .btn {
-  white-space: nowrap;
-}
-.sheet-views {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-.sheet-view {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) repeat(4, auto) auto;
-  gap: var(--sp-1);
-  align-items: center;
-  padding: var(--sp-1);
-  border: var(--line) solid transparent;
-  border-radius: var(--radius);
-}
-.sheet-view.picked {
-  border-color: var(--accent);
-}
-.sheet-view .num-field {
-  width: 6rem;
-}
-.sheet-view-name {
-  overflow: hidden;
-  padding: var(--sp-1) var(--sp-2);
-  border: 0;
-  background: none;
-  color: var(--text);
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-}
 .section-main {
   display: flex;
   flex-direction: column;
@@ -2388,9 +2017,6 @@ button.project-name:hover {
 @media (max-width: 720px) {
   .sheet-body {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .sheet-view {
-    grid-template-columns: minmax(0, 1fr) auto auto;
   }
 }
 .layer-editor h3 {
@@ -2531,299 +2157,9 @@ button.project-name:hover {
     grid-template-columns: max-content minmax(0, 1.2fr) repeat(2, minmax(0, 1fr)) minmax(0, 1fr) minmax(0, 0.7fr) max-content max-content;
   }
 }
-/* The rules scroll inside the dialog: the findings and the buttons stay in sight. */
-.rules-scroll {
-  max-height: 52vh;
-  overflow: auto;
-}
-/* A pack's name and where it holds, over its rules, across the grid. */
-.rules-pack {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-1) var(--sp-3);
-  align-items: baseline;
-  margin-top: var(--sp-3);
-  padding-bottom: var(--sp-1);
-  border-bottom: var(--line) solid var(--border);
-}
-.rules-pack span {
-  color: var(--text-2);
-  font-size: var(--fs-sm);
-}
-.rules-what {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  min-width: 0;
-}
-.rules-uses summary {
-  color: var(--text-2);
-  font-size: var(--fs-sm);
-  cursor: pointer;
-}
-.rules-use {
-  display: flex;
-  gap: var(--sp-1);
-  align-items: center;
-  font-size: var(--fs-sm);
-}
-.rules-add {
-  justify-self: start;
-}
-.rules-new {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
-  align-items: center;
-  padding: 0 var(--sp-4) var(--sp-3);
-}
-/* The budget dialog (ui/budget-dialog.ts): its bars of controls, the sheet scrolling, the totals. */
-.budget-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  padding: 0 var(--sp-4) var(--sp-3);
-}
-.budget-body h3 {
-  margin: var(--sp-2) 0 0;
-  font-size: var(--fs-md);
-}
-.budget-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2) var(--sp-3);
-  align-items: center;
-}
-.budget-bar input[type='search'] {
-  flex: 1 1 var(--lot-col);
-}
-.budget-base {
-  color: var(--text-2);
-  font-size: var(--fs-sm);
-  flex: 1 1 auto;
-}
-.budget-bdi {
-  display: flex;
-  gap: var(--sp-2);
-  align-items: center;
-}
-.budget-results {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-.budget-result {
-  text-align: left;
-  font-size: var(--fs-sm);
-}
-.budget-scroll {
-  max-height: 46vh;
-  overflow: auto;
-  padding: 0 var(--sp-4);
-}
-.budget-body .budget-scroll {
-  padding: 0;
-}
-.budget-sheet td {
-  vertical-align: top;
-  /* The price's source and its buttons wrap under it: on one line they widened the sheet past the dialog. */
-  white-space: normal;
-}
-.budget-dialog .schedule-table .num-field {
-  width: calc(6 * var(--sp-4));
-}
-.budget-sheet .budget-money {
-  white-space: nowrap;
-}
-.budget-sheet .budget-stage .select {
-  min-width: calc(7 * var(--sp-4));
-}
-.budget-small {
-  display: block;
-  margin-left: auto;
-  padding: 0;
-  font-size: var(--fs-xs);
-  text-align: right;
-}
-/* Narrow fields: a code of six digits, a unit, a price; the description takes the rest. */
-.budget-sheet .budget-code {
-  width: calc(5 * var(--sp-4));
-}
-.budget-sheet .budget-desc {
-  width: 100%;
-  min-width: calc(8 * var(--sp-4));
-}
-.budget-sheet .budget-unit {
-  width: calc(3 * var(--sp-4));
-}
-.budget-sheet .num-field {
-  width: calc(7 * var(--sp-4));
-}
-.budget-sheet .select {
-  max-width: calc(9 * var(--sp-4));
-}
-.budget-from {
-  display: block;
-  color: var(--text-3);
-  font-size: var(--fs-xs);
-}
-.budget-extras {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  align-items: flex-start;
-}
-.budget-extra {
-  display: flex;
-  gap: var(--sp-2);
-  align-items: center;
-}
-.budget-total {
-  width: auto;
-  align-self: flex-end;
-}
-.lot-body .budget-total {
-  margin-top: var(--sp-3);
-}
-/* The services dialog (ui/services-dialog.ts): its marks, the system swatches and the drawings. */
-.services-ok {
-  color: var(--ok);
-}
-.services-bad {
-  color: var(--error);
-}
-.services-swatch {
-  display: inline-block;
-  width: var(--sp-3);
-  height: var(--sp-3);
-  margin-right: var(--sp-2);
-  border-radius: var(--radius);
-  vertical-align: middle;
-}
-.services-link {
-  padding: 0;
-}
-.services-diagram,
-.services-iso {
-  color: var(--text);
-  padding: var(--sp-2) 0;
-}
-.services-diagram svg {
-  max-width: 100%;
-  height: auto;
-}
-.services-iso svg {
-  width: 100%;
-  height: auto;
-  /* Whole in the dialog under its bar, without scrolling. */
-  max-height: 40vh;
-}
-/* The approval dialog (ui/approval-dialog.ts): its summary, the steps scrolling, each with its documents. */
-.approval-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2) var(--sp-4);
-  align-items: center;
-  padding: 0 var(--sp-4) var(--sp-2);
-  color: var(--text-2);
-  font-size: var(--fs-sm);
-}
-.approval-scroll {
-  max-height: 58vh;
-  overflow: auto;
-  padding: 0 var(--sp-4) var(--sp-3);
-}
-.approval-step {
-  padding: var(--sp-2) 0 var(--sp-3);
-  border-bottom: var(--line) solid var(--border);
-}
-.approval-step-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2) var(--sp-3);
-  align-items: center;
-  margin-bottom: var(--sp-2);
-}
-.approval-step-head > .text-field {
-  flex: 1 1 var(--lot-col);
-  font-weight: 600;
-}
-.approval-est {
-  display: flex;
-  gap: var(--sp-2);
-  align-items: center;
-}
-.approval-est .num-field {
-  width: calc(7 * var(--sp-4));
-}
-.approval-docs td {
-  white-space: normal;
-  vertical-align: top;
-}
-.approval-docs td:first-child {
-  width: 40%;
-}
-.approval-docs .text-field {
-  width: 100%;
-}
 .approval-done .text-field,
 .approval-na .text-field {
   color: var(--text-2);
-}
-/* The lot dialog (ui/lot-dialog.ts): its fields two to a row, then the table of areas. */
-.lot-body {
-  max-height: 70vh;
-  overflow: auto;
-  padding: 0 var(--sp-4) var(--sp-3);
-}
-.lot-body h3 {
-  margin: var(--sp-3) 0 var(--sp-2);
-  font-size: var(--fs-md);
-}
-.lot-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--lot-col), 1fr));
-  gap: var(--sp-2) var(--sp-4);
-}
-.lot-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  font-size: var(--fs-sm);
-  color: var(--text-2);
-}
-/* The office's logo in the lot dialog: small, beside its buttons. */
-.lot-logo {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-2);
-}
-.lot-logo img {
-  max-width: var(--types-list-w);
-  max-height: var(--thumb-lg);
-  padding: var(--sp-1);
-  border: var(--line) solid var(--border);
-  border-radius: var(--radius);
-  background: var(--paper);
-}
-/* The design rain over the rain table: the place, the return and the number side by side, each its own width. */
-.services-rain {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--field-min-w), var(--types-list-w)));
-  gap: var(--sp-3);
-  align-items: end;
-  margin-bottom: var(--sp-2);
-}
-.lot-num {
-  display: flex;
-  gap: var(--sp-1);
-  align-items: center;
-}
-.lot-num .text-field {
-  flex: 1 1 auto;
-  min-width: 0;
 }
 .lot-areas table {
   width: 100%;
@@ -2855,46 +2191,6 @@ button.project-name:hover {
   height: var(--sp-4);
   accent-color: var(--accent);
 }
-.rules-none {
-  color: var(--text-3);
-  padding-left: var(--sp-2);
-}
-.rules-off {
-  color: var(--text-3);
-}
-.rules-title {
-  margin: var(--sp-2) var(--sp-4) 0;
-  font-size: var(--fs-md);
-}
-.rules-findings {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  padding: var(--sp-2) var(--sp-4) var(--sp-3);
-  max-height: 30vh;
-  overflow-y: auto;
-}
-.rules-finding {
-  display: flex;
-  gap: var(--sp-2);
-  align-items: flex-start;
-  padding: var(--sp-2);
-  border: var(--line) solid var(--border);
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.rules-finding:hover {
-  background: var(--hover);
-}
-.rules-finding svg {
-  flex: none;
-  color: var(--warn);
-  margin-top: var(--sp-1);
-}
 .text-field {
   height: var(--field-h);
   padding: 0 var(--sp-2);
@@ -2915,98 +2211,6 @@ textarea.text-field {
 }
 .dialog .actions .spacer {
   flex: 1;
-}
-
-/* Diagnostics (F7, debug-panel.ts): over the drawing's left side, under the top bar; scrolls inside. */
-.debug-panel {
-  position: fixed;
-  /* Under the title bar, the ribbon and the views' strip (the old rail at the left is gone). */
-  top: calc(var(--chrome-top) + var(--sp-4));
-  left: var(--sp-3);
-  width: min(var(--debug-w), calc(100vw - 2 * var(--sp-4)));
-  max-height: calc(100vh - var(--chrome-top) - var(--foot-h) - 2 * var(--sp-4));
-  overflow-y: auto;
-  z-index: 15;
-  background: var(--bg);
-  border: var(--line) solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  font-size: var(--fs-sm);
-}
-.debug-panel[hidden] {
-  display: none;
-}
-.debug-hint {
-  flex: 1;
-  color: var(--text-3);
-  font-size: var(--fs-xs);
-  padding: 0 var(--sp-2);
-}
-.debug-section {
-  padding: var(--sp-2) var(--sp-3);
-  border-top: var(--line) solid var(--border);
-}
-.debug-section h3 {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: 0 0 var(--sp-2);
-  font-size: var(--fs-sm);
-}
-.debug-section p {
-  margin: 0 0 var(--sp-1);
-  color: var(--text-2);
-}
-.debug-list {
-  display: grid;
-  gap: var(--sp-1);
-}
-.debug-row {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0 var(--sp-2);
-  align-items: baseline;
-  padding: var(--sp-1) var(--sp-2);
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: var(--bg-2);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-}
-.debug-row:hover {
-  background: var(--field);
-}
-.debug-dot {
-  width: var(--sp-2);
-  height: var(--sp-2);
-  border-radius: 50%;
-  background: var(--text-3);
-}
-.debug-row.error .debug-dot {
-  background: var(--error);
-}
-.debug-row.warn .debug-dot {
-  background: var(--warn);
-}
-.debug-ids {
-  grid-column: 2;
-  color: var(--text-2);
-}
-.debug-ok {
-  color: var(--text-3);
-}
-.debug-mono,
-.debug-error {
-  margin: 0;
-  font-family: ui-monospace, monospace;
-  font-size: var(--fs-xs);
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: var(--text-2);
-}
-.debug-error {
-  color: var(--error);
 }
 
 /* The frame (shell.ts), as the interface model: a dark title bar, the ribbon's tabs, the ribbon, the

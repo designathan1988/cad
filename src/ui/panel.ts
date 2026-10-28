@@ -42,8 +42,6 @@ export interface PanelInput {
   readonly kind: { readonly kind: AnyKind; readonly items: readonly unknown[] } | null;
   /** Walls whose exterior face does not meet the face of the wall they stand on (app/stacked.ts). */
   readonly stacked: readonly StackedStep[];
-  /** What of the selection is outside the norms (rules/check.ts), as lines to read. */
-  readonly norms: readonly string[];
 }
 
 export interface PanelActions {
@@ -63,15 +61,10 @@ export interface PanelActions {
   readonly close: () => void;
   /** A section's drawing shown (its panel's button). */
   readonly openSection?: (id: string) => void;
-  /** A callout's enlarged detail made on a sheet (a note's panel's button). */
-  readonly detailFor?: (id: string) => void;
   /** The rooms' interior elevations made (a room's panel's button). */
   readonly interiorElevations?: (ids: readonly string[]) => void;
   /** A reference's calibration begun (its panel's button). */
   readonly calibrate?: (id: string) => void;
-  /** A spot height begun on a terrain (its panel's button). */
-  readonly addSpot?: (id: string) => void;
-  readonly outlineTerrain?: (id: string) => void;
   /** The model's derived geometry, for the kinds' readouts measured on it. */
   readonly geometry?: DerivedGeometry;
   readonly opening: OpeningPanelActions;
@@ -160,7 +153,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     const title = kind.title ? kind.title(items) : { icon: kind.icon, text: n === 1 ? t(kind.one) : t(kind.many, { n }) };
     nodes.push(head(title.icon, title.text));
     part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, { dispatch: act.dispatch, doc, ...(act.room.startFloorHole ? { startFloorHole: act.room.startFloorHole } : {}), ...(act.openSection ? { openSection: act.openSection } : {}), ...(act.interiorElevations ? { interiorElevations: act.interiorElevations } : {}), ...(act.detailFor ? { detailFor: act.detailFor } : {}), ...(act.calibrate ? { calibrate: act.calibrate } : {}), ...(act.addSpot ? { addSpot: act.addSpot } : {}), ...(act.outlineTerrain ? { outlineTerrain: act.outlineTerrain } : {}), ...(act.geometry ? { geometry: act.geometry } : {}) }), items));
+    nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, { dispatch: act.dispatch, doc, ...(act.room.startFloorHole ? { startFloorHole: act.room.startFloorHole } : {}), ...(act.openSection ? { openSection: act.openSection } : {}), ...(act.interiorElevations ? { interiorElevations: act.interiorElevations } : {}), ...(act.calibrate ? { calibrate: act.calibrate } : {}), ...(act.geometry ? { geometry: act.geometry } : {}) }), items));
     if (kind.hint) nodes.push(el('div', { class: 'panel-hint' }, t(kind.hint)));
     const problem = kind.warning?.(items, doc) ?? null;
     if (problem) {
@@ -190,13 +183,6 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     empty.innerHTML = icon('pointer', 22);
     empty.append(el('strong', {}, t('panel.nothing')), el('span', {}, t('panel.nothingHint')));
     nodes.push(empty);
-  }
-  // What of the selection is outside the project's norms (rules/), each with its source.
-  if (input.norms.length > 0) {
-    const box = el('div', { class: 'warn-list', role: 'status' });
-    box.innerHTML = icon('warning', 16);
-    box.append(el('div', {}, el('strong', {}, t('rules.outside')), ...input.norms.map((line) => el('div', {}, line))));
-    nodes.push(box);
   }
   // A control of the panel that had the focus has it again in the panel drawn anew: a list changed with
   // the arrow keys took one step, then the focus fell to the page and the next keys went to the app.

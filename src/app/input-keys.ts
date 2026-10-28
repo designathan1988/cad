@@ -1,5 +1,5 @@
 // The drawing's keys (input.ts): shortcuts, the tools' keys, the arrows, Escape, Enter, Delete, Alt for
-// a guide, walking. What the pointer side shares with them comes in `k`.
+// a guide. What the pointer side shares with them comes in `k`.
 
 import { comboOf, resolveKey } from './keymap';
 import type { Point2 } from '../core/vector';
@@ -10,10 +10,6 @@ import { showHelp } from './input';
 import { selectGestures } from './select-drag';
 import { arrowStep } from '../tools/nudge';
 import { guideBaseAt } from '../tools/guide-tool';
-
-
-/** The keys held to walk (walk.ts): they move the walker each frame; let go, it stops. */
-export const WALK_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift']);
 
 /** What the keys share with the pointer (input.ts). */
 export interface KeyContext {
@@ -50,43 +46,6 @@ export function wireKeys(app: App, k: KeyContext): void {
     if (levelList) shell.level.blur();
     else if (!measureAlt && (target.closest('input, select, textarea') || target.closest('.dialog-back') || !shell.helpBack.hidden)) return;
     k.shift = e.shiftKey;
-    // The diagnostics panel, from anywhere but a dialog's field.
-    if (e.key === 'F7') {
-      e.preventDefault();
-      return app.toggleDebug();
-    }
-    // A tour playing: the arrows go from stop to stop, Space pauses, Esc stops; the rest waits.
-    if (app.tour && !ctrl) {
-      if (key === 'arrowright' || key === 'arrowleft') {
-        e.preventDefault();
-        return app.tourStep(key === 'arrowright' ? 1 : -1);
-      }
-      if (key === ' ') {
-        e.preventDefault();
-        return app.tourPause();
-      }
-      if (key === 'escape') return app.stopTour();
-      return;
-    }
-    if (app.walker && !ctrl) {
-      if (WALK_KEYS.has(key)) {
-        e.preventDefault();
-        app.walkKeys.add(key);
-        return;
-      }
-      if (key === 'escape' || key === '3') return app.exitWalk();
-      if (key === 'c') return app.toggleWalkThrough();
-      if (key === '+' || key === '=' || key === '-') {
-        e.preventDefault();
-        return app.walkEye(key === '-' ? -0.1 : 0.1);
-      }
-      if (key === 'pageup' || key === 'pagedown') {
-        e.preventDefault();
-        return app.walkLevel(key === 'pageup' ? 1 : -1);
-      }
-      // Everything else waits: walking is not editing.
-      return;
-    }
     // Tab, drawing: what is under the pointer besides the snap offered (a wall's end under a door's).
     if (key === 'tab' && !ctrl && !e.altKey && !e.shiftKey && k.nextSnap()) {
       e.preventDefault();
@@ -115,11 +74,6 @@ export function wireKeys(app: App, k: KeyContext): void {
     if (ctrl && key === 's') {
       e.preventDefault();
       return app.saveFile();
-    }
-    // The plan printed at its scale (the browser's own print would take the whole interface).
-    if (ctrl && key === 'p') {
-      e.preventDefault();
-      return app.openPrint();
     }
     if (ctrl && key === 'y') {
       e.preventDefault();
@@ -240,10 +194,6 @@ export function wireKeys(app: App, k: KeyContext): void {
       if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'grid') return app.gridEscape();
       if (ui.tool === 'section') return app.sectionEscape();
-      if (ui.tool === 'spot') {
-        ui.spotFor = null;
-        return app.setTool('select');
-      }
       if (ui.tool === 'calibrate') {
         ui.calibrate = null;
         return app.setTool('select');
@@ -263,11 +213,6 @@ export function wireKeys(app: App, k: KeyContext): void {
         if (ui.railingDraft.length === 0) return app.setTool('select');
         return app.railingFinish();
       }
-      if (ui.tool === 'mepPoint') return app.setTool('select');
-      if (ui.tool === 'mepRun') {
-        if (ui.mepDraft.length === 0) return app.setTool('select');
-        return app.mepRunFinish();
-      }
       if (ui.tool === 'stair') {
         if (!ui.stairFrom) return app.setTool('select');
         ui.stairFrom = null;
@@ -278,14 +223,9 @@ export function wireKeys(app: App, k: KeyContext): void {
         ui.roofDraft = [];
         return app.render();
       }
-      if (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain') {
+      if (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') {
         if (!ui.beamFrom) return app.setTool('select');
         ui.beamFrom = null;
-        return app.render();
-      }
-      if (ui.tool === 'tag') {
-        if (!ui.tagFor) return app.setTool('select');
-        ui.tagFor = null;
         return app.render();
       }
       if (ui.tool === 'mark') {
@@ -315,8 +255,7 @@ export function wireKeys(app: App, k: KeyContext): void {
     // Enter ends what is being drawn by points: a roof's outline, a guardrail's path, a beam chain.
     if (e.key === 'Enter' && ui.tool === 'roof' && ui.roofDraft.length > 0) return app.roofFinish();
     if (e.key === 'Enter' && ui.tool === 'railing' && ui.railingDraft.length > 0) return app.railingFinish();
-    if (e.key === 'Enter' && ui.tool === 'mepRun' && ui.mepDraft.length > 0) return app.mepRunFinish();
-    if (e.key === 'Enter' && (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'cloud' || ui.tool === 'curtain') && ui.beamFrom) {
+    if (e.key === 'Enter' && (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom) {
       ui.beamFrom = null;
       return app.render();
     }
@@ -385,7 +324,6 @@ export function wireKeys(app: App, k: KeyContext): void {
     if (key === 's') return app.toggleSnaps();
     if (key === 'k' && !ctrl && !e.shiftKey) return app.toggleCollisions();
     if (key === '1') return app.setView('3d');
-    if (key === '3') return app.enterWalk();
     if (key === '2') return app.setView('plan');
   });
 }

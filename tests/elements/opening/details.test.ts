@@ -66,7 +66,7 @@ describe('details', () => {
     expect(Math.max(...ys(partsOf(slider, { open: 1 }), 'leaf').map(Math.abs))).toBeLessThan(0.1);
   });
 
-  it('walking draws it fully open whatever is set', () => {
+  it('opened in the view, it is drawn fully open whatever is set', () => {
     expect(partsOf(door, { open: 0 }, true)).toEqual(partsOf(door, { open: 1 }));
   });
 

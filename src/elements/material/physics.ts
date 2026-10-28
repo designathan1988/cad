@@ -1,10 +1,10 @@
-// The materials' physics for the simulations (docs/plano-de-escopo.md, phase 14): conductivity,
-// density and specific heat from NBR 15220-2's table B.3 (as in its 2003 draft text, to confirm in the
-// edition in force), the water vapour resistance factor as building physics tables give it (typical
-// values, to confirm in ISO 10456), and what a wall of it takes from a Wi-Fi signal (adopted, from
-// site survey guides). A project's material may carry its own; the built-in ones have these. Pure.
+// A material's physics, as data of the material: conductivity, density and specific heat from NBR
+// 15220-2's table B.3 (as in its 2003 draft text, to confirm in the edition in force), the water vapour
+// resistance factor as building physics tables give it (typical values, to confirm in ISO 10456), and
+// what a wall of it takes from a Wi-Fi signal (adopted, from site survey guides). A project's material
+// may carry its own; the built-in ones have these. Pure.
 
-import type { Material } from '../elements/material/schema';
+import type { Material } from './schema';
 
 export interface MaterialPhysics {
   /** λ, W/(m·K). */
@@ -47,7 +47,7 @@ export const DEFAULT_PHYSICS: Readonly<Record<string, MaterialPhysics & { readon
   screed: { conductivity: 1.15, density: 2000, specificHeat: 1.0, vapour: 10, wifiLoss: 2, source: 'NBR 15220-2 B.3: argamassa comum' },
 };
 
-/** A material's physics: its own, else the table's for its id, else none (it is said in the results). */
+/** A material's physics: its own, else the table's for its id, else none. */
 export function physicsOf(m: Material): MaterialPhysics | null {
   return m.physics ?? DEFAULT_PHYSICS[m.id] ?? null;
 }
@@ -59,17 +59,3 @@ export const isPhysics = (x: unknown): x is MaterialPhysics => {
   const o = x as Record<string, unknown>;
   return [o.conductivity, o.density, o.specificHeat, o.vapour, o.wifiLoss].every(finite) && (o.conductivity as number) > 0 && (o.density as number) > 0 && (o.specificHeat as number) > 0 && (o.vapour as number) >= 1 && (o.wifiLoss as number) >= 0;
 };
-
-/**
- * A surface's solar absorptance from its colour: one less its reflectance, the colour's relative
- * luminance (sRGB). An estimate: a paint's own measured value is what NBR 15575 asks for.
- */
-export function absorptanceOf(color: string): number {
-  const n = parseInt(color.slice(1), 16);
-  const lin = (v: number) => {
-    const c = v / 255;
-    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  };
-  const y = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
-  return Math.round((1 - y) * 100) / 100;
-}

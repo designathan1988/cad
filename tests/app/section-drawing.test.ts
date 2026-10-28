@@ -1,4 +1,4 @@
-// Sections and elevations drawn from the model, and sheets (phase 10), on a box worked out by hand:
+// Sections and elevations drawn from the model (phase 10), on a box worked out by hand:
 // 4 × 3 m between the axes of 15 cm walls, 2.8 m high. A section across it at x = 1, looking west (−x):
 // its line runs north from y = −1, so a point's distance along it is y + 1, and the walls it cuts are
 // the south one (y = 0) and the north one (y = 3), each 15 cm thick from the floor to 2.8 m.
@@ -10,8 +10,6 @@ import { featureEdges, loopsOf, modelSolids, outlineOf, sectionDims, sectionDraw
 import type { Point3 } from '../../src/app/section-box';
 import { elevationsAround, elevationsInside, isSectionMark, lookOf, nextSectionName, type SectionMark } from '../../src/elements/section/schema';
 import { flipSections, renameSection, setSectionDepth } from '../../src/elements/section/commands';
-import { addSheet, addViewport, deleteSheet, moveSheet, sheetsOf, updateSheet, updateViewport } from '../../src/elements/sheet/commands';
-import { drawingArea, frameOf, isSheet, isViewport, nextSheetNumber, type Sheet } from '../../src/elements/sheet/schema';
 import { readProject, writeProject } from '../../src/io/project-file';
 import { newOpening } from '../../src/elements/opening/schema';
 import { levelOfSolid } from '../../src/elements/registry';
@@ -85,10 +83,6 @@ describe('a section drawn from the model', () => {
     expect(dims.heights).toEqual([0, expect.closeTo(2.8, 6)]);
     // The length of what it cuts: the south wall's outer face to the north wall's (0.925 to 4.075 along the line).
     expect(dims.along).toEqual([expect.closeTo(0.925, 6), expect.closeTo(4.075, 6)]);
-    // A terrain wider than the house is cut too, but it is ground: the length is still the house's.
-    const withGround = { ...doc, terrains: [{ id: 'terrain_1', levelId: 'lvl_ground', outline: [{ x: -6, y: -6 }, { x: 10, y: -6 }, { x: 10, y: 10 }, { x: -6, y: 10 }], spots: [{ x: 0, y: 0, z: -0.2 }], interval: 0.5 }] };
-    const grounded = sectionDims(sectionDrawing(withGround, modelSolids(withGround, deriveGeometry(withGround)), across))!;
-    expect(grounded.along).toEqual([expect.closeTo(0.925, 6), expect.closeTo(4.075, 6)]);
     // Cutting nothing: all it shows.
     expect(sectionDims({ box: box2, levels: [], cutBox: null })!.along).toEqual([0.9, 4.1]);
   });
@@ -317,72 +311,19 @@ describe('section marks', () => {
     expect(isSectionMark({ ...across, end: across.start })).toBe(false);
     expect(isSectionMark({ ...across, kind: 'plan' })).toBe(false);
   });
-});
 
-describe('sheets', () => {
-  const sheet: Sheet = {
-    id: 'sheet_1',
-    number: 'A-01',
-    name: 'Planta',
-    paper: 'A3',
-    landscape: true,
-    viewports: [{ id: 'vp_1', kind: 'plan', levelId: 'lvl_ground', den: 50, at: { x: 100, y: 80 }, w: 120, h: 90, center: { x: 2, y: 1.5 } }],
-  };
-
-  it('numbered on from the highest A-nn', () => {
-    expect(nextSheetNumber([])).toBe('A-01');
-    expect(nextSheetNumber([sheet, { ...sheet, id: 'sheet_2', number: 'A-07' }, { ...sheet, id: 'sheet_3', number: 'Capa' }])).toBe('A-08');
-  });
-
-  it('a view is checked: its scale one offered, its size positive, its schedule one there is', () => {
-    expect(isViewport(sheet.viewports[0])).toBe(true);
-    expect(isViewport({ ...sheet.viewports[0], den: 33 })).toBe(false);
-    expect(isViewport({ ...sheet.viewports[0], h: 0 })).toBe(false);
-    expect(isViewport({ id: 'vp_2', kind: 'schedule', schedule: 'rooms', at: { x: 10, y: 10 }, w: 100 })).toBe(true);
-    expect(isViewport({ id: 'vp_2', kind: 'schedule', schedule: 'cats', at: { x: 10, y: 10 }, w: 100 })).toBe(false);
-    expect(isViewport({ id: 'vp_3', kind: 'section', sectionId: 'sec_a', den: 100, at: { x: 10, y: 10 }, w: 100, h: 50, center: { x: 0, y: 1 } })).toBe(true);
-    expect(isSheet({ ...sheet, paper: 'B5' })).toBe(false);
-  });
-
-  it('a view framed round its middle; the drawing area keeps clear of the border and the title block', () => {
-    expect(frameOf(sheet.viewports[0]!)).toEqual({ x0: 40, y0: 35, x1: 160, y1: 125 });
-    const a = drawingArea(sheet);
-    expect(a.x0).toBeGreaterThan(10);
-    expect(a.y1).toBeLessThan(297 - 10 - 36);
-  });
-
-  it('commands: added, renumbered (not to one taken), reordered, a view moved, deleted', () => {
-    let doc: Doc = addSheet(sheet).apply(box());
-    doc = addSheet({ ...sheet, id: 'sheet_2', number: 'A-02', viewports: [] }).apply(doc);
-    expect(sheetsOf(doc).map((s) => s.number)).toEqual(['A-01', 'A-02']);
-    expect(updateSheet('sheet_2', { number: 'A-01' }).apply(doc)).toBe(doc);
-    expect(updateSheet('sheet_2', { number: ' ' }).apply(doc)).toBe(doc);
-    expect(sheetsOf(updateSheet('sheet_2', { name: 'Cortes', landscape: false }).apply(doc))[1]).toMatchObject({ name: 'Cortes', landscape: false });
-    expect(sheetsOf(moveSheet('sheet_2', -1).apply(doc)).map((s) => s.id)).toEqual(['sheet_2', 'sheet_1']);
-    expect(moveSheet('sheet_1', -1).apply(doc)).toBe(doc);
-    const moved = updateViewport('sheet_1', 'vp_1', { at: { x: 150, y: 100 } }).apply(doc);
-    expect(sheetsOf(moved)[0]!.viewports[0]).toMatchObject({ id: 'vp_1', kind: 'plan', at: { x: 150, y: 100 } });
-    // A change that would make it no view at all changes nothing.
-    expect(updateViewport('sheet_1', 'vp_1', { w: -5 }).apply(doc)).toBe(doc);
-    const more = addViewport('sheet_2', { id: 'vp_9', kind: 'schedule', schedule: 'sheets', at: { x: 20, y: 20 }, w: 80 }).apply(doc);
-    expect(sheetsOf(more)[1]!.viewports).toHaveLength(1);
-    expect(sheetsOf(deleteSheet('sheet_1').apply(doc)).map((s) => s.id)).toEqual(['sheet_2']);
-  });
-
-  it('kept in the file with the sections; a view that is not one is left out', () => {
-    const doc: Doc = { ...box(), sections: [across], sheets: [{ ...sheet, viewports: [...sheet.viewports, { id: 'vp_x', kind: 'plan' } as never] }] };
+  it('kept in the file', () => {
+    const doc: Doc = { ...box(), sections: [across] };
     const r = readProject(writeProject(doc));
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.doc.sections).toEqual([across]);
-    expect(sheetsOf(r.doc)).toEqual([sheet]);
   });
 
-  it('an older file has neither', () => {
-    const r = readProject(JSON.stringify({ ...box(), version: 30, sections: undefined, sheets: undefined }));
+  it('an older file has none', () => {
+    const r = readProject(JSON.stringify({ ...box(), version: 30, sections: undefined }));
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.doc.sections).toEqual([]);
-    expect(r.doc.sheets).toBeUndefined();
   });
 });

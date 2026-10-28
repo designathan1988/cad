@@ -36,10 +36,10 @@ export type OpeningHandle = 'start' | 'end' | 'head' | 'sill';
 /** A handle's reach from its centre (px); 22 (a 44 px target) on touch. */
 const reach = (): number => (matchMedia('(pointer: coarse)').matches ? 22 : 10);
 
-/** The selected object's handles on screen: one object selected with the select tool, not walking. */
+/** The selected object's handles on screen: one object selected with the select tool. */
 export function objectHandles(app: App): ScreenHandle[] {
   const { ui } = app;
-  if (ui.tool !== 'select' || ui.selection.size !== 1 || app.walker || ui.drag) return [];
+  if (ui.tool !== 'select' || ui.selection.size !== 1 || ui.drag) return [];
   const id = [...ui.selection][0]!;
   if (app.geometry.openings.has(id)) return openingHandles(app, id);
   const s = app.geometry.kinds.get('objects')?.get(id) as ObjectSolid | undefined;

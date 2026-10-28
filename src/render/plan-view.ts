@@ -20,7 +20,6 @@ import type { WallId } from '../elements/wall/schema';
 import { cutFill, type CutPattern } from '../elements/material/schema';
 import { hatchPattern } from './hatch';
 import { separateLabels } from '../app/dim-labels';
-import type { HeatLayer } from '../app/sim-map';
 
 /**
  * A 1 px line along a screen axis, moved onto pixel centres: drawn between two pixels it would be two
@@ -113,10 +112,6 @@ export interface PlanOverlay {
   readonly anchor?: Point2 | null;
   /** Wall numbers at the middle of the walls selected or under the pointer, as snap labels name them. */
   readonly wallTags?: readonly { readonly at: Point2; readonly text: string }[];
-  /** Where something is outside the norms (rules/): a warning sign there. */
-  readonly normMarks?: readonly Point2[];
-  /** A simulation's colours under the walls (app/sim-map.ts). */
-  readonly heat?: HeatLayer | null;
   /** Doors' and windows' type marks beside them (opening/marks.ts); `width` is the opening's (m). */
   readonly openingTags?: readonly { readonly at: Point2; readonly text: string; readonly width: number }[];
   /**
@@ -269,16 +264,6 @@ export class PlanView {
     this.center = fit.center;
   }
 
-  /** Points of interest (app/points.ts): a numbered disc each, over the drawing; the open one filled. */
-  drawPoints(points: readonly { readonly n: number; readonly at: Point2; readonly open: boolean }[]): void {
-    const { ctx } = this;
-    const css = getComputedStyle(document.documentElement);
-    const accent = css.getPropertyValue('--accent').trim();
-    const bg = css.getPropertyValue('--bg').trim();
-    const font = css.getPropertyValue('--font').trim() || 'sans-serif';
-    for (const p of points) drawPointDisc(ctx, this.toScreen(p.at), p.n, p.open, accent, bg, font);
-  }
-
   /** A pen's width in the plan's units: a pixel on screen for 0.12 mm (drawing/schema.ts). */
   pen(role: PenRole): number {
     return this.drawing.pens[role] / PEN_UNIT_MM;
@@ -392,20 +377,6 @@ export class PlanView {
         ctx.fill();
         ctx.restore();
       }
-    // A simulation's map over the floors and rooms, under the walls: its cells scaled to the plan, smoothed.
-    if (o.heat) {
-      const h = o.heat;
-      const img = document.createElement('canvas');
-      img.width = h.cols;
-      img.height = h.rows;
-      img.getContext('2d')?.putImageData(new ImageData(new Uint8ClampedArray(h.rgba), h.cols, h.rows), 0, 0);
-      const a = this.toScreen(h.origin);
-      const b = this.toScreen({ x: h.origin.x + h.cols * h.cell, y: h.origin.y - h.rows * h.cell });
-      ctx.save();
-      ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(img, a.x, a.y, b.x - a.x, b.y - a.y);
-      ctx.restore();
-    }
     // The room the room tool would make: the space under the pointer, dashed, as a room not yet there.
     if (o.roomSpace && o.roomSpace.length >= 3) {
       trace(o.roomSpace);
@@ -585,7 +556,6 @@ export class PlanView {
     // Dimensions over the room tags (contract.ts: layer top): a value under a room's name was lost.
     for (const x of kinds) if (x.kind.layer === 'top') x.kind.plan(paint, x.solid, shownLit(x.id));
     // Outside the norms: the warning sign, over the rest.
-    for (const m of o.normMarks ?? []) this.warnSign(this.toScreen(m), color('--warn'), color('--canvas'));
     if (draft) drawDimension(paint, draft, draft.text, color('--wall-sel'));
     if (o.draft && o.draft.length > 0) {
       ctx.save();
@@ -1128,26 +1098,6 @@ interface Box {
 }
 
 const overlaps = (a: Box, b: Box): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-
-
-/** A point of interest's disc: its number in it, the accent ring; filled when its card is open. */
-export const POINT_DISC_R = 11;
-export function drawPointDisc(ctx: CanvasRenderingContext2D, at: Point2, n: number, open: boolean, accent: string, bg: string, font: string): void {
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(at.x, at.y, POINT_DISC_R, 0, Math.PI * 2);
-  ctx.fillStyle = open ? accent : bg;
-  ctx.fill();
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = accent;
-  ctx.stroke();
-  ctx.fillStyle = open ? bg : accent;
-  ctx.font = `700 12px ${font}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(String(n), at.x, at.y + 0.5);
-  ctx.restore();
-}
 
 /**
  * A snap's mark, its shape saying what it is (as CAD programs draw them): a square at an end or a

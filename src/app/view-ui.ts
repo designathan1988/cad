@@ -93,8 +93,6 @@ export function setView3D(app: App, patch: Partial<View3D>): void {
 }
 
 export function setView(app: App, view: ViewId): void {
-  // The plan ends a walk; so does the 3D's own button (the walk is in the 3D view).
-  if (app.walker && (view !== '3d' || app.ui.view === '3d')) app.exitWalk();
   if (app.ui.view === view) return;
   app.ui.view = view;
   // Guides are the plan's: one being placed is dropped.
@@ -206,7 +204,7 @@ export function keepSelectionInView3d(app: App): boolean {
   const key = JSON.stringify([ids, covered]);
   if (key === app.seenSelection3d) return false;
   app.seenSelection3d = key;
-  if (app.ui.selection.size === 0 || app.ui.drag || app.ui.handleDrag || app.walker) return false;
+  if (app.ui.selection.size === 0 || app.ui.drag || app.ui.handleDrag) return false;
   if (covered.right === 0 && covered.bottom === 0 && !covered.left) return false;
   const box = boundsOf(app.geometry, app.ui.selection);
   if (!box) return false;
@@ -227,9 +225,7 @@ export function keepSelectionInView3d(app: App): boolean {
 export function covered(app: App): Insets {
   const vp = app.shell.viewport.getBoundingClientRect();
   const b = app.shell.browser.hidden ? null : app.shell.browser.getBoundingClientRect();
-  // The diagnostics panel (F7) lies over the drawing's left side too: what it frames shows beside it.
-  const d = app.debugOpen ? app.debugBox.getBoundingClientRect() : null;
-  const left = Math.max(b && b.width > 0 ? b.right - vp.left : 0, d && d.width > 0 ? d.right - vp.left : 0);
+  const left = b && b.width > 0 ? b.right - vp.left : 0;
   if (app.shell.panel.hidden) return { right: 0, bottom: 0, left };
   const p = app.shell.panel.getBoundingClientRect();
   if (p.width === 0 || p.height === 0) return { right: 0, bottom: 0, left };

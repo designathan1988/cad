@@ -1,5 +1,5 @@
 // What the ribbon holds (ui/ribbon.ts), by tab, as in the interface model (prototype v72): Home, Architecture,
-// Structure, Services, Site, Annotate, Analyze, View, Manage, Approval and Edit, and the File menu.
+// Structure, Annotate, View, Manage and Edit, and the File menu.
 // Only actions the app has (app/actions.ts); what is built
 // later gets a place here when it gets its action. Pressed states read the app's own.
 
@@ -17,7 +17,6 @@ import { type Field, ribbonFieldRows } from '../ui/fields';
 import type { WallDefaults } from './document';
 import { nextWallFields } from '../elements/wall/fields';
 import { nextOpeningFields, type OpeningSize } from '../elements/opening/fields';
-import { systemIn } from '../elements/mep/schema';
 import { nextFields } from './next-element';
 
 /** Every button with its short name (rib.s.<action>): the palette's full name stays its tooltip. */
@@ -62,8 +61,6 @@ function tabsOf(app: App): readonly RibbonTab[] {
     explains: true,
   });
   const select = { title: 'rib.p.select' as const, items: [tool('select', 'tool.select', 'pointer', 'L')] };
-  const point = (kind: string, icon: RibbonItem['icon']): RibbonItem => ({ id: `mep.point.${kind}`, icon, size: 'S', pressed: () => ui.tool === 'mepPoint' && ui.mepKind === kind });
-  const run = (system: string): RibbonItem => ({ id: `mep.run.${system}`, icon: 'guide', size: 'S', pressed: () => ui.tool === 'mepRun' && ui.mepSystem === system });
   // A level and the grid, the same in Architecture and Structure.
   const levels: RibbonItem = { id: 'level.edit', icon: 'levelsAll', size: 'S', short: 'rib.s.levelRef' };
   const grid = tool('grid', 'tool.grid', 'hash', 'S');
@@ -106,15 +103,13 @@ function tabsOf(app: App): readonly RibbonTab[] {
         },
         // The edits of a selection are on its own tab (Modify | …); these two work by clicking a wall.
         { title: 'rib.p.geometry', items: [tool('split', 'edit.split', 'split', 'S'), tool('corner', 'edit.corner', 'corner', 'S')] },
-        { title: 'rib.p.annotation', items: [tool('dimension', 'tool.dimension', 'dimension', 'L'), tool('note', 'edit.addNote', 'text', 'S'), tool('tag', 'tool.tag', 'tag', 'S'), tool('measure', 'tool.measure', 'ruler', 'S')] },
+        { title: 'rib.p.annotation', items: [tool('dimension', 'tool.dimension', 'dimension', 'L'), tool('note', 'edit.addNote', 'text', 'S'), tool('measure', 'tool.measure', 'ruler', 'S')] },
         {
           title: 'rib.p.views',
           items: [
-            { id: 'view.plan', icon: 'map', size: 'L', pressed: () => ui.view === 'plan' && app.walker === null },
-            { id: 'view.3d', icon: 'cube', size: 'L', pressed: () => ui.view === '3d' && app.walker === null },
-            { id: 'view.walk', icon: 'walk', size: 'S', pressed: () => app.walker !== null },
+            { id: 'view.plan', icon: 'map', size: 'L', pressed: () => ui.view === 'plan' },
+            { id: 'view.3d', icon: 'cube', size: 'L', pressed: () => ui.view === '3d' },
             tool('section', 'tool.section', 'cut', 'S'),
-            { id: 'view.sheets', icon: 'frame', size: 'S' },
           ],
         },
       ],
@@ -161,20 +156,6 @@ function tabsOf(app: App): readonly RibbonTab[] {
       panels: [select, { title: 'rib.p.structure', items: [tool('beam', 'tool.beam', 'beam', 'L'), tool('column', 'tool.column', 'column', 'L')] }, { title: 'rib.p.reference', items: [levels, grid] }],
     },
     {
-      id: 'services',
-      title: 'rib.tab.services',
-      panels: [
-        select,
-        ...tabsOfServices(point, run),
-        { title: 'rib.p.automatic', items: [{ id: 'mep.autoRoute', icon: 'guide', size: 'S', short: 'rib.s.autoRoute' }, { id: 'services.open', icon: 'table', size: 'S', short: 'rib.s.servicesSize' }] },
-      ],
-    },
-    {
-      id: 'terrain',
-      title: 'rib.tab.terrain',
-      panels: [select, { title: 'rib.p.terrainModel', items: [{ id: 'terrain.add', icon: 'map', size: 'L' }] }, { title: 'rib.p.lot', items: [{ id: 'lot.edit', icon: 'map', size: 'L' }] }],
-    },
-    {
       id: 'annotate',
       title: 'rib.tab.annotate',
       panels: [
@@ -190,20 +171,8 @@ function tabsOf(app: App): readonly RibbonTab[] {
             { id: 'dim.auto', icon: 'dimension', size: 'S' },
           ],
         },
-        { title: 'rib.p.detail', items: [tool('cloud', 'tool.cloud', 'warning', 'S')] },
         { title: 'rib.p.text', items: [tool('note', 'edit.addNote', 'text', 'L'), tool('callout', 'tool.callout', 'text', 'S')] },
-        { title: 'rib.p.tags', items: [tool('tag', 'tool.tag', 'tag', 'L'), { id: 'settings.openingTags', icon: 'tag', size: 'S', short: 'rib.s.openingTagsShort', pressed: () => ui.openingTags }] },
-      ],
-    },
-    {
-      id: 'analyze',
-      title: 'rib.tab.analyze',
-      panels: [
-        select,
-        { title: 'rib.p.norms', items: [{ id: 'rules.edit', icon: 'warning', size: 'L' }, { id: 'rules.report', icon: 'download', size: 'S' }] },
-        { title: 'rib.p.simulations', items: [{ id: 'sim.open', icon: 'sun', size: 'L' }] },
-        { title: 'rib.p.quantities', items: [{ id: 'budget.open', icon: 'table', size: 'L' }, { id: 'view.schedules', icon: 'table', size: 'S' }] },
-        { title: 'rib.p.coordination', items: [{ id: 'services.open', icon: 'table', size: 'L', short: 'rib.s.servicesCheck' }] },
+        { title: 'rib.p.tags', items: [{ id: 'settings.openingTags', icon: 'tag', size: 'L', short: 'rib.s.openingTagsShort', pressed: () => ui.openingTags }] },
       ],
     },
     {
@@ -221,27 +190,16 @@ function tabsOf(app: App): readonly RibbonTab[] {
           ],
         },
         {
-          title: 'rib.p.presentation',
-          items: [
-            { id: 'view.walk', icon: 'walk', size: 'L', pressed: () => app.walker !== null },
-            { id: 'view.image', icon: 'download', size: 'S' },
-            { id: 'view.tourEdit', icon: 'play', size: 'S' },
-            { id: 'view.points', icon: 'pin', size: 'S' },
-          ],
-        },
-        {
           title: 'rib.p.create',
           items: [
-            { id: 'view.3d', icon: 'cube', size: 'L', pressed: () => ui.view === '3d' && app.walker === null },
-            { id: 'view.plan', icon: 'map', size: 'S', pressed: () => ui.view === 'plan' && app.walker === null },
+            { id: 'view.3d', icon: 'cube', size: 'L', pressed: () => ui.view === '3d' },
+            { id: 'view.plan', icon: 'map', size: 'S', pressed: () => ui.view === 'plan' },
             tool('section', 'tool.section', 'cut', 'S'),
             { id: 'section.elevations', icon: 'cube', size: 'S' },
             { id: 'view.sections', icon: 'cut', size: 'S' },
-            { id: 'view.schedules', icon: 'table', size: 'S' },
             { id: 'view.save', icon: 'plus', size: 'S' },
           ],
         },
-        { title: 'rib.p.sheetLayout', items: [{ id: 'view.sheets', icon: 'frame', size: 'L' }] },
         {
           title: 'rib.p.camera',
           items: [
@@ -283,19 +241,13 @@ function tabsOf(app: App): readonly RibbonTab[] {
             { id: 'settings.variables', icon: 'hash', size: 'S' },
           ],
         },
-        { title: 'rib.p.local', items: [{ id: 'site.edit', icon: 'sun', size: 'S', short: 'rib.s.siteLocal' }, { id: 'lot.edit', icon: 'map', size: 'S' }] },
         { title: 'rib.p.manageProject', items: [{ id: 'file.projects', icon: 'folder', size: 'L' }, { id: 'ref.import', icon: 'map', size: 'S' }, { id: 'model.import', icon: 'box', size: 'S' }, { id: 'settings.keys', icon: 'hash', size: 'S', short: 'rib.s.keys' }] },
       ],
-    },
-    {
-      id: 'approval',
-      title: 'rib.tab.approval',
-      panels: [{ title: 'rib.p.process', items: [{ id: 'approval.open', icon: 'folder', size: 'L' }, { id: 'rules.report', icon: 'download', size: 'S' }] }],
     },
     // Modify | <what is selected> (Revit's contextual tab): only while something is selected, last.
     ...contextTab(app, select, tool, modify),
     // Place <element> (Revit's Modify | Place …, prototype v7's per-tool tab): while a placing tool is on.
-    ...placeTab(app, select, tool, objects, point, run),
+    ...placeTab(app, select, tool, objects),
   ];
 }
 
@@ -309,9 +261,7 @@ const PLACING: Partial<Record<ToolId, RibbonItem['icon']>> = {
   column: 'column',
   beam: 'beam',
   separator: 'split',
-  cloud: 'warning',
   mark: 'corner',
-  tag: 'tag',
   curtain: 'window',
   note: 'text',
   levelMark: 'height',
@@ -326,9 +276,6 @@ const PLACING: Partial<Record<ToolId, RibbonItem['icon']>> = {
   section: 'cut',
   callout: 'text',
   calibrate: 'ruler',
-  spot: 'height',
-  mepPoint: 'pin',
-  mepRun: 'guide',
 };
 
 /** A next element's fields that say what it is (its type, model, definition): the tab's Type panel; the others are its own. */
@@ -337,12 +284,10 @@ const TYPE_FIELDS = new Set(['type', 'model', 'objDefinition', 'objType', 'build
 /** A name inside a sentence: its first letter small ("Colocar sofá"), an acronym ("TV") kept. */
 export const lowerFirst = (s: string): string => (s.length > 1 && s[1] === s[1]!.toUpperCase() && s[1] !== s[1]!.toLowerCase() ? s : s.charAt(0).toLowerCase() + s.slice(1));
 
-/** The tab's name: "Colocar parede", the floor tool's "Colocar forro" when it makes ceilings, a point's or a run's by what it is. */
+/** The tab's name: "Colocar parede", the floor tool's "Colocar forro" when it makes ceilings, an object's by what it is. */
 function placeName(app: App): string {
   const { ui } = app;
   if (ui.tool === 'floor' && ui.ceilingTool) return t('rib.place.ceiling');
-  if (ui.tool === 'mepPoint') return t('rib.place.mepPoint', { what: t(`mep.kind.${ui.mepKind}` as MessageKey).toLowerCase() });
-  if (ui.tool === 'mepRun') return t('rib.place.mepRun', { what: systemIn(app.store.get(), ui.mepSystem)?.name ?? '' });
   if (ui.tool === 'object') {
     const def = app.store.get().definitions.find((d) => d.id === ui.objectDef);
     return t('rib.place.object', { what: def ? lowerFirst(words(def.name)) : '' });
@@ -354,16 +299,14 @@ function placeName(app: App): string {
  * The tab of the tool in use, as the interface model has it (prototype v7: "Selecionar | Tipo | the
  * element's own choices | the tool's panels"): Select; the next element's type and its own fields, set
  * before the click and what the tool makes (next-element.ts, the walls' and openings' defaults); then
- * the tool's ways (a wall by line, rectangle or arc; floor or ceiling; the guide's, the mark's, the
- * services' points and runs). Shown on choosing the tool, as Revit brings its Modify | Place tab forward.
+ * the tool's ways (a wall by line, rectangle or arc; floor or ceiling; the guide's, the mark's). Shown
+ * on choosing the tool, as Revit brings its Modify | Place tab forward.
  */
 function placeTab(
   app: App,
   select: RibbonTab['panels'][number],
   tool: (id: ToolId, action: string, icon: RibbonItem['icon'], size: 'L' | 'S', short?: MessageKey) => RibbonItem,
   objects: RibbonItem,
-  point: (kind: string, icon: RibbonItem['icon']) => RibbonItem,
-  run: (system: string) => RibbonItem,
 ): RibbonTab[] {
   const { ui } = app;
   if (!PLACING[ui.tool]) return [];
@@ -397,13 +340,6 @@ function placeTab(
   // The tool's own ways, as the other tabs have them.
   const isRect = ui.wall.kind === 'rect' || (ui.wall.kind === 'idle' && ui.wall.rect === true);
   const isArc = 'arc' in ui.wall && ui.wall.arc === true;
-  const servicePanel = (): RibbonTab['panels'] => {
-    // The services' panel holding the point or run in use, as on the Services tab.
-    const services = tabsOfServices(point, run);
-    const id = ui.tool === 'mepPoint' ? `mep.point.${ui.mepKind}` : `mep.run.${ui.mepSystem}`;
-    const own = services.find((p) => p.items.some((i) => i.id === id));
-    return [...(own ? [own] : []), { title: 'rib.p.automatic', items: [{ id: 'mep.autoRoute', icon: 'guide', size: 'S', short: 'rib.s.autoRoute' }, { id: 'services.open', icon: 'table', size: 'S', short: 'rib.s.servicesSize' }] }];
-  };
   const ways: RibbonTab['panels'] =
     ui.tool === 'wall'
       ? [
@@ -444,17 +380,13 @@ function placeTab(
                   ],
                 },
               ]
-            : ui.tool === 'tag'
-              ? [{ title: 'rib.p.tags', items: [{ id: 'settings.openingTags', icon: 'tag', size: 'S', short: 'rib.s.openingTagsShort', pressed: () => ui.openingTags }] }]
-              : ui.tool === 'object'
-                ? [{ title: 'rib.p.objects', items: [{ ...objects, short: 'rib.s.objectOther' }, { id: 'model.import', icon: 'box', size: 'S' }] }]
-                : ui.tool === 'stair' || ui.tool === 'railing'
-                  ? [{ title: 'rib.p.circulation', items: [tool('stair', 'tool.stair', 'stair', 'L'), tool('railing', 'tool.railing', 'railing', 'L')] }]
-                  : ui.tool === 'room' || ui.tool === 'separator'
-                    ? [{ title: 'rib.p.rooms', items: [tool('room', 'tool.room', 'room', 'L'), tool('separator', 'tool.separator', 'split', 'S')] }]
-                    : ui.tool === 'mepPoint' || ui.tool === 'mepRun'
-                      ? servicePanel()
-                      : [];
+            : ui.tool === 'object'
+              ? [{ title: 'rib.p.objects', items: [{ ...objects, short: 'rib.s.objectOther' }, { id: 'model.import', icon: 'box', size: 'S' }] }]
+              : ui.tool === 'stair' || ui.tool === 'railing'
+                ? [{ title: 'rib.p.circulation', items: [tool('stair', 'tool.stair', 'stair', 'L'), tool('railing', 'tool.railing', 'railing', 'L')] }]
+                : ui.tool === 'room' || ui.tool === 'separator'
+                  ? [{ title: 'rib.p.rooms', items: [tool('room', 'tool.room', 'room', 'L'), tool('separator', 'tool.separator', 'split', 'S')] }]
+                  : [];
   return [
     {
       id: 'context',
@@ -475,38 +407,9 @@ function placeTab(
   ];
 }
 
-/** The Services tab's panels of points and runs (the tool tab shows the one in use). */
-function tabsOfServices(point: (kind: string, icon: RibbonItem['icon']) => RibbonItem, run: (system: string) => RibbonItem): RibbonTab['panels'] {
-  return [
-    { title: 'rib.p.electric', items: [point('panel', 'table'), point('light', 'sun'), point('socket', 'plus'), point('socketHigh', 'plus'), point('switch', 'pointer'), point('shower', 'raise'), run('sys_power'), run('sys_lighting')] },
-    {
-      title: 'rib.p.hydro',
-      items: [
-        point('coldOutlet', 'pin'),
-        point('hotOutlet', 'pin'),
-        point('heater', 'box'),
-        point('reservoir', 'box'),
-        run('sys_cold'),
-        run('sys_hot'),
-        point('drain', 'center'),
-        point('sewerOutlet', 'box'),
-        point('ventTerminal', 'arrowUp'),
-        run('sys_sewer'),
-        point('rainDrain', 'center'),
-        point('rainOutlet', 'box'),
-        run('sys_rain'),
-      ],
-    },
-    { title: 'rib.p.gas', items: [point('gasMeter', 'box'), point('gasOutlet', 'pin'), run('sys_gas')] },
-    { title: 'rib.p.dataSecurity', items: [point('data', 'hash'), point('accessPoint', 'hash'), run('sys_data'), point('sensor', 'center'), run('sys_auto')] },
-    { title: 'rib.p.hvac', items: [point('acUnit', 'cube'), run('sys_hvac')] },
-    { title: 'rib.p.fire', items: [point('hydrant', 'warning'), run('sys_fire')] },
-    { title: 'rib.p.solar', items: [point('solarPanel', 'sun'), run('sys_solar')] },
-  ];
-}
 
 /** The context's own actions on the ribbon (context-menu.ts): what a wall, a door, a room offers. */
-const ELEMENT_ACTIONS = new Set(['flipWall', 'editType', 'toggleOpen', 'flipHinge', 'flipSwing', 'centerOpening', 'addFloor', 'addCeiling', 'distribute', 'walkHere', 'addPoint', 'section']);
+const ELEMENT_ACTIONS = new Set(['flipWall', 'editType', 'toggleOpen', 'flipHinge', 'flipSwing', 'centerOpening', 'addFloor', 'addCeiling', 'distribute', 'section']);
 
 /**
  * The contextual tab, Modify | its kind ("Modificar | Parede"), while something is selected with Select:
@@ -589,15 +492,7 @@ export const FILE_MENU: readonly (string | '-')[] = [
   'file.open',
   'file.save',
   '-',
-  'file.printPlan',
-  'file.exportGlb',
-  'file.exportDxf',
-  'file.exportIfc',
-  'file.exportObj',
-  'view.schedules',
-  '-',
   'settings.language',
   'settings.theme',
   'help.shortcuts',
-  'help.tour',
 ];

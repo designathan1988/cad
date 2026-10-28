@@ -5,9 +5,7 @@ import { lengthText } from '../../ui/units';
 import { type Doc, type DocWall, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop, type WallPhase } from '../../app/document';
 import { distance } from '../../core/vector';
 import type { Field } from '../../ui/fields';
-import { name, num, t, type MessageKey } from '../../ui/i18n';
-import { modulation } from '../../app/quantities';
-import { modulationText } from '../../app/schedules';
+import { name, t, type MessageKey } from '../../ui/i18n';
 import { layerSwatch } from '../../ui/swatch';
 import { referenceLength } from '../opening/derive';
 import { arcOf } from './geometry/arc';
@@ -224,15 +222,6 @@ export function wallFields(
     more: [
       { id: 'thickness', label: 'panel.thickness', kind: 'readout', text: (ws) => sameText(ws.map((w) => `${lengthText(thickness(doc, w), 3)}`)) },
       { id: 'length', label: 'panel.length', kind: 'readout', when: one, text: (ws) => `${lengthText(referenceLength(ws[0]!))}` },
-      // A masonry wall by its blocks and courses, and what is left of each (app/quantities.ts).
-      {
-        id: 'modulation',
-        label: 'panel.modulation',
-        kind: 'readout',
-        wide: true,
-        when: (ws) => one(ws) && modulation(doc, ws[0]!) !== null,
-        text: (ws) => modulationText(doc, ws[0]!, { term: (k, v) => t(k as MessageKey, v), number: num }),
-      },
       { id: 'chord', label: 'panel.chord', kind: 'readout', when: (ws) => one(ws) && !!ws[0]!.bulge, text: (ws) => `${lengthText(distance(ws[0]!.start, ws[0]!.end))}` },
       {
         id: 'radius',

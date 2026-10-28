@@ -3,24 +3,13 @@
 
 import { MIN_ELEMENT_SIZE } from '../core/tolerance';
 import { MORE_WALL_TYPES } from '../elements/wall/library-types';
-import type { Site } from './sun';
 import type { LayerSet, RoomOverride, WallOverride } from './layer-sets';
 import type { Separator } from '../elements/separator/schema';
-import type { Cloud } from '../elements/cloud/schema';
 import type { Measure } from '../elements/measure/schema';
-import type { Tag } from '../elements/tag/schema';
 import type { Curtain } from '../elements/curtain/schema';
 import type { Zone } from '../elements/zone/schema';
 import type { SectionMark } from '../elements/section/schema';
 import type { Reference } from '../elements/reference/schema';
-import type { Terrain } from '../elements/terrain/schema';
-import type { SimSettings } from '../sim/settings';
-import type { Sheet } from '../elements/sheet/schema';
-import type { Rule, RulePack } from '../rules/schema';
-import type { Lot } from './lot';
-import type { Costs } from '../costs/schema';
-import type { Approval } from '../approval/schema';
-import type { MepPoint, MepRun, MepSystem } from '../elements/mep/schema';
 import { DEFAULT_DRAWING, type DrawingSettings } from '../elements/drawing/schema';
 import { LIBRARY } from '../elements/object/library';
 import type { ObjectDefinition, ObjectInstance } from '../elements/object/schema';
@@ -32,7 +21,6 @@ import type { Stair } from '../elements/stair/schema';
 import type { Roof } from '../elements/roof/schema';
 import type { Beam } from '../elements/beam/schema';
 import type { Column } from '../elements/column/schema';
-import type { PointOfInterest } from './points';
 import type { SavedView } from './saved-views';
 import type { Point2 } from '../core/vector';
 import type { Guide } from '../elements/guide/schema';
@@ -79,7 +67,7 @@ export interface DocWall extends Wall {
 }
 
 export interface Doc {
-  readonly version: 66;
+  readonly version: 67;
   readonly name: string;
   /** How lengths are shown and typed (ui/units.ts); metres with 2 decimals by default. */
   readonly units: Units;
@@ -99,8 +87,6 @@ export interface Doc {
   readonly guides: readonly Guide[];
   /** Views saved under a name: a 3D camera, or a plan's level and framing (saved-views.ts). */
   readonly views: readonly SavedView[];
-  /** Numbered places with a title and a text, opened as a card (points.ts). */
-  readonly points: readonly PointOfInterest[];
   /** Text notes on the levels' plans (elements/note). */
   readonly notes: readonly Note[];
   /** Permanent dimensions, held by the walls, doors and windows they measure (elements/dimension). */
@@ -123,12 +109,8 @@ export interface Doc {
   readonly objects: readonly ObjectInstance[];
   /** Lines bounding rooms where there is no wall (elements/separator). */
   readonly separators: readonly Separator[];
-  /** Revision clouds round what changed (elements/cloud). */
-  readonly clouds: readonly Cloud[];
   /** Angular, radius, diameter, arc length and coordinate dimensions (elements/measure). */
   readonly measures: readonly Measure[];
-  /** Texts by elements with their values (elements/tag). */
-  readonly tags: readonly Tag[];
   /** Curtain walls (elements/curtain). */
   readonly curtains: readonly Curtain[];
   /** Rooms taken together under a name, a category and a colour (elements/zone). */
@@ -137,23 +119,6 @@ export interface Doc {
   readonly sections: readonly SectionMark[];
   /** Pictures and DXF drawings under the plan, to trace over (elements/reference). */
   readonly references: readonly Reference[];
-  /** The lot's ground: its outline and spot heights (elements/terrain). */
-  readonly terrains: readonly Terrain[];
-  /** Building services: the points where a network meets a use, and the runs between them (elements/mep). */
-  readonly mepPoints: readonly MepPoint[];
-  readonly mepRuns: readonly MepRun[];
-  /** The services' systems (elements/mep); the defaults, one per discipline, when it sets none. */
-  readonly systems?: readonly MepSystem[];
-  /** The norm rules it is checked against (rules/schema.ts); the defaults when it sets none. */
-  readonly rules?: readonly Rule[];
-  /** The packs those rules come in (rules/schema.ts); the defaults when it sets none. */
-  readonly rulePacks?: readonly RulePack[];
-  /** The lot: its address, registry, zone and parameters (app/lot.ts). */
-  readonly lot?: Lot;
-  /** The CUB, the price base, the budget's lines, BDI, other costs and stages (costs/schema.ts). */
-  readonly costs?: Costs;
-  /** The approval journey: its steps, documents and their states (approval/schema.ts). */
-  readonly approval?: Approval;
   /** The plan's scale and the pens (elements/drawing/schema.ts); the defaults when it sets none. */
   readonly drawing?: DrawingSettings;
   /** Named lengths (m) typed by name in any measure: the ceiling height, a module (core/measure.ts). */
@@ -164,13 +129,33 @@ export interface Doc {
   readonly overrides?: readonly WallOverride[];
   /** Rooms of a use filled in plan with a colour of their own (app/layer-sets.ts). */
   readonly roomOverrides?: readonly RoomOverride[];
-  /** Where it is and the sun shown (app/sun.ts); the view's fixed light when not set. */
-  readonly site?: Site;
-  /** Sheets: papers with a title block and views placed on them (elements/sheet, app/sheets.ts). */
-  readonly sheets?: readonly Sheet[];
-  /** What the simulations assume (sim/settings.ts); the defaults when it sets none. */
-  readonly simulation?: SimSettings;
+  /**
+   * The file's fields of the areas taken out of the app for now (KEPT_FIELDS: services, simulation,
+   * rules, costs, approval, lot and terrain, sheets, points, tags, clouds), as they were read: never
+   * looked into, written back the same (io/project-file.ts). The code that used them is in the git tag
+   * escopo-completo-2026-10-28.
+   */
+  readonly kept?: Readonly<Record<string, unknown>>;
 }
+
+/** The fields a file may have that belong to the areas taken out of the app (Doc.kept). */
+export const KEPT_FIELDS = [
+  'points',
+  'clouds',
+  'tags',
+  'terrains',
+  'mepPoints',
+  'mepRuns',
+  'systems',
+  'rules',
+  'rulePacks',
+  'lot',
+  'costs',
+  'approval',
+  'site',
+  'sheets',
+  'simulation',
+] as const;
 
 /** Settings for the next walls the tool draws: interface state, kept out of the document. */
 export interface WallDefaults {
@@ -186,7 +171,7 @@ export const elementIds = (doc: Doc): Set<string> =>
 
 export function newDocument(): Doc {
   return {
-    version: 66,
+    version: 67,
     name: '',
     units: DEFAULT_UNITS,
     levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
@@ -229,7 +214,6 @@ export function newDocument(): Doc {
     floors: [],
     guides: [],
     views: [],
-    points: [],
     notes: [],
     dimensions: [],
     grids: [],
@@ -241,16 +225,11 @@ export function newDocument(): Doc {
     definitions: [...LIBRARY],
     objects: [],
     separators: [],
-    clouds: [],
     measures: [],
-    tags: [],
     curtains: [],
     zones: [],
     sections: [],
     references: [],
-    terrains: [],
-    mepPoints: [],
-    mepRuns: [],
   };
 }
 

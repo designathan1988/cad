@@ -3,11 +3,6 @@
 
 import { setCollisions } from '../core/collisions';
 import { made, nextOf, type NextSlot } from './next-element';
-import { autoRoute } from './mep-route';
-import * as terrains from './terrain-ui';
-import * as mepUi from './mep-ui';
-import { type PointKind, systemIn } from '../elements/mep/schema';
-import type { SimMap } from './sim-map';
 import { pickModel } from './model-import';
 import * as refs from './reference-ui';
 import { onReferenceLoaded } from '../elements/kinds/reference';
@@ -37,8 +32,6 @@ import * as modify from './modify-ui';
 import * as roomsUi from './room-ui';
 import * as guides from './guide-ui';
 import * as kindTools from './kind-tools';
-import * as walking from './walk-ui';
-import * as pointsUi from './points-ui';
 import * as views from './views-ui';
 import * as files from './app-files';
 import * as THREE from 'three';
@@ -59,17 +52,17 @@ import { type Insets, type PlanOverlay, PlanView } from '../render/plan-view';
 import { Scene3D } from '../render/scene-3d';
 import { Overlay3D, type Overlay3DState } from '../render/overlay-3d';
 import { ViewCube } from '../render/view-cube';
-import { getLang, htmlLang, markPrefix, name as wordsOf, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
+import { getLang, htmlLang, markPrefix, setLang, t, type Lang, type MessageKey } from '../ui/i18n';
 import { buildShell, type Shell, type ToolId, type ViewId } from '../ui/shell';
 import { type Snap } from '../tools/snap';
 import { IDLE, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
 import { type Drag, dragTransform, hull } from './select-drag';
-import { filterKinds, hasSolid, kindLists, kindOfId, levelOfElement, levelOfSolid, listOf, moveKinds, eachSolid } from '../elements/registry';
+import { filterKinds, hasSolid, kindLists, kindOfId, levelOfSolid, moveKinds, eachSolid } from '../elements/registry';
 import { type Grid } from '../elements/grid/schema';
 import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState } from '../tools/dimension-tool';
 import { geometryOf, keepRooms, moveRooms } from './carry';
 import { keepOpenings } from './keep-openings';
-import { type Doc, type DocWall, drawingOf, elementIds, levelOf, startLevel, type WallDefaults, wallNumber } from './document';
+import { type Doc, type DocWall, drawingOf, elementIds, levelOf, startLevel, type WallDefaults } from './document';
 import type { DrawingSettings } from '../elements/drawing/schema';
 
 /** The snap labels that name their wall. */
@@ -84,24 +77,10 @@ export const SNAP_OF = {
   intersection: 'snap.intersectionOf',
 } as const;
 import { applyTemporary, boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, type TemporaryView } from './geometry';
-import { type Diagnostic, diagnose } from './diagnostics';
-import { checkRules, type Finding, LOT_ELEMENT } from '../rules/check';
-import { complianceHtml, simulationHtml } from './documents';
-import { energyPlusIdf, fdsInput, radianceScene } from '../io/export-sim';
-import type { SimSettings } from '../sim/settings';
-import { showSimulations } from '../ui/simulation-dialog';
-import { showLot } from '../ui/lot-dialog';
-import { showBudget } from '../ui/budget-dialog';
-import { showApproval } from '../ui/approval-dialog';
-import { showServices } from '../ui/services-dialog';
-import { type Rule, rulesOf } from '../rules/schema';
-import { showRules } from '../ui/rules-dialog';
-import { renderDebugPanel } from '../ui/debug-panel';
 import { markPoint, openingMarks } from '../elements/opening/marks';
 import { loadPrefs, savePrefs, scheduleSave, wireSaving } from './persist';
 import type { Boot } from './boot';
 import type { ViewKey } from './view-keys';
-import { EYE_HEIGHT, EYE_MAX, EYE_MIN, obstaclesOf, type Walker } from './walk';
 import { type BoxFace, type SectionBox } from './section-box';
 import { type TempDim } from './temp-dims';
 import { exploding, liftOf, readView3D, shownLevels, type View3D } from './view-3d';
@@ -181,8 +160,6 @@ export interface UiState {
   calloutFrom: Point2 | null;
   /** A reference being calibrated: which, and its first point once clicked (reference-ui.ts). */
   calibrate: { readonly id: string; readonly a: Point2 | null } | null;
-  /** The terrain the spot tool puts spot heights on (terrain-ui.ts). */
-  spotFor: string | null;
   /** The beam tool's first point, before the beam is made. */
   beamFrom: Point2 | null;
   /** The object tool's definition (elements/object), and the turn the next object is placed at (radians). */
@@ -198,27 +175,17 @@ export interface UiState {
   holeFor: string | null;
   /** The floor tool making ceilings (a ceiling by a room or by an outline drawn), not floors. */
   ceilingTool: boolean;
-  /** The floor tool drawing a terrain's new outline (app/room-ui.ts). */
-  terrainFor: string | null;
   /** Corners of a roof's outline being drawn. */
   roofDraft: Point2[];
   /** The stair tool's first point (the first step's front), before its direction is clicked. */
   stairFrom: Point2 | null;
   /** Points of a guardrail's path being drawn. */
   railingDraft: Point2[];
-  /** The services' tools (app/mep-ui.ts): the kind of point placed, the system a run is drawn in, its points so far. */
-  mepKind: PointKind;
-  mepSystem: string;
-  mepDraft: Point2[];
   /** The measure tool (kind-tools.ts: markClick): what it measures, and its points so far. */
   markMode: MarkMode;
   markDraft: Point2[];
   /** The drawing scale of the saved plan view gone to (views-ui.ts), shown instead of the project's until another level or scale is chosen. */
   viewDen: number | null;
-  /** The tag tool's element, once clicked; then the click that places its text (kind-tools.ts: tagClick). */
-  tagFor: string | null;
-  /** A simulation's map over the plan (app/sim-map.ts): the Wi-Fi signal, the rooms' daylight or sun; none. */
-  simMap: SimMap;
   /** A guide being placed (guide-tool.ts): Alt over a wall or a guide in a drawing tool. */
   guide: GuideDraft | null;
   /** How the 3D view shows the levels: which, exploded, cut (view-3d.ts). */
@@ -349,7 +316,6 @@ export class App {
       sectionFrom: null,
       calloutFrom: null,
       calibrate: null,
-      spotFor: null,
       beamFrom: null,
       objectDef: 'def_table',
       objectAngle: 0,
@@ -358,18 +324,12 @@ export class App {
       opened: new Set(),
       holeFor: null,
       ceilingTool: false,
-      terrainFor: null,
       roofDraft: [],
       stairFrom: null,
       railingDraft: [],
-      mepKind: 'socket',
-      mepSystem: 'sys_power',
-      mepDraft: [],
       markMode: 'angle',
       markDraft: [],
-      tagFor: null,
       viewDen: null,
-      simMap: 'none',
       guide: null,
       view3d: readView3D(prefs.view3d),
       modify: null,
@@ -402,8 +362,6 @@ export class App {
     this.scene.onChange = () => {
       this.cube.update(this.scene.camera);
       this.placeFloatBar();
-      // An open point's card follows its disc as the camera moves (orbit, flights, framing).
-      if (this.ui.view === '3d') this.placePointCard();
       // The handles found again where the camera now shows them (screen points: kept, they stayed behind).
       if (this.ui.view === '3d' && this.overlayState) this.overlay3d.draw({ ...this.overlayState, objectHandles: objectHandles(this), handles: this.handles() });
     };
@@ -671,10 +629,6 @@ export class App {
     return roomsUi.startCeiling(this);
   }
 
-  startTerrainOutline(id: string): void {
-    return roomsUi.startTerrainOutline(this, id);
-  }
-
   selectedOpenings(): OpeningSolid[] {
     return [...this.ui.selection].filter(isOpeningId).flatMap((id) => this.geometry.openings.get(id) ?? []);
   }
@@ -815,13 +769,10 @@ export class App {
     this.ui.beamFrom = null;
     this.ui.holeFor = null;
     this.ui.ceilingTool = false;
-    this.ui.terrainFor = null;
     this.ui.roofDraft = [];
     this.ui.stairFrom = null;
     this.ui.railingDraft = [];
-    this.ui.mepDraft = [];
     this.ui.markDraft = [];
-    this.ui.tagFor = null;
     this.ui.guide = null;
     this.ui.modify = null;
     this.modifyBefore = null;
@@ -877,141 +828,8 @@ export class App {
 
   /** Where the right-click menu was opened (plan point), while its entries are made (input.ts). */
   contextPoint: Point2 | null = null;
-  /** The guided tour being played (tour-dialog.ts): which stop, and whether it goes on by itself. */
-  tour: { index: number; playing: boolean } | null = null;
-  tourTimer = 0;
-  /** How long each stop of the tour lasts when it plays by itself (s), kept with the preferences. */
-  tourSeconds = (() => {
-    const s = loadPrefs().tourSeconds;
-    return typeof s === 'number' && s >= 1 ? s : 5;
-  })();
-
-  setTourSeconds(s: number): void {
-    return views.setTourSeconds(this, s);
-  }
-
-  /** The tour from a stop (the first by default), going on by itself. */
-  playTour(from = 0): void {
-    return views.playTour(this, from);
-  }
-
-  /** The next (+1) or the previous (−1) stop; past the last, the tour ends; it keeps playing or paused. */
-  tourStep(step: 1 | -1): void {
-    return views.tourStep(this, step);
-  }
-
-  tourPause(): void {
-    return views.tourPause(this);
-  }
-
-  stopTour(): void {
-    return views.stopTour(this);
-  }
-
-  /** The stop the tour is at: flown to in 3D, gone to in plan; the next one after its time. */
-  showStop(): void {
-    return views.showStop(this);
-  }
-
-  /** The point of interest whose card is open, or null. */
-  openPointId: string | null = null;
-
-  /** A point of interest where the menu was opened (or the middle of the view), its card open to edit. */
-  addPointHere(at?: Point2): void {
-    return pointsUi.addPointHere(this, at);
-  }
-
-  /** The points of the level shown (all levels in 3D), numbered as in the document, where they are drawn. */
-  pointsShown(): { id: string; n: number; at: Point2; z: number; open: boolean }[] {
-    return pointsUi.pointsShown(this);
-  }
-
-  /** The point of interest whose disc is at a screen point (client coordinates), or null. */
-  pointAt(clientX: number, clientY: number): string | null {
-    return pointsUi.pointAtHere(this, clientX, clientY);
-  }
-
-  /** A point's card opened (or closed with null). */
-  showPoint(id: string | null): void {
-    return pointsUi.showPoint(this, id);
-  }
-
-  /** The open point's card: its title and text, beside its disc; hidden when none is open or it is off screen. */
-  placePointCard(): void {
-    return pointsUi.placePointCard(this);
-  }
-
-  /** Opens the points dialog; set by the input layer. */
-  openPoints: () => void = () => {};
   /** Opens the projects kept in the browser; set by the input layer. */
   openProjects: () => void = () => {};
-
-  /** Walking through the model (walk.ts), or null. Interface state: never saved. */
-  walker: Walker | null = null;
-  /** The walker's eyes above the floor (m), kept with the preferences. */
-  eyeHeight = (() => {
-    const h = loadPrefs().eyeHeight;
-    return typeof h === 'number' && h >= EYE_MIN && h <= EYE_MAX ? h : EYE_HEIGHT;
-  })();
-  /** The on-screen stick (touch, or a mouse): forward and sideways, −1..1, while it is held. */
-  walkStick: { forward: number; side: number } | null = null;
-  /** Keys held while walking: what the next frames move by. */
-  readonly walkKeys = new Set<string>();
-  walkFrame = 0;
-  walkLast = 0;
-  walkObstacles: { from: DerivedGeometry; levelId: string; list: ReturnType<typeof obstaclesOf> } | null = null;
-
-  /**
-   * Walk mode on, at a point (where the user asked) or the middle of the level's largest room: in the 3D
-   * view, at eye height, looking up the plan. Off again with Esc, the camera as it was.
-   */
-  enterWalk(at?: Point2): void {
-    return walking.enterWalk(this, at);
-  }
-
-  exitWalk(): void {
-    return walking.exitWalk(this);
-  }
-
-  toggleWalk(): void {
-    return walking.toggleWalk(this);
-  }
-
-  /** Walking through walls and things (C while walking): off, the walker is stopped by them. */
-  walkThrough = loadPrefs().collisions === false;
-
-  toggleWalkThrough(): void {
-    return walking.toggleWalkThrough(this);
-  }
-
-  /** The eyes higher or lower by `step` (m), within EYE_MIN..EYE_MAX; said in the footer. */
-  walkEye(step: number): void {
-    return walking.walkEye(this, step);
-  }
-
-  /** Turns the view: a drag of dx, dy pixels. */
-  walkLook(dx: number, dy: number): void {
-    return walking.walkLook(this, dx, dy);
-  }
-
-  /** To the level above (+1) or below (−1), at the same point of the plan. */
-  walkLevel(step: 1 | -1): void {
-    return walking.walkLevel(this, step);
-  }
-
-  walkTick(now: number): void {
-    return walking.walkTick(this, now);
-  }
-
-  /** The walls that stop the walker on a level, again only when the walls change. */
-  obstaclesHere(levelId: string): ReturnType<typeof obstaclesOf> {
-    return walking.obstaclesHere(this, levelId);
-  }
-
-  /** The camera at the walker's eyes. */
-  placeWalker(): void {
-    return walking.placeWalker(this);
-  }
 
   /** The guides of the level shown, unless hidden, as a move being dragged takes them. Plan only: they
    * are neither drawn nor snapped to in 3D. */
@@ -1210,37 +1028,6 @@ export class App {
     return kindTools.railingFinish(this);
   }
 
-  /** The services' tools (app/mep-ui.ts): a point of a kind, a run of a system. */
-  startMepPoint(kind: PointKind): void {
-    return mepUi.startMepPoint(this, kind);
-  }
-
-  startMepRun(systemId: string): void {
-    return mepUi.startMepRun(this, systemId);
-  }
-
-  mepPointClick(p: Point2): void {
-    return mepUi.mepPointClick(this, p);
-  }
-
-  mepRunClick(p: Point2, mpp: number): void {
-    return mepUi.mepRunClick(this, p, mpp);
-  }
-
-  /** The current system's points on this level that no run reaches, joined by runs (mep-route.ts), one step to undo. */
-  autoRoute(): void {
-    const runs = autoRoute(this.store.get(), this.ui.mepSystem, this.ui.levelId);
-    const sys = systemIn(this.store.get(), this.ui.mepSystem);
-    const what = sys ? sys.name : this.ui.mepSystem;
-    if (runs.length === 0) return this.toast(t('mep.autoRouteNone', { system: what }));
-    this.store.dispatch({ label: 'cmd.autoRoute', apply: (x) => ({ ...x, mepRuns: [...x.mepRuns, ...runs] }) });
-    this.toast(runs.length === 1 ? t('mep.autoRouteDoneOne', { system: what }) : t('mep.autoRouteDone', { n: runs.length, system: what }));
-  }
-
-  mepRunFinish(): void {
-    return mepUi.mepRunFinish(this);
-  }
-
   /**
    * The stair tool: a click on where its first step's front is (its middle), the next on the way it
    * climbs. Straight, of the last stair's width and step; its kind and turn are in the panel.
@@ -1288,10 +1075,6 @@ export class App {
     return kindTools.separatorClick(this, p);
   }
 
-  cloudClick(p: Point2): void {
-    return kindTools.cloudClick(this, p);
-  }
-
   /** The drawing settings the plan is drawn with now: the project's, at a saved view's own scale while it is shown. */
   drawingNow(): DrawingSettings {
     const d = drawingOf(this.store.get());
@@ -1307,10 +1090,6 @@ export class App {
 
   markClick(p: Point2): void {
     return kindTools.markClick(this, p);
-  }
-
-  tagClick(p: Point2, under: string | null): void {
-    return kindTools.tagClick(this, p, under);
   }
 
   /** The column tool: a click stands a column there, the section of the last one made. */
@@ -1351,20 +1130,6 @@ export class App {
   /** A picture, a PDF or a DXF put under the plan (reference-ui.ts). */
   pickReference(): void {
     return refs.pickReference(this);
-  }
-
-  /** A terrain round the model (terrain-ui.ts). */
-  addTerrain(): void {
-    return terrains.addTerrain(this);
-  }
-
-  /** The spot tool on a terrain: each click a spot height, its height typed. */
-  startSpot(id: string): void {
-    return terrains.startSpot(this, id);
-  }
-
-  spotClick(p: Point2): void {
-    return terrains.spotClick(this, p);
   }
 
   /** Calibrating a reference: two points of it, then the distance between them. */
@@ -1496,8 +1261,6 @@ export class App {
     this.ui.collisions = !this.ui.collisions;
     setCollisions(this.ui.collisions);
     savePrefs({ collisions: this.ui.collisions });
-    // Walking is stopped by walls and things as moving is, or goes through them.
-    this.walkThrough = !this.ui.collisions;
     this.toast(t(this.ui.collisions ? 'toast.collisionsOn' : 'toast.collisionsOff'));
     this.render();
   }
@@ -1667,51 +1430,17 @@ export class App {
     return files.saveFile(this);
   }
 
-  /** A file given to the browser to save: the project, a schedule's CSV, an export. */
+  /** A file given to the browser to save: the project. */
   download(file: string, content: string | Blob, type: string): void {
     return files.download(this, file, content, type);
   }
 
-  /** Opens the quantity schedules; set by the input layer. */
-  openSchedules: () => void = () => {};
   /** Opens the sections and elevations (ui/sections-dialog.ts), on one if given; set by the input layer. */
   openSections: (id?: string) => void = () => {};
-  /** Opens the site and its sun (ui/site-dialog.ts); set by the input layer. */
-  openSite: () => void = () => {};
-  /** Opens the sheets (ui/sheets-dialog.ts), on one if given; set by the input layer. */
-  openSheets: (id?: string) => void = () => {};
 
   /** The project's file name: its name without what a file name cannot hold. */
   fileBase(): string {
     return files.fileBase(this);
-  }
-
-  /**
-   * The model as GLB (render/export-gltf.ts), for a viewer or a renderer: loaded when first asked for,
-   * so the exporter does not weigh on every start. A failure is said, not swallowed.
-   */
-  async exportGlb(): Promise<void> {
-    return files.exportGlb(this);
-  }
-
-  /** The 3D view as a PNG picture, larger than the screen, with its sun and shadows. */
-  saveImage3d(): Promise<void> {
-    return files.saveImage3d(this);
-  }
-
-  /** The model as OBJ, for a renderer or another modeller. */
-  exportObj(): Promise<void> {
-    return files.exportObj(this);
-  }
-
-  /** The whole model as IFC4 (io/export-ifc.ts), for a BIM program. */
-  exportIfc(): void {
-    return files.exportIfc(this);
-  }
-
-  /** The plan of the level shown as DXF R12 (io/export-dxf.ts), for a CAD program. */
-  exportDxf(): void {
-    return files.exportDxf(this);
   }
 
   /**
@@ -1780,7 +1509,7 @@ export class App {
   mark(name: string): void {
     this.marks.push([name, performance.now()]);
   }
-  /** The last render's phases (ms), for the diagnostics panel (F7); logged too with ?perf. */
+  /** The last render's phases (ms); logged with ?perf. */
   lastFrame: { total: number; steps: [string, number][] } | null = null;
 
   render(): void {
@@ -1794,187 +1523,6 @@ export class App {
     const steps = this.marks.slice(1).map(([name, at], i): [string, number] => [name, at - this.marks[i]![1]]);
     this.lastFrame = { total: this.marks.at(-1)![1] - this.marks[0]![1], steps };
     if (this.perf) console.info(`[cad2 perf] ${this.ui.view} ${this.lastFrame.total.toFixed(1)} ms: ${steps.map(([n, ms]) => `${n} ${ms.toFixed(1)}`).join(', ')}`);
-    if (this.debugOpen) renderDebugPanel(this, this.debugBox);
-  }
-
-  // ---- diagnostics (F7) --------------------------------------------------------------------------
-
-  /** The diagnostics panel is open (ui/debug-panel.ts). */
-  debugOpen = false;
-  readonly debugBox: HTMLElement = (() => {
-    const box = document.createElement('aside');
-    box.className = 'debug-panel';
-    box.hidden = true;
-    box.setAttribute('aria-label', 'Diagnostics');
-    document.body.append(box);
-    return box;
-  })();
-  private diagnosed: { g: DerivedGeometry; list: Diagnostic[] } | null = null;
-
-  /** What is wrong with the model (diagnostics.ts), once per geometry. */
-  diagnostics(): Diagnostic[] {
-    if (this.diagnosed?.g !== this.geometry) this.diagnosed = { g: this.geometry, list: diagnose(this.geometry) };
-    return this.diagnosed.list;
-  }
-
-  // ---- norms (rules/) -----------------------------------------------------------------------------
-
-  private normed: { g: DerivedGeometry; rules: readonly Rule[]; lot: unknown; list: Finding[] } | null = null;
-
-  /** What is outside the project's norm rules (rules/check.ts), the rooms and the lot too, once per geometry, rules and lot. */
-  normFindings(): Finding[] {
-    const doc = this.store.get();
-    const rules = rulesOf(doc);
-    if (this.normed?.g !== this.geometry || this.normed.rules !== rules || this.normed.lot !== doc.lot || this.normed.lot !== doc.lot)
-      this.normed = { g: this.geometry, rules, lot: doc.lot, list: checkRules(this.geometry, rules, doc) };
-    return this.normed.list;
-  }
-
-  openRules(): void {
-    showRules(this);
-  }
-
-  /** The lot and its table of areas (ui/lot-dialog.ts). */
-  openLot(): void {
-    showLot(this);
-  }
-
-  /** The CUB estimate, the budget, its ABC curve and schedule (ui/budget-dialog.ts). */
-  openBudget(): void {
-    showBudget(this);
-  }
-
-  /** The approval journey and the project's documents (ui/approval-dialog.ts). */
-  openApproval(): void {
-    showApproval(this);
-  }
-
-  /** The services' systems, load table, pressures, falls, clashes and drawings (ui/services-dialog.ts). */
-  openServices(): void {
-    showServices(this);
-  }
-
-  /** The simulations: sun, daylight, thermal, condensation, acoustic, Wi-Fi, risks (ui/simulation-dialog.ts). */
-  openSimulations(): void {
-    showSimulations(this);
-  }
-
-  /** What the simulations assume, kept in the project (a step to undo). */
-  setSimulation(next: SimSettings): void {
-    this.store.dispatch({ label: 'cmd.setSimulation', apply: (d) => ({ ...d, simulation: next }) });
-    this.render();
-  }
-
-  /** A simulation's file: the report as a page, or the input of a detailed engine. */
-  downloadSimulation(kind: 'idf' | 'rad' | 'fds' | 'report'): void {
-    const doc = this.store.get();
-    const title = doc.name || t('app.untitled');
-    const today = new Date().toLocaleDateString(getLang() === 'pt' ? 'pt-BR' : 'en-GB');
-    // A room as the interface names it, with its level's name when there is more than one.
-    const roomName = (r: { name: string; levelId: string }) => (doc.levels.length > 1 ? `${wordsOf(r.name)} ${wordsOf(doc.levels.find((l) => l.id === r.levelId)?.name ?? '')}` : wordsOf(r.name));
-    const [ext, type, content] =
-      kind === 'idf'
-        ? ['idf', 'text/plain', energyPlusIdf(doc, this.geometry, title, roomName)]
-        : kind === 'rad'
-          ? ['rad', 'text/plain', radianceScene(doc, this.geometry, title, roomName)]
-          : kind === 'fds'
-            ? ['fds', 'text/plain', fdsInput(doc, this.geometry, title)]
-            : ['html', 'text/html', simulationHtml(doc, this.geometry, (id) => this.reportTitle(id), today)];
-    const file = `${this.fileBase()} - ${t(kind === 'report' ? 'sim.title' : (`sim.${kind}` as MessageKey))}.${ext}`;
-    this.download(file, new Blob([content], { type }), type);
-    this.toast(t(kind === 'report' ? 'report.saved' : 'image.saved', { file }));
-  }
-
-  /**
-   * An element as a report names it, with its level: the same number on two levels read as one. A room
-   * by its number and name, a wall by its number, a door or window by its mark and its wall, the lot.
-   */
-  reportTitle(id: string): string {
-    if (id === LOT_ELEMENT) return t('lot.title');
-    const doc = this.store.get();
-    const level = (levelId: string) => wordsOf(levelOf(doc, levelId)?.name ?? '');
-    const room = doc.rooms.find((r) => r.id === id);
-    if (room) return `${room.number} · ${wordsOf(room.name)} (${level(room.levelId)})`;
-    const wall = doc.walls.find((w) => w.id === id);
-    const n = wallNumber(doc, id);
-    if (wall && n !== null) return `${t('wall.tag', { n })} (${level(wall.levelId)})`;
-    const o = doc.openings.find((x) => x.id === id);
-    const host = o && doc.walls.find((w) => w.id === o.wallId);
-    if (o && host) {
-      const mark = openingMarks(doc.openings, markPrefix()).get(o.id) ?? this.elementTitle(id);
-      return `${mark} · ${t('wall.tag', { n: wallNumber(doc, host.id) ?? 0 })} (${level(host.levelId)})`;
-    }
-    // A services' point by what it is: "Chuveiro 1 (Térreo)", not "Ponto de instalação 12".
-    const point = doc.mepPoints.find((p) => p.id === id);
-    if (point) return `${t(`mep.kind.${point.kind}` as MessageKey)} ${doc.mepPoints.filter((p) => p.kind === point.kind).indexOf(point) + 1} (${level(point.levelId)})`;
-    // A run by its system: "Trecho 2 de Iluminação (Térreo)".
-    const run = doc.mepRuns.find((r) => r.id === id);
-    if (run) return `${t('mep.runTitle', { n: doc.mepRuns.filter((r) => r.systemId === run.systemId).indexOf(run) + 1, system: systemIn(doc, run.systemId)?.name ?? t('mep.run') })} (${level(run.levelId)})`;
-    // Anything else by its kind, its place among its kind and its level: "Pilar 2 (Térreo)", not "Pilar".
-    const k = kindOfId(id);
-    const list = k ? listOf(doc, k) : [];
-    const i = list.findIndex((x) => x.id === id);
-    if (k && i >= 0) {
-      const on = levelOfElement(k, list[i]!, doc);
-      return `${t(k.one)} ${i + 1}${on ? ` (${level(on)})` : ''}`;
-    }
-    return this.elementTitle(id);
-  }
-
-  /** The compliance report as a page to print or keep (app/documents.ts). */
-  downloadCompliance(): void {
-    const today = new Date().toLocaleDateString(getLang() === 'pt' ? 'pt-BR' : 'en-GB');
-    const html = complianceHtml(this.store.get(), this.geometry, (id) => this.reportTitle(id), today);
-    const file = `${this.fileBase()} - ${t('report.title')}.html`;
-    this.download(file, new Blob([html], { type: 'text/html' }), 'text/html');
-    this.toast(t('report.saved', { file }));
-  }
-
-  /** Where the plan signs what is outside the norms on the level shown: a door's middle, else the element's corner. */
-  normMarks(): Point2[] {
-    const ids = new Set(this.normFindings().map((f) => f.elementId));
-    const out: Point2[] = [];
-    for (const id of ids) {
-      const o = this.geometry.openings.get(id);
-      if (o?.frame) {
-        const wall = this.store.get().walls.find((w) => w.id === o.opening.wallId);
-        if (wall?.levelId === this.ui.levelId) out.push({ x: (o.frame.start.x + o.frame.end.x) / 2, y: (o.frame.start.y + o.frame.end.y) / 2 });
-        continue;
-      }
-      const k = kindOfId(id);
-      const solid = k ? this.geometry.kinds.get(k.key)?.get(id) : undefined;
-      if (!k || !solid || levelOfSolid(k, solid) !== this.ui.levelId) continue;
-      const pts = k.outlines(solid).flat();
-      if (pts.length > 0) out.push({ x: Math.max(...pts.map((p) => p.x)), y: Math.max(...pts.map((p) => p.y)) });
-    }
-    return out;
-  }
-
-  /** An element's name as the panel titles it: its kind's (Escada, Porta). */
-  elementTitle(id: string): string {
-    const k = kindOfId(id);
-    return k ? t(k.one) : id;
-  }
-
-  /** The plan or the 3D on the level an element is on (chosen from a list, it may be on another). */
-  showElementLevel(id: string): void {
-    const k = kindOfId(id);
-    const doc = this.store.get();
-    const e = k ? listOf(doc, k).find((x) => x.id === id) : undefined;
-    const level = k && e ? levelOfElement(k, e, doc) : null;
-    if (level && level !== this.ui.levelId) this.ui.levelId = level;
-    this.refresh();
-  }
-
-  toggleDebug(open = !this.debugOpen): void {
-    this.debugOpen = open;
-    this.debugBox.hidden = !open;
-    if (open) renderDebugPanel(this, this.debugBox);
-  }
-
-  /** The elements of a problem selected and framed, on their level. */
-  showElements(ids: readonly string[]): void {
-    return selecting.showElements(this, ids);
   }
 
   /** Where the pointer is over the drawing (client pixels), set by the input layer; null off it. */
@@ -2029,12 +1577,12 @@ export class App {
   }
 
   /**
-   * The handles of the selected walls in plan (handles.ts): while selecting, and while one of them is
-   * dragged (then on the walls as they are being dragged). None in 3D, during a move or a window.
+   * The handles of the selected walls (handles.ts), in plan and in 3D on the level's floor: while selecting,
+   * and while one of them is dragged (then on the walls as they are being dragged). None during a move or a window.
    */
   handles(): Handles {
     const d = this.ui.drag;
-    if (this.ui.tool !== 'select' || this.walker || d?.kind === 'move' || d?.kind === 'marquee' || d?.kind === 'dimLine') return handlesFor([], (p) => p);
+    if (this.ui.tool !== 'select' || d?.kind === 'move' || d?.kind === 'marquee' || d?.kind === 'dimLine') return handlesFor([], (p) => p);
     const walls = d ? d.walls : this.store.get().walls;
     // In 3D on the level's floor, where a drag takes its points (input.ts, worldAt): a wall selected there
     // had no end, arrow or turn to take, only its panel. Behind the camera, off the screen.
@@ -2197,8 +1745,6 @@ export class App {
   }
 
   browserKey = '';
-  /** Opens the views and tour dialog; set by the input layer too. */
-  openTour: () => void = () => {};
   /** Opens the levels dialog; set by the input layer, which owns the dialogs. */
   openLevels: () => void = () => {};
   /** Opens the wall types dialog, on a type if given; set by the input layer too. */
@@ -2206,8 +1752,6 @@ export class App {
   openMaterials: () => void = () => {};
   openUnits: () => void = () => {};
   openObjects: () => void = () => {};
-  /** Printing a plan (ui/print-dialog.ts), set by the input layer. */
-  openPrint: () => void = () => {};
   /** The graphic overrides (ui/overrides-dialog.ts), set by the input layer. */
   openOverrides: () => void = () => {};
   /** The shortcuts the user remapped or turned off (app/keymap.ts), kept with the preferences. */

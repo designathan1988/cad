@@ -27,15 +27,13 @@ import { eachSolid } from '../elements/registry';
 import type { KindSolid } from '../elements/contract';
 import { featureEdges, type SlopedTop, underSlopes } from '../elements/wall/geometry/edges';
 import { openingParts } from '../elements/opening/parts';
-import { SOIL_DEPTH } from '../elements/kinds/terrain';
 import { boxCaps, type SectionBox, type SectionLine, sectionCaps, sectionLooks, type UprightPrism } from '../app/section-box';
 
 /** The ground's size: this many times the model's extent, at least GROUND_MIN (m) across. */
 const GROUND_SPAN = 4;
 const GROUND_MIN = 60;
-/** Vertical field of view (degrees): the overview's, and a walker's. */
+/** Vertical field of view (degrees). */
 const VIEW_FOV = 40;
-const WALK_FOV = 65;
 /**
  * Each quality's settings: the resolution against the screen's (`ratio` times its pixel ratio, at most
  * `max`; over 1 drawn larger and shown smaller, which smooths the edges), the sun's shadow map (px a
@@ -213,13 +211,10 @@ export class Scene3D {
   private readonly fill = new THREE.DirectionalLight(undefined, 0.6);
   /** The only light of Consistent colours: each material's own colour, as it is. */
   private readonly ambient = new THREE.AmbientLight(0xffffff, 0);
-  /** The sun's and the sky's strength as the site's sun sets them (placeSun), before the style's. */
-  private sunBase = 1.5;
-  private skyBase = 2.7;
-  /** The site's sun (app/sun.ts): the way to it, and whether it casts shadows; null for the fixed light. */
-  private sunWay: { readonly x: number; readonly y: number; readonly z: number } | null = null;
-  /** Shadows asked for by the site; `shadows`: drawn now (the site's, or Realistic's own). */
-  private siteShadows = false;
+  /** The sun's and the sky's strength, before the style's. */
+  private readonly sunBase = 1.5;
+  private readonly skyBase = 2.7;
+  /** Shadows drawn now (Realistic's own). */
   private shadows = false;
   /** The visual style and the quality (view-3d.ts), and what they need: the post-processing, the sky's reflections. */
   private style: VisualStyle = 'shaded';
@@ -275,10 +270,8 @@ export class Scene3D {
    * a sharpening, not a jump from the theme's dark background and a black hole in a room with no floor.
    */
   private readonly photoGround = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), this.tracedGround);
-  /** The photorealistic view's ground level (placeGround): the walls' foot, or a terrain's soil. */
+  /** The photorealistic view's ground level (placeGround): the walls' foot. */
   private stand = 0;
-  /** Whether the model stands on a terrain (placeGround): its soil is the ground then. */
-  private onTerrain = false;
   private traced = { content: -1, camera: '', light: '' };
   /** Bumped whenever an element's meshes are made or dropped: the tracer's scene is built again. */
   private contentVersion = 0;
@@ -553,10 +546,9 @@ export class Scene3D {
     this.scene.environmentIntensity = 0.22 * b;
   }
 
-  /** Shadows drawn: those the site asks, or Realistic's own while the sun is up; materials compiled again for them. */
+  /** Shadows drawn: Realistic's own; materials compiled again for them. */
   private applyShadows(recompile = false): void {
-    const up = this.sunWay === null || this.sunWay.z > 0;
-    const on = (this.siteShadows && this.sunWay !== null && this.sunWay.z > 0) || (this.lifelike() && up);
+    const on = this.lifelike();
     const changed = on !== this.shadows;
     this.shadows = on;
     this.renderer.shadowMap.enabled = on;
@@ -626,9 +618,9 @@ export class Scene3D {
     const background = this.scene.background;
     const grid = this.grid.visible;
     const shadowGround = this.shadowGround.visible;
-    // The realistic style on its fading ground (off a terrain): a room with no floor showed the background
+    // The realistic style on its fading ground: a room with no floor showed the background
     // through it, a black hole among the walls in the dark theme. The other styles stand on the grid.
-    const realGround = this.style === 'realistic' && !this.onTerrain;
+    const realGround = this.style === 'realistic';
     if (realGround) this.ground.visible = true;
     if (photo) {
       this.scene.background = this.photoSky();
@@ -869,7 +861,7 @@ export class Scene3D {
         }
       });
     // A ground under everything, matte, a little below the lowest thing: what stands has somewhere to cast
-    // its shadow and to sit on (without it the model floated in the sky). Under a terrain, the terrain shows.
+    // its shadow and to sit on (without it the model floated in the sky).
     const box = new THREE.Box3().setFromObject(out);
     if (!box.isEmpty()) {
       const size = Math.max(200, box.getSize(new THREE.Vector3()).length() * 6);
@@ -1035,91 +1027,13 @@ export class Scene3D {
     this.invalidate();
   }
 
-  /**
-   * Doors and windows drawn open: all of them while walking (a closed leaf filled the view of whoever
-   * walked through it), and those opened one by one (a double click, the selection's Open).
-   */
-  private doorsOpen = false;
+  /** Doors and windows drawn open: those opened one by one (a double click, the selection's Open). */
   private opened: ReadonlySet<string> = new Set();
-  setDoorsOpen(open: boolean, opened: ReadonlySet<string> = new Set()): void {
-    this.doorsOpen = open;
+  setOpened(opened: ReadonlySet<string>): void {
     this.opened = opened;
   }
   private isOpen(id: string): boolean {
-    return this.doorsOpen || this.opened.has(id);
-  }
-
-  private flight = 0;
-  /**
-   * The camera flown to a position and target over `ms` (a tour's stop, tour-dialog.ts), easing in and
-   * out; a new flight takes over from where the last one was.
-   */
-  flyTo(position: readonly [number, number, number], target: readonly [number, number, number], ms: number): void {
-    cancelAnimationFrame(this.flight);
-    this.setOrtho(false);
-    const p0 = this.persp.position.clone();
-    const t0 = this.controls.target.clone();
-    const p1 = new THREE.Vector3(...position);
-    const t1 = new THREE.Vector3(...target);
-    const start = performance.now();
-    const step = (now: number) => {
-      const k = Math.min(1, (now - start) / ms);
-      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
-      this.persp.position.lerpVectors(p0, p1, e);
-      this.controls.target.lerpVectors(t0, t1, e);
-      this.persp.up.set(0, 1, 0);
-      this.controls.update();
-      this.invalidate();
-      if (k < 1) this.flight = requestAnimationFrame(step);
-    };
-    this.flight = requestAnimationFrame(step);
-  }
-
-  /** A flight under way stops where it is (a tour stopped). */
-  stopFlight(): void {
-    cancelAnimationFrame(this.flight);
-  }
-
-  /** The camera as it was before walking, given back when the walk ends. */
-  private beforeWalk: { position: THREE.Vector3; target: THREE.Vector3; ortho: boolean } | null = null;
-
-  /** A walk begins (app/walk.ts): the orbit put aside, the perspective camera at the walker's eyes. */
-  startWalk(): void {
-    // A tour's flight still under way would carry the camera off the walker's eyes, frame by frame.
-    this.stopFlight();
-    if (this.beforeWalk) return;
-    this.beforeWalk = { position: this.camera.position.clone(), target: this.controls.target.clone(), ortho: this.orthoOn };
-    this.setOrtho(false);
-    this.controls.enabled = false;
-    // A person's view: wider than the overview's lens, or a room's walls filled it from its middle.
-    this.persp.fov = WALK_FOV;
-    this.persp.updateProjectionMatrix();
-  }
-
-  /** The walker's eyes (plan x, y and height z) looking along yaw and pitch. */
-  setWalkView(eye: { x: number; y: number; z: number }, yaw: number, pitch: number): void {
-    const at = toThree({ x: eye.x, y: eye.y }, eye.z);
-    const look = toThree({ x: eye.x + Math.cos(yaw) * Math.cos(pitch), y: eye.y + Math.sin(yaw) * Math.cos(pitch) }, eye.z + Math.sin(pitch));
-    this.persp.position.copy(at);
-    this.persp.up.set(0, 1, 0);
-    this.persp.lookAt(look);
-    this.persp.updateMatrixWorld();
-    this.invalidate();
-  }
-
-  /** The walk ends: the camera and the orbit back as they were. */
-  endWalk(): void {
-    const was = this.beforeWalk;
-    if (!was) return;
-    this.beforeWalk = null;
-    this.persp.fov = VIEW_FOV;
-    this.persp.updateProjectionMatrix();
-    this.persp.position.copy(was.position);
-    this.controls.target.copy(was.target);
-    this.controls.enabled = true;
-    this.controls.update();
-    if (was.ortho) this.setOrtho(true);
-    this.invalidate();
+    return this.opened.has(id);
   }
 
   /** Colours of the theme, read from the design tokens: `token('--3d-side')` and so on. */
@@ -1419,41 +1333,14 @@ export class Scene3D {
     for (const [levelId, l] of this.edges) l.position.y = lift(levelId);
   }
 
-  /**
-   * The sun of the site (app/sun.ts): `way` to it in plan and height (unit), null for the view's fixed
-   * light; below the horizon it gives no light. With `shadows`, every solid casts and takes them.
-   */
-  setSun(way: { readonly x: number; readonly y: number; readonly z: number } | null, shadows: boolean): void {
-    const key = JSON.stringify([way, shadows]);
-    if (key === JSON.stringify([this.sunWay, this.siteShadows])) return;
-    this.sunWay = way;
-    this.siteShadows = shadows;
-    // Materials compiled without shadows are compiled again with them (applyShadows).
-    this.applyShadows();
-    this.invalidate();
-  }
-
-  /** The sun where its way points, far over the model's middle, its shadow camera round the model. */
+  /** The view's fixed sun, far over the model's middle, its shadow camera round the model. */
   private placeSun(): void {
     const c = this.ground.position;
     const reach = Math.max(10, this.ground.scale.x / GROUND_SPAN);
-    if (!this.sunWay) {
-      // The view's fixed light: up and to the left, far enough over the model to cast its shadows.
-      const fixed = new THREE.Vector3(-8, 14, 10).normalize().multiplyScalar(reach * 2);
-      this.sun.position.set(c.x + fixed.x, c.y + fixed.y, c.z + fixed.z);
-      this.sun.target.position.copy(c);
-      this.sunBase = 1.5;
-      this.skyBase = 2.7;
-    } else {
-      const w = this.sunWay;
-      // Plan (x, y, up) to three.js (x, up, −y).
-      this.sun.position.set(c.x + w.x * reach * 2, Math.max(0, c.y) + w.z * reach * 2, c.z - w.y * reach * 2);
-      this.sun.target.position.copy(c);
-      // Below the horizon no sun; low, a weaker one; the sky darker at night.
-      const up = Math.max(0, w.z);
-      this.sunBase = up > 0 ? 0.6 + 1.6 * Math.min(1, up * 2) : 0;
-      this.skyBase = 0.8 + 1.9 * Math.min(1, up * 3);
-    }
+    // Up and to the left, far enough over the model to cast its shadows.
+    const fixed = new THREE.Vector3(-8, 14, 10).normalize().multiplyScalar(reach * 2);
+    this.sun.position.set(c.x + fixed.x, c.y + fixed.y, c.z + fixed.z);
+    this.sun.target.position.copy(c);
     this.applyLights();
     const cam = this.sun.shadow.camera;
     cam.left = -reach * 1.5;
@@ -1488,15 +1375,11 @@ export class Scene3D {
     const ys = points.map((p) => p.y);
     const [x0, x1, y0, y1] = points.length > 0 ? [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)] : [0, 0, 0, 0];
     const size = Math.max(GROUND_MIN, GROUND_SPAN * Math.max(x1 - x0, y1 - y0));
-    // A terrain's block of soil goes SOIL_DEPTH under its surface's lowest point: the ground under that.
-    const spannedBottoms = [...eachSolid(g.kinds)].flatMap((x) => (x.kind.span ? [x.kind.span(x.solid).bottom - (x.kind.key === 'terrains' ? SOIL_DEPTH : 0)] : []));
+    const spannedBottoms = [...eachSolid(g.kinds)].flatMap((x) => (x.kind.span ? [x.kind.span(x.solid).bottom] : []));
     const lowest = Math.min(0, ...solids.map((s) => s.bottom), ...spannedBottoms);
     // The photorealistic view's ground at the walls' foot, floors' slabs sunk in it as built: at the slabs'
     // bottom, under a room with no floor the sun came in under its walls (bright streaks in their shadow).
-    // On a terrain its soil is the ground.
-    const terrain = [...eachSolid(g.kinds)].some((x) => x.kind.key === 'terrains');
-    this.stand = terrain || solids.length === 0 ? lowest : Math.min(...solids.map((s) => s.bottom));
-    this.onTerrain = terrain;
+    this.stand = solids.length === 0 ? lowest : Math.min(...solids.map((s) => s.bottom));
     this.ground.scale.set(size, size, 1);
     this.ground.position.set((x0 + x1) / 2, lowest - 0.002, -(y0 + y1) / 2);
     // The grid at the ground's height, round the model's middle, a metre a cell.
