@@ -257,6 +257,86 @@ textarea {
   outline: var(--line-2) solid var(--accent);
   outline-offset: var(--line);
 }
+/* Every scroll bar thin and quiet, in the theme's colours (scrollbar-width / scrollbar-color, inherited:
+   on the root they reach every scrolling box): the platform's thick grey bars stood out of the design. */
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-3) 45%, transparent) transparent;
+  /* Checkboxes, radios and sliders in the accent, as the rest of the controls. */
+  accent-color: var(--accent);
+}
+/* Sliders (the light, the brightness, any range): a slim track, a round thumb of the accent. */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: var(--control-h-sm);
+  background: transparent;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: var(--sp-1);
+  border-radius: var(--pill);
+  background: color-mix(in srgb, var(--text-3) 30%, transparent);
+}
+input[type='range']::-moz-range-track {
+  height: var(--sp-1);
+  border-radius: var(--pill);
+  background: color-mix(in srgb, var(--text-3) 30%, transparent);
+}
+input[type='range']::-moz-range-progress {
+  height: var(--sp-1);
+  border-radius: var(--pill);
+  background: var(--accent);
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--sp-4);
+  height: var(--sp-4);
+  /* Centred on the track: (track − thumb) / 2. */
+  margin-top: calc((var(--sp-1) - var(--sp-4)) / 2);
+  border: var(--line-2) solid var(--bg);
+  border-radius: var(--pill);
+  background: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+input[type='range']::-moz-range-thumb {
+  width: var(--sp-4);
+  height: var(--sp-4);
+  border: var(--line-2) solid var(--bg);
+  border-radius: var(--pill);
+  background: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+input[type='range']:focus-visible {
+  outline: none;
+}
+input[type='range']:focus-visible::-webkit-slider-thumb {
+  outline: var(--line-2) solid var(--accent);
+  outline-offset: var(--line-2);
+}
+input[type='range']:focus-visible::-moz-range-thumb {
+  outline: var(--line-2) solid var(--accent);
+  outline-offset: var(--line-2);
+}
+/* A colour well: the colour itself, rounded, no inner frame. */
+input[type='color'] {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: var(--sp-half);
+  cursor: pointer;
+}
+input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+input[type='color']::-webkit-color-swatch {
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+input[type='color']::-moz-color-swatch {
+  border: 0;
+  border-radius: var(--radius-sm);
+}
 .icon {
   display: block;
   flex: none;
@@ -1325,13 +1405,22 @@ button.project-name:hover {
   align-items: center;
   gap: var(--sp-1);
 }
+/* The snaps' division, a list like the others (.select): the field's fill, its own chevron drawn in. */
 .snap-parts {
+  -webkit-appearance: none;
+  appearance: none;
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-5) 0 var(--sp-2);
   font: inherit;
   color: var(--text);
-  background: var(--bg);
-  border: var(--line) solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0 var(--sp-1);
+  border: var(--line) solid transparent;
+  border-radius: var(--radius);
+  background: var(--field) no-repeat right var(--sp-1) center / var(--sp-4)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  cursor: pointer;
+}
+.snap-parts:hover {
+  border-color: var(--border);
 }
 .snap-parts:disabled {
   color: var(--text-3);

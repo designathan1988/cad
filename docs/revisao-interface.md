@@ -168,6 +168,15 @@ Conferido no app a 1920×1080, console sem erros. Capturas "depois" 11 a 14.
 - **P2**: na parede, comprimento e espessura subiram para "Geral"; "Fase da obra" e "Ao trocar o tipo, manter" desceram para
   "Mais opções". Captura 22.
 
+- **J1** (b1a0b12): Biblioteca única: os seis catálogos viraram abas de uma janela de tamanho fixo; um botão "Biblioteca" no lugar
+  de seis na aba Gerenciar e na paleta. Captura 23.
+- **Densidade** (5a4a94c): barras 234 → 194 px, campos 32 → 24 px, texto 13 → 12 px, espaçamentos menores, painel 300 → 272 px.
+  Capturas 24 e 25. O botão do Navegador virou só ícone, ao lado do de Propriedades.
+- **Controles e rolagem**: barras de rolagem finas nas cores do tema (`scrollbar-width`/`scrollbar-color` no `:root`); sliders com
+  trilho fino e marcador redondo na cor de destaque, com foco visível; caixas de marcação e rádios na cor de destaque
+  (`accent-color`); poços de cor sem moldura interna; a lista "÷ n" do rodapé igual às outras listas. Captura 26.
+  A lista aberta de um `select` continua a do sistema (só o Chrome recente aceita estilizá-la por inteiro).
+
 Ainda não feito (próximos passos): R3 ferramentas do mesmo tamanho; M3 (opções de porta — Espaço/H — na faixa) e M4 etiqueta
 junto ao cursor; P4 marca estável da parede; J1 biblioteca não modal; J3/J4 salvar e tela inicial; M5, M7, M8, M9; J5, J6; R8.
 Visto e não corrigido: a barra inferior se anuncia "Vista 3D" para leitores de tela também na planta.
