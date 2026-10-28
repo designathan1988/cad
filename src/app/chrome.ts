@@ -23,6 +23,7 @@ import { exploding, RENDER_QUALITIES, shownLevels, VISUAL_STYLES } from './view-
 import { contextEntries } from './context-menu';
 import { tipOf } from './actions';
 import { placeBarY } from '../ui/bar-place';
+import { GRID_BUBBLE_PX } from '../elements/kinds/grid';
 import { signedArea } from '../elements/room/derive';
 import type { App } from './app';
 import { EDIT_LEVELS } from './app';
@@ -506,6 +507,18 @@ export function placeFloatBar(app: App): void {
     x = (a.x + b.x) / 2;
     yTop = a.y;
     yBottom = b.y;
+    // An axis is drawn past its ends, with a bubble at each (kinds/grid.ts): the bar lay on one.
+    for (const g of app.store.get().grids.filter((x) => app.ui.selection.has(x.id))) {
+      const s = app.plan.toScreen(g.start);
+      const e = app.plan.toScreen(g.end);
+      const len = Math.hypot(e.x - s.x, e.y - s.y) || 1;
+      const u = { x: (e.x - s.x) / len, y: (e.y - s.y) / len };
+      for (const [q, k] of [[s, -1], [e, 1]] as const) {
+        const cy = q.y + u.y * GRID_BUBBLE_PX * k;
+        yTop = Math.min(yTop, cy - GRID_BUBBLE_PX);
+        yBottom = Math.max(yBottom, cy + GRID_BUBBLE_PX);
+      }
+    }
   } else {
     // The selection's screen box: every vertex of its pieces, at the bottom and at the top.
     const xs: number[] = [];
@@ -561,9 +574,10 @@ export function placeFloatBar(app: App): void {
   // on a phone after F it sat on the handle at an arc's end (the tester's R04).
   const h0 = app.handles();
   const grip = (p: Point2) => ({ top: p.y - 12, bottom: p.y + 12, left: p.x - 12, right: p.x + 12 });
+  // Nor over the views' card in the corner (plan/3D, level, browser): it covered the level list.
   const boxes = [
     ...[...h0.squares, ...h0.arrows, ...(h0.bulge ? [h0.bulge] : []), ...(h0.rotate ? [h0.rotate] : [])].map((x) => grip(x.at)),
-    ...[...app.shell.dims.children].map((c) => c.getBoundingClientRect()).map((r) => ({ top: r.top - vp.top, bottom: r.bottom - vp.top, left: r.left - vp.left, right: r.right - vp.left })),
+    ...[...app.shell.dims.children, app.shell.viewCorner].map((c) => c.getBoundingClientRect()).map((r) => ({ top: r.top - vp.top, bottom: r.bottom - vp.top, left: r.left - vp.left, right: r.right - vp.left })),
     ...(app.ui.view === 'plan' ? app.plan.labelBoxes.map((b) => ({ top: b.y, bottom: b.y + b.h, left: b.x, right: b.x + b.w })) : []),
   ];
   const y = placeBarY({ left, w, h }, { top: yTop, bottom: yBottom }, boxes, { h: covered });
