@@ -50,7 +50,7 @@ export function nudge(doc0: Doc, g: DerivedGeometry, ids: readonly string[], ste
   // The registry's elements (rooms, columns, beams, roofs, stairs, guardrails, texts, axes, guides,
   // outline floors, a dimension's free ends) by their own move; a room gone with its walls not again.
   const own = new Set([...set].filter((id) => !carried.has(id)));
-  return moveKinds(changed ? { ...next, openings } : doc, own, step);
+  return moveKinds(changed ? { ...next, openings } : doc, own, step, g);
 }
 
 /** The rule moved `along` metres toward the wall's end; one without a distance is measured from the start. */

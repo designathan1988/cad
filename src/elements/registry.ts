@@ -142,8 +142,8 @@ export const hasSolid = (solids: KindSolids, id: string): boolean => {
   return k !== null && (solids.get(k.key)?.has(id) ?? false);
 };
 
-/** The document with the registry elements among `ids` moved by d; the same document when none moves. */
-export function moveKinds(doc: Doc, ids: ReadonlySet<string>, d: { readonly x: number; readonly y: number }): Doc {
+/** The document with the registry elements among `ids` moved by d; the same document when none moves. `g`: the geometry before the move (a hosted guardrail moves from where it is shown). */
+export function moveKinds(doc: Doc, ids: ReadonlySet<string>, d: { readonly x: number; readonly y: number }, g?: DerivedGeometry): Doc {
   if (ids.size === 0 || (d.x === 0 && d.y === 0)) return doc;
   let next = doc;
   for (const k of KINDS) {
@@ -151,7 +151,7 @@ export function moveKinds(doc: Doc, ids: ReadonlySet<string>, d: { readonly x: n
     if (k.walled) continue;
     const list = listOf(doc, k);
     if (!list.some((e) => ids.has(e.id))) continue;
-    next = withList(next, k, list.map((e) => (ids.has(e.id) ? k.moved(e, d) : e)));
+    next = withList(next, k, list.map((e) => (ids.has(e.id) ? k.moved(e, d, g) : e)));
   }
   return next;
 }

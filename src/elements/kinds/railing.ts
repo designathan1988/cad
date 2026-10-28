@@ -4,6 +4,7 @@
 
 import { finite, isObject, isPoint } from '../../core/guards';
 import type { Point2 } from '../../core/vector';
+import type { DerivedGeometry } from '../../app/geometry';
 import { railingGeometry } from '../../render/prisms';
 import type { ElementKind } from '../contract';
 import { updateRailings } from '../railing/commands';
@@ -27,6 +28,10 @@ export interface RailingSolid {
   /** The project's glass, for panes. */
   readonly glass: Material;
 }
+
+/** Where it stands as shown: a hosted one's path taken from its host in `g`; its own points otherwise. */
+const shownPath = (r: Railing, g: DerivedGeometry | undefined): readonly Point2[] =>
+  (r.host ? (g?.kinds.get('railings')?.get(r.id) as RailingSolid | undefined)?.points : undefined) ?? r.points;
 
 export const railingKind: ElementKind<Railing, RailingSolid> = {
   key: 'railings',
@@ -95,14 +100,23 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
   hit: (s, p, near) => s.points.slice(1).some((q, i) => nearSegment(p, s.points[i]!, q, near)),
   pick: 'beforeWalls',
   span: (s) => ({ bottom: s.bottom, top: s.bottom + Math.max(0, ...(s.rise ?? [])) + s.railing.height }),
-  // Moved on its own, it lets go of its stair: it stays where it was put.
-  moved: (r, d) => {
+  // Moved on its own, it lets go of its stair or floor and stays where it was put: from the path it
+  // showed, taken from its host. Its stored points are those it was made with; a stair changed since
+  // (turned, widened) sent it back to them, away from where it stood.
+  moved: (r, d, g) => {
     const { host: _host, ...rest } = r;
-    return { ...rest, points: r.points.map((p) => ({ x: p.x + d.x, y: p.y + d.y })) };
+    return { ...rest, points: shownPath(r, g).map((p) => ({ x: p.x + d.x, y: p.y + d.y })) };
   },
   mapped: (r, t, id) => {
     const { host: _host, ...rest } = r;
     return { ...rest, id, points: r.points.map(t.map) };
+  },
+  // By a Modify tool: the same, from the path it showed; one only there while its stair goes is left as
+  // it is (it follows the stair).
+  transformed: (r, c) => {
+    if (!c.selected) return null;
+    const { host: _host, ...rest } = r;
+    return { ...rest, id: c.id, points: shownPath(r, c.geometry).map(c.t.map) };
   },
   // Its path, with a tick at each post.
   plan: (p, s, lit) => {

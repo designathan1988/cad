@@ -460,7 +460,7 @@ export class App {
       d?.kind === 'move' || d?.kind === 'rotate'
         ? {
             ...doc,
-            ...(d.kind === 'move' ? kindLists(moveKinds(doc, d.kinds, d.delta)) : {}),
+            ...(d.kind === 'move' ? kindLists(moveKinds(doc, d.kinds, d.delta, geometryOf(doc))) : {}),
             walls: d.walls,
             rooms: moveRooms(doc.rooms, d.rooms, dragTransform(d)),
           }
@@ -1005,7 +1005,7 @@ export class App {
       how,
     );
     const before = this.store.get();
-    const next = items.reduce((d, it, i) => moveKinds(d, new Set([it.id]), steps[i]!), before);
+    const next = items.reduce((d, it, i) => moveKinds(d, new Set([it.id]), steps[i]!, geometryOf(before)), before);
     if (next !== before) this.store.dispatch({ label: 'cmd.arrange', apply: () => next });
   }
 

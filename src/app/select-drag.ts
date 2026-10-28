@@ -16,7 +16,7 @@ import type { WallEnd, WallId } from '../elements/wall/schema';
 import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../tools/edit';
 import { bulgeFromMiddle, straightNear } from '../tools/arc-edit';
 import { handleAt } from './handles';
-import { moveRooms, roomsGoingWith } from './carry';
+import { geometryOf, moveRooms, roomsGoingWith } from './carry';
 import { GRID_STEP, type Snap } from '../tools/snap';
 import type { App } from './app';
 import type { DocWall } from './document';
@@ -299,7 +299,7 @@ export function selectGestures(app: App): SelectGestures {
         // The rooms whose walls all went along go too (carry.ts): one undo step for both.
         const before = app.store.get();
         const rooms = moveRooms(before.rooms, d.rooms, dragTransform(d));
-        const kinds = d.kind === 'move' ? moveKinds(before, d.kinds, d.delta) : before;
+        const kinds = d.kind === 'move' ? moveKinds(before, d.kinds, d.delta, geometryOf(before)) : before;
         const walls = setWalls(d.walls);
         // One undo step for the walls and what went with them; a room, a floor, a guide or a note alone is a move too.
         const moved = rooms.some((r, i) => r !== before.rooms[i]) || kinds !== before;

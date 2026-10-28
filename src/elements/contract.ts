@@ -165,8 +165,8 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   /** A handle taken before everything else under the point (an axis's bubble). */
   readonly grab?: (s: S, p: Point2, scale: number) => boolean;
   readonly pick: PickOrder;
-  /** Moved by d (arrows, a drag). */
-  readonly moved: (e: E, d: Point2) => E;
+  /** Moved by d (arrows, a drag); `g`, the geometry before the move, for one whose shown place is derived (a hosted guardrail). */
+  readonly moved: (e: E, d: Point2, g?: DerivedGeometry) => E;
   /** Taken by a Modify tool's transform, under `id` (its own, or its copy's). */
   readonly mapped: (e: E, t: Transform, id: string) => E;
   /** A copy as added after `all` (an axis named on from the last). */
