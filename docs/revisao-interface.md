@@ -116,4 +116,17 @@ Ver a seção "Implementado" no fim deste arquivo, atualizada a cada passo com o
 
 ## Implementado
 
-(em andamento)
+Conferido no app a 1920×1080, console sem erros. Capturas "depois" 11 a 14.
+
+- **R1** (commit d3060bc): a aba "Colocar …" da ribbon só tem comandos; os campos do próximo elemento ficam no painel de
+  Propriedades (`ribbon-tabs.ts`). Antes: captura 03; depois: 11.
+- **C1, C2, R4**: o canto da vista tem só o cubo e a casa, sem cartão, meio transparente até o mouse chegar; Planta | 3D,
+  pavimento e Navegador foram para a barra de título; a ribbon não repete Planta/3D (`shell.ts`, `styles.css`, `ribbon-tabs.ts`).
+  Antes: 05; depois: 12 e 14.
+- **B1, B2, B4**: a barra inferior do 3D mostra os interruptores só como ícones com dica; Estilo, Qualidade, Brilho e Sol estão num
+  painel "Exibição", que fecha com Esc ou clique fora (`shell.ts`, `input-buttons.ts`, `styles.css`, `i18n.ts`). Depois: 12 e 13.
+- **R5**: dica inicial "Comece pela ferramenta Parede, acima (W)".
+
+Ainda não feito (próximos passos, nesta ordem): B3/B5 Visibilidade única; R2/R3 barra de ferramentas estável no lugar das abas;
+M1/M2 menus de contexto completos; M3/M4 faixa de opções da ferramenta e etiqueta junto ao cursor; P1-P4 painel de Propriedades;
+J1 biblioteca não modal; J2 navegador; J3/J4 salvar e tela inicial; M5-M9; J5, J6; R8.

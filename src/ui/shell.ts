@@ -136,7 +136,9 @@ export function buildShell(root: HTMLElement) {
   };
   const light = { button: lightBtn, panel: el('div', { class: 'light-panel', role: 'group' }), brightness: lightSlider(), sun: lightSlider() };
   light.panel.hidden = true;
-  light.panel.append(light.brightness.row, light.sun.row);
+  // The Display panel: how the 3D looks, the style and quality lists over the light's sliders. On the bar
+  // they were two labelled lists among the toggles, a strip of form fields (docs/revisao-interface.md, B1, B2).
+  light.panel.append(el('div', { class: 'light-lists' }, look.style.box, look.quality.box), look.preparing, light.brightness.row, light.sun.row);
   // The plan's scale (the drawing's, drawing/schema.ts), a list as the model's "Escala 1:100".
   const planScale = lookSelect('scale');
   // Both views: the categories' visibility and overrides (the dialog), and everything back after a hide.
@@ -146,18 +148,20 @@ export function buildShell(root: HTMLElement) {
   const shown = { reset: el('button', { type: 'button', class: 'has-icon light-btn' }) };
   shown.reset.innerHTML = icon('close', 16);
   shown.reset.append(el('span', { class: 'label' }));
-  const only3d = el('div', { class: 'view-bar-group view-bar-3d' }, levelsBox, togglesBox, look.style.box, look.preparing, look.quality.box, el('span', { class: 'light-wrap' }, lightBtn, light.panel));
+  const lightIcon = lightBtn.querySelector('svg');
+  if (lightIcon) lightIcon.outerHTML = icon('cube', 16);
+  const only3d = el('div', { class: 'view-bar-group view-bar-3d' }, levelsBox, togglesBox, el('span', { class: 'light-wrap' }, lightBtn, light.panel));
   const onlyPlan = el('div', { class: 'view-bar-group' }, planScale.box);
   // The way out of the tool in use (it was the options bar's), shown while one is.
   const toolDone = el('button', { type: 'button', class: 'has-icon light-btn tool-done' });
   toolDone.hidden = true;
   viewBar.append(onlyPlan, only3d, el('span', { class: 'view-bar-sep' }), visBtn, shown.reset, el('span', { class: 'spacer' }), toolDone);
-  // The drawing's corner, top right, one panel (as a CAD's view cube with its navigation bar under it):
-  // the cube and its home (app.ts puts them first; in 3D only); the two views side by side as icons,
-  // each named in its tip; the level by its name, a list; the project browser, named (its icon alone
-  // says little).
+  // The drawing's corner, top right: the view cube and its home alone (app.ts puts them in; 3D only), as
+  // Fusion's and Revit's. The views, the level and the project browser are the title bar's, once: in a
+  // card under the cube they mixed navigation with the model's levels and covered the drawing (C1, C2).
   const viewBox = el('div', { class: 'view-box' }, views, levelBox, sidebar);
-  const viewCorner = el('div', { class: 'view-corner' }, viewBox);
+  left.append(el('span', { class: 'sep' }), viewBox);
+  const viewCorner = el('div', { class: 'view-corner' });
   viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, emptyHint, tempChip, toast, browser, viewCorner);
 
   const panel = el('aside', { class: 'panel', 'aria-label': 'Properties' });

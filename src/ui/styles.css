@@ -607,13 +607,30 @@ button.project-name:hover {
    would clip the light's sliders, which open above it), it gives way a step at a time: the 3D's lists'
    captions (each select keeps its name; the plan's scale, alone, keeps its), then the buttons' words,
    then the light's and the visibility's: each named and with its tip. */
-.view-bar.fit-1 .view-bar-3d .look-caption,
-.view-bar.fit-2 .view-bar-3d .look-caption,
-.view-bar.fit-3 .view-bar-3d .look-caption,
-.view-bar.fit-2 .segmented .label,
-.view-bar.fit-3 .segmented .label,
+.view-bar.fit-2 .light-btn .label,
 .view-bar.fit-3 .light-btn .label {
   display: none;
+}
+/* The 3D's toggles as icons, each named in its tip (shell.ts relabel): a row of fourteen words of the
+   same weight read as a form (docs/revisao-interface.md, B1). */
+.view-bar-3d .segmented .label {
+  display: none;
+}
+.view-bar-3d .segmented button.has-icon {
+  width: var(--control-h);
+  justify-content: center;
+  padding: 0;
+}
+/* The Display panel's lists, one over the other, wide enough for their names. */
+.light-lists {
+  display: grid;
+  gap: var(--sp-2);
+}
+.light-lists .look-select {
+  width: 100%;
+}
+.light-lists .look-select select {
+  flex: 1;
 }
 /* While the photorealistic view is being prepared (app.ts): said beside the style, in the accent. */
 .look-preparing {
@@ -798,7 +815,8 @@ button.project-name:hover {
 }
 
 /* View cube */
-/* The drawing's corner (shell.ts): one panel, the view cube and its home over a column of icons. */
+/* The drawing's corner (shell.ts): the view cube and its home alone, no card around them; quiet until
+   the pointer comes to it, as Fusion's cube. */
 .view-corner {
   position: absolute;
   right: var(--sp-5);
@@ -807,57 +825,63 @@ button.project-name:hover {
   flex-direction: column;
   align-items: center;
   gap: var(--sp-1);
-  /* As wide in plan, without the cube, as in 3D: nothing moves switching views; room for a level's name. */
-  width: calc(var(--cube-wrap) * 1.4);
-  padding: var(--sp-1);
-  border: var(--line) solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--bg);
-  box-shadow: var(--shadow);
   z-index: 4;
+  opacity: 0.72;
+  transition: opacity 0.15s;
 }
-.view-box {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--sp-1);
-  width: 100%;
+.view-corner:hover,
+.view-corner:focus-within {
+  opacity: 1;
 }
-/* The cube's own part of the panel, ruled off from what is under it. */
-.view-corner > .cube-wrap:not([hidden]) {
-  padding-bottom: var(--sp-1);
-  border-bottom: var(--line) solid var(--border);
-}
-/* The views: three icons in a row, the pressed one in the accent. */
-.view-box .view-tabs {
-  justify-content: space-between;
-}
-.view-box .view-tab {
-  display: grid;
-  place-items: center;
-  width: var(--control-h);
-  height: var(--control-h);
-  padding: 0;
-  border-radius: var(--radius);
-}
-.view-box .view-tab .label {
+.view-corner:empty,
+.view-corner:not(:has(.cube-wrap:not([hidden]))) {
   display: none;
 }
+/* In the title bar (shell.ts): Plan | 3D as one segmented switch, the level, the project browser. */
+.view-box {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.view-box .view-tabs {
+  align-self: center;
+  padding: var(--line-2);
+  border-radius: var(--radius);
+  background: var(--title-hover);
+}
+.view-box .view-tab {
+  height: calc(var(--control-h-sm) - 2 * var(--line-2));
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-radius: calc(var(--radius) - var(--line-2));
+  color: var(--title-text-2);
+  font-size: var(--fs-sm);
+}
 .view-box .view-tab:hover {
-  background: var(--hover);
+  color: var(--title-text);
 }
 .view-box .view-tab[aria-pressed='true'] {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--title-bg);
+  color: var(--title-text);
+  font-weight: 600;
 }
 .view-box .level-select {
-  width: 100%;
+  min-width: calc(5 * var(--sp-7));
+  color: var(--title-text);
+}
+.view-box .level-select select {
+  height: var(--control-h-sm);
+  border-color: var(--title-border);
+  background: var(--title-hover);
+  color: var(--title-text);
+  font-size: var(--fs-sm);
+}
+.view-box .level-select select option {
+  color: var(--text);
+  background: var(--bg);
 }
 .view-box .browser-toggle {
-  justify-content: flex-start;
-  width: 100%;
   height: var(--control-h-sm);
-  padding: 0 var(--sp-2);
   font-size: var(--fs-sm);
 }
 .cube-wrap {

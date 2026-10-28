@@ -90,6 +90,18 @@ export function wireButtons(app: App, palette: () => void): void {
     shell.light.panel.hidden = !shell.light.panel.hidden;
     app.renderChrome();
   });
+  // The Display panel is a popover: a click elsewhere or Esc closes it (it stayed open over the drawing).
+  const closeLight = () => {
+    if (shell.light.panel.hidden) return;
+    shell.light.panel.hidden = true;
+    app.renderChrome();
+  };
+  document.addEventListener('pointerdown', (e) => {
+    if (!(e.target instanceof Node) || !shell.light.button.parentElement?.contains(e.target)) closeLight();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeLight();
+  });
   shell.light.brightness.input.addEventListener('input', () => app.setView3D({ brightness: Number(shell.light.brightness.input.value) }));
   shell.light.sun.input.addEventListener('input', () => app.setView3D({ sun: Number(shell.light.sun.input.value) }));
   shell.tempReset.addEventListener('click', () => app.resetTemporary());

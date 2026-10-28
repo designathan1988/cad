@@ -99,14 +99,8 @@ function tabsOf(app: App): readonly RibbonTab[] {
         // The edits of a selection are on its own tab (Modify | …); these two work by clicking a wall.
         { title: 'rib.p.geometry', items: [tool('split', 'edit.split', 'split', 'S'), tool('corner', 'edit.corner', 'corner', 'S')] },
         { title: 'rib.p.annotation', items: [tool('dimension', 'tool.dimension', 'dimension', 'L'), tool('note', 'edit.addNote', 'text', 'S'), tool('measure', 'tool.measure', 'ruler', 'S')] },
-        {
-          title: 'rib.p.views',
-          items: [
-            { id: 'view.plan', icon: 'map', size: 'L', pressed: () => ui.view === 'plan' },
-            { id: 'view.3d', icon: 'cube', size: 'L', pressed: () => ui.view === '3d' },
-            tool('section', 'tool.section', 'cut', 'S'),
-          ],
-        },
+        // Plan and 3D are the title bar's switch (shell.ts): here they were a second copy.
+        { title: 'rib.p.views', items: [tool('section', 'tool.section', 'cut', 'L')] },
       ],
     },
     {
@@ -187,9 +181,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
         {
           title: 'rib.p.create',
           items: [
-            { id: 'view.3d', icon: 'cube', size: 'L', pressed: () => ui.view === '3d' },
-            { id: 'view.plan', icon: 'map', size: 'S', pressed: () => ui.view === 'plan' },
-            tool('section', 'tool.section', 'cut', 'S'),
+            tool('section', 'tool.section', 'cut', 'L'),
             { id: 'section.elevations', icon: 'cube', size: 'S' },
             { id: 'view.sections', icon: 'cut', size: 'S' },
             { id: 'view.save', icon: 'plus', size: 'S' },
