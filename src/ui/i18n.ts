@@ -7,6 +7,8 @@ export type Lang = 'en' | 'pt';
 const en = {
   'app.untitled': 'Untitled project',
   'top.undo': 'Undo (Ctrl+Z)',
+  'toast.undoBtn': 'Undo',
+  'toast.redoBtn': 'Redo',
   'top.redo': 'Redo (Ctrl+Shift+Z)',
   'top.level': 'Level',
   'view.3d': '3D',
@@ -2122,6 +2124,8 @@ export type MessageKey = keyof typeof en;
 const pt: Record<MessageKey, string> = {
   'app.untitled': 'Projeto sem nome',
   'top.undo': 'Desfazer (Ctrl+Z)',
+  'toast.undoBtn': 'Desfazer',
+  'toast.redoBtn': 'Refazer',
   'top.redo': 'Refazer (Ctrl+Shift+Z)',
   'top.level': 'Pavimento',
   'view.3d': '3D',

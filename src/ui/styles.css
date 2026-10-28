@@ -1006,24 +1006,56 @@ button.project-name:hover {
 .text-btn.danger {
   color: var(--warn);
 }
+/* The messages (app.ts toast): a stack over the bottom middle of the view, the newest at the bottom, each
+   with its button when it has one (Undone → Redo). */
 .toast {
   position: absolute;
   left: 50%;
   bottom: var(--sp-4);
   transform: translateX(-50%);
-  padding: var(--sp-2) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  pointer-events: none;
+  /* Over a dialog's scrim (20): said from a dialog ("link copied"), it was hidden under it. */
+  z-index: 25;
+}
+.toast-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
+  min-height: var(--control-h-sm);
   border-radius: var(--radius);
   background: var(--text);
   color: var(--bg);
   font-size: var(--fs-sm);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 160ms;
-  /* Over a dialog's scrim (20): said from a dialog ("CSV saved", "link copied"), it was hidden under it. */
-  z-index: 25;
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+  animation: toast-in var(--ease);
 }
-.toast.show {
-  opacity: 1;
+.toast-item:not(:has(.toast-action)) {
+  padding-right: var(--sp-3);
+}
+.toast-action {
+  height: calc(var(--control-h-sm) - var(--sp-1));
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg) 18%, transparent);
+  color: var(--bg);
+  font-weight: 600;
+  cursor: pointer;
+}
+.toast-action:hover {
+  background: color-mix(in srgb, var(--bg) 30%, transparent);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--sp-1));
+  }
 }
 
 /* View cube */

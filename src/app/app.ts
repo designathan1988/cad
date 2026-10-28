@@ -233,7 +233,6 @@ export class App {
   planViewTimer = 0;
   panelDoc: Doc | null = null;
   panelKey = '';
-  private toastTimer = 0;
 
   /** The browser's database and the open project's id there (boot.ts); null without a database. */
   db: IDBDatabase | null;
@@ -1345,12 +1344,12 @@ export class App {
   undo(): void {
     if (this.chainStepBack()) return;
     const what = this.store.undoLabel();
-    if (this.store.undo()) this.toast(what ? `${t('toast.undo')}: ${t(what as MessageKey)}` : t('toast.undo'));
+    if (this.store.undo()) this.toast(what ? `${t('toast.undo')}: ${t(what as MessageKey)}` : t('toast.undo'), { label: t('toast.redoBtn'), run: () => this.redo() });
   }
 
   redo(): void {
     const what = this.store.redoLabel();
-    if (this.store.redo()) this.toast(what ? `${t('toast.redo')}: ${t(what as MessageKey)}` : t('toast.redo'));
+    if (this.store.redo()) this.toast(what ? `${t('toast.redo')}: ${t(what as MessageKey)}` : t('toast.redo'), { label: t('toast.undoBtn'), run: () => this.undo() });
   }
 
   seenSelection = '';
@@ -1469,14 +1468,32 @@ export class App {
     return files.openFile(this, file);
   }
 
-  toast(text: string): void {
-    const el = this.shell.toast;
-    el.textContent = text;
-    el.classList.add('show');
-    clearTimeout(this.toastTimer);
+  /**
+   * A message over the bottom of the view, in a stack of three at most (the newest at the bottom): the next
+   * one no longer wipes the one being read. `action`: a button in it (Undone → Redo), the way back at hand
+   * (docs/revisao-interface.md, M5).
+   */
+  toast(text: string, action?: { readonly label: string; readonly run: () => void }): void {
+    const box = this.shell.toast;
+    const item = document.createElement('div');
+    item.className = 'toast-item';
+    item.append(Object.assign(document.createElement('span'), { textContent: text }));
+    if (action) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'toast-action';
+      b.textContent = action.label;
+      b.addEventListener('click', () => {
+        item.remove();
+        action.run();
+      });
+      item.append(b);
+    }
+    box.append(item);
+    while (box.childElementCount > 3) box.firstElementChild?.remove();
     // Long enough to be read: 1.6 s took away "Project opened; 1 bad element was left out. Ctrl+Z goes
-    // back" before its end. Short ones ("Undone") still go quickly.
-    this.toastTimer = window.setTimeout(() => el.classList.remove('show'), Math.max(2500, 1500 + text.length * 50));
+    // back" before its end. Short ones ("Undone") still go quickly; one with a button stays longer.
+    window.setTimeout(() => item.remove(), Math.max(action ? 5000 : 2500, 1500 + text.length * 50));
   }
 
   /** The level just below the one shown, if any: its plan is drawn faint under this one, and snapped to. */
