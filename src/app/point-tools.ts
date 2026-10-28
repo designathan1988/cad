@@ -1,8 +1,8 @@
-// The tools drawn by clicking points (a beam, a separator, a curtain wall, a guardrail, a roof, a stair,
-// an axis, a section, a callout, a guide): each one's steps in one place, read by the pointer (input.ts),
-// the keys (input-keys.ts), the footer (chrome.ts) and the drawing (frame.ts). They were a branch of
-// five chains in four files, and one changed in one chain and not another behaved differently there
-// (F-0023).
+// The tools drawn by clicking points or placed by one click (a beam, a separator, a curtain wall, a
+// guardrail, a roof, a stair, an axis, a section, a callout, a guide, a column, a text, a level mark, a
+// calibration, a dimension mark): each one's steps in one place, read by the pointer (input.ts), the keys
+// (input-keys.ts), the footer (chrome.ts) and the drawing (frame.ts). They were a branch of five chains
+// in four files, and one changed in one chain and not another behaved differently there (F-0023).
 
 import type { Point2 } from '../core/vector';
 import type { MessageKey } from '../ui/i18n';
@@ -23,11 +23,14 @@ export interface PointTool {
   readonly drafted?: false;
   /** Whether the footer offers Shift and the axis locks (a callout's leader takes none). */
   readonly straight?: false;
-  readonly click: (app: App, p: Point2, mpp: number) => void;
+  /** `p` where it snapped, `raw` where the pointer is (a radius mark takes the arc's own point). */
+  readonly click: (app: App, p: Point2, mpp: number, raw: Point2) => void;
+  /** The line drawn when it is not the points and the pointer in order (an angle mark's arms). */
+  readonly draft?: (app: App, at: Point2 | null) => Point2[] | null;
   /** Esc with something drawn (with nothing, Esc closes the tool). */
   readonly escape: (app: App) => void;
   /** Esc's name in the footer while something is drawn. */
-  readonly escapeIs: 'key.back' | 'key.finish';
+  readonly escapeIs: 'key.back' | 'key.finish' | 'key.exit';
   /** Enter with something drawn; and whether the footer offers it. */
   readonly enter?: (app: App) => void;
   readonly enterShown?: true;
@@ -58,7 +61,67 @@ const twoPoints = (click: (app: App, p: Point2) => void, aim: PointTool['aim'], 
   return { aim, points, click: (app, p) => click(app, p), escape, escapeIs: 'key.finish', enter: escape, rightClick: escape, hint };
 };
 
+/** A tool placed by one click (a column, a text, a level mark): nothing drawn first, Esc closes it. */
+const oneClick = (aim: PointTool['aim'], click: (app: App, p: Point2) => void, hint: MessageKey): PointTool => ({
+  aim,
+  points: () => [],
+  tape: false,
+  straight: false,
+  click: (app, p) => click(app, p),
+  escape: (app) => app.setTool('select'),
+  escapeIs: 'key.exit',
+  hint: () => hint,
+});
+
 export const POINT_TOOLS: Partial<Record<ToolId, PointTool>> = {
+  column: oneClick('3d', (app, p) => app.columnClick(p), 'hint.columnPlace'),
+  // Then selected, its text ready to type.
+  note: oneClick('plan', (app, p) => app.addNoteHere(p), 'hint.notePlace'),
+  levelMark: oneClick('plan', (app, p) => app.addLevelMarkHere(p), 'hint.levelMarkPlace'),
+  calibrate: {
+    aim: 'planView',
+    points: (app) => (app.ui.calibrate?.a ? [app.ui.calibrate.a] : []),
+    tape: false,
+    drafted: false,
+    straight: false,
+    click: (app, p) => app.calibrateClick(p),
+    // Esc leaves the tool, its first point or not.
+    escape: (app) => {
+      app.ui.calibrate = null;
+      app.setTool('select');
+    },
+    escapeIs: 'key.exit',
+    hint: steps('hint.calibrateFirst', 'hint.calibrateSecond'),
+  },
+  mark: {
+    aim: 'planView',
+    points: (app) => app.ui.markDraft,
+    tape: false,
+    straight: false,
+    // A radius mark goes where the arc is aimed at, not where it would snap.
+    click: (app, p, _mpp, raw) => app.markClick(app.ui.markMode === 'radius' ? raw : p),
+    // An angle's two arms meet at the vertex (its first point).
+    draft: (app, at) => {
+      const d = app.ui.markDraft;
+      if (!at) return null;
+      return d.length === 2 && app.ui.markMode === 'angle' ? [d[1]!, d[0]!, at] : [d[0]!, at];
+    },
+    escape: (app) => {
+      app.ui.markDraft = app.ui.markDraft.slice(0, -1);
+      app.render();
+    },
+    escapeIs: 'key.back',
+    rightClick: (app) => {
+      app.ui.markDraft = app.ui.markDraft.slice(0, -1);
+      app.render();
+    },
+    hint: (app) => {
+      const { markMode, markDraft } = app.ui;
+      if (markMode === 'radius') return 'hint.markRadius';
+      if (markMode === 'coord') return markDraft.length === 0 ? 'hint.markCoordPoint' : 'hint.markCoordLabel';
+      return markDraft.length === 0 ? 'hint.markAngleVertex' : markDraft.length === 1 ? 'hint.markAngleArm1' : 'hint.markAngleArm2';
+    },
+  },
   beam: twoPoints((app, p) => app.beamClick(p), '3d', steps('hint.beamStart', 'hint.beamEnd')),
   separator: twoPoints((app, p) => app.separatorClick(p), 'plan', steps('hint.separatorStart', 'hint.separatorEnd')),
   curtain: twoPoints((app, p) => app.curtainClick(p), 'plan', steps('hint.curtainStart', 'hint.curtainEnd')),
@@ -157,5 +220,6 @@ export function pointDraft(app: App): Point2[] | null {
   const points = tool.points(app);
   if (points.length === 0) return null;
   const at = app.ui.snap?.point ?? app.ui.cursor;
+  if (tool.draft) return tool.draft(app, at);
   return [...points, ...(at ? [at] : [])];
 }

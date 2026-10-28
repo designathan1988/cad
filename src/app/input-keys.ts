@@ -160,19 +160,10 @@ export function wireKeys(app: App, k: KeyContext): void {
       if (ui.tool === 'room' || ui.tool === 'floor') return app.setTool('select');
       if (ui.tool === 'measure') return ui.measure.kind !== 'idle' ? app.measureEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
-      if (ui.tool === 'calibrate') {
-        ui.calibrate = null;
-        return app.setTool('select');
-      }
-      if (ui.tool === 'column' || ui.tool === 'object' || ui.tool === 'note' || ui.tool === 'levelMark') return app.setTool('select');
+      if (ui.tool === 'object') return app.setTool('select');
       // The tools drawn by points: a beam, a roof, an axis, a section, a guide… (point-tools.ts).
       const drawing = pointTool(app);
       if (drawing) return drawing.points(app).length === 0 ? app.setTool('select') : drawing.escape(app);
-      if (ui.tool === 'mark') {
-        if (ui.markDraft.length === 0) return app.setTool('select');
-        ui.markDraft = ui.markDraft.slice(0, -1);
-        return app.render();
-      }
       if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? app.wallEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'split') return app.setTool('select');
       // The Corner tool lets go of its first wall first (below), then of itself.

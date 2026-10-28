@@ -427,7 +427,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (pointTool(app) || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'calibrate' || ui.tool === 'column' || ui.tool === 'mark' || ui.tool === 'note' || ui.tool === 'levelMark') {
+    if (pointTool(app) || ui.tool === 'measure' || ui.tool === 'dimension') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -571,11 +571,6 @@ export function wireInput(app: App): void {
       drawing.rightClick(app);
       return true;
     }
-    if (ui.tool === 'mark' && ui.markDraft.length > 0) {
-      ui.markDraft = ui.markDraft.slice(0, -1);
-      app.render();
-      return true;
-    }
     if (ui.tool === 'measure' && ui.measure.kind !== 'idle') {
       app.measureEvent({ kind: 'escape' });
       return true;
@@ -658,11 +653,6 @@ export function wireInput(app: App): void {
       if (at) app.dimensionEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
       return;
     }
-    if (ui.tool === 'column') {
-      const at = aimAt3d(e);
-      if (at) app.columnClick(snapped(e)?.point ?? at.p);
-      return;
-    }
     if (ui.tool === 'object') {
       const at = aimAt3d(e);
       if (at) app.objectClick(snapped(e)?.point ?? at.p);
@@ -672,25 +662,8 @@ export function wireInput(app: App): void {
     const drawing = pointTool(app);
     if (drawing) {
       const at = drawing.aim === '3d' ? aimAt3d(e) : worldAt(e);
-      if (at && (drawing.aim !== 'planView' || ui.view === 'plan')) drawing.click(app, snapped(e)?.point ?? at.p, at.mpp);
+      if (at && (drawing.aim !== 'planView' || ui.view === 'plan')) drawing.click(app, snapped(e)?.point ?? at.p, at.mpp, at.p);
       return;
-    }
-    if (ui.tool === 'mark') {
-      const at = worldAt(e);
-      if (at && ui.view === 'plan') app.markClick(ui.markMode === 'radius' ? at.p : (snapped(e)?.point ?? at.p));
-      return;
-    }
-    if (ui.tool === 'calibrate') {
-      const at = worldAt(e);
-      if (at && ui.view === 'plan') app.calibrateClick(snapped(e)?.point ?? at.p);
-      return;
-    }
-    // A text or a level mark where the click is; then selected, its text ready to type.
-    if (ui.tool === 'note' || ui.tool === 'levelMark') {
-      const at = worldAt(e);
-      if (!at) return;
-      const p = snapped(e)?.point ?? at.p;
-      return ui.tool === 'note' ? app.addNoteHere(p) : app.addLevelMarkHere(p);
     }
     if (ui.tool === 'room' || ui.tool === 'floor') {
       const at = worldAt(e);

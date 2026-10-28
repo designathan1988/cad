@@ -258,21 +258,11 @@ export function renderChrome(app: App): void {
           ? app.measureHint()
           : ui.tool === 'dimension'
             ? t(ui.dimension.kind === 'idle' ? 'hint.dimensionStart' : ui.dimension.kind === 'from' ? 'hint.dimensionEnd' : 'hint.dimensionPlace')
-            : ui.tool === 'calibrate'
-              ? t(ui.calibrate?.a ? 'hint.calibrateSecond' : 'hint.calibrateFirst')
-              : ui.tool === 'column'
-                ? t('hint.columnPlace')
-                : ui.tool === 'object'
-                  ? t('hint.object', { name: objectName(app) })
-                : pointing
-                  ? t(pointing.hint(app))
-                : ui.tool === 'mark'
-                  ? t(ui.markMode === 'radius' ? 'hint.markRadius' : ui.markMode === 'coord' ? (ui.markDraft.length === 0 ? 'hint.markCoordPoint' : 'hint.markCoordLabel') : ui.markDraft.length === 0 ? 'hint.markAngleVertex' : ui.markDraft.length === 1 ? 'hint.markAngleArm1' : 'hint.markAngleArm2')
-                : ui.tool === 'note'
-                  ? t('hint.notePlace')
-                : ui.tool === 'levelMark'
-                  ? t('hint.levelMarkPlace')
-                  : null;
+            : ui.tool === 'object'
+              ? t('hint.object', { name: objectName(app) })
+              : pointing
+                ? t(pointing.hint(app))
+                : null;
   const guideHint = ui.guide
     ? t('hint.guide', {
         d: lengthText(app.guideOffset() ?? 0),
@@ -318,10 +308,6 @@ export function renderChrome(app: App): void {
     ? [keyHint('Esc', t('key.exit'))]
     : ui.tool === 'dimension'
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.dimension.kind === 'idle' ? 'key.exit' : 'key.back'))]
-    : ui.tool === 'calibrate'
-    ? [...snapKeys, keyHint('Esc', t('key.exit'))]
-    : ui.tool === 'column'
-    ? [...snapKeys, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'object'
     ? [keyHint(t('key.spaceKey'), t('key.turn90')), ...snapKeys, keyHint('Esc', t('key.exit'))]
     : pointing
@@ -331,8 +317,6 @@ export function renderChrome(app: App): void {
         ...snapKeys,
         keyHint('Esc', t(pointing.points(app).length > 0 ? pointing.escapeIs : 'key.exit')),
       ]
-    : ui.tool === 'mark'
-    ? [...snapKeys, keyHint('Esc', t(ui.markDraft.length > 0 ? 'key.back' : 'key.exit'))]
     : ui.tool === 'measure'
     ? [
         keyHint('C', t(ui.measureMode === 'chain' ? 'key.measureDistance' : 'key.measureChain')),

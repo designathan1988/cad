@@ -146,7 +146,7 @@ export function renderFrame(app: App): void {
       guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
       snap:
         // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-        (pointTool(app) || ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'calibrate' || ui.tool === 'column' || ui.tool === 'mark' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+        (pointTool(app) || ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
           ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null), ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
           : null,
       measure: guideDim
@@ -214,10 +214,6 @@ export function renderFrame(app: App): void {
           ? chainLine
           : ui.tool === 'floor' && ui.floorDraft.length > 0
           ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
-          : ui.tool === 'mark' && ui.markDraft.length > 0 && (ui.snap?.point ?? ui.cursor)
-            ? ui.markDraft.length === 2 && ui.markMode === 'angle'
-              ? [ui.markDraft[1]!, ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
-              : [ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
           : pointDraft(app),
       draftCorners: ui.tool === 'floor' ? ui.floorDraft : [],
       openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
@@ -289,10 +285,6 @@ export function renderFrame(app: App): void {
           ? chainLine
           : ui.tool === 'floor' && ui.floorDraft.length > 0
           ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
-          : ui.tool === 'mark' && ui.markDraft.length > 0 && (ui.snap?.point ?? ui.cursor)
-            ? ui.markDraft.length === 2 && ui.markMode === 'angle'
-              ? [ui.markDraft[1]!, ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
-              : [ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
           : pointDraft(app),
       box: ui.view3d.box,
       boxHot: app.boxHot,
