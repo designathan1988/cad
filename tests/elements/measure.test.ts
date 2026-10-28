@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { measureDxfText, measureKind, type MeasureSolid, measureText } from '../../src/elements/kinds/measure';
+import { measureKind, type MeasureSolid, measureText } from '../../src/elements/kinds/measure';
 import { deriveGeometry } from '../../src/app/geometry';
 import { dropKinds } from '../../src/elements/registry';
 import { arcWallAt, placeMeasure } from '../../src/elements/measure/place';
@@ -80,10 +80,6 @@ describe('measures', () => {
     const c0: MeasureSolid = { m: { id: 'meas_c', levelId: 'lvl_ground', type: 'coord', at: { x: 0, y: 0 }, label: { x: 1, y: 0 } }, at: { type: 'coord', at: { x: 0, y: 0 }, label: { x: 1, y: 0 } } };
     expect(measureKind.hit(c0, { x: 1.8, y: 0.02 }, 0.05, 100)).toBe(true);
     expect(measureKind.hit(c0, { x: 2.5, y: 0 }, 0.05, 100)).toBe(false);
-    // In the DXF (code page 1252): AutoCAD's codes for ° and Ø, the arc's length in words.
-    expect(measureDxfText(placeMeasure(doc, held('diameter'))!)).toBe('%%c 4,00');
-    expect(measureDxfText(placeMeasure(doc, held('arc'))!)).toBe('Arco 6,28');
-    expect(measureDxfText({ type: 'angle', vertex: { x: 0, y: 0 }, radius: 1, start: 0, sweep: 1, value: 45, arms: [1, 1] })).toBe('45,0%%d');
     const coord: Measure = { id: 'meas_c', levelId: 'lvl_ground', type: 'coord', at: { x: 3.25, y: -1.5 }, label: { x: 4, y: 0 } };
     const withAll: Doc = { ...doc, measures: [held('arc'), coord, { id: 'meas_a', levelId: 'lvl_ground', type: 'angle', vertex: { x: 0, y: 0 }, a: { x: 1, y: 0 }, b: { x: 0, y: 1 }, radius: 0.5 }] };
     const r = readProject(writeProject(withAll));

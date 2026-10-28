@@ -29,8 +29,6 @@ export const noteKind: ElementKind<Note, Note> = {
       : { icon: 'text', text: n === 1 ? t('note.title') : t('note.titleMany', { n }) };
   },
   dropped: 'fix.droppedNotes',
-  exportName: 'note.title',
-  exportColour: 'structure',
   valid: (n): n is Note =>
     isObject(n) &&
     typeof n.id === 'string' &&
@@ -107,26 +105,6 @@ export const noteKind: ElementKind<Note, Note> = {
     ctx.restore();
   },
   // A TEXT a line, centred as the plan draws them (R12's TEXT has one line); a level mark's symbol crossed.
-  dxf: (n, out) => {
-    if (n.elevation) {
-      const r = n.height * 0.5;
-      out.line('A-ANNO-TEXT', { x: n.at.x - r * 1.4, y: n.at.y }, { x: n.at.x + r * 1.4, y: n.at.y });
-      out.line('A-ANNO-TEXT', { x: n.at.x, y: n.at.y - r * 1.4 }, { x: n.at.x, y: n.at.y + r * 1.4 });
-      out.text('A-ANNO-TEXT', { x: n.at.x + r + n.height * 0.3 + n.text.length * n.height * 0.3, y: n.at.y }, n.height, n.text);
-      return;
-    }
-    const lines = n.text.split('\n');
-    lines.forEach((l, i) => out.text('A-ANNO-TEXT', { x: n.at.x, y: n.at.y - (i - (lines.length - 1) / 2) * n.height * 1.3 }, n.height, l));
-    if (n.leader) {
-      // The leader and its arrowhead's two sides.
-      const from = leaderStart(noteBox(n), n.leader);
-      out.line('A-ANNO-TEXT', from, n.leader);
-      const len = Math.hypot(n.leader.x - from.x, n.leader.y - from.y) || 1;
-      const u = { x: (n.leader.x - from.x) / len, y: (n.leader.y - from.y) / len };
-      const k = n.height * 0.6;
-      for (const s of [1, -1]) out.line('A-ANNO-TEXT', n.leader, { x: n.leader.x - u.x * k - u.y * k * 0.35 * s, y: n.leader.y - u.y * k + u.x * k * 0.35 * s });
-    }
-  },
   fields: (items, { dispatch }) =>
     noteFields(items, { updateNotes: (ids, patch) => dispatch(updateNotes(ids, patch)), dropLeaders: (ids) => dispatch(dropLeaders(ids)) }),
 };

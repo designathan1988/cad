@@ -33,8 +33,8 @@ export const zoneKind: ElementKind<Zone, ZoneSolid> = {
   one: 'zone.title',
   many: 'zone.titleMany',
   dropped: 'fix.droppedZones',
-  exportName: 'zone.title',
-  exportColour: 'floor',
+
+
   valid: (z): z is Zone =>
     isObject(z) &&
     typeof z.id === 'string' &&

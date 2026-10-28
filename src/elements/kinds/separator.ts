@@ -17,8 +17,8 @@ export const separatorKind: ElementKind<Separator, Separator> = {
   one: 'separator.title',
   many: 'separator.titleMany',
   dropped: 'fix.droppedSeparators',
-  exportName: 'separator.title',
-  exportColour: 'structure',
+
+
   valid: (s): s is Separator =>
     isObject(s) && typeof s.id === 'string' && typeof s.levelId === 'string' && isPoint(s.start) && isPoint(s.end) && JSON.stringify(s.start) !== JSON.stringify(s.end),
   memo: 'element',
@@ -44,7 +44,7 @@ export const separatorKind: ElementKind<Separator, Separator> = {
     ctx.stroke();
     ctx.restore();
   },
-  dxfLayers: [{ name: 'A-AREA-BNDY', colour: 8 }],
-  dxf: (s, out) => out.polyline('A-AREA-BNDY', [s.start, s.end], false),
+
+
   fields: () => [{ id: 'length', label: 'panel.length', kind: 'readout', text: (xs) => (xs.length === 1 ? lengthText(distance(xs[0]!.start, xs[0]!.end)) : '') }],
 };

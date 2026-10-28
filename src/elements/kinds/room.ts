@@ -41,8 +41,8 @@ export const roomKind: ElementKind<Room, RoomItem> = {
     return one.sharing.length > 0 ? t('warn.roomShared', { rooms: one.sharing.map(tag).join(', ') }) : null;
   },
   dropped: 'fix.droppedRooms',
-  exportName: 'room.title',
-  exportColour: 'floor',
+
+
   valid: (r): r is Room =>
     isObject(r) &&
     typeof r.id === 'string' &&

@@ -2,7 +2,7 @@
 // system derives them together (geometry.ts: joins, the openings cut through, the layers, the cut in
 // plan) and moves, copies and deletes them with their joins and doors (contract.ts: walled); the kind
 // reads where each is and takes it in the selection, the views' filters, picking, windows, framing and
-// select similar. The plan, the 3D, the GLB, the DXF and the panel draw them as the wall system does.
+// select similar. The plan, the 3D and the panel draw them as the wall system does.
 
 import type { DocWall } from '../../app/document';
 import type { WallSolid } from '../../app/geometry';
@@ -40,8 +40,8 @@ export const wallKind: ElementKind<DocWall, WallSolid> = {
   one: 'schedule.col.wall',
   many: 'panel.walls',
   dropped: 'fix.droppedWalls',
-  exportName: 'wall.tag',
-  exportColour: 'structure',
+
+
   // Checked in full by the file reader with its type (io/project-file.ts: isWall).
   valid: (w): w is DocWall => isObject(w) && typeof w.id === 'string' && typeof w.levelId === 'string',
   derive: (_doc, w, g) => g.solids.get(w.id) ?? null,

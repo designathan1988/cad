@@ -39,8 +39,8 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
     return { icon: 'slab', text: ceilings ? (n === 1 ? t('ceiling.title') : t('ceiling.titleMany', { n })) : n === 1 ? t('floor.title') : t('floor.titleMany', { n }) };
   },
   dropped: 'fix.droppedFloors',
-  exportName: 'export.floor',
-  exportColour: 'floor',
+
+
   valid: (f): f is Floor =>
     isObject(f) &&
     typeof f.id === 'string' &&

@@ -24,8 +24,8 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
   one: 'stair.title',
   many: 'stair.titleMany',
   dropped: 'fix.droppedStairs',
-  exportName: 'export.stair',
-  exportColour: 'floor',
+
+
   valid: (s): s is Stair =>
     isObject(s) &&
     typeof s.id === 'string' &&
@@ -109,11 +109,8 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
     ctx.restore();
   },
   solid: (s) => ({ geometry: stairGeometry(s.parts, s.rails, s.riser, s.stair.kind !== 'spiral'), y: s.bottom, material: 'floor', edges: true }),
-  dxfLayers: [{ name: 'A-FLOR-STRS', colour: 2 }],
-  dxf: (s, out) => {
-    for (const p of s.parts) out.polyline('A-FLOR-STRS', p.polygon, true);
-    if (s.walk.length >= 2) out.polyline('A-FLOR-STRS', s.walk, false);
-  },
+
+
   fields: (items, { dispatch, doc }) =>
     stairFields(items, {
       updateStairs: (ids, patch) => dispatch(updateStairs(ids, patch)),

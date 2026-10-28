@@ -36,8 +36,8 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
   one: 'railing.title',
   many: 'railing.titleMany',
   dropped: 'fix.droppedRailings',
-  exportName: 'export.railing',
-  exportColour: 'structure',
+
+
   valid: (r): r is Railing =>
     isObject(r) &&
     typeof r.id === 'string' &&
@@ -125,8 +125,8 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
     const frame: KindSolid = { geometry: g.frame, y: s.bottom, material: 'side', edges: false };
     return g.glass ? [frame, { geometry: g.glass, y: s.bottom, material: s.glass, edges: false }] : frame;
   },
-  dxfLayers: [{ name: 'A-FLOR-HRAL', colour: 4 }],
-  dxf: (s, out) => out.polyline('A-FLOR-HRAL', s.points, false),
+
+
   fields: (items, { dispatch }) =>
     throughElement(
       railingFields(

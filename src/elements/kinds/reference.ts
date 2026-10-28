@@ -50,8 +50,8 @@ export const referenceKind: ElementKind<Reference, Reference> = {
   title: (items) => ({ icon: 'map', text: items.length === 1 ? items[0]!.name || t('ref.title') : t('ref.titleMany', { n: items.length }) }),
   hint: 'ref.held',
   dropped: 'fix.droppedReferences',
-  exportName: 'ref.title',
-  exportColour: 'structure',
+
+
   valid: (r): r is Reference => isReference(r),
   memo: 'element',
   derive: (_doc, r) => r,

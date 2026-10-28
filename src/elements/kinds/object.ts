@@ -1,6 +1,6 @@
 // Parametric objects in the registry (contract.ts, phase 3): the instance and its definition evaluated
 // (elements/object/evaluate.ts) into pieces; the plan draws each piece's outline from the lowest up (a
-// table's top over its legs), the 3D each piece in its material, the GLB the same. Kept from one
+// table's top over its legs), the 3D each piece in its material. Kept from one
 // derivation to the next while the object, its level, the definitions and the materials are the same.
 
 import * as THREE from 'three';
@@ -227,7 +227,7 @@ export function roundSides(r: number): number {
 }
 
 /** A piece's geometry where it is, in three.js's axes: plan x, y and height z are x, −z and y; a turn in
- * plan (counter-clockwise) is one about y. For the 3D, the GLB and the definition editor alike. */
+ * plan (counter-clockwise) is one about y. For the 3D and the definition editor alike. */
 export function pieceGeometry(piece: Piece): THREE.BufferGeometry {
   if (piece.kind === 'revolve') {
     // Turned about three.js's y (the vertical), its points (r, z) as the lathe's (x, y); closed onto the
@@ -321,8 +321,6 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
     return said.length ? [...new Set(said)].join(' · ') : null;
   },
   dropped: 'fix.droppedObjects',
-  exportName: 'export.object',
-  exportColour: 'structure',
   valid: isObjectInstance,
   derive: (doc, o) => derive(doc, o),
   element: (s) => s.object,
@@ -372,10 +370,5 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
       // Its lights go with its first piece (a luminaire's: contract.ts, lights).
       return { geometry, y: s.floor, material, edges: true, ...(i === 0 && s.eval.lights.length > 0 ? { lights: s.eval.lights } : {}) };
     }),
-  dxfLayers: [{ name: 'A-FURN', colour: 8 }],
-  dxf: (s, out) => {
-    for (const ring of s.rings) out.polyline('A-FURN', ring, true);
-    for (const ring of s.voids) out.polyline('A-FURN', ring, true);
-  },
   fields: (items, { dispatch, doc }) => objectFields(items, doc, dispatch),
 };

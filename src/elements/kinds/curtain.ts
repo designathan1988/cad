@@ -50,8 +50,8 @@ export const curtainKind: ElementKind<Curtain, CurtainBuilt> = {
   one: 'curtain.title',
   many: 'curtain.titleMany',
   dropped: 'fix.droppedCurtains',
-  exportName: 'export.curtain',
-  exportColour: 'structure',
+
+
   valid: (c): c is Curtain =>
     isObject(c) &&
     typeof c.id === 'string' &&
@@ -108,10 +108,7 @@ export const curtainKind: ElementKind<Curtain, CurtainBuilt> = {
     { geometry: boxes(s.frame), y: 0, material: s.frameMaterial, edges: true },
     { geometry: boxes(s.panels), y: 0, material: s.panelMaterial, edges: false },
   ],
-  dxfLayers: [{ name: 'A-GLAZ-CWMG', colour: 5 }],
-  dxf: (s, out) => {
-    out.polyline('A-GLAZ-CWMG', s.outline, true);
-    for (const b of s.frame) if (b.top - b.bottom > s.top - s.bottom - 1e-6) out.polyline('A-GLAZ-CWMG', b.polygon, true);
-  },
+
+
   fields: (items, { dispatch }) => curtainFields(items, { updateCurtains: (ids, patch) => dispatch(updateCurtains(ids, patch)) }),
 };

@@ -20,8 +20,6 @@ export const roofKind: ElementKind<Roof, RoofSolid & { readonly covering: Materi
   one: 'roof.title',
   many: 'roof.titleMany',
   dropped: 'fix.droppedRoofs',
-  exportName: 'export.roof',
-  exportColour: 'roof',
   valid: (r): r is Roof =>
     isObject(r) &&
     typeof r.id === 'string' &&
@@ -97,10 +95,5 @@ export const roofKind: ElementKind<Roof, RoofSolid & { readonly covering: Materi
     ctx.restore();
   },
   solid: (s) => ({ geometry: roofGeometry(s.faces, s.gables, s.parapets, s.roof.thickness), y: 0, material: s.covering, edges: true }),
-  dxfLayers: [{ name: 'A-ROOF', colour: 6 }],
-  dxf: (s, out) => {
-    out.polyline('A-ROOF', s.outline, true);
-    if (s.faces.length > 1) for (const f of s.faces) out.polyline('A-ROOF', f.polygon, true);
-  },
   fields: (items, { dispatch }) => roofFields(items, { updateRoofs: (ids, patch) => dispatch(updateRoofs(ids, patch)) }),
 };

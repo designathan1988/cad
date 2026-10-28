@@ -59,8 +59,8 @@ export const beamKind: ElementKind<Beam, BeamSolid> = {
   one: 'beam.title',
   many: 'beam.titleMany',
   dropped: 'fix.droppedBeams',
-  exportName: 'export.beam',
-  exportColour: 'structure',
+
+
   valid: (b): b is Beam =>
     isObject(b) &&
     typeof b.id === 'string' &&
@@ -111,7 +111,7 @@ export const beamKind: ElementKind<Beam, BeamSolid> = {
   },
   // Its section swept from its start to its end, each end at its own top.
   solid: (s) => ({ geometry: sweep(beamSection(s.beam), s.beam.start, s.beam.end, s.startTop, s.endTop), y: 0, material: 'side', edges: true }),
-  dxfLayers: [{ name: 'S-BEAM', colour: 8 }],
-  dxf: (s, out) => out.polyline('S-BEAM', s.outline, true),
+
+
   fields: (items, { dispatch }) => throughElement(beamFields(items.map((s) => s.beam), { updateBeams: (ids, patch) => dispatch(updateBeams(ids, patch)) }), (s: BeamSolid) => s.beam),
 };

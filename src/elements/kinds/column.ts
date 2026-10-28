@@ -25,8 +25,8 @@ export const columnKind: ElementKind<Column, ColumnSolid> = {
   one: 'column.title',
   many: 'column.titleMany',
   dropped: 'fix.droppedColumns',
-  exportName: 'export.column',
-  exportColour: 'structure',
+
+
   valid: (c): c is Column =>
     isObject(c) &&
     typeof c.id === 'string' &&
@@ -77,7 +77,7 @@ export const columnKind: ElementKind<Column, ColumnSolid> = {
     geometry.rotateX(-Math.PI / 2);
     return { geometry, y: s.bottom, material: 'side', edges: true };
   },
-  dxfLayers: [{ name: 'S-COLS', colour: 7 }],
-  dxf: (s, out) => out.polyline('S-COLS', s.outline, true),
+
+
   fields: (items, { dispatch, doc }) => throughElement(columnFields(items.map((s) => s.column), { updateColumns: (ids, patch) => dispatch(updateColumns(ids, patch)) }, doc), (s: ColumnSolid) => s.column),
 };

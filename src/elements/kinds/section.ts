@@ -14,8 +14,6 @@ import { nearSegment } from './paint';
 /** A mark's bubble's radius on screen (px). */
 export const SECTION_BUBBLE_PX = 11;
 
-/** A bubble's radius in the DXF (m). */
-const BUBBLE_R = 0.3;
 
 /** Where its bubbles are, on screen: past each end of a section, at the middle of an elevation. */
 function bubbles(p: Pick<PlanPaint, 'toScreen'>, m: SectionMark): Point2[] {
@@ -46,8 +44,6 @@ export const sectionKind: ElementKind<SectionMark, SectionMark> = {
   }),
   hint: 'section.held',
   dropped: 'fix.droppedSections',
-  exportName: 'section.title',
-  exportColour: 'structure',
   valid: (m): m is SectionMark => isObject(m) && isSectionMark(m),
   memo: 'element',
   derive: (_doc, m) => m,
@@ -69,19 +65,6 @@ export const sectionKind: ElementKind<SectionMark, SectionMark> = {
   // Mirrored, it still looks the mirrored way: its ends trade places.
   mapped: (m, tr, id) => (tr.mirror ? { ...m, id, start: tr.map(m.end), end: tr.map(m.start), depth: m.depth * tr.factor } : { ...m, id, start: tr.map(m.start), end: tr.map(m.end), depth: Math.max(DEPTH_MIN, m.depth * tr.factor) }),
   plan: (p, m, lit) => drawSectionMark(p, m, lit ? p.color('--wall-sel') : p.color('--text')),
-  dxfLayers: [{ name: 'A-ANNO-SECT', colour: 1 }],
-  dxf: (m, out) => {
-    out.line('A-ANNO-SECT', m.start, m.end);
-    const len = distance(m.start, m.end) || 1;
-    const u = { x: (m.end.x - m.start.x) / len, y: (m.end.y - m.start.y) / len };
-    const look = lookOf(m);
-    const centres = m.kind === 'elevation' ? [{ x: (m.start.x + m.end.x) / 2, y: (m.start.y + m.end.y) / 2 }] : [{ x: m.start.x - u.x * BUBBLE_R, y: m.start.y - u.y * BUBBLE_R }, { x: m.end.x + u.x * BUBBLE_R, y: m.end.y + u.y * BUBBLE_R }];
-    for (const c of centres) {
-      out.polyline('A-ANNO-SECT', Array.from({ length: 16 }, (_, i) => ({ x: c.x + BUBBLE_R * Math.cos((i * Math.PI) / 8), y: c.y + BUBBLE_R * Math.sin((i * Math.PI) / 8) })), true);
-      out.line('A-ANNO-SECT', c, { x: c.x + look.x * BUBBLE_R * 2, y: c.y + look.y * BUBBLE_R * 2 });
-      out.text('A-ANNO-SECT', c, BUBBLE_R, m.name);
-    }
-  },
   fields: (items, { dispatch, openSection }) => {
     const one = items.length === 1 ? items[0]! : null;
     const ids = items.map((m) => m.id);
