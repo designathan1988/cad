@@ -1,8 +1,9 @@
 // Commands on levels. A wall's heights come from its level, so changing a level's elevation or height
 // moves every wall on it without touching the walls.
 
-import { type Doc, type Level, type LevelId, wallHeights } from '../../app/document';
+import { type Doc, type Level, type LevelId, levelOf, NO_LEVEL, wallHeights } from '../../app/document';
 import type { Command } from '../../core/store';
+import { elementsOnLevel } from '../registry';
 
 /** A new level on top of the highest one, with that one's height and cut height. */
 export const addLevel = (id: LevelId, name: string): Command<Doc> => ({
@@ -34,11 +35,16 @@ export const updateLevel = (id: LevelId, patch: Partial<Omit<Level, 'id'>>): Com
   },
 });
 
-/** Why a level cannot be deleted: it is the last one, or walls stand on it. Null when it can be. */
-export function deleteBlocker(doc: Doc, id: LevelId): 'last' | 'walls' | 'missing' | null {
+/**
+ * Why a level cannot be deleted: it is the last one, walls stand on it, or other elements do (a floor,
+ * furniture, a note: deleted with it they were left in the file on no level, never shown again). Null
+ * when it can be.
+ */
+export function deleteBlocker(doc: Doc, id: LevelId): 'last' | 'walls' | 'elements' | 'missing' | null {
   if (!doc.levels.some((l) => l.id === id)) return 'missing';
   if (doc.levels.length <= 1) return 'last';
-  return doc.walls.some((w) => w.levelId === id) ? 'walls' : null;
+  if (doc.walls.some((w) => w.levelId === id)) return 'walls';
+  return elementsOnLevel(doc, id) > 0 ? 'elements' : null;
 }
 
 export const canDeleteLevel = (doc: Doc, id: LevelId): boolean => deleteBlocker(doc, id) === null;
@@ -63,6 +69,14 @@ export const deleteLevel = (id: LevelId): Command<Doc> => ({
       const h = wallHeights(doc, w);
       return { ...w, top: { kind: 'fixed' as const, height: h.top - h.bottom } };
     });
-    return { ...doc, levels: doc.levels.filter((l) => l.id !== id), walls };
+    // A column that went up to it keeps its top where it was, now from its own level's top.
+    const gone = doc.levels.find((l) => l.id === id)!;
+    const columns = doc.columns.map((c) => {
+      if (c.topLevelId !== id) return c;
+      const own = levelOf(doc, c.levelId) ?? NO_LEVEL;
+      const { topLevelId: _gone, ...rest } = c;
+      return { ...rest, topOffset: gone.elevation + (c.topOffset ?? 0) - (own.elevation + own.height) };
+    });
+    return { ...doc, levels: doc.levels.filter((l) => l.id !== id), walls, columns };
   },
 });

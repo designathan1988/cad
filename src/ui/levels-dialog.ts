@@ -6,6 +6,7 @@ import type { App } from '../app/app';
 import { cutHeightOf } from '../app/document';
 import { newId } from '../core/id';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../elements/level/commands';
+import { elementsOnLevel } from '../elements/registry';
 import { el, numberField } from './controls';
 import { openProjectDialog } from './dialog';
 import { defaultName, name, t } from './i18n';
@@ -48,7 +49,12 @@ export function showLevels(app: App): void {
       del.setAttribute('aria-disabled', String(blocker !== null));
       // Named by what it does; when it cannot, the reason is its description (and its tooltip).
       del.setAttribute('aria-label', t('levels.deleteNamed', { name: label }));
-      const why = blocker === 'last' ? t('levels.cantDeleteLast') : blocker === 'walls' ? t('levels.cantDeleteWalls') : null;
+      const on = blocker === 'elements' ? elementsOnLevel(doc, l.id) : 0;
+      const why =
+        blocker === 'last' ? t('levels.cantDeleteLast')
+        : blocker === 'walls' ? t('levels.cantDeleteWalls')
+        : blocker === 'elements' ? (on === 1 ? t('levels.cantDeleteElementsOne') : t('levels.cantDeleteElements', { n: on }))
+        : null;
       // What it does, then why it cannot.
       const action = t('levels.deleteNamed', { name: label });
       del.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;

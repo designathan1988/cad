@@ -6,7 +6,7 @@ import type { Field } from '../../ui/fields';
 import { t } from '../../ui/i18n';
 import type { CurtainPatch } from './commands';
 import type { CurtainSolid } from './geometry';
-import type { GridRule } from './schema';
+import { type GridRule, panelsThatFit } from './schema';
 
 export interface CurtainFieldActions {
   readonly updateCurtains: (ids: readonly string[], patch: CurtainPatch) => void;
@@ -58,7 +58,11 @@ export function curtainFields(items: readonly CurtainSolid[], act: CurtainFieldA
       min: 1,
       when: (xs) => xs.every((s) => s.curtain[key].mode === 'count'),
       get: (s) => s.curtain[key].value,
-      set: (v) => act.updateCurtains(ids, { [key]: { mode: 'count', value: Math.max(1, Math.round(v)) } }),
+      // No more than the shortest selected one can take (schema.ts: panelsThatFit), so the field says what is drawn.
+      set: (v) => {
+        const fit = Math.min(...items.map((s) => panelsThatFit(key === 'vertical' ? s.length : s.top - s.bottom)));
+        act.updateCurtains(ids, { [key]: { mode: 'count', value: Math.min(Math.max(1, Math.round(v)), fit) } });
+      },
     },
   ];
   return [

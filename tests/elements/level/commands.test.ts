@@ -84,4 +84,21 @@ describe('level checks', () => {
     expect(deleteBlocker(two, 'lvl_up')).toBe('walls');
     expect(deleteBlocker(two, 'lvl_ground')).toBeNull();
   });
+
+  it('a level with other elements on it (a column) cannot be deleted either: they would be left on no level', () => {
+    const doc = addLevel('lvl_up', 'Upper').apply(newDocument());
+    const column = { id: 'column_a', levelId: 'lvl_up', at: { x: 0, y: 0 }, width: 0.25, depth: 0.25, angle: 0 };
+    expect(deleteBlocker({ ...doc, columns: [column] }, 'lvl_up')).toBe('elements');
+    expect(deleteLevel('lvl_up').apply({ ...doc, columns: [column] }).levels).toHaveLength(2);
+  });
+
+  it('a column up to a deleted level keeps its top, now from its own level', () => {
+    const doc = addLevel('lvl_up', 'Upper').apply(newDocument());
+    const column = { id: 'column_a', levelId: 'lvl_ground', at: { x: 0, y: 0 }, width: 0.25, depth: 0.25, angle: 0, topLevelId: 'lvl_up', topOffset: 0.1 };
+    const next = deleteLevel('lvl_up').apply({ ...doc, columns: [column] });
+    const c = next.columns[0]!;
+    expect(c.topLevelId).toBeUndefined();
+    // Upper's floor at 2.80 + 0.10, from the ground's top at 2.80: 0.10.
+    expect(c.topOffset).toBeCloseTo(0.1, 12);
+  });
 });

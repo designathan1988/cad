@@ -48,6 +48,10 @@ export const levelOfSolid = (k: AnyKind, s: unknown): string | null =>
 /** The level of an element of the document (a door's, its wall's); null for one on every level. */
 export const levelOfElement = (k: AnyKind, e: { readonly levelId?: string }, doc: Doc): string | null => (k.everyLevel ? (e.levelId ?? null) : k.levelIn ? k.levelIn(e, doc) : (e.levelId ?? null));
 
+/** How many registry elements stand on a level (not those on every level, as an axis). */
+export const elementsOnLevel = (doc: Doc, levelId: string): number =>
+  KINDS.reduce((n, k) => (k.everyLevel ? n : n + listOf(doc, k).filter((e) => levelOfElement(k, e, doc) === levelId).length), 0);
+
 /** The document with a kind's list replaced. */
 export const withList = (doc: Doc, k: AnyKind, list: readonly unknown[]): Doc => ({ ...doc, [k.key]: list }) as Doc;
 
