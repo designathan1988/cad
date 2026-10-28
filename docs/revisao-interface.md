@@ -126,7 +126,17 @@ Conferido no app a 1920×1080, console sem erros. Capturas "depois" 11 a 14.
 - **B1, B2, B4**: a barra inferior do 3D mostra os interruptores só como ícones com dica; Estilo, Qualidade, Brilho e Sol estão num
   painel "Exibição", que fecha com Esc ou clique fora (`shell.ts`, `input-buttons.ts`, `styles.css`, `i18n.ts`). Depois: 12 e 13.
 - **R5**: dica inicial "Comece pela ferramenta Parede, acima (W)".
+- **B3, B5, J2** (2aa382b): um painel Visibilidade, aberto pelo botão da barra inferior: categorias com olho, linhas de referência e
+  etiquetas, substituições (ligar/desligar e editar) e combinações salvas; a seção "Camadas" saiu do Navegador; o diálogo de
+  substituições diz as cores certas (a construir vermelho, a demolir amarelo) e o botão diz "Mostrar substituições: sim/não".
+  Capturas 15 e 16.
+- **R2 e parte de M3** (600cef8): a ribbon não troca de aba sozinha; a aba "Modificar | …" fica visível, colorida, e abre só no clique;
+  a aba "Colocar …" virou uma faixa da ferramenta sobre o desenho (nome, modos, tipos, Terminar Esc). Capturas 17 e 18.
+- **M1, M2, parte de M6**: menu do botão direito completo em grupos (próprios do elemento · Mover/Copiar/Girar/Espelhar/Escalar ·
+  Copiar para outro pavimento/Colar · Ocultar/Isolar/Enquadrar · Semelhantes/Limpar · Apagar/Propriedades), com ícones e as teclas
+  lidas do registro de ações (teclas remapeadas aparecem certas); com uma ferramenta de desenho, o botão direito abre
+  "Terminar (Enter) / Sair da ferramenta (Esc)". Capturas 19 e 20.
 
-Ainda não feito (próximos passos, nesta ordem): B3/B5 Visibilidade única; R2/R3 barra de ferramentas estável no lugar das abas;
-M1/M2 menus de contexto completos; M3/M4 faixa de opções da ferramenta e etiqueta junto ao cursor; P1-P4 painel de Propriedades;
-J1 biblioteca não modal; J2 navegador; J3/J4 salvar e tela inicial; M5-M9; J5, J6; R8.
+Ainda não feito (próximos passos): R3 ferramentas do mesmo tamanho; M3 (opções de porta — Espaço/H — na faixa) e M4 etiqueta
+junto ao cursor; P1-P4 painel de Propriedades; J1 biblioteca não modal; J3/J4 salvar e tela inicial; M5, M7, M8, M9; J5, J6; R8.
+Visto e não corrigido: a barra inferior se anuncia "Vista 3D" para leitores de tela também na planta.

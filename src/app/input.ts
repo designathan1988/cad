@@ -32,7 +32,7 @@ import { showMaterials } from '../ui/materials-dialog';
 import { showPalette } from '../ui/palette';
 import { showProjectsDialog } from '../ui/projects-dialog';
 import { appActions, type Openers } from './actions';
-import { contextEntries } from './context-menu';
+import { menuEntries } from './context-menu';
 import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
 import { eachSolid, kindsNear } from '../elements/registry';
@@ -95,12 +95,41 @@ export function wireInput(app: App): void {
     app.refresh();
     // Where the menu was opened, for "Add text": the pointer leaves the drawing for the menu.
     app.contextPoint = worldAt(e)?.p ?? null;
-    const entries = contextEntries(app, palette);
+    // Whole and grouped (context-actions.ts, menuGroups), a line between groups; the floating bar keeps its few.
+    const groups = menuEntries(app, palette);
     app.contextPoint = null;
     showMenu(
-      entries.map((x, i) => ({ label: x.label, ...(x.keys ? { keys: x.keys } : {}), separated: x.id === 'delete' && i > 0, run: x.run })),
+      groups.flatMap((g, gi) => g.map((x, i) => ({ label: x.label, icon: x.icon, ...(x.keys ? { keys: x.keys } : {}), separated: gi > 0 && i === 0, run: x.run }))),
       { x: e.clientX, y: e.clientY },
       t(ui.selection.size > 0 ? 'ctx.label' : 'ctx.labelEmpty'),
+    );
+  };
+  /** Something drawn by points is under way with the tool in use: what Finish ends. */
+  const underWay = () =>
+    (ui.tool === 'wall' && ui.wall.kind !== 'idle') ||
+    ui.floorDraft.length > 0 ||
+    ui.roofDraft.length > 0 ||
+    ui.railingDraft.length > 0 ||
+    ui.markDraft.length > 0 ||
+    ui.measure.kind !== 'idle' ||
+    ui.dimension.kind !== 'idle' ||
+    ui.gridFrom !== null ||
+    ui.sectionFrom !== null ||
+    ui.calloutFrom !== null ||
+    ui.beamFrom !== null;
+  /**
+   * A right click with a drawing tool: its menu, Finish (what a right click did unseen: a chain ended, an
+   * outline closed, a start dropped, each tool its own) and the way out of the tool; it did one of them
+   * with nothing on screen saying which (docs/revisao-interface.md, M2).
+   */
+  const toolMenu = (e: PointerEvent) => {
+    showMenu(
+      [
+        { label: t('ctx.toolFinish'), icon: 'check', keys: 'Enter', disabled: !underWay(), run: () => void endWithRightClick() },
+        { label: t('ctx.toolExit'), icon: 'close', keys: 'Esc', separated: true, run: () => app.setTool('select') },
+      ],
+      { x: e.clientX, y: e.clientY },
+      t('ctx.labelTool'),
     );
   };
   let shift = false;
@@ -630,7 +659,8 @@ export function wireInput(app: App): void {
       const moved = Math.hypot(e.clientX - rightAt.x, e.clientY - rightAt.y) > 4;
       rightAt = null;
       if (moved) return;
-      // As in Revit and AutoCAD, a right click first ends what is under way, without a menu.
+      // A drawing tool: its own menu (Finish, leave the tool). A Modify tool, a guide or a drag still end at once.
+      if (ui.tool !== 'select' && ui.tool !== 'modify' && !ui.guide && !ui.drag) return toolMenu(e);
       if (endWithRightClick()) return;
       contextMenu(e);
       return;

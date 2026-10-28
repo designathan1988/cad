@@ -32,7 +32,36 @@ export type ContextId =
   | 'selectSimilar'
   | 'addNote'
   | 'addLevelMark'
+  | 'copyClip'
+  | 'paste'
+  | 'hide'
+  | 'isolate'
   | 'commands';
+
+/** The commands of the element itself (its type, its flip, its own), before the general ones. */
+const OWN: ReadonlySet<ContextId> = new Set(['flipWall', 'editType', 'toggleOpen', 'flipHinge', 'flipSwing', 'centerOpening', 'addFloor', 'addCeiling', 'distribute', 'merge', 'section']);
+
+/**
+ * The right-click menu, whole and grouped (Microsoft's menu guide: up to 15 items in groups, the complete
+ * clipboard set, Delete and Properties last): the element's own commands, the Modify tools, the clipboard,
+ * what the view shows, the selection, delete and properties. The floating bar keeps contextIds' few; the
+ * menu took the same six and had no Copy, Rotate or Hide (docs/revisao-interface.md, M1).
+ */
+export function menuGroups(doc: Doc, selection: readonly string[], levelId?: string): ContextId[][] {
+  const guides = levelId !== undefined && doc.guides.some((g) => g.levelId === levelId) ? (['clearGuides'] as const) : [];
+  if (selection.length === 0) return [['drawWall', 'addNote', 'addLevelMark'], ['paste'], ['frameAll', ...guides], ['commands']];
+  const own = contextIds(doc, selection, levelId).filter((id) => OWN.has(id));
+  const modify: ContextId[] = canTransform(doc, selection) ? ['move', 'copy', 'rotate', 'mirror', 'scale'] : [];
+  const groups: ContextId[][] = [
+    own,
+    modify,
+    [...(canTransform(doc, selection) ? (['copyClip'] as const) : []), 'paste'],
+    ['hide', 'isolate', 'frameSelection'],
+    ['selectSimilar', 'clearSelection'],
+    ['delete', 'properties'],
+  ];
+  return groups.filter((g) => g.length > 0);
+}
 
 /** `levelId`: the level shown, whose guides can be deleted at once. */
 export function contextIds(doc: Doc, selection: readonly string[], levelId?: string): ContextId[] {

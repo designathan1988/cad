@@ -9,7 +9,7 @@ import { flipWalls } from '../elements/wall/flip';
 import { t, type MessageKey } from '../ui/i18n';
 import type { IconName } from '../ui/icons';
 import type { App } from './app';
-import { type ContextId, contextIds } from './context-actions';
+import { type ContextId, contextIds, menuGroups } from './context-actions';
 
 export interface ContextEntry {
   readonly id: ContextId;
@@ -19,13 +19,21 @@ export interface ContextEntry {
   readonly run: () => void;
 }
 
-const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
-  move: { icon: 'move', keys: 'Shift+M' },
-  copy: { icon: 'copy', keys: 'Shift+C' },
-  rotate: { icon: 'rotate', keys: 'Shift+R' },
-  mirror: { icon: 'mirror', keys: 'Shift+X' },
-  scale: { icon: 'scale', keys: 'Shift+E' },
-  merge: { icon: 'merge', keys: 'Shift+J' },
+/**
+ * Each entry's icon and the action whose key it shows (app/actions.ts, so a key the user remapped shows
+ * as remapped: these were literal strings); `keys` only where no action has one (the door's H).
+ */
+const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string; action?: string }>> = {
+  move: { icon: 'move', action: 'edit.move' },
+  copy: { icon: 'copy', action: 'edit.copy' },
+  rotate: { icon: 'rotate', action: 'edit.rotate' },
+  mirror: { icon: 'mirror', action: 'edit.mirror' },
+  scale: { icon: 'scale', action: 'edit.scale' },
+  merge: { icon: 'merge', action: 'edit.merge' },
+  copyClip: { icon: 'copy', action: 'edit.copyClip' },
+  paste: { icon: 'plus', action: 'edit.paste' },
+  hide: { icon: 'eyeOff', action: 'view.tempHide' },
+  isolate: { icon: 'eye', action: 'view.tempIsolate' },
   flipWall: { icon: 'flip' },
   editType: { icon: 'wall' },
   flipHinge: { icon: 'door', keys: 'H' },
@@ -37,13 +45,13 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
   addFloor: { icon: 'slab' },
   addCeiling: { icon: 'arrowUp' },
   distribute: { icon: 'distribute' },
-  frameSelection: { icon: 'zoomSel', keys: 'F' },
+  frameSelection: { icon: 'zoomSel', action: 'view.frameSelection' },
   properties: { icon: 'panel' },
-  clearSelection: { icon: 'close', keys: 'Esc' },
-  delete: { icon: 'trash', keys: 'Del' },
-  drawWall: { icon: 'wall', keys: 'W' },
+  clearSelection: { icon: 'close', action: 'edit.clearSelection' },
+  delete: { icon: 'trash', action: 'edit.delete' },
+  drawWall: { icon: 'wall', action: 'tool.wall' },
   // The same icon as the Home button in the top bar, which does the same.
-  frameAll: { icon: 'home', keys: 'Home' },
+  frameAll: { icon: 'home', action: 'view.frameAll' },
   clearGuides: { icon: 'guide' },
   section: { icon: 'cut' },
   selectSimilar: { icon: 'pointer' },
@@ -52,7 +60,19 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string }>> = {
   commands: { icon: 'command', keys: 'Ctrl+K' },
 };
 
+/** The floating bar's few (contextIds): the selection's most used commands. */
 export function contextEntries(app: App, openCommands: () => void): ContextEntry[] {
+  const entry = entriesFor(app, openCommands);
+  return contextIds(app.store.get(), [...app.ui.selection], app.ui.levelId).map(entry);
+}
+
+/** The right-click menu's groups (menuGroups): every command that applies, grouped. */
+export function menuEntries(app: App, openCommands: () => void): ContextEntry[][] {
+  const entry = entriesFor(app, openCommands);
+  return menuGroups(app.store.get(), [...app.ui.selection], app.ui.levelId).map((g) => g.map(entry));
+}
+
+function entriesFor(app: App, openCommands: () => void): (id: ContextId) => ContextEntry {
   const ids = [...app.ui.selection];
   const one = ids.length === 1 ? ids[0]! : null;
   const opening = one ? app.store.get().openings.find((o) => o.id === one) : undefined;
@@ -92,12 +112,17 @@ export function contextEntries(app: App, openCommands: () => void): ContextEntry
       const at = app.contextPoint;
       return () => app.addLevelMarkHere(at ?? undefined);
     })(),
+    copyClip: () => app.copySelection(),
+    paste: () => app.paste(),
+    hide: () => app.hideTemporarily('hide'),
+    isolate: () => app.hideTemporarily('isolate'),
     commands: openCommands,
   };
-  return contextIds(app.store.get(), ids, app.ui.levelId).map((id) => ({
-    id,
-    label: t(`ctx.${id}` as MessageKey),
-    ...LOOK[id],
-    run: run[id],
-  }));
+  // The keys as they are now, the user's own included (keymap.ts through the action list).
+  const actions = new Map(app.actionList().map((a) => [a.id, a]));
+  return (id) => {
+    const look = LOOK[id];
+    const keys = look.action ? actions.get(look.action)?.keys : look.keys;
+    return { id, label: t(`ctx.${id}` as MessageKey), icon: look.icon, ...(keys ? { keys } : {}), run: run[id] };
+  };
 }
