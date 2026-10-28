@@ -41,6 +41,7 @@ import type { PickOrder } from '../elements/contract';
 import { distance, normalize, sub } from '../core/vector';
 import { outerSides } from '../elements/wall/geometry/seams';
 import { wireKeys } from './input-keys';
+import { pointTool } from './point-tools';
 import { wireButtons } from './input-buttons';
 
 /** How near (screen pixels) the pointer must come to a wall, a door or a window to take it. */
@@ -266,15 +267,7 @@ export function wireInput(app: App): void {
             ? ui.gridFrom
             : ui.tool === 'guide'
               ? ui.guideFrom
-            : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain'
-              ? ui.beamFrom
-              : ui.tool === 'roof'
-                ? (ui.roofDraft.at(-1) ?? null)
-                : ui.tool === 'stair'
-                  ? ui.stairFrom
-                  : ui.tool === 'railing'
-                    ? (ui.railingDraft.at(-1) ?? null)
-                    : null;
+              : (pointTool(app)?.points(app).at(-1) ?? null);
     const measuring = ui.tool === 'measure' || ui.tool === 'dimension';
     const modifyFrom = ui.tool === 'modify' && ui.modify && ui.modify.state.step !== 'base' ? ui.modify.state.base : null;
     const faces = measuring ? levelFaces() : [];
@@ -438,7 +431,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'mark' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
+    if (pointTool(app) || ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'column' || ui.tool === 'mark' || ui.tool === 'note' || ui.tool === 'levelMark') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -590,22 +583,14 @@ export function wireInput(app: App): void {
       app.render();
       return true;
     }
-    if ((ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom) {
-      ui.beamFrom = null;
-      app.render();
+    const drawing = pointTool(app);
+    if (drawing?.rightClick && drawing.points(app).length > 0) {
+      drawing.rightClick(app);
       return true;
     }
     if (ui.tool === 'mark' && ui.markDraft.length > 0) {
       ui.markDraft = ui.markDraft.slice(0, -1);
       app.render();
-      return true;
-    }
-    if (ui.tool === 'roof' && ui.roofDraft.length > 0) {
-      app.roofFinish();
-      return true;
-    }
-    if (ui.tool === 'railing' && ui.railingDraft.length > 0) {
-      app.railingFinish();
       return true;
     }
     if (ui.tool === 'measure' && ui.measure.kind !== 'idle') {
@@ -715,24 +700,16 @@ export function wireInput(app: App): void {
       if (at) app.objectClick(snapped(e)?.point ?? at.p);
       return;
     }
-    if (ui.tool === 'beam') {
-      const at = aimAt3d(e);
-      if (at) app.beamClick(snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'separator') {
-      const at = worldAt(e);
-      if (at) app.separatorClick(snapped(e)?.point ?? at.p);
+    // A beam, a separator, a curtain wall, a guardrail, a roof, a stair: their steps are point-tools.ts's.
+    const drawing = pointTool(app);
+    if (drawing) {
+      const at = drawing.aim === '3d' ? aimAt3d(e) : worldAt(e);
+      if (at) drawing.click(app, snapped(e)?.point ?? at.p, at.mpp);
       return;
     }
     if (ui.tool === 'mark') {
       const at = worldAt(e);
       if (at && ui.view === 'plan') app.markClick(ui.markMode === 'radius' ? at.p : (snapped(e)?.point ?? at.p));
-      return;
-    }
-    if (ui.tool === 'curtain') {
-      const at = worldAt(e);
-      if (at) app.curtainClick(snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'callout') {
@@ -751,21 +728,6 @@ export function wireInput(app: App): void {
       if (!at) return;
       const p = snapped(e)?.point ?? at.p;
       return ui.tool === 'note' ? app.addNoteHere(p) : app.addLevelMarkHere(p);
-    }
-    if (ui.tool === 'roof') {
-      const at = worldAt(e);
-      if (at) app.roofClick(snapped(e)?.point ?? at.p, at.mpp);
-      return;
-    }
-    if (ui.tool === 'stair') {
-      const at = aimAt3d(e);
-      if (at) app.stairClick(snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'railing') {
-      const at = aimAt3d(e);
-      if (at) app.railingClick(snapped(e)?.point ?? at.p, at.mpp);
-      return;
     }
     if (ui.tool === 'room' || ui.tool === 'floor') {
       const at = worldAt(e);

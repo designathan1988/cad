@@ -23,6 +23,7 @@ import { exploding, RENDER_QUALITIES, shownLevels, VISUAL_STYLES } from './view-
 import { contextEntries } from './context-menu';
 import { tipOf } from './actions';
 import { placeBarY } from '../ui/bar-place';
+import { pointTool } from './point-tools';
 import { GRID_BUBBLE_PX } from '../elements/kinds/grid';
 import { signedArea } from '../elements/room/derive';
 import type { App } from './app';
@@ -183,6 +184,8 @@ export function renderChrome(app: App): void {
 
   // Footer: what to do now, the keys that work now, and the measure field.
   const drawing = ui.tool === 'wall';
+  // A beam, a separator, a curtain wall, a guardrail, a roof, a stair: their line and keys (point-tools.ts).
+  const pointing = pointTool(app);
   const w = ui.wall;
   const arc = w.kind !== 'rect' && w.arc === true;
   const rect = w.kind === 'rect' || (w.kind === 'idle' && w.rect === true);
@@ -269,25 +272,15 @@ export function renderChrome(app: App): void {
                 ? t('hint.columnPlace')
                 : ui.tool === 'object'
                   ? t('hint.object', { name: objectName(app) })
-                : ui.tool === 'beam'
-                  ? t(ui.beamFrom ? 'hint.beamEnd' : 'hint.beamStart')
-                : ui.tool === 'separator'
-                  ? t(ui.beamFrom ? 'hint.separatorEnd' : 'hint.separatorStart')
+                : pointing
+                  ? t(pointing.hint[pointing.points(app).length > 0 ? 1 : 0])
                 : ui.tool === 'mark'
                   ? t(ui.markMode === 'radius' ? 'hint.markRadius' : ui.markMode === 'coord' ? (ui.markDraft.length === 0 ? 'hint.markCoordPoint' : 'hint.markCoordLabel') : ui.markDraft.length === 0 ? 'hint.markAngleVertex' : ui.markDraft.length === 1 ? 'hint.markAngleArm1' : 'hint.markAngleArm2')
-                : ui.tool === 'curtain'
-                  ? t(ui.beamFrom ? 'hint.curtainEnd' : 'hint.curtainStart')
                 : ui.tool === 'note'
                   ? t('hint.notePlace')
                 : ui.tool === 'levelMark'
                   ? t('hint.levelMarkPlace')
-                  : ui.tool === 'roof'
-                    ? t(ui.roofDraft.length > 0 ? 'hint.roofNext' : 'hint.roofStart')
-                    : ui.tool === 'stair'
-                      ? t(ui.stairFrom ? 'hint.stairDirection' : 'hint.stairStart')
-                      : ui.tool === 'railing'
-                        ? t(ui.railingDraft.length > 0 ? 'hint.railingNext' : 'hint.railingStart')
-                        : null;
+                  : null;
   const guideHint = ui.guide
     ? t('hint.guide', {
         d: lengthText(app.guideOffset() ?? 0),
@@ -347,16 +340,14 @@ export function renderChrome(app: App): void {
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.guideFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'object'
     ? [keyHint(t('key.spaceKey'), t('key.turn90')), ...snapKeys, keyHint('Esc', t('key.exit'))]
-    : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
+    : pointing
+    ? [
+        ...(pointing.enterShown ? [keyHint('Enter', t('key.finish'))] : []),
+        keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys,
+        keyHint('Esc', t(pointing.points(app).length > 0 ? pointing.escapeIs : 'key.exit')),
+      ]
     : ui.tool === 'mark'
     ? [...snapKeys, keyHint('Esc', t(ui.markDraft.length > 0 ? 'key.back' : 'key.exit'))]
-    : ui.tool === 'stair'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.stairFrom ? 'key.back' : 'key.exit'))]
-    : ui.tool === 'railing'
-    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.railingDraft.length > 0 ? 'key.finish' : 'key.exit'))]
-    : ui.tool === 'roof'
-    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.roofDraft.length > 0 ? 'key.back' : 'key.exit'))]
     : ui.tool === 'measure'
     ? [
         keyHint('C', t(ui.measureMode === 'chain' ? 'key.measureDistance' : 'key.measureChain')),

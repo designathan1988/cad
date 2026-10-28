@@ -9,6 +9,7 @@ import type { App } from './app';
 import { selectGestures } from './select-drag';
 import { arrowStep } from '../tools/nudge';
 import { guideBaseAt } from '../tools/guide-tool';
+import { pointTool } from './point-tools';
 
 /** What the keys share with the pointer (input.ts). */
 export interface KeyContext {
@@ -176,25 +177,9 @@ export function wireKeys(app: App, k: KeyContext): void {
         ui.guideFrom = null;
         return app.render();
       }
-      if (ui.tool === 'railing') {
-        if (ui.railingDraft.length === 0) return app.setTool('select');
-        return app.railingFinish();
-      }
-      if (ui.tool === 'stair') {
-        if (!ui.stairFrom) return app.setTool('select');
-        ui.stairFrom = null;
-        return app.render();
-      }
-      if (ui.tool === 'roof') {
-        if (ui.roofDraft.length === 0) return app.setTool('select');
-        ui.roofDraft = [];
-        return app.render();
-      }
-      if (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') {
-        if (!ui.beamFrom) return app.setTool('select');
-        ui.beamFrom = null;
-        return app.render();
-      }
+      // A beam, a separator, a curtain wall, a guardrail, a roof, a stair (point-tools.ts).
+      const drawing = pointTool(app);
+      if (drawing) return drawing.points(app).length === 0 ? app.setTool('select') : drawing.escape(app);
       if (ui.tool === 'mark') {
         if (ui.markDraft.length === 0) return app.setTool('select');
         ui.markDraft = ui.markDraft.slice(0, -1);
@@ -220,12 +205,8 @@ export function wireKeys(app: App, k: KeyContext): void {
     if (e.key === 'Enter' && ui.tool === 'measure') return app.measureEvent({ kind: 'enter' });
     if (key === 'c' && !ctrl && !e.shiftKey && ui.tool === 'measure') return app.toggleMeasureMode();
     // Enter ends what is being drawn by points: a roof's outline, a guardrail's path, a beam chain.
-    if (e.key === 'Enter' && ui.tool === 'roof' && ui.roofDraft.length > 0) return app.roofFinish();
-    if (e.key === 'Enter' && ui.tool === 'railing' && ui.railingDraft.length > 0) return app.railingFinish();
-    if (e.key === 'Enter' && (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom) {
-      ui.beamFrom = null;
-      return app.render();
-    }
+    const drawing = pointTool(app);
+    if (e.key === 'Enter' && drawing?.enter && drawing.points(app).length > 0) return drawing.enter(app);
     // Enter places the opening where it is aimed, as a click there does.
     if (e.key === 'Enter' && app.openingKind() && ui.opening.kind === 'aiming') return app.openingEvent({ kind: 'click' });
     // Backspace while drawing a chain takes its last wall back and goes on from its start (ArchiCAD).

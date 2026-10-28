@@ -38,6 +38,7 @@ import { nextFields, type NextSlot } from './next-element';
 import { lowerFirst } from './ribbon-tabs';
 import { words } from '../elements/object/fields';
 import { PREVIEW_ID, SNAP_OF } from './app';
+import { pointDraft, pointTool } from './point-tools';
 
 /** The panel's title over a placing tool's next element: its kind's name, an object's its own. */
 function nextTitle(app: App, slot: NextSlot): string {
@@ -145,7 +146,7 @@ export function renderFrame(app: App): void {
       guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
       snap:
         // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-        (ui.tool === 'wall' || ui.tool === 'guide' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'mark' || ui.tool === 'curtain' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+        (pointTool(app) || ui.tool === 'wall' || ui.tool === 'guide' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'column' || ui.tool === 'mark' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
           ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null), ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
           : null,
       measure: guideDim
@@ -219,15 +220,7 @@ export function renderFrame(app: App): void {
             ? ui.markDraft.length === 2 && ui.markMode === 'angle'
               ? [ui.markDraft[1]!, ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
               : [ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
-          : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
-            ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
-            : ui.tool === 'roof' && ui.roofDraft.length > 0
-              ? [...ui.roofDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
-              : ui.tool === 'stair' && ui.stairFrom && (ui.snap?.point ?? ui.cursor)
-                ? [ui.stairFrom, (ui.snap?.point ?? ui.cursor)!]
-                : ui.tool === 'railing' && ui.railingDraft.length > 0
-                  ? [...ui.railingDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
-                    : null,
+          : pointDraft(app),
       draftCorners: ui.tool === 'floor' ? ui.floorDraft : [],
       openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
       // The opening being placed shows its distance as a dimension too (drawn only, not typed in: the
@@ -304,15 +297,7 @@ export function renderFrame(app: App): void {
             ? ui.markDraft.length === 2 && ui.markMode === 'angle'
               ? [ui.markDraft[1]!, ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
               : [ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
-          : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
-            ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
-            : ui.tool === 'roof' && ui.roofDraft.length > 0
-              ? [...ui.roofDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
-              : ui.tool === 'stair' && ui.stairFrom && (ui.snap?.point ?? ui.cursor)
-                ? [ui.stairFrom, (ui.snap?.point ?? ui.cursor)!]
-                : ui.tool === 'railing' && ui.railingDraft.length > 0
-                  ? [...ui.railingDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
-                    : null,
+          : pointDraft(app),
       box: ui.view3d.box,
       boxHot: app.boxHot,
       objectHandles: objectHandles(app),
