@@ -25,4 +25,4 @@ the work stood (read from the conversation on disk) are printed by the hooks in 
   vanishes at a sharp T, overlaps without warning, split changes the plan, arc/line spike, wall gone at a 3-end node, and more.
 
 ## Task now
-The scope task, step 2: the `reviewing-whole-codebase` skill in `fix` mode (docs/agent/work.md has the steps and the Next).
+The scope task, step 2: waiting for the owner to restart Claude Code and run /reviewing-whole-codebase fix (docs/agent/work.md, Next).
