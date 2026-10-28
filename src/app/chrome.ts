@@ -258,22 +258,14 @@ export function renderChrome(app: App): void {
           ? app.measureHint()
           : ui.tool === 'dimension'
             ? t(ui.dimension.kind === 'idle' ? 'hint.dimensionStart' : ui.dimension.kind === 'from' ? 'hint.dimensionEnd' : 'hint.dimensionPlace')
-            : ui.tool === 'grid'
-              ? t(ui.gridFrom ? 'hint.gridEnd' : 'hint.gridStart')
-              : ui.tool === 'section'
-              ? t(ui.sectionFrom ? 'hint.sectionEnd' : 'hint.sectionStart')
-              : ui.tool === 'callout'
-              ? t(ui.calloutFrom ? 'hint.calloutText' : 'hint.calloutPoint')
-              : ui.tool === 'calibrate'
+            : ui.tool === 'calibrate'
               ? t(ui.calibrate?.a ? 'hint.calibrateSecond' : 'hint.calibrateFirst')
-              : ui.tool === 'guide'
-                ? t(ui.guideMode === 'point' ? 'hint.guidePoint' : ui.guideMode === 'circle' ? (ui.guideFrom ? 'hint.guideRadius' : 'hint.guideCentre') : ui.guideFrom ? 'hint.guideSecond' : 'hint.guideFirst')
               : ui.tool === 'column'
                 ? t('hint.columnPlace')
                 : ui.tool === 'object'
                   ? t('hint.object', { name: objectName(app) })
                 : pointing
-                  ? t(pointing.hint[pointing.points(app).length > 0 ? 1 : 0])
+                  ? t(pointing.hint(app))
                 : ui.tool === 'mark'
                   ? t(ui.markMode === 'radius' ? 'hint.markRadius' : ui.markMode === 'coord' ? (ui.markDraft.length === 0 ? 'hint.markCoordPoint' : 'hint.markCoordLabel') : ui.markDraft.length === 0 ? 'hint.markAngleVertex' : ui.markDraft.length === 1 ? 'hint.markAngleArm1' : 'hint.markAngleArm2')
                 : ui.tool === 'note'
@@ -326,24 +318,17 @@ export function renderChrome(app: App): void {
     ? [keyHint('Esc', t('key.exit'))]
     : ui.tool === 'dimension'
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.dimension.kind === 'idle' ? 'key.exit' : 'key.back'))]
-    : ui.tool === 'grid'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.gridFrom ? 'key.back' : 'key.exit'))]
-    : ui.tool === 'section'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.sectionFrom ? 'key.back' : 'key.exit'))]
-    : ui.tool === 'callout'
-    ? [...snapKeys, keyHint('Esc', t(ui.calloutFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'calibrate'
     ? [...snapKeys, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'column'
     ? [...snapKeys, keyHint('Esc', t('key.exit'))]
-    : ui.tool === 'guide'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys, keyHint('Esc', t(ui.guideFrom ? 'key.back' : 'key.exit'))]
     : ui.tool === 'object'
     ? [keyHint(t('key.spaceKey'), t('key.turn90')), ...snapKeys, keyHint('Esc', t('key.exit'))]
     : pointing
     ? [
         ...(pointing.enterShown ? [keyHint('Enter', t('key.finish'))] : []),
-        keyHint('Shift', t('key.straight')), ...lockKeys, ...snapKeys,
+        ...(pointing.straight !== false ? [keyHint('Shift', t('key.straight')), ...lockKeys] : []),
+        ...snapKeys,
         keyHint('Esc', t(pointing.points(app).length > 0 ? pointing.escapeIs : 'key.exit')),
       ]
     : ui.tool === 'mark'

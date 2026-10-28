@@ -41,7 +41,7 @@ import type { PickOrder } from '../elements/contract';
 import { distance, normalize, sub } from '../core/vector';
 import { outerSides } from '../elements/wall/geometry/seams';
 import { wireKeys } from './input-keys';
-import { pointTool } from './point-tools';
+import { pointTape, pointTool } from './point-tools';
 import { wireButtons } from './input-buttons';
 
 /** How near (screen pixels) the pointer must come to a wall, a door or a window to take it. */
@@ -263,11 +263,7 @@ export function wireInput(app: App): void {
           ? ui.measure.points.at(-1)!
         : ui.tool === 'dimension' && ui.dimension.kind === 'from'
           ? ui.dimension.a
-          : ui.tool === 'grid'
-            ? ui.gridFrom
-            : ui.tool === 'guide'
-              ? ui.guideFrom
-              : (pointTool(app)?.points(app).at(-1) ?? null);
+          : pointTape(app);
     const measuring = ui.tool === 'measure' || ui.tool === 'dimension';
     const modifyFrom = ui.tool === 'modify' && ui.modify && ui.modify.state.step !== 'base' ? ui.modify.state.base : null;
     const faces = measuring ? levelFaces() : [];
@@ -431,7 +427,7 @@ export function wireInput(app: App): void {
       if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
       return app.render();
     }
-    if (pointTool(app) || ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'column' || ui.tool === 'mark' || ui.tool === 'note' || ui.tool === 'levelMark') {
+    if (pointTool(app) || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'calibrate' || ui.tool === 'column' || ui.tool === 'mark' || ui.tool === 'note' || ui.tool === 'levelMark') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -570,19 +566,6 @@ export function wireInput(app: App): void {
       app.dimensionEvent({ kind: 'escape' });
       return true;
     }
-    if (ui.tool === 'grid' && ui.gridFrom) {
-      app.gridEscape();
-      return true;
-    }
-    if (ui.tool === 'section' && ui.sectionFrom) {
-      app.sectionEscape();
-      return true;
-    }
-    if (ui.tool === 'callout' && ui.calloutFrom) {
-      ui.calloutFrom = null;
-      app.render();
-      return true;
-    }
     const drawing = pointTool(app);
     if (drawing?.rightClick && drawing.points(app).length > 0) {
       drawing.rightClick(app);
@@ -675,24 +658,9 @@ export function wireInput(app: App): void {
       if (at) app.dimensionEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
       return;
     }
-    if (ui.tool === 'grid') {
-      const at = worldAt(e);
-      if (at && ui.view === 'plan') app.gridClick(snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'section') {
-      const at = worldAt(e);
-      if (at && ui.view === 'plan') app.sectionClick(snapped(e)?.point ?? at.p);
-      return;
-    }
     if (ui.tool === 'column') {
       const at = aimAt3d(e);
       if (at) app.columnClick(snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'guide') {
-      const at = worldAt(e);
-      if (at && ui.view === 'plan') app.guideClick(snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'object') {
@@ -700,21 +668,16 @@ export function wireInput(app: App): void {
       if (at) app.objectClick(snapped(e)?.point ?? at.p);
       return;
     }
-    // A beam, a separator, a curtain wall, a guardrail, a roof, a stair: their steps are point-tools.ts's.
+    // The tools drawn by points (a beam, a roof, an axis, a guide…): their steps are point-tools.ts's.
     const drawing = pointTool(app);
     if (drawing) {
       const at = drawing.aim === '3d' ? aimAt3d(e) : worldAt(e);
-      if (at) drawing.click(app, snapped(e)?.point ?? at.p, at.mpp);
+      if (at && (drawing.aim !== 'planView' || ui.view === 'plan')) drawing.click(app, snapped(e)?.point ?? at.p, at.mpp);
       return;
     }
     if (ui.tool === 'mark') {
       const at = worldAt(e);
       if (at && ui.view === 'plan') app.markClick(ui.markMode === 'radius' ? at.p : (snapped(e)?.point ?? at.p));
-      return;
-    }
-    if (ui.tool === 'callout') {
-      const at = worldAt(e);
-      if (at && ui.view === 'plan') app.calloutClick(snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'calibrate') {

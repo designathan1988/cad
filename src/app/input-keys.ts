@@ -160,24 +160,12 @@ export function wireKeys(app: App, k: KeyContext): void {
       if (ui.tool === 'room' || ui.tool === 'floor') return app.setTool('select');
       if (ui.tool === 'measure') return ui.measure.kind !== 'idle' ? app.measureEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
-      if (ui.tool === 'grid') return app.gridEscape();
-      if (ui.tool === 'section') return app.sectionEscape();
       if (ui.tool === 'calibrate') {
         ui.calibrate = null;
         return app.setTool('select');
       }
-      if (ui.tool === 'callout') {
-        if (!ui.calloutFrom) return app.setTool('select');
-        ui.calloutFrom = null;
-        return app.render();
-      }
       if (ui.tool === 'column' || ui.tool === 'object' || ui.tool === 'note' || ui.tool === 'levelMark') return app.setTool('select');
-      if (ui.tool === 'guide') {
-        if (!ui.guideFrom) return app.setTool('select');
-        ui.guideFrom = null;
-        return app.render();
-      }
-      // A beam, a separator, a curtain wall, a guardrail, a roof, a stair (point-tools.ts).
+      // The tools drawn by points: a beam, a roof, an axis, a section, a guide… (point-tools.ts).
       const drawing = pointTool(app);
       if (drawing) return drawing.points(app).length === 0 ? app.setTool('select') : drawing.escape(app);
       if (ui.tool === 'mark') {
