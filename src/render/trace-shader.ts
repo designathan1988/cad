@@ -7,7 +7,7 @@
  * then one shadow ray tested: the same light, the same weights, one traversal less.
  */
 const DIRECT_LIGHT = /* glsl */ `
-	// cad2: one shadow ray for the picked light or sky (trace-shader.ts).
+	// cad2 (trace-shader.ts): the light or the sky picked, then one shadow ray.
 	vec3 directLightContribution( vec3 worldWo, SurfaceRecord surf, RenderState state, vec3 rayOrigin ) {
 
 		vec3 result = vec3( 0.0 );

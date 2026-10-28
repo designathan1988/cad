@@ -749,6 +749,20 @@ export class Scene3D {
       shader.setDefine('FEATURE_BACKGROUND_MAP', 1);
       shader.setDefine('FEATURE_FOG', 0);
       // One shadow ray for the direct light instead of two: a scene traversal less to compile (trace-shader.ts).
+      // Compiled in the background for the target it draws into (a float texture, linear, no tone mapping):
+      // compiled for the canvas (tone mapped, sRGB) as the library does, it was another program, and the one
+      // drawn compiled at its first use with the page standing still (7 s measured, an RTX 3060 on Direct3D).
+      const tracing = (t as unknown as { _pathTracer: { compileMaterial(): Promise<unknown>; _primaryTarget: THREE.WebGLRenderTarget } })._pathTracer;
+      const compile = tracing.compileMaterial.bind(tracing);
+      tracing.compileMaterial = () => {
+        const was = this.renderer.getRenderTarget();
+        this.renderer.setRenderTarget(tracing._primaryTarget);
+        try {
+          return compile();
+        } finally {
+          this.renderer.setRenderTarget(was);
+        }
+      };
       shader.fragmentShader = clampedSamples(oneShadowRay(shader.fragmentShader));
       shader.uniforms['fireflyClamp'] = { value: this.fireflyClamp() };
       shader.needsUpdate = true;

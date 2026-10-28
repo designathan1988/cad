@@ -181,7 +181,12 @@ export function segmented<T extends string>(
     // Narrow screens keep only the icon of a button that has one; one without keeps its words.
     if (o.icon) b.classList.add('has-icon');
     if (!o.icon || labelled) b.append(el('span', { class: 'label' }, o.short ?? o.label));
-    b.addEventListener('click', () => onChange(o.value));
+    b.addEventListener('click', (e) => {
+      // Chosen with the pointer, the keyboard goes back to the drawing: kept on the button, Space pressed it
+      // again instead of flipping the door being placed. From the keyboard (no pointer), it stays.
+      if (e.detail > 0) b.blur();
+      onChange(o.value);
+    });
     box.append(b);
   }
   return box;
@@ -202,7 +207,16 @@ export function select<T extends string>(
   }
   // The whole label on hover, for any that the field is too narrow to show.
   s.title = options.find((o) => o.value === value)?.label ?? '';
-  s.addEventListener('change', () => onChange(s.value as T));
+  // Chosen with the pointer, the keyboard goes back to the drawing (kept on the field, its shortcuts, Space
+  // and H for a door, reached the field instead); chosen from the keyboard, the field keeps it.
+  let pointed = false;
+  s.addEventListener('pointerdown', () => (pointed = true));
+  s.addEventListener('keydown', () => (pointed = false));
+  s.addEventListener('change', () => {
+    if (pointed) s.blur();
+    pointed = false;
+    onChange(s.value as T);
+  });
   s.addEventListener('keydown', (e) => e.stopPropagation());
   box.append(s);
   box.insertAdjacentHTML('beforeend', icon('chevronDown', 14));
