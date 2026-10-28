@@ -9,6 +9,7 @@ import { deriveGeometry } from './geometry';
 import { newId } from '../core/id';
 import { addFloor, addFloorHole, addRoom } from '../elements/room/commands';
 import { insideRing, signedArea } from '../elements/room/derive';
+import { nextNumber } from '../elements/kinds/room';
 import type { App } from './app';
 
 /** The smallest space the level's walls close in around p, when no room is in it: where the room tool would make one. */
@@ -29,9 +30,10 @@ export function roomClick(app: App, p: Point2): void {
     app.ui.info = t('hint.roomExists');
     return app.refresh();
   }
-  const n = doc.rooms.filter((r) => r.levelId === app.ui.levelId).length + 1;
+  // After the highest on the level, as a copy's: counting them gave a number in use once one was deleted.
+  const number = nextNumber(doc.rooms, app.ui.levelId);
   // Its use, height and finishes as the next room is set (next-element.ts); its name and number its own.
-  const room = made<Room>(app, 'rooms', { id: newId('room'), seed: p, name: defaultName.room(n), number: String(n) });
+  const room = made<Room>(app, 'rooms', { id: newId('room'), seed: p, name: defaultName.room(Number(number)), number });
   const probe = deriveGeometry({ ...doc, rooms: [room] }).rooms.get(room.id);
   if (!probe?.enclosed) {
     app.ui.error = t('hint.roomNotEnclosed');

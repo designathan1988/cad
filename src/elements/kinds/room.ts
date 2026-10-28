@@ -15,8 +15,8 @@ export const ROOM_PREFIX = 'room';
 /** A room as built, at its level's floor (where the 3D window takes it). */
 export type RoomItem = RoomSolid & { readonly elevation: number };
 
-/** The next number on a level, after those in `all`. */
-const nextNumber = (all: readonly Room[], levelId: string): string =>
+/** The next number on a level, after those in `all` (the highest + 1: a count repeated one after a deletion). */
+export const nextNumber =(all: readonly Room[], levelId: string): string =>
   String(all.filter((r) => r.levelId === levelId).reduce((n, r) => Math.max(n, Number.parseInt(r.number, 10) || 0), 0) + 1);
 
 export const roomKind: ElementKind<Room, RoomItem> = {
