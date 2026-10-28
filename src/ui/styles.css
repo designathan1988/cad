@@ -633,6 +633,72 @@ button.project-name:hover {
   flex: 1;
 }
 /* The Visibility popover (ui/visibility-panel.ts): groups of rows, an eye at each row's end. */
+/* The tool in use (shell.ts toolStrip), over the top middle of the drawing: one row, its name, its ways
+   and types as small buttons, the way out. */
+.tool-strip {
+  position: absolute;
+  top: var(--sp-3);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  max-width: calc(100% - 2 * var(--sp-7));
+  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+.tool-strip[hidden] {
+  display: none;
+}
+.tool-strip-name {
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.tool-strip-name[hidden] {
+  display: none;
+}
+.tool-strip-body,
+.tool-strip-body .rb-panel,
+.tool-strip-body .rb-body,
+.tool-strip-body .rb-column {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--line-2);
+}
+.tool-strip-body .rb-panel {
+  padding: 0 0 0 var(--sp-2);
+  border-left: var(--line) solid var(--border);
+}
+.tool-strip-body .rb-title {
+  display: none;
+}
+.tool-strip-body button {
+  flex-direction: row;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-2);
+  white-space: nowrap;
+}
+.tool-strip-body .rb-large .rb-label {
+  display: inline;
+  font-size: var(--fs-sm);
+}
+.tool-strip-body .rb-large .icon {
+  width: var(--sp-4);
+  height: var(--sp-4);
+}
+.tool-strip .tool-done {
+  height: var(--control-h-sm);
+  margin-left: var(--sp-1);
+}
 /* An open popover lies over the project browser's drawer (z-index 7) too. */
 .view-bar:has(.light-panel:not([hidden])) {
   z-index: 8;

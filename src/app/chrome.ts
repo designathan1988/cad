@@ -18,7 +18,8 @@ import { SCALES } from '../elements/drawing/schema';
 import { boundsOf, openingOutline } from './geometry';
 import { renderBrowser } from '../ui/browser';
 import { renderVisibility } from '../ui/visibility-panel';
-import { renderRibbonTab, renderRibbonTabs } from '../ui/ribbon';
+import { renderRibbonTab, renderRibbonTabs, type RibbonTab } from '../ui/ribbon';
+import type { Action } from './actions';
 import { ribbonTabs } from './ribbon-tabs';
 import { exploding, RENDER_QUALITIES, shownLevels, VISUAL_STYLES } from './view-3d';
 import { contextEntries } from './context-menu';
@@ -549,18 +550,22 @@ export function renderRibbon(app: App): void {
   // The selection's own actions (the context menu's), for the contextual tab: ctx.<id>.
   if (app.ui.selection.size > 0)
     for (const e of contextEntries(app, () => app.openCommands())) actions.set(`ctx.${e.id}`, { id: `ctx.${e.id}`, label: e.label, group: 'edit', keywords: '', ...(e.keys ? { keys: e.keys } : {}), enabled: true, run: e.run });
-  const tabs = ribbonTabs(app);
+  const all = ribbonTabs(app);
+  // A placing tool's tab ("Place wall") is the tool strip over the drawing now, not a tab of the ribbon.
+  const placing = app.ui.tool !== 'select';
+  const placeTab = placing ? all.find((x) => x.context) : undefined;
+  const tabs = all.filter((x) => x !== placeTab);
   if (!tabs.some((x) => x.id === app.ribbonTab) || app.ribbonTab === 'context') app.ribbonTab = tabs[0]!.id;
-  // Something selected, or a placing tool chosen: its contextual tab comes forward (Revit's Modify | …,
-  // Modify | Place …), unless the user went to another tab since; neither, that choice is forgotten and
-  // the tab chosen before is back. Another tool or selection brings it forward again.
+  // The selection's tab (Modify | Wall) is shown, coloured apart, but never brought forward on its own:
+  // the ribbon jumped to it on every click on the model (R2). The floating bar and the right-click menu
+  // carry the selection's commands; a click on the tab opens it, until the selection changes.
   const contextual = tabs.find((x) => x.context);
   const selected = `${app.ui.tool} ${[...app.ui.selection].join(' ')}`;
-  if (!contextual || selected !== app.ribbonSelected) app.ribbonAway = false;
+  if (!contextual || selected !== app.ribbonSelected) app.ribbonAway = true;
   app.ribbonSelected = selected;
   const shown = contextual && !app.ribbonAway ? contextual.id : app.ribbonTab;
   const tab = tabs.find((x) => x.id === shown)!;
-  renderToolDone(app);
+  renderToolStrip(app, placeTab, actions);
   const states = tab.panels.flatMap((p) => p.items.map((i) => {
     const a = actions.get(i.id);
     return a ? [i.id, a.label, a.keys ?? '', a.enabled, i.pressed?.() ?? null] : [i.id];
@@ -580,13 +585,27 @@ export function renderRibbon(app: App): void {
   else if (field) shell.ribbon.querySelector<HTMLElement>(`[data-rf="${field}"] input, [data-rf="${field}"] select, [data-rf="${field}"] button`)?.focus();
 }
 
-/** The way out of the tool in use, on the view's bar: shown while one is, named in the interface's language. */
-function renderToolDone(app: App): void {
+/**
+ * The tool in use, over the top of the drawing: its name, its ways and types (the place tab's panels but
+ * Select, which Esc and the way out stand for), and the way out. Drawn again only when what it shows changes.
+ */
+function renderToolStrip(app: App, tab: RibbonTab | undefined, actions: ReadonlyMap<string, Action>): void {
   const { shell, ui } = app;
   const on = ui.tool !== 'select';
+  shell.toolStrip.hidden = !on;
   shell.toolDone.hidden = !on;
-  if (!on || shell.toolDone.dataset.lang === getLang()) return;
-  shell.toolDone.dataset.lang = getLang();
+  if (!on) {
+    delete shell.toolStrip.dataset.key;
+    return;
+  }
+  const panels = (tab?.panels ?? []).filter((p) => p.title !== 'rib.p.select');
+  const states = panels.flatMap((p) => p.items.map((i) => [i.id, actions.get(i.id)?.label ?? '', i.pressed?.() ?? null]));
+  const key = JSON.stringify([getLang(), ui.tool, tab?.text ?? '', states]);
+  if (shell.toolStrip.dataset.key === key) return;
+  shell.toolStrip.dataset.key = key;
+  shell.toolName.textContent = tab?.text ?? '';
+  shell.toolName.hidden = !tab?.text;
+  renderRibbonTab(shell.toolBody, { id: 'tool', title: 'rib.tab.context', panels }, actions);
   shell.toolDone.replaceChildren(el('span', { class: 'label' }, t('opt.finish')), el('span', { class: 'kbd' }, 'Esc'));
   shell.toolDone.title = t('opt.finishTip');
 }

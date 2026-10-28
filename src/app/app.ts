@@ -1772,7 +1772,7 @@ export class App {
   ribbonKey = '';
   /** The next element each placing tool makes, as the user set it (next-element.ts); unset, the last one made. */
   next: Partial<Record<NextSlot, unknown>> = {};
-  /** The user left the contextual tab for another while the selection lasts (chrome.ts, renderRibbon). */
+  /** The selection's tab is not shown: it opens only when the user picks it, until the selection changes (chrome.ts, renderRibbon). */
   ribbonAway = false;
   /** The selection the contextual tab was last shown for: a new one brings it forward again. */
   ribbonSelected = '';
