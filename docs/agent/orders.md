@@ -174,3 +174,9 @@ Sim, continuar
 2026-10-28 22:44:40
 
 Sim, seguir
+
+
+---
+2026-10-28 23:22:05
+
+/goal Pare de perguntar e interromper o trabalho e continue os trabalhos
