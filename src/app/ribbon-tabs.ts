@@ -13,11 +13,6 @@ import type { ToolId } from '../ui/shell';
 import { t } from '../ui/i18n';
 import { kindOfId } from '../elements/registry';
 import { contextEntries } from './context-menu';
-import { type Field, ribbonFieldRows } from '../ui/fields';
-import type { WallDefaults } from './document';
-import { nextWallFields } from '../elements/wall/fields';
-import { nextOpeningFields, type OpeningSize } from '../elements/opening/fields';
-import { nextFields } from './next-element';
 
 /** Every button with its short name (rib.s.<action>): the palette's full name stays its tooltip. */
 export function ribbonTabs(app: App): readonly RibbonTab[] {
@@ -278,9 +273,6 @@ const PLACING: Partial<Record<ToolId, RibbonItem['icon']>> = {
   calibrate: 'ruler',
 };
 
-/** A next element's fields that say what it is (its type, model, definition): the tab's Type panel; the others are its own. */
-const TYPE_FIELDS = new Set(['type', 'model', 'objDefinition', 'objType', 'buildup']);
-
 /** A name inside a sentence: its first letter small ("Colocar sofá"), an acronym ("TV") kept. */
 export const lowerFirst = (s: string): string => (s.length > 1 && s[1] === s[1]!.toUpperCase() && s[1] !== s[1]!.toLowerCase() ? s : s.charAt(0).toLowerCase() + s.slice(1));
 
@@ -310,29 +302,9 @@ function placeTab(
 ): RibbonTab[] {
   const { ui } = app;
   if (!PLACING[ui.tool]) return [];
-  const doc = app.store.get();
-  // The next element's fields, on what they read: the walls' defaults, the openings' sizes, a kind's template.
-  const next: { fields: readonly Field<unknown>[]; items: readonly unknown[]; key: string } | null = (() => {
-    if (ui.tool === 'wall') {
-      const update = (patch: Partial<WallDefaults>) => {
-        ui.defaults = { ...ui.defaults, ...patch };
-        app.refresh();
-      };
-      return { fields: nextWallFields(doc, update) as Field<unknown>[], items: [ui.defaults], key: JSON.stringify(ui.defaults) };
-    }
-    if (ui.tool === 'door' || ui.tool === 'window') {
-      const kind = ui.tool;
-      const set = (patch: Partial<OpeningSize>) => {
-        ui.openingDefaults = { ...ui.openingDefaults, [kind]: { ...ui.openingDefaults[kind], ...patch } };
-        app.refresh();
-      };
-      // The leaf's side and hinge first: past the screen's edge with the rest, they were out of sight.
-      return { fields: [...app.placeSideFields(kind), ...(nextOpeningFields(kind, set, ui.openingDefaults[kind]) as Field<unknown>[])], items: [ui.openingDefaults[kind]], key: `${JSON.stringify(ui.openingDefaults[kind])}|${JSON.stringify(ui.doorFlip)}` };
-    }
-    return nextFields(app);
-  })();
-  const typeFields = next ? next.fields.filter((f) => TYPE_FIELDS.has(f.id)) : [];
-  const ownFields = next ? next.fields.filter((f) => !TYPE_FIELDS.has(f.id)) : [];
+  // The next element's settings are the properties panel's (frame.ts: next), as Revit's palette and
+  // Archicad's Info Box hold them: the ribbon keeps the tool's commands only. Its fields here were a
+  // second copy of the panel's, a strip of form controls across the top of the screen.
   const typeEdit: RibbonItem[] =
     ui.tool === 'wall' ? [{ id: 'type.edit', icon: 'wall', size: 'S' }] : ui.tool === 'object' ? [{ id: 'objects.edit', icon: 'box', size: 'S', short: 'rib.s.objectsEdit' }] : ui.tool === 'door' || ui.tool === 'window' ? [{ id: 'openings.store', icon: ui.tool, size: 'S' }] : ui.tool === 'floor' ? [{ id: 'floors.store', icon: 'slab', size: 'S' }] : ['column', 'beam', 'stair', 'railing', 'roof', 'curtain'].includes(ui.tool) ? [{ id: 'presets.store', icon: 'box', size: 'S' }] : [];
   const properties: RibbonItem = { id: 'settings.panel', icon: 'panel', size: 'S', short: 'rib.s.properties', pressed: () => !app.shell.panel.hidden };
@@ -395,13 +367,8 @@ function placeTab(
       context: true,
       panels: [
         select,
-        {
-          title: typeFields.length > 0 ? 'rib.p.type' : 'rib.p.properties',
-          items: [...typeEdit, properties],
-          ...(typeFields.length > 0 && next ? { fields: () => ribbonFieldRows(typeFields, next.items), key: next.key } : {}),
-        },
-        ...(ownFields.length > 0 && next ? [{ title: 'rib.p.next' as MessageKey, items: [], fields: () => ribbonFieldRows(ownFields, next.items), key: next.key }] : []),
         ...ways,
+        { title: typeEdit.length > 0 ? 'rib.p.type' : 'rib.p.properties', items: [...typeEdit, properties] },
       ],
     },
   ];
