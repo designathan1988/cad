@@ -109,13 +109,13 @@ describe('join choices at a wall end', () => {
     expect([covers(mitred, 'a', below), covers(mitred, 'a', above)]).toEqual([true, false]);
   });
 
-  it('every choice is read back from the file; an unknown one drops the wall and says so', () => {
+  it('every choice is read back from the file; an unknown one is left out, the wall kept, and says so', () => {
     const joins: EndJoin[] = ['off', 'through', 'stop', 'miter', 'square'];
     const walls = joins.map((j, k) => ({ ...L()[0]!, id: `w${k}`, levelId: 'lvl_ground', joins: { start: j } }));
     const back = readProject(writeProject({ ...newDocument(), walls }));
     expect(back.ok && back.doc.walls.map((w) => w.joins?.start)).toEqual(joins);
     const bad = readProject(JSON.stringify({ ...newDocument(), walls: [{ ...walls[0]!, joins: { start: 'bevel' } }] }));
-    expect(bad.ok && bad.doc.walls).toEqual([]);
-    expect(bad.ok && bad.fixes.some((f) => f.kind === 'droppedWalls')).toBe(true);
+    expect(bad.ok && bad.doc.walls.map((w) => w.joins)).toEqual([undefined]);
+    expect(bad.ok && bad.fixes.some((f) => f.kind === 'repairedFields')).toBe(true);
   });
 });

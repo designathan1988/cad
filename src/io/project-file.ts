@@ -134,7 +134,9 @@ export type Fix =
   | { readonly kind: Dropped; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number }
   /** Ids without their kind's prefix, renamed with every reference (typed-ids.ts). */
-  | { readonly kind: 'typedIds'; readonly count: number };
+  | { readonly kind: 'typedIds'; readonly count: number }
+  /** Elements kept with the one or two fields their kind refused left out (a room's unknown use). */
+  | { readonly kind: 'repairedFields'; readonly count: number };
 
 /** The fix for a registry kind's dropped elements: droppedColumns, droppedBeams and so on. */
 type KindFix = `dropped${Capitalize<KindKey>}`;
@@ -278,11 +280,20 @@ export function repairProject(raw: unknown): ReadResult {
   if (levels.length === 0) return { ok: false, error: 'noLevels' };
   if (wallTypes.length === 0) return { ok: false, error: 'noWallTypes' };
   const fixes: Fix[] = [];
+  let repaired = 0;
   const keep = <T>(list: unknown, ok: (x: unknown) => x is T, kind: Dropped): T[] => {
     // Lists missing from older versions are empty, not errors.
     if (list === undefined) return [];
     const all = Array.isArray(list) ? list : [];
-    const good = all.filter(ok);
+    // One its kind refuses is kept without the field or two that made it so; dropped only when no such
+    // cut will do (a required field is bad): a room's unknown use lost the whole room.
+    const good = all.flatMap((x): T[] => {
+      if (ok(x)) return [x];
+      const fixed = withoutBadFields(x, ok);
+      if (fixed === null) return [];
+      repaired++;
+      return [fixed];
+    });
     if (good.length < all.length || !Array.isArray(list)) fixes.push({ kind, count: all.length - good.length || 1 });
     return good;
   };
@@ -419,7 +430,30 @@ export function repairProject(raw: unknown): ReadResult {
   // Every id says its kind (typed-ids.ts): one written without it is renamed, and said.
   const typed = typedIds(doc);
   if (typed.renamed > 0) fixes.push({ kind: 'typedIds', count: typed.renamed });
+  if (repaired > 0) fixes.push({ kind: 'repairedFields', count: repaired });
   return { ok: true, doc: heldByWalls(regroupOffJoints(typed.doc, raw.version), raw.version), fixes };
+}
+
+/**
+ * `x` without the one or two fields its kind refused (a room's use it does not know, a height of 0),
+ * the fewest that make it valid; null when none does. Taking out a field the kind requires never makes
+ * it valid, so only a bad optional one goes. Its id is never taken out.
+ */
+function withoutBadFields<T>(x: unknown, ok: (x: unknown) => x is T): T | null {
+  if (!isObject(x)) return null;
+  const keys = Object.keys(x).filter((k) => k !== 'id');
+  const omit = (...out: string[]): unknown => Object.fromEntries(Object.entries(x).filter(([k]) => !out.includes(k)));
+  for (const a of keys) {
+    const one = omit(a);
+    if (ok(one)) return one;
+  }
+  for (let i = 0; i < keys.length; i++) {
+    for (let j = i + 1; j < keys.length; j++) {
+      const two = omit(keys[i]!, keys[j]!);
+      if (ok(two)) return two;
+    }
+  }
+  return null;
 }
 
 /**

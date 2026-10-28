@@ -74,12 +74,20 @@ export async function openFile(app: App, file: File): Promise<void> {
   savePrefs({ levelId: app.ui.levelId });
   // A project saved without a name is called by its file's: "casa.json" opens as "casa".
   const opened = r.doc.name ? r.doc : { ...r.doc, name: file.name.replace(/\.json$/i, '') };
-  // Elements left out; ids only given their kind's prefix (typed-ids.ts) were kept, and are not counted.
-  const fixed = r.fixes.filter((f) => f.kind !== 'typedIds').reduce((s, f) => s + f.count, 0);
+  // Elements left out; those kept without a bad value said apart (project-file.ts: repairedFields);
+  // ids only given their kind's prefix (typed-ids.ts) were kept, and are not counted.
+  const fixed = r.fixes.filter((f) => f.kind !== 'typedIds' && f.kind !== 'repairedFields').reduce((s, f) => s + f.count, 0);
+  const repaired = r.fixes.find((f) => f.kind === 'repairedFields')?.count ?? 0;
   if (app.db) {
     // A new project of the list: the open one stays there (projects.ts).
     await importAsProject(app, app.db, opened);
-    app.toast(fixed > 1 ? t('toast.importedFixed', { n: fixed }) : fixed === 1 ? t('toast.importedFixedOne') : t('toast.imported'));
+    app.toast(
+      fixed > 1 ? t('toast.importedFixed', { n: fixed })
+      : fixed === 1 ? t('toast.importedFixedOne')
+      : repaired > 1 ? t('toast.importedRepaired', { n: repaired })
+      : repaired === 1 ? t('toast.importedRepairedOne')
+      : t('toast.imported'),
+    );
     return;
   }
   // One undo step, like any other change: opening by mistake never loses the project that was open.
@@ -88,5 +96,11 @@ export async function openFile(app: App, file: File): Promise<void> {
   app.framed['3d'] = false;
   app.frameAll();
   const key = app.keyName('edit.undo');
-  app.toast(fixed > 1 ? t('toast.openedFixed', { n: fixed, key }) : fixed === 1 ? t('toast.openedFixedOne', { key }) : t('toast.openedUndo', { key }));
+  app.toast(
+    fixed > 1 ? t('toast.openedFixed', { n: fixed, key })
+    : fixed === 1 ? t('toast.openedFixedOne', { key })
+    : repaired > 1 ? t('toast.openedRepaired', { n: repaired, key })
+    : repaired === 1 ? t('toast.openedRepairedOne', { key })
+    : t('toast.openedUndo', { key }),
+  );
 }

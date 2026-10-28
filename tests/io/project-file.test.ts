@@ -103,11 +103,12 @@ describe('version 3', () => {
     expect(r.ok && r.doc).toEqual({ ...doc, version: CURRENT_VERSION });
   });
 
-  it('a wall with a malformed top is dropped and reported, not read', () => {
+  it("a wall with a malformed top is kept without it (its type's top), and reported", () => {
     const doc = { ...newDocument(), walls: [{ ...wall('wall_a', 0), top: { kind: 'level' } }, wall('wall_b', 2)] };
     const r = readProject(JSON.stringify(doc));
-    expect(r.ok && r.doc.walls.map((w) => w.id)).toEqual(['wall_b']);
-    expect(r.ok && r.fixes).toEqual([{ kind: 'droppedWalls', count: 1 }]);
+    expect(r.ok && r.doc.walls.map((w) => w.id)).toEqual(['wall_a', 'wall_b']);
+    expect(r.ok && r.doc.walls[0]).not.toHaveProperty('top');
+    expect(r.ok && r.fixes).toEqual([{ kind: 'repairedFields', count: 1 }]);
   });
 });
 
@@ -123,10 +124,11 @@ describe('version 4', () => {
     expect(v3.ok && v3.doc.openingGroups).toEqual([group]);
   });
 
-  it('a malformed stretch drops the group, reported', () => {
+  it('a malformed stretch is left out, the group kept over the whole wall, reported', () => {
     for (const between of [['c'], [1, null], 'c']) {
       const r = readProject(JSON.stringify({ ...newDocument(), openingGroups: [{ ...group, between }] }));
-      expect(r.ok && r.fixes).toEqual([{ kind: 'droppedGroups', count: 1 }]);
+      expect(r.ok && r.doc.openingGroups).toEqual([group]);
+      expect(r.ok && r.fixes).toEqual([{ kind: 'repairedFields', count: 1 }]);
     }
   });
 });

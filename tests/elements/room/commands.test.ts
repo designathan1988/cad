@@ -37,14 +37,16 @@ describe('room and floor commands', () => {
     expect(s.get().rooms.every((r) => r.use === undefined && r.height === undefined)).toBe(true);
   });
 
-  it('use and height are read back from the file; an unknown use or a height of zero drops the room, and says so', () => {
+  it('use and height are read back from the file; an unknown use or a height of zero is left out, the room kept, and says so', () => {
     const doc: Doc = { ...newDocument(), rooms: [{ ...room, use: 'kitchen', height: 2.7 }] };
     const back = readProject(writeProject(doc));
     expect(back.ok && back.doc.rooms[0]).toMatchObject({ use: 'kitchen', height: 2.7 });
-    for (const bad of [{ use: 'ballroom' }, { height: 0 }]) {
+    for (const [bad, field] of [[{ use: 'ballroom' }, 'use'], [{ height: 0 }, 'height']] as const) {
       const r = readProject(JSON.stringify({ ...doc, rooms: [{ ...room, ...bad }] }));
-      expect(r.ok && r.doc.rooms).toEqual([]);
-      expect(r.ok && r.fixes.some((f) => f.kind === 'droppedRooms')).toBe(true);
+      expect(r.ok && r.doc.rooms).toHaveLength(1);
+      expect(r.ok && r.doc.rooms[0]!.name).toBe(room.name);
+      expect(r.ok && field in r.doc.rooms[0]!).toBe(false);
+      expect(r.ok && r.fixes.some((f) => f.kind === 'repairedFields')).toBe(true);
     }
   });
 
