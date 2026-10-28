@@ -37,7 +37,7 @@ function stageOf(): Stage | null {
   // only from the front, a door, its frame and the wall read as one flat sheet).
   scene.add(new THREE.HemisphereLight(0xffffff, 0x6f7480, 0.55));
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   const sun = new THREE.DirectionalLight(0xfff4e6, 2.2);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
