@@ -388,7 +388,11 @@ export class App {
     this.cube.relabel();
     // The last project open could not be read: said, with why, before anything is done in this one.
     if (boot.notOpened) this.ui.error = t('boot.notOpened', { name: boot.notOpened.name || t('app.untitled'), why: t(`open.${boot.notOpened.error}`) });
+    // The browser's database failed while starting: this project is not kept until it is saved.
+    else if (boot.failed) this.ui.error = t('boot.failed');
     this.refresh();
+    // Elements of it that reading repaired or left out: said, as opening a file says it.
+    if (boot.repaired) this.toast(boot.repaired === 1 ? t('boot.repairedOne') : t('boot.repaired', { n: boot.repaired }));
   }
 
   height(): number {

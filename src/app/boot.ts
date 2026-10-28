@@ -5,7 +5,7 @@
 
 import { newId } from '../core/id';
 import { listProjects, loadProject, openDb, saveProject } from '../io/project-db';
-import { type ReadError, repairProject } from '../io/project-file';
+import { type Fix, type ReadError, repairProject } from '../io/project-file';
 import { type Doc, newDocument } from './document';
 import { loadDocument, loadPrefs, savePrefs, saveTo } from './persist';
 
@@ -16,12 +16,22 @@ export interface Boot {
   readonly projectId: string | null;
   /** The last project open, when it could not be read and another was opened instead: its name and why. */
   readonly notOpened?: { readonly name: string; readonly error: ReadError };
+  /** How many of its elements reading repaired or left out: said, as opening a file says it. */
+  readonly repaired?: number;
+  /** Starting failed (the browser's database refused): a project without it, said. */
+  readonly failed?: true;
 }
+
+/** The elements reading repaired or left out, counted (ids only given their kind's prefix are not). */
+export const fixedCount = (fixes: readonly Fix[]): number => fixes.filter((f) => f.kind !== 'typedIds').reduce((s, f) => s + f.count, 0);
 
 export const PROJECT_PREFIX = 'project';
 
-/** A project read from the database and checked as a file is; null when it is not there or not readable (`failed` hears why). */
-export async function readStored(db: IDBDatabase, id: string, failed?: (error: ReadError) => void): Promise<Doc | null> {
+/**
+ * A project read from the database and checked as a file is; null when it is not there or not readable
+ * (`failed` hears why). `repaired` hears how many elements reading repaired or left out.
+ */
+export async function readStored(db: IDBDatabase, id: string, failed?: (error: ReadError) => void, repaired?: (n: number) => void): Promise<Doc | null> {
   const raw = await loadProject(db, id);
   if (!raw) return null;
   const r = repairProject(raw);
@@ -31,18 +41,26 @@ export async function readStored(db: IDBDatabase, id: string, failed?: (error: R
     return null;
   }
   if (r.fixes.length > 0) console.warn('The project was repaired (bad elements dropped, ids given their kind):', r.fixes);
+  if (fixedCount(r.fixes) > 0) repaired?.(fixedCount(r.fixes));
   return r.doc;
+}
+
+/** Without a database: the document kept in local storage, or a new one. */
+export function local(): Boot {
+  let repaired = 0;
+  const doc = loadDocument((n) => (repaired = n)) ?? newDocument();
+  return { doc, db: null, projectId: null, ...(repaired > 0 ? { repaired } : {}) };
 }
 
 export async function boot(): Promise<Boot> {
   const opening = openDb();
-  if (!opening) return { doc: loadDocument() ?? newDocument(), db: null, projectId: null };
+  if (!opening) return local();
   let db: IDBDatabase;
   try {
     db = await opening;
   } catch (e) {
     console.warn('The browser database could not be opened; the project is kept in local storage.', e);
-    return { doc: loadDocument() ?? newDocument(), db: null, projectId: null };
+    return local();
   }
   // The last one open, or else the last one changed.
   const last = loadPrefs().projectId;
@@ -52,20 +70,27 @@ export async function boot(): Promise<Boot> {
   // like the work was lost.
   let notOpened: Boot['notOpened'];
   for (const id of candidates) {
-    const doc = await readStored(db, id, (error) => {
-      if (id === last) notOpened = { name: list.find((p) => p.id === id)?.name ?? '', error };
-    });
+    let repaired = 0;
+    const doc = await readStored(
+      db,
+      id,
+      (error) => {
+        if (id === last) notOpened = { name: list.find((p) => p.id === id)?.name ?? '', error };
+      },
+      (n) => (repaired = n),
+    );
     if (doc) {
       saveTo(db, id);
       savePrefs({ projectId: id });
-      return { doc, db, projectId: id, ...(notOpened ? { notOpened } : {}) };
+      return { doc, db, projectId: id, ...(notOpened ? { notOpened } : {}), ...(repaired > 0 ? { repaired } : {}) };
     }
   }
   // None yet: the document of before (or a new one) is the first project.
-  const doc = loadDocument() ?? newDocument();
+  let repaired = 0;
+  const doc = loadDocument((n) => (repaired = n)) ?? newDocument();
   const id = newId(PROJECT_PREFIX);
   await saveProject(db, id, doc);
   saveTo(db, id);
   savePrefs({ projectId: id });
-  return { doc, db, projectId: id, ...(notOpened ? { notOpened } : {}) };
+  return { doc, db, projectId: id, ...(notOpened ? { notOpened } : {}), ...(repaired > 0 ? { repaired } : {}) };
 }

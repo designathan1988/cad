@@ -60,8 +60,21 @@ export function newProject(app: App): void {
   app.toast(t('toast.newUndo', { key: app.keyName('edit.undo') }));
 }
 
-/** Opens a project file in place of the current project, as one undo step. */
+/**
+ * Opens a project file in place of the current project, as one undo step. A file the browser cannot
+ * read, or a project list that cannot take it, is said in the footer: it only reached the console.
+ */
 export async function openFile(app: App, file: File): Promise<void> {
+  try {
+    await openRead(app, file);
+  } catch (e) {
+    console.error('Opening the file failed:', e);
+    app.ui.error = t('open.failed', { name: file.name });
+    app.renderChrome();
+  }
+}
+
+async function openRead(app: App, file: File): Promise<void> {
   const r = readProject(await file.text());
   if (!r.ok) {
     app.ui.error = t(`open.${r.error}`);

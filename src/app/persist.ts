@@ -118,13 +118,18 @@ export function wireSaving(): void {
   });
 }
 
-/** The saved document, repaired if some elements are bad (they are dropped and reported in the console). */
-export function loadDocument(): Doc | null {
+/**
+ * The saved document, repaired if some elements are bad (they are dropped and reported in the console);
+ * `repaired` hears how many reading repaired or left out, for the app to say it.
+ */
+export function loadDocument(repaired?: (n: number) => void): Doc | null {
   const raw = storage()?.getItem(DOC_KEY);
   if (!raw) return null;
   const r = readProject(raw);
   if (r.ok) {
     if (r.fixes.length > 0) console.warn('The saved project was repaired (bad elements dropped, ids given their kind):', r.fixes);
+    const n = r.fixes.filter((f) => f.kind !== 'typedIds').reduce((s, f) => s + f.count, 0);
+    if (n > 0) repaired?.(n);
     return r.doc;
   }
   console.warn(`The saved project could not be read (${r.error}); starting a new one. The saved copy is kept under`, `${DOC_KEY}.invalid`);
