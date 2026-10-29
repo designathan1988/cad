@@ -168,18 +168,39 @@ export function renderRibbonTab(box: HTMLElement, tab: RibbonTab, actions: Reado
     return [el('div', { class: 'rb-panel', role: 'group', 'aria-label': title }, body, el('div', { class: 'rb-title', 'aria-hidden': 'true' }, title))];
   });
   box.replaceChildren(...panels);
-  box.setAttribute('aria-label', t(tab.title));
+  // The chosen tab's panel, named by it (ribbon tabs: aria-controls).
+  box.setAttribute('role', 'tabpanel');
+  box.removeAttribute('aria-label');
+  box.setAttribute('aria-labelledby', `rb-tab-${tab.id}`);
 }
 
 /** The tabs' buttons: the File menu first, then one per tab, the chosen one pressed. */
 export function renderRibbonTabs(box: HTMLElement, tabs: readonly RibbonTab[], chosen: string, onChoose: (id: string) => void, file: HTMLButtonElement): void {
+  // Tabs as the pattern has them: the chosen one the only Tab stop, the arrows, Home and End going to and
+  // choosing another, each linked to the ribbon it shows. Each was its own Tab stop and the arrows did nothing.
   const buttons = tabs.map((tab) => {
-    const b = el('button', { type: 'button', role: 'tab', class: tab.context ? 'rb-tab rb-tab-context' : 'rb-tab', 'aria-selected': String(tab.id === chosen) }, tab.text ?? t(tab.title));
+    const on = tab.id === chosen;
+    const b = el('button', { type: 'button', role: 'tab', id: `rb-tab-${tab.id}`, class: tab.context ? 'rb-tab rb-tab-context' : 'rb-tab', 'aria-selected': String(on), 'aria-controls': 'ribbon-panel', tabindex: on ? '0' : '-1' }, tab.text ?? t(tab.title));
     b.dataset.tab = tab.id;
     b.addEventListener('click', () => onChoose(tab.id));
+    b.addEventListener('keydown', (e) => {
+      const i = tabs.indexOf(tab);
+      const n = tabs.length;
+      const to = e.key === 'ArrowRight' ? (i + 1) % n : e.key === 'ArrowLeft' ? (i - 1 + n) % n : e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : -1;
+      if (to < 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const id = tabs[to]!.id;
+      onChoose(id);
+      // Drawn again by the choice: the focus on the new tab once it is there.
+      queueMicrotask(() => box.querySelector<HTMLElement>(`[data-tab="${id}"]`)?.focus());
+    });
     return b;
   });
+  // Drawn again with the focus in the row (a tab clicked or chosen by the arrows): it stays, on the chosen tab.
+  const inRow = document.activeElement instanceof HTMLElement && document.activeElement !== file && box.contains(document.activeElement);
   box.replaceChildren(file, ...buttons);
+  if (inRow) buttons.find((b) => b.dataset.tab === chosen)?.focus();
   // On a narrow screen the tabs scroll: the chosen one is brought into sight (its ribbon showed with
   // its tab out of view).
   const active = buttons.find((b) => b.dataset.tab === chosen);

@@ -204,9 +204,25 @@ export function segmented<T extends string>(
   onChange: (v: T) => void,
   labelled = false,
 ): HTMLElement {
-  const box = el('div', { class: 'segmented', role: 'group' });
-  for (const o of options) {
-    const b = el('button', { type: 'button', title: o.label, 'aria-label': o.label, 'aria-pressed': String(o.value === value) });
+  // One of n: a radio group (one checked, one Tab stop, the arrows move and choose). As toggle buttons each
+  // was heard on its own, and pressing one did not say it released the others.
+  const box = el('div', { class: 'segmented', role: 'radiogroup' });
+  const chosen = Math.max(0, options.findIndex((o) => o.value === value));
+  const buttons: HTMLButtonElement[] = [];
+  box.addEventListener('keydown', (e) => {
+    const i = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    if (i < 0) return;
+    const n = buttons.length;
+    const to = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? (i + 1) % n : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? (i - 1 + n) % n : e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : -1;
+    if (to < 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    buttons[to]!.focus();
+    if (!buttons[to]!.disabled) onChange(options[to]!.value);
+  });
+  for (const [k, o] of options.entries()) {
+    const b = el('button', { type: 'button', role: 'radio', title: o.label, 'aria-label': o.label, 'aria-checked': String(o.value === value), tabindex: k === chosen ? '0' : '-1' });
+    buttons.push(b);
     b.innerHTML = o.icon ? icon(o.icon, 16) : '';
     // Narrow screens keep only the icon of a button that has one; one without keeps its words.
     if (o.icon) b.classList.add('has-icon');

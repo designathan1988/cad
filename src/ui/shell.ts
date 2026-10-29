@@ -53,7 +53,7 @@ export function buildShell(root: HTMLElement) {
   const tabs = el('nav', { class: 'rb-tabs', role: 'tablist' });
   const fileMenu = el('button', { type: 'button', class: 'rb-tab rb-file' });
   fileMenu.setAttribute('aria-haspopup', 'menu');
-  const ribbon = el('div', { class: 'ribbon', role: 'toolbar' });
+  const ribbon = el('div', { class: 'ribbon', id: 'ribbon-panel', role: 'tabpanel' });
   // The level, Plan and 3D, and the project browser: in a small box under the view cube (a strip
   // of their own over the drawing, and an options bar under the ribbon, were two rows for little).
   const levelBox = el('div', { class: 'select level-select' });

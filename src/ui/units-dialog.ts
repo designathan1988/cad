@@ -69,5 +69,5 @@ export function showUnits(app: App): void {
     );
   };
   openProjectDialog(app, render);
-  app.shell.helpBack.querySelector<HTMLElement>('[aria-pressed="true"]')?.focus();
+  app.shell.helpBack.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
 }
