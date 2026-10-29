@@ -139,11 +139,14 @@ export function wireInput(app: App): void {
     const r = shell.viewport.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
-  /** Snap for grips: like drawing, without the wall being stretched. */
+  /** The level's floor as the 3D draws it (its elevation, lifted when exploded): where its points are aimed. */
+  const floorZ = () => (levelOf(app.store.get(), ui.levelId)?.elevation ?? 0) + app.lift(ui.levelId);
+  /** Snap for grips: like drawing, without the wall being stretched; its reach in 3D sized at the level's
+   * floor, as drawing's is (at the ground it was too big or too small on an upper level). */
   const snapAt = (p: Point2, exclude: ReadonlySet<WallId>) =>
     snap({
       cursor: p,
-      mpp: ui.view === 'plan' ? 1 / app.plan.scale : app.scene.metresPerPixel(p, 0),
+      mpp: ui.view === 'plan' ? 1 / app.plan.scale : app.scene.metresPerPixel(p, floorZ()),
       segments: app.store.get().walls.filter((x) => x.levelId === ui.levelId && !exclude.has(x.id)),
       from: null,
       chainStart: null,
@@ -167,7 +170,7 @@ export function wireInput(app: App): void {
       const r = shell.planCanvas.getBoundingClientRect();
       return { p: app.plan.toWorld({ x: e.clientX - r.left, y: e.clientY - r.top }), mpp: 1 / app.plan.scale };
     }
-    const z = (levelOf(app.store.get(), ui.levelId)?.elevation ?? 0) + app.lift(ui.levelId);
+    const z = floorZ();
     const p = app.scene.groundPoint(e.clientX, e.clientY, z);
     return p ? { p, mpp: app.scene.metresPerPixel(p, z) } : null;
   };
@@ -465,7 +468,7 @@ export function wireInput(app: App): void {
     }
     if (app.openingKind()) {
       // In 3D, on the wall itself (its own hole does not let the aim through): opening-ui.ts, wallUnderRay.
-      const onWall = ui.view === 'plan' ? null : wallUnderRay(app.store.get(), new Set([ui.levelId]), app.scene.rayAt(e.clientX, e.clientY));
+      const onWall = ui.view === 'plan' ? null : wallUnderRay(app.store.get(), new Set([ui.levelId]), app.scene.rayAt(e.clientX, e.clientY), (id) => app.lift(id));
       const seen = onWall ? { p: onWall.p, mpp: app.scene.metresPerPixel(onWall.p, onWall.height) } : aimAt3d(e);
       return app.openingEvent({ kind: 'hover', aim: seen ? aimAt(app.store.get(), app.geometry, ui.levelId, seen.p, seen.mpp, OPENING_PREVIEW_ID) : null });
     }

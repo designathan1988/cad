@@ -136,7 +136,14 @@ export function ruleGuide(
  * the preview went, the hole closed, the aim came back, over and over (it flickered). Null when no straight
  * wall is under the ray (an arc wall is aimed at by its mesh).
  */
-export function wallUnderRay(doc: Doc, levelIds: ReadonlySet<string>, ray: { origin: { x: number; y: number; z: number }; dir: { x: number; y: number; z: number } }): { p: Point2; height: number } | null {
+/** `lift`: how far up the 3D draws a level (exploded, levels apart): its walls' heights are the document's
+ * plus that, as the ray sees them. Compared with the document's alone, an upper level's walls were never hit. */
+export function wallUnderRay(
+  doc: Doc,
+  levelIds: ReadonlySet<string>,
+  ray: { origin: { x: number; y: number; z: number }; dir: { x: number; y: number; z: number } },
+  lift: (levelId: string) => number = () => 0,
+): { p: Point2; height: number } | null {
   const types = new Map(doc.wallTypes.map((x) => [x.id, x]));
   let best: { t: number; p: Point2; height: number } | null = null;
   for (const wall of doc.walls) {
@@ -151,7 +158,8 @@ export function wallUnderRay(doc: Doc, levelIds: ReadonlySet<string>, ray: { ori
     const t = ((base.x - ray.origin.x) * n.x + (base.y - ray.origin.y) * n.y) / denom;
     if (t <= 0 || (best && t >= best.t)) continue;
     const p = { x: ray.origin.x + ray.dir.x * t, y: ray.origin.y + ray.dir.y * t };
-    const height = ray.origin.z + ray.dir.z * t;
+    // In the document's heights: the ray's less the level's lift in the view.
+    const height = ray.origin.z + ray.dir.z * t - lift(wall.levelId);
     const station = dot(sub(p, shape.start), wallDirection(shape));
     if (station < 0 || station > referenceLength(wall)) continue;
     const { bottom, top } = wallHeights(doc, wall);
