@@ -1524,7 +1524,14 @@ export class App {
     setVariables(this.store.get().variables ?? {});
     this.keepPlanView();
     this.marks = [['start', performance.now()]];
-    this.renderFrame();
+    this.rendering = true;
+    this.frameActions = null;
+    try {
+      this.renderFrame();
+    } finally {
+      this.rendering = false;
+      this.frameActions = null;
+    }
     this.mark('end');
     const steps = this.marks.slice(1).map(([name, at], i): [string, number] => [name, at - this.marks[i]![1]]);
     this.lastFrame = { total: this.marks.at(-1)![1] - this.marks[0]![1], steps };
@@ -1771,8 +1778,20 @@ export class App {
   objectClick(p: Point2): void {
     kindTools.objectClick(this, p);
   }
-  /** Every action by name (app/actions.ts), set by the input layer: the ribbon and the File menu run them. */
-  actionList: () => Action[] = () => [];
+  /** Builds every action by name (app/actions.ts), set by the input layer: the ribbon and the File menu run them. */
+  buildActions: () => Action[] = () => [];
+  /** The actions built for the frame being rendered: one list for all its readers. Null outside a render. */
+  private frameActions: Action[] | null = null;
+  private rendering = false;
+  /**
+   * Every action by name. Within a render built once and shared (the title tips, the ribbon, the float
+   * bar and the context entries each built all of them, every frame of a drag or an orbit); outside one
+   * built fresh, so what a key or a click runs is never from a state gone by.
+   */
+  actionList(): Action[] {
+    if (!this.rendering) return this.buildActions();
+    return (this.frameActions ??= this.buildActions());
+  }
   /**
    * An action's key as the user has it now (actions.ts through keymap.ts), for a text or a tip that teaches it,
    * so a key changed in the keys dialog is the one said everywhere; the action's name in quotes when it has none.

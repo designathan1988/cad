@@ -73,7 +73,7 @@ export function wireInput(app: App): void {
   app.openProjects = () => showProjectsDialog(app);
   const palette = () => showPalette(appActions(app, openers));
   // The ribbon and the File menu run the same actions the palette lists.
-  app.actionList = () => appActions(app, openers);
+  app.buildActions = () => appActions(app, openers);
   app.openCommands = palette;
   app.openLevels = () => showLevels(app);
   app.openSections = (id) => showSections(app, id);
