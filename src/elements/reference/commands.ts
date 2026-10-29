@@ -2,7 +2,7 @@
 
 import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
-import { isReference, type Reference } from './schema';
+import { isPlacement, isReference, type Reference } from './schema';
 
 export const referencesOf = (doc: Doc): readonly Reference[] => doc.references;
 
@@ -11,7 +11,11 @@ export const addReference = (r: Reference): Command<Doc> => ({
   apply: (doc) => (!isReference(r) ? doc : { ...doc, references: [...doc.references, r] }),
 });
 
-/** Its opacity, turn, scale or place; what would not be a reference changes nothing. */
+/**
+ * Its opacity, turn, scale or place; what would not be a reference changes nothing. Only those fields are
+ * checked and compared: the picture or drawing is not touched, and serialising it (a scanned plan is
+ * megabytes of data URL) at every step of a drag or a slider made tracing over it stutter.
+ */
 export const updateReferences = (ids: readonly string[], patch: Partial<Pick<Reference, 'opacity' | 'angle' | 'scale' | 'at'>>, label = 'cmd.updateReference'): Command<Doc> => ({
   label,
   apply: (doc) => {
@@ -19,7 +23,8 @@ export const updateReferences = (ids: readonly string[], patch: Partial<Pick<Ref
     const references = doc.references.map((r) => {
       if (!ids.includes(r.id)) return r;
       const next = { ...r, ...patch };
-      if (!isReference(next) || JSON.stringify(next) === JSON.stringify(r)) return r;
+      const same = next.opacity === r.opacity && next.angle === r.angle && next.scale === r.scale && next.at.x === r.at.x && next.at.y === r.at.y;
+      if (same || !isPlacement(next as unknown as Record<string, unknown>)) return r;
       changed = true;
       return next;
     });

@@ -26,7 +26,7 @@ export interface Reference {
   readonly scale: number;
   /** Its turn about its corner (radians, counter-clockwise). */
   readonly angle: number;
-  /** 0.1 to 1. */
+  /** 0.05 to 1. */
   readonly opacity: number;
 }
 
@@ -58,6 +58,10 @@ export function calibrated(r: Reference, a: Point2, b: Point2, real: number): Re
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isPoint = (p: unknown): p is Point2 => typeof p === 'object' && p !== null && finite((p as Point2).x) && finite((p as Point2).y);
 
+/** Where a reference is and how it shows: its corner, scale, turn and opacity, each in its range. */
+export const isPlacement = (o: Record<string, unknown>): boolean =>
+  isPoint(o.at) && finite(o.scale) && (o.scale as number) > 0 && finite(o.angle) && finite(o.opacity) && (o.opacity as number) >= 0.05 && (o.opacity as number) <= 1;
+
 export const isReference = (x: unknown): x is Reference => {
   if (typeof x !== 'object' || x === null) return false;
   const o = x as Record<string, unknown>;
@@ -76,12 +80,6 @@ export const isReference = (x: unknown): x is Reference => {
     typeof o.levelId === 'string' &&
     typeof o.name === 'string' &&
     sourceOk &&
-    isPoint(o.at) &&
-    finite(o.scale) &&
-    (o.scale as number) > 0 &&
-    finite(o.angle) &&
-    finite(o.opacity) &&
-    (o.opacity as number) >= 0.05 &&
-    (o.opacity as number) <= 1
+    isPlacement(o)
   );
 };
