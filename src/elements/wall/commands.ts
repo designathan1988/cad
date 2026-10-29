@@ -9,15 +9,6 @@ export const addWalls = (walls: readonly DocWall[]): Command<Doc> => ({
   apply: (doc) => (walls.length === 0 ? doc : { ...doc, walls: [...doc.walls, ...walls] }),
 });
 
-export const deleteWalls = (ids: readonly WallId[]): Command<Doc> => ({
-  label: 'cmd.deleteWalls',
-  apply: (doc) => {
-    const drop = new Set(ids);
-    const walls = doc.walls.filter((w) => !drop.has(w.id));
-    return walls.length === doc.walls.length ? doc : { ...doc, walls };
-  },
-});
-
 /** Fields to set on walls: the same on each, or worked out from each wall (and the document it is in). */
 export type WallPatch = Partial<Omit<DocWall, 'id'>> | ((wall: DocWall, doc: Doc) => Partial<Omit<DocWall, 'id'>>);
 

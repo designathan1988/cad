@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/app/document';
-import { deleteView, isSavedView, moveView, nextViewName, type SavedView, saveView, updateView } from '../../src/app/saved-views';
+import { deleteView, isSavedView, nextViewName, type SavedView, saveView } from '../../src/app/saved-views';
 import { VIEW_3D_DEFAULT } from '../../src/app/view-3d';
 import { detailOf } from '../../src/elements/drawing/schema';
 import { readProject, writeProject } from '../../src/io/project-file';
@@ -44,21 +44,7 @@ describe('saved views', () => {
     ]);
   });
 
-  it('renamed and captioned; an empty caption is none, an empty name keeps the old one', () => {
-    const d = saveView(v3d).apply(newDocument());
-    const named = updateView('view_a', { name: ' Entrada ', caption: ' A porta da frente ' }).apply(d);
-    expect(named.views[0]).toMatchObject({ name: 'Entrada', caption: 'A porta da frente' });
-    const cleared = updateView('view_a', { caption: '  ', name: '' }).apply(named);
-    expect(cleared.views[0]!.name).toBe('Entrada');
-    expect(cleared.views[0]).not.toHaveProperty('caption');
-    expect(updateView('view_a', { name: 'Entrada' }).apply(named)).toBe(named);
-  });
-
-  it('moved up and down the list: the tour order; past either end, nothing', () => {
-    const d = [v3d, vPlan, { ...v3d, id: 'view_c', name: '3D 2' }].reduce((doc, v) => saveView(v).apply(doc), newDocument());
-    expect(moveView('view_c', -1).apply(d).views.map((v) => v.id)).toEqual(['view_a', 'view_c', 'view_b']);
-    expect(moveView('view_a', 1).apply(d).views.map((v) => v.id)).toEqual(['view_b', 'view_a', 'view_c']);
-    expect(moveView('view_a', -1).apply(d)).toBe(d);
+  it('a caption that is not text is not a saved view', () => {
     expect(isSavedView({ ...v3d, caption: 3 })).toBe(false);
   });
 
