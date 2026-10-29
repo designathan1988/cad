@@ -39,10 +39,11 @@ export function showOverrides(app: App): void {
     add.innerHTML = icon('plus', 16);
     add.append(t('ovr.add'));
     add.dataset.focus = 'add';
-    // The first type without one, in red (a wall to demolish is the usual first).
-    const free = doc.wallTypes.find((w) => !list.some((o) => o.wallTypeId === w.id)) ?? doc.wallTypes[0];
+    // The first type without one, in blue: red and yellow are the phases' (to build, to demolish), drawn over
+    // these. None when every type has one: a second for a type left its colour to the list's order.
+    const free = doc.wallTypes.find((w) => !list.some((o) => o.wallTypeId === w.id));
     add.toggleAttribute('disabled', !free);
-    add.addEventListener('click', () => free && set([...list, { id: newId('override'), wallTypeId: free.id, color: '#d64545' }]));
+    add.addEventListener('click', () => free && set([...list, { id: newId('override'), wallTypeId: free.id, color: '#4a7fd6' }]));
     // Rooms of a use: a row a use, its colour, its remove button.
     const rooms = doc.roomOverrides ?? [];
     const setRooms = (next: readonly RoomOverride[]) => app.store.dispatch(setRoomOverrides(next));
