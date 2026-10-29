@@ -2,7 +2,7 @@
 // and top are the wall's own or its type's (app/document.ts): an own one is marked, with the way back.
 
 import { lengthText } from '../../ui/units';
-import { type Doc, type DocWall, LEVEL_HEIGHT, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop, type WallPhase } from '../../app/document';
+import { type Doc, type DocWall, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop, type WallPhase } from '../../app/document';
 import { distance } from '../../core/vector';
 import type { Field } from '../../ui/fields';
 import { name, t, type MessageKey } from '../../ui/i18n';
@@ -12,9 +12,10 @@ import { arcOf } from './geometry/arc';
 import type { EndJoin, HeightRule, ReferenceLine } from './schema';
 import { canAlignWalls, canDistributeWalls } from '../../tools/arrange-walls';
 import { withLiveType } from './types';
+import type { WallPatch } from './commands';
 
 export interface WallFieldActions {
-  readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
+  readonly updateWalls: (patch: WallPatch) => void;
   /** Another reference line for the selected walls, their bodies kept where they are. */
   readonly setReferenceLine: (line: ReferenceLine) => void;
   /** Another type for the selected walls: the face against their room kept, or their reference line (keepClear). */
@@ -146,7 +147,7 @@ export function wallFields(
         kind: 'select',
         options: topOptions(doc),
         get: (w) => top(w).kind,
-        set: (v) => act.updateWalls({ top: topRule(v, levelAbove(doc, sel()[0]?.levelId)) }),
+        set: (v) => act.updateWalls((w, d) => ({ top: topRule(d, w, v, levelAbove(d, sel()[0]?.levelId)) })),
         own: (ws) => ws.some((w) => wallOverrides(doc, w).top),
         reset: () => act.resetToType(['top']),
       },
@@ -274,12 +275,22 @@ function levelAbove(doc: Doc, levelId: string | undefined): string | undefined {
   return (own ? others.find((l) => l.elevation > own.elevation) : undefined)?.id ?? others[others.length - 1]?.id;
 }
 
-/** A new top of the kind chosen; up to a level, the one given (the one above the walls'). */
-function topRule(kind: string, above: string | undefined): HeightRule {
-  if (kind === 'fixed') return { kind: 'fixed', height: LEVEL_HEIGHT };
+/**
+ * A new top of the kind chosen for a wall, from its top now: a fixed height is the height it has; at its
+ * level's height or up to a level (the one given, above the walls'), the offset a level top had carries
+ * over (Revit's Top Offset), and from a fixed or roof top the offset keeps the wall's top where it is.
+ * Built from constants, a 3.20 m wall made "fixed" dropped to 2.80 m and an offset was lost.
+ */
+function topRule(doc: Doc, wall: DocWall, kind: string, above: string | undefined): HeightRule {
+  const now = wallTop(doc, wall);
+  const h = wallHeights(doc, wall);
+  if (kind === now.kind) return now;
+  if (kind === 'fixed') return { kind: 'fixed', height: h.top - h.bottom };
   if (kind === 'roof') return { kind: 'roof' };
-  if (kind === 'toLevel' && above) return { kind: 'toLevel', levelId: above, offset: 0 };
-  return { kind: 'level', offset: 0 };
+  const level = doc.levels.find((l) => l.id === (kind === 'toLevel' && above ? above : wall.levelId));
+  const kept = now.kind === 'level' || now.kind === 'toLevel' ? now.offset : level ? h.top - (kind === 'toLevel' ? level.elevation : level.elevation + level.height) : 0;
+  if (kind === 'toLevel' && above) return { kind: 'toLevel', levelId: above, offset: kept };
+  return { kind: 'level', offset: kept };
 }
 
 /** The text when all agree, else "varies". */
@@ -303,13 +314,15 @@ export function nextWall(doc: Doc, chosen: WallDefaults, levelId: string, update
   const item: DocWall = { id: NEXT_WALL_ID, wallTypeId: defaults.wallTypeId, referenceLine: defaults.referenceLine, start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, levelId, baseOffset: defaults.baseOffset, top: defaults.top };
   // The type's own base and top: what "back to the type's" sets.
   const { baseOffset: _b, top: _t, ...bare } = item;
-  const settings = (patch: Partial<Omit<DocWall, 'id'>>) =>
+  const settings = (set: WallPatch) => {
+    const patch = typeof set === 'function' ? set(item, doc) : set;
     update({
       ...(patch.wallTypeId !== undefined ? { wallTypeId: patch.wallTypeId } : {}),
       ...(patch.referenceLine !== undefined ? { referenceLine: patch.referenceLine } : {}),
       ...(patch.baseOffset !== undefined ? { baseOffset: patch.baseOffset } : {}),
       ...(patch.top !== undefined ? { top: patch.top } : {}),
     });
+  };
   const act: WallFieldActions = {
     updateWalls: settings,
     setReferenceLine: (line) => update({ referenceLine: line }),

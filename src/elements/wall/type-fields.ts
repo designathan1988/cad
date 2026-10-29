@@ -10,6 +10,8 @@ import { LEVEL_HEIGHT } from '../../app/document';
 
 export interface WallTypeFieldActions {
   readonly update: (patch: WallTypePatch) => void;
+  /** The type's top now, which a change of how it is set starts from. */
+  readonly top: WallType['top'];
 }
 
 export function wallTypeFields(act: WallTypeFieldActions): Field<WallType>[] {
@@ -25,7 +27,16 @@ export function wallTypeFields(act: WallTypeFieldActions): Field<WallType>[] {
         { value: 'fixed', label: t('panel.topFixed') },
       ],
       get: kind,
-      set: (v) => act.update({ top: v === 'fixed' ? { kind: 'fixed', height: LEVEL_HEIGHT } : undefined }),
+      // The type has no level: its heights are measured on a level of the usual height, so a switch keeps
+      // its walls there as tall as they were (a level offset becomes that much more height, and back).
+      set: (v) => {
+        const top = act.top;
+        if (v === 'fixed') act.update({ top: { kind: 'fixed', height: LEVEL_HEIGHT + (top?.kind === 'level' ? top.offset : 0) } });
+        else {
+          const offset = top?.kind === 'fixed' ? top.height - LEVEL_HEIGHT : 0;
+          act.update({ top: Math.abs(offset) < 1e-9 ? undefined : { kind: 'level', offset } });
+        }
+      },
     },
     {
       id: 'topOffset',

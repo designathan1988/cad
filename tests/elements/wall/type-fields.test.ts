@@ -11,7 +11,7 @@ import { fieldStates } from '../../../src/ui/fields';
 const base: WallType = { id: 't', name: 'Brick', layers: [{ thickness: 0.2, function: 'structure', materialId: 'brick' }] };
 const run = (type: WallType) => {
   const patches: WallTypePatch[] = [];
-  const fields = wallTypeFields({ update: (p) => patches.push(p) });
+  const fields = wallTypeFields({ update: (p) => patches.push(p), top: type.top });
   const states = new Map(fieldStates(fields, [type]).map((s) => [s.field.id, s]));
   const set = (id: string, v: number | string) => {
     const f = states.get(id)!.field as { set: (x: never) => void };

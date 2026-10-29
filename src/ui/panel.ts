@@ -10,6 +10,7 @@ import type { OpeningId, OpeningKind } from '../elements/opening/schema';
 import type { RoomSolid } from '../elements/room/derive';
 import type { RoomPanelActions } from '../elements/room/panel';
 import { nextWall, wallFields } from '../elements/wall/fields';
+import type { WallPatch } from '../elements/wall/commands';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { StackedStep } from '../app/stacked';
 import type { ReferenceLine } from '../elements/wall/schema';
@@ -47,7 +48,7 @@ export interface PanelInput {
 }
 
 export interface PanelActions {
-  readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
+  readonly updateWalls: (patch: WallPatch) => void;
   readonly setReferenceLine: (line: ReferenceLine) => void;
   readonly setWallType: (typeId: string) => void;
   readonly keepClear: boolean;

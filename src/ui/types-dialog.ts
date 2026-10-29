@@ -193,7 +193,7 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
     if (whyNode) del.setAttribute('aria-describedby', 'types-why');
     side.append(
       el('div', { class: 'objs-side-actions' }, dup, el('span', { class: 'spacer' }), del, ...(whyNode ? [whyNode] : [])),
-      fieldsSection(t('types.general'), true, wallTypeFields({ update }), [type]),
+      fieldsSection(t('types.general'), true, wallTypeFields({ update, top: type.top }), [type]),
       layerEditor(type.layers, doc.materials, (next) => update({ layers: next })),
     );
     work();
