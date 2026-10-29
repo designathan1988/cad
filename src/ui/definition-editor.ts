@@ -51,10 +51,20 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
     back.replaceChildren();
     done();
   };
+  // Escape in a field is the field's (it puts its value back, or closes its list of suggestions); out
+  // of the fields it closes the editor, a changed draft only at a second Escape: one Escape meant for an
+  // autocomplete list threw away an hour of parts and formulas, with no undo.
+  let armed = 0;
   const onKey = (e: KeyboardEvent) => {
     if (e.key !== 'Escape') return;
+    if ((e.target as HTMLElement | null)?.closest?.('input, select, textarea')) return;
     e.preventDefault();
     e.stopPropagation();
+    if (JSON.stringify(draft) !== JSON.stringify(start) && Date.now() - armed > 3000) {
+      armed = Date.now();
+      app.toast(t('ed.escAgain'));
+      return;
+    }
     close();
   };
   const set = (next: ObjectDefinition) => {
