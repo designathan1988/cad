@@ -10,6 +10,7 @@ import { FAMILY_BATCHES } from '../elements/object/library-families';
 import { LIBRARY_SECTORS } from '../elements/object/library-sectors';
 import { BEFORE_65 } from '../elements/object/library-before65';
 import { BEFORE_66 } from '../elements/object/library-before66';
+import { BEFORE_69 } from '../elements/object/library-before69';
 import { isLayerSet, isRoomOverride, isWallOverride } from '../app/layer-sets';
 import { isVariableName } from '../core/measure';
 import { isOpeningStyle, operationsOf } from '../elements/opening/style';
@@ -116,8 +117,10 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  * Version 68: a door or window is never placed by another one unless the user says so. An older file's
  *   openings measured from another opening or aligned with one (made so by the tool, unasked) are held
  *   by their wall where they are: moving or resizing one no longer moves the others.
+ * Version 69: the library's bookcase as an older file stored it, unchanged, is the one now (its books
+ *   in parts that each repeat only their quarter, so its largest sizes fill every shelf).
  */
-export const CURRENT_VERSION = 68;
+export const CURRENT_VERSION = 69;
 
 /** The file's fields of the areas taken out of the app, as they are in it (Doc.kept). */
 function keptOf(raw: Record<string, unknown>): Readonly<Record<string, unknown>> | null {
@@ -359,7 +362,9 @@ export function repairProject(raw: unknown): ReadResult {
       return was && JSON.stringify(was) === JSON.stringify(d) ? (LIBRARY_NOW.find((l) => l.id === d.id) ?? d) : d;
     });
   const since65 = fileVersion < 65 ? redrawn(sectors, BEFORE_65) : sectors;
-  const definitions = fileVersion < 66 ? redrawn(since65, BEFORE_66) : since65;
+  const since66 = fileVersion < 66 ? redrawn(since65, BEFORE_66) : since65;
+  // Version 69 the bookcase's books, each part repeating only its quarter (library-before69.ts).
+  const definitions = fileVersion < 69 ? redrawn(since66, BEFORE_69) : since66;
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));

@@ -3,6 +3,7 @@ import { newDocument } from '../../src/app/document';
 import { CURRENT_VERSION, isLevel, readProject, writeProject } from '../../src/io/project-file';
 import { BEFORE_65 } from '../../src/elements/object/library-before65';
 import { BEFORE_66 } from '../../src/elements/object/library-before66';
+import { BEFORE_69 } from '../../src/elements/object/library-before69';
 
 const wall = (id: string, x: number) => ({
   id,
@@ -266,6 +267,18 @@ describe('version 5', () => {
     const old = { ...doc, version: 65, definitions: doc.definitions.map((d) => (d.id === bookcase.id ? BEFORE_66.find((b) => b.id === d.id)! : d)) };
     const r = readProject(JSON.stringify(old));
     expect(r.ok && r.doc.definitions.find((d) => d.id === bookcase.id)).toEqual(bookcase);
+  });
+
+  it('a file of versions 66 to 68 gets the bookcase whose books fill every shelf; one the user changed is kept', () => {
+    const doc = newDocument();
+    const bookcase = doc.definitions.find((d) => d.id === 'def_bookcase')!;
+    const was = BEFORE_69.find((b) => b.id === bookcase.id)!;
+    const old = { ...doc, version: 68, definitions: doc.definitions.map((d) => (d.id === bookcase.id ? was : d)) };
+    const r = readProject(JSON.stringify(old));
+    expect(r.ok && r.doc.definitions.find((d) => d.id === bookcase.id)).toEqual(bookcase);
+    const mine = { ...was, name: { pt: 'Minha estante', en: 'My bookcase' } };
+    const kept = readProject(JSON.stringify({ ...old, definitions: doc.definitions.map((d) => (d.id === bookcase.id ? mine : d)) }));
+    expect(kept.ok && kept.doc.definitions.find((d) => d.id === bookcase.id)).toEqual(mine);
   });
 });
 
