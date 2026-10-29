@@ -70,13 +70,16 @@ function keptDirection(was: Ends, now: Ends): boolean {
  * slides along its own line to the moved wall's new line.
  */
 function follow(walls: readonly DocWall[], moved: ReadonlyMap<WallId, Ends>, map: (p: Point2) => Point2, lines: boolean): DocWall[] {
+  // The moved walls as they were, with their new ends, found once: looked up by a scan of every wall per
+  // end of every other wall, a drag of many walls on a large plan stuttered.
+  const byId = new Map(walls.map((w) => [w.id, w]));
+  const movedWalls = [...moved].map(([id, next]) => ({ before: byId.get(id)!, next }));
   return walls.map((w) => {
     const target = moved.get(w.id);
     if (target) return { ...w, ...target };
     const fix = (p: Point2, other: Point2): Point2 => {
       let corner: Point2 | null = null;
-      for (const [id, next] of moved) {
-        const before = walls.find((x) => x.id === id)!;
+      for (const { before, next } of movedWalls) {
         // Joins are within a level: a wall below with its end under a moved one's stays.
         if (before.levelId !== w.levelId) continue;
         const end = distance(p, before.start) <= POINT_TOLERANCE ? before.start : distance(p, before.end) <= POINT_TOLERANCE ? before.end : null;
@@ -90,8 +93,7 @@ function follow(walls: readonly DocWall[], moved: ReadonlyMap<WallId, Ends>, map
         corner ??= mapped;
       }
       if (corner) return corner;
-      for (const [id, next] of moved) {
-        const before = walls.find((x) => x.id === id)!;
+      for (const { before, next } of movedWalls) {
         if (before.levelId !== w.levelId || !onBody(p, before.start, before.end)) continue;
         // Too near parallel, or too far along: the end stays where it is rather than fly off.
         const hit = slideOnto(p, other, next, movedBy(before, next));
@@ -125,13 +127,20 @@ export function transformWalls(doc: Doc, ids: readonly WallId[], map: (p: Point2
     moved.set(w.id, swap ? { start: end, end: start } : { start, end });
   }
   if (!rigid) return follow(doc.walls, moved, map, false);
+  // The straight walls left behind, by level: what a moved end's corner can be with.
+  const behind = new Map<string, DocWall[]>();
+  for (const o of doc.walls) {
+    if (set.has(o.id) || o.bulge) continue;
+    const list = behind.get(o.levelId);
+    if (list) list.push(o);
+    else behind.set(o.levelId, [o]);
+  }
   for (const w of doc.walls) {
     const next = moved.get(w.id);
     if (!next || w.bulge || !keptDirection(w, next)) continue;
     // A moved end at a corner with a wall left behind: where its new line meets that wall's line.
     const corner = (p: Point2, mapped: Point2): Point2 | null => {
-      for (const o of doc.walls) {
-        if (set.has(o.id) || o.bulge || o.levelId !== w.levelId) continue;
+      for (const o of behind.get(w.levelId) ?? []) {
         const far = distance(o.start, p) <= POINT_TOLERANCE ? o.end : distance(o.end, p) <= POINT_TOLERANCE ? o.start : null;
         if (!far || onLine(mapped, far, p)) continue;
         const hit = slideOnto(p, far, next, movedBy(w, next));
