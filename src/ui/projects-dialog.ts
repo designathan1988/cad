@@ -48,7 +48,7 @@ export function showProjectsDialog(app: App): void {
     else if (asking) {
       const p = asking;
       body.push(
-        el('p', {}, t('projects.confirmDelete', { name: p.name || t('app.untitled') })),
+        el('p', { class: 'dialog-ask' }, t('projects.confirmDelete', { name: p.name || t('app.untitled') })),
         el(
           'div',
           { class: 'actions' },

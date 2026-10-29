@@ -748,6 +748,11 @@ button.project-name:hover {
   color: var(--text-2);
   font-size: var(--fs-sm);
 }
+/* A question the dialog asks before acting (delete a project): in from the edges as the rows are. */
+.dialog-ask {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+}
 .projects-rows {
   display: flex;
   flex-direction: column;
