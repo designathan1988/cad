@@ -41,7 +41,7 @@ Then F-0049 (curtain grid bounded by 10 cm panels) and F-0057 (level with elemen
 (c791628). F-0023 (RC3) partly fixed, parts 1-4 (8f16083, 3a2ca4b, 703d154, 2765255): app/point-tools.ts holds 16 tools
 (beam, separator, curtain, railing, roof, stair, grid, section, callout, guide, column, note, levelMark, calibrate, mark,
 dimension), each checked headless. Left in the chains on purpose: tools with their own event machines (wall, floor, room,
-measure, modify, split, corner, opening, object). S3 fixed and checked headless: F-0095, F-0117, F-0047, F-0083, F-0035, F-0058 (+ roof covering field restored), F-0090, F-0104, F-0137, F-0020, F-0009, F-0029, F-0053, F-0075, F-0059, F-0113, F-0027, F-0120, shadow-map warning. 30 S3 and 64 S4 open. Third-party console noise left: three-bvh-csg 0.0.18 (latest) passes maxLeafSize. Tests run headless by scratchpad pw/drive.cjs.
+measure, modify, split, corner, opening, object). S3 fixed and checked headless: F-0095, F-0117, F-0047, F-0083, F-0035, F-0058 (+ roof covering field restored), F-0090, F-0104, F-0137, F-0020, F-0009, F-0029, F-0053, F-0075, F-0059, F-0113, F-0027, F-0120, F-0001, F-0111, F-0112, F-0024, F-0093, F-0034, F-0043, F-0032, F-0071, F-0078, F-0065 (file v69), shadow-map warning. 19 S3 and 64 S4 open. Third-party console noise left: three-bvh-csg 0.0.18 (latest) passes maxLeafSize. Tests run headless by scratchpad pw/drive.cjs.
 Fixed, tsc passes, committed with the above: F-0003, F-0010, F-0021, F-0030, F-0107, F-0136, F-0139, F-0045,
 F-0068 (file v68 migration), F-0008 (keepOpenings: own wall only), F-0006, F-0042, F-0050, F-0051 (axis moves alone), F-0101,
 F-0106, F-0087, F-0013, F-0019. To do: delete src/elements/grid/carry.ts and what only it used; test in the app (880/1280/1920 px,
