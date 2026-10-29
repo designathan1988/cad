@@ -52,7 +52,7 @@ import { isSavedView } from '../app/saved-views';
 import { deriveGeometry } from '../app/geometry';
 import { distributeOpenings, wallRule } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
-import type { WallType } from '../elements/wall/schema';
+import { LAYER_PRIORITY, type WallType } from '../elements/wall/schema';
 import type { DocWall } from '../app/document';
 import { isDrawingSettings } from '../elements/drawing/schema';
 
@@ -148,7 +148,7 @@ export type Fix =
 /** The fix for a registry kind's dropped elements: droppedColumns, droppedBeams and so on. */
 type KindFix = `dropped${Capitalize<KindKey>}`;
 /** What reading left out or put right, counted. */
-type Dropped = 'droppedWalls' | 'droppedOpenings' | 'droppedGroups' | 'droppedMaterials' | 'resetUnits' | 'droppedDefinitions' | 'droppedViews' | KindFix;
+type Dropped = 'droppedWalls' | 'droppedWallTypes' | 'droppedOpenings' | 'droppedGroups' | 'droppedMaterials' | 'resetUnits' | 'droppedDefinitions' | 'droppedViews' | KindFix;
 const kindFix = (k: AnyKind): KindFix => `dropped${k.key[0]!.toUpperCase()}${k.key.slice(1)}` as KindFix;
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -198,13 +198,16 @@ export const isMaterial = (m: unknown): m is Material =>
   (m.pattern === undefined || isPattern(m.pattern)) &&
   (m.physics === undefined || isPhysics(m.physics));
 
+/** A layer: a thickness, one of the five functions (another had no join priority: the T walk compared NaN), a material. */
+const isLayer = (l: unknown): boolean => isObject(l) && layerThicknessOk(l.thickness) && Object.hasOwn(LAYER_PRIORITY, l.function as string) && typeof l.materialId === 'string';
+
 export const isWallType = (t: unknown): t is WallType =>
   isObject(t) &&
   typeof t.id === 'string' &&
   typeof t.name === 'string' &&
   Array.isArray(t.layers) &&
   t.layers.length > 0 &&
-  t.layers.every((l: unknown) => isObject(l) && layerThicknessOk(l.thickness) && typeof l.function === 'string') &&
+  t.layers.every(isLayer) &&
   isTop(t.top) &&
   (t.baseOffset === undefined || finite(t.baseOffset));
 
@@ -287,6 +290,8 @@ export function repairProject(raw: unknown): ReadResult {
   if (levels.length === 0) return { ok: false, error: 'noLevels' };
   if (wallTypes.length === 0) return { ok: false, error: 'noWallTypes' };
   const fixes: Fix[] = [];
+  // A type it refuses (a layer of no known function or no material) is left out, and said.
+  if (Array.isArray(raw.wallTypes) && fileTypes.length < raw.wallTypes.length) fixes.push({ kind: 'droppedWallTypes', count: raw.wallTypes.length - fileTypes.length });
   let repaired = 0;
   const keep = <T>(list: unknown, ok: (x: unknown) => x is T, kind: Dropped): T[] => {
     // Lists missing from older versions are empty, not errors.
@@ -315,7 +320,17 @@ export function repairProject(raw: unknown): ReadResult {
   // A wall keeps a top or base offset only when it differs from its type's (before version 3 every
   // wall carried both, chosen or not): the rest follow the type.
   const migrated = walls.map((w) => ownValuesOnly(w, wallTypes));
-  const openings = keep(raw.openings, isOpening, 'droppedOpenings');
+  // A door or window on a wall that is not there was kept, never drawn, and came back with any wall of that id:
+  // dropped, as a dimension held by a missing wall is, and said.
+  const hosts = new Set(walls.map((w) => w.id));
+  const valid = keep(raw.openings, isOpening, 'droppedOpenings');
+  const openings = valid.filter((o) => hosts.has(o.wallId));
+  if (openings.length < valid.length) {
+    const said = fixes.find((f) => f.kind === 'droppedOpenings');
+    const lost = valid.length - openings.length;
+    if (said) fixes[fixes.indexOf(said)] = { kind: 'droppedOpenings', count: said.count + lost };
+    else fixes.push({ kind: 'droppedOpenings', count: lost });
+  }
   // Every layer's material is there: the file's, else a built-in one, else a plain one of that name.
   const read = keep(raw.materials, isMaterial, 'droppedMaterials');
   // Before version 30 no material had a pattern: the built-in ones that have one now get it.
