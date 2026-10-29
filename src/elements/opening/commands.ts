@@ -3,12 +3,12 @@
 // to keep their openings where they were. The one exception is a distributed group: losing a member
 // spreads the others out again, which is what the group is for.
 
-import { MIN_ELEMENT_SIZE } from '../../core/tolerance';
+import { MIN_ELEMENT_SIZE, POINT_TOLERANCE } from '../../core/tolerance';
 import { dropKinds, hasKinds } from '../registry';
 import { type Doc, wallHeights } from '../../app/document';
 import type { Command } from '../../core/store';
 import { deriveGeometry, hostsIn } from '../../app/geometry';
-import { deriveOpenings, type HostInfo, type OpeningWarningKind, type PlacedOpening } from './derive';
+import { alignedStart, deriveOpenings, type HostInfo, type OpeningWarningKind, type PlacedOpening } from './derive';
 import type { AlignEdge, GroupSpacing, Opening, OpeningGroup, OpeningGroupId, OpeningId, PositionRule, RuleKind } from './schema';
 
 /** Why a new opening cannot go where it is aimed (it overlaps another, or does not fit), or null. */
@@ -195,15 +195,19 @@ export function alignFits(doc: Doc, id: OpeningId, refId: OpeningId, edge: Align
 export function alignCandidates(doc: Doc, id: OpeningId): Opening[] {
   const me = doc.openings.find((o) => o.id === id);
   const hosts = hostsIn(doc);
-  if (!me || !hosts.get(me.wallId)?.line) return [];
-  return doc.openings.filter(
-    (o) =>
-      o.id !== id &&
-      o.wallId !== me.wallId &&
-      hosts.get(o.wallId)?.line !== undefined &&
-      !dependsOn(doc.openings, o.id, id) &&
-      alignFits(doc, id, o.id, 'center', hosts),
-  );
+  const own = me && hosts.get(me.wallId);
+  if (!me || !own?.line) return [];
+  // One derivation for where the others are (none of them follows this one, dependsOn): a derivation
+  // per candidate (alignFits) made a panel of a house with a hundred openings slow to open. Centred on
+  // one of them, this one takes alignedStart, as derive.ts places it, and must stay within its wall.
+  const placed = deriveOpenings(doc.openings, hosts, doc.openingGroups).placed;
+  return doc.openings.filter((o) => {
+    const host = hosts.get(o.wallId);
+    const at = placed.get(o.id);
+    if (o.id === id || o.wallId === me.wallId || !host?.line || !at || dependsOn(doc.openings, o.id, id)) return false;
+    const s = alignedStart(host, at.start, o.width, own, me.width, 'center');
+    return s >= -POINT_TOLERANCE && s + me.width <= own.length + POINT_TOLERANCE;
+  });
 }
 
 /** Aligns each of `ids` with `refId` (by `edge`); the ones that cannot be aligned with it are left as they are. */
