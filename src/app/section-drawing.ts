@@ -445,7 +445,8 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
     const outline = outlineOf(cutSegments);
     if (outline.length > 0 && solid.opening) {
       const { id, ...heights } = solid.opening;
-      const at = Math.max(...outline.flat().map((p) => p.x), openings.get(id)?.at ?? -Infinity);
+      // A loop, not a spread: a cut of many segments passed as arguments overflows the engine (RangeError).
+      const at = outline.flat().reduce((x, p) => Math.max(x, p.x), openings.get(id)?.at ?? -Infinity);
       openings.set(id, { at, ...heights });
     }
     if (outline.length > 0) {
@@ -465,7 +466,10 @@ export function sectionDrawing(doc: Doc, solids: readonly Solid3[], m: SectionMa
   const cutPoints = cuts.flatMap((c) => c.segments.flat());
   const cutBox =
     cutPoints.length > 0
-      ? { min: { x: Math.min(...cutPoints.map((p) => p.x)), y: Math.min(...cutPoints.map((p) => p.y)) }, max: { x: Math.max(...cutPoints.map((p) => p.x)), y: Math.max(...cutPoints.map((p) => p.y)) } }
+      ? cutPoints.reduce(
+          (b, p) => ({ min: { x: Math.min(b.min.x, p.x), y: Math.min(b.min.y, p.y) }, max: { x: Math.max(b.max.x, p.x), y: Math.max(b.max.y, p.y) } }),
+          { min: { x: Infinity, y: Infinity }, max: { x: -Infinity, y: -Infinity } },
+        )
       : null;
   const crossed: SectionDrawing['rooms'][number][] = [];
   for (const [id, r] of m.kind === 'section' ? rooms : []) {
