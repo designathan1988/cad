@@ -13,3 +13,7 @@ Never use heredocs (`<<'EOF'`) in Bash or PowerShell to write files, patch code 
 **Why:** heredocs keep breaking in this environment (the shell rejects the text when the code has quotes or backticks, and nothing gets applied), wasting time; the user was furious about it (2026-10-26).
 
 **How to apply:** every time content would go through a shell string, write it to a file with Write first. Related: [[fix-in-code-verify-in-app]].
+
+The same goes for here-strings (`<<<`) and for `node -e "..."` with code or comments inside double quotes: Bash runs every
+`backtick` pair as a command. On 2026-10-29 a comment with `clear` in backticks ran `clear` and wrote its escape codes into
+two source files, and others lost words. Edits with backticks go through Edit, or a script file written with Write.

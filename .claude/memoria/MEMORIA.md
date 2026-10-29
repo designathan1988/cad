@@ -11,7 +11,7 @@ Aprendizados guardados entre sessões, um por arquivo nesta pasta. Este índice 
 - [Corrigir no código, conferir no app](fix-in-code-verify-in-app.md) — sem suítes, mutação ou execuções pesadas; ler o código, corrigir, conferir no app com gestos e capturas
 - [Gestos orgânicos](organic-gestures.md) — só nos testes do app: trajetos de mouse imprecisos, como de gente; sempre capturar e analisar
 - [Terminar antes de começar](finish-before-new.md) — fechar o trabalho em andamento primeiro; o protótipo de interface v72 é modelo de disposição das funções que existem, não lista de funções
-- [Sem heredoc](no-heredoc.md) — NUNCA heredoc no shell; usar Edit/Write ou um script escrito com Write
+- [Sem heredoc](no-heredoc.md) — NUNCA heredoc nem here-string; nada de node -e com crases dentro de aspas duplas (o Bash executa); usar Edit/Write ou um script escrito com Write
 - [Plano de escopo](scope-plan.md) — docs/plano-de-escopo.md é a especificação (15 fases, contrato primeiro); construir e testar num projeto novo em branco
 - [Fotorrealista limpo](photoreal-trace.md) — como o traçado evita trava, grão, fireflies, sombra em degraus e luz sob as paredes; nunca FEATURE_MIS 0
 - [Memória que sobrevive à compactação](compaction-memory.md) — o trabalho em andamento fica em docs/agent (orders.md, STATE.md, work.md), reimpresso pelos hooks a cada compactação

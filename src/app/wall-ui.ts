@@ -38,22 +38,29 @@ export function previewWall(app: App): DocWall[] {
 }
 
 /** The numbers of the walls selected (a few) or under the pointer, or snapped to while drawing. */
-export function wallTags(app: App): { at: Point2; text: string }[] {
+export function wallTags(app: App): { at: Point2; text: string; normal: Point2; clear: number }[] {
   const doc = app.store.get();
   const ids = new Set([...app.ui.selection].slice(0, 12));
   if (app.ui.hover) ids.add(app.ui.hover);
   if (app.ui.snap?.wallId) ids.add(app.ui.snap.wallId);
   // As shown: a wall being dragged, moved or turned by a Modify tool carries its number along.
   return [...app.geometry.solids.values()]
-    .map((s) => s.wall)
-    .filter((w) => ids.has(w.id) && w.levelId === app.ui.levelId)
+    .filter((s) => ids.has(s.wall.id) && s.wall.levelId === app.ui.levelId)
     // A third of the way along: the middle is where the temporary dimension shows its value. Along an
     // arc, on the arc: on its chord the tag sat inside the curve, across the chord and radius dimensions.
     // At 70 % of its sweep, clear of the radius dimension (30 %, temp-dims.ts) and the bend handle (50 %).
-    .map((w) => {
+    // Beside the wall, off its left face (start to end; an arc's outer one): over its middle, a short wall
+    // was hidden under its own tag. Clear: how far that face is from the point (the plan adds the tag's size).
+    .map((s) => {
+      const w = s.wall;
       const arc = arcOf({ start: w.start, end: w.end, bulge: w.bulge ?? 0 });
       const at = arc ? pointAt(arc, arc.startAngle + arc.sweep * 0.7) : { x: w.start.x + (w.end.x - w.start.x) / 3, y: w.start.y + (w.end.y - w.start.y) / 3 };
-      return { at, text: t('wall.tag', { n: wallNumber(doc, w.id) ?? '' }) };
+      const len = Math.hypot(w.end.x - w.start.x, w.end.y - w.start.y) || 1;
+      const away = arc ? { x: at.x - arc.center.x, y: at.y - arc.center.y } : { x: -(w.end.y - w.start.y) / len, y: (w.end.x - w.start.x) / len };
+      const k = Math.hypot(away.x, away.y) || 1;
+      const normal = { x: away.x / k, y: away.y / k };
+      const clear = Math.max(0, ...s.pieces.flatMap((p) => p.polygon.map((v) => (v.x - at.x) * normal.x + (v.y - at.y) * normal.y)));
+      return { at, text: t('wall.tag', { n: wallNumber(doc, w.id) ?? '' }), normal, clear };
     });
 }
 

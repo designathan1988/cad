@@ -644,7 +644,7 @@ export class App {
   }
 
   /** The numbers of the walls selected (a few) or under the pointer, or snapped to while drawing. */
-  wallTags(): { at: Point2; text: string }[] {
+  wallTags(): { at: Point2; text: string; normal: Point2; clear: number }[] {
     return walls.wallTags(this);
   }
 

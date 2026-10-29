@@ -111,7 +111,8 @@ export interface PlanOverlay {
   /** The point a wall chain goes on from: marked even before the pointer moves. */
   readonly anchor?: Point2 | null;
   /** Wall numbers at the middle of the walls selected or under the pointer, as snap labels name them. */
-  readonly wallTags?: readonly { readonly at: Point2; readonly text: string }[];
+  /** Selected walls' numbers: at a point on the wall, set off along its normal past its face (clear, in metres). */
+  readonly wallTags?: readonly { readonly at: Point2; readonly text: string; readonly normal?: Point2; readonly clear?: number }[];
   /** Doors' and windows' type marks beside them (opening/marks.ts); `width` is the opening's (m). */
   readonly openingTags?: readonly { readonly at: Point2; readonly text: string; readonly width: number }[];
   /**
@@ -578,16 +579,26 @@ export class PlanView {
     for (const tag of o.wallTags ?? []) {
       const font = this.font('600', '--fs-xs');
       const tw = this.textWidth(tag.text, font) + 8;
-      const p = this.toScreen(tag.at);
+      // Off the wall's face by the tag's own half size along the normal (as seen on screen, y down), a gap
+      // beyond: over the wall it hid a short one.
+      const n = tag.normal ?? { x: 0, y: 0 };
+      const off = (tag.clear ?? 0) + (Math.abs(n.x) * tw / 2 + Math.abs(n.y) * 8 + 4) / this.scale;
+      const side = (k: 1 | -1) => ({ x: tag.at.x + n.x * off * k, y: tag.at.y + n.y * off * k });
+      const boxAt = (q: Point2, y: number) => ({ x: q.x - tw / 2, y: q.y + y - 11, w: tw, h: 16 });
+      // On the other side when a value is on this one (the wall's own temporary dimension, say): pushed past
+      // that value, the tag came back over the wall.
+      let at = side(1);
+      if (values.some((v) => overlaps(boxAt(this.toScreen(at), 4), v)) && !values.some((v) => overlaps(boxAt(this.toScreen(side(-1)), 4), v))) at = side(-1);
+      const p = this.toScreen(at);
       let dy = 4;
-      const box = (y: number) => ({ x: p.x - tw / 2, y: p.y + y - 11, w: tw, h: 16 });
+      const box = (y: number) => boxAt(p, y);
       for (let k = 0; k < values.length + 1; k++) {
         const hit = values.find((v) => overlaps(box(dy), v));
         if (!hit) break;
         dy = hit.y + hit.h + 11 + 2 - p.y;
       }
       if (p.y + dy + 5 > this.size.h) dy = 4 - 24;
-      this.label(tag.at, tag.text, color('--wall-sel'), color('--canvas'), font, { x: 0, y: dy });
+      this.label(at, tag.text, color('--wall-sel'), color('--canvas'), font, { x: 0, y: dy });
     }
     this.drawHandles(o.handles, color('--bg'), color('--wall-sel'));
     if (o.objectHandles) drawObjectHandles(this.ctx, o.objectHandles, color('--bg'), color('--wall-sel'), o.hotHandle ?? null);
