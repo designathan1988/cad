@@ -25,12 +25,14 @@ type Tab = 'params' | 'parts' | 'handles' | 'types' | 'rules';
 const TABS: readonly Tab[] = ['params', 'parts', 'handles', 'types', 'rules'];
 const KINDS: readonly ParamKind[] = ['length', 'number', 'integer', 'bool', 'choice', 'material'];
 const CATEGORIES: readonly DefinitionCategory[] = ['furniture', 'casework', 'fixture', 'equipment', 'lighting', 'plant', 'generic'];
-const NAME = /^[A-Za-z_À-ÿ][\wÀ-ÿ]*$/;
+// Letters with accents but not × and ÷, as the formulas read names (formula.ts).
+const NAME = /^[A-Za-z_À-ÖØ-öø-ÿ][\wÀ-ÖØ-öø-ÿ]*$/;
 
-/** A number or formula as typed: a plain number stays a number, the rest a formula. */
+/** A number or formula as typed: a plain number stays a number (with a point or, as every other field takes
+ * it, a comma: "0,5" was kept as a formula), the rest a formula. */
 const exprOf = (text: string): Expr => {
   const s = text.trim();
-  return /^-?\d+(\.\d+)?$/.test(s) ? Number(s) : s;
+  return /^-?\d+([.,]\d+)?$/.test(s) ? Number(s.replace(',', '.')) : s;
 };
 const exprText = (e: Expr | undefined): string => (e === undefined ? '' : String(e));
 
