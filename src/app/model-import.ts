@@ -53,7 +53,8 @@ export async function importModel(app: App, file: File): Promise<void> {
   try {
     const root = await load(file);
     const name = file.name.replace(/\.(glb|gltf|obj)$/i, '');
-    const made = meshDefinition(name, groupsOf(root), 'generic', newId);
+    // A glTF is in metres by its specification; an OBJ says no unit and is guessed by its size.
+    const made = meshDefinition(name, groupsOf(root), 'generic', newId, !/\.obj$/i.test(file.name));
     if (!made) {
       app.toast(t('model.tooBig', { n: MAX_TRIANGLES }));
       return;

@@ -61,6 +61,13 @@ describe('a 3D model as an object', () => {
     expect(ev.handles.length).toBe(5);
   });
 
+  it('a glTF is in metres whatever its size: a 25 m building is not taken for centimetres', () => {
+    const made = meshDefinition('Prédio', [{ positions: box(25, 12, 9), color: '#cccccc' }], 'generic', ids, true)!;
+    expect(made.unit).toBe(1);
+    const p = Object.fromEntries(made.definition.params.map((x) => [x.name, x.default]));
+    expect(p.largura).toBeCloseTo(25, 9);
+  });
+
   it('no triangles: nothing', () => {
     expect(meshDefinition('Nada', [{ positions: [], color: '#000000' }], 'generic', ids)).toBeNull();
   });

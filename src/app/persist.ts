@@ -133,7 +133,12 @@ export function loadDocument(repaired?: (n: number) => void): Doc | null {
     return r.doc;
   }
   console.warn(`The saved project could not be read (${r.error}); starting a new one. The saved copy is kept under`, `${DOC_KEY}.invalid`);
-  storage()?.setItem(`${DOC_KEY}.invalid`, raw);
+  // The copy doubles what the storage holds: on a full one it throws, and starting failed with it.
+  try {
+    storage()?.setItem(`${DOC_KEY}.invalid`, raw);
+  } catch (e) {
+    console.warn('Could not keep a copy of the unreadable project; it stays under', DOC_KEY, e);
+  }
   return null;
 }
 

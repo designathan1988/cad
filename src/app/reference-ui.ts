@@ -39,16 +39,22 @@ async function pdfPicture(file: File): Promise<string> {
   const worker = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
   pdfjs.GlobalWorkerOptions.workerSrc = worker;
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
-  const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: PDF_DPI / 72 });
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.ceil(viewport.width);
-  canvas.height = Math.ceil(viewport.height);
-  const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  await page.render({ canvasContext: ctx, viewport }).promise;
-  return canvas.toDataURL('image/png');
+  // Its document and worker let go once the page is a picture, read or not (pdfjs-dist 4.10:
+  // destroy "terminates the worker"): every PDF imported left one alive.
+  try {
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: PDF_DPI / 72 });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    return canvas.toDataURL('image/png');
+  } finally {
+    await pdf.destroy();
+  }
 }
 
 /** A file as a reference on the current level: its middle at the plan's, a DXF where its own coordinates put it. */
