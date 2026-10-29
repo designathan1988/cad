@@ -230,8 +230,8 @@ export function appActions(app: App, open: Openers): Action[] {
     make('openings.store', 'opstore.open', edit, open.openings, { keywords: `${tBoth('opstore.title')} catálogo catalog modelo model porta door janela window` }),
     make('units.edit', 'units.edit', edit, open.units, { keywords: `${tBoth('units.title')} ${tBoth('units.cm')} ${tBoth('units.mm')}` }),
     ...[2, 3, 4, 5, 6, 8, 10].map((n) =>
-      make(`snap.parts.${n}`, 'pal.snapParts', settings, () => app.setSnapParts(n), { enabled: ui.snapParts !== n, keywords: `${n} encaixe snap divisão division terços thirds partes parts` }),
-    ).map((a, i) => ({ ...a, label: t('pal.snapParts', { n: [2, 3, 4, 5, 6, 8, 10][i]! }) })),
+      make(`snap.parts.${n}`, 'pal.snapParts', settings, () => app.setSnapParts(n), { enabled: ui.snapParts !== n, vars: { n }, keywords: `${n} encaixe snap divisão division terços thirds partes parts` }),
+    ),
     // Align and distribute the selection (tools/arrange.ts): enabled when enough of it can.
     ...(() => {
       const n = app.arrangeItems().length;

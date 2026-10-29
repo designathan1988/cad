@@ -28,8 +28,13 @@ export function showLevels(app: App): void {
       const label = name(l.name);
       const input = el('input', { type: 'text', class: 'text-field', 'aria-label': `${t('levels.name')}: ${label}` });
       input.value = name(l.name);
+      // An empty name is refused (updateLevel keeps the old one): put back and said, or the field stayed
+      // blank while the level kept its name.
       const commitName = () => {
-        if (input.value.trim() !== name(l.name)) app.store.dispatch(updateLevel(l.id, { name: input.value }));
+        if (input.value.trim() === '') {
+          input.value = name(l.name);
+          app.toast(t('field.nameNeeded'));
+        } else if (input.value.trim() !== name(l.name)) app.store.dispatch(updateLevel(l.id, { name: input.value }));
         else input.value = name(l.name);
       };
       input.addEventListener('keydown', (e) => {

@@ -51,7 +51,14 @@ export function showMaterials(app: App, first?: MaterialId): void {
     const detail = el('div', { class: 'types-detail mat-detail' });
     if (mat) {
       // A built-in material shows its name in the interface's language until it is given one.
-      const name = textField(materialLabel(mat), (v) => v.trim() !== '' && v.trim() !== materialLabel(mat) && update({ name: v }));
+      // An empty name is refused: put back and said, or the field stayed blank with the old name kept.
+      const name = textField(materialLabel(mat), (v) => {
+        if (v.trim() === '') {
+          const input = name.querySelector('input');
+          if (input) input.value = materialLabel(mat);
+          app.toast(t('field.nameNeeded'));
+        } else if (v.trim() !== materialLabel(mat)) update({ name: v });
+      });
       // The colour picker reports while it is dragged: one command when it is closed (change), not one per step.
       const color = el('input', { type: 'color', class: 'mat-color' });
       color.value = mat.color;
