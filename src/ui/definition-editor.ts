@@ -370,8 +370,9 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
         choose([{ value: '1', label: '+' }, { value: '-1', label: '−' }], String(h.sign ?? 1), (v) => upd({ sign: v === '-1' ? -1 : 1 }), `h${i}:sign`, t('ed.sign')),
         ...[0, 1, 2].map((k) => input(exprText(h.at[k]), (v) => upd({ at: replaceAt(h.at, k, exprOf(v)) as unknown as HandleDef['at'] }), `h${i}:at${k}`, `${t('ed.at')} ${'xyz'[k]}`, 'ed-names')),
         input(String(h.shift ?? 0), (v) => {
+          // Between 0 (the base stays) and 1 (the far face stays), as a file's definition is read (valid.ts).
           const n = evaluateFormula(v, {});
-          if (n.ok) upd({ shift: n.value });
+          if (n.ok && n.value >= 0 && n.value <= 1) upd({ shift: n.value });
           else draw();
         }, `h${i}:shift`, t('ed.shift')),
         remove(t('ed.removeHandle', { n: i + 1 }), `h${i}:remove`, () => set({ ...draft, handles: draft.handles.filter((_, k) => k !== i) })),
