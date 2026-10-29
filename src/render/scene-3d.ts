@@ -278,6 +278,10 @@ export class Scene3D {
   onChange: () => void = () => {};
   /** Told when the photorealistic view starts or stops preparing (its scene built, its shader compiled). */
   onTracePreparing: (preparing: boolean) => void = () => {};
+  /** Told once when the path tracer lacks the inner parts this view patches: the realistic view stays. */
+  onTraceUnavailable: () => void = () => {};
+  /** The path tracer is not the one its patches were written for: it is not tried again. */
+  private traceUnavailable = false;
   private preparing = false;
   /** Whether the photorealistic view has shown a traced picture yet. */
   private traceShown = false;
@@ -688,8 +692,26 @@ export class Scene3D {
   }
 
   private traceStep(): boolean {
+    if (this.traceUnavailable) return false;
     if (!this.tracer) {
       const t = new WebGLPathTracer(this.renderer);
+      // The library's undocumented inner parts patched below (its shader, its compile, its targets), as
+      // three-gpu-pathtracer 0.0.27 has them (package.json pins it). Missing, the patches would throw or quietly
+      // lose the fixes (fireflies, compile stalls, filtering): the realistic view is drawn and the user told.
+      const inner = (t as unknown as { _pathTracer?: { material?: { setDefine?: unknown; fragmentShader?: unknown }; compileMaterial?: unknown; _primaryTarget?: unknown; _blendTargets?: unknown } })._pathTracer;
+      if (
+        !inner ||
+        typeof inner.material?.setDefine !== 'function' ||
+        typeof inner.material.fragmentShader !== 'string' ||
+        typeof inner.compileMaterial !== 'function' ||
+        !(inner._primaryTarget instanceof THREE.WebGLRenderTarget) ||
+        !Array.isArray(inner._blendTargets)
+      ) {
+        t.dispose();
+        this.traceUnavailable = true;
+        this.onTraceUnavailable();
+        return false;
+      }
       t.bounces = 5;
       t.minSamples = 1;
       t.renderDelay = 0;

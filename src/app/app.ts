@@ -355,6 +355,7 @@ export class App {
       // It takes room on the view's bar: what is there gives way if it no longer fits.
       this.shell.fitViewBar(true);
     };
+    this.scene.onTraceUnavailable = () => this.toast(t('view3d.traceUnavailable'));
     this.overlay3d = new Overlay3D(this.shell.overlay3d);
     this.cube = new ViewCube(
       (dir) => this.scene.frame(boundsOf(this.geometry), this.height(), dir),
