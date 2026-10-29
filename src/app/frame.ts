@@ -128,6 +128,44 @@ export function renderFrame(app: App): void {
       ? { at: { x: (w.start.x + rc.x) / 2, y: (w.start.y + rc.y) / 2 }, text: `${lengthNum(Math.abs(rc.x - w.start.x))} × ${lengthText(Math.abs(rc.y - w.start.y))}`, clear: 0 }
       : null;
   const guideDim = ui.guide && guideOff !== null ? guideMeasure(ui.guide, guideOff) : null;
+  // Where the tool snaps, its measure, the line being drawn and its draft: the same over the plan and the 3D.
+  const snap =
+    // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
+    (pointTool(app) || ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+      ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null), ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
+      : null;
+  const measure = guideDim
+    ? { at: { x: (guideDim.a.x + guideDim.b.x) / 2, y: (guideDim.a.y + guideDim.b.y) / 2 }, text: `${lengthText(guideOff!)}`, normal: ui.guide!.base.dir, clear: 0 }
+    : rectMeasure
+      ? rectMeasure
+    : marks?.to && marks.text
+      ? { at: { x: (marks.base.x + marks.to.x) / 2, y: (marks.base.y + marks.to.y) / 2 }, text: marks.text, clear: 0 }
+    : end && along && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
+      ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${lengthText(len)} · ${angleNum(ang)}°`, normal: side!, clear: reach }
+      : floorFrom && floorTo && floorAlong && floorLen >= MIN_WALL_LENGTH
+        ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${lengthText(floorLen)} · ${angleNum(floorAng)}°`, normal: { x: -floorAlong.y, y: floorAlong.x }, clear: 0 }
+        : chainMeasure
+          ? chainMeasure
+          : tape && tapeFrom && tapeTo
+          ? {
+              at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 },
+              text: `${lengthText(tape.length)} · ${angleNum(tape.angle)}°`,
+              normal: { x: -tape.dy / tape.length, y: tape.dx / tape.length },
+              clear: 0,
+            }
+          : (app.bendMeasure() ?? app.turnMeasure() ?? guide?.measure ?? null);
+  const axis =
+    end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
+      ? { start: w.last, end }
+      : tape && tapeFrom && tapeTo
+        ? { start: tapeFrom, end: tapeTo }
+        : marks?.to && !marks.axis
+          ? { start: marks.base, end: marks.to }
+          : null;
+  const anchor = ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null);
+  // A floor's outline being drawn, or a beam from its first point to where the next click lands.
+  const draft =
+    chainLine && chainLine.length >= 2 ? chainLine : ui.tool === 'floor' && ui.floorDraft.length > 0 ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])] : pointDraft(app);
   if (plan) {
     app.plan.drawing = app.drawingNow();
     app.plan.overrides = ui.overridesOn ? overrideColours(app.store.get()) : new Map();
@@ -144,39 +182,9 @@ export function renderFrame(app: App): void {
       calloutDraft: app.calloutDraft(),
       calibrateDraft: calibrateDraft(app),
       guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
-      snap:
-        // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-        (pointTool(app) || ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
-          ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null), ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
-          : null,
-      measure: guideDim
-        ? { at: { x: (guideDim.a.x + guideDim.b.x) / 2, y: (guideDim.a.y + guideDim.b.y) / 2 }, text: `${lengthText(guideOff!)}`, normal: ui.guide!.base.dir, clear: 0 }
-        : rectMeasure
-          ? rectMeasure
-        : marks?.to && marks.text
-          ? { at: { x: (marks.base.x + marks.to.x) / 2, y: (marks.base.y + marks.to.y) / 2 }, text: marks.text, clear: 0 }
-        : end && along && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
-          ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${lengthText(len)} · ${angleNum(ang)}°`, normal: side!, clear: reach }
-          : floorFrom && floorTo && floorAlong && floorLen >= MIN_WALL_LENGTH
-            ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${lengthText(floorLen)} · ${angleNum(floorAng)}°`, normal: { x: -floorAlong.y, y: floorAlong.x }, clear: 0 }
-            : chainMeasure
-              ? chainMeasure
-              : tape && tapeFrom && tapeTo
-              ? {
-                  at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 },
-                  text: `${lengthText(tape.length)} · ${angleNum(tape.angle)}°`,
-                  normal: { x: -tape.dy / tape.length, y: tape.dx / tape.length },
-                  clear: 0,
-                }
-              : (app.bendMeasure() ?? app.turnMeasure() ?? guide?.measure ?? null),
-      axis:
-        end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
-          ? { start: w.last, end }
-          : tape && tapeFrom && tapeTo
-            ? { start: tapeFrom, end: tapeTo }
-            : marks?.to && !marks.axis
-              ? { start: marks.base, end: marks.to }
-              : null,
+      snap,
+      measure,
+      axis,
       axisLine: marks?.axis ?? null,
       refLines: app.refLines(),
       openingTags: app.openingTags(),
@@ -184,7 +192,7 @@ export function renderFrame(app: App): void {
       handles: app.handles(),
       objectHandles: objectHandles(app),
       hotHandle: app.hotHandle,
-      anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
+      anchor,
       wallTags: app.wallTags(),
       roomLabels: [...app.visibleGeometry().rooms.values()].map((r) => {
         const said = roomTagText(r.room, r.area, levelOf(app.store.get(), r.room.levelId)?.height ?? 0, drawingOf(app.store.get()).roomTag);
@@ -208,13 +216,7 @@ export function renderFrame(app: App): void {
           outline: r.outline,
         };
       }),
-      // A floor's outline being drawn, or a beam from its first point to where the next click lands.
-      draft:
-        chainLine && chainLine.length >= 2
-          ? chainLine
-          : ui.tool === 'floor' && ui.floorDraft.length > 0
-          ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
-          : pointDraft(app),
+      draft,
       draftCorners: ui.tool === 'floor' ? ui.floorDraft : [],
       openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
       // The opening being placed shows its distance as a dimension too (drawn only, not typed in: the
@@ -255,37 +257,18 @@ export function renderFrame(app: App): void {
     app.cube.update(app.scene.camera);
     // Where the tool snaps and what it draws, over the 3D view as in plan.
     const level = levelOf(app.store.get(), ui.levelId) ?? NO_LEVEL;
-    const active = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'modify';
     app.overlayState = {
       project: (p, z) => app.projectAt(p, z),
       floor: level.elevation + app.lift(ui.levelId),
       height: level.height,
-      snap: active && ui.snap ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null) } : null,
-      axis:
-        end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
-          ? { start: w.last, end }
-          : tape && tapeFrom && tapeTo
-            ? { start: tapeFrom, end: tapeTo }
-            : marks?.to
-              ? { start: marks.base, end: marks.to }
-              : null,
-      measure: marks?.to && marks.text
-        ? { at: { x: (marks.base.x + marks.to.x) / 2, y: (marks.base.y + marks.to.y) / 2 }, text: marks.text }
-        : end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
-          ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${lengthText(len)} · ${angleNum(ang)}°` }
-          : floorFrom && floorTo && floorLen >= MIN_WALL_LENGTH
-            ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${lengthText(floorLen)} · ${angleNum(floorAng)}°` }
-            : tape && tapeFrom && tapeTo
-              ? { at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 }, text: `${lengthText(tape.length)} · ${angleNum(tape.angle)}°` }
-              : app.bendMeasure(),
-      anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
-      // A floor's outline being drawn, or a beam from its first point to where the next click lands.
-      draft:
-        chainLine && chainLine.length >= 2
-          ? chainLine
-          : ui.tool === 'floor' && ui.floorDraft.length > 0
-          ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
-          : pointDraft(app),
+      // The same as the plan's: one snap, measure, line and draft for both views. Kept twice, the 3D showed
+      // the snap for four tools, no rectangle size and no guide or chain measure.
+      snap,
+      // A modify mark's line along an axis is drawn as its line in plan (axisLine); the 3D has only the one line.
+      axis: axis ?? (marks?.to ? { start: marks.base, end: marks.to } : null),
+      measure,
+      anchor,
+      draft,
       box: ui.view3d.box,
       boxHot: app.boxHot,
       objectHandles: objectHandles(app),
