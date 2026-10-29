@@ -17,3 +17,4 @@ Aprendizados guardados entre sessões, um por arquivo nesta pasta. Este índice 
 - [Memória que sobrevive à compactação](compaction-memory.md) — o trabalho em andamento fica em docs/agent (orders.md, STATE.md, work.md), reimpresso pelos hooks a cada compactação
 - [Larguras de janela no teste](test-window-sizes.md) — testar também com ~880 e ~1280 px de largura; comparar as capturas para a vista nunca pular ao selecionar
 - [Conferir o desenho antes de tirar um campo](check-render-before-removing.md) — antes de tirar um campo "só da área removida", grep quem o lê na planta, no 3D e na geometria
+- [Estado entre execuções headless](headless-run-state.md) — cada execução recarrega: zoom e pavimento ficam, desfazer some; Home e captura antes de clicar por coordenadas
