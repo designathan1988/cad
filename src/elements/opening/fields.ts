@@ -259,8 +259,16 @@ function hingeOptions(one: OpeningSolid): { value: 'start' | 'end'; label: strin
     .sort((a, b) => (a.label === t('hinge.left') ? -1 : b.label === t('hinge.left') ? 1 : 0));
 }
 
-/** A group's spacing: equal, or a fixed gap with the row centred or measured from one end. */
-export function groupFields(g: OpeningGroup, placed: ReadonlyMap<OpeningId, OpeningSolid>, act: OpeningPanelActions): Field<OpeningGroup>[] {
+/**
+ * A group's spacing: equal, or a fixed gap with the row centred or measured from one end. `stretch`: the part of
+ * its wall the row keeps to (derive.ts: groupStretch), which the distance to an end is measured from.
+ */
+export function groupFields(
+  g: OpeningGroup,
+  placed: ReadonlyMap<OpeningId, OpeningSolid>,
+  act: OpeningPanelActions,
+  stretch: { readonly from: number; readonly to: number },
+): Field<OpeningGroup>[] {
   const sp = g.spacing;
   // Switching to fixed starts from the mean gap there is now, so nothing jumps more than it must.
   const members = g.members.flatMap((id) => placed.get(id) ?? []);
@@ -274,6 +282,13 @@ export function groupFields(g: OpeningGroup, placed: ReadonlyMap<OpeningId, Open
     ...patch,
   });
   const isFixed = () => sp.kind === 'fixed';
+  // A new anchor takes the distance the row is at now from that end: the old distance, measured from the other
+  // end or from nothing (centred), threw the row to that end.
+  const distanceFrom = (anchor: 'start' | 'centered' | 'end'): number | undefined => {
+    if (anchor === 'centered' || members.length === 0) return undefined;
+    const d = anchor === 'start' ? members[0]!.start - stretch.from : stretch.to - members[members.length - 1]!.end;
+    return Math.max(0, Math.round(d * 1000) / 1000);
+  };
   return [
     { id: 'members', label: 'panel.members', kind: 'readout', text: () => t('panel.openings', { n: g.members.length }) },
     {
@@ -293,7 +308,11 @@ export function groupFields(g: OpeningGroup, placed: ReadonlyMap<OpeningId, Open
       when: isFixed,
       options: (['start', 'centered', 'end'] as const).map((v) => ({ value: v, label: t(`anchor.${v}`) })),
       get: (x) => (x.spacing.kind === 'fixed' ? x.spacing.anchor : ''),
-      set: (v) => act.setSpacing(g.id, fixed({ anchor: v as 'start' | 'centered' | 'end' })),
+      set: (v) => {
+        const anchor = v as 'start' | 'centered' | 'end';
+        const distance = distanceFrom(anchor);
+        act.setSpacing(g.id, fixed(distance === undefined ? { anchor } : { anchor, distance }));
+      },
     },
     {
       id: 'anchorDistance',

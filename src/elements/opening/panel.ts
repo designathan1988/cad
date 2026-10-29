@@ -5,12 +5,12 @@
 import { materialLabel } from '../../ui/i18n';
 import { lengthNum, lengthText } from '../../ui/units';
 import type { Doc } from '../../app/document';
-import type { OpeningSolid } from '../../app/geometry';
+import { hostsIn, type OpeningSolid } from '../../app/geometry';
 import { el } from '../../ui/controls';
 import { fieldsSection } from '../../ui/fields';
 import { markPrefix, t, type MessageKey } from '../../ui/i18n';
 import { icon } from '../../ui/icons';
-import type { OpeningWarning } from './derive';
+import { groupStretch, type OpeningWarning } from './derive';
 import type { RoomSolid } from '../room/derive';
 import {
   arrangeFields,
@@ -47,7 +47,7 @@ export function openingPanel(
   // The group the selection is in: one member, or every selected opening in the same group.
   const groupIds = new Set(list.map((o) => (o.rule.kind === 'inGroup' ? o.rule.groupId : null)));
   const group = groupIds.size === 1 ? doc.openingGroups.find((g) => groupIds.has(g.id)) : undefined;
-  if (group) nodes.push(fieldsSection(t('panel.group'), true, groupFields(group, placed, act), [group]));
+  if (group) nodes.push(fieldsSection(t('panel.group'), true, groupFields(group, placed, act, groupStretch(group, hostsIn(doc).get(group.wallId))), [group]));
   if (list.length >= 2) nodes.push(fieldsSection(t('panel.arrange'), true, arrangeFields(doc, list, placed, act), list));
   // How they are made, when every one has a make and all are of one kind.
   if (list.every((o) => o.style) && list.every((o) => o.kind === list[0]!.kind)) nodes.push(fieldsSection(t('panel.make'), true, styleFields(selected, act.update, doc.materials.map((m) => ({ id: m.id, label: materialLabel(m) }))), selected));
