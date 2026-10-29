@@ -17,6 +17,7 @@ import { openProjectDialog } from './dialog';
 import { editDefinition } from './definition-editor';
 import { defaultName, getLang, type MessageKey, nextCopy, t } from './i18n';
 import { icon } from './icons';
+import { showMenu } from './menu';
 import { objectSnapshot } from './object-snapshot';
 import { lengthText } from './units';
 
@@ -105,7 +106,6 @@ export function showObjects(app: App, first?: string): void {
   let chosen = first ?? app.store.get().definitions[0]?.id ?? '';
   let query = '';
   let folder = ALL;
-  let menu = false;
   // Where the cards were scrolled: kept as the dialog redraws (a type chosen, a card), back to the top for
   // another folder or search; null until drawn (the chosen card is brought into view then).
   let scrolled: number | null = null;
@@ -174,46 +174,47 @@ export function showObjects(app: App, first?: string): void {
       b.addEventListener('click', run);
       return b;
     };
+    // The library's actions in the app's menu (menu.ts), under the button: arrows, Home, End and letters move
+    // in it, Esc closes it alone, a click elsewhere too. A list of its own had none of that, and Esc closed
+    // the whole store.
     const more = iconBtn('more', t('objs.more'), 'more', () => {
-      menu = !menu;
-      dialog.redraw();
+      const r = more.getBoundingClientRect();
+      more.setAttribute('aria-expanded', 'true');
+      showMenu(
+        [
+          {
+            label: t('objs.new'),
+            run: () => {
+              const fresh = blankDefinition(doc.definitions.length + 1);
+              close();
+              editDefinition(app, fresh, true, () => showObjects(app, fresh.id));
+            },
+          },
+          { label: t('objs.import'), run: () => fileInput.click() },
+          // The file: every definition with the materials they use (io/library-file.ts).
+          {
+            label: t('objs.export'),
+            run: () => {
+              const text = JSON.stringify(libraryOf(app.store.get(), null), null, 2);
+              app.download(`${app.fileBase()}-objetos.json`, new Blob([text], { type: 'application/json' }), 'application/json');
+            },
+          },
+        ],
+        { x: r.left, y: r.bottom + 4 },
+        t('objs.more'),
+        0,
+        () => more.setAttribute('aria-expanded', 'false'),
+      );
     });
-    more.setAttribute('aria-expanded', String(menu));
-    // Its tip stood over the menu it opens: none while it is open.
-    if (menu) more.removeAttribute('title');
-    const menuItem = (label: string, focus: string, run: () => void) => {
-      const b = el('button', { type: 'button', class: 'objs-menu-item', role: 'menuitem' }, label);
-      b.dataset.focus = focus;
-      b.addEventListener('click', () => {
-        menu = false;
-        run();
-      });
-      return b;
-    };
-    const libraryMenu = el(
-      'div',
-      { class: 'objs-menu', role: 'menu', 'aria-label': t('objs.more') },
-      menuItem(t('objs.new'), 'new', () => {
-        const fresh = blankDefinition(doc.definitions.length + 1);
-        close();
-        editDefinition(app, fresh, true, () => showObjects(app, fresh.id));
-      }),
-      menuItem(t('objs.import'), 'import', () => fileInput.click()),
-      // The file: every definition with the materials they use (io/library-file.ts).
-      menuItem(t('objs.export'), 'export', () => {
-        const text = JSON.stringify(libraryOf(app.store.get(), null), null, 2);
-        app.download(`${app.fileBase()}-objetos.json`, new Blob([text], { type: 'application/json' }), 'application/json');
-        dialog.redraw();
-      }),
-    );
-    libraryMenu.hidden = !menu;
+    more.setAttribute('aria-haspopup', 'menu');
+    more.setAttribute('aria-expanded', 'false');
     const head = el(
       'div',
       { class: 'objs-head' },
       el('h2', {}, t('objs.title')),
       search,
       el('span', { class: 'objs-total' }, t('objs.countAll', { n: found.length })),
-      el('div', { class: 'objs-menu-wrap' }, more, libraryMenu),
+      el('div', { class: 'objs-menu-wrap' }, more),
       iconBtn('close', t('help.close'), 'close', close),
       fileInput,
     );

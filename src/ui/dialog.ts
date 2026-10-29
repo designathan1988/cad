@@ -96,6 +96,8 @@ export function openProjectDialog(app: App, render: (close: () => void) => HTMLE
   const onKey = (e: KeyboardEvent) => {
     const ctrl = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
+    // Esc in a menu opened over the dialog closes the menu only (menu.ts), not the dialog.
+    if (e.key === 'Escape' && document.activeElement instanceof HTMLElement && document.activeElement.closest('.menu')) return;
     if (e.key === 'Escape') {
       e.preventDefault();
       // After the field's own Esc has put its text back: closing blurs it, and a blur commits. Not a
