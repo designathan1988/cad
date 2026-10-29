@@ -27,6 +27,23 @@ export function el<K extends keyof HTMLElementTagNameMap>(
  */
 const sectionOpen = new Map<string, boolean>();
 
+/**
+ * A button that cannot act now, and says why: dimmed (aria-disabled), not disabled, since a disabled button
+ * takes no pointer and no focus, so its reason never showed on hover nor reached the keyboard or a screen
+ * reader. Named by what it does; the reason after it in the tooltip, and as its description (the node
+ * returned, to put in the dialog). A click does nothing while it is blocked. No reason: it acts.
+ */
+export function blockedBy(b: HTMLButtonElement, action: string, why: string | null, whyId: string): HTMLElement | null {
+  b.setAttribute('aria-label', action);
+  b.setAttribute('aria-disabled', String(why !== null));
+  b.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;
+  if (why === null) return null;
+  b.setAttribute('aria-describedby', whyId);
+  // Before the button's own click (a capturing listener runs first at its target).
+  b.addEventListener('click', (e) => e.stopImmediatePropagation(), { capture: true });
+  return el('span', { id: whyId, class: 'sr-only' }, why);
+}
+
 export function section(title: string, open: boolean, ...rows: HTMLElement[]): HTMLDetailsElement {
   const d = el('details', { class: 'section' });
   d.open = sectionOpen.get(title) ?? open;

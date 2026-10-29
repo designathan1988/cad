@@ -362,11 +362,11 @@ button.project-name:hover {
   color: var(--text);
 }
 .icon-btn:disabled,
-.levels .icon-btn[aria-disabled='true'] {
+.icon-btn[aria-disabled='true'] {
   opacity: 0.4;
   cursor: default;
 }
-.levels .icon-btn[aria-disabled='true']:hover {
+.icon-btn[aria-disabled='true']:hover {
   background: transparent;
   color: var(--text-2);
 }

@@ -10,10 +10,10 @@ import type { Material } from '../elements/material/schema';
 import { wallTypeFields } from '../elements/wall/type-fields';
 import { addWallType, deleteWallType, duplicateWallType, typeDeleteBlocker, updateWallType } from '../elements/wall/types';
 import type { WallLayer, WallTypeId } from '../elements/wall/schema';
-import { el } from './controls';
+import { blockedBy, el } from './controls';
 import { openProjectDialog } from './dialog';
 import { fieldsSection } from './fields';
-import { defaultName, name, t } from './i18n';
+import { defaultName, name, nextCopy, t } from './i18n';
 import { icon } from './icons';
 import { layerEditor } from './layer-editor';
 import { lengthText } from './units';
@@ -179,18 +179,14 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
     const dup = textBtn(t('types.duplicate'), 'duplicate', () => {
       const id = newId('wt');
       chosen = id;
-      const copies = doc.wallTypes.filter((x) => x.name.startsWith(`${type.name} (`)).length;
-      app.store.dispatch(duplicateWallType(type.id, id, defaultName.copy(type.name, copies + 2)));
+      const { base, n } = nextCopy(type.name, doc.wallTypes.map((x) => x.name));
+      app.store.dispatch(duplicateWallType(type.id, id, defaultName.copy(base, n)));
     });
     const blocker = typeDeleteBlocker(doc, type.id);
     const action = t('types.deleteNamed', { name: name(type.name) });
     const why = blocker === 'inUse' ? t('types.cantDeleteInUse') : blocker === 'last' ? t('types.cantDeleteLast') : null;
     const del = iconBtn('trash', action, 'delete', () => app.store.dispatch(deleteWallType(type.id)));
-    del.disabled = why !== null;
-    // What it does, then why it cannot.
-    del.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;
-    const whyNode = why ? el('span', { id: 'types-why', class: 'sr-only' }, why) : null;
-    if (whyNode) del.setAttribute('aria-describedby', 'types-why');
+    const whyNode = blockedBy(del, action, why, 'types-why');
     side.append(
       el('div', { class: 'objs-side-actions' }, dup, el('span', { class: 'spacer' }), del, ...(whyNode ? [whyNode] : [])),
       fieldsSection(t('types.general'), true, wallTypeFields({ update, top: type.top }), [type]),

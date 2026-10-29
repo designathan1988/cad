@@ -7,7 +7,7 @@ import { cutHeightOf } from '../app/document';
 import { newId } from '../core/id';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../elements/level/commands';
 import { elementsOnLevel } from '../elements/registry';
-import { el, numberField } from './controls';
+import { blockedBy, el, numberField } from './controls';
 import { openProjectDialog } from './dialog';
 import { defaultName, name, t } from './i18n';
 import { icon } from './icons';
@@ -49,25 +49,15 @@ export function showLevels(app: App): void {
       const del = el('button', { type: 'button', class: 'icon-btn' });
       del.innerHTML = icon('trash', 16);
       const blocker = deleteBlocker(doc, l.id);
-      // Dimmed but not disabled: a disabled button takes no pointer, so its tooltip, which says why it
-      // cannot delete, never showed on hover.
-      del.setAttribute('aria-disabled', String(blocker !== null));
-      // Named by what it does; when it cannot, the reason is its description (and its tooltip).
-      del.setAttribute('aria-label', t('levels.deleteNamed', { name: label }));
       const on = blocker === 'elements' ? elementsOnLevel(doc, l.id) : 0;
       const why =
         blocker === 'last' ? t('levels.cantDeleteLast')
         : blocker === 'walls' ? t('levels.cantDeleteWalls')
         : blocker === 'elements' ? (on === 1 ? t('levels.cantDeleteElementsOne') : t('levels.cantDeleteElements', { n: on }))
         : null;
-      // What it does, then why it cannot.
-      const action = t('levels.deleteNamed', { name: label });
-      del.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;
-      if (why) {
-        const id = `why-${l.id}`;
-        rows.append(el('span', { id, class: 'sr-only' }, why));
-        del.setAttribute('aria-describedby', id);
-      }
+      // Dimmed, not disabled, with its reason (controls.ts: blockedBy).
+      const whyNode = blockedBy(del, t('levels.deleteNamed', { name: label }), why, `why-${l.id}`);
+      if (whyNode) rows.append(whyNode);
       del.dataset.focus = `del:${l.id}`;
       del.addEventListener('click', () => {
         if (blocker !== null) return;

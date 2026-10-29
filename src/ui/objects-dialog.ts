@@ -12,10 +12,10 @@ import { evaluateObject, pieceOutline, pieceSpan } from '../elements/object/eval
 import { words } from '../elements/object/fields';
 import { DEFINITION_PREFIX, type ObjectDefinition } from '../elements/object/schema';
 import { libraryOf, mergeLibrary } from '../io/library-file';
-import { el } from './controls';
+import { blockedBy, el } from './controls';
 import { openProjectDialog } from './dialog';
 import { editDefinition } from './definition-editor';
-import { getLang, type MessageKey, t } from './i18n';
+import { defaultName, getLang, type MessageKey, nextCopy, t } from './i18n';
 import { icon } from './icons';
 import { objectSnapshot } from './object-snapshot';
 import { lengthText } from './units';
@@ -306,7 +306,11 @@ export function showObjects(app: App, first?: string): void {
       // Editing opens the editor in this dialog's place; it comes back here when closed.
       const edit = textBtn(t('objs.edit'), 'edit', () => (close(), editDefinition(app, def, false, () => showObjects(app, def.id))));
       const dup = textBtn(t('objs.duplicate'), 'duplicate', () => {
-        const copy: ObjectDefinition = { ...def, id: newId(DEFINITION_PREFIX), name: { pt: `${def.name.pt} (2)`, en: `${def.name.en} (2)` } };
+        const defs = app.store.get().definitions;
+        const pt = nextCopy(def.name.pt, defs.map((x) => x.name.pt));
+        const en = nextCopy(def.name.en, defs.map((x) => x.name.en));
+        const n = Math.max(pt.n, en.n);
+        const copy: ObjectDefinition = { ...def, id: newId(DEFINITION_PREFIX), name: { pt: defaultName.copy(pt.base, n), en: defaultName.copy(en.base, n) } };
         chosen = copy.id;
         app.store.dispatch(addDefinition(copy));
       });
@@ -316,13 +320,12 @@ export function showObjects(app: App, first?: string): void {
       const action = t('objs.deleteNamed', { name: words(def.name) });
       const why = blocker === 'inUse' ? t('objs.cantDeleteInUse') : blocker === 'nested' ? t('objs.cantDeleteNested') : null;
       const del = iconBtn('trash', action, 'delete', () => app.store.dispatch(deleteDefinition(def.id)));
-      del.disabled = why !== null;
-      del.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;
+      const whyNode = blockedBy(del, action, why, 'objs-why');
       const n = placed(def.id);
       side.append(
         place,
         el('p', { class: 'objs-in-project' }, n === 0 ? t('objs.none') : n === 1 ? t('objs.placedOne') : t('objs.placed', { n })),
-        el('div', { class: 'objs-side-actions' }, edit, dup, link, el('span', { class: 'spacer' }), del),
+        el('div', { class: 'objs-side-actions' }, edit, dup, link, el('span', { class: 'spacer' }), del, ...(whyNode ? [whyNode] : [])),
         el('p', { class: 'objs-summary' }, t('objs.summary', { p: def.params.length, k: def.parts.length, h: def.handles.length, t: def.types.length })),
       );
     }

@@ -3900,6 +3900,19 @@ export const defaultName = {
   /** A copy's name: the original's, numbered, so a built-in name is still translated. */
   copy: (of: string, n: number): string => `${of} (${n})`,
 };
+
+/**
+ * The number of the next copy of a name among `names`: of the original's name (a copy's " (n)" left off),
+ * the first number from 2 no name has. Counting the copies of the one copied, a copy of a copy was
+ * named "Brick (2) (2)" and a third copy repeated a number.
+ */
+export function nextCopy(of: string, names: readonly string[]): { readonly base: string; readonly n: number } {
+  const base = of.replace(/ \(\d+\)$/, '');
+  const taken = new Set(names);
+  let n = 2;
+  while (taken.has(defaultName.copy(base, n))) n++;
+  return { base, n };
+}
 const ptPatterns: readonly [RegExp, string][] = [
   [/^Level (\d+)$/, 'Pavimento $1'],
   [/^Room (\d+)$/, 'Cômodo $1'],

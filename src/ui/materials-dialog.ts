@@ -10,10 +10,10 @@ import { newId } from '../core/id';
 import { addMaterial, deleteMaterial, materialDeleteBlocker, materialUses, type MaterialPatch, updateMaterial } from '../elements/material/commands';
 import { CUT_PATTERNS, type CutPattern, type MaterialId } from '../elements/material/schema';
 import { JOINT_MAX, PATTERN_DEFAULTS, PATTERN_KINDS, PATTERN_LAYOUTS, PIECE_MAX, PIECE_MIN, type PatternKind, type PatternLayout, type SurfacePattern } from '../elements/material/pattern';
-import { el, numberField, select } from './controls';
+import { blockedBy, el, numberField, select } from './controls';
 import { openProjectDialog } from './dialog';
 import { textField } from './fields';
-import { materialLabel, t, type MessageKey } from './i18n';
+import { defaultName, materialLabel, nextCopy, t, type MessageKey } from './i18n';
 import { icon } from './icons';
 
 export function showMaterials(app: App, first?: MaterialId): void {
@@ -138,7 +138,8 @@ export function showMaterials(app: App, first?: MaterialId): void {
       if (!mat) return;
       const id = newId('mat');
       chosen = id;
-      app.store.dispatch(addMaterial({ ...mat, id, name: `${materialLabel(mat)} (2)` }));
+      const { base, n } = nextCopy(materialLabel(mat), app.store.get().materials.map(materialLabel));
+      app.store.dispatch(addMaterial({ ...mat, id, name: defaultName.copy(base, n) }));
     });
     dup.disabled = !mat;
     const del = el('button', { type: 'button', class: 'icon-btn' });
@@ -147,12 +148,7 @@ export function showMaterials(app: App, first?: MaterialId): void {
     const blocker = mat ? materialDeleteBlocker(doc, mat.id) : 'missing';
     const action = t('mats.deleteNamed', { name: mat ? materialLabel(mat) : '' });
     const why = blocker === 'inUse' ? t('mats.cantDeleteInUse') : blocker === 'last' ? t('mats.cantDeleteLast') : null;
-    del.disabled = blocker !== null;
-    del.setAttribute('aria-label', action);
-    // What it does, then why it cannot.
-    del.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;
-    const whyNode = why ? el('span', { id: 'mats-why', class: 'sr-only' }, why) : null;
-    if (whyNode) del.setAttribute('aria-describedby', 'mats-why');
+    const whyNode = blockedBy(del, action, blocker === 'missing' ? action : why, 'mats-why');
     del.addEventListener('click', () => mat && app.store.dispatch(deleteMaterial(mat.id)));
     // The chosen one by link (io/library-file.ts), to bring into another project.
     const link = btn(t('lib.copyLink'), 'link', () => mat && void copyLibraryLink(app, libraryOf(app.store.get(), [], [mat.id])));
