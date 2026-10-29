@@ -12,6 +12,7 @@ import { getLang, materialLabel, t } from '../../ui/i18n';
 import { lengthText } from '../../ui/units';
 import { resetObjectValue, setObjectType, setObjectValues } from './commands';
 import type { ObjectEval } from './evaluate';
+import { evaluateFormula } from './formula';
 import type { ObjectDefinition, ObjectInstance, Words } from './schema';
 
 /** What the panel reads of each selected object. */
@@ -59,7 +60,13 @@ export function objectFields(items: readonly ObjectItem[], doc: Doc, dispatch: (
       set: (v) => dispatch(setObjectType(ids, v)),
     });
     for (const p of def.params) {
-      if (p.when !== undefined && !items.every((i) => (i.eval.env[p.when!] ?? 1) !== 0)) continue;
+      // Shown only when its condition, a formula ("modelo == 0", or a yes/no parameter's name), holds for every
+      // one selected; one that cannot be read leaves it shown. Read as a name only, "modelo == 0" never hid it.
+      const holds = (i: ObjectItem) => {
+        const v = evaluateFormula(p.when!, i.eval.env);
+        return !v.ok || v.value !== 0;
+      };
+      if (p.when !== undefined && !items.every(holds)) continue;
       const label = { label: 'field.raw' as const, labelVars: { text: p.formula !== undefined ? `${words(p.label)} (${t('object.calculated')})` : words(p.label) } };
       const own = {
         own: (xs: readonly ObjectItem[]) => xs.some((x) => p.name in x.object.values),

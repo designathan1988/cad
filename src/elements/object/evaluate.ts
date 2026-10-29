@@ -393,7 +393,15 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
       }
     }
   });
-  const handles = depth === 0 ? def.handles.flatMap((h) => placeHandle(h, env, frame, problems)) : [];
+  // A handle drags its parameter: none while that parameter is not shown (its `when` false). A kettle
+  // barbecue showed the brick one's width handle, which changed nothing on it.
+  const shown = (name: string): boolean => {
+    const when = def.params.find((p) => p.name === name)?.when;
+    if (when === undefined) return true;
+    const v = evaluateFormula(when, env);
+    return !v.ok || v.value !== 0;
+  };
+  const handles = depth === 0 ? def.handles.filter((h) => shown(h.param)).flatMap((h) => placeHandle(h, env, frame, problems)) : [];
   // A length or a number outside its usual range: said, not changed.
   const outside: Words[] =
     depth === 0

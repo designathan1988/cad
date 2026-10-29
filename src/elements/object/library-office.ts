@@ -177,7 +177,8 @@ export const MEETING_TABLE: ObjectDefinition = {
   handles: boxHandles('altura'),
   types: [
     { id: 'eight', name: w('2,40 m, 6 cadeiras', '2.40 m, 6 chairs'), values: {} },
-    { id: 'long', name: w('3,60 m, 10 cadeiras, carvalho', '3.60 m, 10 chairs, oak'), values: { largura: 3.6, profundidade: 1.3, matTampo: 'oak' } },
+    // 4 chairs a side at 3.60 m (porLado): named by what it makes, not 10.
+    { id: 'long', name: w('3,60 m, 8 cadeiras, carvalho', '3.60 m, 8 chairs, oak'), values: { largura: 3.6, profundidade: 1.3, matTampo: 'oak' } },
     { id: 'bare', name: w('Só a mesa, branca', 'Table only, white'), values: { cadeiras: 0, matTampo: 'lacquerWhite', matBase: 'lacquerWhite' } },
   ],
 };

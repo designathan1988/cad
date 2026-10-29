@@ -108,11 +108,12 @@ export const BBQ: ObjectDefinition = {
   folder: 'Área externa',
   params: [
     choice('modelo', 'Modelo', 'Model', [['Alvenaria', 'Built of brick'], ['Bola (portátil)', 'Kettle']]),
-    len('largura', 'Largura', 'Width', 1.2, 0.8, 2),
-    len('profundidade', 'Profundidade', 'Depth', 0.7, 0.55, 0.9),
-    len('altura', 'Altura até o teto', 'Height to ceiling', 2.6, 2.2, 3.2),
-    mat('matTijolo', 'Alvenaria', 'Brickwork', 'brick'),
-    mat('matBancada', 'Bancada', 'Counter', 'graniteBlack'),
+    // The brick one's sizes and materials; the kettle has its own and takes none of them (nor their handle).
+    { ...len('largura', 'Largura', 'Width', 1.2, 0.8, 2), when: 'modelo == 0' },
+    { ...len('profundidade', 'Profundidade', 'Depth', 0.7, 0.55, 0.9), when: 'modelo == 0' },
+    { ...len('altura', 'Altura até o teto', 'Height to ceiling', 2.6, 2.2, 3.2), when: 'modelo == 0' },
+    { ...mat('matTijolo', 'Alvenaria', 'Brickwork', 'brick'), when: 'modelo == 0' },
+    { ...mat('matBancada', 'Bancada', 'Counter', 'graniteBlack'), when: 'modelo == 0' },
   ],
   parts: [
     // Brick: a base with a niche for wood, the counter, the firebox's back and side walls (its mouth open),
@@ -234,7 +235,8 @@ export const FIRE_PIT: ObjectDefinition = {
   folder: 'Área externa',
   params: [
     len('largura', 'Diâmetro', 'Diameter', 1, 0.6, 1.8),
-    len('altura', 'Altura da borda', 'Rim height', 0.35, 0.1, 0.5),
+    // At least 15 cm: the cup's floor, the embers and the logs sit 12 cm under the rim, below the ground under that.
+    len('altura', 'Altura da borda', 'Rim height', 0.35, 0.15, 0.5),
     yes('fogo', 'Aceso', 'Lit', 1),
     mat('matBorda', 'Borda', 'Rim', 'stone'),
   ],

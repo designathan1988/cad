@@ -11,6 +11,7 @@ import { LIBRARY_SECTORS } from '../elements/object/library-sectors';
 import { BEFORE_65 } from '../elements/object/library-before65';
 import { BEFORE_66 } from '../elements/object/library-before66';
 import { BEFORE_69 } from '../elements/object/library-before69';
+import { BEFORE_70 } from '../elements/object/library-before70';
 import { isLayerSet, isRoomOverride, isWallOverride } from '../app/layer-sets';
 import { isVariableName } from '../core/measure';
 import { isOpeningStyle, operationsOf } from '../elements/opening/style';
@@ -119,8 +120,11 @@ import { isDrawingSettings } from '../elements/drawing/schema';
  *   by their wall where they are: moving or resizing one no longer moves the others.
  * Version 69: the library's bookcase as an older file stored it, unchanged, is the one now (its books
  *   in parts that each repeat only their quarter, so its largest sizes fill every shelf).
+ * Version 70: the same for the meeting table (its long type named by the 8 chairs it makes), the barbecue
+ *   (the kettle without the brick one's sizes and handle), the fire pit (at least 15 cm high) and the
+ *   reception desk (its NBR 9050 rule's words).
  */
-export const CURRENT_VERSION = 69;
+export const CURRENT_VERSION = 70;
 
 /** The file's fields of the areas taken out of the app, as they are in it (Doc.kept). */
 function keptOf(raw: Record<string, unknown>): Readonly<Record<string, unknown>> | null {
@@ -364,7 +368,9 @@ export function repairProject(raw: unknown): ReadResult {
   const since65 = fileVersion < 65 ? redrawn(sectors, BEFORE_65) : sectors;
   const since66 = fileVersion < 66 ? redrawn(since65, BEFORE_66) : since65;
   // Version 69 the bookcase's books, each part repeating only its quarter (library-before69.ts).
-  const definitions = fileVersion < 69 ? redrawn(since66, BEFORE_69) : since66;
+  const since69 = fileVersion < 69 ? redrawn(since66, BEFORE_69) : since66;
+  // Version 70 the meeting table, the barbecue, the fire pit and the reception desk (library-before70.ts).
+  const definitions = fileVersion < 70 ? redrawn(since69, BEFORE_70) : since69;
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));

@@ -4,6 +4,7 @@ import { CURRENT_VERSION, isLevel, readProject, writeProject } from '../../src/i
 import { BEFORE_65 } from '../../src/elements/object/library-before65';
 import { BEFORE_66 } from '../../src/elements/object/library-before66';
 import { BEFORE_69 } from '../../src/elements/object/library-before69';
+import { BEFORE_70 } from '../../src/elements/object/library-before70';
 
 const wall = (id: string, x: number) => ({
   id,
@@ -279,6 +280,17 @@ describe('version 5', () => {
     const mine = { ...was, name: { pt: 'Minha estante', en: 'My bookcase' } };
     const kept = readProject(JSON.stringify({ ...old, definitions: doc.definitions.map((d) => (d.id === bookcase.id ? mine : d)) }));
     expect(kept.ok && kept.doc.definitions.find((d) => d.id === bookcase.id)).toEqual(mine);
+  });
+
+  it('a file of version 69 gets the meeting table, barbecue, fire pit and reception desk as they are now; one the user changed is kept', () => {
+    const doc = newDocument();
+    const old = { ...doc, version: 69, definitions: doc.definitions.map((d) => BEFORE_70.find((b) => b.id === d.id) ?? d) };
+    const r = readProject(JSON.stringify(old));
+    for (const was of BEFORE_70) expect(r.ok && r.doc.definitions.find((d) => d.id === was.id)).toEqual(doc.definitions.find((d) => d.id === was.id));
+    const bbq = BEFORE_70.find((b) => b.id === 'def_bbq')!;
+    const mine = { ...bbq, name: { pt: 'Minha churrasqueira', en: 'My barbecue' } };
+    const kept = readProject(JSON.stringify({ ...old, definitions: old.definitions.map((d) => (d.id === bbq.id ? mine : d)) }));
+    expect(kept.ok && kept.doc.definitions.find((d) => d.id === bbq.id)).toEqual(mine);
   });
 });
 

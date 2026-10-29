@@ -183,7 +183,7 @@ export const RECEPTION_DESK: ObjectDefinition = {
     { id: 'l', name: w('Em L, ripado, acessível', 'L-shaped, slatted, accessible'), values: {} },
     { id: 'straight', name: w('Reto, branco', 'Straight, white'), values: { lateral: 0, matFrente: 'lacquerWhite', matTampo: 'marble' } },
   ],
-  rules: [{ when: 'acessivel == 0', message: w('NBR 9050: balcão de atendimento precisa de trecho a até 90 cm (75 a 85)', 'NBR 9050: a service counter needs a part no higher than 90 cm (75 to 85)') }],
+  rules: [{ when: 'acessivel == 0', message: w('NBR 9050: balcão de atendimento precisa de trecho de pelo menos 90 cm de largura, a 75 a 85 cm de altura', 'NBR 9050: a service counter needs a part at least 90 cm wide, 75 to 85 cm high') }],
 };
 
 export const GONDOLA: ObjectDefinition = {
