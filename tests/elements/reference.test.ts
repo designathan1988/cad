@@ -117,6 +117,22 @@ describe('a DXF read as lines', () => {
     expect(d.skipped).toEqual({ TEXT: 1 });
   });
 
+  it("a polyline's bulge is an arc, an ellipse is drawn, and an arc seen from below is mirrored", () => {
+    // From (0, 0) to (2, 0) with bulge 1: a half circle of radius 1 round (1, 0), counter-clockwise, below.
+    const bulged = readDxfLines(dxf(6, [['0', 'LWPOLYLINE', '90', '2', '70', '0', '10', '0', '20', '0', '42', '1', '10', '2', '20', '0']]));
+    expect(bulged.lines.length / 4).toBe(18);
+    expect(bulged.h).toBeCloseTo(1, 6);
+    expect(bulged.w).toBeCloseTo(2, 6);
+    // An ellipse 4 across and 2 up round (0, 0): its whole turn.
+    const ellipse = readDxfLines(dxf(6, [['0', 'ELLIPSE', '10', '0', '20', '0', '11', '2', '21', '0', '40', '0.5', '41', '0', '42', String(Math.PI * 2)]]));
+    expect(ellipse.skipped).toEqual({});
+    expect(ellipse.w).toBeCloseTo(4, 6);
+    expect(ellipse.h).toBeCloseTo(2, 6);
+    // An arc round (5, 0) from 0° to 90°, seen from below (extrusion 0, 0, −1): round (−5, 0), to the left.
+    const mirrored = readDxfLines(dxf(6, [['0', 'ARC', '10', '5', '20', '0', '40', '1', '50', '0', '51', '90', '230', '-1']]));
+    expect(mirrored.origin.x).toBeCloseTo(-6, 6);
+  });
+
   it('no units said: metres for a drawing of house size, millimetres for one a kilometre would be too small for', () => {
     expect(readDxfLines(dxf(null, [['0', 'LINE', '10', '0', '20', '0', '11', '12', '21', '0']])).unit).toBe(1);
     expect(readDxfLines(dxf(null, [['0', 'LINE', '10', '0', '20', '0', '11', '12000', '21', '0']])).unit).toBe(0.001);
