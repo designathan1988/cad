@@ -226,8 +226,14 @@ export function patternUvAt(g: THREE.BufferGeometry, period: THREE.Vector2, angl
   return flat;
 }
 
-/** Textures painted for the previews, by pattern and colour: the dialog's redraws paint each once. */
+/**
+ * Textures painted for the previews, by pattern and colour: the dialog's redraws paint each once. The
+ * latest used are kept (a Map keeps its order: each one used goes to the end) and the oldest disposed: kept
+ * all, every colour or joint tried in a dialog held a canvas of up to 1024 px and its GPU copy for good.
+ * A disposed one still on a preview is uploaded again by three.js when drawn.
+ */
 const previewTextures = new Map<string, { readonly texture: THREE.CanvasTexture; readonly period: THREE.Vector2 }>();
+const PREVIEW_TEXTURES = 32;
 
 /**
  * A piece's mesh as the previews draw it (the objects dialog, the definition editor): its material's colour,
@@ -238,9 +244,13 @@ export function previewMesh(geometry: THREE.BufferGeometry, m: { readonly color:
   if (!m.pattern) return new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: m.color, roughness: m.roughness, metalness: m.metalness, ...see }));
   const key = JSON.stringify([m.pattern, m.color]);
   let t = previewTextures.get(key);
-  if (!t) {
-    t = patternTexture(m.pattern, m.color, 4);
-    previewTextures.set(key, t);
+  if (t) previewTextures.delete(key);
+  else t = patternTexture(m.pattern, m.color, 4);
+  previewTextures.set(key, t);
+  for (const [old, x] of previewTextures) {
+    if (previewTextures.size <= PREVIEW_TEXTURES) break;
+    x.texture.dispose();
+    previewTextures.delete(old);
   }
   const g = patternUvAt(geometry, t.period, (m.pattern.angle * Math.PI) / 180);
   return new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: t.texture, roughness: m.roughness, metalness: m.metalness, ...see }));
