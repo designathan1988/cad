@@ -2204,6 +2204,11 @@ textarea.text-field {
   padding: var(--sp-1) var(--sp-2);
   resize: vertical;
 }
+/* A panel field of several lines (a note's text): as wide as the others, in the panel's font. */
+.num-field textarea.text-field {
+  width: 100%;
+  font: inherit;
+}
 .text-field:focus {
   border-color: var(--accent);
   background: var(--bg);

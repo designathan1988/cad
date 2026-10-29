@@ -43,7 +43,7 @@ export type Field<T> =
       /** Places shown after the decimal mark (2 unless said; 0 for a count). */
       readonly decimals?: number;
     })
-  | (Common<T> & { readonly kind: 'text'; readonly get: (x: T) => string; readonly set: (v: string) => void; /** Shown while it is empty: what empty means, or an example. */ readonly placeholder?: string })
+  | (Common<T> & { readonly kind: 'text'; readonly get: (x: T) => string; readonly set: (v: string) => void; /** Shown while it is empty: what empty means, or an example. */ readonly placeholder?: string; /** Of several lines (Shift+Enter): a note's text. */ readonly lines?: true })
   | (Common<T> & {
       readonly kind: 'select' | 'segmented' | 'search';
       readonly get: (x: T) => string;
@@ -166,7 +166,7 @@ export function fieldsSection<T>(title: string, open: boolean, fields: readonly 
     anyOwn = true;
     if (field.ownWords) note = field.ownWords.note;
     // The note is the field's description; the way back says which field it puts back.
-    control.querySelector('input, select, button')?.setAttribute('aria-describedby', noteId);
+    control.querySelector('input, textarea, select, button')?.setAttribute('aria-describedby', noteId);
     const what = t(field.label, field.labelVars);
     const resetText = t(field.ownWords?.reset ?? 'panel.resetToTypeOf', { field: what });
     const back = el('button', {
@@ -196,7 +196,7 @@ export function ribbonFieldRows<T>(fields: readonly Field<T>[], items: readonly 
     if (ic) label.innerHTML = icon(ic, 14);
     label.append(el('span', {}, t(field.label, field.labelVars)));
     const control = controlFor(field, value, items);
-    control.querySelector('input, select, button')?.setAttribute('aria-label', t(field.label, field.labelVars));
+    control.querySelector('input, textarea, select, button')?.setAttribute('aria-label', t(field.label, field.labelVars));
     if (field.kind === 'number') scrub(label, () => value as number | null, field.set, minOf(field, items), field.unit ?? 'm');
     const r = el('div', { class: `rb-field rb-field-${field.kind}` }, label, control);
     r.dataset.rf = field.id;
@@ -212,7 +212,7 @@ function controlFor<T>(field: Field<T>, value: number | string | null, items: re
     case 'number':
       return numberField(value as number | null, field.set, minOf(field, items), field.decimals ?? 2, field.unit ?? 'm');
     case 'text':
-      return textField(value as string | null, field.set, field.placeholder);
+      return textField(value as string | null, field.set, field.placeholder, field.lines === true);
     case 'select':
       return select(field.options, value as string | null, field.set);
     case 'segmented':
@@ -226,18 +226,28 @@ function controlFor<T>(field: Field<T>, value: number | string | null, items: re
   }
 }
 
-/** A text field that commits on Enter or leaving, and restores on Esc. Null shows "varies". */
-export function textField(value: string | null, onCommit: (v: string) => void, empty = ''): HTMLElement {
-  const input = el('input', { type: 'text', class: 'text-field', autocomplete: 'off', spellcheck: 'false' });
+/**
+ * A text field that commits on Enter or leaving, and restores on Esc. Null shows "varies". `lines`: of
+ * several lines (a note's text: its line breaks are the model's, and a one-line input dropped them),
+ * Shift+Enter starting a new one.
+ */
+export function textField(value: string | null, onCommit: (v: string) => void, empty = '', lines = false): HTMLElement {
+  const input: HTMLInputElement | HTMLTextAreaElement = lines
+    ? el('textarea', { class: 'text-field', autocomplete: 'off', spellcheck: 'false', rows: String(Math.max(2, (value ?? '').split('\n').length)), title: t('field.newLine') })
+    : el('input', { type: 'text', class: 'text-field', autocomplete: 'off', spellcheck: 'false' });
+  const box: HTMLElement = input;
   const shown = value ?? '';
   input.value = shown;
   input.placeholder = value === null ? t('panel.varies') : empty;
   const commit = () => {
     if (input.value !== shown) onCommit(input.value);
   };
-  input.addEventListener('keydown', (e) => {
+  box.addEventListener('keydown', (e) => {
     e.stopPropagation();
-    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Enter' && !(lines && e.shiftKey)) {
+      e.preventDefault();
+      input.blur();
+    }
     if (e.key === 'Escape') {
       input.value = shown;
       input.blur();

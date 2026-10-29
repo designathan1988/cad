@@ -80,7 +80,7 @@ export function addNoteHere(app: App, at?: Point2, leader?: Point2): void {
   app.showProperties();
   app.refresh();
   // Its text selected in the panel: typing replaces the placeholder.
-  const field = [...app.shell.panel.querySelectorAll<HTMLInputElement>('input[type="text"]')][0];
+  const field = app.shell.panel.querySelector<HTMLInputElement | HTMLTextAreaElement>('input[type="text"], textarea');
   field?.focus();
   field?.select();
 }

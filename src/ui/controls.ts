@@ -55,7 +55,7 @@ export function row(label: string | { text: string; icon: IconName }, control: H
     l.append(el('span', { class: 'field-label' }, label.text));
   }
   if (opts.mark) l.append(el('span', { class: 'own-mark', 'aria-hidden': 'true' }, ' •'));
-  const focusable = control.querySelector('input, select, button') ?? control;
+  const focusable = control.querySelector('input, textarea, select, button') ?? control;
   focusable.id = id;
   const wrap = el('div');
   wrap.append(l, control);

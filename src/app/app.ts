@@ -623,7 +623,7 @@ export class App {
   showProperties(): void {
     if (!this.ui.panelOpen) this.togglePanel(true);
     this.render();
-    const first = this.shell.panel.querySelector<HTMLElement>('input, select, button:not([disabled])');
+    const first = this.shell.panel.querySelector<HTMLElement>('input, textarea, select, button:not([disabled])');
     (first ?? this.shell.panel).focus();
   }
 
