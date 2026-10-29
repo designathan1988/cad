@@ -70,8 +70,6 @@ export interface DerivedGeometry {
   readonly roomWarnings: readonly RoomWarning[];
   /** A level's spaces, the ones its walls close in (room/derive.ts): where the room tool can put a room. Found when asked. */
   readonly spaces: (levelId: string) => readonly (readonly P[])[];
-  /** Each level's wall pieces before doors and windows are cut: what the building covers (app/lot-areas.ts). */
-  readonly levelPieces: ReadonlyMap<string, readonly (readonly P[])[]>;
   /** The registry's kinds (elements/registry.ts), derived: by kind, then id. */
   readonly kinds: KindSolids;
 }
@@ -193,7 +191,7 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     if (!found.has(levelId)) found.set(levelId, spacesOf(roomPieces.get(levelId) ?? []));
     return found.get(levelId)!;
   };
-  const base = { solids, warnings, choosable, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, spaces, levelPieces: piecesByLevel };
+  const base = { solids, warnings, choosable, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, spaces };
   // The registry's kinds last: a dimension is placed from the walls and doors.
   return { ...base, kinds: deriveKinds(doc, base) };
 }
@@ -344,7 +342,6 @@ export function openingOutline(o: OpeningSolid): Point2[] {
   return [at(f.start, 0), at(f.end, 0), at(f.end, 1), at(f.start, 1)];
 }
 
-/** The opening whose outline contains p, last placed first. */
 /**
  * The door or window under p: inside its outline in the wall, or within `reach` (m) of it or of its
  * symbol (a door's leaf and swing, a window's panes), the nearest winning. Its symbol is what the plan
@@ -421,7 +418,7 @@ export function wallAt(g: DerivedGeometry, p: Point2, ids?: ReadonlySet<WallId>,
   return best;
 }
 
-/** Bounding box of the drawn pieces and openings, or null when there is nothing. */
+/** Bounding box of the rooms and the registry's elements drawn (by id, when given), or null when there is nothing. */
 export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: Point2; max: Point2 } | null {
   let minX = Infinity;
   let minY = Infinity;
@@ -430,7 +427,6 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
   // Rooms and floors: their outlines.
   const outlines = [
     ...[...g.rooms.values()].filter((r) => !ids || ids.has(r.room.id)).map((r) => r.outline),
-    // A guide has no ends: its point only.
     // A guide has no ends: its point only. A door with its swing (contract.ts: extent).
     ...[...eachSolid(g.kinds)]
       .filter((x) => !ids || ids.has(x.id))
@@ -453,7 +449,6 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: 
 export const CATEGORIES = ['walls', 'openings', 'rooms', 'floors', 'objects', 'guides'] as const;
 export type Category = (typeof CATEGORIES)[number];
 
-/** The geometry without the hidden categories; the same object when nothing is hidden. */
 /**
  * Elements hidden or isolated for a while (Revit's Temporary Hide/Isolate, HH and HI): the document keeps
  * them, only the views leave them out. Hidden: those elements go, and the doors and windows of a hidden
@@ -488,6 +483,7 @@ export function applyTemporary(g: DerivedGeometry, temp: TemporaryView | null): 
   };
 }
 
+/** The geometry without the hidden categories; the same object when nothing is hidden. */
 export function hideCategories(g: DerivedGeometry, hidden: ReadonlySet<Category>): DerivedGeometry {
   if (hidden.size === 0) return g;
   return {

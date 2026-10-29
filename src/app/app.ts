@@ -1701,7 +1701,6 @@ export class App {
     else this.shell.sidebar.focus();
   }
 
-  /** Shows or hides a category of elements; what is hidden leaves the selection. */
   /** Graphic overrides shown or not (a view's choice). */
   toggleOverrides(): void {
     this.ui.overridesOn = !this.ui.overridesOn;
@@ -1735,6 +1734,7 @@ export class App {
     this.store.dispatch(deleteLayerSet(id));
   }
 
+  /** Shows or hides a category of elements; what is hidden leaves the selection. */
   toggleCategory(c: Category): void {
     if (this.ui.hidden.has(c)) this.ui.hidden.delete(c);
     else this.ui.hidden.add(c);
@@ -1744,7 +1744,6 @@ export class App {
     this.refresh();
   }
 
-  /** Every wall of a type on the current level, with the select tool. */
   /**
    * Everything on the level shown like what is selected (select-similar.ts), what shows only: a hidden
    * category or an element hidden for now is not taken.
@@ -1753,6 +1752,7 @@ export class App {
     return selecting.selectSimilar(this);
   }
 
+  /** Every wall of a type on the current level, with the select tool. */
   selectWallsOfType(typeId: string): void {
     return selecting.selectWallsOfType(this, typeId);
   }
@@ -1846,11 +1846,11 @@ export class App {
     return chrome.measureHint(this);
   }
 
-  /** The selection's quick actions, above the selection and never over it. */
   /** Opens the command palette; set by the input layer, which owns the dialogs. */
   openCommands: () => void = () => {};
   floatKey = '';
 
+  /** The selection's quick actions, above the selection and never over it. */
   placeFloatBar(): void {
     return chrome.placeFloatBar(this);
   }

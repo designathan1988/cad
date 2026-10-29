@@ -1,4 +1,4 @@
-// Choosing elements without a mouse (ref/chat.txt:242): the element Tab (or Shift+Tab) goes to from
+// Choosing elements without a mouse (ref/chat.txt:242): the element N (or Shift+N) goes to from
 // the selection, in the order of the level's elements, going round. Pure.
 
 export function stepSelection(order: readonly string[], selected: readonly string[], dir: 1 | -1): string | null {

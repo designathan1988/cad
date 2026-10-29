@@ -166,7 +166,6 @@ export function deleteSelection(app: App): void {
   app.renderChrome();
 }
 
-/** Every wall of a type on the current level, with the select tool. */
 /**
  * Everything on the level shown like what is selected (select-similar.ts), what shows only: a hidden
  * category or an element hidden for now is not taken.
@@ -189,6 +188,7 @@ export function selectSimilar(app: App): void {
   app.refresh();
 }
 
+/** Every wall of a type on the current level, with the select tool. */
 export function selectWallsOfType(app: App, typeId: string): void {
   app.setTool('select');
   if (!app.ui.hidden.has('walls')) {

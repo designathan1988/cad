@@ -11,8 +11,6 @@ import { guideKind } from '../elements/kinds/guide';
 import { newId } from '../core/id';
 import type { App } from './app';
 
-/** The guides of the level shown, unless hidden, as a move being dragged takes them. Plan only: they
- * are neither drawn nor snapped to in 3D. */
 export type GuideMode = 'line' | 'point' | 'circle';
 
 /** The guide tool in one of its modes: a line by two points, a point, or a circle by centre and radius. */

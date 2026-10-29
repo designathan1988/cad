@@ -56,13 +56,13 @@ export const LEVEL_HEIGHT = 2.8;
 /** What an element on a level that is gone stands on: the project's zero, a storey of LEVEL_HEIGHT. */
 export const NO_LEVEL: Pick<Level, 'elevation' | 'height'> = { elevation: 0, height: LEVEL_HEIGHT };
 
+/** A wall's phase in a renovation: already there, or there to be demolished; none: new, to be built. */
+export type WallPhase = 'existing' | 'demolish';
+
 /**
  * A wall as the user placed it: the engine's wall plus where it stands and how high it goes. Its base
  * offset and top are its own only when set; otherwise its type's (wallBase, wallTop).
  */
-/** A wall's phase in a renovation: already there, or there to be demolished; none: new, to be built. */
-export type WallPhase = 'existing' | 'demolish';
-
 export interface DocWall extends Wall {
   readonly levelId: LevelId;
   readonly phase?: WallPhase;
@@ -240,7 +240,6 @@ export function newDocument(): Doc {
 
 export const levelOf = (doc: Doc, id: LevelId): Level | undefined => doc.levels.find((l) => l.id === id);
 
-/** A wall's number on its level (1, 2, 3… in the order drawn): how the interface names one wall. */
 /**
  * The level to show at the start: the one shown last when it still exists; otherwise the lowest that
  * has something on it, so a project never opens on an empty level when another has content.
@@ -252,6 +251,7 @@ export function startLevel(doc: Doc, shownLast?: string): string {
   return (byHeight.find((l) => used.has(l.id)) ?? byHeight[0]!).id;
 }
 
+/** A wall's number on its level (1, 2, 3… in the order drawn): how the interface names one wall. */
 export function wallNumber(doc: Doc, id: string): number | null {
   const wall = doc.walls.find((w) => w.id === id);
   if (!wall) return null;

@@ -2,8 +2,8 @@
 // documentados"): a line in plan, the same on every level, looking to its left (start → end) as far as
 // its depth. A section's line goes through the building and fills what it cuts; an elevation's stands
 // outside it and only sees; a room's interior elevation sees one wall of it from inside, on its level
-// alone. Drawn from the model each time (app/section-drawing.ts), so it follows it;
-// put on a sheet at a scale (elements/sheet).
+// alone. Drawn from the model each time (app/section-drawing.ts), so it follows it, and shown in the
+// sections dialog at the drawing's scale (app/section-view.ts).
 
 import { type Point2, distance } from '../../core/vector';
 

@@ -86,7 +86,7 @@ export function roomFields(rooms: readonly RoomSolid[], act: RoomOwnActions): Fi
       get: (r) => r.room.finishes?.base ?? 0,
       set: (v) => act.updateRooms(ids, { finishes: { base: v > 0 ? v : null } }),
     },
-    // Each wall seen from inside, on the room's level (a sheet's interior elevations).
+    // Each wall seen from inside, on the room's level: its interior elevations.
     ...(act.interiorElevations
       ? [{ id: 'interiorElevations', label: 'room.interiorElevations', kind: 'action', enabled: (rs: readonly RoomSolid[]) => rs.some((r) => r.enclosed), run: () => act.interiorElevations!(ids) } as const]
       : []),

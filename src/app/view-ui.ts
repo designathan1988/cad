@@ -178,9 +178,9 @@ export function keepSelectionInView(app: App): boolean {
   // Larger than the free part (a phone's): zoomed out about its middle first, then measured again,
   // since the dimensions stand off by pixels (the tester's P07: the view only panned and cut it).
   let screen = onScreen();
-  // Larger than the whole window at this zoom (the terrain, a long wall seen up close): the user is
-  // looking at part of it on purpose. A new selection of it moves nothing: at 880 px a click on the
-  // terrain zoomed the plan out to the whole lot.
+  // Larger than the whole window at this zoom (a long wall seen up close): the user is looking at part
+  // of it on purpose. A new selection of it moves nothing: at 880 px a click on it zoomed the plan out
+  // to the whole of it.
   if (!resized && !reshaped && (screen.right - screen.left > view.w || screen.bottom - screen.top > view.h)) return false;
   const k = fitFactor(screen, view, covered, room);
   if (k < 1) {

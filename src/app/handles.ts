@@ -1,4 +1,4 @@
-// The handles of the selection in plan (ref/chat.txt:219), standard across elements: a square on
+// The handles of the selection, in plan and on the level's floor in 3D (ref/chat.txt:219), standard across elements: a square on
 // each end of a selected wall (move that end anywhere), an arrow beyond each end of a straight wall
 // (stretch it along its own line), a diamond at the middle of an arc wall (bend it), an arc under the
 // selection (turn it). Pure: positions on screen from a projection, and which handle is under a point.
