@@ -51,6 +51,13 @@ export function actionOfKey<A extends { readonly id: string; readonly keys?: str
   );
 }
 
+/**
+ * The keys the tools read themselves (input-keys.ts), no action's: A an arc, Q a rectangle, C a copy or a
+ * measuring chain, U disjoin, Space, Enter, Backspace, Tab and the arrows. Given to an action, it ran
+ * before the tool saw it and the wall tool's arc or rectangle stopped working, unexplained.
+ */
+export const TOOL_KEYS: readonly string[] = ['A', 'Q', 'C', 'U', 'Space', 'Enter', 'Backspace', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+
 /** The map with `id` given `combo`, taken from any other action that had it (theirs turned off). */
 export function assignKey<A extends { readonly id: string; readonly defaultKeys?: string }>(map: KeyMap, actions: readonly A[], id: string, combo: string): { readonly map: KeyMap; readonly taken: readonly A[] } {
   const next: Record<string, string | null> = { ...map, [id]: combo };

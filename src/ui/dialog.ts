@@ -15,7 +15,8 @@ export interface ProjectDialog {
   readonly close: () => void;
 }
 
-export function openProjectDialog(app: App, render: (close: () => void) => HTMLElement, fallback: () => string | null = () => null): ProjectDialog {
+/** `closed`: told when it closes, however (Close, Esc, a click on the backdrop), to let go of what it set up. */
+export function openProjectDialog(app: App, render: (close: () => void) => HTMLElement, fallback: () => string | null = () => null, closed?: () => void): ProjectDialog {
   const back = app.shell.helpBack;
   let stale = false;
   const typing = () => {
@@ -98,6 +99,7 @@ export function openProjectDialog(app: App, render: (close: () => void) => HTMLE
     back.removeEventListener('click', onClick);
     back.hidden = true;
     app.shell.planCanvas.focus();
+    closed?.();
   }
   // Captured on the window: Esc and undo work wherever the focus went, even off the dialog. What an
   // earlier dialog in the same layer set on it goes.
