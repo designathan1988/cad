@@ -36,6 +36,9 @@ export interface WallFieldActions {
   readonly endSides?: readonly ['top' | 'bottom' | 'left' | 'right', 'top' | 'bottom' | 'left' | 'right'];
   /** The first selected wall, the reference for aligning: its number on the plan. */
   readonly firstWall?: string;
+  /** Whether each end of the one selected wall is in an L of two straight walls (start, end): elsewhere a
+   * chosen miter, through, stop or square does nothing (footprint.ts), so only automatic and off are offered. */
+  readonly endChoosable?: readonly [boolean, boolean];
 }
 
 const REFS: readonly { value: ReferenceLine; key: MessageKey; short: MessageKey; icon: 'refCenter' | 'refExterior' | 'refInterior' }[] = [
@@ -244,7 +247,15 @@ export function wallFields(
           label: act.endSides ? (`panel.join.${act.endSides[end === 'start' ? 0 : 1]}` as const) : end === 'start' ? 'panel.joinStart' : 'panel.joinEnd',
           kind: 'select',
           when: one,
-          options: JOINS.map((j) => ({ value: j, label: t(`join.${j}`) })),
+          // Not at an L: automatic and off only, and a choice kept from an L said to do nothing here.
+          options: (() => {
+            if (act.endChoosable?.[end === 'start' ? 0 : 1] ?? true) return JOINS.map((j) => ({ value: j, label: t(`join.${j}`) }));
+            const kept = selected[0]?.joins?.[end];
+            return JOINS.filter((j) => j === 'auto' || j === 'off' || j === kept).map((j) => ({
+              value: j,
+              label: j === 'auto' || j === 'off' ? t(`join.${j}`) : t('join.noEffect', { join: t(`join.${j}`) }),
+            }));
+          })(),
           get: (w) => w.joins?.[end] ?? 'auto',
           set: (v) => act.setEndJoin(end, v as EndJoin | 'auto'),
         }),

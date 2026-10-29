@@ -62,6 +62,8 @@ export interface OpeningSolid extends PlacedOpening {
 export interface DerivedGeometry {
   readonly solids: ReadonlyMap<WallId, WallSolid>;
   readonly warnings: readonly JoinWarning[];
+  /** The wall ends a chosen miter, through, stop or square acts on (footprint.ts WallGeometry.choosable). */
+  readonly choosable: ReadonlySet<string>;
   readonly openings: ReadonlyMap<OpeningId, OpeningSolid>;
   readonly openingWarnings: readonly OpeningWarning[];
   readonly rooms: ReadonlyMap<RoomId, RoomSolid>;
@@ -81,7 +83,7 @@ export interface DerivedGeometry {
 export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOpenings: readonly Opening[] = []): DerivedGeometry {
   const walls = [...doc.walls, ...extra];
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
-  const { pieces, plan, slices, warnings } = wallPieces(walls, types, (w) => wallHeights(doc, w), (w) => planCutHeight(doc, w));
+  const { pieces, plan, slices, warnings, choosable } = wallPieces(walls, types, (w) => wallHeights(doc, w), (w) => planCutHeight(doc, w));
   const placed = deriveOpenings([...doc.openings, ...extraOpenings], hostsOf(doc, walls, jointsIn(walls, types, pieces), endsIn(walls, types, pieces)), doc.openingGroups);
   const byId = new Map(walls.map((w) => [w.id, w]));
   const openings = new Map<OpeningId, OpeningSolid>();
@@ -190,7 +192,7 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     if (!found.has(levelId)) found.set(levelId, spacesOf(roomPieces.get(levelId) ?? []));
     return found.get(levelId)!;
   };
-  const base = { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, spaces, levelPieces: piecesByLevel };
+  const base = { solids, warnings, choosable, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, spaces, levelPieces: piecesByLevel };
   // The registry's kinds last: a dimension is placed from the walls and doors.
   return { ...base, kinds: deriveKinds(doc, base) };
 }
@@ -216,11 +218,13 @@ function wallPieces(
   types: ReadonlyMap<string, WallType>,
   heightOf: (w: DocWall) => { bottom: number; top: number },
   cutOf: (w: DocWall) => number,
-): { pieces: Map<WallId, readonly Piece[]>; plan: Map<WallId, PlanCut>; slices: Map<WallId, WallSlice[]>; warnings: JoinWarning[] } {
+): { pieces: Map<WallId, readonly Piece[]>; plan: Map<WallId, PlanCut>; slices: Map<WallId, WallSlice[]>; warnings: JoinWarning[]; choosable: Set<string> } {
   const byLevel = new Map<string, DocWall[]>();
   for (const w of walls) byLevel.set(w.levelId, [...(byLevel.get(w.levelId) ?? []), w]);
   const slices = new Map<WallId, WallSlice[]>();
   const warnings = new Map<string, JoinWarning>();
+  // An end whose chosen join acts at any height.
+  const choosable = new Set<string>();
   for (const list of byLevel.values()) {
     const range = new Map(list.map((w) => [w.id, heightOf(w)]));
     const zs: number[] = [];
@@ -235,6 +239,7 @@ function wallPieces(
       const g = computeWallGeometry(present, types);
       // The same problem at several heights is one warning.
       for (const w of g.warnings) warnings.set(JSON.stringify(w), w);
+      for (const end of g.choosable) choosable.add(end);
       for (const w of present) {
         const pieces = g.pieces.get(w.id) ?? [];
         const own = slices.get(w.id) ?? [];
@@ -258,7 +263,7 @@ function wallPieces(
     pieces.set(w.id, shown ? shown.pieces : (computeWallGeometry([w], types).pieces.get(w.id) ?? []));
     plan.set(w.id, kind);
   }
-  return { pieces, plan, slices, warnings: [...warnings.values()] };
+  return { pieces, plan, slices, warnings: [...warnings.values()], choosable };
 }
 
 /**

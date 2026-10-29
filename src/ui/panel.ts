@@ -60,6 +60,8 @@ export interface PanelActions {
   readonly setEndJoin: (end: 'start' | 'end', join: EndJoin | 'auto') => void;
   readonly arrangeWalls: (how: 'align' | 'distribute') => void;
   readonly firstWall?: string;
+  readonly endSides?: readonly ['top' | 'bottom' | 'left' | 'right', 'top' | 'bottom' | 'left' | 'right'];
+  readonly endChoosable?: readonly [boolean, boolean];
   readonly updateDefaults: (patch: Partial<WallDefaults>) => void;
   readonly close: () => void;
   /** A section's drawing shown (its panel's button). */

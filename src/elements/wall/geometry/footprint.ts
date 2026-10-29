@@ -25,6 +25,11 @@ export interface Piece {
 export interface WallGeometry {
   readonly pieces: ReadonlyMap<WallId, readonly Piece[]>;
   readonly warnings: readonly JoinWarning[];
+  /**
+   * The ends (`wallId:start`, `wallId:end`) in an L of two straight walls: the only joins a chosen miter,
+   * through, stop or square acts on. Elsewhere (a T, a node, a junction, an arc) only 'off' does.
+   */
+  readonly choosable: ReadonlySet<string>;
 }
 
 const keyOf = (r: EndRef): string => `${r.wallId}:${r.end}`;
@@ -66,6 +71,7 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   const isArc = (id: string) => parentOf(id) !== id;
   const endCuts = new Map<string, EndCut>();
   const notches: Notch[] = [];
+  const choosable = new Set<string>();
   // Warnings are reported by wall, not by segment. A join the engine cannot make exact against an arc
   // is dropped and reported, and the walls stay as drawn.
   const report = (w: JoinWarning) => warnings.push({ ...w, walls: w.walls.map(parentOf) });
@@ -126,6 +132,10 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     const layered = straight || arcAbuts;
     // The user's choice at either end (EndJoin), for two straight walls: a miter, who goes through, or
     // whose end is squared off (it goes through; chosen at both ends, the first wall's).
+    if (straight) {
+      choosable.add(keyOf(ra));
+      choosable.add(keyOf(rb));
+    }
     const ca = choice.get(keyOf(ra));
     const cb = choice.get(keyOf(rb));
     const aThrough = ca === 'through' || cb === 'stop';
@@ -354,7 +364,7 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     pieces.get(parentOf(shape.id))!.push(...(clips.has(shape.id) ? carriedPieces(raw, clips.get(shape.id)!) : raw));
   }
   warnings.push(...overlapsWithArcs(pieces, chains, warnings));
-  return { pieces, warnings: dedupe(warnings) };
+  return { pieces, warnings: dedupe(warnings), choosable };
 }
 
 /**
