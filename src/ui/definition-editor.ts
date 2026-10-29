@@ -15,7 +15,7 @@ import { addDefinition, updateDefinition } from '../elements/object/commands';
 import { evaluateObject } from '../elements/object/evaluate';
 import { words } from '../elements/object/fields';
 import { evaluateFormula, parseFormula } from '../elements/object/formula';
-import type { DefinitionCategory, Expr, HandleDef, ObjectDefinition, ParamDef, ParamKind, Part, RuleDef, Words } from '../elements/object/schema';
+import { type DefinitionCategory, type Expr, type HandleDef, mapPartFormulas, type ObjectDefinition, type ParamDef, type ParamKind, type Part, type RuleDef, type Words } from '../elements/object/schema';
 import { isDefinition } from '../elements/object/valid';
 import { el } from './controls';
 import { getLang, materialLabel, t, type MessageKey } from './i18n';
@@ -189,15 +189,24 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
     if (name === old || name === '') return draw();
     const re = new RegExp(`(?<![\\wÀ-ÿ])${old}(?![\\wÀ-ÿ])`, 'g');
     const swap = (e: Expr): Expr => (typeof e === 'string' ? e.replace(re, name) : e);
-    const swapAll = <T>(x: T): T => JSON.parse(JSON.stringify(x), (k, v) => (typeof v === 'string' && ['x', 'y', 'z', 'w', 'd', 'h', 'r', 'r2', 'count', 'dx', 'dy', 'dz', 'when', 'angle', 'formula', 'watts', 'kelvin'].includes(k) ? swap(v) : v)) as T;
+    const swapText = (s: string | undefined) => (s === undefined ? {} : { value: swap(s) as string });
+    // Every formula, walked by what each holds (object/schema.ts: mapPartFormulas), not by a list of
+    // keys that left a profile's corners and a part's leaning with the old name.
     set({
       ...draft,
-      params: draft.params.map((p, k) => (k === i ? { ...p, name } : swapAll(p))),
-      parts: swapAll(draft.parts).map((p) => (p.material === old ? { ...p, material: name } : p)),
+      params: draft.params.map((p, k) => {
+        if (k === i) return { ...p, name };
+        const formula = swapText(p.formula);
+        const when = swapText(p.when);
+        return { ...p, ...('value' in formula ? { formula: formula.value } : {}), ...('value' in when ? { when: when.value } : {}) };
+      }),
+      parts: draft.parts.map((p) => mapPartFormulas(p, swap)).map((p) => (p.material === old ? { ...p, material: name } : p)),
       handles: draft.handles.map((h) => ({ ...h, param: h.param === old ? name : h.param, at: h.at.map(swap) as unknown as HandleDef['at'] })),
       types: draft.types.map((ty) => ({ ...ty, values: Object.fromEntries(Object.entries(ty.values).map(([k, v]) => [k === old ? name : k, v])) })),
       ...(draft.rules ? { rules: draft.rules.map((r) => ({ ...r, when: swap(r.when) as string })) } : {}),
-      ...(draft.light ? { light: swapAll(draft.light) } : {}),
+      ...(draft.light
+        ? { light: { ...draft.light, x: swap(draft.light.x), y: swap(draft.light.y), z: swap(draft.light.z), watts: swap(draft.light.watts), ...(draft.light.kelvin !== undefined ? { kelvin: swap(draft.light.kelvin) } : {}) } }
+        : {}),
     });
   };
 

@@ -90,6 +90,24 @@ export type Part =
       readonly values?: Readonly<Record<string, Expr>>;
     });
 
+/**
+ * A part with every formula of it put through `f`: its place and size, its edges' radius, its leaning
+ * and turn, its condition, its repetition, its corners (a profile's, a revolve's) and the values it gives
+ * an object inside it. Renaming a parameter goes through here: a list of some keys left the corners and
+ * the leanings with the old name.
+ */
+export function mapPartFormulas(p: Part, f: (e: Expr) => Expr): Part {
+  const out: Record<string, unknown> = { ...p };
+  for (const k of ['x', 'y', 'z', 'w', 'd', 'h', 'r', 'r2', 'round', 'tilt', 'roll', 'turn', 'angle', 'when'] as const) {
+    const v = out[k];
+    if (typeof v === 'number' || typeof v === 'string') out[k] = f(v);
+  }
+  if (p.repeat) out.repeat = Object.fromEntries(Object.entries(p.repeat).map(([k, v]) => [k, f(v as Expr)]));
+  if (p.kind === 'profile' || p.kind === 'revolve') out.points = p.points.map(([a, b]) => [f(a), f(b)]);
+  if (p.kind === 'object' && p.values) out.values = Object.fromEntries(Object.entries(p.values).map(([k, v]) => [k, f(v)]));
+  return out as unknown as Part;
+}
+
 /** A handle: a point on the object (formulas) dragged along one of its axes changes a parameter. */
 export interface HandleDef {
   readonly param: string;
