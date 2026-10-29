@@ -679,11 +679,30 @@ export function wireInput(app: App): void {
     if (s) app.wallEvent({ kind: 'click', point: s.point });
   };
 
+  // A pointer the system took away (an app switch, palm rejection, too many touches) sends no pointerup:
+  // what it was doing is dropped as Esc drops it, not left hanging to end at the next pointerup, at an
+  // unrelated place (a wall moved by an interrupted drag).
+  const onCancel = () => {
+    downAt = null;
+    rightAt = null;
+    panning = null;
+    if (boxDrag) {
+      app.setBox(boxDrag.box, false);
+      boxDrag = null;
+      app.boxHot = null;
+    }
+    ui.handleDrag = null;
+    gestures.cancel();
+    showMarquee();
+    app.refresh();
+  };
+
   for (const c of [shell.planCanvas, shell.glCanvas]) {
     c.tabIndex = 0;
     c.addEventListener('pointermove', onMove);
     c.addEventListener('pointerdown', onDown);
     c.addEventListener('pointerup', onUp);
+    c.addEventListener('pointercancel', onCancel);
     c.addEventListener('pointerleave', () => {
       ui.hover = null;
       ui.cursor = null;
