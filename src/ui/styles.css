@@ -740,8 +740,8 @@ button.project-name:hover {
 .temp-chip[hidden] {
   display: none;
 }
-.tour-hint,
-.tour-empty {
+/* What a dialog says when it has nothing to list. */
+.dialog-empty {
   padding: 0 var(--sp-4);
   color: var(--text-2);
   font-size: var(--fs-sm);
@@ -1933,7 +1933,7 @@ button.project-name:hover {
   padding-top: var(--sp-3);
   border-top: var(--line) solid var(--border);
 }
-.print-page {
+.section-page {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1954,14 +1954,14 @@ button.project-name:hover {
 }
 /* Sections and elevations (sections-dialog.ts): the set listed on the left, the open one beside it with
    its drawing; one above the other on a narrow window. */
-.sheets-dialog {
+.sections-dialog {
   /* As any dialog's: under its top (--dialog-top), not the window's; with 2 sp-4 it ran --dialog-top
      past the bottom and its Close button was out of reach on a short window. */
   max-height: calc(100vh - var(--dialog-top) - var(--sp-4));
   display: flex;
   flex-direction: column;
 }
-.sheet-body {
+.section-body {
   display: grid;
   grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
   gap: var(--sp-4);
@@ -1969,17 +1969,21 @@ button.project-name:hover {
   overflow: auto;
   min-height: 0;
 }
-.sheet-side {
+.section-side {
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
 }
-.sheet-list {
+.section-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
 }
-.sheet-item {
+.section-item {
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -1992,11 +1996,11 @@ button.project-name:hover {
   text-align: left;
   cursor: pointer;
 }
-.sheet-item span {
+.section-item span {
   color: var(--text-2);
   font-size: var(--fs-sm);
 }
-.sheet-item[aria-pressed='true'] {
+.section-item[aria-pressed='true'] {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
@@ -2013,7 +2017,7 @@ button.project-name:hover {
   box-shadow: 0 0 0 var(--line) var(--border);
 }
 @media (max-width: 720px) {
-  .sheet-body {
+  .section-body {
     grid-template-columns: minmax(0, 1fr);
   }
 }

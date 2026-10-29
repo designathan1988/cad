@@ -44,7 +44,7 @@ export function showProjectsDialog(app: App): void {
     const a = document.activeElement;
     const key = a instanceof HTMLElement && back.contains(a) ? a.dataset.focus : undefined;
     const body: HTMLElement[] = [];
-    if (!db) body.push(el('p', { class: 'tour-empty' }, t('projects.unavailable')));
+    if (!db) body.push(el('p', { class: 'dialog-empty' }, t('projects.unavailable')));
     else if (asking) {
       const p = asking;
       body.push(
@@ -68,7 +68,7 @@ export function showProjectsDialog(app: App): void {
           ),
         ),
       );
-    } else if (list.length === 0) body.push(el('p', { class: 'tour-empty' }, t('projects.none')));
+    } else if (list.length === 0) body.push(el('p', { class: 'dialog-empty' }, t('projects.none')));
     else {
       const rows = el('div', { class: 'projects-rows' });
       // The open one first, then the last changed.
