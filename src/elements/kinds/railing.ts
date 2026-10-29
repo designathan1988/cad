@@ -4,12 +4,13 @@
 
 import { finite, isObject, isPoint } from '../../core/guards';
 import type { Point2 } from '../../core/vector';
+import { num, t } from '../../ui/i18n';
 import type { DerivedGeometry } from '../../app/geometry';
 import { railingGeometry } from '../../render/prisms';
 import type { ElementKind } from '../contract';
 import { updateRailings } from '../railing/commands';
 import { railingFields } from '../railing/fields';
-import { BALUSTER_SIZE, BALUSTER_SPACING, postsOf, RAIL_SIZE, type Railing, RAILING_PREFIX, wellPath } from '../railing/schema';
+import { BALUSTER_SIZE, BALUSTER_SPACING, MAX_RAILING_GAP, postsOf, RAIL_SIZE, type Railing, railingGap, RAILING_PREFIX, wellPath } from '../railing/schema';
 import type { KindSolid } from '../contract';
 import { type Material, materialIn } from '../material/schema';
 import { stairWell } from '../stair/geometry';
@@ -40,6 +41,13 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
   icon: 'railing',
   one: 'railing.title',
   many: 'railing.titleMany',
+  // A gap a child could pass through, over the 11 cm NBR 14718 allows: a mid rail alone leaves about
+  // half its height open, offered beside balusters and glass with nothing said.
+  warning: (items) => {
+    const wide = items.filter((s) => railingGap(s.railing) > MAX_RAILING_GAP);
+    if (wide.length === 0) return null;
+    return t('warn.railingGap', { gap: num(Math.max(...wide.map((s) => railingGap(s.railing))) * 100, 0), max: num(MAX_RAILING_GAP * 100, 0) });
+  },
   dropped: 'fix.droppedRailings',
 
 
