@@ -15,9 +15,11 @@ const DEG = 180 / Math.PI;
 export function columnFields(columns: readonly Column[], act: ColumnFieldActions, doc: Doc): Field<Column>[] {
   const ids = columns.map((c) => c.id);
   const profile = (cs: readonly Column[]) => cs.every((c) => c.shape === 'I' || c.shape === 'H' || c.shape === 'L');
-  // Up to its own level's top, or another level's floor: the levels above its own.
-  const own = columns[0] ? doc.levels.find((l) => l.id === columns[0]!.levelId) : undefined;
-  const above = doc.levels.filter((l) => own && l.elevation > own.elevation).sort((a, b) => a.elevation - b.elevation);
+  // Up to its own level's top, or another level's floor: the levels above every selected one's own. From
+  // the first one's alone, a column on the floor above was sent up to its own floor or below.
+  const owns = columns.map((c) => doc.levels.find((l) => l.id === c.levelId)?.elevation ?? Infinity);
+  const highest = owns.length > 0 ? Math.max(...owns) : Infinity;
+  const above = doc.levels.filter((l) => l.elevation > highest).sort((a, b) => a.elevation - b.elevation);
   return [
     {
       id: 'shape',
