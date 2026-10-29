@@ -233,10 +233,14 @@ export function deriveRooms(
 ): { solids: Map<RoomId, RoomSolid>; warnings: RoomWarning[] } {
   const solids = new Map<RoomId, RoomSolid>();
   const warnings: RoomWarning[] = [];
-  // Rooms by the hole they are in (the same array from holesOf for one level).
+  // Rooms by the hole they are in: its index in its level's union (unionOf).
   const spaces = new Map<string, RoomId[]>();
+  // Each level's union once: per room, its memo key (the JSON of all the level's pieces) was made again.
+  const unions = new Map<string, ReturnType<typeof unionOf>>();
   for (const room of rooms) {
-    const { holes, parts } = unionOf(piecesByLevel.get(room.levelId) ?? []);
+    let union = unions.get(room.levelId);
+    if (!union) unions.set(room.levelId, (union = unionOf(piecesByLevel.get(room.levelId) ?? [])));
+    const { holes, parts } = union;
     // The smallest hole holding the point: holes do not overlap, but stay safe if one is nested.
     const hole = holes
       .filter((h) => insideRing(h, room.seed))
@@ -254,7 +258,7 @@ export function deriveRooms(
     const perimeter = perimeterOf(outline) + islands.reduce((s, i) => s + perimeterOf(i), 0);
     const label = islands.length > 0 ? (middleOfRest(outline, islands) ?? labelPoint(outline)) : labelPoint(outline);
     solids.set(room.id, { room, enclosed: true, outline, islands, area, perimeter, label, sharing: [] });
-    const key = `${room.levelId}|${JSON.stringify(hole)}`;
+    const key = `${room.levelId}|${holes.indexOf(hole)}`;
     spaces.set(key, [...(spaces.get(key) ?? []), room.id]);
   }
   for (const ids of spaces.values()) {
