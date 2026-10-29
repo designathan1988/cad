@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import type { Point2 } from '../core/vector';
 import type { PrismFaces } from '../elements/wall/geometry/faces';
+import { RAIL_HEIGHT } from '../elements/stair/schema';
 import { planeAt, type TopPlane } from '../elements/wall/geometry/under-roof';
 
 export const toThree = (p: Point2, z: number) => new THREE.Vector3(p.x, z, -p.y);
@@ -121,11 +122,13 @@ export function slabGeometry(outline: readonly Point2[], holes: readonly (readon
 
 /**
  * A stair: each step and landing a solid from the stair's bottom up to its top (a spiral's, a slab of
- * its riser), and its handrails as narrow upright ribbons. In three.js coordinates, from height 0.
+ * its riser), and its handrails as narrow upright ribbons, the upper ones on posts down to the floor (a ramp's
+ * lower ones, `low`, held by them). In three.js coordinates, from height 0.
  */
 export function stairGeometry(
   parts: readonly { readonly polygon: readonly Point2[]; readonly top: number; readonly topAt?: (p: Point2) => number }[],
   rails: readonly (readonly { x: number; y: number; z: number }[])[],
+  low: readonly (readonly { x: number; y: number; z: number }[])[],
   riser: number,
   solid: boolean,
 ): THREE.BufferGeometry {
@@ -148,7 +151,7 @@ export function stairGeometry(
       tri(toThree(a, low), toThree(b, top(b)), toThree(a, top(a)));
     }
   }
-  for (const r of rails) {
+  for (const r of [...rails, ...low]) {
     for (let i = 0; i + 1 < r.length; i++) {
       const a = r[i]!;
       const b = r[i + 1]!;
@@ -156,10 +159,14 @@ export function stairGeometry(
       tri(new THREE.Vector3(a.x, a.z, -a.y), new THREE.Vector3(b.x, b.z, -b.y), new THREE.Vector3(b.x, b.z - 0.05, -b.y));
       tri(new THREE.Vector3(a.x, a.z, -a.y), new THREE.Vector3(b.x, b.z - 0.05, -b.y), new THREE.Vector3(a.x, a.z - 0.05, -a.y));
     }
+  }
+  // A post at each end of an upper rail, down to the floor it stands on: the rail's own height (a 0.9 literal
+  // here stood short of a 0.92 rail).
+  for (const r of rails) {
     for (const v of [r[0]!, r[r.length - 1]!]) {
       const q = 0.02;
-      tri(new THREE.Vector3(v.x - q, v.z, -v.y), new THREE.Vector3(v.x + q, v.z, -v.y), new THREE.Vector3(v.x + q, v.z - 0.9, -v.y));
-      tri(new THREE.Vector3(v.x - q, v.z, -v.y), new THREE.Vector3(v.x + q, v.z - 0.9, -v.y), new THREE.Vector3(v.x - q, v.z - 0.9, -v.y));
+      tri(new THREE.Vector3(v.x - q, v.z, -v.y), new THREE.Vector3(v.x + q, v.z, -v.y), new THREE.Vector3(v.x + q, v.z - RAIL_HEIGHT, -v.y));
+      tri(new THREE.Vector3(v.x - q, v.z, -v.y), new THREE.Vector3(v.x + q, v.z - RAIL_HEIGHT, -v.y), new THREE.Vector3(v.x - q, v.z - RAIL_HEIGHT, -v.y));
     }
   }
   const geo = new THREE.BufferGeometry();

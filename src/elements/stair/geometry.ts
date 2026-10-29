@@ -4,7 +4,7 @@
 
 import { union } from 'polyclip-ts';
 import { add, type Point2, scale } from '../../core/vector';
-import { RAIL_HEIGHT, RAMP_GRADE, RAMP_LANDING, RAMP_RISE, type Stair, STAIR_RISER } from './schema';
+import { LOW_RAIL_HEIGHT, RAIL_EXTENSION, RAIL_HEIGHT, RAMP_GRADE, RAMP_LANDING, RAMP_RISE, type Stair, STAIR_RISER } from './schema';
 
 export interface StairPart {
   /** In plan, counter-clockwise. */
@@ -21,8 +21,10 @@ export interface StairSolid {
   readonly parts: readonly StairPart[];
   /** The walking line, bottom to top, for the plan's arrow. */
   readonly walk: readonly Point2[];
-  /** Handrails: polylines (x, y, z), z above the stair's bottom. */
+  /** Handrails: polylines (x, y, z), z above the stair's bottom; each stands on posts at its ends. */
   readonly rails: readonly (readonly { x: number; y: number; z: number }[])[];
+  /** A ramp's lower handrails, held by the posts of the upper ones. */
+  readonly low: readonly (readonly { x: number; y: number; z: number }[])[];
   /** The same lines whether it has handrails or not: where a guardrail along a side goes. */
   readonly sides: readonly (readonly { x: number; y: number; z: number }[])[];
   readonly bottom: number;
@@ -128,8 +130,28 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
       }
     }
     walk.push(stair.at, o);
-    for (const s of [-1, 1]) rails.push(railPts.map(([p, zz]) => ({ ...add(p, scale(across, (s * w) / 2)), z: zz + RAIL_HEIGHT })));
-    return { stair, parts, walk, rails: stair.railing === false ? [] : rails, sides: rails, bottom, height, risers: runs, riser: rise };
+    const line = (s: number, h: number) => railPts.map(([p, zz]) => ({ ...add(p, scale(across, (s * w) / 2)), z: zz + h }));
+    // Two handrails a side, carried level past the foot and the head (NBR 9050): one at 0.90 ending at the
+    // first and last points read as compliant to anyone trusting the "accessible ramp" preset.
+    const carried = (pts: { x: number; y: number; z: number }[]) => {
+      const a = pts[0]!;
+      const b = pts[pts.length - 1]!;
+      return [{ ...add(a, scale(u, -RAIL_EXTENSION)), z: a.z }, ...pts, { ...add(b, scale(u, RAIL_EXTENSION)), z: b.z }];
+    };
+    const sides = [-1, 1].map((s) => line(s, RAIL_HEIGHT));
+    const railed = stair.railing !== false;
+    return {
+      stair,
+      parts,
+      walk,
+      rails: railed ? sides.map(carried) : [],
+      low: railed ? [-1, 1].map((s) => carried(line(s, LOW_RAIL_HEIGHT))) : [],
+      sides,
+      bottom,
+      height,
+      risers: runs,
+      riser: rise,
+    };
   }
   // Three steps fanned about the inner corner of a square of side w, its near edge centred at `near`,
   // climbed along `dir` and turning to `turn`: 30° each, the first by the flight that arrives, the
@@ -211,5 +233,5 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
     }
     rails.push(Array.from({ length: risers }, (_, i) => ({ ...at(r, start + i * da), z: Math.min(i + 1, risers) * riser + RAIL_HEIGHT })));
   }
-  return { stair, parts, walk, rails: stair.railing === false ? [] : rails, sides: rails, bottom, height, risers, riser };
+  return { stair, parts, walk, rails: stair.railing === false ? [] : rails, low: [], sides: rails, bottom, height, risers, riser };
 }

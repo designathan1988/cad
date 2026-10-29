@@ -51,5 +51,8 @@ export const isStairId = (id: string): boolean => id.startsWith(`${STAIR_PREFIX}
 export const STAIR_WIDTH = 1.0;
 export const STAIR_TREAD = 0.28;
 export const STAIR_RISER = 0.175;
-/** A handrail's height above the steps' nosing (m). */
-export const RAIL_HEIGHT = 0.9;
+/** A handrail's height above the steps' nosing (m), NBR 9050's upper one. */
+export const RAIL_HEIGHT = 0.92;
+/** A ramp's lower handrail (m) and how far both run level past its foot and head (m), as NBR 9050 asks. */
+export const LOW_RAIL_HEIGHT = 0.7;
+export const RAIL_EXTENSION = 0.3;

@@ -108,7 +108,7 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
     }
     ctx.restore();
   },
-  solid: (s) => ({ geometry: stairGeometry(s.parts, s.rails, s.riser, s.stair.kind !== 'spiral'), y: s.bottom, material: 'floor', edges: true }),
+  solid: (s) => ({ geometry: stairGeometry(s.parts, s.rails, s.low, s.riser, s.stair.kind !== 'spiral'), y: s.bottom, material: 'floor', edges: true }),
 
 
   fields: (items, { dispatch, doc }) =>
