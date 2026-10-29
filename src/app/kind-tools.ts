@@ -12,7 +12,7 @@ import { lengthNum } from '../ui/units';
 import { distance, type Point2 } from '../core/vector';
 import { MIN_WALL_LENGTH } from '../core/tolerance';
 import { type PlanOverlay } from '../render/plan-view';
-import { t } from '../ui/i18n';
+import { inEveryLanguage, t } from '../ui/i18n';
 import { solidsOf } from '../elements/registry';
 import { gridKind } from '../elements/kinds/grid';
 import { addRailing } from '../elements/railing/commands';
@@ -321,10 +321,12 @@ export function addElevations(app: App): void {
     app.toast(t('section.nothing'));
     return;
   }
-  const have = new Set(doc.sections.filter((m) => m.kind === 'elevation').map((m) => m.name));
+  // A side is made when an elevation round the model (one with no level) has its name in any language:
+  // by the name in the language on now, switching it made four more beside them.
+  const have = new Set(doc.sections.filter((m) => m.kind === 'elevation' && m.levelId === undefined).map((m) => m.name));
   const marks = elevationsAround(box, 3)
-    .map((e): SectionMark => ({ id: newId(SECTION_PREFIX), name: t(`section.side.${e.side}`), kind: 'elevation', start: e.start, end: e.end, depth: e.depth }))
-    .filter((m) => !have.has(m.name));
+    .filter((e) => !inEveryLanguage(`section.side.${e.side}`).some((n) => have.has(n)))
+    .map((e): SectionMark => ({ id: newId(SECTION_PREFIX), name: t(`section.side.${e.side}`), kind: 'elevation', start: e.start, end: e.end, depth: e.depth }));
   if (marks.length === 0) {
     app.toast(t('section.allMade'));
     return;

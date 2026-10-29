@@ -3884,6 +3884,9 @@ export const htmlLang = (l: Lang): string => (l === 'pt' ? 'pt-BR' : 'en');
 export const tBoth = (key: MessageKey, vars: Readonly<Record<string, string | number>> = {}): string =>
   [en[key], pt[key]].map((text) => text.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? ''))).join(' ');
 
+/** A message in every language: to recognise a name the app gave in whichever language was on then. */
+export const inEveryLanguage = (key: MessageKey): readonly string[] => [en[key], pt[key]];
+
 /** Whether a key is a message (a warning kind read from the engine, say). */
 export const hasMessage = (key: string): key is MessageKey => key in en;
 
