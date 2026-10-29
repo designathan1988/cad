@@ -59,34 +59,23 @@
   --sep-h: 20px;
   --cube: 60px;
   --cube-wrap: 92px;
-  /* The walking stick (walk.ts): its ring and its knob. */
-  --stick: 120px;
-  --stick-knob: 48px;
-  /* A point of interest's card. */
-  --point-card-w: 280px;
   --cube-depth: 300px;
   --dim-field-w: 72px;
   --measure-w: 160px;
   --coords-w: 120px;
   --swatch-w: 28px;
   --levels-col: 120px;
-  --lot-col: 220px;
   --menu-min-w: 180px;
   --list-max-h: 220px;
   --palette-max-h: 360px;
   --dialog-w: 420px;
   --dialog-w-lg: 560px;
-  --dialog-w-xl: 980px;
-  --dialog-w-budget: 1180px;
-  --schedule-h: 60vh;
-  --debug-w: 440px;
   --dialog-w-xl: 860px;
   --dialog-top: min(10vh, 96px);
   --types-list-w: 220px;
   --thumb-sm: 36px;
   --thumb-lg: 72px;
   --field-min-w: 160px;
-  --tour-w: 320px;
   --browser-w: 260px;
   --tooltip-w: 280px;
   --touch: 44px;
@@ -141,8 +130,15 @@
   --hatch: rgb(17 18 22 / 0.5);
   --warn: #c2410c;
   --error: #dc2626;
-  /* A check that holds (the services' calculations). */
-  --ok: #15803d;
+  /* The title bar (shell.ts), dark in both themes. */
+  --title-bg: #1f2329;
+  --title-text: #e8eaee;
+  --title-text-2: #a4a9b3;
+  --title-hover: rgb(255 255 255 / 0.09);
+  --title-field: rgb(255 255 255 / 0.08);
+  --title-border: rgb(255 255 255 / 0.14);
+  --saved-ok: #3fb27f;
+  --on-accent: #ffffff;
   --warn-soft: #fff1e6;
   --snap: #b45309;
   --shadow: 0 2px 8px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.06);
@@ -173,6 +169,7 @@
 }
 
 :root[data-theme='dark'] {
+  --title-bg: #111215;
   --bg: #1b1c20;
   --bg-2: #202126;
   --canvas: #1b1c20;
@@ -206,7 +203,6 @@
   --hatch: rgb(236 236 240 / 0.42);
   --warn: #fb923c;
   --error: #f87171;
-  --ok: #4ade80;
   --warn-soft: #3a2618;
   --snap: #f59e0b;
   --shadow: 0 2px 10px rgb(0 0 0 / 0.4);
@@ -790,7 +786,7 @@ button.project-name:hover {
   pointer-events: none;
   opacity: 0;
   transition: opacity 160ms;
-  /* Over a dialog's scrim (20): said from a dialog ("CSV saved", "link copied"), it was hidden under it. */
+  /* Over a dialog's scrim (20): said from a dialog ("link copied"), it was hidden under it. */
   z-index: 25;
 }
 .toast.show {
@@ -1742,7 +1738,7 @@ button.project-name:hover {
 .dialog-wide {
   width: min(var(--dialog-w-lg), calc(100vw - 2 * var(--sp-4)));
 }
-/* Quantity schedules: tabs, a table that scrolls inside (sideways on a phone), the totals kept in view. */
+/* The widest dialogs (the object editor, sections and elevations). */
 .dialog-xl {
   width: min(var(--dialog-w-xl), calc(100vw - 2 * var(--sp-4)));
 }
@@ -1953,12 +1949,11 @@ button.project-name:hover {
   margin: var(--sp-4) 0 var(--sp-1);
   font-size: var(--fs-sm);
 }
-/* Sheets and sections (sheets-dialog.ts, sections-dialog.ts): the set listed on the left, the open one
-   beside it with its page; one above the other on a narrow window. The page's overlay lies exactly over
-   it, for the views to be picked and dragged. */
+/* Sections and elevations (sections-dialog.ts): the set listed on the left, the open one beside it with
+   its drawing; one above the other on a narrow window. */
 .sheets-dialog {
   /* As any dialog's: under its top (--dialog-top), not the window's; with 2 sp-4 it ran --dialog-top
-     past the bottom and its PDF and Close buttons were out of reach on a short window. */
+     past the bottom and its Close button was out of reach on a short window. */
   max-height: calc(100vh - var(--dialog-top) - var(--sp-4));
   display: flex;
   flex-direction: column;
@@ -2143,54 +2138,6 @@ button.project-name:hover {
   color: var(--text-2);
   font-size: var(--fs-sm);
 }
-/* The norms dialog (rules-dialog.ts): on, what, minimum, maximum, source; then what is outside them. */
-.rules {
-  display: grid;
-  /* On, what (and its uses), minimum, maximum, source, article, weight, delete. */
-  grid-template-columns: max-content minmax(0, 1.3fr) var(--levels-col) var(--levels-col) minmax(0, 1fr) minmax(0, 0.7fr) max-content max-content;
-  gap: var(--sp-2) var(--sp-2);
-  align-items: center;
-  padding: var(--sp-3) var(--sp-4);
-}
-@media (max-width: 720px) {
-  .rules {
-    grid-template-columns: max-content minmax(0, 1.2fr) repeat(2, minmax(0, 1fr)) minmax(0, 1fr) minmax(0, 0.7fr) max-content max-content;
-  }
-}
-.approval-done .text-field,
-.approval-na .text-field {
-  color: var(--text-2);
-}
-.lot-areas table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--fs-sm);
-  font-variant-numeric: tabular-nums;
-  margin-bottom: var(--sp-2);
-}
-.lot-areas th,
-.lot-areas td {
-  padding: var(--sp-1) var(--sp-2);
-  text-align: left;
-  border-bottom: var(--line) solid var(--border);
-}
-.lot-areas th {
-  color: var(--text-2);
-  font-weight: 600;
-}
-.lot-areas .n {
-  text-align: right;
-}
-.lot-areas .note {
-  color: var(--text-3);
-  font-size: var(--fs-xs);
-}
-.rules input[type='checkbox'] {
-  justify-self: center;
-  width: var(--sp-4);
-  height: var(--sp-4);
-  accent-color: var(--accent);
-}
 .text-field {
   height: var(--field-h);
   padding: 0 var(--sp-2);
@@ -2220,19 +2167,6 @@ textarea.text-field {
 
 /* The frame (shell.ts), as the interface model: a dark title bar, the ribbon's tabs, the ribbon, the
    views' strip over the drawing, the properties on the right, the status bar. */
-:root {
-  --title-bg: #1f2329;
-  --title-text: #e8eaee;
-  --title-text-2: #a4a9b3;
-  --title-hover: rgb(255 255 255 / 0.09);
-  --title-field: rgb(255 255 255 / 0.08);
-  --title-border: rgb(255 255 255 / 0.14);
-  --saved-ok: #3fb27f;
-  --on-accent: #ffffff;
-}
-:root[data-theme='dark'] {
-  --title-bg: #111215;
-}
 .titlebar {
   grid-row: 1;
   background: var(--title-bg);
