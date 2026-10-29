@@ -19,8 +19,10 @@ const SUPERSAMPLE = 2;
 /** The stage, or null where the browser has no WebGL (the picture is then left out). */
 function stageOf(): Stage | null {
   if (stage) return stage;
+  // WebGL asked of a canvas of its own: a canvas keeps its first context, so asked of the renderer's one it
+  // was the probe's, without the renderer's options (the drawing buffer not kept).
+  if (!document.createElement('canvas').getContext('webgl2')) return null;
   const canvas = document.createElement('canvas');
-  if (!canvas.getContext('webgl2')) return null;
   // Read back as an image right after drawing: the buffer kept until then.
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
   // Lit as the realistic 3D view: filmic tone mapping, so whites are not flat and blown out.

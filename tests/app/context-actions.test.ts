@@ -34,11 +34,11 @@ describe('actions for the selection', () => {
     expect(contextIds(doc, ['w'])).toEqual(['move', 'flipWall', 'editType', 'selectSimilar', 'properties', 'delete']);
   });
 
-  it('a door: move (the Modify tools take it alone), flip hinge, flip swing, select similar, properties, delete', () => {
+  it('a door: move (the Modify tools take it alone), open or close, flip hinge, flip swing, properties, delete', () => {
     expect(contextIds(doc, ['d'])).toEqual(['move', 'toggleOpen', 'flipHinge', 'flipSwing', 'properties', 'delete']);
   });
 
-  it('a window: move, centre on its wall, select similar, frame, properties, delete', () => {
+  it('a window: move, open or close, centre on its wall, select similar, properties, delete', () => {
     expect(contextIds(doc, ['n'])).toEqual(['move', 'toggleOpen', 'centerOpening', 'selectSimilar', 'properties', 'delete']);
   });
 

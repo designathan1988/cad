@@ -175,13 +175,26 @@ export function scrub(label: HTMLElement, get: () => number | null, onCommit: (v
       v = Math.max(min, Math.round((start + (ev.clientX - x0) * 0.01) * 100) / 100);
       if (input) input.value = unit === 'm' ? lengthNum(v) : num(v);
     };
-    const up = () => {
+    // Ended once, by release (the value kept) or by the browser taking the pointer (a touch turned into a
+    // scroll, the capture lost: the field put back). Ended on release only, a cancel left the listeners on
+    // and the field showing a value never applied.
+    let done = false;
+    const end = (keep: boolean) => {
+      if (done) return;
+      done = true;
       label.removeEventListener('pointermove', move);
       label.removeEventListener('pointerup', up);
-      if (v !== start) onCommit(v);
+      label.removeEventListener('pointercancel', cancel);
+      label.removeEventListener('lostpointercapture', cancel);
+      if (keep && v !== start) onCommit(v);
+      else if (input) input.value = unit === 'm' ? lengthNum(start) : num(start);
     };
+    const up = () => end(true);
+    const cancel = () => end(false);
     label.addEventListener('pointermove', move);
     label.addEventListener('pointerup', up);
+    label.addEventListener('pointercancel', cancel);
+    label.addEventListener('lostpointercapture', cancel);
   });
 }
 

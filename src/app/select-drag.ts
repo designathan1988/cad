@@ -101,7 +101,7 @@ function smartBoxes(app: App, selected: ReadonlySet<string>): { box: Box; others
   const add = (id: string, pts: readonly Point2[]) => {
     const b = boxOf(pts);
     if (!b) return;
-    if (selected.has(id)) mine.push(...pts);
+    if (selected.has(id)) for (const p of pts) mine.push(p);
     else others.push(b);
   };
   for (const s of g.solids.values()) add(s.wall.id, s.pieces.flatMap((p) => p.polygon));

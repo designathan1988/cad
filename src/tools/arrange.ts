@@ -16,9 +16,14 @@ export interface Box {
 /** The box around points; null for none. */
 export function boxOf(points: readonly Point2[]): Box | null {
   if (points.length === 0) return null;
-  const xs = points.map((p) => p.x);
-  const ys = points.map((p) => p.y);
-  return { min: { x: Math.min(...xs), y: Math.min(...ys) }, max: { x: Math.max(...xs), y: Math.max(...ys) } };
+  // A loop: spread as arguments, a large selection's points passed the engine's limit (a RangeError).
+  let min = { x: Infinity, y: Infinity };
+  let max = { x: -Infinity, y: -Infinity };
+  for (const p of points) {
+    min = { x: Math.min(min.x, p.x), y: Math.min(min.y, p.y) };
+    max = { x: Math.max(max.x, p.x), y: Math.max(max.y, p.y) };
+  }
+  return { min, max };
 }
 
 /** How many boxes it takes: two to align, three to distribute (two have nothing between them). */
@@ -28,7 +33,7 @@ export const arrangeNeeds = (how: ArrangeHow): number => (how === 'spreadX' || h
 export function arrangeSteps(boxes: readonly Box[], how: ArrangeHow): Point2[] {
   const none = boxes.map(() => ({ x: 0, y: 0 }));
   if (boxes.length < arrangeNeeds(how)) return none;
-  const all = { min: { x: Math.min(...boxes.map((b) => b.min.x)), y: Math.min(...boxes.map((b) => b.min.y)) }, max: { x: Math.max(...boxes.map((b) => b.max.x)), y: Math.max(...boxes.map((b) => b.max.y)) } };
+  const all = boxOf(boxes.flatMap((b) => [b.min, b.max]))!;
   const mid = (b: Box, axis: 'x' | 'y') => (b.min[axis] + b.max[axis]) / 2;
   switch (how) {
     case 'left':
