@@ -5,6 +5,8 @@
 // Every change is one command, and every wall of the type follows at once, being derived from it.
 
 import type { App } from '../app/app';
+import { fold } from './search';
+import { pictureQueue } from './store-pictures';
 import { newId } from '../core/id';
 import type { Material } from '../elements/material/schema';
 import { wallTypeFields } from '../elements/wall/type-fields';
@@ -41,33 +43,11 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
   let scrolled: number | null = null;
   // The side's scroll, kept as a layer is edited (each change draws the dialog again).
   let sideScrolled = 0;
-  let pending: { id: string; layers: readonly WallLayer[] }[] = [];
-  let working = false;
-  const work = () => {
-    if (working) return;
-    working = true;
-    const step = () => {
-      const next = pending.shift();
-      const host = app.shell.helpBack;
-      if (!next || !host.querySelector('.objs-store')) {
-        working = false;
-        return;
-      }
-      const src = pictureOf(next.layers, app.store.get().materials, true);
-      const img = host.querySelector<HTMLImageElement>(`img[data-picture="${CSS.escape(next.id)}"]`);
-      if (img && src) {
-        img.src = src;
-        img.classList.remove('is-loading');
-      }
-      setTimeout(step, 0);
-    };
-    setTimeout(step, 0);
-  };
+  const queue = pictureQueue<{ id: string; layers: readonly WallLayer[] }>(() => app.shell.helpBack, (x) => x.id, (x) => pictureOf(x.layers, app.store.get().materials, true));
 
   const render = (close: () => void): HTMLElement => {
     const doc = app.store.get();
     const used = (id: WallTypeId) => doc.walls.filter((w) => w.wallTypeId === id).length;
-    const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     const found = doc.wallTypes.filter((x) => query.trim() === '' || fold(name(x.name)).includes(fold(query.trim())));
     const inProject = found.filter((x) => used(x.id) > 0);
     const shown = folder === USED ? inProject : found;
@@ -127,7 +107,7 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
     };
     nav.append(navItem(ALL, t('types.all'), found.length), navItem(USED, t('objs.inProject'), inProject.length));
 
-    pending = [];
+    queue.clear();
     const grid = el('div', { class: 'objs-grid', role: 'group', 'aria-label': t('types.list') });
     grid.addEventListener('scroll', () => (scrolled = grid.scrollTop));
     if (scrolled !== null) {
@@ -140,7 +120,7 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
       const src = pictureOf(x.layers, doc.materials, false);
       const img = el('img', { class: `objs-card-img${src ? '' : ' is-loading'}`, alt: '', 'data-picture': x.id });
       if (src) img.src = src;
-      else if (src === undefined) pending.push({ id: x.id, layers: x.layers });
+      else if (src === undefined) queue.add({ id: x.id, layers: x.layers });
       const n = used(x.id);
       card.append(
         el('span', { class: 'objs-card-pic' }, img, ...(n > 0 ? [el('span', { class: 'objs-badge' }, n === 1 ? t('types.usedByOne') : t('types.usedBy', { n }))] : [])),
@@ -192,7 +172,7 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
       fieldsSection(t('types.general'), true, wallTypeFields({ update, top: type.top }), [type]),
       layerEditor(type.layers, doc.materials, (next) => update({ layers: next })),
     );
-    work();
+    queue.work();
     return el('div', { class: 'dialog objs-store types-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('types.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side));
   };
 

@@ -4,6 +4,8 @@
 // model and size). Laid out as the objects' store (objects-dialog.ts), with its styles.
 
 import type { App } from '../app/app';
+import { fold } from './search';
+import { pictureQueue } from './store-pictures';
 import type { OpeningKind } from '../elements/opening/schema';
 import { OPENING_MODELS, type OpeningModel } from '../elements/opening/style';
 import { el } from './controls';
@@ -28,31 +30,8 @@ export function showOpenings(app: App, kind?: OpeningKind): void {
   let chosen = OPENING_MODELS.find((m) => m.kind === (kind ?? 'door'))?.id ?? OPENING_MODELS[0]!.id;
   let query = '';
   let scrolled: number | null = null;
-  let pending: OpeningModel[] = [];
-  let working = false;
-  // Pictures not made yet, made one at a time after the dialog shows.
-  const work = () => {
-    if (working) return;
-    working = true;
-    const step = () => {
-      const m = pending.shift();
-      const host = app.shell.helpBack;
-      if (!m || !host.querySelector('.objs-store')) {
-        working = false;
-        return;
-      }
-      const src = pictureOf(m, true);
-      const img = host.querySelector<HTMLImageElement>(`img[data-picture="${CSS.escape(m.id)}"]`);
-      if (img && src) {
-        img.src = src;
-        img.classList.remove('is-loading');
-      }
-      setTimeout(step, 0);
-    };
-    setTimeout(step, 0);
-  };
+  const queue = pictureQueue<OpeningModel>(() => app.shell.helpBack, (m) => m.id, (m) => pictureOf(m, true));
   const render = (close: () => void): HTMLElement => {
-    const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     const found = OPENING_MODELS.filter((m) => query.trim() === '' || fold(`${nameOf(m)} ${t(m.kind === 'door' ? 'opstore.doors' : 'opstore.windows')}`).includes(fold(query.trim())));
     const shown = folder === 'all' ? found : found.filter((m) => m.kind === folder);
     if (!shown.some((m) => m.id === chosen)) chosen = shown[0]?.id ?? '';
@@ -90,7 +69,7 @@ export function showOpenings(app: App, kind?: OpeningKind): void {
       navItem('window', t('opstore.windows'), found.filter((m) => m.kind === 'window').length),
     );
 
-    pending = [];
+    queue.clear();
     const grid = el('div', { class: 'objs-grid', role: 'group', 'aria-label': t('opstore.title') });
     grid.addEventListener('scroll', () => (scrolled = grid.scrollTop));
     if (scrolled !== null) {
@@ -109,7 +88,7 @@ export function showOpenings(app: App, kind?: OpeningKind): void {
       const src = pictureOf(m, false);
       const img = el('img', { class: `objs-card-img${src ? '' : ' is-loading'}`, alt: '', 'data-picture': m.id });
       if (src) img.src = src;
-      else if (src === undefined) pending.push(m);
+      else if (src === undefined) queue.add(m);
       card.append(
         el('span', { class: 'objs-card-pic' }, img),
         el('span', { class: 'objs-card-name' }, nameOf(m)),
@@ -145,7 +124,7 @@ export function showOpenings(app: App, kind?: OpeningKind): void {
       go.addEventListener('click', () => place(model));
       side.append(go, el('p', { class: 'objs-in-project' }, t('opstore.after')));
     }
-    work();
+    queue.work();
     return el('div', { class: 'dialog objs-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('opstore.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side));
   };
   const dialog = openProjectDialog(app, render, () => `model:${chosen}`);

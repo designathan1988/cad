@@ -4,6 +4,8 @@
 // them this build-up. Laid out as the objects' store (objects-dialog.ts), with its styles.
 
 import * as THREE from 'three';
+import { fold } from './search';
+import { pictureQueue } from './store-pictures';
 import type { App } from '../app/app';
 import { nextOf } from '../app/next-element';
 import { SEE_THROUGH, materialIn, type Material } from '../elements/material/schema';
@@ -54,32 +56,10 @@ export function showFloors(app: App): void {
   let chosen = keys[0]!;
   let query = '';
   let scrolled: number | null = null;
-  let pending: string[] = [];
-  let working = false;
-  const work = () => {
-    if (working) return;
-    working = true;
-    const step = () => {
-      const k = pending.shift();
-      const host = app.shell.helpBack;
-      if (!k || !host.querySelector('.objs-store')) {
-        working = false;
-        return;
-      }
-      const src = pictureOf(k, app.store.get().materials, true);
-      const img = host.querySelector<HTMLImageElement>(`img[data-picture="${CSS.escape(k)}"]`);
-      if (img && src) {
-        img.src = src;
-        img.classList.remove('is-loading');
-      }
-      setTimeout(step, 0);
-    };
-    setTimeout(step, 0);
-  };
+  const queue = pictureQueue<string>(() => app.shell.helpBack, (k) => k, (k) => pictureOf(k, app.store.get().materials, true));
   const render = (close: () => void): HTMLElement => {
     const doc = app.store.get();
     const nameOf = (k: string) => t(`floor.buildup.${k}` as MessageKey);
-    const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     const shown = keys.filter((k) => query.trim() === '' || fold(nameOf(k)).includes(fold(query.trim())));
     if (!shown.includes(chosen)) chosen = shown[0] ?? '';
     const selected = doc.floors.filter((f) => app.ui.selection.has(f.id));
@@ -99,7 +79,7 @@ export function showFloors(app: App): void {
     closeBtn.addEventListener('click', close);
     const head = el('div', { class: 'objs-head' }, el('h2', {}, t('flstore.title')), search, el('span', { class: 'objs-total' }, t('flstore.count', { n: shown.length })), closeBtn);
 
-    pending = [];
+    queue.clear();
     const grid = el('div', { class: 'objs-grid', role: 'group', 'aria-label': t('flstore.title') });
     grid.addEventListener('scroll', () => (scrolled = grid.scrollTop));
     if (scrolled !== null) {
@@ -112,7 +92,7 @@ export function showFloors(app: App): void {
       const src = pictureOf(k, doc.materials, false);
       const img = el('img', { class: `objs-card-img${src ? '' : ' is-loading'}`, alt: '', 'data-picture': k });
       if (src) img.src = src;
-      else if (src === undefined) pending.push(k);
+      else if (src === undefined) queue.add(k);
       const n = FLOOR_BUILDUPS[k]!.length;
       card.append(el('span', { class: 'objs-card-pic' }, img), el('span', { class: 'objs-card-name' }, nameOf(k)), el('span', { class: 'objs-card-meta' }, `${lengthText(total(k))} · ${n === 1 ? t('types.layerOne') : t('types.layerCount', { n })}`));
       card.addEventListener('click', () => {
@@ -146,7 +126,7 @@ export function showFloors(app: App): void {
       });
       side.append(go, el('p', { class: 'objs-in-project' }, selected.length > 0 ? t('flstore.applyNote') : t('flstore.drawNote')));
     }
-    work();
+    queue.work();
     return el('div', { class: 'dialog objs-store flstore', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('flstore.title') }, head, el('div', { class: 'objs-main' }, grid, side));
   };
   const dialog = openProjectDialog(app, render, () => `buildup:${chosen}`);

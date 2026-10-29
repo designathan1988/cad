@@ -4,6 +4,8 @@
 // that model). Laid out as the objects' store (objects-dialog.ts), with its styles.
 
 import type { App } from '../app/app';
+import { fold } from './search';
+import { pictureQueue } from './store-pictures';
 import { nextOf } from '../app/next-element';
 import type { KindSolid } from '../elements/contract';
 import { SEE_THROUGH } from '../elements/material/schema';
@@ -70,30 +72,8 @@ export function showPresets(app: App, slot?: PresetSlot): void {
   let folder: PresetSlot | 'all' = slot ?? 'all';
   let chosen = PRESETS.find((p) => p.slot === (slot ?? 'columns'))!.id;
   let query = '';
-  let pending: Preset[] = [];
-  let working = false;
-  const work = () => {
-    if (working) return;
-    working = true;
-    const step = () => {
-      const p = pending.shift();
-      const host = app.shell.helpBack;
-      if (!p || !host.querySelector('.objs-store')) {
-        working = false;
-        return;
-      }
-      const src = pictureOf(app, p, true);
-      const img = host.querySelector<HTMLImageElement>(`img[data-picture="${CSS.escape(p.id)}"]`);
-      if (img && src) {
-        img.src = src;
-        img.classList.remove('is-loading');
-      }
-      setTimeout(step, 0);
-    };
-    setTimeout(step, 0);
-  };
+  const queue = pictureQueue<Preset>(() => app.shell.helpBack, (p) => p.id, (p) => pictureOf(app, p, true));
   const render = (close: () => void): HTMLElement => {
-    const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     const folderName = (f: PresetSlot) => t(`prstore.${f}` as MessageKey);
     const found = PRESETS.filter((p) => query.trim() === '' || fold(`${words(p.name)} ${folderName(p.slot)}`).includes(fold(query.trim())));
     const shown = folder === 'all' ? found : found.filter((p) => p.slot === folder);
@@ -131,7 +111,7 @@ export function showPresets(app: App, slot?: PresetSlot): void {
       app.next = { ...app.next, [p.slot]: templateOf(app, p) };
       app.setTool(PRESET_TOOL[p.slot]);
     };
-    pending = [];
+    queue.clear();
     const grid = el('div', { class: 'objs-grid', role: 'group', 'aria-label': t('prstore.title') });
     for (const p of shown) {
       const card = el('button', { type: 'button', class: 'objs-card', 'aria-pressed': String(p.id === chosen) });
@@ -139,7 +119,7 @@ export function showPresets(app: App, slot?: PresetSlot): void {
       const src = pictureOf(app, p, false);
       const img = el('img', { class: `objs-card-img${src ? '' : ' is-loading'}`, alt: '', 'data-picture': p.id });
       if (src) img.src = src;
-      else if (src === undefined) pending.push(p);
+      else if (src === undefined) queue.add(p);
       card.append(el('span', { class: 'objs-card-pic' }, img), el('span', { class: 'objs-card-name' }, words(p.name)), el('span', { class: 'objs-card-meta' }, folderName(p.slot)));
       // The second click of a double click (detail 2) places: the first rebuilt the grid, so the browser's
       // dblclick, which needs both clicks on one element, never came.
@@ -162,7 +142,7 @@ export function showPresets(app: App, slot?: PresetSlot): void {
       go.addEventListener('click', () => place(preset));
       side.append(go, el('p', { class: 'objs-in-project' }, t('prstore.after')));
     }
-    work();
+    queue.work();
     return el('div', { class: 'dialog objs-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('prstore.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side));
   };
   const dialog = openProjectDialog(app, render, () => `preset:${chosen}`);

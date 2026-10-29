@@ -4,6 +4,8 @@
 // an id the project already has gets a new one). Laid out as the wall types and the materials.
 
 import type { App } from '../app/app';
+import { fold } from './search';
+import { pictureQueue } from './store-pictures';
 import type { Doc } from '../app/document';
 import { copyLibraryLink } from '../app/library-link';
 import { newId } from '../core/id';
@@ -41,9 +43,6 @@ export function blankDefinition(n: number): ObjectDefinition {
 
 /** The folder a definition is kept in: its own, or its category's name. */
 export const folderOf = (d: ObjectDefinition): string => d.folder?.trim() || t(`ed.cat.${d.category}` as MessageKey);
-
-/** Text for comparing: no accents, no case. */
-const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 /** Whether a definition answers a search: by its name in either language or its folder. */
 export const answers = (d: ObjectDefinition, query: string): boolean => {
@@ -116,31 +115,7 @@ export function showObjects(app: App, first?: string): void {
     fileInput.value = '';
     if (file) void importLibrary(app, file).then((said) => app.toast(said));
   });
-  // Pictures not made yet, made one at a time after the dialog is drawn, each put in its card when ready.
-  let pending: ObjectDefinition[] = [];
-  let working = false;
-  const work = () => {
-    if (working) return;
-    working = true;
-    const step = () => {
-      const def = pending.shift();
-      const host = app.shell.helpBack;
-      if (!def || !host.querySelector('.objs-store')) {
-        working = false;
-        return;
-      }
-      const doc = app.store.get();
-      const typeId = def.types[0]?.id ?? '';
-      const src = pictureOf(doc, def, typeId, true);
-      const img = host.querySelector<HTMLImageElement>(`img[data-picture="${CSS.escape(def.id)}"]`);
-      if (img && src) {
-        img.src = src;
-        img.classList.remove('is-loading');
-      }
-      setTimeout(step, 0);
-    };
-    setTimeout(step, 0);
-  };
+  const queue = pictureQueue<ObjectDefinition>(() => app.shell.helpBack, (d) => d.id, (d) => pictureOf(app.store.get(), d, d.types[0]?.id ?? '', true));
   const render = (close: () => void): HTMLElement => {
     const doc = app.store.get();
     const lang = getLang() === 'pt' ? 'pt-BR' : 'en';
@@ -235,7 +210,7 @@ export function showObjects(app: App, first?: string): void {
     for (const name of [...counts.keys()].sort((x, y) => x.localeCompare(y, lang))) nav.append(navItem(name, name, counts.get(name)!));
 
     // The cards.
-    pending = [];
+    queue.clear();
     const grid = el('div', { class: 'objs-grid', role: 'group', 'aria-label': t('objs.list') });
     grid.addEventListener('scroll', () => (scrolled = grid.scrollTop));
     if (scrolled !== null) {
@@ -248,7 +223,7 @@ export function showObjects(app: App, first?: string): void {
       const src = pictureOf(doc, d, d.types[0]?.id ?? '', false);
       const img = el('img', { class: `objs-card-img${src ? '' : ' is-loading'}`, alt: '', 'data-picture': d.id });
       if (src) img.src = src;
-      else if (src === undefined) pending.push(d);
+      else if (src === undefined) queue.add(d);
       const n = placed(d.id);
       card.append(
         el('span', { class: 'objs-card-pic' }, img, ...(n > 0 ? [el('span', { class: 'objs-badge' }, t('objs.badge', { n }))] : [])),
@@ -332,7 +307,7 @@ export function showObjects(app: App, first?: string): void {
         el('p', { class: 'objs-summary' }, t('objs.summary', { p: def.params.length, k: def.parts.length, h: def.handles.length, t: def.types.length })),
       );
     }
-    work();
+    queue.work();
     return el(
       'div',
       { class: 'dialog objs-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('objs.title') },
