@@ -150,8 +150,9 @@ export function drawSectionMark(p: PlanPaint, m: SectionMark, colour: string): v
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = colour;
-    const label = m.name.length > 3 ? m.name.slice(0, 1).toUpperCase() : m.name;
-    // Narrowed to the bubble when wider ("3-N", a room's elevation).
+    // An elevation round the model by its side's initial ("Norte": N); any other name whole, narrowed to the
+    // bubble when wider ("12-N", a room's elevation). Cut to its first letter, every room from 10 up read "1".
+    const label = m.kind === 'elevation' && m.levelId === undefined && m.name.length > 3 ? m.name.slice(0, 1).toUpperCase() : m.name;
     const fit = Math.min(1, (r * 1.6) / (ctx.measureText(label).width || 1));
     ctx.save();
     ctx.translate(c.x, c.y + 0.5);
