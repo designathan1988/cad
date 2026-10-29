@@ -38,6 +38,8 @@ export type Field<T> =
       readonly get: (x: T) => number;
       readonly set: (v: number) => void;
       readonly min?: number | ((items: readonly T[]) => number);
+      /** The highest value: one above it is refused in the field, with what it takes (a slope's steepest). */
+      readonly max?: number;
       /** What the value is in, after it: metres unless said ("°" for an angle). */
       readonly unit?: string;
       /** Places shown after the decimal mark (2 unless said; 0 for a count). */
@@ -210,7 +212,7 @@ const minOf = <T>(field: Extract<Field<T>, { kind: 'number' }>, items: readonly 
 function controlFor<T>(field: Field<T>, value: number | string | null, items: readonly T[]): HTMLElement {
   switch (field.kind) {
     case 'number':
-      return numberField(value as number | null, field.set, minOf(field, items), field.decimals ?? 2, field.unit ?? 'm');
+      return numberField(value as number | null, field.set, minOf(field, items), field.decimals ?? 2, field.unit ?? 'm', field.max ?? Infinity);
     case 'text':
       return textField(value as string | null, field.set, field.placeholder, field.lines === true);
     case 'select':

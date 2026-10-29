@@ -4,7 +4,7 @@ import { slopeFormat, slopeShown, slopeTyped, slopeUnit } from '../../ui/units';
 import type { Field } from '../../ui/fields';
 import { t } from '../../ui/i18n';
 import type { RoofPatch } from './commands';
-import { ROOF_COVERING, type RoofKind } from './schema';
+import { ROOF_COVERING, ROOF_GRADE_MAX, type RoofKind } from './schema';
 import type { RoofSolid } from './geometry';
 
 export interface RoofFieldActions {
@@ -33,7 +33,8 @@ export function roofFields(roofs: readonly RoofSolid[], act: RoofFieldActions): 
       kind: 'number',
       // As the project writes slopes (ui/units.ts): percent, degrees or 1:n.
       unit: slopeUnit(),
-      min: 0,
+      min: slopeFormat() === 'ratio' ? slopeShown(ROOF_GRADE_MAX) : 0,
+      ...(slopeFormat() === 'ratio' ? {} : { max: slopeShown(ROOF_GRADE_MAX) }),
       decimals: slopeFormat() === 'percent' ? 2 : 1,
       when: (rs) => rs.every((r) => r.roof.kind !== 'flat'),
       get: (r) => slopeShown(r.roof.edges.find((e) => e.grade !== null)?.grade ?? 0),
@@ -75,7 +76,8 @@ export function roofFields(roofs: readonly RoofSolid[], act: RoofFieldActions): 
               icon: 'raise',
               kind: 'number',
               unit: slopeUnit(),
-              min: 0,
+              min: slopeFormat() === 'ratio' ? slopeShown(ROOF_GRADE_MAX) : 0,
+              ...(slopeFormat() === 'ratio' ? {} : { max: slopeShown(ROOF_GRADE_MAX) }),
               decimals: slopeFormat() === 'percent' ? 2 : 1,
               sub: true,
               get: () => slopeShown(e.grade ?? 0),

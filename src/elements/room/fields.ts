@@ -1,6 +1,7 @@
 // The fields rooms and floors show in the panel (ui/fields.ts builds the rows).
 
-import { areaText, lengthText, volumeText } from '../../ui/units';
+import { areaText, lengthText, slopeFormat, slopeShown, slopeTyped, slopeUnit, volumeText } from '../../ui/units';
+import { ROOF_GRADE_MAX } from '../roof/schema';
 import type { Field } from '../../ui/fields';
 import { materialLabel, type MessageKey, name, t } from '../../ui/i18n';
 import type { Material } from '../material/schema';
@@ -8,13 +9,17 @@ import type { RoomPatch } from './commands';
 import type { FloorSolid, RoomSolid } from './derive';
 import { type Floor, FLOOR_BUILDUPS, type FloorId, type FloorLayer, ROOM_USES, type RoomId, type RoomUse, TILE_PATTERNS, type TilePattern, type Tiling } from './schema';
 
+/** What a floor's fields change. */
+export type FloorPatch = Partial<Pick<Floor, 'thickness' | 'offset' | 'slope'>>;
+
 export interface RoomFieldActions {
   readonly updateRoom: (id: RoomId, patch: RoomPatch) => void;
   /** The same change to all the selected rooms, one undo step. */
   readonly updateRooms: (ids: readonly RoomId[], patch: RoomPatch) => void;
   /** A level's height: a room's ceiling when it has none of its own. */
   readonly levelHeight: (levelId: string) => number;
-  readonly updateFloor: (ids: readonly FloorId[], patch: Partial<Pick<Floor, 'thickness' | 'offset' | 'slope'>>) => void;
+  /** The same patch on each, or one from each floor (its own direction kept when the grade changes). */
+  readonly updateFloor: (ids: readonly FloorId[], patch: FloorPatch | ((f: Floor) => FloorPatch)) => void;
   /** Draws a hole in the one floor selected (the floor tool, for its outline). */
   readonly startFloorHole?: (id: FloorId) => void;
   readonly clearFloorHoles?: (ids: readonly FloorId[]) => void;
@@ -117,9 +122,14 @@ export function floorFields(floors: readonly FloorSolid[], roomName: (id: RoomId
       label: 'floor.grade',
       icon: 'raise',
       kind: 'number',
-      unit: '%',
-      get: (f) => f.floor.slope?.grade ?? 0,
-      set: (v) => act.updateFloor(ids, { slope: { grade: v, dir: floors[0]?.floor.slope?.dir ?? 0 } }),
+      // As the project writes slopes (ui/units.ts), as a roof's: in % alone, a ramp read 8,33 beside a roof's 16,7°.
+      unit: slopeUnit(),
+      min: slopeFormat() === 'ratio' ? slopeShown(ROOF_GRADE_MAX) : 0,
+      ...(slopeFormat() === 'ratio' ? {} : { max: slopeShown(ROOF_GRADE_MAX) }),
+      decimals: slopeFormat() === 'percent' ? 2 : 1,
+      get: (f) => slopeShown(f.floor.slope?.grade ?? 0),
+      // Each keeps its own way down (from the first one's, terraces falling to different drains fell the same way).
+      set: (v) => act.updateFloor(ids, (f) => ({ slope: { grade: Math.min(ROOF_GRADE_MAX, slopeTyped(v)), dir: f.slope?.dir ?? 0 } })),
     },
     {
       id: 'gradeDir',
@@ -129,7 +139,7 @@ export function floorFields(floors: readonly FloorSolid[], roomName: (id: RoomId
       unit: '°',
       when: (fs) => fs.every((f) => (f.floor.slope?.grade ?? 0) !== 0),
       get: (f) => Math.round((((f.floor.slope?.dir ?? 0) * 180) / Math.PI) * 100) / 100,
-      set: (v) => act.updateFloor(ids, { slope: { grade: floors[0]?.floor.slope?.grade ?? 0, dir: (v * Math.PI) / 180 } }),
+      set: (v) => act.updateFloor(ids, (f) => ({ slope: { grade: f.slope?.grade ?? 0, dir: (v * Math.PI) / 180 } })),
     },
     { id: 'holes', label: 'floor.holes', kind: 'readout', when: (fs) => fs.some((f) => f.holes.length > 0), text: (fs) => String(fs.reduce((s, f) => s + f.holes.length, 0)) },
     // Its build-up: one of the usual ones to start from, then each layer's thickness.

@@ -3,7 +3,7 @@
 import { slopeFormat, slopeShown, slopeTyped, slopeUnit } from '../../ui/units';
 import { lengthText } from '../../ui/units';
 import type { Field } from '../../ui/fields';
-import { num, t } from '../../ui/i18n';
+import { t } from '../../ui/i18n';
 import type { StairPatch } from './commands';
 import { firstFlight, type StairSolid } from './geometry';
 import { RAMP_GRADE, type StairKind } from './schema';
@@ -55,15 +55,15 @@ export function stairFields(stairs: readonly StairSolid[], act: StairFieldAction
     },
     { id: 'height', label: 'stair.height', kind: 'number', min: 0.2, get: (s) => s.height, set: (v) => act.updateStairs(ids, { height: v }) },
     // What it comes to: how many risers, how high each, and the 2h + p rule (63 cm is comfortable).
-    { id: 'risers', label: 'stair.risers', kind: 'readout', when: (items) => items.every((s) => s.stair.kind !== 'ramp'), text: same((s) => `${s.risers} × ${num(s.riser * 100, 1)} cm`) },
-    { id: 'blondel', label: 'stair.blondel', kind: 'readout', when: (items) => items.every((s) => s.stair.kind !== 'ramp'), text: same((s) => `${num((2 * s.riser + s.stair.tread) * 100, 1)} cm`) },
+    { id: 'risers', label: 'stair.risers', kind: 'readout', when: (items) => items.every((s) => s.stair.kind !== 'ramp'), text: same((s) => `${s.risers} × ${lengthText(s.riser, 3)}`) },
+    { id: 'blondel', label: 'stair.blondel', kind: 'readout', when: (items) => items.every((s) => s.stair.kind !== 'ramp'), text: same((s) => lengthText(2 * s.riser + s.stair.tread, 3)) },
     // A ramp: how many runs, each rising how much, and its whole length with the landings.
     {
       id: 'runs',
       label: 'stair.runs',
       kind: 'readout',
       when: (items) => items.every((s) => s.stair.kind === 'ramp'),
-      text: same((s) => t('stair.runsText', { n: s.risers, h: num(s.riser * 100, 1), l: lengthText(Math.hypot(s.walk.at(-1)!.x - s.walk[0]!.x, s.walk.at(-1)!.y - s.walk[0]!.y)) })),
+      text: same((s) => t('stair.runsText', { n: s.risers, h: lengthText(s.riser, 3), l: lengthText(Math.hypot(s.walk.at(-1)!.x - s.walk[0]!.x, s.walk.at(-1)!.y - s.walk[0]!.y)) })),
     },
     {
       id: 'turn',

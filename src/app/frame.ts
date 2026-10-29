@@ -399,7 +399,10 @@ export function renderFrame(app: App): void {
         setFloorTiling: (ids, tiling) => app.store.dispatch(setFloorTiling(ids, tiling)),
         updateFloor: (ids, patch) => {
           const doc = app.store.get();
-          const next = ids.reduce((d, id) => updateFloor(id, patch).apply(d), doc);
+          const next = ids.reduce((d, id) => {
+            const f = d.floors.find((x) => x.id === id);
+            return f ? updateFloor(id, typeof patch === 'function' ? patch(f) : patch).apply(d) : d;
+          }, doc);
           if (next !== doc) app.store.dispatch({ label: 'cmd.updateFloor', apply: () => next });
         },
       },

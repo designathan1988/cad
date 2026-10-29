@@ -202,7 +202,10 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
       },
       {
         updateFloor: (ids, patch) => {
-          const next = ids.reduce((d, id) => updateFloor(id, patch).apply(d), c.doc);
+          const next = ids.reduce((d, id) => {
+            const f = d.floors.find((x) => x.id === id);
+            return f ? updateFloor(id, typeof patch === 'function' ? patch(f) : patch).apply(d) : d;
+          }, c.doc);
           if (next !== c.doc) c.dispatch({ label: 'cmd.updateFloor', apply: () => next });
         },
         ...(c.startFloorHole ? { startFloorHole: c.startFloorHole } : {}),
