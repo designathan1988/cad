@@ -374,11 +374,18 @@ export function searchSelect<T extends string>(
     const w = Math.max(r.width, 180);
     pop.style.width = `${w}px`;
     pop.style.left = `${Math.min(r.left, window.innerWidth - w - 8)}px`;
-    // Under the button, or above it when there is no room below.
-    const below = window.innerHeight - r.bottom;
-    pop.style.top = below > 260 ? `${r.bottom + 4}px` : `${Math.max(8, r.top - 4 - Math.min(260, pop.offsetHeight || 260))}px`;
-    window.addEventListener('pointerdown', outside, true);
+    // Filled, then placed: under the button, or above it when there is no room below, by its own height.
+    // Measured empty (only its search field), it was placed just above and grew down over the button.
     update();
+    const below = window.innerHeight - r.bottom;
+    if (below <= 260) {
+      // Above, it never covers its button: the list shortened to the room there is (it scrolls).
+      const room = r.top - 12;
+      const over = pop.offsetHeight - room;
+      if (over > 0) list.style.maxHeight = `${Math.max(list.clientHeight - over, 48)}px`;
+    }
+    pop.style.top = below > 260 ? `${r.bottom + 4}px` : `${Math.max(8, r.top - 4 - pop.offsetHeight)}px`;
+    window.addEventListener('pointerdown', outside, true);
     input.focus();
   }
 

@@ -420,7 +420,7 @@ export function measureHint(app: App): string {
     return t(angle === null ? 'hint.chainSoFar' : 'hint.chainSoFarAngle', { total: lengthText(chainLength(pts, false)), n: n - 1, last: lengthText(distance(pts[n - 2]!, pts[n - 1]!)), a: angleNum(angle ?? 0) });
   }
   if (m.kind === 'chainDone') {
-    if (m.closed) return t('hint.areaDone', { area: areaText(chainArea(m.points)), p: lengthText(chainLength(m.points, true)), n: m.points.length });
+    if (m.closed) return t('hint.areaDone', { area: ((a) => (a === null ? t('meas.crosses') : areaText(a)))(chainArea(m.points)), p: lengthText(chainLength(m.points, true)), n: m.points.length });
     return t('hint.chainDone', { total: lengthText(chainLength(m.points, false)), n: m.points.length - 1 });
   }
   const r = reading(m.a, m.b);

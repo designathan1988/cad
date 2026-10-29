@@ -369,17 +369,21 @@ export function snap(input: SnapInput): Snap {
   const dir = best && from ? normalize(sub(best.point, from)) : null;
   // The origin last: the axes it stands for are a weaker guide than the walls' own ends.
   const targets = [...ends, ...(input.chainStart ? [input.chainStart] : []), ...(input.acquired ?? []), ORIGIN];
+  // Slid along a snapped direction no farther from the pointer than the other snaps on a ray go: on a
+  // steep direction the point leapt many times the radius to an end's x (or y).
+  const slack = from ? r + distance(cursor, from) * Math.tan((ANGLE_TOL_DEG * Math.PI) / 180) : r;
+  const near = (p: Point2 | null) => (p && (!dir || distance(p, cursor) <= slack) ? p : null);
   for (const [k, e] of targets.entries()) {
     const base = best?.point ?? cursor;
     if (distance(e, cursor) <= r) continue;
     const wall = k < ends.length ? of(Math.floor(k / 2)) : {};
     const kind: SnapKind = k === targets.length - 1 ? 'axis' : 'aligned';
     if (Math.abs(base.x - e.x) <= r) {
-      const p = dir && from ? (Math.abs(dir.x) > 1e-9 ? add(from, scale(dir, (e.x - from.x) / dir.x)) : null) : vec(e.x, base.y);
+      const p = near(dir && from ? (Math.abs(dir.x) > 1e-9 ? add(from, scale(dir, (e.x - from.x) / dir.x)) : null) : vec(e.x, base.y));
       if (p && fresh(p)) return { point: p, kind, guideFrom: e, ...wall };
     }
     if (Math.abs(base.y - e.y) <= r) {
-      const p = dir && from ? (Math.abs(dir.y) > 1e-9 ? add(from, scale(dir, (e.y - from.y) / dir.y)) : null) : vec(base.x, e.y);
+      const p = near(dir && from ? (Math.abs(dir.y) > 1e-9 ? add(from, scale(dir, (e.y - from.y) / dir.y)) : null) : vec(base.x, e.y));
       if (p && fresh(p)) return { point: p, kind, guideFrom: e, ...wall };
     }
   }

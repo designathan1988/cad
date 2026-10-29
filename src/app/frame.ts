@@ -94,7 +94,7 @@ export function renderFrame(app: App): void {
   const chainLast = chainLine && chainLine.length >= 2 ? { a: chainLine.at(-2)!, b: chainLine.at(-1)! } : null;
   const chainMeasure =
     m.kind === 'chainDone' && m.closed
-      ? { at: { x: m.points.reduce((t, p) => t + p.x, 0) / m.points.length, y: m.points.reduce((t, p) => t + p.y, 0) / m.points.length }, text: areaText(chainArea(m.points)), clear: 0 }
+      ? { at: { x: m.points.reduce((t, p) => t + p.x, 0) / m.points.length, y: m.points.reduce((t, p) => t + p.y, 0) / m.points.length }, text: ((a) => (a === null ? t('meas.crosses') : areaText(a)))(chainArea(m.points)), clear: 0 }
       : chainLine && chainLast && distance(chainLast.a, chainLast.b) > 0
         ? {
             at: { x: (chainLast.a.x + chainLast.b.x) / 2, y: (chainLast.a.y + chainLast.b.y) / 2 },
