@@ -245,9 +245,13 @@ export function openingParts(o: Placed, f: OpeningFrame, forceOpen: boolean): Op
       const tH = (h0.x - f.start.x) * along.x + (h0.y - f.start.y) * along.y;
       const u0 = tH < width / 2 ? along : scale(along, -1);
       const u = { x: Math.cos(theta) * u0.x + Math.sin(theta) * out.x, y: Math.cos(theta) * u0.y + Math.sin(theta) * out.y };
-      // Closed it lies in the middle of the wall; open, about its hinge at the face.
-      const h = open ? h0 : P(tH, mid);
-      make(h, u, len - 0.003);
+      // A pivot leaf turns about its pivot, a sixth of it behind (symbol.ts draws it from there): taken
+      // from the line's first point, closed it ran a sixth past the strike jamb and left a slot at the
+      // other, and open it turned about a point behind the pivot.
+      const behind = s.operation === 'pivot' ? len / 6 : 0;
+      // Closed it lies in the middle of the wall; open, about its hinge at the face (a pivot's, its pivot).
+      const h = open ? add(h0, scale(out, behind)) : P(tH, mid);
+      make(add(h, scale(u, -behind)), u, len - 0.003);
     }
   };
   const design: LeafDesign = s.design ?? (s.operation === 'overhead' || s.operation === 'roller' ? 'grooves' : 'flush');
