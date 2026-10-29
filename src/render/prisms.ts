@@ -182,9 +182,15 @@ export function roofGeometry(
   const tri = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3) => pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
   const slab = (poly: readonly Point2[], low: (p: Point2) => number, high: (p: Point2) => number) => {
     const n = poly.length;
-    for (let i = 1; i < n - 1; i++) {
-      tri(toThree(poly[0]!, low(poly[0]!)), toThree(poly[i + 1]!, low(poly[i + 1]!)), toThree(poly[i]!, low(poly[i]!)));
-      tri(toThree(poly[0]!, high(poly[0]!)), toThree(poly[i]!, high(poly[i]!)), toThree(poly[i + 1]!, high(poly[i + 1]!)));
+    // Its caps in triangles of the polygon (a face of an L-shaped roof goes round its valley, not convex:
+    // a fan from its first corner crossed outside it).
+    for (const [i, j, k] of THREE.ShapeUtils.triangulateShape(poly.map((p) => new THREE.Vector2(p.x, p.y)), [])) {
+      // Each counter-clockwise in plan: its top faces up, its bottom down.
+      const [a, b0, c0] = [poly[i!]!, poly[j!]!, poly[k!]!];
+      const ccw = (b0.x - a.x) * (c0.y - a.y) - (b0.y - a.y) * (c0.x - a.x) > 0;
+      const [b, c] = ccw ? [b0, c0] : [c0, b0];
+      tri(toThree(a, low(a)), toThree(c, low(c)), toThree(b, low(b)));
+      tri(toThree(a, high(a)), toThree(b, high(b)), toThree(c, high(c)));
     }
     for (let i = 0; i < n; i++) {
       const a = poly[i]!;
