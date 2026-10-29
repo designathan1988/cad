@@ -58,6 +58,12 @@ export const zoneKind: ElementKind<Zone, ZoneSolid> = {
   // It goes with its rooms; alone it has nothing of its own to move.
   moved: (z) => z,
   mapped: (z, _t, id) => ({ ...z, id }),
+  // Its rooms deleted leave it; the last one takes it along. Kept with them, a zone of no room stayed in the
+  // file, drawn nowhere and impossible to pick or delete.
+  shed: (z, deleted) => {
+    const rooms = z.rooms.filter((r) => !deleted.has(r));
+    return rooms.length === 0 ? null : rooms.length === z.rooms.length ? z : { ...z, rooms };
+  },
   similar: (a, b) => a.category === b.category,
   plan: (p, s, lit) => {
     const { ctx } = p;

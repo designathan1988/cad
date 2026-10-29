@@ -146,6 +146,11 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   readonly follows?: (e: E) => string | null;
   /** On its own when what it follows is deleted (a room's floor keeps the outline it had). */
   readonly released?: (e: E, g: DerivedGeometry) => E;
+  /**
+   * When elements it lists are deleted (a zone's rooms): itself without them, or null to go with the last.
+   * Unlike `holders` (deleted with the first one). Absent: what it lists is not its own.
+   */
+  readonly shed?: (e: E, deleted: ReadonlySet<string>) => E | null;
   /** Its bottom and top (m): framed in 3D, under the ground. */
   readonly span?: (s: S) => { readonly bottom: number; readonly top: number };
   /** A surface the 3D pointer aims at (a floor), as at the walls. */

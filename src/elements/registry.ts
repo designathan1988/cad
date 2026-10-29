@@ -187,7 +187,10 @@ export function dropKinds(doc: Doc, ids: ReadonlySet<string>, g: DerivedGeometry
       const f = k.follows?.(e);
       return f !== null && f !== undefined && ids.has(f) && k.released ? k.released(e, g) : e;
     };
-    const kept = list.filter((e) => !goesWith(k, e, ids)).map(released);
+    const kept = list
+      .filter((e) => !goesWith(k, e, ids))
+      .map(released)
+      .flatMap((e) => (k.shed ? (k.shed(e, ids) ?? []) : [e]));
     if (kept.length !== list.length || kept.some((e, i) => e !== list[i])) next = withList(next, k, kept);
   }
   return next;
