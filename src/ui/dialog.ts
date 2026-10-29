@@ -15,9 +15,32 @@ export interface ProjectDialog {
   readonly close: () => void;
 }
 
+/**
+ * What a dialog made inert behind it: the rest of the window but the toasts, so Tab and a screen reader stay
+ * in the dialog (it says it is modal) and what it says still reaches them. One dialog layer: one list.
+ */
+let shut: HTMLElement[] = [];
+const reopen = () => {
+  for (const x of shut) x.inert = false;
+  shut = [];
+};
+function shutBehind(back: HTMLElement, toast: HTMLElement): void {
+  reopen();
+  for (const s of [...(back.parentElement?.children ?? [])] as HTMLElement[]) {
+    if (s === back) continue;
+    const inside = s.contains(toast) ? ([...s.children] as HTMLElement[]).filter((c) => c !== toast) : [s];
+    for (const x of inside) if (!x.inert) {
+      x.inert = true;
+      shut.push(x);
+    }
+  }
+}
+
 /** `closed`: told when it closes, however (Close, Esc, a click on the backdrop), to let go of what it set up. */
 export function openProjectDialog(app: App, render: (close: () => void) => HTMLElement, fallback: () => string | null = () => null, closed?: () => void): ProjectDialog {
   const back = app.shell.helpBack;
+  // Where the focus goes back when it closes (APG): what opened it, when it is still there to take it.
+  const opener = document.activeElement instanceof HTMLElement && !back.contains(document.activeElement) ? document.activeElement : null;
   let stale = false;
   const typing = () => {
     const a = document.activeElement;
@@ -98,7 +121,9 @@ export function openProjectDialog(app: App, render: (close: () => void) => HTMLE
     back.removeEventListener('focusout', onFocusOut);
     back.removeEventListener('click', onClick);
     back.hidden = true;
-    app.shell.planCanvas.focus();
+    reopen();
+    if (opener && opener.isConnected && opener !== document.body) opener.focus();
+    else app.shell.planCanvas.focus();
     closed?.();
   }
   // Captured on the window: Esc and undo work wherever the focus went, even off the dialog. What an
@@ -110,5 +135,6 @@ export function openProjectDialog(app: App, render: (close: () => void) => HTMLE
   back.addEventListener('click', onClick);
   back.replaceChildren(render(close));
   back.hidden = false;
+  shutBehind(back, app.shell.toast);
   return { redraw, close };
 }
