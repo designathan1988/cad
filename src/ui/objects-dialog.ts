@@ -255,13 +255,15 @@ export function showObjects(app: App, first?: string): void {
         el('span', { class: 'objs-card-name' }, words(d.name)),
         el('span', { class: 'objs-card-meta' }, `${folderOf(d)} · ${d.types.length === 1 ? t('objs.typeOne') : t('objs.types', { n: d.types.length })}`),
       );
-      card.addEventListener('click', () => {
+      // The second click of a double click (detail 2) places: the first rebuilt the grid, so the browser's
+      // dblclick, which needs both clicks on one element, never came.
+      card.addEventListener('click', (e) => {
+        if (e.detail >= 2) {
+          close();
+          return app.placeObject(d.id, typeOf.get(d.id) ?? d.types[0]?.id);
+        }
         chosen = d.id;
         dialog.redraw();
-      });
-      card.addEventListener('dblclick', () => {
-        close();
-        app.placeObject(d.id, typeOf.get(d.id) ?? d.types[0]?.id);
       });
       grid.append(card);
     }

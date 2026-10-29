@@ -115,11 +115,13 @@ export function showOpenings(app: App, kind?: OpeningKind): void {
         el('span', { class: 'objs-card-name' }, nameOf(m)),
         el('span', { class: 'objs-card-meta' }, `${t(m.kind === 'door' ? 'opstore.door' : 'opstore.window')} · ${lengthText(m.width)} × ${lengthText(m.height)}`),
       );
-      card.addEventListener('click', () => {
+      // The second click of a double click (detail 2) places: the first rebuilt the grid, so the browser's
+      // dblclick, which needs both clicks on one element, never came.
+      card.addEventListener('click', (e) => {
+        if (e.detail >= 2) return place(m);
         chosen = m.id;
         dialog.redraw();
       });
-      card.addEventListener('dblclick', () => place(m));
       grid.append(card);
     }
     if (shown.length === 0) grid.append(el('p', { class: 'objs-empty' }, t('opstore.noMatch')));
