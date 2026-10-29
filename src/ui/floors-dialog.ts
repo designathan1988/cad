@@ -38,11 +38,15 @@ export function floorSnapshot(layers: readonly FloorLayer[], materials: readonly
   return meshSnapshot(meshes, w, h, 0.7, 0.55);
 }
 
-const pictures = new Map<string, string | null>();
+/** By the project's materials (a new list after any change to one) and then the build-up: by the name alone, a
+ * material made grey kept its old white samples for the session. */
+const pictures = new WeakMap<readonly Material[], Map<string, string | null>>();
 function pictureOf(key: string, materials: readonly Material[], make: boolean, w = 360, h = 270): string | null | undefined {
+  let mine = pictures.get(materials);
+  if (!mine) pictures.set(materials, (mine = new Map()));
   const k = `${key}@${w}x${h}`;
-  if (!pictures.has(k) && make) pictures.set(k, floorSnapshot(FLOOR_BUILDUPS[key]!, materials, w, h));
-  return pictures.get(k);
+  if (!mine.has(k) && make) mine.set(k, floorSnapshot(FLOOR_BUILDUPS[key]!, materials, w, h));
+  return mine.get(k);
 }
 
 export function showFloors(app: App): void {

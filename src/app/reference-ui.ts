@@ -74,10 +74,13 @@ export async function importReference(app: App, file: File): Promise<void> {
       app.store.dispatch(addReference(r));
       app.toast(left ? t('ref.dxfSome', { n: d.lines.length / 4, left }) : t('ref.dxfMade', { n: d.lines.length / 4 }));
     } else {
-      const data = /\.pdf$/i.test(name) || file.type === 'application/pdf' ? await pdfPicture(file) : await dataUrl(file);
+      // A PDF by its name or its type, the same for its picture and its scale: by the name alone, one with no
+      // .pdf came in at a picture's scale, about six times too large.
+      const pdf = /\.pdf$/i.test(name) || file.type === 'application/pdf';
+      const data = pdf ? await pdfPicture(file) : await dataUrl(file);
       const { w, h } = await pictureSize(data);
       // A PDF page: a pixel of it at 1:100 on paper (calibrated after); a picture: a pixel a centimetre.
-      const scale = /\.pdf$/i.test(name) ? (0.0254 / PDF_DPI) * 100 : IMAGE_SCALE;
+      const scale = pdf ? (0.0254 / PDF_DPI) * 100 : IMAGE_SCALE;
       const mid = app.plan.center;
       r = { ...base, source: { kind: 'image', data, w, h }, at: { x: mid.x - (w * scale) / 2, y: mid.y - (h * scale) / 2 }, scale };
       app.store.dispatch(addReference(r));

@@ -49,11 +49,16 @@ function snapshot(app: App, p: Preset, w: number, h: number): string | null {
   return meshes.length > 0 ? meshSnapshot(meshes, w, h, 0.65, pitch) : null;
 }
 
-const pictures = new Map<string, string | null>();
+/** By the document (its materials and types) and what the preset makes now (the tool's next element with its
+ * patch): by the preset alone, a picture kept the width and material of the moment it was first drawn. */
+const pictures = new WeakMap<object, Map<string, string | null>>();
 function pictureOf(app: App, p: Preset, make: boolean, w = 360, h = 270): string | null | undefined {
-  const key = `${p.id}@${w}x${h}`;
-  if (!pictures.has(key) && make) pictures.set(key, snapshot(app, p, w, h));
-  return pictures.get(key);
+  const doc = app.store.get();
+  let mine = pictures.get(doc.materials);
+  if (!mine) pictures.set(doc.materials, (mine = new Map()));
+  const key = `${p.id}@${w}x${h}|${JSON.stringify(templateOf(app, p))}`;
+  if (!mine.has(key) && make) mine.set(key, snapshot(app, p, w, h));
+  return mine.get(key);
 }
 
 const FOLDERS: readonly PresetSlot[] = ['columns', 'beams', 'stairs', 'railings', 'roofs', 'curtains'];

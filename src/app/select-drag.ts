@@ -112,7 +112,7 @@ function smartBoxes(app: App, selected: ReadonlySet<string>): { box: Box; others
 /** An arc's middle let go this near its chord (px) makes the wall straight, with snaps on. */
 const STRAIGHT_PX = 8;
 /** Reach of an end grip from its centre: larger than the 9 px square drawn; 22 px (a 44 px target) on touch. */
-const gripPx = (): number => (matchMedia('(pointer: coarse)').matches ? 22 : 8);
+const gripPx = (): number => (matchMedia('(any-pointer: coarse)').matches ? 22 : 8);
 
 export interface SelectGestures {
   readonly down: (screen: Point2, world: Point2 | null, hit: WallId | null, shift: boolean) => void;
