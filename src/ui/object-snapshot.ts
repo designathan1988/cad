@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { SEE_THROUGH } from '../elements/material/schema';
-import { previewMesh } from '../render/pattern-texture';
+import { previewMesh } from '../elements/object/textures';
 import type { Doc } from '../project/doc';
 import { cutGeometries } from '../elements/kinds/object';
 import { evaluateObject } from '../elements/object/evaluate';

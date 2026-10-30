@@ -7,7 +7,7 @@
 // - Esc closes it wherever the focus is, and focus always lands on something enabled, so it is never
 //   lost (C): the control with the same data-focus key, else the given fallback, else Close.
 
-import type { App } from '../app/app';
+import type { App } from '../session/app';
 
 export interface ProjectDialog {
   /** Draws it again now, keeping the focus by its data-focus key. */

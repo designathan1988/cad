@@ -1,7 +1,7 @@
 import '../ui/styles.css';
-import { App } from './app';
-import { boot } from './boot';
-import { wireLibraryLinks } from './library-link';
+import { App } from '../session/app';
+import { boot } from '../project/boot';
+import { wireLibraryLinks } from '../library/link';
 import { wireInput } from './input';
 import { installTooltips } from '../ui/tooltip';
 

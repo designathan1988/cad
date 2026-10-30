@@ -3,7 +3,7 @@
 // is an action of the app (app/actions.ts), so it has the palette's name, key and enabled state, and
 // only what the app does is on it. What does not fit scrolls sideways, never wraps.
 
-import type { Action } from '../app/actions';
+import type { Action } from '../session/actions';
 import { el } from './controls';
 import { t, type MessageKey } from '../i18n/messages';
 import { icon, type IconName } from '../i18n/icons';

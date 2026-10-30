@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
 import { updateMaterial } from '../../src/elements/material/commands';
 import { isPattern, PATTERN_DEFAULTS, PATTERN_LAYOUTS, patternPieces, type SurfacePattern } from '../../src/elements/material/pattern';
-import { isMaterial, readProject } from '../../src/io/project-file';
+import { isMaterial, readProject } from '../../src/project/file';
 
 /**
  * How many pieces cover each of a grid of points over one period (pieces across its edge wrapped

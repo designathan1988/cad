@@ -2,7 +2,7 @@
 // change is one command.
 
 import { lengthText } from '../i18n/units';
-import type { App } from '../app/app';
+import type { App } from '../session/app';
 import { cutHeightOf } from '../project/doc';
 import { newId } from '../core/id';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../elements/level/commands';

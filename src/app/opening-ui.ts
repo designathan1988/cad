@@ -12,7 +12,7 @@ import { type Aim, ruleBase } from '../tools/opening-tool';
 import { t, type MessageKey } from '../i18n/messages';
 import { type Doc, wallHeights } from '../project/doc';
 import type { DerivedGeometry } from '../project/derive';
-import { wallStops, wallStopsOf } from './wall-stops';
+import { wallStops, wallStopsOf } from '../elements/wall/stops';
 
 /** Id of the opening being placed, in the derived geometry only. */
 export const OPENING_PREVIEW_ID = '__opening_preview__';

@@ -4,7 +4,7 @@
 
 import { finite, isObject, isPoint } from '../../core/guards';
 import type { Point2 } from '../../model/vector';
-import { railingGeometry } from '../../render/prisms';
+import { railingGeometry } from '../prisms';
 import type { ElementKind } from '../contract';
 import { updateRailings } from '../railing/commands';
 import { railingFields } from '../railing/fields';

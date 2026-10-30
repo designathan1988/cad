@@ -6,11 +6,11 @@ import { type Doc, type DocWall, type WallDefaults, wallBase, wallHeights, wallO
 import { distance } from '../../model/vector';
 import type { Field } from '../fields';
 import { name, t, type MessageKey } from '../../i18n/messages';
-import { layerSwatch } from '../../ui/swatch';
+import { layerSwatch } from './swatch';
 import { referenceLength } from '../opening/derive';
 import { arcOf } from './geometry/arc';
 import type { EndJoin, HeightRule, ReferenceLine } from './schema';
-import { canAlignWalls, canDistributeWalls } from '../../tools/arrange-walls';
+import { canAlignWalls, canDistributeWalls } from './arrange';
 
 export interface WallFieldActions {
   readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;

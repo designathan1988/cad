@@ -1,7 +1,7 @@
 // Snaps, by hand. 1 mm per pixel, so the 10 px radius is 1 cm.
 
 import { describe, expect, it } from 'vitest';
-import { snap, type SnapInput } from '../../src/tools/snap';
+import { snap, type SnapInput } from '../../src/session/snap';
 import { vec } from '../../src/model/vector';
 
 const input = (cursor: [number, number], extra: Partial<SnapInput> = {}): SnapInput => ({

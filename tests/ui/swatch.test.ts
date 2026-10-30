@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { BUILT_IN_MATERIALS } from '../../src/elements/material/schema';
-import { layerBands } from '../../src/ui/swatch';
+import { layerBands } from '../../src/elements/wall/swatch';
 
 describe('wall type thumbnail', () => {
   it("plaster 2 + brick 16 + plaster 2 over 40 px: 4, 32 and 4 px, in plaster's and brick's colours", () => {

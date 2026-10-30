@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
-import { CURRENT_VERSION, isLevel, readProject, writeProject } from '../../src/io/project-file';
+import { CURRENT_VERSION, isLevel, readProject, writeProject } from '../../src/project/file';
 import { BEFORE_65 } from '../../src/elements/object/library-before65';
 import { BEFORE_66 } from '../../src/elements/object/library-before66';
 

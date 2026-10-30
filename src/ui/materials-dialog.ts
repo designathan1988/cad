@@ -4,8 +4,8 @@
 // and in 3D. Laid out as the wall types dialog: the list on the left, the chosen one beside it.
 
 import { withLibrary } from './library-tabs';
-import type { App } from '../app/app';
-import { copyLibraryLink } from '../app/library-link';
+import type { App } from '../session/app';
+import { copyLibraryLink } from '../library/link';
 import { libraryOf } from '../io/library-file';
 import { newId } from '../core/id';
 import { addMaterial, deleteMaterial, materialDeleteBlocker, materialUses, type MaterialPatch, updateMaterial } from '../elements/material/commands';

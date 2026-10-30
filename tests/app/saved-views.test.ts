@@ -2,10 +2,10 @@
 
 import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
-import { deleteView, isSavedView, moveView, nextViewName, type SavedView, saveView, updateView } from '../../src/app/saved-views';
+import { deleteView, isSavedView, moveView, nextViewName, type SavedView, saveView, updateView } from '../../src/session/saved-views';
 import { VIEW_3D_DEFAULT } from '../../src/app/view-3d';
 import { detailOf } from '../../src/elements/drawing/schema';
-import { readProject, writeProject } from '../../src/io/project-file';
+import { readProject, writeProject } from '../../src/project/file';
 
 const v3d: SavedView = { id: 'view_a', name: '3D 1', kind: '3d', levelId: 'lvl_ground', position: [10, 8, 12], target: [4, 1.4, -3], view3d: { ...VIEW_3D_DEFAULT, xray: true } };
 const vPlan: SavedView = { id: 'view_b', name: 'Ground floor 1', kind: 'plan', levelId: 'lvl_ground', scale: 80, center: { x: 4, y: 3 } };

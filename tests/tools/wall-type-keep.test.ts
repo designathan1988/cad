@@ -7,7 +7,7 @@ import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import { insideRing } from '../../src/elements/room/derive';
 import type { ReferenceLine } from '../../src/elements/wall/schema';
-import { changeWallType, roomFace } from '../../src/tools/edit';
+import { changeWallType, roomFace } from '../../src/elements/wall/edit';
 
 const wall = (id: string, a: [number, number], b: [number, number], type = 'wt_masonry15', referenceLine: ReferenceLine = 'centerline'): DocWall => ({
   id,

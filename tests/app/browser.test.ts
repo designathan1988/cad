@@ -4,7 +4,7 @@ import { floorsOf } from '../../src/elements/registry';
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry, hideCategories } from '../../src/project/derive';
-import { typeUsage } from '../../src/app/browser-data';
+import { typeUsage } from '../../src/session/browser-data';
 import { newOpening } from '../../src/elements/opening/schema';
 
 const wall = (id: string, type: string, a: [number, number], b: [number, number]): DocWall => ({

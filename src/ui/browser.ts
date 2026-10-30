@@ -1,12 +1,12 @@
 // The project browser (ref/chat.txt:208): levels, views, layers (what is shown) and wall types, in a
 // drawer beside the tool bar, closed until asked for. It only reads the state and calls the app.
 
-import type { App } from '../app/app';
-import { typeUsage } from '../app/browser-data';
+import type { App } from '../session/app';
+import { typeUsage } from '../session/browser-data';
 import { el, section } from './controls';
 import { name, t } from '../i18n/messages';
 import { icon } from '../i18n/icons';
-import { layerSwatch } from './swatch';
+import { layerSwatch } from '../elements/wall/swatch';
 
 /** A full-width button row in a browser section. */
 function item(label: string, onClick: () => void, extra: { pressed?: boolean; current?: boolean; disabled?: boolean; lead?: string; trail?: string } = {}): HTMLElement {

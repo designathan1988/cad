@@ -20,30 +20,30 @@ aqui fica a decisão por arquivo.
 | src/core/collisions.ts | juntar | session/prefs + app/collision | flag de preferência morrendo em core/; o motor SAT vai para model/sat.ts |
 | src/core/store.ts | mover | project/store.ts | sem mudança (ADR §5) |
 | src/app/collision.ts | mover | model/sat.ts | hull (1 das 4 cópias) vira model/hull.ts único |
-| src/app/carry.ts | dividir | project/derive/cache.ts | geometryOf + keepRooms; apaga carriedRooms (morto) e toSegment (cópia) |
+| (movido no passo 4) src/project/carry.ts | dividir | project/derive/cache.ts | geometryOf + keepRooms; apaga carriedRooms (morto) e toSegment (cópia) |
 | src/app/keep-openings.ts | mover | opening/keep.ts | anda com wall-stops |
-| src/app/wall-stops.ts | mover | wall/stops.ts | funde com a ideia de jointsIn/endsIn (uma implementação só) |
+| (movido no passo 4) src/elements/wall/stops.ts | mover | wall/stops.ts | funde com a ideia de jointsIn/endsIn (uma implementação só) |
 | (movido no passo 4) src/project/derive.ts | dividir | project/derive/*.ts | deriveGeometry vira o orquestrador; jointsIn/endsIn fundidos em wall/stops; helpers p/ model; hideCategories → session |
-| src/app/keep-in-view.ts | mover | session/view/keep.ts |  |
-| src/app/dim-labels.ts | mover | canvas/plan/labels.ts |  |
-| src/app/section-box.ts | mover | session/view/section-box.ts | topAt duplicado funde com section-drawing |
+| (movido no passo 4) src/session/keep-in-view.ts | mover | session/view/keep.ts |  |
+| (movido no passo 4) src/session/dim-labels.ts | mover | canvas/plan/labels.ts |  |
+| (movido no passo 4) src/model/section-box.ts | mover | session/view/section-box.ts | topAt duplicado funde com section-drawing |
 | src/app/view-3d.ts | mover | session/view/view-3d.ts | a máquina de vistas (ADR §3) |
-| src/app/browser-data.ts | juntar | ui/browser.ts | 14 linhas de typeUsage |
+| (movido no passo 4) src/session/browser-data.ts | juntar | ui/browser.ts | 14 linhas de typeUsage |
 
 ## project/ — documento, formato, persistência
 
 | Arquivo | Ação | Destino | Nota |
 | --- | --- | --- | --- |
 | (movido no passo 4) src/project/doc.ts | dividir | project/doc.ts + level/… | Doc/niveis em project; wallHeights/wallBand → wall; covers WeakMap junto do roof |
-| src/io/project-file.ts | mover | project/file.ts | valida via guards; migrações intactas (formato congelado) |
-| src/io/typed-ids.ts | mover | project/typed-ids.ts | passa a emitir branded ids |
-| src/io/project-db.ts | mover | project/db.ts | tira os 2 bytes NUL literais (arquivo lido como binário); 'points' vestigial sai |
-| src/app/persist.ts | mover | project/persist.ts | pending/target viram o dono único da gravação |
-| src/app/boot.ts | mover | project/boot.ts |  |
-| src/app/projects.ts | mover | project/projects.ts | switchTo funde com app-files newProject/openFile (sequência de reset duplicada) |
-| src/app/app-files.ts | mover | project/files.ts |  |
-| src/app/saved-views.ts | mover | session/views.ts | nextViewName funde com layer-sets nextName (model/names.ts) |
-| src/app/layer-sets.ts | dividir | project/layer-sets.ts | dados+comandos no project; cores no canvas |
+| (movido no passo 4) src/project/file.ts | mover | project/file.ts | valida via guards; migrações intactas (formato congelado) |
+| (movido no passo 4) src/project/typed-ids.ts | mover | project/typed-ids.ts | passa a emitir branded ids |
+| (movido no passo 4) src/project/db.ts | mover | project/db.ts | tira os 2 bytes NUL literais (arquivo lido como binário); 'points' vestigial sai |
+| (movido no passo 4) src/project/persist.ts | mover | project/persist.ts | pending/target viram o dono único da gravação |
+| (movido no passo 4) src/project/boot.ts | mover | project/boot.ts |  |
+| (movido no passo 4) src/project/projects.ts | mover | project/projects.ts | switchTo funde com app-files newProject/openFile (sequência de reset duplicada) |
+| (movido no passo 4) src/project/files.ts | mover | project/files.ts |  |
+| (movido no passo 4) src/session/saved-views.ts | mover | session/views.ts | nextViewName funde com layer-sets nextName (model/names.ts) |
+| (movido no passo 4) src/project/layer-sets.ts | dividir | project/layer-sets.ts | dados+comandos no project; cores no canvas |
 | src/io/library-file.ts | mover | library/file.ts | deflate duplicado do pdf-canvas: um utilitário só |
 | src/io/import-dxf.ts | mover | library/import-dxf.ts |  |
 | src/io/import-mesh.ts | mover | library/import-mesh.ts | hull (4ª cópia) → model/hull.ts |
@@ -78,9 +78,9 @@ aqui fica a decisão por arquivo.
 | src/elements/kinds/wall.ts | juntar | wall/kind.ts | o adaptador do registro mora com a parede |
 | src/app/wall-ui.ts | dividir | wall/tool-ui.ts | submitMeasure vira roteador da sessão; previewWall → wall/preview |
 | src/tools/wall-tool.ts | mover | wall/tool.ts |  |
-| src/tools/edit.ts | mover | wall/edit.ts | edições que preservam juntas |
+| (movido no passo 4) src/elements/wall/edit.ts | mover | wall/edit.ts | edições que preservam juntas |
 | src/tools/split.ts | mover | wall/split.ts |  |
-| src/tools/arrange-walls.ts | mover | wall/arrange.ts |  |
+| (movido no passo 4) src/elements/wall/arrange.ts | mover | wall/arrange.ts |  |
 | src/tools/arc-edit.ts | mover | wall/arc-edit.ts |  |
 | src/ui/wall-snapshot.ts | mover | wall/snapshot.ts |  |
 | src/ui/layer-editor.ts | mover | wall/layer-editor.ts | é o editor de camadas do tipo de parede (e do piso: parâmetro) |
@@ -96,7 +96,7 @@ aqui fica a decisão por arquivo.
 | src/elements/opening/parts.ts | mover | opening/parts.ts | constantes de folha nomeadas |
 | src/elements/opening/style.ts | mover | opening/style.ts | identidade de estilo por JSON em 3 lugares → um helper |
 | src/elements/opening/symbol.ts | mover | opening/symbol.ts | arcos de 24 passos cacheados |
-| src/elements/opening/panel.ts | mover | opening/panel.ts |  |
+| (movido no passo 4) src/ui/panels/opening.ts | mover | opening/panel.ts |  |
 | src/elements/opening/marks.ts | mover | opening/marks.ts | O(n²) → mapa por chave |
 | src/elements/opening/sides.ts | mover | opening/sides.ts |  |
 | src/elements/opening/void.ts | mover | opening/void.ts |  |
@@ -114,7 +114,7 @@ aqui fica a decisão por arquivo.
 | src/elements/kinds/floor.ts | juntar | room/floor-kind.ts |  |
 | src/app/room-ui.ts | mover | room/tool-ui.ts | room-exists repetido 3× → um helper |
 | src/app/room-tag.ts | mover | room/tag.ts |  |
-| src/app/stacked.ts | mover | wall/stacked.ts | paredes sobre paredes |
+| (movido no passo 4) src/session/stacked.ts | mover | wall/stacked.ts | paredes sobre paredes |
 | src/elements/level/commands.ts | mover | level/commands.ts |  |
 | src/elements/material/schema.ts | dividir | material/schema.ts + material/built-in.ts | tabela de 75 materiais separada; isColor duplicado sai |
 | src/elements/material/commands.ts | mover | material/commands.ts |  |
@@ -142,7 +142,7 @@ aqui fica a decisão por arquivo.
 | src/elements/guide/commands.ts | mover | guide/commands.ts |  |
 | src/elements/guide/fields.ts | juntar | guide/commands.ts | 13 linhas |
 | src/elements/kinds/guide.ts | juntar | guide/kind.ts |  |
-| src/tools/guide-tool.ts | mover | guide/tool.ts |  |
+| (movido no passo 4) src/elements/guide/tool.ts | mover | guide/tool.ts |  |
 | src/app/guide-ui.ts | mover | guide/tool-ui.ts |  |
 | src/elements/column/schema.ts | mover | column/schema.ts | perfil I duplicado com beam → model/profile.ts |
 | src/elements/column/commands.ts | mover | column/commands.ts |  |
@@ -191,12 +191,12 @@ aqui fica a decisão por arquivo.
 | src/elements/reference/commands.ts | mover | reference/commands.ts | referencesOf (morto) sai |
 | src/elements/kinds/reference.ts | juntar | reference/kind.ts | inside() usa room/derive |
 | src/app/reference-ui.ts | mover | reference/tool-ui.ts |  |
-| src/app/section-drawing.ts | dividir | section/drawing.ts | 711 l → desenho (paint) e geometria (clip/outline) separados |
-| src/app/section-view.ts | mover | section/view.ts | caches ficam |
+| (movido no passo 4) src/elements/section/drawing.ts | dividir | section/drawing.ts | 711 l → desenho (paint) e geometria (clip/outline) separados |
+| (movido no passo 4) src/ui/section-canvas.ts | mover | section/view.ts | caches ficam |
 | src/ui/sections-dialog.ts | mover | section/dialog.ts |  |
 | src/elements/drawing/schema.ts | mover | project/drawing.ts |  |
 | src/app/model-import.ts | mover | library/import-model.ts |  |
-| src/app/library-link.ts | mover | library/link.ts |  |
+| (movido no passo 4) src/library/link.ts | mover | library/link.ts |  |
 | src/elements/object/schema.ts | mover | library/schema.ts |  |
 | src/elements/object/commands.ts | mover | library/commands.ts |  |
 | src/elements/object/evaluate.ts | mover | library/evaluate.ts | 541 l ok (< 600 de dados/lógica); binary search medido |
@@ -216,34 +216,34 @@ aqui fica a decisão por arquivo.
 
 | Arquivo | Ação | Destino | Nota |
 | --- | --- | --- | --- |
-| src/app/app.ts | dividir | session/app.ts (fachada fina) + session/state.ts (máquinas) + project hooks | UiState vira máquinas: tool (WallToolState etc. já existem), overlay, lifecycle |
+| (movido no passo 4) src/session/app.ts | dividir | session/app.ts (fachada fina) + session/state.ts (máquinas) + project hooks | UiState vira máquinas: tool (WallToolState etc. já existem), overlay, lifecycle |
 | src/app/input.ts | dividir | session/input/pointer.ts, keys.ts, field.ts | pick/planHits → canvas/pick.ts; showHelp → ui/help.ts |
 | src/app/input-keys.ts | juntar | session/input/keys.ts | letras de ferramenta codificadas → vêm das actions (defaultKeys) |
 | src/app/input-buttons.ts | juntar | session/input/buttons.ts |  |
-| src/app/keymap.ts | mover | session/keymap.ts |  |
+| (movido no passo 4) src/session/keymap.ts | mover | session/keymap.ts |  |
 | src/ui/menu-keys.ts | mover | session/menu-keys.ts |  |
-| src/app/view-keys.ts | juntar | session/input/keys.ts |  |
-| src/app/select-drag.ts | mover | session/drag.ts | hull (cópia) sai; estado de arrasto vira máquina |
-| src/app/selection-ui.ts | mover | session/selection.ts |  |
+| (movido no passo 4) src/session/view-keys.ts | juntar | session/input/keys.ts |  |
+| (movido no passo 4) src/session/drag.ts | mover | session/drag.ts | hull (cópia) sai; estado de arrasto vira máquina |
+| (movido no passo 4) src/session/selection.ts | mover | session/selection.ts |  |
 | src/app/select-similar.ts | juntar | session/selection.ts | 8 linhas de delegação |
 | src/app/keyboard-select.ts | juntar | session/selection.ts | 11 linhas |
-| src/app/handles.ts | mover | wall/handles.ts | alças de parede |
-| src/app/object-handles.ts | mover | library/handles.ts | jambRate deriveGeometry por arrasto → cache |
-| src/app/temp-dims.ts | mover | canvas/plan/temp-dims.ts | thicknessOf duplicado sai |
-| src/app/next-element.ts | mover | session/next.ts | notNext (lista negra) → contrato por kind |
-| src/app/modify-ui.ts | mover | session/modify.ts |  |
+| (movido no passo 4) src/session/handles.ts | mover | wall/handles.ts | alças de parede |
+| (movido no passo 4) src/session/object-handles.ts | mover | library/handles.ts | jambRate deriveGeometry por arrasto → cache |
+| (movido no passo 4) src/session/temp-dims.ts | mover | canvas/plan/temp-dims.ts | thicknessOf duplicado sai |
+| (movido no passo 4) src/session/next.ts | mover | session/next.ts | notNext (lista negra) → contrato por kind |
+| (movido no passo 4) src/session/modify.ts | mover | session/modify.ts |  |
 | src/tools/modify-tool.ts | mover | session/modify-tool.ts |  |
-| src/tools/transform.ts | mover | session/transform.ts |  |
+| (movido no passo 4) src/model/transform.ts | mover | session/transform.ts |  |
 | src/tools/nudge.ts | mover | session/nudge.ts |  |
 | src/tools/smart-guides.ts | mover | session/smart-guides.ts |  |
-| src/tools/snap.ts | mover | session/snap.ts | slack fórmula repetida 5× → helper |
+| (movido no passo 4) src/session/snap.ts | mover | session/snap.ts | slack fórmula repetida 5× → helper |
 | src/tools/arrange.ts | mover | session/arrange.ts |  |
-| src/app/views-ui.ts | mover | session/views-ui.ts |  |
-| src/app/view-ui.ts | dividir | session/view/*.ts | keepSelectionInView/3d paralelos fundem |
-| src/app/actions.ts | mover | session/actions.ts | SNAP_PARTS duplicado com chrome sai |
+| (movido no passo 4) src/session/views-ui.ts | mover | session/views-ui.ts |  |
+| (movido no passo 4) src/session/view-ui.ts | dividir | session/view/*.ts | keepSelectionInView/3d paralelos fundem |
+| (movido no passo 4) src/session/actions.ts | mover | session/actions.ts | SNAP_PARTS duplicado com chrome sai |
 | src/app/ribbon-tabs.ts | mover | ui/ribbon-tabs.ts | grupos repetidos (guides/dims ×2) → helpers |
-| src/app/context-menu.ts | mover | session/context-menu.ts |  |
-| src/app/context-actions.ts | juntar | session/context-menu.ts |  |
+| (movido no passo 4) src/session/context-menu.ts | mover | session/context-menu.ts |  |
+| (movido no passo 4) src/session/context-actions.ts | juntar | session/context-menu.ts |  |
 
 ## canvas/ — os desenhistas de cada vista
 
@@ -253,13 +253,13 @@ aqui fica a decisão por arquivo.
 | src/render/scene-3d.ts | dividir | canvas/scene/*.ts (sync, photo, style, pick, materials, box) | 1603 l; keys por JSON.stringify; hidden-style aloca por quadro |
 | src/render/overlay-3d.ts | mover | canvas/overlay-3d.ts | tag duplicada do plan-view → canvas/labels |
 | src/render/view-cube.ts | mover | canvas/view-cube.ts |  |
-| src/render/prisms.ts | mover | canvas/prisms.ts | bloco de winding repetido 3× → helper |
+| (movido no passo 4) src/elements/prisms.ts | mover | canvas/prisms.ts | bloco de winding repetido 3× → helper |
 | src/render/room-tags.ts | mover | canvas/plan/room-tags.ts | Box/meets duplicado do plan-view → um |
 | src/render/trace-shader.ts | mover | canvas/photo/shader.ts |  |
-| src/render/tiling.ts | mover | canvas/plan/tiling.ts |  |
+| (movido no passo 4) src/elements/room/tiling.ts | mover | canvas/plan/tiling.ts |  |
 | src/render/wall-paint.ts | mover | wall/paint.ts |  |
-| src/render/hatch.ts | mover | canvas/plan/hatch.ts | loop de tile duplicado → um |
-| src/render/pattern-texture.ts | dividir | canvas/textures.ts + library/preview.ts | previewMesh (UI) separa |
+| (movido no passo 4) src/elements/material/hatch.ts | mover | canvas/plan/hatch.ts | loop de tile duplicado → um |
+| (movido no passo 4) src/elements/object/textures.ts | dividir | canvas/textures.ts + library/preview.ts | previewMesh (UI) separa |
 
 ## ui/ — chrome, diálogos, i18n, estilos
 
@@ -282,7 +282,7 @@ aqui fica a decisão por arquivo.
 | src/ui/library-tabs.ts | mover | ui/library-tabs.ts |  |
 | src/ui/bar-place.ts | mover | ui/bar-place.ts |  |
 | src/ui/cursors.ts | mover | ui/cursors.ts |  |
-| src/ui/swatch.ts | mover | ui/swatch.ts | layer-editor reusa layerSwatch parametrizado |
+| (movido no passo 4) src/elements/wall/swatch.ts | mover | ui/swatch.ts | layer-editor reusa layerSwatch parametrizado |
 | (movido no passo 4) src/i18n/units.ts | dividir | i18n/units.ts | formatação compartilhada por elementos e ui | `current` espelha doc.units → deriva por render (sem cópia) |
 | src/ui/units-dialog.ts | mover | ui/dialogs/units.ts |  |
 | src/ui/variables-dialog.ts | mover | ui/dialogs/variables.ts |  |

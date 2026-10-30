@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
-import { wallStops } from '../../src/app/wall-stops';
+import { wallStops } from '../../src/elements/wall/stops';
 import { vec } from '../../src/model/vector';
 
 const wall = (id: string, a: [number, number], b: [number, number], levelId = 'lvl_ground'): DocWall => ({

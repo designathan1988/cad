@@ -7,10 +7,10 @@ import type { Point2 } from '../model/vector';
 import { openingParts } from '../elements/opening/parts';
 import { newOpening } from '../elements/opening/schema';
 import type { OpeningModel } from '../elements/opening/style';
-import { prism } from '../render/prisms';
+import { prism } from '../elements/prisms';
 import { meshSnapshot } from './object-snapshot';
 import { materialIn, SEE_THROUGH } from '../elements/material/schema';
-import { previewMesh } from '../render/pattern-texture';
+import { previewMesh } from '../elements/object/textures';
 
 /** The wall around it: this much beyond each jamb, over the head and its thickness (m). */
 const MARGIN = 0.5;

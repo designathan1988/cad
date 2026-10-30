@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
-import { alignWalls, canAlignWalls, canDistributeWalls, distributeWalls } from '../../src/tools/arrange-walls';
+import { alignWalls, canAlignWalls, canDistributeWalls, distributeWalls } from '../../src/elements/wall/arrange';
 
 const wall = (id: string, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
   id,

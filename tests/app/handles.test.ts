@@ -3,7 +3,7 @@
 // turns it. Each answers within a reach larger than its drawing.
 
 import { describe, expect, it } from 'vitest';
-import { doorFlips, handleAt, handlesFor } from '../../src/app/handles';
+import { doorFlips, handleAt, handlesFor } from '../../src/session/handles';
 import type { DocWall } from '../../src/project/doc';
 
 const wall = (id: string, a: [number, number], b: [number, number], bulge = 0): DocWall => ({

@@ -5,12 +5,12 @@
 
 import { withLibrary } from './library-tabs';
 import * as THREE from 'three';
-import type { App } from '../app/app';
-import { nextOf } from '../app/next-element';
+import type { App } from '../session/app';
+import { nextOf } from '../session/next';
 import { SEE_THROUGH, materialIn, type Material } from '../elements/material/schema';
 import { setFloorLayers } from '../elements/room/commands';
 import { FLOOR_BUILDUPS, type FloorLayer } from '../elements/room/schema';
-import { previewMesh } from '../render/pattern-texture';
+import { previewMesh } from '../elements/object/textures';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { materialLabel, type MessageKey, t } from '../i18n/messages';

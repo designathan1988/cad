@@ -2,7 +2,7 @@
 // modulo"). Each a name and a length; added, renamed, changed and removed, one command each, kept in
 // the project file (core/measure.ts reads them).
 
-import type { App } from '../app/app';
+import type { App } from '../session/app';
 import type { Doc } from '../project/doc';
 import { isVariableName } from '../core/measure';
 import type { Command } from '../core/store';

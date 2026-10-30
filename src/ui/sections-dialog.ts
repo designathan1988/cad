@@ -3,10 +3,10 @@
 // round the building in one go, and a section drawn in plan with its tool. A room's interior elevations
 // are made from its panel and listed here with their level.
 
-import type { App } from '../app/app';
+import type { App } from '../session/app';
 import { type Doc, levelOf } from '../project/doc';
 import type { SectionMark } from '../elements/section/schema';
-import { sectionCanvas, sectionOf } from '../app/section-view';
+import { sectionCanvas, sectionOf } from './section-canvas';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { name, t } from '../i18n/messages';

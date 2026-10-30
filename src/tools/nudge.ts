@@ -3,7 +3,7 @@
 // step along it, a room's point, an outline floor and a guide move. One document out, for one undo step.
 
 import { wallsOnGrids } from '../elements/grid/carry';
-import { moveRooms, roomsGoingWith } from '../app/carry';
+import { moveRooms, roomsGoingWith } from '../project/carry';
 import type { Doc } from '../project/doc';
 import { type DerivedGeometry, hostsIn } from '../project/derive';
 import { dot, normalize, type Point2, sub } from '../model/vector';
@@ -11,7 +11,7 @@ import { detachedFrom } from '../elements/opening/commands';
 import { deriveOpenings } from '../elements/opening/derive';
 import { hasDistance, type PositionRule } from '../elements/opening/schema';
 import { moveKinds } from '../elements/registry';
-import { moveWalls } from './edit';
+import { moveWalls } from '../elements/wall/edit';
 
 /** The step of an arrow key: 5 cm (the snap grid), 1 cm with Alt; up is +y. Null for other keys. */
 export function arrowStep(key: string, fine: boolean): Point2 | null {

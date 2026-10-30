@@ -4,7 +4,7 @@
 
 import { lengthNum, lengthText } from '../../i18n/units';
 import { type Doc, wallNumber } from '../../project/doc';
-import { stopAfter, stopBefore, wallStops } from '../../app/wall-stops';
+import { stopAfter, stopBefore, wallStops } from '../wall/stops';
 import { referenceLength } from './derive';
 import type { RoomSolid } from '../room/derive';
 import { openingSides } from './sides';

@@ -3,7 +3,7 @@
 // option, Enter runs it, Esc closes and gives the focus back. Each option shows where the command
 // lives and its key, as Blender's menu search does.
 
-import type { Action } from '../app/actions';
+import type { Action } from '../session/actions';
 import { el } from './controls';
 import { t } from '../i18n/messages';
 import { searchEntries } from './search';

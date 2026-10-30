@@ -7,7 +7,7 @@ import type { ElementKind } from '../contract';
 import { clearGuides } from '../guide/commands';
 import { guideFields } from '../guide/fields';
 import { GUIDE_PREFIX, type Guide } from '../guide/schema';
-import { GUIDE_PX } from '../../tools/guide-tool';
+import { GUIDE_PX } from '../guide/tool';
 
 /** A point guide's reach about its point beyond the pick distance (m). */
 const POINT_GUIDE_R = 0.02;

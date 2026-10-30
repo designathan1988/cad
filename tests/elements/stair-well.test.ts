@@ -11,7 +11,7 @@ import { firstFlight, stairSolid, stairWell } from '../../src/elements/stair/geo
 import type { Stair } from '../../src/elements/stair/schema';
 import { arrivalOf, levelReached, wellsReaching } from '../../src/elements/stair/well';
 import { signedArea } from '../../src/elements/wall/geometry/convex';
-import { readProject, writeProject } from '../../src/io/project-file';
+import { readProject, writeProject } from '../../src/project/file';
 import type { FloorSolid } from '../../src/elements/room/derive';
 
 const upper = { id: 'lvl_up', name: 'Upper', elevation: 2.8, height: 2.8 };

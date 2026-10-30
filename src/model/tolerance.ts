@@ -23,3 +23,6 @@ export const LENGTH_EPS = 1e-6;
 export const SEAM_TOL = 1e-7;
 /** A sector's arm is off its face by less than this (join/sectors.ts). */
 export const OFF_FACE = 1e-9;
+
+/** The grid's step on the ground (m): what a snap-to-grid lands on. */
+export const GRID_STEP = 0.05;

@@ -8,7 +8,7 @@ import { computeWallGeometry } from '../../../src/elements/wall/geometry/footpri
 import type { EndJoin, Wall, WallType } from '../../../src/elements/wall/schema';
 import type { Point2 } from '../../../src/model/vector';
 import { newDocument } from '../../../src/project/doc';
-import { readProject, writeProject } from '../../../src/io/project-file';
+import { readProject, writeProject } from '../../../src/project/file';
 
 const solid: WallType = { id: 'solid', name: 'solid', layers: [{ thickness: 0.2, function: 'structure', materialId: 'concrete' }] };
 const layered: WallType = {

@@ -3,9 +3,9 @@
 
 import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
-import { deleteLayerSet, isLayerSet, isRoomOverride, nextName, overrideColours, roomOverrideColours, saveLayerSet, setOverrides, setRoomOverrides, wallPhases } from '../../src/app/layer-sets';
-import { isSavedView } from '../../src/app/saved-views';
-import { readProject, writeProject } from '../../src/io/project-file';
+import { deleteLayerSet, isLayerSet, isRoomOverride, nextName, overrideColours, roomOverrideColours, saveLayerSet, setOverrides, setRoomOverrides, wallPhases } from '../../src/project/layer-sets';
+import { isSavedView } from '../../src/session/saved-views';
+import { readProject, writeProject } from '../../src/project/file';
 
 describe('layer combinations', () => {
   it('saved and deleted, one step each; none left, none kept', () => {

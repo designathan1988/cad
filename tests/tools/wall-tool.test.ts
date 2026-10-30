@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { vec } from '../../src/model/vector';
-import { snap } from '../../src/tools/snap';
+import { snap } from '../../src/session/snap';
 import { bulgeForRadius, bulgeThrough, IDLE, wallTransition, type WallToolEvent, type WallToolState } from '../../src/tools/wall-tool';
 
 function run(events: WallToolEvent[]) {

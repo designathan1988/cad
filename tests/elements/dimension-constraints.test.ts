@@ -10,7 +10,7 @@ import { lockDimensions, setDimensionsEqual } from '../../src/elements/dimension
 import { equalChains, settleDimensions } from '../../src/elements/dimension/constraints';
 import type { Dimension } from '../../src/elements/dimension/schema';
 import { newOpening } from '../../src/elements/opening/schema';
-import { moveWalls } from '../../src/tools/edit';
+import { moveWalls } from '../../src/elements/wall/edit';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
   id,

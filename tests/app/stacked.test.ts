@@ -3,8 +3,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
-import { stackedSteps } from '../../src/app/stacked';
-import { moveWalls } from '../../src/tools/edit';
+import { stackedSteps } from '../../src/session/stacked';
+import { moveWalls } from '../../src/elements/wall/edit';
 
 const wall = (id: string, levelId: string, type: string, a: [number, number], b: [number, number], referenceLine: DocWall['referenceLine'] = 'centerline'): DocWall => ({
   id,

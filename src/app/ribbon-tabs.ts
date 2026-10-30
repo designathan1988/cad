@@ -7,12 +7,12 @@ import { words } from '../elements/object/fields';
 import type { ObjectDefinition } from '../elements/object/schema';
 import type { RibbonItem, RibbonTab } from '../ui/ribbon';
 import type { MessageKey } from '../i18n/messages';
-import type { App } from './app';
+import type { App } from '../session/app';
 import type { ModifyKind } from '../tools/modify-tool';
 import type { ToolId } from '../ui/shell';
 import { t } from '../i18n/messages';
 import { kindOfId } from '../elements/registry';
-import { contextEntries } from './context-menu';
+import { contextEntries } from '../session/context-menu';
 
 /** Every button with its short name (rib.s.<action>): the palette's full name stays its tooltip. */
 export function ribbonTabs(app: App): readonly RibbonTab[] {

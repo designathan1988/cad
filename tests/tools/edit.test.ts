@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { newDocument, type DocWall } from '../../src/project/doc';
 import { vec } from '../../src/model/vector';
-import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../../src/tools/edit';
+import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../../src/elements/wall/edit';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
   id,

@@ -21,7 +21,7 @@ const doc = fs.readFileSync(path.join(ROOT, 'docs/refatoracao/inventario.md'), '
 const missing = files.filter((f) => !doc.includes(f));
 const extra = [...doc.matchAll(/(src\/[a-z0-9/._-]*\.(?:ts|css))/g)]
   .map((m) => m[1])
-  .filter((f) => !files.includes(f) && !doc.includes(`(apagado) ${f}`));
+  .filter((f) => !files.includes(f) && !doc.includes(`(apagado) ${f}`) && !doc.includes(`(movido no passo 4) ${f}`));
 console.log(`files in src: ${files.length}; rows matched: ${files.length - missing.length}`);
 if (missing.length > 0) console.log('MISSING DISPOSITION:\n  ' + missing.join('\n  '));
 if (extra.length > 0) console.log('ROWS FOR FILES THAT DO NOT EXIST:\n  ' + [...new Set(extra)].join('\n  '));

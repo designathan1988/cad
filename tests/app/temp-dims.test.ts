@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
-import { tempDims } from '../../src/app/temp-dims';
+import { tempDims } from '../../src/session/temp-dims';
 import { vec } from '../../src/model/vector';
 import { newOpening } from '../../src/elements/opening/schema';
 

@@ -19,14 +19,14 @@ import { boundsOf, openingOutline } from '../project/derive';
 import { renderBrowser } from '../ui/browser';
 import { renderVisibility } from '../ui/visibility-panel';
 import { renderRibbonTab, renderRibbonTabs, type RibbonTab } from '../ui/ribbon';
-import type { Action } from './actions';
+import type { Action } from '../session/actions';
 import { ribbonTabs } from './ribbon-tabs';
 import { exploding, RENDER_QUALITIES, shownLevels, VISUAL_STYLES } from './view-3d';
-import { contextEntries } from './context-menu';
+import { contextEntries } from '../session/context-menu';
 import { placeBarY } from '../ui/bar-place';
 import { signedArea } from '../elements/room/derive';
-import type { App } from './app';
-import { EDIT_LEVELS } from './app';
+import type { App } from '../session/app';
+import { EDIT_LEVELS } from '../session/app';
 
 /** The parts the snaps divide a segment into, as the palette's (actions.ts). */
 const SNAP_PARTS = [2, 3, 4, 5, 6, 8, 10];

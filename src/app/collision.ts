@@ -5,7 +5,7 @@
 
 import type { Point2 } from '../model/vector';
 import { eachSolid } from '../elements/registry';
-import type { App } from './app';
+import type { App } from '../session/app';
 import type { DerivedGeometry } from '../project/derive';
 
 /** A solid as collisions see it: a convex outline in plan and its heights. */

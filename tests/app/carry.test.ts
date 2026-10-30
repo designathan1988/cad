@@ -2,7 +2,7 @@
 // room with a wall left behind stays where it is.
 
 import { describe, expect, it } from 'vitest';
-import { moveRooms, roomsGoingWith, wallsAround } from '../../src/app/carry';
+import { moveRooms, roomsGoingWith, wallsAround } from '../../src/project/carry';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 

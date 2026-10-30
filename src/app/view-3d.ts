@@ -5,7 +5,7 @@
 // Interface state, kept with the preferences: outside the document and its undo, as the camera is.
 
 import { cutHeightOf, type Level } from '../project/doc';
-import { readBox, readSection, type SectionBox, type SectionLine } from './section-box';
+import { readBox, readSection, type SectionBox, type SectionLine } from '../model/section-box';
 
 export type LevelsShown = 'all' | 'below' | 'current';
 

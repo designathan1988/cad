@@ -10,8 +10,8 @@ import { cross, distance, dot, intersectLines, normalize, type Point2, sub } fro
 import { deriveOpenings, referenceLength } from '../elements/opening/derive';
 import type { Opening, PositionRule } from '../elements/opening/schema';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
-import { stretchEnd } from './edit';
-import { GRID_STEP } from './snap';
+import { stretchEnd } from '../elements/wall/edit';
+import { GRID_STEP } from '../session/snap';
 
 /** A part shorter than the snap grid's step is a slip of the pointer, not a wall: no split leaves one. */
 const MIN_PART = GRID_STEP;

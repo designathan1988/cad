@@ -1,7 +1,7 @@
 // Stairs and ramps in the registry (contract.ts): elements/stair holds the element and its layout.
 
 import { finite, isObject, isPoint } from '../../core/guards';
-import { stairGeometry } from '../../render/prisms';
+import { stairGeometry } from '../prisms';
 import type { ElementKind } from '../contract';
 import { insideRing } from '../room/derive';
 import { updateStairs } from '../stair/commands';

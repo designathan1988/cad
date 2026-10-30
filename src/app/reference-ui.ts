@@ -1,7 +1,7 @@
 // References in the app (phase 11; elements/reference): a picture, a PDF's first page or a DXF put under
 // the current level's plan, and calibrated by two points of it and the distance between them typed.
 
-import type { App } from './app';
+import type { App } from '../session/app';
 import { newId } from '../core/id';
 import type { Point2 } from '../model/vector';
 import { addReference, setReference } from '../elements/reference/commands';

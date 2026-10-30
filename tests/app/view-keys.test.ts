@@ -2,7 +2,7 @@
 // Plain arrows stay with the selection (nudge), and in a tool waiting for a measure − is a sign.
 
 import { describe, expect, it } from 'vitest';
-import { viewKey } from '../../src/app/view-keys';
+import { viewKey } from '../../src/session/view-keys';
 
 const k = (key: string, mods: Partial<{ shift: boolean; ctrl: boolean; alt: boolean; typing: boolean }> = {}) =>
   viewKey(key, { shift: false, ctrl: false, alt: false, typing: false, ...mods });

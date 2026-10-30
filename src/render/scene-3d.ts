@@ -4,7 +4,7 @@
 
 import { creaseEdges } from '../elements/kinds/object';
 import * as THREE from 'three';
-import { patternTexture, patternUvAt } from './pattern-texture';
+import { patternTexture, patternUvAt } from '../elements/object/textures';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -22,12 +22,12 @@ import type { WallId } from '../elements/wall/schema';
 import { type Material, SEE_THROUGH } from '../elements/material/schema';
 import { blockPaint, type Paint, wallMeshKey } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
-import { prism, shownPrism, slopedPrism, toThree } from './prisms';
+import { prism, shownPrism, slopedPrism, toThree } from '../elements/prisms';
 import { eachSolid } from '../elements/registry';
 import type { KindSolid } from '../elements/contract';
 import { featureEdges, type SlopedTop, underSlopes } from '../elements/wall/geometry/edges';
 import { openingParts } from '../elements/opening/parts';
-import { boxCaps, type SectionBox, type SectionLine, sectionCaps, sectionLooks, type UprightPrism } from '../app/section-box';
+import { boxCaps, type SectionBox, type SectionLine, sectionCaps, sectionLooks, type UprightPrism } from '../model/section-box';
 
 /** The ground's size: this many times the model's extent, at least GROUND_MIN (m) across. */
 const GROUND_SPAN = 4;

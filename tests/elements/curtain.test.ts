@@ -6,7 +6,7 @@ import { newDocument } from '../../src/project/doc';
 import { curtainSolid } from '../../src/elements/curtain/geometry';
 import { type Curtain, CURTAIN_DEFAULTS, gridLines } from '../../src/elements/curtain/schema';
 import { updateCurtains } from '../../src/elements/curtain/commands';
-import { readProject, writeProject } from '../../src/io/project-file';
+import { readProject, writeProject } from '../../src/project/file';
 
 const curtain: Curtain = { id: 'curtain_c', levelId: 'lvl_ground', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, ...CURTAIN_DEFAULTS };
 

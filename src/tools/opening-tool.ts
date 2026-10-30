@@ -21,7 +21,7 @@
 
 import { type DistanceRule, hasDistance, type OpeningId, type PositionRule } from '../elements/opening/schema';
 import type { WallId } from '../elements/wall/schema';
-import { stopAfter, stopBefore } from '../app/wall-stops';
+import { stopAfter, stopBefore } from '../elements/wall/stops';
 
 export const OPENING_STEP = 0.05;
 const CENTRE_PX = 10;

@@ -2,9 +2,9 @@
 
 import { calibrateDraft } from './reference-ui';
 import { roomTagText } from './room-tag';
-import { overrideColours, wallPhases, roomOverrideColours } from './layer-sets';
-import { keepSelectionInView3d } from './view-ui';
-import { objectHandles } from './object-handles';
+import { overrideColours, wallPhases, roomOverrideColours } from '../project/layer-sets';
+import { keepSelectionInView3d } from '../session/view-ui';
+import { objectHandles } from '../session/object-handles';
 import { angleNum, areaText, lengthNum, lengthText, typingExamples } from '../i18n/units';
 import { parseLength } from '../core/measure';
 import { distance } from '../model/vector';
@@ -13,31 +13,31 @@ import { resetWallsToType, setWalls, updateWalls } from '../elements/wall/comman
 import { alignHeads, alignOpenings, distributeOpenings, ruleKeepingPosition, setGroupSpacing, ungroupOpenings, updateOpening } from '../elements/opening/commands';
 import { GROUP_PREFIX } from '../elements/opening/schema';
 import { chainArea, chainLength, MEASURE_IDLE, reading } from '../tools/measure-tool';
-import { alignWalls, distributeWalls } from '../tools/arrange-walls';
-import { guideLine, guideMeasure } from '../tools/guide-tool';
+import { alignWalls, distributeWalls } from '../elements/wall/arrange';
+import { guideLine, guideMeasure } from '../elements/guide/tool';
 import { OPENING_PREVIEW_ID, ruleGuide } from './opening-ui';
 import { toolCursor } from '../ui/cursors';
 import { getLang, name, t } from '../i18n/messages';
 import { renderPanel } from '../ui/panel';
-import { snapLabel } from '../tools/snap';
+import { snapLabel } from '../session/snap';
 import { bulgeKeepingSide } from '../tools/arc-edit';
 import { KINDS } from '../elements/registry';
 import { drawingOf, levelOf, wallNumber } from '../project/doc';
 import { shownFor } from '../project/derive';
-import { stackedSteps } from './stacked';
-import { type TempDim, tempDims } from './temp-dims';
+import { stackedSteps } from '../session/stacked';
+import { type TempDim, tempDims } from '../session/temp-dims';
 import { cutAt } from './view-3d';
-import { changeReferenceLine, changeWallType, moveWalls, roomFace } from '../tools/edit';
+import { changeReferenceLine, changeWallType, moveWalls, roomFace } from '../elements/wall/edit';
 import { insideRing } from '../elements/room/derive';
-import { loadPrefs, savePrefs } from './persist';
+import { loadPrefs, savePrefs } from '../project/persist';
 import { newId } from '../core/id';
 import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
-import type { App } from './app';
+import type { App } from '../session/app';
 import { kindOfKey } from '../elements/registry';
-import { nextFields, type NextSlot } from './next-element';
+import { nextFields, type NextSlot } from '../session/next';
 import { lowerFirst } from './ribbon-tabs';
 import { words } from '../elements/object/fields';
-import { PREVIEW_ID, SNAP_OF } from './app';
+import { PREVIEW_ID, SNAP_OF } from '../session/app';
 
 /** The panel's title over a placing tool's next element: its kind's name, an object's its own. */
 function nextTitle(app: App, slot: NextSlot): string {

@@ -8,7 +8,7 @@ import { deriveGeometry } from '../../src/project/derive';
 import { edgesFor, type Roof } from '../../src/elements/roof/schema';
 import { planeAt } from '../../src/elements/wall/geometry/under-roof';
 import { deleteLevel } from '../../src/elements/level/commands';
-import { readProject, writeProject } from '../../src/io/project-file';
+import { readProject, writeProject } from '../../src/project/file';
 
 // A 10 × 6 m outline, gable roof at 30 %: its two slopes rise from the long sides (y = 0 and y = 6),
 // the ridge at y = 3, 0.9 m over the eaves (2.8 m).

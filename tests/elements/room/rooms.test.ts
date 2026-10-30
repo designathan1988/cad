@@ -6,7 +6,7 @@ import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
 import { deriveGeometry } from '../../../src/project/derive';
 import { vec } from '../../../src/model/vector';
 import { deleteElements } from '../../../src/elements/opening/commands';
-import { moveWalls } from '../../../src/tools/edit';
+import { moveWalls } from '../../../src/elements/wall/edit';
 
 const wall = (id: string, a: [number, number], b: [number, number], type = 'wt_concrete20'): DocWall => ({
   id,

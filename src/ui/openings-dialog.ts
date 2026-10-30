@@ -4,7 +4,7 @@
 // model and size). Laid out as the objects' store (objects-dialog.ts), with its styles.
 
 import { withLibrary } from './library-tabs';
-import type { App } from '../app/app';
+import type { App } from '../session/app';
 import type { OpeningKind } from '../elements/opening/schema';
 import { OPENING_MODELS, type OpeningModel } from '../elements/opening/style';
 import { el } from './controls';

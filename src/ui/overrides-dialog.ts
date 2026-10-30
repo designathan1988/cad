@@ -2,8 +2,8 @@
 // use too, shown or not as the view says (the phases' colours are styles.css --phase-*). A row a type
 // or a use: it, its colour, its remove button; one command each change (app/layer-sets.ts).
 
-import type { App } from '../app/app';
-import { type RoomOverride, setOverrides, setRoomOverrides, type WallOverride } from '../app/layer-sets';
+import type { App } from '../session/app';
+import { type RoomOverride, setOverrides, setRoomOverrides, type WallOverride } from '../project/layer-sets';
 import { ROOM_USES } from '../elements/room/schema';
 import { newId } from '../core/id';
 import { el, select } from './controls';

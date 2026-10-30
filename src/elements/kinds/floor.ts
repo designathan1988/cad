@@ -4,7 +4,7 @@
 
 import { finite, isObject, isPoint } from '../../core/guards';
 import type { Point2 } from '../../model/vector';
-import { slabGeometry } from '../../render/prisms';
+import { slabGeometry } from '../prisms';
 import { name, t } from '../../i18n/messages';
 import type { ElementKind } from '../contract';
 import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor } from '../room/commands';
@@ -14,7 +14,7 @@ import { signedArea } from '../wall/geometry/convex';
 import { floorFields } from '../room/fields';
 import type { Floor } from '../room/schema';
 import { trace } from './paint';
-import { tilingDrawing } from '../../render/tiling';
+import { tilingDrawing } from '../room/tiling';
 import { newId } from '../../core/id';
 import { addRailing } from '../railing/commands';
 import { RAILING_HEIGHT, RAILING_PREFIX } from '../railing/schema';

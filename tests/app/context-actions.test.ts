@@ -2,7 +2,7 @@
 // ones that fit that kind of element (ref/chat.txt:206, 222).
 
 import { describe, expect, it } from 'vitest';
-import { contextIds } from '../../src/app/context-actions';
+import { contextIds } from '../../src/session/context-actions';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { newOpening } from '../../src/elements/opening/schema';
 

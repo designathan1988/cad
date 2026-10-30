@@ -5,12 +5,12 @@
 // as one types. Beside them a live 3D preview turned by dragging, sliders that flex each parameter (the
 // Revit test: does it still hold?), and what does not work out.
 
-import { previewMesh } from '../render/pattern-texture';
+import { previewMesh } from '../elements/object/textures';
 import { SEE_THROUGH } from '../elements/material/schema';
 import { creaseEdges, cutGeometries, pieceGeometry } from '../elements/kinds/object';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import type { App } from '../app/app';
+import type { App } from '../session/app';
 import { addDefinition, updateDefinition } from '../elements/object/commands';
 import { evaluateObject } from '../elements/object/evaluate';
 import { words } from '../elements/object/fields';

@@ -2,7 +2,7 @@
 
 import { materialLabel } from '../../i18n/messages';
 import { finite, isObject, isPoint } from '../../core/guards';
-import { roofGeometry } from '../../render/prisms';
+import { roofGeometry } from '../prisms';
 import type { ElementKind } from '../contract';
 import { updateRoofs } from '../roof/commands';
 import { roofFields } from '../roof/fields';

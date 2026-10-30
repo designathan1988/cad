@@ -2,8 +2,8 @@
 // both languages, enabled only when it can run.
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { appActions } from '../../src/app/actions';
-import type { App } from '../../src/app/app';
+import { appActions } from '../../src/session/actions';
+import type { App } from '../../src/session/app';
 import { newDocument } from '../../src/project/doc';
 import { createStore } from '../../src/core/store';
 import { addLevel } from '../../src/elements/level/commands';

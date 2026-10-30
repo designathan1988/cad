@@ -7,8 +7,8 @@ import { referenceKind } from '../../src/elements/kinds/reference';
 import { addReference, updateReferences } from '../../src/elements/reference/commands';
 import { calibrated, isReference, type Reference, referenceCorners, referencePoint } from '../../src/elements/reference/schema';
 import { readDxfLines } from '../../src/io/import-dxf';
-import { readProject, writeProject } from '../../src/io/project-file';
-import { rotation } from '../../src/tools/transform';
+import { readProject, writeProject } from '../../src/project/file';
+import { rotation } from '../../src/model/transform';
 
 const pic: Reference = {
   id: 'ref_1',

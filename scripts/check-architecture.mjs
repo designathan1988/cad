@@ -28,13 +28,19 @@ const cssText = fs.readFileSync(path.join(SRC, 'ui/styles.css'), 'utf8');
 // render->{core,elements,app,ui?no}, io->{core,elements,app?no}, ui->{core,elements}, elements->{core,elements}, core->{}.
 // Violations counted per (file -> folder).
 const layer = (f) => f.split('/')[1];
+// ADR 0004 allowed directions: ui -> session -> {project, canvas} -> elements -> model; ui may render
+// INTO the shell the session owns (session -> ui/shell is the session's own DOM) and read the app's
+// facade. Everything else stays forbidden.
 const FORBIDDEN = {
   elements: ['app', 'ui', 'render', 'tools', 'session'],
   core: ['app', 'ui', 'render', 'tools', 'elements', 'io', 'session'],
-  ui: ['app', 'render', 'tools', 'session'],
+  ui: ['render', 'tools'],
   io: ['ui', 'render', 'tools', 'session'],
   render: ['ui'],
-  session: ['ui'],
+  session: ['app'],
+  model: ['app', 'ui', 'render', 'tools', 'elements', 'io', 'session', 'project'],
+  project: ['app', 'ui', 'render', 'tools', 'session'],
+  library: ['app', 'ui', 'render', 'tools', 'session'],
 };
 const importRe = /(?:^|\n)\s*import\s+(?:type\s+)?[^'"]*?from\s+['"](\.[^'"]+)['"]/g;
 const directionViolations = [];
@@ -47,7 +53,8 @@ for (const [f, t] of texts) {
     const base = path.normalize(path.join(path.dirname(path.join(ROOT, f)), m[1]));
     const r = [base + '.ts', path.join(base, 'index.ts')].map(rel).find((x) => texts.has(x)) ?? rel(base);
     const to = layer(r);
-    if (texts.has(r) && bad.includes(to)) directionViolations.push(`${f} -> ${to} (${r})`);
+    const shellOrPanel = from === 'session' && (r === 'src/ui/shell.ts' || r.startsWith('src/ui/panels/'));
+    if (texts.has(r) && bad.includes(to) && !shellOrPanel) directionViolations.push(`${f} -> ${to} (${r})`);
   }
 }
 

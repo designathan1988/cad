@@ -12,11 +12,11 @@ import { t } from '../i18n/messages';
 import { arcMiddle } from '../tools/arc-edit';
 import { bulgeThrough, rectangle, typedEnd, wallTransition, type WallToolEvent } from '../tools/wall-tool';
 import { type DocWall, wallNumber, wallOverrides } from '../project/doc';
-import { stretchEnd } from '../tools/edit';
+import { stretchEnd } from '../elements/wall/edit';
 import { referenceLength } from '../elements/opening/derive';
 import { newId } from '../core/id';
-import type { App } from './app';
-import { PREVIEW_ID } from './app';
+import type { App } from '../session/app';
+import { PREVIEW_ID } from '../session/app';
 
 export function previewWall(app: App): DocWall[] {
   const w = app.ui.wall;

@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { SEE_THROUGH, materialIn, type Material } from '../elements/material/schema';
 import type { WallLayer } from '../elements/wall/schema';
-import { previewMesh } from '../render/pattern-texture';
+import { previewMesh } from '../elements/object/textures';
 import { meshSnapshot } from './object-snapshot';
 
 const LENGTH = 1.2;

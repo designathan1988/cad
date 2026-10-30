@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
-import { validateDocument } from '../../src/app/persist';
+import { validateDocument } from '../../src/project/persist';
 import { newOpening } from '../../src/elements/opening/schema';
 
 const wall = {

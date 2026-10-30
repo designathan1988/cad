@@ -5,7 +5,7 @@
 // Every change is one command, and every wall of the type follows at once, being derived from it.
 
 import { withLibrary } from './library-tabs';
-import type { App } from '../app/app';
+import type { App } from '../session/app';
 import { newId } from '../core/id';
 import type { Material } from '../elements/material/schema';
 import { wallTypeFields } from '../elements/wall/type-fields';

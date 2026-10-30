@@ -4,14 +4,14 @@
 // that model). Laid out as the objects' store (objects-dialog.ts), with its styles.
 
 import { withLibrary } from './library-tabs';
-import type { App } from '../app/app';
-import { nextOf } from '../app/next-element';
+import type { App } from '../session/app';
+import { nextOf } from '../session/next';
 import type { KindSolid } from '../elements/contract';
 import { SEE_THROUGH } from '../elements/material/schema';
 import type { Words } from '../elements/object/schema';
 import { PRESET_TOOL, PRESETS, type Preset, type PresetSlot } from '../elements/presets';
 import { kindOfKey, withList } from '../elements/registry';
-import { previewMesh } from '../render/pattern-texture';
+import { previewMesh } from '../elements/object/textures';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { getLang, type MessageKey, t } from '../i18n/messages';

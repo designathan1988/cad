@@ -4,9 +4,9 @@
 // an id the project already has gets a new one). Laid out as the wall types and the materials.
 
 import { withLibrary } from './library-tabs';
-import type { App } from '../app/app';
+import type { App } from '../session/app';
 import type { Doc } from '../project/doc';
-import { copyLibraryLink } from '../app/library-link';
+import { copyLibraryLink } from '../library/link';
 import { newId } from '../core/id';
 import { addDefinition, definitionDeleteBlocker, deleteDefinition } from '../elements/object/commands';
 import { evaluateObject, pieceOutline, pieceSpan } from '../elements/object/evaluate';

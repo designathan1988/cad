@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { vec } from '../../src/model/vector';
-import { snap, type SnapInput } from '../../src/tools/snap';
+import { snap, type SnapInput } from '../../src/session/snap';
 
 const input = (cursor: [number, number], extra: Partial<SnapInput> = {}): SnapInput => ({
   cursor: vec(cursor[0], cursor[1]),

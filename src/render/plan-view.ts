@@ -6,7 +6,7 @@ import { drawLeader } from '../elements/kinds/note';
 import { drawSectionMark } from '../elements/kinds/section';
 import type { SectionMark } from '../elements/section/schema';
 import { DEFAULT_DRAWING, type Detail, detailOf, type DrawingSettings, PEN_UNIT_MM, type PenRole, scaleFactor, TEXT_MM } from '../elements/drawing/schema';
-import { drawObjectHandles, type ScreenHandle } from '../app/object-handles';
+import { drawObjectHandles, type ScreenHandle } from '../session/object-handles';
 import { drawAxis } from '../elements/kinds/grid';
 import { drawDimension, type Placed } from '../elements/kinds/dimension';
 import { eachSolid } from '../elements/registry';
@@ -14,12 +14,12 @@ import type { Point2 } from '../model/vector';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { type DerivedGeometry, openingOutline } from '../project/derive';
 import { layoutRoomTags } from './room-tags';
-import type { Handles } from '../app/handles';
+import type { Handles } from '../session/handles';
 import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
 import { cutFill, type CutPattern } from '../elements/material/schema';
-import { hatchPattern } from './hatch';
-import { separateLabels } from '../app/dim-labels';
+import { hatchPattern } from '../elements/material/hatch';
+import { separateLabels } from '../session/dim-labels';
 
 /**
  * A 1 px line along a screen axis, moved onto pixel centres: drawn between two pixels it would be two

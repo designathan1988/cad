@@ -4,7 +4,7 @@
 // "visible / hidden", struck through) and a dialog the button opened (docs/revisao-interface.md, B3, J2).
 // It only reads the state and calls the app.
 
-import type { App } from '../app/app';
+import type { App } from '../session/app';
 import type { Category } from '../project/derive';
 import { el } from './controls';
 import { t, type MessageKey } from '../i18n/messages';

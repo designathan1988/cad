@@ -4,8 +4,8 @@
 import { t } from '../i18n/messages';
 import { setDrawing } from '../ui/drawing-dialog';
 import { drawingOf } from '../project/doc';
-import type { App } from './app';
-import { EDIT_LEVELS } from './app';
+import type { App } from '../session/app';
+import { EDIT_LEVELS } from '../session/app';
 import { showLevels } from '../ui/levels-dialog';
 import { type MenuItem, showMenu } from '../ui/menu';
 import { FILE_MENU } from './ribbon-tabs';

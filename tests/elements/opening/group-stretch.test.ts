@@ -8,7 +8,7 @@ import { deriveGeometry, hostsIn } from '../../../src/project/derive';
 import { deleteElements, distributeOpenings, setGroupSpacing } from '../../../src/elements/opening/commands';
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { newOpening, type Opening, type PositionRule } from '../../../src/elements/opening/schema';
-import { CURRENT_VERSION, readProject } from '../../../src/io/project-file';
+import { CURRENT_VERSION, readProject } from '../../../src/project/file';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
   id,

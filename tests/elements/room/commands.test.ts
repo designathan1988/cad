@@ -3,7 +3,7 @@ import { type Doc, newDocument } from '../../../src/project/doc';
 import { createStore } from '../../../src/core/store';
 import { vec } from '../../../src/model/vector';
 import { addFloor, addRoom, updateFloor, updateRoom, updateRooms } from '../../../src/elements/room/commands';
-import { readProject, writeProject } from '../../../src/io/project-file';
+import { readProject, writeProject } from '../../../src/project/file';
 
 const room = { id: 'r', levelId: 'lvl_ground', seed: vec(4, 3), name: 'Room 1', number: '1' };
 const floor = { id: 'f', levelId: 'lvl_ground', source: { kind: 'room' as const, roomId: 'r' }, thickness: 0.15, offset: 0 };

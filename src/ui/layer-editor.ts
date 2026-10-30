@@ -11,7 +11,7 @@ import { el, numberField, select } from './controls';
 import { type Material, materialIn } from '../elements/material/schema';
 import { materialLabel, t, type MessageKey } from '../i18n/messages';
 import { icon, type IconName } from '../i18n/icons';
-import { layerBands } from './swatch';
+import { layerBands } from '../elements/wall/swatch';
 
 export interface EditableLayer {
   readonly thickness: number;

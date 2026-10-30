@@ -3,7 +3,7 @@
 // until clear of those placed before it; with no room on its line, it steps off it.
 
 import { describe, expect, it } from 'vitest';
-import { separateLabels } from '../../src/app/dim-labels';
+import { separateLabels } from '../../src/session/dim-labels';
 
 const meets = (a: { x: number; y: number }, b: { x: number; y: number }, w: number, h: number) => Math.abs(a.x - b.x) < w && Math.abs(a.y - b.y) < h;
 

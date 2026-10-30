@@ -20,7 +20,7 @@
 
 import { MIN_WALL_LENGTH } from '../model/tolerance';
 import { distance, dot, normalize, type Point2, scale, sub, add } from '../model/vector';
-import { reflection, rotation, scaling, type Transform, translation } from './transform';
+import { reflection, rotation, scaling, type Transform, translation } from '../model/transform';
 
 export type ModifyKind = 'move' | 'copy' | 'rotate' | 'scale' | 'mirror' | 'offset';
 

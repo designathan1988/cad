@@ -2,7 +2,7 @@
 // io/import-mesh.ts): read by three.js's loaders, its meshes in plan axes, one group a material, made a
 // definition with its width, depth, height and materials as parameters; then placed with the object tool.
 
-import type { App } from './app';
+import type { App } from '../session/app';
 import type * as THREE from 'three';
 import { newId } from '../core/id';
 import { el } from '../ui/controls';

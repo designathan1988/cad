@@ -3,13 +3,13 @@
 import { t } from '../i18n/messages';
 import { parseLength } from '../core/measure';
 import { type Point2, distance, normalize, sub } from '../model/vector';
-import { draftAt, type GuideBase, newGuide } from '../tools/guide-tool';
+import { draftAt, type GuideBase, newGuide } from '../elements/guide/tool';
 import { addGuide, clearGuides } from '../elements/guide/commands';
 import { GUIDE_PREFIX, type Guide, isLineGuide } from '../elements/guide/schema';
 import { solidsOf } from '../elements/registry';
 import { guideKind } from '../elements/kinds/guide';
 import { newId } from '../core/id';
-import type { App } from './app';
+import type { App } from '../session/app';
 
 /** The guides of the level shown, unless hidden, as a move being dragged takes them. Plan only: they
  * are neither drawn nor snapped to in 3D. */

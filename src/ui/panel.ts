@@ -6,13 +6,13 @@ import { cutHeightOf, type Doc, type DocWall, type Level, type WallDefaults, wal
 import { updateLevel } from '../elements/level/commands';
 import type { DerivedGeometry, OpeningSolid } from '../project/derive';
 import type { OpeningWarning } from '../elements/opening/derive';
-import { nextOpeningPanel, openingPanel, openingTitle, type OpeningPanelActions, type OpeningSize } from '../elements/opening/panel';
+import { nextOpeningPanel, openingPanel, openingTitle, type OpeningPanelActions, type OpeningSize } from './panels/opening';
 import type { OpeningId, OpeningKind } from '../elements/opening/schema';
 import type { RoomSolid } from '../elements/room/derive';
 import type { RoomFieldActions as RoomPanelActions } from '../elements/room/fields';
 import { nextWallFields, wallFields } from '../elements/wall/fields';
 import type { JoinWarning } from '../elements/wall/join/types';
-import type { StackedStep } from '../app/stacked';
+import type { StackedStep } from '../session/stacked';
 import type { ReferenceLine } from '../elements/wall/schema';
 import { el } from './controls';
 import { type Field, fieldsSection } from './fields';

@@ -3,7 +3,7 @@
 // command under "edit", so the user had to know which held a type (docs/revisao-interface.md, J1). Each
 // catalog keeps its own body; this bar on top goes from one to another without going back to the drawing.
 
-import type { App } from '../app/app';
+import type { App } from '../session/app';
 import { el } from './controls';
 import { t, type MessageKey } from '../i18n/messages';
 import { icon, type IconName } from '../i18n/icons';

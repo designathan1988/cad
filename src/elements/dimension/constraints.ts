@@ -8,7 +8,7 @@
 import type { Doc } from '../../project/doc';
 import { deriveGeometry } from '../../project/derive';
 import { add, distance, dot, normalize, type Point2, scale, sub } from '../../model/vector';
-import { moveWalls, stretchEnd } from '../../tools/edit';
+import { moveWalls, stretchEnd } from '../wall/edit';
 import { ruleKeepingPosition } from '../opening/commands';
 import type { PositionRule } from '../opening/schema';
 import { placeDimension, resolve } from './anchor';

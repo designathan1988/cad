@@ -2,9 +2,9 @@
 // changed and how big it is, opening, duplicating and deleting it (asked first: it cannot be undone),
 // and a new one. The open one is marked and first.
 
-import type { App } from '../app/app';
-import { deleteStoredProject, duplicateProject, newStoredProject, openStoredProject, projectsList, renameStoredProject } from '../app/projects';
-import type { ProjectInfo } from '../io/project-db';
+import type { App } from '../session/app';
+import { deleteStoredProject, duplicateProject, newStoredProject, openStoredProject, projectsList, renameStoredProject } from '../project/projects';
+import type { ProjectInfo } from '../project/db';
 import { el } from './controls';
 import { getLang, t } from '../i18n/messages';
 import { icon } from '../i18n/icons';

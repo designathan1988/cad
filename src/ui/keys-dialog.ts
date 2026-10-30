@@ -2,8 +2,8 @@
 // new one by pressing it, none (off), or its own back. A key given to one action is taken from any
 // other that had it, and said. Kept with the preferences, not in the project (app/keymap.ts).
 
-import type { App } from '../app/app';
-import { assignKey, comboOf, keyOf } from '../app/keymap';
+import type { App } from '../session/app';
+import { assignKey, comboOf, keyOf } from '../session/keymap';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { t } from '../i18n/messages';

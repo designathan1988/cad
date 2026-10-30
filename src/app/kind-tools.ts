@@ -40,8 +40,8 @@ import { DIMENSION_IDLE, type DimensionToolEvent, dimensionTransition } from '..
 import { LEVEL_MARK_HEIGHT, NOTE_HEIGHT, NOTE_PREFIX } from '../elements/note/schema';
 import { newId } from '../core/id';
 import { signedArea } from '../elements/room/derive';
-import type { App } from './app';
-import { made, nextOf } from './next-element';
+import type { App } from '../session/app';
+import { made, nextOf } from '../session/next';
 import type { Railing } from '../elements/railing/schema';
 import type { Stair } from '../elements/stair/schema';
 import type { Roof } from '../elements/roof/schema';
