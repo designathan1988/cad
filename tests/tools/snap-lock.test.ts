@@ -3,7 +3,7 @@
 // pointer rested on, aligned with across or up.
 
 import { describe, expect, it } from 'vitest';
-import { vec } from '../../src/core/vector';
+import { vec } from '../../src/model/vector';
 import { snap, type SnapInput } from '../../src/tools/snap';
 
 const input = (cursor: [number, number], extra: Partial<SnapInput> = {}): SnapInput => ({

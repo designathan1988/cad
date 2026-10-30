@@ -3,7 +3,7 @@
 // between two neighbours on one side and the other, to the place with equal gaps, the gaps marked.
 // Pure: the move's offset in, the offset kept and what to draw out.
 
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import type { Box } from './arrange';
 
 export interface Segment {

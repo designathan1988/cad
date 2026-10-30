@@ -3,8 +3,8 @@
 // meeting its own on each side (its face; the wall's end when none), or, on the side of the opening it
 // is measured from, the gap to that one. Each can be typed: the value becomes one command.
 
-import { MIN_WALL_LENGTH } from '../core/tolerance';
-import { add, cross, distance, dot, normalize, perp, type Point2, scale, sub } from '../core/vector';
+import { MIN_WALL_LENGTH } from '../model/tolerance';
+import { add, cross, distance, dot, normalize, perp, type Point2, scale, sub } from '../model/vector';
 import type { Command } from '../core/store';
 import { updateOpening } from '../elements/opening/commands';
 import { setWalls } from '../elements/wall/commands';
@@ -14,6 +14,8 @@ import { faceOffsets, wallDirection, wallNormal } from '../elements/wall/geometr
 import { shapeOf } from '../elements/wall/geometry/shape';
 import { arcOf } from '../elements/wall/geometry/arc';
 import type { Doc } from './document';
+import { wallTypeThickness } from './document';
+
 import type { DerivedGeometry } from './geometry';
 import { stopAfter, stopBefore, wallStops } from './wall-stops';
 
@@ -38,7 +40,7 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
     if (wall.bulge) return arcDims(doc, wall);
     const len = distance(wall.start, wall.end);
     const dir = normalize(sub(wall.end, wall.start));
-    const half = thicknessOf(doc, wall.wallTypeId) / 2;
+    const half = wallTypeThickness(doc, wall.wallTypeId) / 2;
     return [
       {
         id: `${id}:length`,
@@ -59,7 +61,7 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
   const len = distance(host.start, host.end);
   const dir = normalize(sub(host.end, host.start));
   const at = (s: number) => add(host.start, scale(dir, s));
-  const half = thicknessOf(doc, host.wallTypeId) / 2;
+  const half = wallTypeThickness(doc, host.wallTypeId) / 2;
   const side = perp(dir);
   const stops = wallStops(doc, host.id);
   const before = stopBefore(stops, o.start);
@@ -124,7 +126,7 @@ function arcDims(doc: Doc, wall: Doc['walls'][number]): TempDim[] {
       b: wall.end,
       // A positive bulge lies right of the chord: the dimension goes on its left.
       side: bulge > 0 ? perp(dir) : scale(perp(dir), -1),
-      clear: thicknessOf(doc, wall.wallTypeId) / 2,
+      clear: wallTypeThickness(doc, wall.wallTypeId) / 2,
       value: chord,
       apply: (v) => (v >= MIN_WALL_LENGTH ? setWalls(stretchEnd(doc, wall.id, 'end', add(wall.start, scale(dir, v)))) : null),
     },
@@ -143,8 +145,6 @@ function arcDims(doc: Doc, wall: Doc['walls'][number]): TempDim[] {
   ];
 }
 
-const thicknessOf = (doc: Doc, typeId: string): number =>
-  (doc.wallTypes.find((t) => t.id === typeId)?.layers ?? []).reduce((s, l) => s + l.thickness, 0);
 
 /**
  * The side of a straight wall where fewer walls stand on its flank (Ts): its length is drawn there, so
@@ -153,7 +153,7 @@ const thicknessOf = (doc: Doc, typeId: string): number =>
 function quieterSide(doc: Doc, wall: Doc['walls'][number], dir: Point2): Point2 {
   const left = perp(dir);
   const len = distance(wall.start, wall.end);
-  const reach = thicknessOf(doc, wall.wallTypeId) / 2 + 0.05;
+  const reach = wallTypeThickness(doc, wall.wallTypeId) / 2 + 0.05;
   let balance = 0;
   for (const w of doc.walls) {
     if (w.id === wall.id || w.levelId !== wall.levelId) continue;

@@ -4,7 +4,7 @@
 // meeting them stretch and the rooms between them resize. Openings go with their walls.
 
 import type { Doc, DocWall } from '../app/document';
-import { cross, dot, normalize, perp, type Point2, scale, sub } from '../core/vector';
+import { cross, dot, normalize, perp, type Point2, scale, sub } from '../model/vector';
 import { moveWalls } from './edit';
 
 /** Directions closer than this (as the sine between them) count as parallel. */

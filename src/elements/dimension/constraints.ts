@@ -7,7 +7,7 @@
 
 import type { Doc } from '../../app/document';
 import { deriveGeometry } from '../../app/geometry';
-import { add, distance, dot, normalize, type Point2, scale, sub } from '../../core/vector';
+import { add, distance, dot, normalize, type Point2, scale, sub } from '../../model/vector';
 import { moveWalls, stretchEnd } from '../../tools/edit';
 import { ruleKeepingPosition } from '../opening/commands';
 import type { PositionRule } from '../opening/schema';

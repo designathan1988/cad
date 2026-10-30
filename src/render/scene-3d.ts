@@ -16,7 +16,7 @@ import { clampedSamples, oneShadowRay } from './trace-shader';
 import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
 import { GenerateMeshBVHWorker } from 'three-mesh-bvh/worker';
 import type { RenderQuality, VisualStyle } from '../app/view-3d';
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import type { DerivedGeometry, OpeningSolid, WallSolid } from '../app/geometry';
 import type { WallId } from '../elements/wall/schema';
 import { type Material, SEE_THROUGH } from '../elements/material/schema';

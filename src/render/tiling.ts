@@ -3,7 +3,7 @@
 // clips them to the floor. Straight, running bond (each row shifted half a piece), checkerboard (every
 // other piece shaded) and herringbone (as plans show it: zigzag rows of pieces at 45°).
 
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import type { Tiling } from '../elements/room/schema';
 
 export interface TilingDrawing {

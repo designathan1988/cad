@@ -16,7 +16,7 @@ import { endHandleDrag, moveHandleDrag, objectHandleAt, startHandleDrag } from '
 import { showUnits } from '../ui/units-dialog';
 import { showDrawingSettings } from '../ui/drawing-dialog';
 import { type BoxFace, dragDistance, moveFace, type SectionBox } from './section-box';
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import { snap } from '../tools/snap';
 import { t } from '../ui/i18n';
 import { el } from '../ui/controls';
@@ -37,7 +37,7 @@ import { showMenu } from '../ui/menu';
 import type { WallId } from '../elements/wall/schema';
 import { eachSolid, kindsNear } from '../elements/registry';
 import type { PickOrder } from '../elements/contract';
-import { distance, normalize, sub } from '../core/vector';
+import { distance, normalize, sub } from '../model/vector';
 import { outerSides } from '../elements/wall/geometry/seams';
 import { wireKeys } from './input-keys';
 import { wireButtons } from './input-buttons';

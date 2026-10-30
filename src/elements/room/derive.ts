@@ -4,7 +4,7 @@
 // A point in no hole (outside the walls, or inside a wall) is "not enclosed", as Revit says.
 
 import { difference, setPrecision, union } from 'polyclip-ts';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import type { Floor, Room, RoomId } from './schema';
 import type { Material } from '../material/schema';
 

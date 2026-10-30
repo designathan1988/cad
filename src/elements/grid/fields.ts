@@ -1,7 +1,7 @@
 // The fields grid axes show in the panel (ui/fields.ts builds the rows).
 
 import { lengthText } from '../../ui/units';
-import { distance } from '../../core/vector';
+import { distance } from '../../model/vector';
 import type { Field } from '../../ui/fields';
 import type { Grid } from './schema';
 

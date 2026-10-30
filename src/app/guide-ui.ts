@@ -2,7 +2,7 @@
 
 import { t } from '../ui/i18n';
 import { parseLength } from '../core/measure';
-import { type Point2, distance, normalize, sub } from '../core/vector';
+import { type Point2, distance, normalize, sub } from '../model/vector';
 import { draftAt, type GuideBase, newGuide } from '../tools/guide-tool';
 import { addGuide, clearGuides } from '../elements/guide/commands';
 import { GUIDE_PREFIX, type Guide, isLineGuide } from '../elements/guide/schema';

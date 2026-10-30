@@ -11,7 +11,7 @@
 import * as THREE from 'three';
 import { type Doc, levelOf } from './document';
 import { type DerivedGeometry, hideCategories } from './geometry';
-import { type Point2, sub } from '../core/vector';
+import { type Point2, sub } from '../model/vector';
 import type { Point3 } from './section-box';
 import { eachSolid } from '../elements/registry';
 import type { KindSolid } from '../elements/contract';

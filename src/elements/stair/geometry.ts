@@ -3,7 +3,7 @@
 // STAIR_RISER). Pure.
 
 import { union } from 'polyclip-ts';
-import { add, type Point2, scale } from '../../core/vector';
+import { add, type Point2, scale } from '../../model/vector';
 import { RAIL_HEIGHT, RAMP_GRADE, RAMP_LANDING, RAMP_RISE, type Stair, STAIR_RISER } from './schema';
 
 export interface StairPart {

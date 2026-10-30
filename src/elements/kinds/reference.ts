@@ -2,7 +2,7 @@
 // and walls, faint; picked only on its own outline's inside when nothing else is there (last of all),
 // so tracing over it takes the walls first.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import { num, t } from '../../ui/i18n';
 import { updateReferences } from '../reference/commands';
 import type { ElementKind, PlanPaint } from '../contract';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cutHeightOf, type Doc, type DocWall, newDocument, wallHeights } from '../../../src/app/document';
 import { createStore } from '../../../src/core/store';
-import { vec } from '../../../src/core/vector';
+import { vec } from '../../../src/model/vector';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../../../src/elements/level/commands';
 
 const wall = (id: string, levelId: string): DocWall => ({

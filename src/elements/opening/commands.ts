@@ -3,7 +3,7 @@
 // to keep their openings where they were. The one exception is a distributed group: losing a member
 // spreads the others out again, which is what the group is for.
 
-import { MIN_ELEMENT_SIZE } from '../../core/tolerance';
+import { MIN_ELEMENT_SIZE } from '../../model/tolerance';
 import { dropKinds, hasKinds } from '../registry';
 import { type Doc, wallHeights } from '../../app/document';
 import type { Command } from '../../core/store';

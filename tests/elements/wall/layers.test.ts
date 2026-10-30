@@ -1,7 +1,7 @@
 // Layers, core and type problems. Every expected value below is worked out by hand.
 
 import { describe, expect, it } from 'vitest';
-import { vec } from '../../../src/core/vector';
+import { vec } from '../../../src/model/vector';
 import { computeWallGeometry } from '../../../src/elements/wall/geometry/footprint';
 import { shapeOf } from '../../../src/elements/wall/geometry/shape';
 import type { Wall, WallType } from '../../../src/elements/wall/schema';

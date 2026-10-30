@@ -11,7 +11,7 @@ import { wallsOnGrids } from '../elements/grid/carry';
 import { roomsGoingWith } from '../app/carry';
 import type { Doc, DocWall } from '../app/document';
 import type { DerivedGeometry } from '../app/geometry';
-import { add, dot, normalize, type Point2, scale, sub } from '../core/vector';
+import { add, dot, normalize, type Point2, scale, sub } from '../model/vector';
 import { GROUP_PREFIX, type GroupSpacing, type Opening, type OpeningGroup, OPENING_PREFIX, type PositionRule } from '../elements/opening/schema';
 import { aimAt } from '../app/opening-ui';
 import { transformWalls } from './edit';

@@ -2,7 +2,7 @@
 // (export-gltf.ts), so both are the same solids. World (x, y, height) maps to three.js (x, height, −y).
 
 import * as THREE from 'three';
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import type { PrismFaces } from '../elements/wall/geometry/faces';
 import { planeAt, type TopPlane } from '../elements/wall/geometry/under-roof';
 

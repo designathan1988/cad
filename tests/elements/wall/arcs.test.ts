@@ -2,7 +2,7 @@
 // here on its own; every other expected value is worked out by hand from circles and chords.
 
 import { describe, expect, it } from 'vitest';
-import { vec } from '../../../src/core/vector';
+import { vec } from '../../../src/model/vector';
 import { LAYER_PRIORITY, type WallLayer } from '../../../src/elements/wall/schema';
 import { geometry, layer, testWall, type TestWall } from './fixtures';
 import { inside, rectOf, shoelace } from './oracle';

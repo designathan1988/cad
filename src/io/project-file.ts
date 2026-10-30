@@ -3,8 +3,8 @@
 // is kept. Files from older versions are migrated; a file from a newer version is refused, never
 // half-read.
 
-import type { Point2 } from '../core/vector';
-import { MIN_WALL_LENGTH } from '../core/tolerance';
+import type { Point2 } from '../model/vector';
+import { MIN_WALL_LENGTH } from '../model/tolerance';
 import { MORE_WALL_TYPES } from '../elements/wall/library-types';
 import { FAMILY_BATCHES } from '../elements/object/library-families';
 import { LIBRARY_SECTORS } from '../elements/object/library-sectors';

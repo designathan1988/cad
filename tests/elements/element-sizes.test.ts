@@ -5,8 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument, wallHeights } from '../../src/app/document';
 import { createStore } from '../../src/core/store';
-import { MIN_ELEMENT_SIZE } from '../../src/core/tolerance';
-import { vec } from '../../src/core/vector';
+import { MIN_ELEMENT_SIZE } from '../../src/model/tolerance';
+import { vec } from '../../src/model/vector';
 import { KINDS } from '../../src/elements/registry';
 import { addOpening, updateOpening } from '../../src/elements/opening/commands';
 import { newOpening } from '../../src/elements/opening/schema';

@@ -2,11 +2,11 @@
 // Generic helpers over the document and the derived geometry for the app's shared code.
 
 import type { Doc } from '../app/document';
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import type { Transform } from '../tools/transform';
 import type { DerivedGeometry } from '../app/geometry';
 import type { FloorSolid } from './room/derive';
-import { type Box, boxOf, RTree } from '../core/rtree';
+import { type Box, boxOf, RTree } from '../model/rtree';
 import type { AnyKind, BaseGeometry, KindKey } from './contract';
 import { beamKind } from './kinds/beam';
 import { columnKind } from './kinds/column';

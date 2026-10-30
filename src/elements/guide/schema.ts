@@ -5,7 +5,7 @@
 // too), a guide can be a point or a circle (phase 9): drawing snaps to the point, and to the circle,
 // its centre and where it crosses the lines.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 
 export const GUIDE_PREFIX = 'guide';
 

@@ -4,7 +4,7 @@
 // the layers outside the cores wrap the outer corner, and those inside meet at the inner corner. An
 // acute outer tip past MITER_LIMIT is bevelled; nearly in line, one shared cut through the node.
 
-import { COLLINEAR_ANGLE, MITER_LIMIT, POINT_TOLERANCE } from '../../../core/tolerance';
+import { COLLINEAR_ANGLE, MITER_LIMIT, POINT_TOLERANCE } from '../../../model/tolerance';
 import {
   add,
   cross,
@@ -16,7 +16,7 @@ import {
   type Point2,
   scale,
   sub,
-} from '../../../core/vector';
+} from '../../../model/vector';
 import { type HalfPlane, halfPlaneThrough } from '../geometry/convex';
 import {
   endPoint,

@@ -1,10 +1,10 @@
 // The interface around the views: the tool bar, the level list, the footer's hints and keys, the float bar, the browser drawer. Functions over the app (app.ts delegates).
 
-import { distance } from '../core/vector';
+import { distance } from '../model/vector';
 import { words } from '../elements/object/fields';
 import { angleNum, areaText, lengthText, typingExamples } from '../ui/units';
 import * as THREE from 'three';
-import { type Point2 } from '../core/vector';
+import { type Point2 } from '../model/vector';
 import { ruleBase } from '../tools/opening-tool';
 import { angleAt, chainArea, chainLength, reading } from '../tools/measure-tool';
 import { OPENING_PREVIEW_ID, ruleText } from './opening-ui';

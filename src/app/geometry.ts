@@ -2,7 +2,7 @@
 // never stored.
 
 import { separatorStrip } from '../elements/separator/schema';
-import { add, type Point2, scale } from '../core/vector';
+import { add, insidePolygon, polygonDistance, polylineDistance, type Point2, scale } from '../model/vector';
 import { deriveKinds, eachSolid, filterKinds, type KindSolids } from '../elements/registry';
 import { deriveOpenings, hostsOf, type OpeningWarning, type PlacedOpening } from '../elements/opening/derive';
 import type { Opening, OpeningId } from '../elements/opening/schema';
@@ -11,7 +11,7 @@ import { type Block, cutPlan, cutSolid, type OpeningCut, type OpeningFrame, open
 import { computeWallGeometry, type Piece } from '../elements/wall/geometry/footprint';
 import { area, clipHalfPlane, type ConvexPolygon, halfPlaneThrough, overlapArea, toCounterClockwise } from '../elements/wall/geometry/convex';
 import { faceOffsets, stationOf, wallLength, wallNormal } from '../elements/wall/geometry/offset';
-import { AREA_EPSILON, POINT_TOLERANCE } from '../core/tolerance';
+import { AREA_EPSILON, POINT_TOLERANCE } from '../model/tolerance';
 
 /** How far past the host's faces another wall still counts as meeting it inside an opening (m). */
 const JOINT_REACH = 0.01;
@@ -21,7 +21,7 @@ import type { WallId, WallLayer, WallType } from '../elements/wall/schema';
 import { layerSeams, type Seam } from '../elements/wall/geometry/seams';
 import { deriveRooms, type RoomSolid, type RoomWarning, spacesOf } from '../elements/room/derive';
 import type { RoomId } from '../elements/room/schema';
-import type { Point2 as P } from '../core/vector';
+import type { Point2 as P } from '../model/vector';
 import { type Material, materialIn } from '../elements/material/schema';
 import { CUT_HEIGHT, cutHeightOf, type Doc, type DocWall, levelOf, roofCoversOf, wallHeights, wallTop } from './document';
 import { blocksUnder } from '../elements/wall/geometry/under-roof';
@@ -385,40 +385,8 @@ export function openingAt(g: DerivedGeometry, p: Point2, reach = 0): OpeningId |
   return best;
 }
 
-/** Distance from p to the segment ab. */
-function segmentDistance(p: Point2, a: Point2, b: Point2): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len2 = dx * dx + dy * dy;
-  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
-  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
-}
-
-/** Distance from p to an open polyline. */
-function polylineDistance(line: readonly Point2[], p: Point2): number {
-  let d = Infinity;
-  for (let i = 1; i < line.length; i++) d = Math.min(d, segmentDistance(p, line[i - 1]!, line[i]!));
-  return d;
-}
-
-/** Distance from p to a polygon: 0 inside, else to its nearest edge. */
-export function polygonDistance(poly: readonly Point2[], p: Point2): number {
-  if (insidePolygon(poly, p)) return 0;
-  let d = Infinity;
-  for (let i = 0; i < poly.length; i++) d = Math.min(d, segmentDistance(p, poly[i]!, poly[(i + 1) % poly.length]!));
-  return d;
-}
-
-/** Even-odd ray crossing: is p inside the polygon? */
-export function insidePolygon(poly: readonly Point2[], p: Point2): boolean {
-  let c = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const a = poly[i]!;
-    const b = poly[j]!;
-    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) c = !c;
-  }
-  return c;
-}
+// model/vector is the one copy of these; re-exported for the render and tools layers.
+export { polygonDistance, insidePolygon };
 
 /**
  * The wall whose drawn pieces contain p, topmost (last drawn) first; else the one whose pieces come

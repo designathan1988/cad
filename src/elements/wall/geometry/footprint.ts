@@ -2,8 +2,8 @@
 // by the same half-planes. Clipping layers one by one equals splitting the clipped wall at the layer
 // lines, so the layers tile the wall exactly.
 
-import { AREA_EPSILON, POINT_TOLERANCE } from '../../../core/tolerance';
-import { add, distance, dot, intersectLines, type Point2, scale, sub } from '../../../core/vector';
+import { AREA_EPSILON, POINT_TOLERANCE } from '../../../model/tolerance';
+import { add, distance, dot, intersectLines, type Point2, scale, sub } from '../../../model/vector';
 import { resolveCorner } from '../join/cut-l';
 import { type AbutmentResult, resolveAbutment } from '../join/cut-t';
 import { deriveJoins, goesThrough } from '../join/discover';

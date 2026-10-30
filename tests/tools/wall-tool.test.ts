@@ -1,7 +1,7 @@
 // The wall tool's table, row by row, and the 8 × 6 rectangle typed in.
 
 import { describe, expect, it } from 'vitest';
-import { vec } from '../../src/core/vector';
+import { vec } from '../../src/model/vector';
 import { snap } from '../../src/tools/snap';
 import { bulgeForRadius, bulgeThrough, IDLE, wallTransition, type WallToolEvent, type WallToolState } from '../../src/tools/wall-tool';
 

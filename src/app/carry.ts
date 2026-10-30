@@ -3,7 +3,8 @@
 // and keeps its name. A room with a wall left behind stays where it is, unless a wall moved past its
 // point (keepRooms).
 
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
+import { segmentDistance } from '../model/vector';
 import { insideRing, middleOfRest, type RoomSolid } from '../elements/room/derive';
 import type { Room } from '../elements/room/schema';
 import type { Doc } from './document';
@@ -12,14 +13,6 @@ import { deriveGeometry, type DerivedGeometry } from './geometry';
 const NEAR = 1e-6;
 
 /** Distance from p to the segment a–b. */
-function toSegment(p: Point2, a: Point2, b: Point2): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len2 = dx * dx + dy * dy;
-  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
-  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
-}
-
 /** The walls around a room: every wall of its level whose pieces touch its outline. None when it is open. */
 export function wallsAround(g: DerivedGeometry, room: Room): string[] {
   const solid = g.rooms.get(room.id);
@@ -29,7 +22,7 @@ export function wallsAround(g: DerivedGeometry, room: Room): string[] {
       (s) =>
         s.wall.levelId === room.levelId &&
         s.pieces.some((piece) =>
-          solid.outline.some((v) => piece.polygon.some((a, i) => toSegment(v, a, piece.polygon[(i + 1) % piece.polygon.length]!) <= NEAR)),
+          solid.outline.some((v) => piece.polygon.some((a, i) => segmentDistance(v, a, piece.polygon[(i + 1) % piece.polygon.length]!) <= NEAR)),
         ),
     )
     .map((s) => s.wall.id);

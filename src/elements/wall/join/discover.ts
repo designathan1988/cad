@@ -1,8 +1,8 @@
 // Finds which wall ends meet (corners, nodes) and which ends stop against another wall (abutments).
 // Pure and deterministic: walls are always visited in ascending id order.
 
-import { COLLINEAR_ANGLE, MIN_WALL_LENGTH, MITER_LIMIT, POINT_TOLERANCE } from '../../../core/tolerance';
-import { add, cross, distance, dot, intersectLines, normalize, type Point2, scale, sub } from '../../../core/vector';
+import { COLLINEAR_ANGLE, MIN_WALL_LENGTH, MITER_LIMIT, POINT_TOLERANCE } from '../../../model/tolerance';
+import { add, cross, distance, dot, intersectLines, normalize, type Point2, scale, sub } from '../../../model/vector';
 import { endPoint, faceOffsets, intoBody, offsetOf, stationOf, wallDirection, wallLength, wallNormal } from '../geometry/offset';
 import type { EndRef, WallEnd } from '../schema';
 import type { WallShape } from '../geometry/shape';

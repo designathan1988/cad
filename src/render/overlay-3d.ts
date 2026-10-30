@@ -5,7 +5,7 @@
 
 import { snapMark } from './plan-view';
 import { drawObjectHandles, type ScreenHandle } from '../app/object-handles';
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import { BOX_FACES, type BoxFace, boxEdges, faceCenter, type SectionBox } from '../app/section-box';
 import { drawHandles } from './plan-view';
 import type { Handles } from '../app/handles';

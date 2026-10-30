@@ -2,7 +2,7 @@
 // (schema.ts: onGrid). Pure.
 
 import type { Doc } from '../../app/document';
-import { distance } from '../../core/vector';
+import { distance } from '../../model/vector';
 import { kindsOnLine } from '../registry';
 import { type Grid, onGrid } from './schema';
 

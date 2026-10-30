@@ -3,7 +3,7 @@
 // wall (an end, a distance along it, a distance across it: its faces and corners), a door's or a window's
 // jamb, or nothing (a point in the plan). Moving, stretching or thickening the wall moves the point.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 
 export const DIM_PREFIX = 'dim';
 

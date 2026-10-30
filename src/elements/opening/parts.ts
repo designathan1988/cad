@@ -6,7 +6,7 @@
 // leaves or panes by how they open; drawn open (opened in the view), swinging leaves stand square to the wall and
 // sliding ones are pushed to one side.
 
-import { add, distance, normalize, type Point2, scale, sub } from '../../core/vector';
+import { add, distance, normalize, type Point2, scale, sub } from '../../model/vector';
 import type { DoorHandle, LeafDesign, Opening } from './schema';
 import { paneRows, paneSpans } from './style';
 import { symbolLines } from './symbol';

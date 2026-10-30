@@ -3,7 +3,7 @@
 // image. Drawn on the objects' stage (object-snapshot.ts).
 
 import * as THREE from 'three';
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import { openingParts } from '../elements/opening/parts';
 import { newOpening } from '../elements/opening/schema';
 import type { OpeningModel } from '../elements/opening/style';

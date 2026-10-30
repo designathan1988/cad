@@ -4,7 +4,7 @@
 // "⌒"); a point's coordinates by a leader. On the DXF as lines and texts on the dimensions' layer.
 
 import { finite, isObject, isPoint } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import { type MessageKey, num, t } from '../../ui/i18n';
 import { lengthNum } from '../../ui/units';
 import type { ElementKind, PlanPaint } from '../contract';

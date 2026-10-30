@@ -3,7 +3,7 @@
 // set by a fixed distance, a fixed number or a largest spacing; a mullion on every line and round the
 // edge; a panel in each cell, glass or opaque. Its frame and panels are built in geometry.ts. Pure.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 
 export const CURTAIN_PREFIX = 'curtain';
 

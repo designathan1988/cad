@@ -1,7 +1,7 @@
 // Case table. Every expected polygon and area below is worked out by hand, not taken from the engine.
 
 import { describe, expect, it } from 'vitest';
-import { vec } from '../../../src/core/vector';
+import { vec } from '../../../src/model/vector';
 import type { ReferenceLine } from '../../../src/elements/wall/schema';
 import { geometry, testWall, type TestWall as Wall } from './fixtures';
 import { shoelace } from './oracle';

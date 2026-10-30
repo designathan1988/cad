@@ -2,7 +2,7 @@
 // dimension guide of the opening being placed. Read-only over the document and its geometry.
 
 import { lengthText } from '../ui/units';
-import { add, dot, type Point2, scale, sub } from '../core/vector';
+import { add, dot, type Point2, scale, sub } from '../model/vector';
 import { hasDistance, type PositionRule } from '../elements/opening/schema';
 import { referenceLength } from '../elements/opening/derive';
 import { arcOf } from '../elements/wall/geometry/arc';

@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { draftAt, guideBaseAt, guideLine, guideMeasure, newGuide } from '../../src/tools/guide-tool';
-import { vec } from '../../src/core/vector';
+import { vec } from '../../src/model/vector';
 
 const wall = (id: string, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
   id,

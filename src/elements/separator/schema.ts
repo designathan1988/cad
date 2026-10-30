@@ -2,7 +2,7 @@
 // open to the kitchen), as Revit's room separation lines. Nothing is built from it: rooms read it as a
 // wall of no thickness (room/derive.ts), and the plan draws it thin.
 
-import { add, normalize, perp, type Point2, scale, sub } from '../../core/vector';
+import { add, normalize, perp, type Point2, scale, sub } from '../../model/vector';
 
 export const SEPARATOR_PREFIX = 'sep';
 

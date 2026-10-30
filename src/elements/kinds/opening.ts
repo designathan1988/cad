@@ -6,7 +6,7 @@
 
 import { openingOutline, type OpeningSolid } from '../../app/geometry';
 import { isObject } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import type { ElementKind } from '../contract';
 import { type Opening, OPENING_PREFIX } from '../opening/schema';
 import { symbolLines } from '../opening/symbol';

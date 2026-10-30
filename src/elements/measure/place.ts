@@ -3,7 +3,7 @@
 // for the tool. Pure.
 
 import type { Doc } from '../../app/document';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import { arcOf } from '../wall/geometry/arc';
 import { shapeOf } from '../wall/geometry/shape';
 import type { DocWall } from '../../app/document';

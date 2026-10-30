@@ -10,11 +10,12 @@ aqui fica a decisão por arquivo.
 
 | Arquivo | Ação | Destino | Nota |
 | --- | --- | --- | --- |
-| src/core/vector.ts | manter+mover | model/vector.ts | acrescenta pointToSegment/polygonDistance (hoje 3 cópias: geometry, carry, dimension/anchor) |
-| src/core/tolerance.ts | manter+mover | model/tolerance.ts | os TOUCH/LENGTH_EPS/TOL locais de faces/edges/seams/sectors voltam para cá |
+| src/model/hull.ts | manter | model/hull.ts | a única cópia de hull (collision ≡ select-drag); import-mesh e evaluate têm regras de empate próprias, documentadas no arquivo |
+| src/model/vector.ts | manter | model/vector.ts | acrescenta pointToSegment/polygonDistance (hoje 3 cópias: geometry, carry, dimension/anchor) |
+| src/model/tolerance.ts | manter | model/tolerance.ts | os TOUCH/LENGTH_EPS/TOL locais de faces/edges/seams/sectors voltam para cá |
 | src/core/id.ts | manter+mover | project/id.ts | junto do formato (emite ids do projeto) |
 | src/core/guards.ts | manter+mover | project/guards.ts | os `finite`/`isPoint`/`isColor` locais (5 arquivos) passam a importar daqui |
-| src/core/rtree.ts | manter+mover | model/rtree.ts | passa a ser usado pela descoberta de juntas e seams (hoje bruto O(n²)) |
+| src/model/rtree.ts | manter | model/rtree.ts | passa a ser usado pela descoberta de juntas e seams (hoje bruto O(n²)) |
 | src/core/measure.ts | manter+mover | model/measure/parse.ts | o parser de expressões; separado do leitor de fita (tools) |
 | src/core/collisions.ts | juntar | session/prefs + app/collision | flag de preferência morrendo em core/; o motor SAT vai para model/sat.ts |
 | src/core/store.ts | mover | project/store.ts | sem mudança (ADR §5) |
@@ -99,7 +100,7 @@ aqui fica a decisão por arquivo.
 | src/elements/opening/marks.ts | mover | opening/marks.ts | O(n²) → mapa por chave |
 | src/elements/opening/sides.ts | mover | opening/sides.ts |  |
 | src/elements/opening/void.ts | mover | opening/void.ts |  |
-| src/elements/opening/index.ts | apagar | — | barril inconsistente, ninguém o usa |
+| (apagado) src/elements/opening/index.ts | apagado | — | barril inconsistente, ninguém o usa |
 | src/elements/kinds/opening.ts | juntar | opening/kind.ts |  |
 | src/tools/opening-tool.ts | mover | opening/tool.ts |  |
 | src/app/opening-ui.ts | mover | opening/aim.ts | aimAt/aimAlong duplicados fundem |
@@ -108,7 +109,7 @@ aqui fica a decisão por arquivo.
 | src/elements/room/derive.ts | mover | room/derive.ts | insideRing para de ser reexportado como insidePolygon |
 | src/elements/room/commands.ts | mover | room/commands.ts |  |
 | src/elements/room/fields.ts | dividir | room/fields.ts | tilesFor/TILE_WASTE (lógica de modelo) sai do arquivo de campos |
-| src/elements/room/panel.ts | apagar | — | alias de 9 linhas |
+| (apagado) src/elements/room/panel.ts | apagado | — | alias de 9 linhas |
 | src/elements/kinds/room.ts | juntar | room/kind.ts |  |
 | src/elements/kinds/floor.ts | juntar | room/floor-kind.ts |  |
 | src/app/room-ui.ts | mover | room/tool-ui.ts | room-exists repetido 3× → um helper |
@@ -307,7 +308,7 @@ aqui fica a decisão por arquivo.
 
 | Arquivo | Motivo |
 | --- | --- |
-| src/io/pdf-canvas.ts | produção-morto: só `isPdfCanvas` é importado (render/hatch); o exportador PDF das pranchas saiu com a área removida. `isPdfCanvas` vira checagem de interface em hatch. **714 l** |
+| (apagado no passo 2) produção-morto: só `isPdfCanvas` é importado (render/hatch); o exportador PDF das pranchas saiu com a área removida. `isPdfCanvas` vira checagem de interface em hatch. **714 l** |
 | src/elements/opening/index.ts | barril inconsistente sem usuários |
 | src/elements/room/panel.ts | alias de tipo de 9 linhas |
 | (dentro dos arquivos) | carriedRooms (carry.ts:54), referencesOf (reference/commands.ts:7), ~250 exports mortos do inventario.txt, 83 chaves de i18n, 15 classes CSS — cada um conferido por grep antes de tirar |

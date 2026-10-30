@@ -6,8 +6,8 @@
 // the join engine's own miter between them falls on it, and the chain tiles the arc with no gap. The
 // segment count depends only on the wall (ARC_SAG), never on the view.
 
-import { ARC_SAG } from '../../../core/tolerance';
-import { add, distance, dot, normalize, perp, type Point2, scale, sub, vec } from '../../../core/vector';
+import { ARC_SAG } from '../../../model/tolerance';
+import { add, distance, dot, normalize, perp, type Point2, scale, sub, vec } from '../../../model/vector';
 import { type HalfPlane, halfPlaneThrough } from './convex';
 import type { WallShape } from './shape';
 

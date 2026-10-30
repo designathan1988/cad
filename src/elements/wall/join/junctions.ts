@@ -4,7 +4,7 @@
 // lay over the other. Here they become one junction, every wall passing the point two arms and every
 // end one (footprint.ts gives each its sector, sectors.ts).
 
-import { add, distance, dot, type Point2, scale, sub } from '../../../core/vector';
+import { add, distance, dot, type Point2, scale, sub } from '../../../model/vector';
 import { endPoint, faceOffsets, offsetOf, wallDirection } from '../geometry/offset';
 import type { WallShape } from '../geometry/shape';
 import { parentOf } from '../geometry/arc';

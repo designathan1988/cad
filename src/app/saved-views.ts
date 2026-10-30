@@ -3,9 +3,10 @@
 // with the file; saving and deleting one are undo steps. Going to one changes only the interface.
 
 import type { Category } from './geometry';
+import { nextName } from './layer-sets';
 import { isCategoryList } from './layer-sets';
 import type { Command } from '../core/store';
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import type { Doc } from './document';
 import type { View3D } from './view-3d';
 
@@ -44,11 +45,7 @@ export type SavedView = Shows &
   );
 
 /** The next free name of a kind: "3D 1", "3D 2", or the level's name and a number for a plan. */
-export function nextViewName(views: readonly SavedView[], base: string): string {
-  const taken = new Set(views.map((v) => v.name));
-  for (let n = 1; ; n++) if (!taken.has(`${base} ${n}`)) return `${base} ${n}`;
-}
-
+export const nextViewName = (views: readonly SavedView[], base: string): string => nextName(views.map((v) => v.name), base);
 export const saveView = (view: SavedView): Command<Doc> => ({
   label: 'cmd.saveView',
   apply: (doc) => ({ ...doc, views: [...doc.views, view] }),

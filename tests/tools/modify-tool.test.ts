@@ -1,7 +1,7 @@
 // The Modify tools' clicks and typed values, by hand: what each step keeps and what it applies.
 
 import { describe, expect, it } from 'vitest';
-import { vec } from '../../src/core/vector';
+import { vec } from '../../src/model/vector';
 import { MODIFY_START, modifyTransition, previewTransform } from '../../src/tools/modify-tool';
 
 const at = (x: number, y: number) => vec(x, y);

@@ -1,7 +1,7 @@
 // Small helpers the kinds share: tracing a polygon in the plan, and fields written for an element read
 // through what the kind derives from it.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import type { Field } from '../../ui/fields';
 import type { PlanPaint } from '../contract';
 

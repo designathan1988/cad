@@ -3,7 +3,7 @@
 // and a handrail on each side. Placed by its first step's front edge (`at`, the middle of it) and the way
 // it climbs (`angle`); a spiral is centred a radius ahead of that point. geometry.ts lays the steps out.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 
 export const STAIR_PREFIX = 'stair';
 export type StairKind = 'straight' | 'l' | 'u' | 'spiral' | 'ramp';

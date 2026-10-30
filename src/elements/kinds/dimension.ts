@@ -4,7 +4,7 @@
 
 import { lengthNum } from '../../ui/units';
 import { finite, isObject, isPoint } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import type { ElementKind, PlanPaint } from '../contract';
 import { placeDimension, resolve, segmentDistance } from '../dimension/anchor';
 import { lockDimensions, setDimensionDistance, setDimensionsEqual } from '../dimension/commands';

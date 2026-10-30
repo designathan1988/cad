@@ -3,8 +3,8 @@
 // Chief Architect says so and offers Align With Wall Below; so does this, with the shift that aligns
 // them. Pure: from the document.
 
-import { POINT_TOLERANCE } from '../core/tolerance';
-import { add, cross, dot, type Point2, scale, sub } from '../core/vector';
+import { POINT_TOLERANCE } from '../model/tolerance';
+import { add, cross, dot, type Point2, scale, sub } from '../model/vector';
 import { faceOffsets, wallDirection, wallLength, wallNormal } from '../elements/wall/geometry/offset';
 import { shapeOf, type WallShape } from '../elements/wall/geometry/shape';
 import type { WallId } from '../elements/wall/schema';

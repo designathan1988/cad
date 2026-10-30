@@ -3,7 +3,7 @@
 // curtain walls — where their heights overlap, sliding along it when it can; nothing is set below the floor.
 // Pure: shapes from the derived geometry, a move clamped against them.
 
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import { eachSolid } from '../elements/registry';
 import type { App } from './app';
 import type { DerivedGeometry } from './geometry';
@@ -24,23 +24,10 @@ const FLAT = 0.03;
 /** Touching is not overlapping: outlines this close (m), heights this close, pass. */
 const TOUCH = 0.002;
 
-/** The convex hull of points (Andrew's monotone chain), counter-clockwise. */
-export function hull(pts: readonly Point2[]): Point2[] {
-  const p = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
-  if (p.length < 3) return p;
-  const cross = (o: Point2, a: Point2, b: Point2) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-  const lower: Point2[] = [];
-  for (const q of p) {
-    while (lower.length >= 2 && cross(lower[lower.length - 2]!, lower[lower.length - 1]!, q) <= 0) lower.pop();
-    lower.push(q);
-  }
-  const upper: Point2[] = [];
-  for (const q of [...p].reverse()) {
-    while (upper.length >= 2 && cross(upper[upper.length - 2]!, upper[upper.length - 1]!, q) <= 0) upper.pop();
-    upper.push(q);
-  }
-  return [...lower.slice(0, -1), ...upper.slice(0, -1)];
-}
+import { hull } from '../model/hull';
+
+/** The convex hull of points (model/hull.ts), re-exported for the drag code. */
+export { hull };
 
 /** Whether two convex outlines overlap by more than touching (separating axes). */
 export function overlaps(a: readonly Point2[], b: readonly Point2[]): boolean {

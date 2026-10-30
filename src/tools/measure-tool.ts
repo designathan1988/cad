@@ -14,7 +14,7 @@
 // | done     | escape  | idle     | the measurement is cleared                  |
 // | idle     | escape  | idle     | (the app leaves the tool)                   |
 
-import { distance, type Point2 } from '../core/vector';
+import { distance, signedTwiceArea, type Point2 } from '../model/vector';
 
 export type MeasureState =
   | { readonly kind: 'idle' }
@@ -51,15 +51,7 @@ export function chainLength(points: readonly Point2[], closed: boolean): number 
 }
 
 /** The area inside a closed chain (m²), whatever way round it goes. */
-export function chainArea(points: readonly Point2[]): number {
-  let twice = 0;
-  for (let i = 0; i < points.length; i++) {
-    const a = points[i]!;
-    const b = points[(i + 1) % points.length]!;
-    twice += a.x * b.y - b.x * a.y;
-  }
-  return Math.abs(twice) / 2;
-}
+export const chainArea = (points: readonly Point2[]): number => Math.abs(signedTwiceArea(points)) / 2;
 
 /** The angle at b between the stretches to a and to c (0–180°); null when one has no length. */
 export function angleAt(a: Point2, b: Point2, c: Point2): number | null {

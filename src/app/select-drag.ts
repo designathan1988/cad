@@ -1,3 +1,4 @@
+import { hull } from '../model/hull';
 // The select tool's gestures. Click: select (Shift adds or removes). Drag a wall: move the selection,
 // with joins kept and a live preview (the rooms all of whose walls go, go too); with Alt the walls move
 // alone, leaving their joins behind. A selected room moves its point, into another space if dropped
@@ -10,7 +11,7 @@
 import { clampMove, collisionFor, type Shape } from './collision';
 import { boxOf, type Box } from '../tools/arrange';
 import { smartGuides } from '../tools/smart-guides';
-import { add, distance, dot, normalize, type Point2, scale, sub, vec } from '../core/vector';
+import { add, distance, dot, normalize, type Point2, scale, sub, vec } from '../model/vector';
 import { setWalls } from '../elements/wall/commands';
 import type { WallEnd, WallId } from '../elements/wall/schema';
 import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../tools/edit';
@@ -425,20 +426,4 @@ function polygonTouchesRect(poly: readonly Point2[], x0: number, y0: number, x1:
 
 
 /** Convex hull of screen points (monotone chain), for a prism seen in 3D. */
-export function hull(points: readonly Point2[]): Point2[] {
-  const ps = [...points].sort((p, q) => p.x - q.x || p.y - q.y);
-  if (ps.length < 3) return ps;
-  const turn = (o: Point2, a: Point2, b: Point2) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-  const lower: Point2[] = [];
-  for (const p of ps) {
-    while (lower.length >= 2 && turn(lower[lower.length - 2]!, lower[lower.length - 1]!, p) <= 0) lower.pop();
-    lower.push(p);
-  }
-  const upper: Point2[] = [];
-  for (const p of [...ps].reverse()) {
-    while (upper.length >= 2 && turn(upper[upper.length - 2]!, upper[upper.length - 1]!, p) <= 0) upper.pop();
-    upper.push(p);
-  }
-  return [...lower.slice(0, -1), ...upper.slice(0, -1)];
-}
 

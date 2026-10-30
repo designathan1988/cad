@@ -1,8 +1,8 @@
 // The only clipping primitives in the project. Every piece stays convex and every cut is a
 // half-plane, so clipping is exact: no rounding step exists where a gap or sliver could appear.
 
-import { AREA_EPSILON } from '../../../core/tolerance';
-import { dot, type Point2, vec } from '../../../core/vector';
+import { AREA_EPSILON } from '../../../model/tolerance';
+import { dot, type Point2, vec } from '../../../model/vector';
 
 /** Keeps the points p with normal·p ≤ offset. */
 export interface HalfPlane {

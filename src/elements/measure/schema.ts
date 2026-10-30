@@ -3,7 +3,7 @@
 // length of an arc wall, held by that wall (its face or its reference line) and redrawn as it changes; and a
 // point's coordinates in the plan. Kept with the project, on a level.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 
 export const MEASURE_PREFIX = 'meas';
 

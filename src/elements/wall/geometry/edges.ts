@@ -10,6 +10,7 @@
 // that stands higher. United, the 480 tops of 160 walls took 35 ms, and as many the bottoms.
 
 import type { Prism, PrismFaces } from './faces';
+import { FACE_TOUCH, LENGTH_EPS } from '../../../model/tolerance';
 
 export interface Point3 {
   readonly x: number;
@@ -23,11 +24,9 @@ export interface Edge3 {
   readonly b: Point3;
 }
 
-/** Faces this close in direction and offset (m) are on one plane: faces.ts's TOUCH. */
-const TOUCH = 1e-4;
+/** Faces this close in direction and offset (m) are on one plane: faces.ts's FACE_TOUCH. */
 /** A line between two sides that turn less than this (rad, 15°) is left out: an arc's segments. */
 const SMOOTH = (15 * Math.PI) / 180;
-const LENGTH_EPS = 1e-6;
 
 /** Part of a plane's faces: along the plane from its origin, and in height. */
 interface Rect {
@@ -59,7 +58,7 @@ export function featureEdges(prisms: readonly Prism[], faces: readonly PrismFace
       for (const dy of [-BIN, 0, BIN])
         for (const dd of [-BIN, 0, BIN])
           for (const p of buckets.get(keyOf(n.x + dx, n.y + dy, offset + dd)) ?? [])
-            if (Math.hypot(p.n.x - n.x, p.n.y - n.y) <= TOUCH && Math.abs(p.offset - offset) <= TOUCH) return p;
+            if (Math.hypot(p.n.x - n.x, p.n.y - n.y) <= FACE_TOUCH && Math.abs(p.offset - offset) <= FACE_TOUCH) return p;
     const p: Plane = { n, offset, rects: [] };
     const key = keyOf(n.x, n.y, offset);
     buckets.set(key, [...(buckets.get(key) ?? []), p]);
@@ -109,7 +108,7 @@ export function featureEdges(prisms: readonly Prism[], faces: readonly PrismFace
       for (let dx = -1; dx <= 1; dx++)
         for (let dy = -1; dy <= 1; dy++)
           for (const w of verticals.get(vkey(v.x, v.y, dx, dy)) ?? []) {
-            if (w.plane === v.plane || Math.hypot(w.x - v.x, w.y - v.y) > TOUCH) continue;
+            if (w.plane === v.plane || Math.hypot(w.x - v.x, w.y - v.y) > FACE_TOUCH) continue;
             const turn = Math.acos(Math.max(-1, Math.min(1, v.plane.n.x * w.plane.n.x + v.plane.n.y * w.plane.n.y)));
             if (turn < SMOOTH) bends.push([Math.max(v.z0, w.z0), Math.min(v.z1, w.z1)]);
           }

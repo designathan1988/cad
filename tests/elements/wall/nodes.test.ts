@@ -2,7 +2,7 @@
 // by hand.
 
 import { describe, expect, it } from 'vitest';
-import { vec } from '../../../src/core/vector';
+import { vec } from '../../../src/model/vector';
 import { geometry, layer, testWall } from './fixtures';
 import { shoelace } from './oracle';
 import { overlapArea } from '../../../src/elements/wall/geometry/convex';

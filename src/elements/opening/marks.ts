@@ -3,7 +3,7 @@
 // smallest, by width, then height, then sill: every 0.90 × 2.10 door is the same type, its mark the
 // same on the plan, in the schedule and in the panel. Derived, never stored. Pure.
 
-import { add, type Point2, scale } from '../../core/vector';
+import { add, type Point2, scale } from '../../model/vector';
 import type { Opening, OpeningId, OpeningKind } from './schema';
 import type { OpeningFrame } from './void';
 

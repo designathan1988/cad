@@ -1,7 +1,7 @@
 // Guides in the registry (contract.ts): elements/guide holds the element itself. A guide is a line
 // without ends: framing counts its point only, and only a crossing window takes it.
 
-import { add, cross, distance, normalize, sub } from '../../core/vector';
+import { add, cross, distance, normalize, sub } from '../../model/vector';
 import { isObject, isPoint } from '../../core/guards';
 import type { ElementKind } from '../contract';
 import { clearGuides } from '../guide/commands';

@@ -2,7 +2,7 @@
 // ceiling (plus an adjustment), turned by an angle. Placed at a point (a grid crossing, a corner), it goes
 // with the grid axes it stands on (elements/grid/carry.ts). Drawn cut in plan, solid in 3D.
 
-import { add, type Point2, scale } from '../../core/vector';
+import { add, type Point2, scale } from '../../model/vector';
 
 export const COLUMN_PREFIX = 'column';
 /** A new column's section (m): 25 × 25 cm. */

@@ -1,3 +1,4 @@
+import { finite } from '../../core/guards';
 // A material's physics, as data of the material: conductivity, density and specific heat from NBR
 // 15220-2's table B.3 (as in its 2003 draft text, to confirm in the edition in force), the water vapour
 // resistance factor as building physics tables give it (typical values, to confirm in ISO 10456), and
@@ -52,7 +53,6 @@ export function physicsOf(m: Material): MaterialPhysics | null {
   return m.physics ?? DEFAULT_PHYSICS[m.id] ?? null;
 }
 
-const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
 export const isPhysics = (x: unknown): x is MaterialPhysics => {
   if (typeof x !== 'object' || x === null) return false;

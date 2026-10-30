@@ -2,7 +2,7 @@
 // (plus an adjustment), its width across and its depth down. Above the plan's cut, so drawn dashed in
 // plan, as hidden lines are; solid in 3D. It goes with the grid axis it lies on (elements/grid/carry.ts).
 
-import { add, normalize, perp, type Point2, scale, sub } from '../../core/vector';
+import { add, normalize, perp, type Point2, scale, sub } from '../../model/vector';
 
 export const BEAM_PREFIX = 'beam';
 /** A new beam's section (m): 15 cm wide, 40 cm deep. */

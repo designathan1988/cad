@@ -2,7 +2,7 @@
 // walls of its whole level (room/derive.ts: deriveRooms, in the base geometry); the kind reads it there.
 
 import { finite, isObject, isPoint } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import { name, t } from '../../ui/i18n';
 import type { ElementKind } from '../contract';
 import { updateRooms } from '../room/commands';

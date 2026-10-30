@@ -3,7 +3,7 @@
 // flat (with a parapet, platibanda), one slope (uma água), two (duas águas), four (quatro águas).
 // geometry.ts builds the faces.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 
 export const ROOF_PREFIX = 'roof';
 export type RoofKind = 'flat' | 'shed' | 'gable' | 'hip';

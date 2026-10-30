@@ -2,7 +2,7 @@
 // the stair itself). A floor whose top is within WELL_REACH of a stair's top is cut by its footprint.
 
 import type { Doc } from '../../app/document';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import { type StairSolid, stairSolid, stairWell } from './geometry';
 import { type Stair, WELL_REACH } from './schema';
 

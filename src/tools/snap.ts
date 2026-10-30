@@ -1,7 +1,7 @@
 // Snaps for drawing: the cursor jumps to what the user most likely means. Distances are in screen
 // pixels (converted by the caller's metres-per-pixel), so snapping feels the same at any zoom.
 
-import { add, distance, dot, normalize, type Point2, scale, sub, vec } from '../core/vector';
+import { add, distance, dot, normalize, type Point2, scale, sub, vec } from '../model/vector';
 import { type Arc, arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { arcMiddle } from './arc-edit';
 import type { MessageKey } from '../ui/i18n';

@@ -8,7 +8,7 @@ import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Material } from '../material/schema';
-import { ARC_SAG } from '../../core/tolerance';
+import { ARC_SAG } from '../../model/tolerance';
 import type { Doc } from '../../app/document';
 import { insideRing } from '../room/derive';
 import type { ElementKind, KindSolid } from '../contract';

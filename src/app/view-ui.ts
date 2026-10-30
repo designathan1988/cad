@@ -1,7 +1,7 @@
 // The views: plan or 3D, framing, the view keys, elevations and sections, the section box, exploding the levels. Functions over the app (app.ts delegates).
 
 import * as THREE from 'three';
-import { type Point2 } from '../core/vector';
+import { type Point2 } from '../model/vector';
 import { type Insets } from '../render/plan-view';
 import { t } from '../ui/i18n';
 import { type ViewId } from '../ui/shell';

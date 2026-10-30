@@ -10,7 +10,7 @@ import type { Detail, PenRole } from './drawing/schema';
 import type { Category, DerivedGeometry } from '../app/geometry';
 import type { UprightPrism } from '../app/section-box';
 import type { Command } from '../core/store';
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import type { Transform } from '../tools/transform';
 import type { Field } from '../ui/fields';
 import type { MessageKey } from '../ui/i18n';

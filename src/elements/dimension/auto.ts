@@ -6,7 +6,7 @@
 
 import type { Doc } from '../../app/document';
 import type { DerivedGeometry } from '../../app/geometry';
-import { distance, dot, normalize, perp, type Point2, sub } from '../../core/vector';
+import { distance, dot, normalize, perp, type Point2, sub } from '../../model/vector';
 import { insideRing } from '../room/derive';
 import { placeDimension } from './anchor';
 import { DIM_PREFIX, type DimAnchor, type Dimension } from './schema';

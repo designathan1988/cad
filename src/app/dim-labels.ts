@@ -3,7 +3,7 @@
 // small steps, until clear of the values placed before it; a line too short for that leaves it beside
 // the others instead, stepped off its line.
 
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 
 export interface DimLabel {
   readonly a: Point2;

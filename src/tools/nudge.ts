@@ -6,7 +6,7 @@ import { wallsOnGrids } from '../elements/grid/carry';
 import { moveRooms, roomsGoingWith } from '../app/carry';
 import type { Doc } from '../app/document';
 import { type DerivedGeometry, hostsIn } from '../app/geometry';
-import { dot, normalize, type Point2, sub } from '../core/vector';
+import { dot, normalize, type Point2, sub } from '../model/vector';
 import { detachedFrom } from '../elements/opening/commands';
 import { deriveOpenings } from '../elements/opening/derive';
 import { hasDistance, type PositionRule } from '../elements/opening/schema';

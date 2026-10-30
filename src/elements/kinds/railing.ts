@@ -3,7 +3,7 @@
 // of its sides, rising with it.
 
 import { finite, isObject, isPoint } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import { railingGeometry } from '../../render/prisms';
 import type { ElementKind } from '../contract';
 import { updateRailings } from '../railing/commands';

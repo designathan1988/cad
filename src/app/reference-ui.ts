@@ -3,7 +3,7 @@
 
 import type { App } from './app';
 import { newId } from '../core/id';
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import { addReference, setReference } from '../elements/reference/commands';
 import { calibrated, DEFAULT_OPACITY, IMAGE_SCALE, REFERENCE_PREFIX, type Reference } from '../elements/reference/schema';
 import { readDxfLines } from '../io/import-dxf';

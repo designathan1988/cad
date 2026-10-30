@@ -3,8 +3,8 @@
 // host layers of strictly lower priority, and stops on the first of equal or higher priority (the
 // host core at the latest). Each host layer it passes is notched exactly where it passes.
 
-import { MITER_LIMIT } from '../../../core/tolerance';
-import { add, dot, intersectLines, type Point2, scale } from '../../../core/vector';
+import { MITER_LIMIT } from '../../../model/tolerance';
+import { add, dot, intersectLines, type Point2, scale } from '../../../model/vector';
 import { type HalfPlane, halfPlaneThrough } from '../geometry/convex';
 import { endPoint, intoBody, wallDirection, wallNormal } from '../geometry/offset';
 import type { WallShape } from '../geometry/shape';

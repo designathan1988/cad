@@ -2,7 +2,7 @@
 // a guide. What the pointer side shares with them comes in `k`.
 
 import { comboOf, resolveKey } from './keymap';
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import { t } from '../ui/i18n';
 import { viewKey } from './view-keys';
 import type { App } from './app';

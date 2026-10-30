@@ -14,3 +14,12 @@ export const MIN_ELEMENT_SIZE = 0.01;
 export const AREA_EPSILON = 1e-9;
 /** Largest gap between an arc face and its chords (m). See docs/adr/0001-arc-sag.md. */
 export const ARC_SAG = 5e-4;
+
+// The 3D faces' and edges' own scales (they compare merged outlines, not joints): a face only touches
+// when it is within a tenth of the point tolerance, and lengths shorter than this are nothing.
+export const FACE_TOUCH = 1e-4;
+export const LENGTH_EPS = 1e-6;
+/** Layer seams' collinearity, tighter than the point tolerance (a seam is drawn, not joined). */
+export const SEAM_TOL = 1e-7;
+/** A sector's arm is off its face by less than this (join/sectors.ts). */
+export const OFF_FACE = 1e-9;

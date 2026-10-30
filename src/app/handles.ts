@@ -3,7 +3,7 @@
 // (stretch it along its own line), a diamond at the middle of an arc wall (bend it), an arc under the
 // selection (turn it). Pure: positions on screen from a projection, and which handle is under a point.
 
-import { add, normalize, type Point2, scale, sub } from '../core/vector';
+import { add, normalize, type Point2, scale, sub } from '../model/vector';
 import type { WallEnd, WallId } from '../elements/wall/schema';
 import type { DocWall } from './document';
 import { arcMiddle } from '../tools/arc-edit';

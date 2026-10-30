@@ -7,8 +7,9 @@
 // one each way. The passage-and-abutments rule (node.ts) left a Y with a gap where the third wall met
 // the passage's corner, finishes inside the junction, and five or more walls square and overlapping.
 
-import { COLLINEAR_ANGLE, MITER_LIMIT, POINT_TOLERANCE } from '../../../core/tolerance';
-import { add, cross, distance, dot, intersectLines, normalize, perp, type Point2, scale, sub, vec } from '../../../core/vector';
+import { COLLINEAR_ANGLE, MITER_LIMIT, POINT_TOLERANCE } from '../../../model/tolerance';
+import { OFF_FACE } from '../../../model/tolerance';
+import { add, cross, distance, dot, intersectLines, normalize, perp, type Point2, scale, sub, vec } from '../../../model/vector';
 import { type HalfPlane, halfPlaneThrough } from '../geometry/convex';
 import { faceLine, faceOffsets, intoBody, type Line, offsetOf, wallNormal } from '../geometry/offset';
 import type { WallShape } from '../geometry/shape';
@@ -307,7 +308,6 @@ function strictlyWithinBand(w: WallShape, p: Point2): boolean {
 }
 
 /** How far inside a face a point must be to count as inside (m): only rounding is below it. */
-const OFF_FACE = 1e-9;
 
 /** Inside the wall's band, faces included. */
 function withinBand(w: WallShape, p: Point2): boolean {

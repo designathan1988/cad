@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 import { tempDims } from '../../src/app/temp-dims';
-import { vec } from '../../src/core/vector';
+import { vec } from '../../src/model/vector';
 import { newOpening } from '../../src/elements/opening/schema';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({

@@ -2,7 +2,7 @@
 // a box, each of its six faces dragged by a handle at its middle. Plan coordinates and heights, as the
 // model's; interface state, kept with the 3D view's other choices (view-3d.ts). Pure.
 
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import { clipHalfPlane } from '../elements/wall/geometry/convex';
 
 export interface Point3 {

@@ -5,8 +5,8 @@
 
 import type { Doc, DocWall } from '../app/document';
 import { hostsIn } from '../app/geometry';
-import { MIN_WALL_LENGTH } from '../core/tolerance';
-import { cross, distance, dot, intersectLines, normalize, type Point2, sub } from '../core/vector';
+import { MIN_WALL_LENGTH } from '../model/tolerance';
+import { cross, distance, dot, intersectLines, normalize, type Point2, sub } from '../model/vector';
 import { deriveOpenings, referenceLength } from '../elements/opening/derive';
 import type { Opening, PositionRule } from '../elements/opening/schema';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';

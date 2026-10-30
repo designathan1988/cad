@@ -3,7 +3,7 @@
 // the room is deleted.
 
 import { finite, isObject, isPoint } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import { slabGeometry } from '../../render/prisms';
 import { name, t } from '../../ui/i18n';
 import type { ElementKind } from '../contract';

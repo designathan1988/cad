@@ -10,7 +10,7 @@ import { drawObjectHandles, type ScreenHandle } from '../app/object-handles';
 import { drawAxis } from '../elements/kinds/grid';
 import { drawDimension, type Placed } from '../elements/kinds/dimension';
 import { eachSolid } from '../elements/registry';
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { type DerivedGeometry, openingOutline } from '../app/geometry';
 import { layoutRoomTags } from './room-tags';

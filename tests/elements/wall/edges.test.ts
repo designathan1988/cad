@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { featureEdges, type Edge3 } from '../../../src/elements/wall/geometry/edges';
 import { visibleFaces, type Prism } from '../../../src/elements/wall/geometry/faces';
-import type { Point2 } from '../../../src/core/vector';
+import type { Point2 } from '../../../src/model/vector';
 
 const box = (x0: number, y0: number, x1: number, y1: number, bottom: number, top: number): Prism => ({
   polygon: [

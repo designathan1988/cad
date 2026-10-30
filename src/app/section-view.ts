@@ -9,7 +9,7 @@ import { modelSolids, paintSection, sectionDrawing, type SectionDrawing, type So
 import { scaleFactor } from '../elements/drawing/schema';
 import type { SectionMark } from '../elements/section/schema';
 import { name, num } from '../ui/i18n';
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 
 /** The text of a drawing's cells and labels (mm). */
 const TEXT = 2;

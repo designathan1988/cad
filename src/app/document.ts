@@ -1,7 +1,7 @@
 // The project document: only what the user decided. Thickness, heights, joins and geometry are
 // always derived from it.
 
-import { MIN_ELEMENT_SIZE } from '../core/tolerance';
+import { MIN_ELEMENT_SIZE } from '../model/tolerance';
 import { MORE_WALL_TYPES } from '../elements/wall/library-types';
 import type { LayerSet, RoomOverride, WallOverride } from './layer-sets';
 import type { Separator } from '../elements/separator/schema';
@@ -22,7 +22,7 @@ import type { Roof } from '../elements/roof/schema';
 import type { Beam } from '../elements/beam/schema';
 import type { Column } from '../elements/column/schema';
 import type { SavedView } from './saved-views';
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import type { Guide } from '../elements/guide/schema';
 import type { Note } from '../elements/note/schema';
 import type { Dimension } from '../elements/dimension/schema';
@@ -343,8 +343,11 @@ export function wallBand(doc: Doc, wall: DocWall): Point2[] {
   return [...toCounterClockwise(band)];
 }
 
-export const wallThickness = (doc: Doc, wall: Wall): number =>
-  (doc.wallTypes.find((t) => t.id === wall.wallTypeId)?.layers ?? []).reduce((s, l) => s + l.thickness, 0);
+/** A wall type's total thickness, its layers added (a missing type is 0). */
+export const wallTypeThickness = (doc: Doc, typeId: string): number =>
+  (doc.wallTypes.find((t) => t.id === typeId)?.layers ?? []).reduce((s, l) => s + l.thickness, 0);
+
+export const wallThickness = (doc: Doc, wall: Wall): number => wallTypeThickness(doc, wall.wallTypeId);
 
 export type { Point2 };
 

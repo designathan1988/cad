@@ -2,7 +2,7 @@
 // level: it is on every one, and pasting onto another level leaves it out.
 
 import { isObject, isPoint } from '../../core/guards';
-import { add, distance, normalize, type Point2, sub } from '../../core/vector';
+import { add, distance, normalize, type Point2, sub } from '../../model/vector';
 import { t } from '../../ui/i18n';
 import type { ElementKind, PlanPaint } from '../contract';
 import { renameGrid } from '../grid/commands';

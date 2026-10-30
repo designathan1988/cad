@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { type Doc, newDocument } from '../../../src/app/document';
 import { createStore } from '../../../src/core/store';
-import { vec } from '../../../src/core/vector';
+import { vec } from '../../../src/model/vector';
 import { addFloor, addRoom, updateFloor, updateRoom, updateRooms } from '../../../src/elements/room/commands';
 import { readProject, writeProject } from '../../../src/io/project-file';
 

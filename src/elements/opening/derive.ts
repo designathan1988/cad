@@ -2,8 +2,8 @@
 // host walls as they are now; an opening moves only when its rule's own reference moves.
 
 import { type Doc, type DocWall, wallHeights } from '../../app/document';
-import { POINT_TOLERANCE } from '../../core/tolerance';
-import { add, distance, dot, normalize, type Point2, scale, sub } from '../../core/vector';
+import { POINT_TOLERANCE } from '../../model/tolerance';
+import { add, distance, dot, normalize, type Point2, scale, sub } from '../../model/vector';
 import { arcOf } from '../wall/geometry/arc';
 import type { WallId } from '../wall/schema';
 import type { Opening, OpeningGroup, OpeningGroupId, OpeningId } from './schema';

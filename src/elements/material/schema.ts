@@ -120,7 +120,10 @@ export const SEE_THROUGH: Readonly<Record<string, number>> = { glass: 0.45, fros
 /** A material for a name an older file used and the built-in ones do not have: grey, plain. */
 export const materialFor = (id: MaterialId): Material => BUILT_IN_MATERIALS.find((m) => m.id === id) ?? { id, name: id, color: '#9c9a94', roughness: 0.9, metalness: 0, cut: 'solid' };
 
-export const isColor = (c: unknown): c is string => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+import { isColor } from '../../core/guards';
+
+/** A #rrggbb colour, as the file-read guards use (model/guards is the one copy). */
+export { isColor };
 
 /** A project's material by id; a name it does not have gets the plain grey one (materialFor). */
 export const materialIn = (list: readonly Material[], id: MaterialId): Material => list.find((m) => m.id === id) ?? materialFor(id);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { vec } from '../../../src/core/vector';
+import { vec } from '../../../src/model/vector';
 import {
   area,
   clipHalfPlane,

@@ -2,7 +2,7 @@
 // other, the same on every level, with a bubble at each end. The walls lying on an axis go with it when
 // it is moved. Part of the project: saved, undone, moved as the rest.
 
-import { distance, dot, normalize, type Point2, sub } from '../../core/vector';
+import { distance, dot, normalize, type Point2, sub } from '../../model/vector';
 
 export const GRID_PREFIX = 'grid';
 

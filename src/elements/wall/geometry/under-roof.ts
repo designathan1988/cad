@@ -3,7 +3,7 @@
 // under the eaves stops at the slope. Each block of such a wall is cut by the roofs' faces into pieces
 // with one plane over each; where no roof covers it, the wall keeps its level's top. Pure.
 
-import type { Point2 } from '../../../core/vector';
+import type { Point2 } from '../../../model/vector';
 import type { RoofSolid } from '../../roof/geometry';
 import type { Block } from '../../opening/void';
 import { area, clipHalfPlane, clipOut, type ConvexPolygon, halfPlaneThrough, type HalfPlane, signedArea, toCounterClockwise } from './convex';

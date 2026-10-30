@@ -6,7 +6,7 @@
 // infill from the eaves up to the roof. A flat roof is one face at the eaves, with its parapet. Pure.
 
 import { type ConvexPolygon, clipHalfPlane, signedArea } from '../wall/geometry/convex';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import type { Roof } from './schema';
 
 export interface RoofFace {

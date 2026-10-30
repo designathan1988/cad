@@ -10,7 +10,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { vec } from '../../../src/core/vector';
+import { vec } from '../../../src/model/vector';
 import { overlapArea } from '../../../src/elements/wall/geometry/convex';
 import { geometry, testWall, type TestWall } from './fixtures';
 import { checkAgainst, inside, type P, rectOf, type Region } from './oracle';

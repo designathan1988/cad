@@ -6,7 +6,7 @@
 // share (the opposite face stays). A preview while dragging, one undo step on release. In plan the
 // handles of height do not show: their axis is seen end-on.
 
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 import { setObjectValues } from '../elements/object/commands';
 import { updateOpening } from '../elements/opening/commands';
 import type { Opening, PositionRule } from '../elements/opening/schema';

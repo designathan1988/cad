@@ -18,8 +18,8 @@
 // Esc steps back one click; at the first, the app leaves the tool. A value typed before any point is
 // refused: it needs the base.
 
-import { MIN_WALL_LENGTH } from '../core/tolerance';
-import { distance, dot, normalize, type Point2, scale, sub, add } from '../core/vector';
+import { MIN_WALL_LENGTH } from '../model/tolerance';
+import { distance, dot, normalize, type Point2, scale, sub, add } from '../model/vector';
 import { reflection, rotation, scaling, type Transform, translation } from './transform';
 
 export type ModifyKind = 'move' | 'copy' | 'rotate' | 'scale' | 'mirror' | 'offset';

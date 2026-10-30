@@ -1,3 +1,4 @@
+import { finite } from '../../core/guards';
 // Sections and elevations as drawings (docs/plano-de-escopo.md, phase 10: "cortes e elevações
 // documentados"): a line in plan, the same on every level, looking to its left (start → end) as far as
 // its depth. A section's line goes through the building and fills what it cuts; an elevation's stands
@@ -5,7 +6,7 @@
 // alone. Drawn from the model each time (app/section-drawing.ts), so it follows it;
 // put on a sheet at a scale (elements/sheet).
 
-import { type Point2, distance } from '../../core/vector';
+import { type Point2, distance } from '../../model/vector';
 
 export const SECTION_PREFIX = 'sec';
 
@@ -34,7 +35,6 @@ export const lookOf = (m: Pick<SectionMark, 'start' | 'end'>): Point2 => {
   return { x: -(m.end.y - m.start.y) / len, y: (m.end.x - m.start.x) / len };
 };
 
-const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isPoint = (p: unknown): p is Point2 => typeof p === 'object' && p !== null && finite((p as Point2).x) && finite((p as Point2).y);
 
 export const isSectionMark = (m: unknown): m is SectionMark => {

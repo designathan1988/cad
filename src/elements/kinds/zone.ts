@@ -3,7 +3,7 @@
 // name and area under the first room's name; picked by that tag only, so a click on a room is the room's.
 
 import { isObject } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import { name as said, t } from '../../ui/i18n';
 import { areaText } from '../../ui/units';
 import type { ElementKind } from '../contract';

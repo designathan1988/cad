@@ -36,7 +36,7 @@ import * as views from './views-ui';
 import * as files from './app-files';
 import * as THREE from 'three';
 import { createStore, type Store } from '../core/store';
-import { distance, type Point2 } from '../core/vector';
+import { distance, type Point2 } from '../model/vector';
 import { addOpening, placementProblem, updateOpening, wallRule } from '../elements/opening/commands';
 import type { OpeningSize } from '../elements/opening/panel';
 import { OPENING_MODELS, swings } from '../elements/opening/style';
@@ -56,7 +56,7 @@ import { getLang, htmlLang, markPrefix, setLang, t, type Lang, type MessageKey }
 import { buildShell, type Shell, type ToolId, type ViewId } from '../ui/shell';
 import { type Snap } from '../tools/snap';
 import { IDLE, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
-import { type Drag, dragTransform, hull } from './select-drag';
+import { type Drag, dragTransform } from './select-drag';
 import { filterKinds, hasSolid, kindLists, kindOfId, levelOfSolid, moveKinds, eachSolid } from '../elements/registry';
 import { type Grid } from '../elements/grid/schema';
 import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState } from '../tools/dimension-tool';
@@ -89,6 +89,7 @@ import { transformSelection } from '../tools/transform';
 import { referenceLength } from '../elements/opening/derive';
 import { doorFlips, type Handles, handlesFor } from './handles';
 import { newId } from '../core/id';
+import { hull } from '../model/hull';
 import { insideRing } from '../elements/room/derive';
 
 /** What the measure tool measures (elements/measure). */

@@ -1,7 +1,7 @@
 // What is selected and what is done to it: all walls, the next one, the arrows, copy and paste, delete, select similar, hide or isolate for a while. Functions over the app (app.ts delegates).
 
 import { clampMove, collisionFor } from './collision';
-import { type Point2 } from '../core/vector';
+import { type Point2 } from '../model/vector';
 import { deleteElements } from '../elements/opening/commands';
 import { isGuideId } from '../elements/guide/schema';
 import { name, t } from '../ui/i18n';

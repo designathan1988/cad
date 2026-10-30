@@ -3,7 +3,7 @@
 // floor is a slab on a level, following a room's outline or one the user drew.
 
 import type { LevelId } from '../../app/document';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 
 export type RoomId = string;
 export type FloorId = string;

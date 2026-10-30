@@ -2,8 +2,8 @@
 
 import { angleNum, lengthText, typingExamples } from '../ui/units';
 import { parseLength, parseLengthAngle, parseNumber, parsePoint, parsePointFrom } from '../core/measure';
-import { distance, type Point2 } from '../core/vector';
-import { MIN_WALL_LENGTH } from '../core/tolerance';
+import { distance, type Point2 } from '../model/vector';
+import { MIN_WALL_LENGTH } from '../model/tolerance';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { addWalls, setWalls } from '../elements/wall/commands';
 import { ruleKeepingPosition, updateOpening } from '../elements/opening/commands';

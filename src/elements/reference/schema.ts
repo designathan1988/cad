@@ -1,10 +1,11 @@
+import { finite } from '../../core/guards';
 // References under the plan (docs/plano-de-escopo.md, phase 11: "importar imagem ou PDF de planta e
 // calibrar a escala por dois pontos"; DXF as reference): a picture (a photo, a scan, a PDF's page drawn
 // to a picture) or a DXF's lines, on a level, drawn faint under everything to be traced over. Placed by
 // its corner, turned and scaled; calibrated by two points of it and the distance they really are apart.
 // Nothing is built from it; it is saved with the project.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 
 export const REFERENCE_PREFIX = 'ref';
 
@@ -55,7 +56,6 @@ export function calibrated(r: Reference, a: Point2, b: Point2, real: number): Re
   return { ...r, scale: r.scale * k, at: { x: a.x + (r.at.x - a.x) * k, y: a.y + (r.at.y - a.y) * k } };
 }
 
-const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isPoint = (p: unknown): p is Point2 => typeof p === 'object' && p !== null && finite((p as Point2).x) && finite((p as Point2).y);
 
 export const isReference = (x: unknown): x is Reference => {

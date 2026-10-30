@@ -3,7 +3,7 @@
 // ends never move, so the joins at them stay as they are. Drawing an arc is different
 // (wall-tool.ts: bulgeThrough, the arc through a third point; bulgeForRadius, always the shorter arc).
 
-import { distance, type Point2 } from '../core/vector';
+import { distance, type Point2 } from '../model/vector';
 
 /** A sweep of at most 340°: past that the arc nearly closes on itself. */
 const MAX_BULGE = Math.tan((340 * Math.PI) / 180 / 4);

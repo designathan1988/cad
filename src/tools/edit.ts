@@ -4,8 +4,8 @@
 // another's body. Nothing here touches geometry beyond the reference lines: the join engine redoes the rest.
 
 import type { Doc, DocWall } from '../app/document';
-import { MIN_WALL_LENGTH, POINT_TOLERANCE } from '../core/tolerance';
-import { add, cross, distance, dot, intersectLines, normalize, type Point2, scale, sub } from '../core/vector';
+import { MIN_WALL_LENGTH, POINT_TOLERANCE } from '../model/tolerance';
+import { add, cross, distance, dot, intersectLines, normalize, type Point2, scale, sub } from '../model/vector';
 import type { ReferenceLine, WallEnd, WallId } from '../elements/wall/schema';
 import { exteriorOffset } from '../elements/wall/geometry/shape';
 import { arcOf } from '../elements/wall/geometry/arc';

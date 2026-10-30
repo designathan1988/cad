@@ -6,7 +6,7 @@
 // garage was dragged. Each such opening now keeps its gap to that face, wherever the face or the end
 // goes; one measured from the end itself (no face before it) keeps its distance from the end.
 
-import { dot, normalize, sub } from '../core/vector';
+import { dot, normalize, sub } from '../model/vector';
 import { referenceLength } from '../elements/opening/derive';
 import type { Opening } from '../elements/opening/schema';
 import type { Doc } from './document';

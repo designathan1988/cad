@@ -1,6 +1,6 @@
 // A wall once its type is applied. Derived on every computation, never stored.
 
-import type { Point2 } from '../../../core/vector';
+import type { Point2 } from '../../../model/vector';
 import type { ReferenceLine, Wall, WallId, WallLayer, WallType } from '../schema';
 
 export interface WallShape {

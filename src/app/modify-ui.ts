@@ -1,7 +1,7 @@
 // The Modify tools (move, copy, rotate, mirror, scale, offset) and splitting, cornering and merging walls. Functions over the app (app.ts delegates).
 
 import { angleNum, lengthText, typingExamples } from '../ui/units';
-import { distance, type Point2, scale } from '../core/vector';
+import { distance, type Point2, scale } from '../model/vector';
 import { setWalls } from '../elements/wall/commands';
 import { num, t, type MessageKey } from '../ui/i18n';
 import { wallNumber } from './document';

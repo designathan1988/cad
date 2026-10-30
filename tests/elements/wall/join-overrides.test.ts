@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { computeWallGeometry } from '../../../src/elements/wall/geometry/footprint';
 import type { EndJoin, Wall, WallType } from '../../../src/elements/wall/schema';
-import type { Point2 } from '../../../src/core/vector';
+import type { Point2 } from '../../../src/model/vector';
 import { newDocument } from '../../../src/app/document';
 import { readProject, writeProject } from '../../../src/io/project-file';
 

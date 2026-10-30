@@ -3,7 +3,7 @@
 
 import { lengthText } from '../../ui/units';
 import { type Doc, type DocWall, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop, type WallPhase } from '../../app/document';
-import { distance } from '../../core/vector';
+import { distance } from '../../model/vector';
 import type { Field } from '../../ui/fields';
 import { name, t, type MessageKey } from '../../ui/i18n';
 import { layerSwatch } from '../../ui/swatch';

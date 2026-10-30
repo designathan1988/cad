@@ -7,7 +7,7 @@
 import type { DocWall } from '../../app/document';
 import type { WallSolid } from '../../app/geometry';
 import { isObject } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import type { ElementKind } from '../contract';
 import { insideRing } from '../room/derive';
 

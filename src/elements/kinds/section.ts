@@ -3,7 +3,7 @@
 // a room's interior elevation keeps to its room's level.
 
 import { isObject } from '../../core/guards';
-import { distance, type Point2 } from '../../core/vector';
+import { distance, type Point2 } from '../../model/vector';
 import { lengthText } from '../../ui/units';
 import { t } from '../../ui/i18n';
 import type { ElementKind, PlanPaint } from '../contract';

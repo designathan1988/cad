@@ -8,8 +8,9 @@
 // another block's side lies on the same plane, facing it, over the same heights; a top or a bottom
 // where another block's bottom or top lies on it.
 
-import { AREA_EPSILON } from '../../../core/tolerance';
-import type { Point2 } from '../../../core/vector';
+import { AREA_EPSILON } from '../../../model/tolerance';
+import { FACE_TOUCH, LENGTH_EPS } from '../../../model/tolerance';
+import type { Point2 } from '../../../model/vector';
 import { area, clipOut, type ConvexPolygon, halfPlaneThrough, type HalfPlane } from './convex';
 
 export interface Prism {
@@ -35,8 +36,6 @@ export interface PrismFaces {
 }
 
 /** Two faces closer than this, on planes this close in angle, touch (m; about 0.1 mm over 1 m). */
-const TOUCH = 1e-4;
-const LENGTH_EPS = 1e-6;
 
 const regionOf = (poly: ConvexPolygon): HalfPlane[] =>
   poly.map((p, i) => {
@@ -130,9 +129,9 @@ export function visibleFaces(prisms: readonly Prism[]): PrismFaces[] {
           if (seen.has(o) || o.prism === e.prism) continue;
           seen.add(o);
           // Facing: opposite directions, on the same line.
-          if (e.dir.x * o.dir.x + e.dir.y * o.dir.y > -1 + TOUCH) continue;
+          if (e.dir.x * o.dir.x + e.dir.y * o.dir.y > -1 + FACE_TOUCH) continue;
           const rel = { x: o.a.x - e.a.x, y: o.a.y - e.a.y };
-          if (Math.abs(e.dir.x * rel.y - e.dir.y * rel.x) > TOUCH) continue;
+          if (Math.abs(e.dir.x * rel.y - e.dir.y * rel.x) > FACE_TOUCH) continue;
           const s0 = e.dir.x * rel.x + e.dir.y * rel.y;
           const s1 = s0 - o.length;
           const t0 = Math.max(0, Math.min(s0, s1));
@@ -148,7 +147,7 @@ export function visibleFaces(prisms: readonly Prism[]): PrismFaces[] {
   const caps = (k: number, z: number, touching: (q: Prism) => number) => {
     let parts: ConvexPolygon[] = [prisms[k]!.polygon];
     prisms.forEach((q, j) => {
-      if (j === k || Math.abs(touching(q) - z) > TOUCH) return;
+      if (j === k || Math.abs(touching(q) - z) > FACE_TOUCH) return;
       const region = regionOf(q.polygon);
       parts = parts.flatMap((p) => clipOut(p, region));
     });

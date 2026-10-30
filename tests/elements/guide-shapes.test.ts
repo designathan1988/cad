@@ -2,7 +2,7 @@
 // with a transform; drawing snaps onto a circle and to where it crosses a line guide or a wall.
 
 import { describe, expect, it } from 'vitest';
-import { vec } from '../../src/core/vector';
+import { vec } from '../../src/model/vector';
 import { guideKind } from '../../src/elements/kinds/guide';
 import type { Guide } from '../../src/elements/guide/schema';
 import { snap, type SnapInput } from '../../src/tools/snap';

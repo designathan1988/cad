@@ -3,7 +3,7 @@
 // site: from the face of the wall beside it, not from the far corner of a long wall the partitions
 // run into (the tester's run of 2026-10-25: "4,05 m do fim da parede" across a bathroom wall).
 
-import { add, dot, type Point2, scale, sub } from '../core/vector';
+import { add, dot, type Point2, scale, sub } from '../model/vector';
 import { referenceLength } from '../elements/opening/derive';
 import { faceOffsets, wallDirection, wallNormal } from '../elements/wall/geometry/offset';
 import { shapeOf } from '../elements/wall/geometry/shape';

@@ -4,7 +4,10 @@
 
 import type { Doc } from '../../app/document';
 import type { DerivedGeometry } from '../../app/geometry';
-import { add, distance, dot, normalize, perp, type Point2, scale, sub } from '../../core/vector';
+import { add, distance, dot, normalize, perp, type Point2, scale, sub } from '../../model/vector';
+
+/** How far p is from the segment a–b (model/vector's; kept as anchor's API for the kinds). */
+export { segmentDistance } from '../../model/vector';
 import type { DimAnchor, Dimension } from './schema';
 
 /** Points this near (m) are the same point: a jamb, a face. */
@@ -87,10 +90,4 @@ export function placeDimension(doc: Doc, g: Pick<DerivedGeometry, 'openings'>, d
 /** The offset that puts a dimension from a to b through p: p's distance from the line, to its left. */
 export const offsetThrough = (a: Point2, b: Point2, p: Point2): number => dot(perp(normalize(sub(b, a))), sub(p, a));
 
-/** How far p is from the segment a–b. */
-export function segmentDistance(p: Point2, a: Point2, b: Point2): number {
-  const ab = sub(b, a);
-  const len2 = dot(ab, ab);
-  const k = len2 === 0 ? 0 : Math.max(0, Math.min(1, dot(sub(p, a), ab) / len2));
-  return distance(p, add(a, scale(ab, k)));
-}
+

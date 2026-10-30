@@ -1,4 +1,4 @@
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 
 export type WallId = string;
 export type WallTypeId = string;
