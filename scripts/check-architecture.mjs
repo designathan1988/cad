@@ -1,0 +1,143 @@
+// Architecture gates (ADR 0004), with a ratchet: the current debt counts are snapshotted in
+// docs/refatoracao/dividas.json; the gate FAILS when any count grows, and passes while it shrinks.
+// When a count reaches zero it is locked (any new occurrence fails). Usage: node scripts/check-architecture.mjs
+//   --update  rewrite the snapshot to the current counts (only when they IMPROVED; refuse regressions).
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ROOT = process.cwd();
+const SRC = path.join(ROOT, 'src');
+const SNAPSHOT = path.join(ROOT, 'docs/refatoracao/dividas.json');
+const update = process.argv.includes('--update');
+
+function walk(dir, out = []) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) walk(p, out);
+    else out.push(p);
+  }
+  return out;
+}
+const files = walk(SRC).filter((f) => f.endsWith('.ts'));
+const rel = (f) => path.relative(ROOT, f).replaceAll('\\', '/');
+const texts = new Map(files.map((f) => [rel(f), fs.readFileSync(f, 'utf8')]));
+const cssText = fs.readFileSync(path.join(SRC, 'ui/styles.css'), 'utf8');
+
+// ---- 1. import direction (layers): elements must not know the app; core knows nothing above it.
+// Allowed directions (adjacency): app->{core,elements,io,render,tools,ui}, tools->{core,elements,app},
+// render->{core,elements,app,ui?no}, io->{core,elements,app?no}, ui->{core,elements}, elements->{core,elements}, core->{}.
+// Violations counted per (file -> folder).
+const layer = (f) => f.split('/')[1];
+const FORBIDDEN = {
+  elements: ['app', 'ui', 'render', 'tools', 'session'],
+  core: ['app', 'ui', 'render', 'tools', 'elements', 'io', 'session'],
+  ui: ['app', 'render', 'tools', 'session'],
+  io: ['ui', 'render', 'tools', 'session'],
+  render: ['ui'],
+  session: ['ui'],
+};
+const importRe = /(?:^|\n)\s*import\s+(?:type\s+)?[^'"]*?from\s+['"](\.[^'"]+)['"]/g;
+const directionViolations = [];
+for (const [f, t] of texts) {
+  const from = layer(f);
+  const bad = FORBIDDEN[from] ?? [];
+  if (bad.length === 0) continue;
+  let m;
+  while ((m = importRe.exec(t))) {
+    const base = path.normalize(path.join(path.dirname(path.join(ROOT, f)), m[1]));
+    const r = [base + '.ts', path.join(base, 'index.ts')].map(rel).find((x) => texts.has(x)) ?? rel(base);
+    const to = layer(r);
+    if (texts.has(r) && bad.includes(to)) directionViolations.push(`${f} -> ${to} (${r})`);
+  }
+}
+
+// ---- 2. mutable module-top state: a `let` at column 0 outside any type declaration.
+const letRe = /^let\s+[A-Za-z0-9_$]+\s*(?::[^=]+)?=/gm;
+const mutableLets = [];
+for (const [f, t] of texts) {
+  let m;
+  while ((m = letRe.exec(t))) mutableLets.push(`${f}:${t.slice(0, m.index).split('\n').length}`);
+}
+
+// ---- 3. file size: logic files <= 400 lines, data files <= 600 (allowlist shrinks).
+const DATA = /library|schema\.ts$|i18n|styles\.css/;
+const CAP_LOGIC = 400;
+const CAP_DATA = 600;
+const snapshotRaw = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(SNAPSHOT, 'utf8'));
+  } catch {
+    return {};
+  }
+})();
+const allowlist = snapshotRaw.oversize ?? [];
+const oversize = [];
+for (const [f, t] of texts) {
+  const lines = t.split('\n').length;
+  const cap = DATA.test(f) ? CAP_DATA : CAP_LOGIC;
+  if (lines > cap && !allowlist.includes(f)) oversize.push(`${f} ${lines}>${cap}`);
+}
+const cssLines = cssText.split('\n').length;
+if (cssLines > 600 && !allowlist.includes('src/ui/styles.css')) oversize.push(`src/ui/styles.css ${cssLines}>600`);
+
+// ---- 4. internal duplication: k-gram fingerprints repeated across different files (winnowing-ish).
+function tokenize(text) {
+  return text
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/\/\/[^\n]*/g, ' ')
+    .replace(/'(?:[^'\\\n]|\\.)*'/g, 'S')
+    .replace(/"(?:[^"\\\n]|\\.)*"/g, 'S')
+    .replace(/`(?:[^`\\]|\\.)*`/g, 'T')
+    .split(/[^A-Za-z0-9_$]+/)
+    .filter(Boolean);
+}
+const K = 60;
+const gramOwners = new Map(); // hash -> first file
+const dupPairs = new Map(); // "a|b" -> count
+for (const [f, t] of texts) {
+  if (/library|\.test\.|assets\.d/.test(f)) continue;
+  const tokens = tokenize(t);
+  for (let i = 0; i + K <= tokens.length; i++) {
+    let h = 0;
+    for (let j = i; j < i + K; j++) h = (h * 1000003 + (tokens[j].length << 3) + tokens[j].charCodeAt(tokens[j].length - 1)) >>> 0;
+    const first = gramOwners.get(h);
+    if (first === undefined) gramOwners.set(h, f);
+    else if (first !== f) {
+      const key = first < f ? `${first}|${f}` : `${f}|${first}`;
+      dupPairs.set(key, (dupPairs.get(key) ?? 0) + 1);
+    }
+  }
+}
+const DUPLICATE_MIN = 3; // a pair of files sharing >= 3 sixty-token grams is real duplication
+const duplications = [...dupPairs.entries()].filter(([, n]) => n >= DUPLICATE_MIN).map(([pair, n]) => `${pair} (${n} grams)`);
+
+// ---- ratchet
+const now = {
+  direction: directionViolations.length,
+  mutableLets: mutableLets.length,
+  oversize: oversize.length,
+  duplications: duplications.length,
+};
+const prev = { direction: 99999, mutableLets: 99999, oversize: 99999, duplications: 99999, ...snapshotRaw };
+let worse = false;
+const report = [];
+for (const k of Object.keys(now)) {
+  if (now[k] > prev[k]) {
+    worse = true;
+    report.push(`${k}: ${prev[k]} -> ${now[k]} WORSE`);
+  } else report.push(`${k}: ${prev[k]} -> ${now[k]}${prev[k] === 0 ? ' (locked at zero)' : ''}`);
+}
+const detail = { direction: directionViolations, mutableLets, oversize: [...new Set([...oversize, ...allowlist])], duplications };
+console.log(report.join('\n'));
+if (update) {
+  if (worse) {
+    console.log('refusing --update: counts got worse');
+    process.exit(1);
+  }
+  fs.writeFileSync(SNAPSHOT, JSON.stringify({ ...now, oversize: oversize.map((s) => s.split(' ')[0]) , detail }, null, 1) + '\n');
+  console.log('snapshot updated');
+} else {
+  const detailLines = Object.entries(detail).filter(([, v]) => (Array.isArray(v) ? v.length : v) > 0);
+  if (detailLines.length > 0) console.log('current debt:\n' + detailLines.map(([k, v]) => `  ${k}: ${Array.isArray(v) ? v.length : v}`).join('\n'));
+}
+process.exit(worse ? 1 : 0);
