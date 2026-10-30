@@ -36,15 +36,20 @@ reused (leave no servers/browsers at the end), record new learnings in .claude/m
     markPrefix). CSS: 15 classes unused. Removed-area leftovers: only those i18n/CSS (other mentions are comments/Doc.kept, verified).
   - Copy detection (k-gram fingerprints) vs ../cad, ../builder, ../oriel, ../webconstructor: NO real duplication (max 5 coincidental
     grams). cad2 is not a copy of the siblings.
-- [ ] 2. Baseline: big-project generator script (scripts/), ?perf + renderer.info + heap at 1280/880, screenshots of every
-      view/tool/dialog, 100 undo/redo, DXF reference, open/save timings.
-- [ ] 3. Read every file whole; per-file disposition in docs/refatoracao/inventario.md (keep/split/merge/move/rename/delete + mutable
-      state + hot paths).
-- [ ] 4. docs/adr/0004-arquitetura.md (feature folders, allowed dependency direction, 3 sources of truth: Projeto/Sessão/Preferências,
-      state machines: lifecycle/tool-submode-drag-typed/views/dialogs, branded IDs, public API for scripts/breaks+tests+hooks, paradigm
-      decision by measurement).
-- [ ] 5. Ordered plan (commit-sized steps; first = repeatable verification scripts + capture roteiro; then bases: truth sources, state
-      machines, typed IDs, public API; then expensive paths and god files; then the rest).
+- [x] 2. Baseline DONE → docs/refatoracao/linha-de-base.md; commit b197ee4 (scripts + window.__cad2 + ADR draft + this notebook).
+  Headlines: wall drag ~1 s/move; keyboard move 1.57 s; first 3D frame 34.8 s; 4819 draw calls/1504 geoms; undo 208 ms/redo 184 ms;
+  history ~8 MB/step; open big project 1.28 s; hover 116 ms (first 1582 ms); 67 reference stops (pixel hash + DOM).
+- [~] 3. Read every file: I read whole myself: app.ts, input.ts, document.ts, registry.ts, project-file.ts, store.ts, persist.ts,
+  boot.ts, main.ts, view-3d.ts, project-db.ts (part), schemas wall/opening/room/object/guide/reference. 7 reading agents over the rest;
+  digests received and SPOT-VERIFIED (opened cited lines; all confirmed): render/*, app-core (chrome/frame/geometry/select-drag/
+  kind-tools/actions/wall-ui/wall-stops/opening-ui/modify-ui/room-ui/guide-ui/next-element/carry/keep-openings/collision), app-rest.
+  Confirmed hot facts: plan-view fill() copies arrays per piece (plan-view.ts:441-442); frame.ts room labels O(rooms²) (frame.ts:199-204);
+  chrome renders ribbon + actionList (~100 actions) EVERY frame (chrome.ts:546-577, frame.ts:331); scene-3d JSON.stringify per solid for
+  keys (1199/1223); hull duplicated collision.ts:28≡select-drag.ts:428; thicknessOf≡wallThickness; nextName≡nextViewName; jointsIn≡endsIn
+  bodies; three "walls crossing a line" implementations (geometry.jointsIn/endsIn, wall-stops); carriedRooms dead; input-keys hardcodes
+  tool letters that actions also carry as defaultKeys.
+- [x] 4. ADR 0004 drafted (docs/adr/0004-arquitetura.md).
+- [ ] 5. Ordered plan (below).
 - [ ] 6. Execute.
 - [ ] 7. Gates in scripts/ (owner-writes, module-top let, import direction, duplication, file size) wired to npm run check.
 
@@ -53,7 +58,55 @@ Worktree had the interface-review task done (branch pushed to origin/worktree-re
 (.whole-review/, docs/revisao-interface/audit/) stay. npm install done in worktree. Scratchpad: C:/Users/Jonathan/.claude/scratchpad/
 cad2-refatoracao (empty; scripts live in .scratchpad/ inside the worktree, gitignored — add .scratchpad/ to .gitignore).
 
-## Next
-Step 2 baseline: write scripts/bigproject.mjs generating a large project (hundreds of layered walls, several levels, many
-doors/windows/objects/rooms), save as JSON to load in the app; measurement script + reference screenshots via the ONE Playwright
-window; record numbers in docs/refatoracao/linha-de-base.md.
+## Next — the ordered plan (step 5; each step = one commit, executed in order)
+
+Base rule of every step: code lands in its FINAL folder with its FINAL owner (no move-twice); tsc 0 errors;
+app check by gestures on the ONE tab (0 console errors); captures compared with .scratchpad/ref/manifest.json
+(hash + DOM); measurements of what the step touched never worse; if the step touches project/, the round-trip
+gate (node .scratchpad/validate-project.mjs .scratchpad/oldproject.json --roundtrip after esbuild bundle);
+commit (en) + push; update this notebook + STATE.md.
+
+1. **Gates**: scripts/check-inventario.mjs + import-direction + module-top-let + file-size + dup-detector
+   refined into scripts/check-architecture.mjs, wired to `npm run check` (check stays typecheck+build;
+   vitest removed from check per memoria fix-in-code-verify-in-app — check becomes typecheck+gates+build).
+   Establishes the CURRENT violations as the to-fix list (baseline fail is expected; each later step must
+   shrink it, never grow).
+2. **Dead code removal** (no behavior change): delete src/io/pdf-canvas.ts (isPdfCanvas → duck-typing in
+   hatch.ts), src/elements/opening/index.ts, src/elements/room/panel.ts, carriedRooms, referencesOf, the
+   confirmed-dead exports (each grep-verified), the 83 i18n keys (each re-grepped incl. inside i18n.ts), 15
+   CSS classes, mep_ X-ray comment-hook decision (keep behavior: material prefix check stays, comment fixed).
+   Captures + i18n render check.
+3. **model/ + project/**: create the folders; move core/* (vector+tolerance+rtree+guards+id+store+measure);
+   unify hull ×4, pointToSegment ×3, regionOf ×4, band predicates ×5, finite/isColor/isPoint locals;
+   tolerance locals (TOUCH/LENGTH_EPS/TOL) into model/tolerance.ts. tsc + captures + measurements (plan
+   render, drag) not worse.
+4. **project/ files+db**: move project-file/typed-ids/persist/boot/projects/app-files; NUL bytes out of
+   project-db; doc.ts from app/document.ts (wall helpers to wall/ in step 6). Round-trip gate MUST stay
+   byte-equal (kept fields).
+5. **session/ machines**: UiState split into named machines (tool registry from ToolId → per-tool state
+   modules; overlay machine; view machine on view-3d; lifecycle); setTool reset by transition; prefs owner
+   single (persist.ts keys). Behavioral identity verified by the FULL 67-stop tour (hashes + DOM equal).
+6. **wall/**: the big one — move elements/wall + kinds/wall + wall-ui + wall-tool + edit/split/arrange-walls/
+   arc-edit + stops; fuse jointsIn/endsIn/wallStopsOf; engine derivation becomes incremental per level with
+   rtree candidates (target: nudge 1.57 s → < 300 ms; drag ~1 s/move → < 150 ms) — measured before/after on
+   the big project; plan fill O(n²) copy removed. Captures of every wall view equal.
+7. **canvas/plan**: plan-view split (view/fill/tags/marks); static-layer caching of the un-changed drawing;
+   labels/tags memo (room labels O(rooms²) → O(rooms)); getComputedStyle cached. plan-render target ≤ 60 ms.
+8. **canvas/scene**: scene-3d split; sync() keyed without JSON.stringify per solid; wall blocks via
+   BatchedMesh per material (r186 addInstance/setVisibleAt) or merged geometries; first-frame target < 5 s,
+   draw calls < 800; renderer.info compared. Photo view untouched except verified visually at 5/20/40 s.
+9. **chrome per-frame work**: actionList/ribbon memoized by key (chrome.ts per-frame allocation), frame.ts
+   nextFields memo, pointermove pick via rtree (hover target ≤ 60 ms steady, first-move pike gone).
+10. **Element folders** (opening/ room/ … each a step or two): move + kind merge + add/update command
+    skeleton unified (one generic update command factory) + fields "all same else —" helper + guards from
+    project/guards. Opening O(openings²) overlap via rtree; marks map. Captures per element panel.
+11. **ui/**: i18n split by domain (en/pt pairs per domain; keys unchanged — the 83 dead already gone in 2);
+    styles.css split by component importing in order (no rule change, raw-px token gate stays); dialog store
+    scaffold ×6 unified; popover/menu/palette/searchSelect one system; snapshots share the stage; help
+    dialog from actions.
+12. **kinds/registry**: contract stays; registry edit-ops move to project/kinds-edit; line-kind helper for
+    separator/grid/section/guide; closing the 60-file type SCC (kinds never import app).
+13. **Final**: re-run everything (all gates green, full tour equal, all baseline measurements ≤ baseline,
+    round-trip byte-equal, 0 console errors); history.md update; memory files for new learnings.
+
+Defects found on the way are fixed at cause in their own commit (before/after captures), per the order.

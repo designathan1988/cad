@@ -22,13 +22,26 @@ Nothing app-visible may change: 1:1 screenshots, project file format frozen (Doc
 tricks for speed, UI rules (one place per command, compact density, no raw px, styled controls).
 
 ## Where it stands
-- Step 0 research: two background agents digesting sources → to be written into docs/pesquisa/fontes-refatoracao.md.
-- Step 1 inventory DONE (see work.md "Steps" item 1 for the numbers; raw output in worktree .scratchpad/inventario*.txt, copia.txt):
-  gods i18n 201 KB / scene-3d 84 / app 80 / plan-view 57 / input 51; 3 runtime cycle groups + 60-file type SCC; 2 orphans; ~250 dead
-  exports; 83 unused i18n keys; 15 dead CSS classes; no copying from sibling projects.
-- NOT started: baseline measurements (step 2), per-file reading (step 3), ADR 0004 (step 4), plan (step 5), execution (step 6), gates
-  (step 7).
-- Nothing changed in src/ yet. No commit made in this task yet (last commit aa2c376, pushed).
+- Step 0 research DONE → docs/pesquisa/fontes-refatoracao.md (committed).
+- Step 1 inventory DONE (numbers in work.md; raw in .scratchpad/).
+- Step 2 baseline DONE → docs/refatoracao/linha-de-base.md (committed). Headlines: wall drag ~1s/move,
+  keyboard move 1.57s, first 3D frame 34.8s, 4819 draw calls/1504 geometries, undo 208ms/redo 184ms,
+  history ~8MB/step, open big project 1.28s, hover 116ms (first 1582ms). Reference set: 67 stops
+  (pixel-hash + DOM snapshot per stop) in .scratchpad/ref/manifest.json; roteiro committed
+  (scripts/ref-tour.mjs, scripts/ref-steps.mjs).
+- Measurement handle window.__cad2 added in src/app/main.ts (read-only). Commit b197ee4 pushed.
+- Step 3 (read every file): 7 reading agents running over all remaining files (render, app×2, wall+core+io,
+  elements, kinds+tools+ui, io). Their claims to be verified by opening cited lines; gods (app.ts, input.ts)
+  already read whole by me.
+- Step 4 ADR 0004 DRAFTED (docs/adr/0004-arquitetura.md): feature folders + direction gate, 3 truth owners
+  (Projeto/Sessão/Preferências), state machines, branded IDs, keep immutable-Command paradigm (measured),
+  BatchedMesh/InstancedMesh for 3D, incremental derivation for joins/plan, 400-line cap, public API.
+- NOT started: per-file disposition table (docs/refatoracao/inventario.md), ordered plan in work.md,
+  execution steps, gates in scripts/ wired to npm run check.
+- Browser: ONE IAB tab (id iab-tab:487c2668…, http://localhost:5173/, big project loaded), pane hidden for
+  2D / must be VISIBLE for 3D work (hidden pane blocks rAF/WebGL; host screenshots never compose — use
+  canvas pixel-hash instead). Evaluate: real functions only (strings return {}); ONE dispatch per evaluate
+  (multi-dispatch kills the channel). Dev server running in background.
 
 ## Known traps (from memoria + repo)
 - vigia.json / vigia-log.txt are the guard hook's own files: never touch. .whole-review/ and docs/revisao-interface/audit/ are the
