@@ -2,7 +2,7 @@
 // out of sight): the one being placed and those placed first, then the library's first ones.
 
 import { describe, expect, it } from 'vitest';
-import { RIBBON_OBJECTS, ribbonObjects } from '../../src/app/ribbon-tabs';
+import { RIBBON_OBJECTS, ribbonObjects } from '../../src/ui/ribbon-tabs';
 import { newDocument } from '../../src/project/doc';
 
 describe('ribbon objects', () => {

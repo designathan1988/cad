@@ -4,9 +4,9 @@ import { t } from '../i18n/messages';
 import { newDocument, startLevel } from './doc';
 import { savePrefs } from './persist';
 import { readProject, writeProject } from './file';
-import type { App } from '../session/app';
 import { importAsProject, newStoredProject } from './projects';
-import { safeFileName } from '../session/app';
+import { safeFileName } from '../model/fs-name';
+import type { App } from '../session/app';
 
 /** The project's name, as one undo step; an empty name is "Untitled project" again. */
 export function renameProject(app: App, next: string): void {

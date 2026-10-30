@@ -3,7 +3,7 @@
 
 import type { Doc } from '../project/doc';
 import type { Point2 } from '../model/vector';
-import type { Transform } from '../model/transform';
+import type { Transform } from './transform';
 import type { DerivedGeometry } from '../project/derive';
 import type { FloorSolid } from './room/derive';
 import { type Box, boxOf, RTree } from '../model/rtree';

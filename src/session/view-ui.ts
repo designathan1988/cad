@@ -13,7 +13,7 @@ import { fitFactor, keepInView } from './keep-in-view';
 import type { ViewKey } from './view-keys';
 import { BOX_FACES, type BoxFace, boxAround, faceCenter, faceNormal, type SectionBox, sectionLooks } from '../model/section-box';
 import { BOX_HANDLE_HIT } from '../render/overlay-3d';
-import { shownLevels, type View3D } from '../app/view-3d';
+import { shownLevels, type View3D } from './view/view-3d';
 import { ROTATE_OFFSET } from './handles';
 import type { App } from './app';
 

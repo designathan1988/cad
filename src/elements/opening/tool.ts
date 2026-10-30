@@ -19,9 +19,9 @@
 // The start and the end are measured from the nearest face of a wall meeting this one on that side
 // (a stop), when there is one: the gap to it goes in 5 cm steps and a typed distance is that gap.
 
-import { type DistanceRule, hasDistance, type OpeningId, type PositionRule } from '../elements/opening/schema';
-import type { WallId } from '../elements/wall/schema';
-import { stopAfter, stopBefore } from '../elements/wall/stops';
+import { type DistanceRule, hasDistance, type OpeningId, type PositionRule } from './schema';
+import type { WallId } from '../wall/schema';
+import { stopAfter, stopBefore } from '../wall/stops';
 
 export const OPENING_STEP = 0.05;
 const CENTRE_PX = 10;

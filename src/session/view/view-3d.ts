@@ -4,8 +4,8 @@
 // seen through (x-ray, as Revit's and SketchUp's), the walls and floors faint and every line on top.
 // Interface state, kept with the preferences: outside the document and its undo, as the camera is.
 
-import { cutHeightOf, type Level } from '../project/doc';
-import { readBox, readSection, type SectionBox, type SectionLine } from '../model/section-box';
+import { cutHeightOf, type Level } from '../../project/doc';
+import { readBox, readSection } from '../../model/section-box';
 
 export type LevelsShown = 'all' | 'below' | 'current';
 
@@ -17,23 +17,8 @@ export type VisualStyle = (typeof VISUAL_STYLES)[number];
 export const RENDER_QUALITIES = ['low', 'medium', 'high', 'ultra'] as const;
 export type RenderQuality = (typeof RENDER_QUALITIES)[number];
 
-export interface View3D {
-  readonly levels: LevelsShown;
-  readonly explode: boolean;
-  readonly cut: boolean;
-  readonly xray: boolean;
-  /** The section box: only what is inside it shows; null when off (section-box.ts). */
-  readonly box: SectionBox | null;
-  /** Parallel (orthographic) instead of in perspective: elevations and sections. */
-  readonly ortho: boolean;
-  /** A vertical section through a line in plan (section-box.ts); null when none. */
-  readonly section: SectionLine | null;
-  readonly style: VisualStyle;
-  readonly quality: RenderQuality;
-  /** How bright the whole view is, and how strong the sun is against the sky (1: as drawn; LIGHT_RANGE). */
-  readonly brightness: number;
-  readonly sun: number;
-}
+export type { View3D } from '../../project/view-prefs';
+import type { View3D } from '../../project/view-prefs';
 
 /** The brightness's and the sun's range. */
 export const LIGHT_RANGE = { min: 0.25, max: 3 } as const;

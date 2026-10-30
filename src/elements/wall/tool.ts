@@ -24,8 +24,8 @@
 // | rect    | typed sides w;d      | idle    | four walls, the sides toward the cursor|
 // | rect    | escape, enter        | idle    | the rectangle is dropped               |
 
-import { MIN_WALL_LENGTH, POINT_TOLERANCE } from '../model/tolerance';
-import { add, cross, distance, dot, normalize, type Point2, scale, sub, vec } from '../model/vector';
+import { MIN_WALL_LENGTH, POINT_TOLERANCE } from '../../model/tolerance';
+import { add, cross, distance, dot, normalize, type Point2, scale, sub, vec } from '../../model/vector';
 
 export type WallToolState =
   | { readonly kind: 'idle'; readonly arc?: boolean; readonly rect?: boolean }

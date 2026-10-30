@@ -3,8 +3,8 @@
 
 import { setCollisions } from '../core/collisions';
 import { made, nextOf, type NextSlot } from './next';
-import { pickModel } from '../app/model-import';
-import * as refs from '../app/reference-ui';
+import { pickModel } from '../ui/import-model';
+import * as refs from '../ui/reference-tool';
 import { onReferenceLoaded } from '../elements/kinds/reference';
 import { autoDimensions } from '../elements/dimension/auto';
 import { addDimensions } from '../elements/dimension/commands';
@@ -13,25 +13,25 @@ import { settleDimensions } from '../elements/dimension/constraints';
 import type { Dimension } from '../elements/dimension/schema';
 import type { SectionMark } from '../elements/section/schema';
 import { deleteLayerSet, nextName, saveLayerSet } from '../project/layer-sets';
-import type { GuideMode } from '../app/guide-ui';
+import type { GuideMode } from '../elements/guide/tool-ui';
 import { setVariables } from '../core/measure';
 import type { KeyMap } from './keymap';
 import { arrangeNeeds, arrangeSteps, type ArrangeHow, type Box as ArrangeBox, boxOf } from '../tools/arrange';
 import { objectHandles, type ScreenHandle } from './object-handles';
 import type { HandleDrag } from './object-handles';
-import { OBJECT_PREVIEW } from '../app/kind-tools';
+import { OBJECT_PREVIEW } from './kind-tools';
 import type { ObjectInstance } from '../elements/object/schema';
 import type { Action } from './actions';
 import { lengthNum, setUnits } from '../i18n/units';
 import * as viewing from './view-ui';
 import * as selecting from './selection';
-import * as walls from '../app/wall-ui';
-import * as chrome from '../app/chrome';
-import * as frame from '../app/frame';
+import * as walls from '../elements/wall/tool-ui';
+import * as chrome from '../ui/chrome';
+import * as frame from '../ui/frame';
 import * as modify from './modify';
-import * as roomsUi from '../app/room-ui';
-import * as guides from '../app/guide-ui';
-import * as kindTools from '../app/kind-tools';
+import * as roomsUi from './room-tool';
+import * as guides from '../elements/guide/tool-ui';
+import * as kindTools from './kind-tools';
 import * as views from './views-ui';
 import * as files from '../project/files';
 import * as THREE from 'three';
@@ -42,11 +42,11 @@ import type { OpeningSize } from '../ui/panels/opening';
 import { OPENING_MODELS, swings } from '../elements/opening/style';
 import type { Field } from '../elements/fields';
 import { isOpeningId, newOpening, OPENING_DEFAULTS, OPENING_PREFIX, type Opening, type OpeningKind } from '../elements/opening/schema';
-import { OPENING_IDLE, openingTransition, type OpeningToolEvent, type OpeningToolState } from '../tools/opening-tool';
-import { MEASURE_IDLE, type MeasureEvent, type MeasureMode, type MeasureState, measureTransition } from '../tools/measure-tool';
+import { OPENING_IDLE, openingTransition, type OpeningToolEvent, type OpeningToolState } from '../elements/opening/tool';
+import { MEASURE_IDLE, type MeasureEvent, type MeasureMode, type MeasureState, measureTransition } from '../elements/measure/tool';
 import { type GuideBase, type GuideDraft } from '../elements/guide/tool';
 import { type Guide } from '../elements/guide/schema';
-import { aimAlong, OPENING_PREVIEW_ID } from '../app/opening-ui';
+import { aimAlong, OPENING_PREVIEW_ID } from '../elements/opening/aim';
 import type { WallId } from '../elements/wall/schema';
 import { type Insets, type PlanOverlay, PlanView } from '../render/plan-view';
 import { Scene3D } from '../render/scene-3d';
@@ -55,13 +55,13 @@ import { ViewCube } from '../render/view-cube';
 import { getLang, htmlLang, markPrefix, setLang, t, type Lang, type MessageKey } from '../i18n/messages';
 import { buildShell, type Shell, type ToolId, type ViewId } from '../ui/shell';
 import { type Snap } from './snap';
-import { IDLE, type WallToolEvent, type WallToolState } from '../tools/wall-tool';
+import { IDLE, type WallToolEvent, type WallToolState } from '../elements/wall/tool';
 import { type Drag, dragTransform } from './drag';
 import { filterKinds, hasSolid, kindLists, kindOfId, levelOfSolid, moveKinds, eachSolid } from '../elements/registry';
 import { type Grid } from '../elements/grid/schema';
 import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState } from '../tools/dimension-tool';
 import { geometryOf, keepRooms, moveRooms } from '../project/carry';
-import { keepOpenings } from '../app/keep-openings';
+import { keepOpenings } from '../elements/opening/keep';
 import { type Doc, type DocWall, drawingOf, elementIds, levelOf, startLevel, type WallDefaults } from '../project/doc';
 import type { DrawingSettings } from '../elements/drawing/schema';
 
@@ -83,9 +83,9 @@ import type { Boot } from '../project/boot';
 import type { ViewKey } from './view-keys';
 import { type BoxFace, type SectionBox } from '../model/section-box';
 import { type TempDim } from './temp-dims';
-import { exploding, liftOf, readView3D, shownLevels, type View3D } from '../app/view-3d';
-import { type ModifyEvent, type ModifyKind, type ModifyState, type OffsetLine, previewTransform } from '../tools/modify-tool';
-import { transformSelection } from '../model/transform';
+import { exploding, liftOf, readView3D, shownLevels, type View3D } from './view/view-3d';
+import { type ModifyEvent, type ModifyKind, type ModifyState, type OffsetLine, previewTransform } from './modify-tool';
+import { transformSelection } from '../elements/transform';
 import { referenceLength } from '../elements/opening/derive';
 import { doorFlips, type Handles, handlesFor } from './handles';
 import { newId } from '../core/id';
@@ -205,11 +205,12 @@ export interface UiState {
   dimEdit: string | null;
 }
 
-export const PREVIEW_ID = '__preview__';
+import { PREVIEW_ID } from '../elements/preview';
+
+export { PREVIEW_ID };
 /** A message going after a colon in another ("Cannot place it here: overlaps…"): lower case first. */
 const afterColon = (text: string): string => text.charAt(0).toLowerCase() + text.slice(1);
 /** A name as a file name: what one cannot hold (\ / : * ? " < > |) becomes "-". */
-export const safeFileName = (text: string): string => text.replace(/[\\/:*?"<>|]+/g, '-');
 /** The level list's last entry: opens the levels dialog. */
 export const EDIT_LEVELS = '__edit_levels__';
 

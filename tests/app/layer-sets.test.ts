@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
 import { deleteLayerSet, isLayerSet, isRoomOverride, nextName, overrideColours, roomOverrideColours, saveLayerSet, setOverrides, setRoomOverrides, wallPhases } from '../../src/project/layer-sets';
-import { isSavedView } from '../../src/session/saved-views';
+import { isSavedView } from '../../src/project/saved-views';
 import { readProject, writeProject } from '../../src/project/file';
 
 describe('layer combinations', () => {

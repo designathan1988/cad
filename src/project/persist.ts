@@ -5,7 +5,7 @@
 import type { Lang } from '../i18n/messages';
 import { readProject, repairProject } from './file';
 import type { Doc } from './doc';
-import type { View3D } from '../app/view-3d';
+import type { View3D } from './view-prefs';
 import { saveProject } from './db';
 
 const DOC_KEY = 'cad2.document.v1';

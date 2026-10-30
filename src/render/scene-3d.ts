@@ -15,7 +15,7 @@ import { DenoiseMaterial, GradientEquirectTexture, WebGLPathTracer } from 'three
 import { clampedSamples, oneShadowRay } from './trace-shader';
 import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
 import { GenerateMeshBVHWorker } from 'three-mesh-bvh/worker';
-import type { RenderQuality, VisualStyle } from '../app/view-3d';
+import type { RenderQuality, VisualStyle } from '../session/view/view-3d';
 import type { Point2 } from '../model/vector';
 import type { DerivedGeometry, OpeningSolid, WallSolid } from '../project/derive';
 import type { WallId } from '../elements/wall/schema';

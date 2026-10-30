@@ -21,7 +21,7 @@ import type { Stair } from '../elements/stair/schema';
 import type { Roof } from '../elements/roof/schema';
 import type { Beam } from '../elements/beam/schema';
 import type { Column } from '../elements/column/schema';
-import type { SavedView } from '../session/saved-views';
+import type { SavedView } from './saved-views';
 import type { Point2 } from '../model/vector';
 import type { Guide } from '../elements/guide/schema';
 import type { Note } from '../elements/note/schema';

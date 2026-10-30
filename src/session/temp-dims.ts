@@ -8,7 +8,7 @@ import { add, cross, distance, dot, normalize, perp, type Point2, scale, sub } f
 import type { Command } from '../core/store';
 import { updateOpening } from '../elements/opening/commands';
 import { setWalls } from '../elements/wall/commands';
-import { bulgeKeepingSide } from '../tools/arc-edit';
+import { bulgeKeepingSide } from '../elements/wall/arc-edit';
 import { moveWalls, stretchEnd } from '../elements/wall/edit';
 import { faceOffsets, wallDirection, wallNormal } from '../elements/wall/geometry/offset';
 import { shapeOf } from '../elements/wall/geometry/shape';

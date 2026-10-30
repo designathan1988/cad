@@ -1,18 +1,18 @@
 // What the door and window tool needs from the screen: the wall under the cursor as an Aim, and the
 // dimension guide of the opening being placed. Read-only over the document and its geometry.
 
-import { lengthText } from '../i18n/units';
-import { add, dot, type Point2, scale, sub } from '../model/vector';
-import { hasDistance, type PositionRule } from '../elements/opening/schema';
-import { referenceLength } from '../elements/opening/derive';
-import { arcOf } from '../elements/wall/geometry/arc';
-import { faceOffsets, wallDirection, wallNormal } from '../elements/wall/geometry/offset';
-import { shapeOf } from '../elements/wall/geometry/shape';
-import { type Aim, ruleBase } from '../tools/opening-tool';
-import { t, type MessageKey } from '../i18n/messages';
-import { type Doc, wallHeights } from '../project/doc';
-import type { DerivedGeometry } from '../project/derive';
-import { wallStops, wallStopsOf } from '../elements/wall/stops';
+import { lengthText } from '../../i18n/units';
+import { add, dot, type Point2, scale, sub } from '../../model/vector';
+import { hasDistance, type PositionRule } from './schema';
+import { referenceLength } from './derive';
+import { arcOf } from '../wall/geometry/arc';
+import { faceOffsets, wallDirection, wallNormal } from '../wall/geometry/offset';
+import { shapeOf } from '../wall/geometry/shape';
+import { type Aim, ruleBase } from './tool';
+import { t, type MessageKey } from '../../i18n/messages';
+import { type Doc, wallHeights } from '../../project/doc';
+import type { DerivedGeometry } from '../../project/derive';
+import { wallStops, wallStopsOf } from '../wall/stops';
 
 /** Id of the opening being placed, in the derived geometry only. */
 export const OPENING_PREVIEW_ID = '__opening_preview__';

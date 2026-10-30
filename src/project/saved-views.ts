@@ -8,7 +8,7 @@ import { isCategoryList } from '../project/layer-sets';
 import type { Command } from '../core/store';
 import type { Point2 } from '../model/vector';
 import type { Doc } from '../project/doc';
-import type { View3D } from '../app/view-3d';
+import type { View3D } from './view-prefs';
 
 /** What a view shows besides its camera (a view template): the categories hidden, the overrides on. */
 interface Shows {

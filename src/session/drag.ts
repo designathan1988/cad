@@ -8,14 +8,14 @@ import { hull } from '../model/hull';
 // with snaps. Drag on empty space: window selection (left to right: wholly inside) or crossing
 // selection (right to left: anything touched), as in Revit and AutoCAD. Esc cancels any drag.
 
-import { clampMove, collisionFor, type Shape } from '../app/collision';
+import { clampMove, collisionFor, type Shape } from '../elements/sat';
 import { boxOf, type Box } from '../tools/arrange';
 import { smartGuides } from '../tools/smart-guides';
 import { add, distance, dot, normalize, type Point2, scale, sub, vec } from '../model/vector';
 import { setWalls } from '../elements/wall/commands';
 import type { WallEnd, WallId } from '../elements/wall/schema';
 import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../elements/wall/edit';
-import { bulgeFromMiddle, straightNear } from '../tools/arc-edit';
+import { bulgeFromMiddle, straightNear } from '../elements/wall/arc-edit';
 import { handleAt } from './handles';
 import { moveRooms, roomsGoingWith } from '../project/carry';
 import { GRID_STEP, type Snap } from './snap';
@@ -28,8 +28,8 @@ import { offsetThrough, placeDimension } from '../elements/dimension/anchor';
 import { wallsOnGrids } from '../elements/grid/carry';
 import { eachSolid, kindIds, kindLists, moveKinds } from '../elements/registry';
 import { setDimensionOffset } from '../elements/dimension/commands';
-import { ruleAt } from '../tools/opening-tool';
-import { aimAlong, aimAt } from '../app/opening-ui';
+import { ruleAt } from '../elements/opening/tool';
+import { aimAlong, aimAt } from '../elements/opening/aim';
 
 /** `rooms`: the rooms going with a move or a turn (carry.ts), found once when the drag starts. */
 export type Drag =

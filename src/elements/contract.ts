@@ -11,7 +11,7 @@ import type { Category, DerivedGeometry } from '../project/derive';
 import type { UprightPrism } from '../model/section-box';
 import type { Command } from '../core/store';
 import type { Point2 } from '../model/vector';
-import type { Transform } from '../model/transform';
+import type { Transform } from './transform';
 import type { Field } from './fields';
 import type { MessageKey } from '../i18n/messages';
 import type { IconName } from '../i18n/icons';

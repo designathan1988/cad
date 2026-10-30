@@ -42,7 +42,9 @@ const FORBIDDEN = {
   project: ['app', 'ui', 'render', 'tools', 'session'],
   library: ['app', 'ui', 'render', 'tools', 'session'],
 };
-const importRe = /(?:^|\n)\s*import\s+(?:type\s+)?[^'"]*?from\s+['"](\.[^'"]+)['"]/g;
+// Runtime imports only: 'import type' is erased at compile time (no runtime dependency, no cycle
+// - it is how a lower layer names the facade type it receives). The ADR governs runtime direction.
+const importRe = /(?:^|\n)\s*import\s+(?!type\b)[^'"]*?from\s+['"](\.[^'"]+)['"]/g;
 const directionViolations = [];
 for (const [f, t] of texts) {
   const from = layer(f);

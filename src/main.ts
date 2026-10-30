@@ -1,9 +1,9 @@
-import '../ui/styles.css';
-import { App } from '../session/app';
-import { boot } from '../project/boot';
-import { wireLibraryLinks } from '../library/link';
-import { wireInput } from './input';
-import { installTooltips } from '../ui/tooltip';
+import './ui/styles.css';
+import { App } from './session/app';
+import { boot } from './project/boot';
+import { wireLibraryLinks } from './library/link';
+import { wireInput } from './session/input';
+import { installTooltips } from './ui/tooltip';
 
 const root = document.getElementById('app');
 if (!root) throw new Error('#app missing from index.html');

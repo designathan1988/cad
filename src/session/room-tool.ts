@@ -3,13 +3,13 @@
 import { distance, type Point2 } from '../model/vector';
 import { defaultName, name, t } from '../i18n/messages';
 import { levelOf } from '../project/doc';
-import { made, nextOf } from '../session/next';
+import { made, nextOf } from './next';
 import type { Floor, Room } from '../elements/room/schema';
 import { deriveGeometry } from '../project/derive';
 import { newId } from '../core/id';
 import { addFloor, addFloorHole, addRoom } from '../elements/room/commands';
 import { insideRing, signedArea } from '../elements/room/derive';
-import type { App } from '../session/app';
+import type { App } from './app';
 
 /** The smallest space the level's walls close in around p, when no room is in it: where the room tool would make one. */
 export function roomSpaceAt(app: App, p: Point2): readonly Point2[] | null {

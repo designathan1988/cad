@@ -1,22 +1,22 @@
 // The wall tool: the wall being drawn and its tags, the measures typed, a chain closing a loop. Functions over the app (app.ts delegates).
 
-import { angleNum, lengthText, typingExamples } from '../i18n/units';
-import { parseLength, parseLengthAngle, parseNumber, parsePoint, parsePointFrom } from '../core/measure';
-import { distance, type Point2 } from '../model/vector';
-import { MIN_WALL_LENGTH } from '../model/tolerance';
-import { arcOf, pointAt } from '../elements/wall/geometry/arc';
-import { addWalls, setWalls } from '../elements/wall/commands';
-import { ruleKeepingPosition, updateOpening } from '../elements/opening/commands';
-import { hasDistance } from '../elements/opening/schema';
-import { t } from '../i18n/messages';
-import { arcMiddle } from '../tools/arc-edit';
-import { bulgeThrough, rectangle, typedEnd, wallTransition, type WallToolEvent } from '../tools/wall-tool';
-import { type DocWall, wallNumber, wallOverrides } from '../project/doc';
-import { stretchEnd } from '../elements/wall/edit';
-import { referenceLength } from '../elements/opening/derive';
-import { newId } from '../core/id';
-import type { App } from '../session/app';
-import { PREVIEW_ID } from '../session/app';
+import { angleNum, lengthText, typingExamples } from '../../i18n/units';
+import { parseLength, parseLengthAngle, parseNumber, parsePoint, parsePointFrom } from '../../core/measure';
+import { distance, type Point2 } from '../../model/vector';
+import { MIN_WALL_LENGTH } from '../../model/tolerance';
+import { arcOf, pointAt } from './geometry/arc';
+import { addWalls, setWalls } from './commands';
+import { ruleKeepingPosition, updateOpening } from '../opening/commands';
+import { hasDistance } from '../opening/schema';
+import { t } from '../../i18n/messages';
+import { arcMiddle } from './arc-edit';
+import { bulgeThrough, rectangle, typedEnd, wallTransition, type WallToolEvent } from './tool';
+import { type DocWall, wallNumber, wallOverrides } from '../../project/doc';
+import { stretchEnd } from './edit';
+import { referenceLength } from '../opening/derive';
+import { newId } from '../../core/id';
+import type { App } from '../../session/app';
+import { PREVIEW_ID } from '../preview';
 
 export function previewWall(app: App): DocWall[] {
   const w = app.ui.wall;

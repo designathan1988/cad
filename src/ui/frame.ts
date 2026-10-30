@@ -1,7 +1,7 @@
 // One frame of the views: the plan's overlay (selection, previews, snaps, tags, temporary dimensions and their value fields) or the 3D's, and the panel. Functions over the app (app.ts delegates).
 
-import { calibrateDraft } from './reference-ui';
-import { roomTagText } from './room-tag';
+import { calibrateDraft } from './reference-tool';
+import { roomTagText } from '../app/room-tag';
 import { overrideColours, wallPhases, roomOverrideColours } from '../project/layer-sets';
 import { keepSelectionInView3d } from '../session/view-ui';
 import { objectHandles } from '../session/object-handles';
@@ -12,21 +12,21 @@ import { MIN_WALL_LENGTH } from '../model/tolerance';
 import { resetWallsToType, setWalls, updateWalls } from '../elements/wall/commands';
 import { alignHeads, alignOpenings, distributeOpenings, ruleKeepingPosition, setGroupSpacing, ungroupOpenings, updateOpening } from '../elements/opening/commands';
 import { GROUP_PREFIX } from '../elements/opening/schema';
-import { chainArea, chainLength, MEASURE_IDLE, reading } from '../tools/measure-tool';
+import { chainArea, chainLength, MEASURE_IDLE, reading } from '../elements/measure/tool';
 import { alignWalls, distributeWalls } from '../elements/wall/arrange';
 import { guideLine, guideMeasure } from '../elements/guide/tool';
-import { OPENING_PREVIEW_ID, ruleGuide } from './opening-ui';
-import { toolCursor } from '../ui/cursors';
+import { OPENING_PREVIEW_ID, ruleGuide } from '../elements/opening/aim';
+import { toolCursor } from './cursors';
 import { getLang, name, t } from '../i18n/messages';
-import { renderPanel } from '../ui/panel';
+import { renderPanel } from './panel';
 import { snapLabel } from '../session/snap';
-import { bulgeKeepingSide } from '../tools/arc-edit';
+import { bulgeKeepingSide } from '../elements/wall/arc-edit';
 import { KINDS } from '../elements/registry';
 import { drawingOf, levelOf, wallNumber } from '../project/doc';
 import { shownFor } from '../project/derive';
 import { stackedSteps } from '../session/stacked';
 import { type TempDim, tempDims } from '../session/temp-dims';
-import { cutAt } from './view-3d';
+import { cutAt } from '../session/view/view-3d';
 import { changeReferenceLine, changeWallType, moveWalls, roomFace } from '../elements/wall/edit';
 import { insideRing } from '../elements/room/derive';
 import { loadPrefs, savePrefs } from '../project/persist';

@@ -2,7 +2,7 @@
 // 222): the actions that fit that kind of element, most used first, 3 to 6 of them.
 
 import type { Doc } from '../project/doc';
-import { canTransform } from '../model/transform';
+import { canTransform } from '../elements/transform';
 import { canMerge } from '../tools/split';
 
 export type ContextId =

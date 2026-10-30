@@ -13,9 +13,9 @@ import type { Doc, DocWall } from '../project/doc';
 import type { DerivedGeometry } from '../project/derive';
 import { add, dot, normalize, type Point2, scale, sub } from '../model/vector';
 import { GROUP_PREFIX, type GroupSpacing, type Opening, type OpeningGroup, OPENING_PREFIX, type PositionRule } from '../elements/opening/schema';
-import { aimAt } from '../app/opening-ui';
+import { aimAt } from './opening/aim';
 import { transformWalls } from '../elements/wall/edit';
-import { ruleAt } from '../tools/opening-tool';
+import { ruleAt } from './opening/tool';
 
 export interface Transform {
   /** Where a point goes. */

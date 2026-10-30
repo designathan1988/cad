@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { Level } from '../../src/project/doc';
-import { cutAt, EXPLODE_GAP, liftOf, readView3D, shownLevels, VIEW_3D_DEFAULT } from '../../src/app/view-3d';
+import { cutAt, EXPLODE_GAP, liftOf, readView3D, shownLevels, VIEW_3D_DEFAULT } from '../../src/session/view/view-3d';
 
 const levels: Level[] = [
   { id: 'second', name: 'Second', elevation: 5.6, height: 2.8 },

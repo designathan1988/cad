@@ -8,7 +8,7 @@ import type { ObjectDefinition } from '../elements/object/schema';
 import type { RibbonItem, RibbonTab } from '../ui/ribbon';
 import type { MessageKey } from '../i18n/messages';
 import type { App } from '../session/app';
-import type { ModifyKind } from '../tools/modify-tool';
+import type { ModifyKind } from '../session/modify-tool';
 import type { ToolId } from '../ui/shell';
 import { t } from '../i18n/messages';
 import { kindOfId } from '../elements/registry';

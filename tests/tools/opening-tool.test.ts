@@ -2,7 +2,7 @@
 // door 0.90 wide, 1 cm per pixel: the centre snaps within 10 px = 0.10 m.
 
 import { describe, expect, it } from 'vitest';
-import { type Aim, OPENING_IDLE, openingTransition, ruleAt } from '../../src/tools/opening-tool';
+import { type Aim, OPENING_IDLE, openingTransition, ruleAt } from '../../src/elements/opening/tool';
 
 const aim = (station: number, others: Aim['others'] = [], side: Aim['side'] = 'left'): Aim => ({
   wallId: 'w',

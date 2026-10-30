@@ -12,7 +12,7 @@ import { ZONE_COLOURS, ZONE_PREFIX } from '../elements/zone/schema';
 import { words } from '../elements/object/fields';
 import { tBoth, name, t, type MessageKey } from '../i18n/messages';
 import type { App } from './app';
-import { canTransform } from '../model/transform';
+import { canTransform } from '../elements/transform';
 
 export interface Action {
   readonly id: string;

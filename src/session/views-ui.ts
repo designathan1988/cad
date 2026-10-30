@@ -2,8 +2,8 @@
 
 import { name, t } from '../i18n/messages';
 import { savePrefs } from '../project/persist';
-import { deleteView, nextViewName, type SavedView, saveView } from './saved-views';
-import { readView3D } from '../app/view-3d';
+import { deleteView, nextViewName, type SavedView, saveView } from '../project/saved-views';
+import { readView3D } from './view/view-3d';
 import { newId } from '../core/id';
 import type { App } from './app';
 import { drawingOf } from '../project/doc';

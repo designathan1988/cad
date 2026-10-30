@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { vec } from '../../src/model/vector';
 import { snap } from '../../src/session/snap';
-import { bulgeForRadius, bulgeThrough, IDLE, wallTransition, type WallToolEvent, type WallToolState } from '../../src/tools/wall-tool';
+import { bulgeForRadius, bulgeThrough, IDLE, wallTransition, type WallToolEvent, type WallToolState } from '../../src/elements/wall/tool';
 
 function run(events: WallToolEvent[]) {
   let state: WallToolState = IDLE;

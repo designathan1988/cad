@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
-import { similarTo } from '../../src/app/select-similar';
+import { similarTo } from '../../src/session/select-similar';
 import { newOpening } from '../../src/elements/opening/schema';
 
 const wall = (id: string, type: string, levelId = 'lvl_ground', y = 0): DocWall => ({

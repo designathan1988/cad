@@ -5,8 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
-import { aimAlong, OPENING_PREVIEW_ID } from '../../src/app/opening-ui';
-import { openingTransition, ruleAt } from '../../src/tools/opening-tool';
+import { aimAlong, OPENING_PREVIEW_ID } from '../../src/elements/opening/aim';
+import { openingTransition, ruleAt } from '../../src/elements/opening/tool';
 
 const wall: DocWall = { id: 'w', wallTypeId: 'wt_concrete20', start: { x: 0, y: 0 }, end: { x: 5, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground' };
 const doc: Doc = { ...newDocument(), walls: [wall] };

@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
-import { deleteView, isSavedView, moveView, nextViewName, type SavedView, saveView, updateView } from '../../src/session/saved-views';
-import { VIEW_3D_DEFAULT } from '../../src/app/view-3d';
+import { deleteView, isSavedView, moveView, nextViewName, type SavedView, saveView, updateView } from '../../src/project/saved-views';
+import { VIEW_3D_DEFAULT } from '../../src/session/view/view-3d';
 import { detailOf } from '../../src/elements/drawing/schema';
 import { readProject, writeProject } from '../../src/project/file';
 

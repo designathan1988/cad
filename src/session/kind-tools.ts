@@ -1,7 +1,7 @@
 // The tools that place the registry's kinds (elements/registry.ts): guardrails, stairs, roofs, beams, columns, grid axes, dimensions, texts and level marks. Functions over the app (app.ts delegates).
 
 import { kindOfKey, withList } from '../elements/registry';
-import { freePlace, obstacleShapes, shapesOf } from './collision';
+import { freePlace, obstacleShapes, shapesOf } from '../elements/sat';
 import { addSections } from '../elements/section/commands';
 import { boundsOf, deriveGeometry } from '../project/derive';
 import { DEPTH_MAX, elevationsAround, elevationsInside, lookOf, nextSectionName, SECTION_PREFIX, type SectionMark } from '../elements/section/schema';
@@ -40,8 +40,8 @@ import { DIMENSION_IDLE, type DimensionToolEvent, dimensionTransition } from '..
 import { LEVEL_MARK_HEIGHT, NOTE_HEIGHT, NOTE_PREFIX } from '../elements/note/schema';
 import { newId } from '../core/id';
 import { signedArea } from '../elements/room/derive';
-import type { App } from '../session/app';
-import { made, nextOf } from '../session/next';
+import type { App } from './app';
+import { made, nextOf } from './next';
 import type { Railing } from '../elements/railing/schema';
 import type { Stair } from '../elements/stair/schema';
 import type { Roof } from '../elements/roof/schema';

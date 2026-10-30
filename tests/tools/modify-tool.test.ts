@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { vec } from '../../src/model/vector';
-import { MODIFY_START, modifyTransition, previewTransform } from '../../src/tools/modify-tool';
+import { MODIFY_START, modifyTransition, previewTransform } from '../../src/session/modify-tool';
 
 const at = (x: number, y: number) => vec(x, y);
 const click = (x: number, y: number) => ({ kind: 'click' as const, point: at(x, y) });

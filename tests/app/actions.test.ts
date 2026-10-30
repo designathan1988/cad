@@ -8,7 +8,7 @@ import { newDocument } from '../../src/project/doc';
 import { createStore } from '../../src/core/store';
 import { addLevel } from '../../src/elements/level/commands';
 import { setLang } from '../../src/i18n/messages';
-import { VIEW_3D_DEFAULT } from '../../src/app/view-3d';
+import { VIEW_3D_DEFAULT } from '../../src/session/view/view-3d';
 
 // Only what appActions reads; the actions themselves are not run here.
 function fakeApp(selection: string[] = [], view: '3d' | 'plan' = 'plan') {

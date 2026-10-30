@@ -4,12 +4,12 @@
 import { t } from '../i18n/messages';
 import { setDrawing } from '../ui/drawing-dialog';
 import { drawingOf } from '../project/doc';
-import type { App } from '../session/app';
-import { EDIT_LEVELS } from '../session/app';
+import type { App } from './app';
+import { EDIT_LEVELS } from './app';
 import { showLevels } from '../ui/levels-dialog';
 import { type MenuItem, showMenu } from '../ui/menu';
-import { FILE_MENU } from './ribbon-tabs';
-import type { LevelsShown, RenderQuality, VisualStyle } from './view-3d';
+import { FILE_MENU } from '../ui/ribbon-tabs';
+import type { LevelsShown, RenderQuality, VisualStyle } from './view/view-3d';
 import { renameInPlace, showHelp } from './input';
 
 export function wireButtons(app: App, palette: () => void): void {

@@ -14,7 +14,7 @@
 // | done     | escape  | idle     | the measurement is cleared                  |
 // | idle     | escape  | idle     | (the app leaves the tool)                   |
 
-import { distance, signedTwiceArea, type Point2 } from '../model/vector';
+import { distance, signedTwiceArea, type Point2 } from '../../model/vector';
 
 export type MeasureState =
   | { readonly kind: 'idle' }

@@ -6,7 +6,7 @@ import { GRID_STEP } from '../model/tolerance';
 
 export { GRID_STEP };
 import { type Arc, arcOf, pointAt } from '../elements/wall/geometry/arc';
-import { arcMiddle } from '../tools/arc-edit';
+import { arcMiddle } from '../elements/wall/arc-edit';
 import type { MessageKey } from '../i18n/messages';
 
 export type SnapKind =

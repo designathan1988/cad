@@ -45,7 +45,7 @@ import { type Doc, KEPT_FIELDS, type Level, ownValuesOnly } from './doc';
 import type { AnyKind, KindKey } from '../elements/contract';
 import { KINDS } from '../elements/registry';
 import { typedIds } from './typed-ids';
-import { isSavedView } from '../session/saved-views';
+import { isSavedView } from './saved-views';
 import { deriveGeometry } from './derive';
 import { distributeOpenings } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';

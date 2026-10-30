@@ -6,7 +6,7 @@
 import { add, normalize, type Point2, scale, sub } from '../model/vector';
 import type { WallEnd, WallId } from '../elements/wall/schema';
 import type { DocWall } from '../project/doc';
-import { arcMiddle } from '../tools/arc-edit';
+import { arcMiddle } from '../elements/wall/arc-edit';
 import { arcOf } from '../elements/wall/geometry/arc';
 
 /** How far beyond its end an arrow sits, and how far under the selection the turn handle (px). */

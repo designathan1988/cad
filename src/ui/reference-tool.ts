@@ -7,8 +7,8 @@ import type { Point2 } from '../model/vector';
 import { addReference, setReference } from '../elements/reference/commands';
 import { calibrated, DEFAULT_OPACITY, IMAGE_SCALE, REFERENCE_PREFIX, type Reference } from '../elements/reference/schema';
 import { readDxfLines } from '../io/import-dxf';
-import { el, numberField } from '../ui/controls';
-import { openProjectDialog } from '../ui/dialog';
+import { el, numberField } from './controls';
+import { openProjectDialog } from './dialog';
 import { t } from '../i18n/messages';
 import { lengthText } from '../i18n/units';
 

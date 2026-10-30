@@ -1,13 +1,13 @@
 // The drawing's keys (input.ts): shortcuts, the tools' keys, the arrows, Escape, Enter, Delete, Alt for
 // a guide. What the pointer side shares with them comes in `k`.
 
-import { comboOf, resolveKey } from '../session/keymap';
+import { comboOf, resolveKey } from './keymap';
 import type { Point2 } from '../model/vector';
 import { t } from '../i18n/messages';
-import { viewKey } from '../session/view-keys';
-import type { App } from '../session/app';
+import { viewKey } from './view-keys';
+import type { App } from './app';
 import { showHelp } from './input';
-import { selectGestures } from '../session/drag';
+import { selectGestures } from './drag';
 import { arrowStep } from '../tools/nudge';
 import { guideBaseAt } from '../elements/guide/tool';
 

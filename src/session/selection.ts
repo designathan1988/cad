@@ -1,6 +1,6 @@
 // What is selected and what is done to it: all walls, the next one, the arrows, copy and paste, delete, select similar, hide or isolate for a while. Functions over the app (app.ts delegates).
 
-import { clampMove, collisionFor } from '../app/collision';
+import { clampMove, collisionFor } from '../elements/sat';
 import { type Point2 } from '../model/vector';
 import { deleteElements } from '../elements/opening/commands';
 import { isGuideId } from '../elements/guide/schema';
@@ -9,12 +9,12 @@ import { appendKinds, eachSolid, kindOfId } from '../elements/registry';
 import { isDimId } from '../elements/dimension/schema';
 import { isGridId } from '../elements/grid/schema';
 import { isNoteId } from '../elements/note/schema';
-import { stepSelection } from '../app/keyboard-select';
+import { stepSelection } from './keyboard-select';
 import { nudge } from '../tools/nudge';
 import { levelOf } from '../project/doc';
 import { boundsOf, shownFor, type Category } from '../project/derive';
-import { similarTo } from '../app/select-similar';
-import { canTransform, copyToLevel } from '../model/transform';
+import { similarTo } from './select-similar';
+import { canTransform, copyToLevel } from '../elements/transform';
 import { newId } from '../core/id';
 import type { App } from './app';
 
