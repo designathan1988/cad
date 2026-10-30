@@ -1,6 +1,6 @@
 // Guide commands: each one undo step. Guides are deleted with the other elements (deleteElements).
 
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
 import type { Guide } from './schema';
 

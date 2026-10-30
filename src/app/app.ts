@@ -62,7 +62,7 @@ import { type Grid } from '../elements/grid/schema';
 import { DIMENSION_IDLE, type DimensionToolEvent, type DimensionToolState } from '../tools/dimension-tool';
 import { geometryOf, keepRooms, moveRooms } from './carry';
 import { keepOpenings } from './keep-openings';
-import { type Doc, type DocWall, drawingOf, elementIds, levelOf, startLevel, type WallDefaults } from './document';
+import { type Doc, type DocWall, drawingOf, elementIds, levelOf, startLevel, type WallDefaults } from '../project/doc';
 import type { DrawingSettings } from '../elements/drawing/schema';
 
 /** The snap labels that name their wall. */
@@ -76,7 +76,7 @@ export const SNAP_OF = {
   parallel: 'snap.parallelOf',
   intersection: 'snap.intersectionOf',
 } as const;
-import { applyTemporary, boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, type TemporaryView } from './geometry';
+import { applyTemporary, boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, type TemporaryView } from '../project/derive';
 import { markPoint, openingMarks } from '../elements/opening/marks';
 import { loadPrefs, savePrefs, scheduleSave, wireSaving } from './persist';
 import type { Boot } from './boot';

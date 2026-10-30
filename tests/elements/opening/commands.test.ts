@@ -1,7 +1,7 @@
 // Opening commands: one undo step each, cascades, and rule changes that keep the opening in place.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
+import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
 import { createStore } from '../../../src/core/store';
 import { addOpening, deleteElements, ruleKeepingPosition, updateOpening } from '../../../src/elements/opening/commands';
 import { deriveOpenings, hostsOf } from '../../../src/elements/opening/derive';

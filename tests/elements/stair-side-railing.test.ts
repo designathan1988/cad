@@ -3,8 +3,8 @@
 // the well is still offered when the sides have theirs.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { type RailingSolid, railingKind } from '../../src/elements/kinds/railing';
 import { postsOf, type Railing } from '../../src/elements/railing/schema';
 import { stairSolid } from '../../src/elements/stair/geometry';

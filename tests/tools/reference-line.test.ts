@@ -3,8 +3,8 @@
 // 0.1, its exterior face at y = −0.1, on its right), with r going up from its end.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { changeReferenceLine } from '../../src/tools/edit';
 
 const wall = (id: string, a: [number, number], b: [number, number], bulge = 0): DocWall => ({

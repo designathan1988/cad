@@ -2,7 +2,7 @@
 // load with none.
 
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
+import { newDocument } from '../../src/project/doc';
 import { validateDocument } from '../../src/app/persist';
 import { newOpening } from '../../src/elements/opening/schema';
 

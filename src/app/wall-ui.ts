@@ -11,7 +11,7 @@ import { hasDistance } from '../elements/opening/schema';
 import { t } from '../ui/i18n';
 import { arcMiddle } from '../tools/arc-edit';
 import { bulgeThrough, rectangle, typedEnd, wallTransition, type WallToolEvent } from '../tools/wall-tool';
-import { type DocWall, wallNumber, wallOverrides } from './document';
+import { type DocWall, wallNumber, wallOverrides } from '../project/doc';
 import { stretchEnd } from '../tools/edit';
 import { referenceLength } from '../elements/opening/derive';
 import { newId } from '../core/id';

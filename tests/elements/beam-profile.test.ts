@@ -1,8 +1,8 @@
 // A beam's section (a rectangle or an I) and its top at each end: sloping when they differ.
 
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { type Beam, beamSection } from '../../src/elements/beam/schema';
 import { beamKind, type BeamSolid } from '../../src/elements/kinds/beam';
 

@@ -4,7 +4,7 @@
 // seen through (x-ray, as Revit's and SketchUp's), the walls and floors faint and every line on top.
 // Interface state, kept with the preferences: outside the document and its undo, as the camera is.
 
-import { cutHeightOf, type Level } from './document';
+import { cutHeightOf, type Level } from '../project/doc';
 import { readBox, readSection, type SectionBox, type SectionLine } from './section-box';
 
 export type LevelsShown = 'all' | 'below' | 'current';

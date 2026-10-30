@@ -4,7 +4,7 @@
 // changes nothing.
 
 import { definitionMaterials } from '../object/materials';
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
 import { isPattern } from './pattern';
 import { isPhysics } from './physics';

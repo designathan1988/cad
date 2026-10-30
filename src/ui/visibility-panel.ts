@@ -5,7 +5,7 @@
 // It only reads the state and calls the app.
 
 import type { App } from '../app/app';
-import type { Category } from '../app/geometry';
+import type { Category } from '../project/derive';
 import { el } from './controls';
 import { t, type MessageKey } from './i18n';
 import { icon } from './icons';

@@ -2,7 +2,7 @@
 // number, at least half the chord, that keeps the ends.
 
 import { describe, expect, it } from 'vitest';
-import { type DocWall, newDocument } from '../../../src/app/document';
+import { type DocWall, newDocument } from '../../../src/project/doc';
 import { wallFields } from '../../../src/elements/wall/fields';
 import { fieldStates } from '../../../src/ui/fields';
 

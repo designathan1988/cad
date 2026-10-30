@@ -1,6 +1,6 @@
 // What the project browser lists about the document (pure).
 
-import type { Doc } from './document';
+import type { Doc } from '../project/doc';
 
 /** Every wall type, with how many walls use it (0 for an unused one), on one level or on all. */
 export function typeUsage(doc: Doc, levelId?: string): Map<string, number> {

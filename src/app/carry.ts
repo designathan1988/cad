@@ -7,8 +7,8 @@ import type { Point2 } from '../model/vector';
 import { segmentDistance } from '../model/vector';
 import { insideRing, middleOfRest, type RoomSolid } from '../elements/room/derive';
 import type { Room } from '../elements/room/schema';
-import type { Doc } from './document';
-import { deriveGeometry, type DerivedGeometry } from './geometry';
+import type { Doc } from '../project/doc';
+import { deriveGeometry, type DerivedGeometry } from '../project/derive';
 
 const NEAR = 1e-6;
 

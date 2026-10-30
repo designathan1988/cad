@@ -8,7 +8,7 @@ import { deleteProject, forgetSaved, listProjects, type ProjectInfo, saveProject
 import { t } from '../ui/i18n';
 import type { App } from './app';
 import { PROJECT_PREFIX, readStored } from './boot';
-import { type Doc, newDocument, startLevel } from './document';
+import { type Doc, newDocument, startLevel } from '../project/doc';
 import { flushSave, savePrefs, saveTo } from './persist';
 
 /** The open project becomes `doc`, kept under `id`: the one before is saved first, its history left behind. */

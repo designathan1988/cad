@@ -3,8 +3,8 @@
 // from the box's corner (4, 0) to (6, 0), a door on b 1 m from its start, and the room inside.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { newOpening } from '../../src/elements/opening/schema';
 import { canTransform, copiesInSeries, copyToLevel, reflection, rotation, scaling, transformSelection, translation } from '../../src/tools/transform';
 

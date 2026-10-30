@@ -2,8 +2,8 @@
 
 import { floorsOf } from '../../src/elements/registry';
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry, hideCategories } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry, hideCategories } from '../../src/project/derive';
 import { typeUsage } from '../../src/app/browser-data';
 import { newOpening } from '../../src/elements/opening/schema';
 

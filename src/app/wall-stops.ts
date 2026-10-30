@@ -7,7 +7,7 @@ import { add, dot, type Point2, scale, sub } from '../model/vector';
 import { referenceLength } from '../elements/opening/derive';
 import { faceOffsets, wallDirection, wallNormal } from '../elements/wall/geometry/offset';
 import { shapeOf } from '../elements/wall/geometry/shape';
-import type { Doc } from './document';
+import type { Doc } from '../project/doc';
 
 /** Below this sine the walls are taken as parallel: they run alongside, they do not meet. */
 const MIN_SINE = 0.1;

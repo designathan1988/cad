@@ -3,13 +3,13 @@
 // slide along their own wall to stay on it, so Ts stay joined, and so do a moved wall's own ends on
 // another's body. Nothing here touches geometry beyond the reference lines: the join engine redoes the rest.
 
-import type { Doc, DocWall } from '../app/document';
+import type { Doc, DocWall } from '../project/doc';
 import { MIN_WALL_LENGTH, POINT_TOLERANCE } from '../model/tolerance';
 import { add, cross, distance, dot, intersectLines, normalize, type Point2, scale, sub } from '../model/vector';
 import type { ReferenceLine, WallEnd, WallId } from '../elements/wall/schema';
 import { exteriorOffset } from '../elements/wall/geometry/shape';
 import { arcOf } from '../elements/wall/geometry/arc';
-import { wallThickness } from '../app/document';
+import { wallThickness } from '../project/doc';
 
 type Ends = { start: Point2; end: Point2 };
 

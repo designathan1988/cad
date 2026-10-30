@@ -2,7 +2,7 @@
 // the checks, and what the project file keeps.
 
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
+import { newDocument } from '../../src/project/doc';
 import { deleteLayerSet, isLayerSet, isRoomOverride, nextName, overrideColours, roomOverrideColours, saveLayerSet, setOverrides, setRoomOverrides, wallPhases } from '../../src/app/layer-sets';
 import { isSavedView } from '../../src/app/saved-views';
 import { readProject, writeProject } from '../../src/io/project-file';

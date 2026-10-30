@@ -23,7 +23,7 @@ aqui fica a decisão por arquivo.
 | src/app/carry.ts | dividir | project/derive/cache.ts | geometryOf + keepRooms; apaga carriedRooms (morto) e toSegment (cópia) |
 | src/app/keep-openings.ts | mover | opening/keep.ts | anda com wall-stops |
 | src/app/wall-stops.ts | mover | wall/stops.ts | funde com a ideia de jointsIn/endsIn (uma implementação só) |
-| src/app/geometry.ts | dividir | project/derive/*.ts | deriveGeometry vira o orquestrador; jointsIn/endsIn fundidos em wall/stops; helpers p/ model; hideCategories → session |
+| (movido no passo 4) src/project/derive.ts | dividir | project/derive/*.ts | deriveGeometry vira o orquestrador; jointsIn/endsIn fundidos em wall/stops; helpers p/ model; hideCategories → session |
 | src/app/keep-in-view.ts | mover | session/view/keep.ts |  |
 | src/app/dim-labels.ts | mover | canvas/plan/labels.ts |  |
 | src/app/section-box.ts | mover | session/view/section-box.ts | topAt duplicado funde com section-drawing |
@@ -34,7 +34,7 @@ aqui fica a decisão por arquivo.
 
 | Arquivo | Ação | Destino | Nota |
 | --- | --- | --- | --- |
-| src/app/document.ts | dividir | project/doc.ts + level/… | Doc/niveis em project; wallHeights/wallBand → wall; covers WeakMap junto do roof |
+| (movido no passo 4) src/project/doc.ts | dividir | project/doc.ts + level/… | Doc/niveis em project; wallHeights/wallBand → wall; covers WeakMap junto do roof |
 | src/io/project-file.ts | mover | project/file.ts | valida via guards; migrações intactas (formato congelado) |
 | src/io/typed-ids.ts | mover | project/typed-ids.ts | passa a emitir branded ids |
 | src/io/project-db.ts | mover | project/db.ts | tira os 2 bytes NUL literais (arquivo lido como binário); 'points' vestigial sai |

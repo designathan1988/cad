@@ -2,8 +2,8 @@
 // joint is flagged.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { boundsOf, deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { boundsOf, deriveGeometry } from '../../src/project/derive';
 import { newOpening } from '../../src/elements/opening/schema';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({

@@ -41,16 +41,16 @@ import { DEFAULT_UNITS, isUnits } from '../ui/units';
 import { BUILT_IN_MATERIALS, CUT_PATTERNS, isColor, type Material, materialFor } from '../elements/material/schema';
 import { isPattern } from '../elements/material/pattern';
 import { isPhysics } from '../elements/material/physics';
-import { type Doc, KEPT_FIELDS, type Level, ownValuesOnly } from '../app/document';
+import { type Doc, KEPT_FIELDS, type Level, ownValuesOnly } from '../project/doc';
 import type { AnyKind, KindKey } from '../elements/contract';
 import { KINDS } from '../elements/registry';
 import { typedIds } from './typed-ids';
 import { isSavedView } from '../app/saved-views';
-import { deriveGeometry } from '../app/geometry';
+import { deriveGeometry } from '../project/derive';
 import { distributeOpenings } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { WallType } from '../elements/wall/schema';
-import type { DocWall } from '../app/document';
+import type { DocWall } from '../project/doc';
 import { isDrawingSettings } from '../elements/drawing/schema';
 
 /**

@@ -2,8 +2,8 @@
 // (resolve). Read against the walls' chords, so an arc's ends hold, and a point along it is taken on its
 // chord. Pure.
 
-import type { Doc } from '../../app/document';
-import type { DerivedGeometry } from '../../app/geometry';
+import type { Doc } from '../../project/doc';
+import type { DerivedGeometry } from '../../project/derive';
 import { add, distance, dot, normalize, perp, type Point2, scale, sub } from '../../model/vector';
 
 /** How far p is from the segment a–b (model/vector's; kept as anchor's API for the kinds). */

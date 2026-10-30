@@ -2,7 +2,7 @@
 // and top are the wall's own or its type's (app/document.ts): an own one is marked, with the way back.
 
 import { lengthText } from '../../ui/units';
-import { type Doc, type DocWall, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop, type WallPhase } from '../../app/document';
+import { type Doc, type DocWall, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop, type WallPhase } from '../../project/doc';
 import { distance } from '../../model/vector';
 import type { Field } from '../../ui/fields';
 import { name, t, type MessageKey } from '../../ui/i18n';

@@ -5,8 +5,8 @@
 
 import type { Command } from '../core/store';
 import { isColor } from '../elements/material/schema';
-import type { Doc } from './document';
-import type { Category } from './geometry';
+import type { Doc } from '../project/doc';
+import type { Category } from '../project/derive';
 import { ROOM_USES } from '../elements/room/schema';
 
 export const CATEGORIES: readonly Category[] = ['walls', 'openings', 'rooms', 'floors', 'objects', 'guides'];

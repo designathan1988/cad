@@ -3,8 +3,8 @@
 // places it centred.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { aimAlong, OPENING_PREVIEW_ID } from '../../src/app/opening-ui';
 import { openingTransition, ruleAt } from '../../src/tools/opening-tool';
 

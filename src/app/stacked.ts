@@ -8,7 +8,7 @@ import { add, cross, dot, type Point2, scale, sub } from '../model/vector';
 import { faceOffsets, wallDirection, wallLength, wallNormal } from '../elements/wall/geometry/offset';
 import { shapeOf, type WallShape } from '../elements/wall/geometry/shape';
 import type { WallId } from '../elements/wall/schema';
-import type { Doc } from './document';
+import type { Doc } from '../project/doc';
 
 export interface StackedStep {
   /** The wall standing on the other, and the wall below it. */

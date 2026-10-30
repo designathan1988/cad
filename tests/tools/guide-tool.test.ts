@@ -2,7 +2,7 @@
 // line, so its faces are at y = −0.1 and y = 0.1.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { draftAt, guideBaseAt, guideLine, guideMeasure, newGuide } from '../../src/tools/guide-tool';
 import { vec } from '../../src/model/vector';
 

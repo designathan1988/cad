@@ -3,7 +3,7 @@
 
 import { t } from '../ui/i18n';
 import { setDrawing } from '../ui/drawing-dialog';
-import { drawingOf } from './document';
+import { drawingOf } from '../project/doc';
 import type { App } from './app';
 import { EDIT_LEVELS } from './app';
 import { showLevels } from '../ui/levels-dialog';

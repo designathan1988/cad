@@ -9,7 +9,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Material } from '../material/schema';
 import { ARC_SAG } from '../../model/tolerance';
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import { insideRing } from '../room/derive';
 import type { ElementKind, KindSolid } from '../contract';
 import { evaluateObject, type ObjectEval, type Piece, pieceOutline, pieceSpan } from '../object/evaluate';

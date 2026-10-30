@@ -4,7 +4,7 @@
 
 import type { Lang } from '../ui/i18n';
 import { readProject, repairProject } from '../io/project-file';
-import type { Doc } from './document';
+import type { Doc } from '../project/doc';
 import type { View3D } from './view-3d';
 import { saveProject } from '../io/project-db';
 

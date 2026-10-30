@@ -9,8 +9,8 @@
 // head dimensioned, the rooms it crosses their names. Pure but for the painting.
 
 import * as THREE from 'three';
-import { type Doc, levelOf } from './document';
-import { type DerivedGeometry, hideCategories } from './geometry';
+import { type Doc, levelOf } from '../project/doc';
+import { type DerivedGeometry, hideCategories } from '../project/derive';
 import { type Point2, sub } from '../model/vector';
 import type { Point3 } from './section-box';
 import { eachSolid } from '../elements/registry';

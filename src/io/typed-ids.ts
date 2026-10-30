@@ -3,7 +3,7 @@
 // from an id (elements/registry.ts: kindOfId). A file written elsewhere, or by hand, may have ids
 // without it: they are renamed on reading, with every reference to them. Pure.
 
-import type { Doc } from '../app/document';
+import type { Doc } from '../project/doc';
 import type { DimAnchor } from '../elements/dimension/schema';
 import type { Opening, OpeningGroup, PositionRule } from '../elements/opening/schema';
 import { GROUP_PREFIX } from '../elements/opening/schema';

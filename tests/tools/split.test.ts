@@ -2,8 +2,8 @@
 // door 2.5 m from its start (jambs at 2.5 and 3.4).
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument, wallNumber } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument, wallNumber } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { newOpening } from '../../src/elements/opening/schema';
 import { canMerge, cornerWalls, mergeWalls, splitWall } from '../../src/tools/split';
 

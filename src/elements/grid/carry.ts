@@ -1,7 +1,7 @@
 // What goes with an axis: the walls and beams lying on it and the columns standing on it, on every level
 // (schema.ts: onGrid). Pure.
 
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import { distance } from '../../model/vector';
 import { kindsOnLine } from '../registry';
 import { type Grid, onGrid } from './schema';

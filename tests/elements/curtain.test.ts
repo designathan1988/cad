@@ -2,7 +2,7 @@
 // element read back from a file.
 
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
+import { newDocument } from '../../src/project/doc';
 import { curtainSolid } from '../../src/elements/curtain/geometry';
 import { type Curtain, CURTAIN_DEFAULTS, gridLines } from '../../src/elements/curtain/schema';
 import { updateCurtains } from '../../src/elements/curtain/commands';

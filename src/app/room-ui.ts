@@ -2,10 +2,10 @@
 
 import { distance, type Point2 } from '../model/vector';
 import { defaultName, name, t } from '../ui/i18n';
-import { levelOf } from './document';
+import { levelOf } from '../project/doc';
 import { made, nextOf } from './next-element';
 import type { Floor, Room } from '../elements/room/schema';
-import { deriveGeometry } from './geometry';
+import { deriveGeometry } from '../project/derive';
 import { newId } from '../core/id';
 import { addFloor, addFloorHole, addRoom } from '../elements/room/commands';
 import { insideRing, signedArea } from '../elements/room/derive';

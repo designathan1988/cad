@@ -1,7 +1,7 @@
 // What to offer for the selection, in the right-click menu and the floating bar (ref/chat.txt:206,
 // 222): the actions that fit that kind of element, most used first, 3 to 6 of them.
 
-import type { Doc } from './document';
+import type { Doc } from '../project/doc';
 import { canTransform } from '../tools/transform';
 import { canMerge } from '../tools/split';
 

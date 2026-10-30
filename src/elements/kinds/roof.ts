@@ -11,7 +11,7 @@ import { type Roof, ROOF_COVERING, ROOF_PREFIX } from '../roof/schema';
 import { materialIn, type Material } from '../material/schema';
 import { insideRing } from '../room/derive';
 import { trace } from './paint';
-import { wallBand, wallTop } from '../../app/document';
+import { wallBand, wallTop } from '../../project/doc';
 
 export const roofKind: ElementKind<Roof, RoofSolid & { readonly covering: Material }> = {
   key: 'roofs',

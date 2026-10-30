@@ -2,7 +2,7 @@
 // line, as Revit's flip arrows do. Everything hosted stays where it is in the world.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
+import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
 import { deriveOpenings, hostsOf } from '../../../src/elements/opening/derive';
 import { distributeOpenings } from '../../../src/elements/opening/commands';
 import { newOpening } from '../../../src/elements/opening/schema';

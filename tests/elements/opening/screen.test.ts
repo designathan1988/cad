@@ -2,8 +2,8 @@
 // outside face, the shutter pushed aside when the window is drawn open; a door has neither.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
-import { deriveGeometry } from '../../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
+import { deriveGeometry } from '../../../src/project/derive';
 import { openingParts } from '../../../src/elements/opening/parts';
 import { newOpening, type OpeningStyle } from '../../../src/elements/opening/schema';
 import { fitStyle, isOpeningStyle } from '../../../src/elements/opening/style';

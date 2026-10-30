@@ -1,6 +1,6 @@
 // Commands on walls. Each returns a new document; the store makes each one undo step.
 
-import { type Doc, type DocWall, ownValuesOnly } from '../../app/document';
+import { type Doc, type DocWall, ownValuesOnly } from '../../project/doc';
 import type { Command } from '../../core/store';
 import type { WallId } from './schema';
 

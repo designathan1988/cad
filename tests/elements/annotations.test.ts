@@ -2,7 +2,7 @@
 // and what a room's tag says, as the drawing sets it.
 
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
+import { newDocument } from '../../src/project/doc';
 import { roomTagText } from '../../src/app/room-tag';
 import { DEFAULT_DRAWING, isDrawingSettings } from '../../src/elements/drawing/schema';
 import { noteKind } from '../../src/elements/kinds/note';

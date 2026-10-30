@@ -3,8 +3,8 @@
 // openings were clear of (the tester's CK65 → CK66: two windows left of an X, one landed on it).
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
-import { deriveGeometry, hostsIn } from '../../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
+import { deriveGeometry, hostsIn } from '../../../src/project/derive';
 import { deleteElements, distributeOpenings, setGroupSpacing } from '../../../src/elements/opening/commands';
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { newOpening, type Opening, type PositionRule } from '../../../src/elements/opening/schema';

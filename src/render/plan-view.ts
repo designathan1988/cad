@@ -12,7 +12,7 @@ import { drawDimension, type Placed } from '../elements/kinds/dimension';
 import { eachSolid } from '../elements/registry';
 import type { Point2 } from '../model/vector';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
-import { type DerivedGeometry, openingOutline } from '../app/geometry';
+import { type DerivedGeometry, openingOutline } from '../project/derive';
 import { layoutRoomTags } from './room-tags';
 import type { Handles } from '../app/handles';
 import { symbolLines } from '../elements/opening/symbol';

@@ -2,9 +2,9 @@
 // model as it is now, on white paper whatever the theme, with the project's pens at its scale.
 
 import type { App } from './app';
-import type { Doc } from './document';
-import { drawingOf } from './document';
-import { type DerivedGeometry, deriveGeometry } from './geometry';
+import type { Doc } from '../project/doc';
+import { drawingOf } from '../project/doc';
+import { type DerivedGeometry, deriveGeometry } from '../project/derive';
 import { modelSolids, paintSection, sectionDrawing, type SectionDrawing, type Solid3 } from './section-drawing';
 import { scaleFactor } from '../elements/drawing/schema';
 import type { SectionMark } from '../elements/section/schema';

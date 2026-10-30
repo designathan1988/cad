@@ -1,7 +1,7 @@
 // Commands on levels. A wall's heights come from its level, so changing a level's elevation or height
 // moves every wall on it without touching the walls.
 
-import { type Doc, type Level, type LevelId, wallHeights } from '../../app/document';
+import { type Doc, type Level, type LevelId, wallHeights } from '../../project/doc';
 import type { Command } from '../../core/store';
 
 /** A new level on top of the highest one, with that one's height and cut height. */

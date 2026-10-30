@@ -4,7 +4,7 @@
 // with that face as its reference line, leave a corridor 1.20 m wide. The gesture (Alt over the wall
 // or guide) is input.ts's; what guides are, elements/guide/schema.ts.
 
-import type { Doc } from '../app/document';
+import type { Doc } from '../project/doc';
 import { add, cross, distance, dot, perp, type Point2, scale, sub } from '../model/vector';
 import type { Guide } from '../elements/guide/schema';
 import { faceOffsets, wallDirection, wallNormal } from '../elements/wall/geometry/offset';

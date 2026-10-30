@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RIBBON_OBJECTS, ribbonObjects } from '../../src/app/ribbon-tabs';
-import { newDocument } from '../../src/app/document';
+import { newDocument } from '../../src/project/doc';
 
 describe('ribbon objects', () => {
   const doc = newDocument();

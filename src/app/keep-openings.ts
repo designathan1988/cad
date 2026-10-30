@@ -9,7 +9,7 @@
 import { dot, normalize, sub } from '../model/vector';
 import { referenceLength } from '../elements/opening/derive';
 import type { Opening } from '../elements/opening/schema';
-import type { Doc } from './document';
+import type { Doc } from '../project/doc';
 import { type Stop, wallStopsOf } from './wall-stops';
 
 /** Within this (m) a stop is the one a rule is measured from: ruleBase's own slack. */

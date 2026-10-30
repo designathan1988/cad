@@ -1,8 +1,8 @@
 // Commands on permanent dimensions. Each returns a new document; the store makes each one undo step.
 
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
-import { deriveGeometry } from '../../app/geometry';
+import { deriveGeometry } from '../../project/derive';
 import { placeDimension } from './anchor';
 import type { Dimension } from './schema';
 

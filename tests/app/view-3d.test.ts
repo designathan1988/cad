@@ -2,7 +2,7 @@
 // Three levels: ground at 0, first at 2.8, second at 5.6 (each 2.8 high, the plan cut at 1.2).
 
 import { describe, expect, it } from 'vitest';
-import type { Level } from '../../src/app/document';
+import type { Level } from '../../src/project/doc';
 import { cutAt, EXPLODE_GAP, liftOf, readView3D, shownLevels, VIEW_3D_DEFAULT } from '../../src/app/view-3d';
 
 const levels: Level[] = [

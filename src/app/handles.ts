@@ -5,7 +5,7 @@
 
 import { add, normalize, type Point2, scale, sub } from '../model/vector';
 import type { WallEnd, WallId } from '../elements/wall/schema';
-import type { DocWall } from './document';
+import type { DocWall } from '../project/doc';
 import { arcMiddle } from '../tools/arc-edit';
 import { arcOf } from '../elements/wall/geometry/arc';
 

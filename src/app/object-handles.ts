@@ -11,7 +11,7 @@ import { setObjectValues } from '../elements/object/commands';
 import { updateOpening } from '../elements/opening/commands';
 import type { Opening, PositionRule } from '../elements/opening/schema';
 import { evaluateObject, held } from '../elements/object/evaluate';
-import { deriveGeometry } from './geometry';
+import { deriveGeometry } from '../project/derive';
 import type { ObjectSolid } from '../elements/kinds/object';
 import type { App } from './app';
 

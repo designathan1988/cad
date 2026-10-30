@@ -2,7 +2,7 @@
 // reference line from its start, jamb to jamb.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
+import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
 import { createStore } from '../../../src/core/store';
 import {
   alignHeads,

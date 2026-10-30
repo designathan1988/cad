@@ -3,7 +3,7 @@
 // the project file (core/measure.ts reads them).
 
 import type { App } from '../app/app';
-import type { Doc } from '../app/document';
+import type { Doc } from '../project/doc';
 import { isVariableName } from '../core/measure';
 import type { Command } from '../core/store';
 import { el, numberField } from './controls';

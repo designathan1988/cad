@@ -1,7 +1,7 @@
 // The project as a file: saving, opening and a new one. Functions over the app (app.ts delegates).
 
 import { t } from '../ui/i18n';
-import { newDocument, startLevel } from './document';
+import { newDocument, startLevel } from '../project/doc';
 import { savePrefs } from './persist';
 import { readProject, writeProject } from '../io/project-file';
 import type { App } from './app';

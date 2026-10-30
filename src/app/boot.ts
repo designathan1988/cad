@@ -6,7 +6,7 @@
 import { newId } from '../core/id';
 import { listProjects, loadProject, openDb, saveProject } from '../io/project-db';
 import { type ReadError, repairProject } from '../io/project-file';
-import { type Doc, newDocument } from './document';
+import { type Doc, newDocument } from '../project/doc';
 import { loadDocument, loadPrefs, savePrefs, saveTo } from './persist';
 
 export interface Boot {

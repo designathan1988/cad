@@ -2,7 +2,7 @@
 // number; its outline, area and perimeter are always derived from the walls around the point. A
 // floor is a slab on a level, following a room's outline or one the user drew.
 
-import type { LevelId } from '../../app/document';
+import type { LevelId } from '../../project/doc';
 import type { Point2 } from '../../model/vector';
 
 export type RoomId = string;

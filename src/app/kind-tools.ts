@@ -3,7 +3,7 @@
 import { kindOfKey, withList } from '../elements/registry';
 import { freePlace, obstacleShapes, shapesOf } from './collision';
 import { addSections } from '../elements/section/commands';
-import { boundsOf, deriveGeometry } from './geometry';
+import { boundsOf, deriveGeometry } from '../project/derive';
 import { DEPTH_MAX, elevationsAround, elevationsInside, lookOf, nextSectionName, SECTION_PREFIX, type SectionMark } from '../elements/section/schema';
 import { addObject } from '../elements/object/commands';
 import { OBJECT_PREFIX } from '../elements/object/schema';

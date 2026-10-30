@@ -4,7 +4,7 @@
 // are made from its panel and listed here with their level.
 
 import type { App } from '../app/app';
-import { type Doc, levelOf } from '../app/document';
+import { type Doc, levelOf } from '../project/doc';
 import type { SectionMark } from '../elements/section/schema';
 import { sectionCanvas, sectionOf } from '../app/section-view';
 import { el } from './controls';

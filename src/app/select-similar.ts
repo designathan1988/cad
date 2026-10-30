@@ -4,7 +4,7 @@
 // thickness; notes of the same letter height; guides, all of them. Pure.
 
 import { similarKinds } from '../elements/registry';
-import type { Doc } from './document';
+import type { Doc } from '../project/doc';
 
 /** The ids to select: what is selected and everything like it on the level, in the document's order. */
 export function similarTo(doc: Doc, selected: ReadonlySet<string>, levelId: string): string[] {

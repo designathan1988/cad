@@ -1,7 +1,7 @@
 // Commands on rooms and floors. Each returns a new document; the store makes each one undo step.
 
 import { materialFor } from '../material/schema';
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
 import type { Floor, FloorId, FloorLayer, Room, RoomFinishes, RoomId, RoomUse, Tiling } from './schema';
 

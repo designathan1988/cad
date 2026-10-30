@@ -4,8 +4,8 @@
 // the walls and the doors as they move. The outer face is the one with no room behind it; a wall with
 // rooms on both sides is measured only when asked for by name, on its left. Pure.
 
-import type { Doc } from '../../app/document';
-import type { DerivedGeometry } from '../../app/geometry';
+import type { Doc } from '../../project/doc';
+import type { DerivedGeometry } from '../../project/derive';
 import { distance, dot, normalize, perp, type Point2, sub } from '../../model/vector';
 import { insideRing } from '../room/derive';
 import { placeDimension } from './anchor';

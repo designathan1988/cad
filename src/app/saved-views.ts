@@ -2,12 +2,12 @@
 // what it shows, or a plan's level, zoom and position, under a name. In the document, so they go
 // with the file; saving and deleting one are undo steps. Going to one changes only the interface.
 
-import type { Category } from './geometry';
+import type { Category } from '../project/derive';
 import { nextName } from './layer-sets';
 import { isCategoryList } from './layer-sets';
 import type { Command } from '../core/store';
 import type { Point2 } from '../model/vector';
-import type { Doc } from './document';
+import type { Doc } from '../project/doc';
 import type { View3D } from './view-3d';
 
 /** What a view shows besides its camera (a view template): the categories hidden, the overrides on. */

@@ -2,8 +2,8 @@
 
 import { floorsOf } from '../../../src/elements/registry';
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
-import { deriveGeometry } from '../../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
+import { deriveGeometry } from '../../../src/project/derive';
 import { vec } from '../../../src/model/vector';
 import { deleteElements } from '../../../src/elements/opening/commands';
 import { moveWalls } from '../../../src/tools/edit';

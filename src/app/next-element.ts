@@ -6,7 +6,7 @@
 import type { Field } from '../ui/fields';
 import { kindOfKey, withList } from '../elements/registry';
 import type { KindKey } from '../elements/contract';
-import { levelOf } from './document';
+import { levelOf } from '../project/doc';
 import { COLUMN_SIZE } from '../elements/column/schema';
 import { BEAM_DEPTH, BEAM_WIDTH } from '../elements/beam/schema';
 import { STAIR_TREAD, STAIR_WIDTH } from '../elements/stair/schema';

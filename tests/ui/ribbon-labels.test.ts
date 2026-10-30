@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { ribbonTabs } from '../../src/app/ribbon-tabs';
 import { setLang, t } from '../../src/ui/i18n';
-import { newDocument } from '../../src/app/document';
+import { newDocument } from '../../src/project/doc';
 
 describe('ribbon labels', () => {
   const app = {

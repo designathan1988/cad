@@ -5,7 +5,7 @@
   "src/app/app.ts",
   "src/app/chrome.ts",
   "src/app/frame.ts",
-  "src/app/geometry.ts",
+  "src/project/derive.ts",
   "src/app/input.ts",
   "src/app/kind-tools.ts",
   "src/app/ribbon-tabs.ts",

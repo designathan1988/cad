@@ -2,11 +2,11 @@
 // (gone with the wall, or when it is straight again), a coordinate's point. And the arc wall under a point,
 // for the tool. Pure.
 
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Point2 } from '../../model/vector';
 import { arcOf } from '../wall/geometry/arc';
 import { shapeOf } from '../wall/geometry/shape';
-import type { DocWall } from '../../app/document';
+import type { DocWall } from '../../project/doc';
 import { angleBetween, type ArcFace, type Measure } from './schema';
 
 /** An arc wall's circle at a line: its centre, radius, the angle its start is at and its signed sweep. */

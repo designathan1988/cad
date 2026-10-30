@@ -10,8 +10,8 @@ import { faceOffsets, wallDirection, wallNormal } from '../elements/wall/geometr
 import { shapeOf } from '../elements/wall/geometry/shape';
 import { type Aim, ruleBase } from '../tools/opening-tool';
 import { t, type MessageKey } from '../ui/i18n';
-import { type Doc, wallHeights } from './document';
-import type { DerivedGeometry } from './geometry';
+import { type Doc, wallHeights } from '../project/doc';
+import type { DerivedGeometry } from '../project/derive';
 import { wallStops, wallStopsOf } from './wall-stops';
 
 /** Id of the opening being placed, in the derived geometry only. */

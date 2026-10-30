@@ -2,7 +2,7 @@
 // had to work the height out (test run of 2026-10-25).
 
 import { describe, expect, it } from 'vitest';
-import { type DocWall, newDocument } from '../../../src/app/document';
+import { type DocWall, newDocument } from '../../../src/project/doc';
 import { wallFields } from '../../../src/elements/wall/fields';
 import { fieldStates } from '../../../src/ui/fields';
 

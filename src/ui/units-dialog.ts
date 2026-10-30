@@ -3,7 +3,7 @@
 // written changes. A sample under the choices shows a few lengths as they will read.
 
 import type { App } from '../app/app';
-import type { Doc } from '../app/document';
+import type { Doc } from '../project/doc';
 import type { Command } from '../core/store';
 import { el, segmented, select } from './controls';
 import { openProjectDialog } from './dialog';

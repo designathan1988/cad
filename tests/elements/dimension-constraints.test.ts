@@ -2,8 +2,8 @@
 // between the axes of 15 cm walls (w1 south, w2 east, w3 north, w4 west), joined at the corners.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { placeDimension } from '../../src/elements/dimension/anchor';
 import { autoDimensions, CHAIN_OFF, TOTAL_OFF } from '../../src/elements/dimension/auto';
 import { lockDimensions, setDimensionsEqual } from '../../src/elements/dimension/commands';

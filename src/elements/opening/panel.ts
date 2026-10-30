@@ -4,8 +4,8 @@
 
 import { materialLabel } from '../../ui/i18n';
 import { lengthNum, lengthText } from '../../ui/units';
-import type { Doc } from '../../app/document';
-import type { OpeningSolid } from '../../app/geometry';
+import type { Doc } from '../../project/doc';
+import type { OpeningSolid } from '../../project/derive';
 import { el } from '../../ui/controls';
 import { fieldsSection } from '../../ui/fields';
 import { markPrefix, t, type MessageKey } from '../../ui/i18n';

@@ -3,8 +3,8 @@
 
 import { floorsOf } from '../../src/elements/registry';
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { applyTemporary, deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { applyTemporary, deriveGeometry } from '../../src/project/derive';
 import { newOpening } from '../../src/elements/opening/schema';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({

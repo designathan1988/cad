@@ -3,7 +3,7 @@
 // across itself only, with its joins kept as a drag keeps them (edit.ts: moveWalls), so the walls
 // meeting them stretch and the rooms between them resize. Openings go with their walls.
 
-import type { Doc, DocWall } from '../app/document';
+import type { Doc, DocWall } from '../project/doc';
 import { cross, dot, normalize, perp, type Point2, scale, sub } from '../model/vector';
 import { moveWalls } from './edit';
 

@@ -1,7 +1,7 @@
 // Rule → position, and whether the opening fits. Derived on every computation from the rules and the
 // host walls as they are now; an opening moves only when its rule's own reference moves.
 
-import { type Doc, type DocWall, wallHeights } from '../../app/document';
+import { type Doc, type DocWall, wallHeights } from '../../project/doc';
 import { POINT_TOLERANCE } from '../../model/tolerance';
 import { add, distance, dot, normalize, type Point2, scale, sub } from '../../model/vector';
 import { arcOf } from '../wall/geometry/arc';

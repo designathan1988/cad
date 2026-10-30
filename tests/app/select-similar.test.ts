@@ -1,7 +1,7 @@
 // Select similar (select-similar.ts): from a selection, its like on the level shown.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { similarTo } from '../../src/app/select-similar';
 import { newOpening } from '../../src/elements/opening/schema';
 

@@ -2,7 +2,7 @@
 // own value differing from the type's is an override, shown as such, and can go back to the type.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument, wallBase, wallHeights, wallOverrides, wallTop } from '../../../src/app/document';
+import { type Doc, type DocWall, newDocument, wallBase, wallHeights, wallOverrides, wallTop } from '../../../src/project/doc';
 import { resetWallsToType } from '../../../src/elements/wall/commands';
 
 const base: Doc = {

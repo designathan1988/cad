@@ -4,7 +4,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { appActions } from '../../src/app/actions';
 import type { App } from '../../src/app/app';
-import { newDocument } from '../../src/app/document';
+import { newDocument } from '../../src/project/doc';
 import { createStore } from '../../src/core/store';
 import { addLevel } from '../../src/elements/level/commands';
 import { setLang } from '../../src/ui/i18n';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Doc, newDocument } from '../../../src/app/document';
+import { type Doc, newDocument } from '../../../src/project/doc';
 import { createStore } from '../../../src/core/store';
 import { vec } from '../../../src/model/vector';
 import { addFloor, addRoom, updateFloor, updateRoom, updateRooms } from '../../../src/elements/room/commands';

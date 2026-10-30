@@ -3,7 +3,7 @@
 
 import { lengthText } from './units';
 import type { App } from '../app/app';
-import { cutHeightOf } from '../app/document';
+import { cutHeightOf } from '../project/doc';
 import { newId } from '../core/id';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../elements/level/commands';
 import { el, numberField } from './controls';

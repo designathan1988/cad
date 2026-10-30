@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
+import { newDocument } from '../../src/project/doc';
 import { createStore } from '../../src/core/store';
 import { addWalls, deleteWalls, updateWalls } from '../../src/elements/wall/commands';
 

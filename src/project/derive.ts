@@ -23,7 +23,7 @@ import { deriveRooms, type RoomSolid, type RoomWarning, spacesOf } from '../elem
 import type { RoomId } from '../elements/room/schema';
 import type { Point2 as P } from '../model/vector';
 import { type Material, materialIn } from '../elements/material/schema';
-import { CUT_HEIGHT, cutHeightOf, type Doc, type DocWall, levelOf, roofCoversOf, wallHeights, wallTop } from './document';
+import { CUT_HEIGHT, cutHeightOf, type Doc, type DocWall, levelOf, roofCoversOf, wallHeights, wallTop } from './doc';
 import { blocksUnder } from '../elements/wall/geometry/under-roof';
 
 export type PlanCut = 'cut' | 'below' | 'above';

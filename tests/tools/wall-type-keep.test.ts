@@ -3,8 +3,8 @@
 // the two sharing the change; with no room, or the option off, the reference line stays.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { insideRing } from '../../src/elements/room/derive';
 import type { ReferenceLine } from '../../src/elements/wall/schema';
 import { changeWallType, roomFace } from '../../src/tools/edit';

@@ -2,8 +2,8 @@
 // on their centre lines, so the bottom wall's body runs from y = −0.1 to y = 0.1.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry, openingAt, wallAt } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry, openingAt, wallAt } from '../../src/project/derive';
 import { newOpening } from '../../src/elements/opening/schema';
 import { symbolLines } from '../../src/elements/opening/symbol';
 

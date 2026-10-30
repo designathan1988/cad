@@ -2,11 +2,11 @@
 // to (4, 0), concrete 20 cm on its axis, ground floor 2.80 m high: 0.80 m² in plan, 2.24 m³.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
-import { deriveGeometry } from '../../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
+import { deriveGeometry } from '../../../src/project/derive';
 import { area } from '../../../src/elements/wall/geometry/convex';
 import { newOpening, type Opening } from '../../../src/elements/opening/schema';
-import { insidePolygon } from '../../../src/app/geometry';
+import { insidePolygon } from '../../../src/project/derive';
 
 const wall = (id: string, a: [number, number], b: [number, number], extra: Partial<DocWall> = {}): DocWall => ({
   id,

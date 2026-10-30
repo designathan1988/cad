@@ -2,7 +2,7 @@
 // width, depth and height).
 
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
+import { newDocument } from '../../src/project/doc';
 import { evaluateObject, pieceOutline } from '../../src/elements/object/evaluate';
 import { isDefinition } from '../../src/elements/object/valid';
 import { hull, meshDefinition } from '../../src/io/import-mesh';

@@ -2,7 +2,7 @@
 // settings kept in the file and changed by one command.
 
 import { describe, expect, it } from 'vitest';
-import { drawingOf, newDocument } from '../../src/app/document';
+import { drawingOf, newDocument } from '../../src/project/doc';
 import { DEFAULT_DRAWING, detailOf, isDrawingSettings, scaleFactor, SCALES } from '../../src/elements/drawing/schema';
 import { readProject, writeProject } from '../../src/io/project-file';
 import { setDrawing } from '../../src/ui/drawing-dialog';

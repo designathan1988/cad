@@ -1,7 +1,7 @@
 // Where other walls meet a wall: the stations of their faces along its reference line.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { wallStops } from '../../src/app/wall-stops';
 import { vec } from '../../src/model/vector';
 

@@ -2,9 +2,9 @@
 // (elements/*/fields.ts, rendered by fields.ts). It only reads state and sends changes.
 
 import type { EndJoin } from '../elements/wall/schema';
-import { cutHeightOf, type Doc, type DocWall, type Level, type WallDefaults, wallNumber } from '../app/document';
+import { cutHeightOf, type Doc, type DocWall, type Level, type WallDefaults, wallNumber } from '../project/doc';
 import { updateLevel } from '../elements/level/commands';
-import type { DerivedGeometry, OpeningSolid } from '../app/geometry';
+import type { DerivedGeometry, OpeningSolid } from '../project/derive';
 import type { OpeningWarning } from '../elements/opening/derive';
 import { nextOpeningPanel, openingPanel, openingTitle, type OpeningPanelActions, type OpeningSize } from '../elements/opening/panel';
 import type { OpeningId, OpeningKind } from '../elements/opening/schema';

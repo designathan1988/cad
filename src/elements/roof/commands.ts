@@ -1,6 +1,6 @@
 // Commands on roofs. Each returns a new document; the store makes each one undo step.
 
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
 import { edgesFor, type Roof, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, type RoofKind, ROOF_COVERING } from './schema';
 

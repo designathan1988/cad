@@ -1,6 +1,6 @@
 // Commands on zones. Each returns a new document; the store makes each one undo step.
 
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
 import type { Zone } from './schema';
 

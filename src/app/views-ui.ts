@@ -6,7 +6,7 @@ import { deleteView, nextViewName, type SavedView, saveView } from './saved-view
 import { readView3D } from './view-3d';
 import { newId } from '../core/id';
 import type { App } from './app';
-import { drawingOf } from './document';
+import { drawingOf } from '../project/doc';
 
 /**
  * The view as it is now, saved in the project under the next free name ("3D 1", "Térreo 1"): the 3D

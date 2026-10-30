@@ -3,8 +3,8 @@
 // closes it, and a level deleted under a wall that went up to it.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument, wallHeights } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument, wallHeights } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { edgesFor, type Roof } from '../../src/elements/roof/schema';
 import { planeAt } from '../../src/elements/wall/geometry/under-roof';
 import { deleteLevel } from '../../src/elements/level/commands';

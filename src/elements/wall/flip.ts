@@ -3,7 +3,7 @@
 // is in the world: rules counted from one end are counted from the other, a door keeps its hinge
 // jamb and the side it opens to, a group keeps its members in place.
 
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
 import type { GroupSpacing, Opening, PositionRule } from '../opening/schema';
 import type { WallId } from './schema';

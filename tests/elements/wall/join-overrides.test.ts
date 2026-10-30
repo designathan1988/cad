@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { computeWallGeometry } from '../../../src/elements/wall/geometry/footprint';
 import type { EndJoin, Wall, WallType } from '../../../src/elements/wall/schema';
 import type { Point2 } from '../../../src/model/vector';
-import { newDocument } from '../../../src/app/document';
+import { newDocument } from '../../../src/project/doc';
 import { readProject, writeProject } from '../../../src/io/project-file';
 
 const solid: WallType = { id: 'solid', name: 'solid', layers: [{ thickness: 0.2, function: 'structure', materialId: 'concrete' }] };

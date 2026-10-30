@@ -2,7 +2,7 @@
 // each change.
 
 import type { App } from '../app/app';
-import { type Doc, drawingOf } from '../app/document';
+import { type Doc, drawingOf } from '../project/doc';
 import type { Command } from '../core/store';
 import { type DrawingSettings, isDrawingSettings, PEN_MAX, PEN_MIN, PEN_ROLES, type PenRole, ROOM_TAGS, SCALES } from '../elements/drawing/schema';
 import { el, numberField, select } from './controls';

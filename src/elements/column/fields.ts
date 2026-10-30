@@ -3,7 +3,7 @@
 import type { Field } from '../../ui/fields';
 import type { ColumnPatch } from './commands';
 import { type Column, COLUMN_PLATE, COLUMN_SHAPES, type ColumnShape } from './schema';
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import { name, t } from '../../ui/i18n';
 
 export interface ColumnFieldActions {

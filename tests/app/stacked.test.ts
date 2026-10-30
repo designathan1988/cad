@@ -2,7 +2,7 @@
 // move that aligns it. Worked out by hand: the exterior face is on the right of a wall's direction.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { stackedSteps } from '../../src/app/stacked';
 import { moveWalls } from '../../src/tools/edit';
 

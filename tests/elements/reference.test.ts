@@ -2,7 +2,7 @@
 // lines read in metres by its units; kept in the file.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, newDocument } from '../../src/app/document';
+import { type Doc, newDocument } from '../../src/project/doc';
 import { referenceKind } from '../../src/elements/kinds/reference';
 import { addReference, updateReferences } from '../../src/elements/reference/commands';
 import { calibrated, isReference, type Reference, referenceCorners, referencePoint } from '../../src/elements/reference/schema';

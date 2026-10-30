@@ -1,7 +1,7 @@
 // Aligning and distributing parallel walls: worked out by hand on a 9 × 3 box with partitions.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { alignWalls, canAlignWalls, canDistributeWalls, distributeWalls } from '../../src/tools/arrange-walls';
 
 const wall = (id: string, a: [number, number], b: [number, number], bulge = 0): DocWall => ({

@@ -3,8 +3,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { moveRooms, roomsGoingWith, wallsAround } from '../../src/app/carry';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
   id,

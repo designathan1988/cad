@@ -1,8 +1,8 @@
 // Guides as elements: added, deleted with the selection, cleared per level, moved by the arrows.
 
 import { describe, expect, it } from 'vitest';
-import { elementIds, newDocument, type Doc } from '../../../src/app/document';
-import { deriveGeometry } from '../../../src/app/geometry';
+import { elementIds, newDocument, type Doc } from '../../../src/project/doc';
+import { deriveGeometry } from '../../../src/project/derive';
 import { deleteElements } from '../../../src/elements/opening/commands';
 import { addGuide, clearGuides } from '../../../src/elements/guide/commands';
 import { isGuideId } from '../../../src/elements/guide/schema';

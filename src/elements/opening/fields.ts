@@ -3,12 +3,12 @@
 // selection is in, and arranging several. Also the size of the next opening the tool places.
 
 import { lengthNum, lengthText } from '../../ui/units';
-import { type Doc, wallNumber } from '../../app/document';
+import { type Doc, wallNumber } from '../../project/doc';
 import { stopAfter, stopBefore, wallStops } from '../../app/wall-stops';
 import { referenceLength } from './derive';
 import type { RoomSolid } from '../room/derive';
 import { openingSides } from './sides';
-import type { OpeningSolid } from '../../app/geometry';
+import type { OpeningSolid } from '../../project/derive';
 import type { Field } from '../../ui/fields';
 import { name, t, type MessageKey } from '../../ui/i18n';
 import { alignCandidates, alignFits, referenceCandidates } from './commands';

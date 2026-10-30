@@ -4,8 +4,8 @@
 // 0.05 to 1.15 along it (x 1.45 to 2.55) and from 1.05 to 2.15 up.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
-import { deriveGeometry } from '../../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
+import { deriveGeometry } from '../../../src/project/derive';
 import { openingParts } from '../../../src/elements/opening/parts';
 import { newOpening, type OpeningStyle } from '../../../src/elements/opening/schema';
 import { fitStyle, isOpeningStyle, paneRows, paneSpans } from '../../../src/elements/opening/style';

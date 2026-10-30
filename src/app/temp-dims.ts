@@ -13,10 +13,10 @@ import { moveWalls, stretchEnd } from '../tools/edit';
 import { faceOffsets, wallDirection, wallNormal } from '../elements/wall/geometry/offset';
 import { shapeOf } from '../elements/wall/geometry/shape';
 import { arcOf } from '../elements/wall/geometry/arc';
-import type { Doc } from './document';
-import { wallTypeThickness } from './document';
+import type { Doc } from '../project/doc';
+import { wallTypeThickness } from '../project/doc';
 
-import type { DerivedGeometry } from './geometry';
+import type { DerivedGeometry } from '../project/derive';
 import { stopAfter, stopBefore, wallStops } from './wall-stops';
 
 export interface TempDim {

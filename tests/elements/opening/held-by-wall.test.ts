@@ -2,8 +2,8 @@
 // moving one never drags its neighbour, and two never end up measured from each other (one then vanished).
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
-import { hostsIn } from '../../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
+import { hostsIn } from '../../../src/project/derive';
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { detachedFrom, wallRule } from '../../../src/elements/opening/commands';
 import { newOpening } from '../../../src/elements/opening/schema';

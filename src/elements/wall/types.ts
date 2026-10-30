@@ -2,7 +2,7 @@
 // core are derived from the type every time, so editing a type changes every wall of it at once, in
 // one undo step. A command that would leave a type unusable changes nothing.
 
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
 import { stackProblem } from '../layers/stack';
 import type { HeightRule, WallLayer, WallType, WallTypeId } from './schema';

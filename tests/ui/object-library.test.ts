@@ -2,7 +2,7 @@
 // category's), each shown by a thumbnail of its plan.
 
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
+import { newDocument } from '../../src/project/doc';
 import { isDefinition } from '../../src/elements/object/valid';
 import { answers, blankDefinition, folderOf, thumbnailSvg } from '../../src/ui/objects-dialog';
 import { setLang } from '../../src/ui/i18n';

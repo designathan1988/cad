@@ -1,10 +1,10 @@
 // The registry of element kinds (contract.ts): the order they are drawn, picked and shown in the panel.
 // Generic helpers over the document and the derived geometry for the app's shared code.
 
-import type { Doc } from '../app/document';
+import type { Doc } from '../project/doc';
 import type { Point2 } from '../model/vector';
 import type { Transform } from '../tools/transform';
-import type { DerivedGeometry } from '../app/geometry';
+import type { DerivedGeometry } from '../project/derive';
 import type { FloorSolid } from './room/derive';
 import { type Box, boxOf, RTree } from '../model/rtree';
 import type { AnyKind, BaseGeometry, KindKey } from './contract';

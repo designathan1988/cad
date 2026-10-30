@@ -1,7 +1,7 @@
 // Saved views (saved-views.ts): names, the file, and what is dropped when read.
 
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
+import { newDocument } from '../../src/project/doc';
 import { deleteView, isSavedView, moveView, nextViewName, type SavedView, saveView, updateView } from '../../src/app/saved-views';
 import { VIEW_3D_DEFAULT } from '../../src/app/view-3d';
 import { detailOf } from '../../src/elements/drawing/schema';

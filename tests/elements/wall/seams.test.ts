@@ -3,8 +3,8 @@
 // material, as Revit cleans joins up.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
-import { deriveGeometry } from '../../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
+import { deriveGeometry } from '../../../src/project/derive';
 import { layerSeams } from '../../../src/elements/wall/geometry/seams';
 
 const sq = (x0: number, y0: number, x1: number, y1: number) => [

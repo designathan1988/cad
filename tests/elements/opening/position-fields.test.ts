@@ -3,8 +3,8 @@
 // "4,68 from the wall start" while the plan said 0,10 from the partition).
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
-import { deriveGeometry } from '../../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
+import { deriveGeometry } from '../../../src/project/derive';
 import { leafFields, positionFields } from '../../../src/elements/opening/fields';
 import { newOpening } from '../../../src/elements/opening/schema';
 import { fieldStates } from '../../../src/ui/fields';

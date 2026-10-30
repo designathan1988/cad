@@ -2,7 +2,7 @@
 // use, read into another project with new ids where taken, and carried in a link.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, newDocument } from '../../src/app/document';
+import { type Doc, newDocument } from '../../src/project/doc';
 import type { Material } from '../../src/elements/material/schema';
 import type { ObjectDefinition } from '../../src/elements/object/schema';
 import { isDefinition } from '../../src/elements/object/valid';

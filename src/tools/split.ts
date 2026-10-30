@@ -3,8 +3,8 @@
 // on, measured again on it (from that part's start, or still from the end it was measured from when
 // that end is the same); a distributed group split by the cut is undone into plain positions.
 
-import type { Doc, DocWall } from '../app/document';
-import { hostsIn } from '../app/geometry';
+import type { Doc, DocWall } from '../project/doc';
+import { hostsIn } from '../project/derive';
 import { MIN_WALL_LENGTH } from '../model/tolerance';
 import { cross, distance, dot, intersectLines, normalize, type Point2, sub } from '../model/vector';
 import { deriveOpenings, referenceLength } from '../elements/opening/derive';

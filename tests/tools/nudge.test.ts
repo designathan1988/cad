@@ -4,8 +4,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { arrowStep, nudge } from '../../src/tools/nudge';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { deriveOpenings, hostsOf } from '../../src/elements/opening/derive';
 import { newOpening } from '../../src/elements/opening/schema';
 

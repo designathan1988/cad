@@ -1,8 +1,8 @@
 // A stair's well through the floor it reaches, and the guardrail round it.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { railingKind } from '../../src/elements/kinds/railing';
 import type { RailingSolid } from '../../src/elements/kinds/railing';
 import { wellPath } from '../../src/elements/railing/schema';

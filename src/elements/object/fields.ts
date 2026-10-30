@@ -5,7 +5,7 @@
 
 import { collisionsOn } from '../../core/collisions';
 import { LENGTH_LIMITS, sizeParams } from './evaluate';
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
 import type { Field } from '../../ui/fields';
 import { getLang, materialLabel, t } from '../../ui/i18n';

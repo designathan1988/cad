@@ -2,7 +2,7 @@
 // moved host. Every expected point is worked out by hand.
 
 import { describe, expect, it } from 'vitest';
-import { newDocument, type DocWall } from '../../src/app/document';
+import { newDocument, type DocWall } from '../../src/project/doc';
 import { vec } from '../../src/model/vector';
 import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../../src/tools/edit';
 

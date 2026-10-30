@@ -4,10 +4,10 @@
 // is its own file implementing this, and one line in the registry.
 
 import type * as THREE from 'three';
-import type { Doc } from '../app/document';
+import type { Doc } from '../project/doc';
 import type { Material } from './material/schema';
 import type { Detail, PenRole } from './drawing/schema';
-import type { Category, DerivedGeometry } from '../app/geometry';
+import type { Category, DerivedGeometry } from '../project/derive';
 import type { UprightPrism } from '../app/section-box';
 import type { Command } from '../core/store';
 import type { Point2 } from '../model/vector';

@@ -7,7 +7,7 @@
 // made. Pure but for the link's compression.
 
 import { newId } from '../core/id';
-import type { Doc } from '../app/document';
+import type { Doc } from '../project/doc';
 import type { Material } from '../elements/material/schema';
 import { DEFINITION_PREFIX, type ObjectDefinition, type Part } from '../elements/object/schema';
 import { isDefinition } from '../elements/object/valid';

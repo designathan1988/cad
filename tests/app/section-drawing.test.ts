@@ -4,8 +4,8 @@
 // the south one (y = 0) and the north one (y = 3), each 15 cm thick from the floor to 2.8 m.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { featureEdges, loopsOf, modelSolids, outlineOf, sectionDims, sectionDrawing } from '../../src/app/section-drawing';
 import type { Point3 } from '../../src/app/section-box';
 import { elevationsAround, elevationsInside, isSectionMark, lookOf, nextSectionName, type SectionMark } from '../../src/elements/section/schema';

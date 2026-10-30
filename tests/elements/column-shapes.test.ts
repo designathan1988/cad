@@ -1,8 +1,8 @@
 // A column's section by its shape, and its top up to another level.
 
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { updateColumns } from '../../src/elements/column/commands';
 import { type Column, columnOutline } from '../../src/elements/column/schema';
 import type { ColumnSolid } from '../../src/elements/kinds/column';

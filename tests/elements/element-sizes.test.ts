@@ -3,7 +3,7 @@
 // a file with a negative sill or a layer of no thickness.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument, wallHeights } from '../../src/app/document';
+import { type Doc, type DocWall, newDocument, wallHeights } from '../../src/project/doc';
 import { createStore } from '../../src/core/store';
 import { MIN_ELEMENT_SIZE } from '../../src/model/tolerance';
 import { vec } from '../../src/model/vector';

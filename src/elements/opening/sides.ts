@@ -2,7 +2,7 @@
 // "left" and "right" of the wall's drawing direction, which the user never sees.
 
 import { add, scale } from '../../model/vector';
-import { insidePolygon, type OpeningSolid } from '../../app/geometry';
+import { insidePolygon, type OpeningSolid } from '../../project/derive';
 import type { RoomSolid } from '../room/derive';
 
 /** How far past the wall's faces the side is looked at (m): clear of the wall, inside a small room. */

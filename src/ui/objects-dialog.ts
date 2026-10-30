@@ -5,7 +5,7 @@
 
 import { withLibrary } from './library-tabs';
 import type { App } from '../app/app';
-import type { Doc } from '../app/document';
+import type { Doc } from '../project/doc';
 import { copyLibraryLink } from '../app/library-link';
 import { newId } from '../core/id';
 import { addDefinition, definitionDeleteBlocker, deleteDefinition } from '../elements/object/commands';

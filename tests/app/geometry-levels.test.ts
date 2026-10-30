@@ -2,8 +2,8 @@
 // nothing below, and is not cut by it.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { addLevel } from '../../src/elements/level/commands';
 
 const wall = (id: string, a: [number, number], b: [number, number], levelId = 'lvl_ground'): DocWall => ({

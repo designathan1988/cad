@@ -2,9 +2,9 @@
 // sums, an arc wall's held measure following the wall, the tool's pick of an arc wall, the file.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { measureDxfText, measureKind, type MeasureSolid, measureText } from '../../src/elements/kinds/measure';
-import { deriveGeometry } from '../../src/app/geometry';
+import { deriveGeometry } from '../../src/project/derive';
 import { dropKinds } from '../../src/elements/registry';
 import { arcWallAt, placeMeasure } from '../../src/elements/measure/place';
 import { angleBetween, type Measure } from '../../src/elements/measure/schema';

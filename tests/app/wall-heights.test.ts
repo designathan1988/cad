@@ -6,8 +6,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument, wallHeights } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument, wallHeights } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { computeWallGeometry } from '../../src/elements/wall/geometry/footprint';
 import { area, overlapArea } from '../../src/elements/wall/geometry/convex';
 import { inside } from '../elements/wall/oracle';

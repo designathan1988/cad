@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { contextIds } from '../../src/app/context-actions';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { newOpening } from '../../src/elements/opening/schema';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
