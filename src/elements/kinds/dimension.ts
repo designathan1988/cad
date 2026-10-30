@@ -2,7 +2,7 @@
 // Held by walls, doors and windows: placed from their geometry, deleted with them, and carried, mirrored
 // or copied as they are (contract.ts: holders, transformed).
 
-import { lengthNum } from '../../ui/units';
+import { lengthNum } from '../../i18n/units';
 import { finite, isObject, isPoint } from '../../core/guards';
 import type { Point2 } from '../../model/vector';
 import type { ElementKind, PlanPaint } from '../contract';

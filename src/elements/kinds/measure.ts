@@ -5,8 +5,8 @@
 
 import { finite, isObject, isPoint } from '../../core/guards';
 import type { Point2 } from '../../model/vector';
-import { type MessageKey, num, t } from '../../ui/i18n';
-import { lengthNum } from '../../ui/units';
+import { type MessageKey, num, t } from '../../i18n/messages';
+import { lengthNum } from '../../i18n/units';
 import type { ElementKind, PlanPaint } from '../contract';
 import { segmentDistance } from '../dimension/anchor';
 import { updateMeasures } from '../measure/commands';

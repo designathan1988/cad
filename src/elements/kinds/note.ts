@@ -2,7 +2,7 @@
 // What it derives is the note as shown: a level mark's text is the height it says.
 
 import { finite, isObject, isPoint } from '../../core/guards';
-import { num, t } from '../../ui/i18n';
+import { num, t } from '../../i18n/messages';
 import type { ElementKind, PlanPaint } from '../contract';
 import { dropLeaders, updateNotes } from '../note/commands';
 import { noteFields } from '../note/fields';

@@ -9,8 +9,8 @@ import type { Command } from '../core/store';
 import { el, numberField } from './controls';
 import { openProjectDialog } from './dialog';
 import { textField } from './fields';
-import { t } from './i18n';
-import { icon } from './icons';
+import { t } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 
 export const setProjectVariables = (variables: Readonly<Record<string, number>>): Command<Doc> => ({
   label: 'cmd.setVariables',

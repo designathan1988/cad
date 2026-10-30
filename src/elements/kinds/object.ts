@@ -17,7 +17,7 @@ import { type ObjectItem, objectFields, words } from '../object/fields';
 import { isObjectInstance } from '../object/valid';
 import { OBJECT_PREFIX, type ObjectDefinition, type ObjectInstance } from '../object/schema';
 import { nearSegment, trace } from './paint';
-import { t } from '../../ui/i18n';
+import { t } from '../../i18n/messages';
 
 export interface ObjectSolid extends ObjectItem {
   /** Each piece's outline in plan, lowest first. */

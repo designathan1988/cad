@@ -1,8 +1,8 @@
 // The fields rooms and floors show in the panel (ui/fields.ts builds the rows).
 
-import { areaText, lengthText, volumeText } from '../../ui/units';
-import type { Field } from '../../ui/fields';
-import { materialLabel, type MessageKey, name, t } from '../../ui/i18n';
+import { areaText, lengthText, volumeText } from '../../i18n/units';
+import type { Field } from '../fields';
+import { materialLabel, type MessageKey, name, t } from '../../i18n/messages';
 import type { Material } from '../material/schema';
 import type { RoomPatch } from './commands';
 import type { FloorSolid, RoomSolid } from './derive';

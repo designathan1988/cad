@@ -1,7 +1,7 @@
 // The interface's buttons (input.ts): the top bar, the tool bar, the 3D bar, the file, language and
 // theme buttons. Each sends what it says to the app.
 
-import { t } from '../ui/i18n';
+import { t } from '../i18n/messages';
 import { setDrawing } from '../ui/drawing-dialog';
 import { drawingOf } from '../project/doc';
 import type { App } from './app';

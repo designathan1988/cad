@@ -4,8 +4,8 @@
 
 import { isObject } from '../../core/guards';
 import type { Point2 } from '../../model/vector';
-import { name as said, t } from '../../ui/i18n';
-import { areaText } from '../../ui/units';
+import { name as said, t } from '../../i18n/messages';
+import { areaText } from '../../i18n/units';
 import type { ElementKind } from '../contract';
 import { isColor } from '../material/schema';
 import { updateZones } from '../zone/commands';

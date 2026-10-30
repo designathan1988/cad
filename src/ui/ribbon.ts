@@ -5,8 +5,8 @@
 
 import type { Action } from '../app/actions';
 import { el } from './controls';
-import { t, type MessageKey } from './i18n';
-import { icon, type IconName } from './icons';
+import { t, type MessageKey } from '../i18n/messages';
+import { icon, type IconName } from '../i18n/icons';
 
 export interface RibbonItem {
   /** The action it runs (app/actions.ts). */

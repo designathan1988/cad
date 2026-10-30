@@ -9,7 +9,7 @@ import { noteKind } from '../../src/elements/kinds/note';
 import { dropLeaders } from '../../src/elements/note/commands';
 import { leaderStart, type Note } from '../../src/elements/note/schema';
 import { layoutRoomTags } from '../../src/render/room-tags';
-import { setLang } from '../../src/ui/i18n';
+import { setLang } from '../../src/i18n/messages';
 
 const callout: Note = { id: 'note_c', levelId: 'lvl_ground', at: { x: 0, y: 0 }, text: 'Ver detalhe', height: 0.25, leader: { x: 3, y: 1 } };
 

@@ -2,8 +2,8 @@
 // the same schema renderer as the properties panel. The top at the level's height and a base offset
 // of 0 are what a wall has without its type giving any: set to those, the type keeps none.
 
-import type { Field } from '../../ui/fields';
-import { name, t } from '../../ui/i18n';
+import type { Field } from '../fields';
+import { name, t } from '../../i18n/messages';
 import type { WallType } from './schema';
 import type { WallTypePatch } from './types';
 

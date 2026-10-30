@@ -10,7 +10,7 @@ import { GROUP_PREFIX } from '../elements/opening/schema';
 import { addZone } from '../elements/zone/commands';
 import { ZONE_COLOURS, ZONE_PREFIX } from '../elements/zone/schema';
 import { words } from '../elements/object/fields';
-import { tBoth, name, t, type MessageKey } from '../ui/i18n';
+import { tBoth, name, t, type MessageKey } from '../i18n/messages';
 import type { App } from './app';
 import { canTransform } from '../tools/transform';
 

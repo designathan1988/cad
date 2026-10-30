@@ -4,7 +4,7 @@ import { clampMove, collisionFor } from './collision';
 import { type Point2 } from '../model/vector';
 import { deleteElements } from '../elements/opening/commands';
 import { isGuideId } from '../elements/guide/schema';
-import { name, t } from '../ui/i18n';
+import { name, t } from '../i18n/messages';
 import { appendKinds, eachSolid, kindOfId } from '../elements/registry';
 import { isDimId } from '../elements/dimension/schema';
 import { isGridId } from '../elements/grid/schema';

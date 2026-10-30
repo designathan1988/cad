@@ -2,14 +2,14 @@
 // their fields (fields.ts). It only reads state and sends changes; each change is one command, so
 // one undo step.
 
-import { materialLabel } from '../../ui/i18n';
-import { lengthNum, lengthText } from '../../ui/units';
+import { materialLabel } from '../../i18n/messages';
+import { lengthNum, lengthText } from '../../i18n/units';
 import type { Doc } from '../../project/doc';
 import type { OpeningSolid } from '../../project/derive';
 import { el } from '../../ui/controls';
 import { fieldsSection } from '../../ui/fields';
-import { markPrefix, t, type MessageKey } from '../../ui/i18n';
-import { icon } from '../../ui/icons';
+import { markPrefix, t, type MessageKey } from '../../i18n/messages';
+import { icon } from '../../i18n/icons';
 import type { OpeningWarning } from './derive';
 import type { RoomSolid } from '../room/derive';
 import {

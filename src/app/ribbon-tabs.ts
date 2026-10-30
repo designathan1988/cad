@@ -6,11 +6,11 @@
 import { words } from '../elements/object/fields';
 import type { ObjectDefinition } from '../elements/object/schema';
 import type { RibbonItem, RibbonTab } from '../ui/ribbon';
-import type { MessageKey } from '../ui/i18n';
+import type { MessageKey } from '../i18n/messages';
 import type { App } from './app';
 import type { ModifyKind } from '../tools/modify-tool';
 import type { ToolId } from '../ui/shell';
-import { t } from '../ui/i18n';
+import { t } from '../i18n/messages';
 import { kindOfId } from '../elements/registry';
 import { contextEntries } from './context-menu';
 

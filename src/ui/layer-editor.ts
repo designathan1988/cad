@@ -3,14 +3,14 @@
 // use it now and floor and slab types can later (ref/chat.txt:87, 135). It only reads the layers and
 // reports the next list; the stack operations are in elements/layers/stack.ts.
 
-import { lengthText } from './units';
+import { lengthText } from '../i18n/units';
 import { addLayer, moveLayer, removeLayer, setLayer } from '../elements/layers/stack';
 import { coreLayersOf } from '../elements/wall/geometry/shape';
 import { LAYER_PRIORITY, type LayerFunction } from '../elements/wall/schema';
 import { el, numberField, select } from './controls';
 import { type Material, materialIn } from '../elements/material/schema';
-import { materialLabel, t, type MessageKey } from './i18n';
-import { icon, type IconName } from './icons';
+import { materialLabel, t, type MessageKey } from '../i18n/messages';
+import { icon, type IconName } from '../i18n/icons';
 import { layerBands } from './swatch';
 
 export interface EditableLayer {

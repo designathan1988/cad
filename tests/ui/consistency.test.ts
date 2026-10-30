@@ -2,7 +2,7 @@
 // command palette and the right-click menu agree, in both languages; buttons start with a verb (:235).
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { setLang, t, type MessageKey } from '../../src/ui/i18n';
+import { setLang, t, type MessageKey } from '../../src/i18n/messages';
 
 const tools: [string, string][] = [
   ['select', 'V'],

@@ -3,7 +3,7 @@
 
 import { finite, isObject, isPoint } from '../../core/guards';
 import type { Point2 } from '../../model/vector';
-import { name, t } from '../../ui/i18n';
+import { name, t } from '../../i18n/messages';
 import type { ElementKind } from '../contract';
 import { updateRooms } from '../room/commands';
 import { insideRing, type RoomSolid } from '../room/derive';

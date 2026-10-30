@@ -1,6 +1,6 @@
 // Roofs in the registry (contract.ts): elements/roof holds the element and its faces.
 
-import { materialLabel } from '../../ui/i18n';
+import { materialLabel } from '../../i18n/messages';
 import { finite, isObject, isPoint } from '../../core/guards';
 import { roofGeometry } from '../../render/prisms';
 import type { ElementKind } from '../contract';

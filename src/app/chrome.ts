@@ -2,14 +2,14 @@
 
 import { distance } from '../model/vector';
 import { words } from '../elements/object/fields';
-import { angleNum, areaText, lengthText, typingExamples } from '../ui/units';
+import { angleNum, areaText, lengthText, typingExamples } from '../i18n/units';
 import * as THREE from 'three';
 import { type Point2 } from '../model/vector';
 import { ruleBase } from '../tools/opening-tool';
 import { angleAt, chainArea, chainLength, reading } from '../tools/measure-tool';
 import { OPENING_PREVIEW_ID, ruleText } from './opening-ui';
-import { getLang, name, num, t, type MessageKey } from '../ui/i18n';
-import { icon } from '../ui/icons';
+import { getLang, name, num, t, type MessageKey } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 import { el } from '../ui/controls';
 import { keyHint } from '../ui/shell';
 import { kindOfId, levelOfSolid } from '../elements/registry';

@@ -5,7 +5,7 @@
 import { finite, isObject, isPoint } from '../../core/guards';
 import type { Point2 } from '../../model/vector';
 import { slabGeometry } from '../../render/prisms';
-import { name, t } from '../../ui/i18n';
+import { name, t } from '../../i18n/messages';
 import type { ElementKind } from '../contract';
 import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor } from '../room/commands';
 import { cutOut, deriveFloor, type FloorSolid, insideRing, riseAt } from '../room/derive';

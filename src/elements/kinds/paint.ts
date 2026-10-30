@@ -2,7 +2,7 @@
 // through what the kind derives from it.
 
 import type { Point2 } from '../../model/vector';
-import type { Field } from '../../ui/fields';
+import type { Field } from '../fields';
 import type { PlanPaint } from '../contract';
 
 /** A closed (or open) path through `points`, on screen, begun anew. */

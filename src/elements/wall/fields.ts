@@ -1,11 +1,11 @@
 // The fields walls show in the panel, in three sections (ui/fields.ts builds the rows). Base offset
 // and top are the wall's own or its type's (app/document.ts): an own one is marked, with the way back.
 
-import { lengthText } from '../../ui/units';
+import { lengthText } from '../../i18n/units';
 import { type Doc, type DocWall, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop, type WallPhase } from '../../project/doc';
 import { distance } from '../../model/vector';
-import type { Field } from '../../ui/fields';
-import { name, t, type MessageKey } from '../../ui/i18n';
+import type { Field } from '../fields';
+import { name, t, type MessageKey } from '../../i18n/messages';
 import { layerSwatch } from '../../ui/swatch';
 import { referenceLength } from '../opening/derive';
 import { arcOf } from './geometry/arc';

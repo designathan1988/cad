@@ -1,8 +1,8 @@
 // View cube: a CSS 3D cube that turns with the camera; clicking a face looks from that side.
 
 import * as THREE from 'three';
-import { icon } from '../ui/icons';
-import { t } from '../ui/i18n';
+import { icon } from '../i18n/icons';
+import { t } from '../i18n/messages';
 
 /** Faces in three.js directions: where the camera sits to look from that side. */
 const FACES = [

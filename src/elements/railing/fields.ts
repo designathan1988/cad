@@ -1,10 +1,10 @@
 // The fields guardrails show in the panel (ui/fields.ts builds the rows).
 
-import { lengthText } from '../../ui/units';
-import type { Field } from '../../ui/fields';
+import { lengthText } from '../../i18n/units';
+import type { Field } from '../fields';
 import type { RailingPatch } from './commands';
 import { type Railing, railingGap, type RailingInfill, railingLength } from './schema';
-import { num, t } from '../../ui/i18n';
+import { num, t } from '../../i18n/messages';
 
 export interface RailingFieldActions {
   readonly updateRailings: (ids: readonly string[], patch: RailingPatch) => void;

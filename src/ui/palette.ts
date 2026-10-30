@@ -5,7 +5,7 @@
 
 import type { Action } from '../app/actions';
 import { el } from './controls';
-import { t } from './i18n';
+import { t } from '../i18n/messages';
 import { searchEntries } from './search';
 
 let close: (() => void) | null = null;

@@ -265,11 +265,12 @@ aqui fica a decisão por arquivo.
 
 | Arquivo | Ação | Destino | Nota |
 | --- | --- | --- | --- |
-| src/ui/i18n.ts | dividir | ui/i18n/*.ts (en/pt por domínio + runtime.ts) | dicionários 2×2100 linhas por domínio; runtime ~70 l |
+| (movido no passo 4) src/i18n/messages.ts | dividir | i18n/*.ts (en/pt por domínio) | camada neutra (elementos e ui a usam; ADR: nenhum elemento importa ui) |
 | src/ui/styles.css | dividir | ui/styles/*.css por componente (tokens.css, shell.css…) | 3583 l; importa por ordem no styles.css raiz |
 | src/ui/shell.ts | mover | ui/shell.ts |  |
 | src/ui/controls.ts | mover | ui/controls.ts | searchSelect ≡ palette combobox → um |
-| src/ui/fields.ts | mover | ui/fields.ts | fieldStates JSON.stringify por campo por render → barato, mantém |
+| src/ui/fields.ts | dividir | elements/fields.ts (tipos) + ui/fields.ts (render) | fieldStates JSON.stringify por campo por render → barato, mantém; tipos no contrato dos elementos |
+| (novo no passo 4) src/elements/fields.ts | manter | elements/fields.ts | os tipos Field/FieldOption/FieldState, o contrato que os kinds implementam |
 | src/ui/panel.ts | mover | ui/panel.ts |  |
 | src/ui/ribbon.ts | mover | ui/ribbon.ts | openMenu/menu.ts/searchSelect: um só sistema de popover |
 | src/ui/menu.ts | mover | ui/menu.ts | idem |
@@ -282,7 +283,7 @@ aqui fica a decisão por arquivo.
 | src/ui/bar-place.ts | mover | ui/bar-place.ts |  |
 | src/ui/cursors.ts | mover | ui/cursors.ts |  |
 | src/ui/swatch.ts | mover | ui/swatch.ts | layer-editor reusa layerSwatch parametrizado |
-| src/ui/units.ts | mover | ui/units.ts | `current` espelha doc.units → deriva por render (sem cópia) |
+| (movido no passo 4) src/i18n/units.ts | dividir | i18n/units.ts | formatação compartilhada por elementos e ui | `current` espelha doc.units → deriva por render (sem cópia) |
 | src/ui/units-dialog.ts | mover | ui/dialogs/units.ts |  |
 | src/ui/variables-dialog.ts | mover | ui/dialogs/variables.ts |  |
 | src/ui/keys-dialog.ts | mover | ui/dialogs/keys.ts |  |
@@ -299,7 +300,7 @@ aqui fica a decisão por arquivo.
 | src/ui/definition-editor.ts | dividir | library/editor/*.ts | 622 l; Preview usa meshSnapshot (fórmula de câmera duplicada) |
 | src/ui/object-snapshot.ts | mover | library/snapshot.ts | palco WebGL compartilhado |
 | src/ui/dialog.ts | mover | ui/dialog.ts | o andaime |
-| src/ui/icons.ts | mover | ui/icons.ts |  |
+| (movido no passo 4) src/i18n/icons.ts | manter | i18n/icons.ts | nomes de ícone usados pelo contrato dos elementos |
 | src/app/chrome.ts | dividir | ui/chrome/*.ts | renderRibbon/actionList por quadro → memo por chave |
 | src/app/frame.ts | dividir | ui/frame/*.ts | rótulos O(rooms²); nextFields por quadro → memo |
 | src/app/section-view (ver acima) |  |  |  |

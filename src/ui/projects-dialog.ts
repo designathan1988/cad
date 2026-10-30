@@ -6,8 +6,8 @@ import type { App } from '../app/app';
 import { deleteStoredProject, duplicateProject, newStoredProject, openStoredProject, projectsList, renameStoredProject } from '../app/projects';
 import type { ProjectInfo } from '../io/project-db';
 import { el } from './controls';
-import { getLang, t } from './i18n';
-import { icon } from './icons';
+import { getLang, t } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 
 export function showProjectsDialog(app: App): void {
   const back = app.shell.helpBack;

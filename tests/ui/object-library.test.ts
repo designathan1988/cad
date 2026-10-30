@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
 import { isDefinition } from '../../src/elements/object/valid';
 import { answers, blankDefinition, folderOf, thumbnailSvg } from '../../src/ui/objects-dialog';
-import { setLang } from '../../src/ui/i18n';
+import { setLang } from '../../src/i18n/messages';
 
 describe('the objects library', () => {
   const doc = newDocument();

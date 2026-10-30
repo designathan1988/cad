@@ -1,15 +1,15 @@
 // The levels dialog: create, rename, elevation, floor-to-floor height and the plan's cut height. Every
 // change is one command.
 
-import { lengthText } from './units';
+import { lengthText } from '../i18n/units';
 import type { App } from '../app/app';
 import { cutHeightOf } from '../project/doc';
 import { newId } from '../core/id';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../elements/level/commands';
 import { el, numberField } from './controls';
 import { openProjectDialog } from './dialog';
-import { defaultName, name, t } from './i18n';
-import { icon } from './icons';
+import { defaultName, name, t } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 
 export function showLevels(app: App): void {
   const render = (close: () => void): HTMLElement => {

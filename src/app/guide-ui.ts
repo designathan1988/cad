@@ -1,6 +1,6 @@
 // Guides set from a wall's face or another guide (tools/guide-tool.ts): starting, moving, placing, dropping, clearing. Functions over the app (app.ts delegates).
 
-import { t } from '../ui/i18n';
+import { t } from '../i18n/messages';
 import { parseLength } from '../core/measure';
 import { type Point2, distance, normalize, sub } from '../model/vector';
 import { draftAt, type GuideBase, newGuide } from '../tools/guide-tool';

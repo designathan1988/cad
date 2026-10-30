@@ -1,7 +1,7 @@
 // Rooms and floors from the plan: the room tool, the floor tool, holes, a room's floor and ceiling. Functions over the app (app.ts delegates).
 
 import { distance, type Point2 } from '../model/vector';
-import { defaultName, name, t } from '../ui/i18n';
+import { defaultName, name, t } from '../i18n/messages';
 import { levelOf } from '../project/doc';
 import { made, nextOf } from './next-element';
 import type { Floor, Room } from '../elements/room/schema';

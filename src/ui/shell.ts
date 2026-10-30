@@ -5,8 +5,8 @@
 // app updates; texts are refreshed by relabel() when the language changes.
 
 import { el } from './controls';
-import { t, type MessageKey } from './i18n';
-import { icon, type IconName } from './icons';
+import { t, type MessageKey } from '../i18n/messages';
+import { icon, type IconName } from '../i18n/icons';
 
 /** `modify`: Move, Copy, Rotate, Scale or Mirror on the selection (tools/modify-tool.ts), a button each. */
 export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'column' | 'beam' | 'separator' | 'mark' | 'curtain' | 'note' | 'levelMark' | 'roof' | 'stair' | 'railing' | 'grid' | 'object' | 'measure' | 'dimension' | 'modify' | 'split' | 'corner' | 'guide' | 'section' | 'callout' | 'calibrate';

@@ -6,8 +6,8 @@ import { newId } from '../core/id';
 import { distributeOpenings, updateOpening } from '../elements/opening/commands';
 import { GROUP_PREFIX } from '../elements/opening/schema';
 import { flipWalls } from '../elements/wall/flip';
-import { t, type MessageKey } from '../ui/i18n';
-import type { IconName } from '../ui/icons';
+import { t, type MessageKey } from '../i18n/messages';
+import type { IconName } from '../i18n/icons';
 import type { App } from './app';
 import { type ContextId, contextIds, menuGroups } from './context-actions';
 

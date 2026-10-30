@@ -9,7 +9,7 @@ import type { SectionMark } from '../elements/section/schema';
 import { sectionCanvas, sectionOf } from '../app/section-view';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
-import { name, t } from './i18n';
+import { name, t } from '../i18n/messages';
 
 /** The preview's size on screen (px). */
 const PREVIEW_W = 640;

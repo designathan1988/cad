@@ -2,7 +2,7 @@
 // preferences, kept apart. Storage can be missing or full; then the app keeps working unsaved and
 // says so in the console, and never drops the project it has in memory.
 
-import type { Lang } from '../ui/i18n';
+import type { Lang } from '../i18n/messages';
 import { readProject, repairProject } from '../io/project-file';
 import type { Doc } from '../project/doc';
 import type { View3D } from './view-3d';

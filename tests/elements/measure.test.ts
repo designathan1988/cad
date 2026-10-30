@@ -9,7 +9,7 @@ import { dropKinds } from '../../src/elements/registry';
 import { arcWallAt, placeMeasure } from '../../src/elements/measure/place';
 import { angleBetween, type Measure } from '../../src/elements/measure/schema';
 import { readProject, writeProject } from '../../src/io/project-file';
-import { setLang } from '../../src/ui/i18n';
+import { setLang } from '../../src/i18n/messages';
 
 // A half circle of 2 m radius on its reference line (the centreline), from (0, 0) to (4, 0): bulge tan(π/4).
 const arcWall: DocWall = { id: 'w_arc', levelId: 'lvl_ground', wallTypeId: 'wt_masonry15', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline', bulge: 1 };

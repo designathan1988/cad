@@ -18,8 +18,8 @@ import { evaluateFormula, parseFormula } from '../elements/object/formula';
 import type { DefinitionCategory, Expr, HandleDef, ObjectDefinition, ParamDef, ParamKind, Part, RuleDef, Words } from '../elements/object/schema';
 import { isDefinition } from '../elements/object/valid';
 import { el } from './controls';
-import { getLang, materialLabel, t, type MessageKey } from './i18n';
-import { icon } from './icons';
+import { getLang, materialLabel, t, type MessageKey } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 
 type Tab = 'params' | 'parts' | 'handles' | 'types' | 'rules';
 const TABS: readonly Tab[] = ['params', 'parts', 'handles', 'types', 'rules'];

@@ -7,8 +7,8 @@ import type { Doc } from '../project/doc';
 import type { Command } from '../core/store';
 import { el, segmented, select } from './controls';
 import { openProjectDialog } from './dialog';
-import { t } from './i18n';
-import { angleNum, LENGTH_UNITS, type LengthUnit, lengthText, MAX_ANGLE_DECIMALS, MAX_DECIMALS, setUnits, SLOPE_FORMATS, type SlopeFormat, type Units, USUAL_DECIMALS } from './units';
+import { t } from '../i18n/messages';
+import { angleNum, LENGTH_UNITS, type LengthUnit, lengthText, MAX_ANGLE_DECIMALS, MAX_DECIMALS, setUnits, SLOPE_FORMATS, type SlopeFormat, type Units, USUAL_DECIMALS } from '../i18n/units';
 
 export const setProjectUnits = (units: Units): Command<Doc> => ({
   label: 'cmd.setUnits',

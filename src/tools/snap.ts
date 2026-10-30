@@ -4,7 +4,7 @@
 import { add, distance, dot, normalize, type Point2, scale, sub, vec } from '../model/vector';
 import { type Arc, arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { arcMiddle } from './arc-edit';
-import type { MessageKey } from '../ui/i18n';
+import type { MessageKey } from '../i18n/messages';
 
 export type SnapKind =
   | 'endpoint'

@@ -8,8 +8,8 @@ import { ROOM_USES } from '../elements/room/schema';
 import { newId } from '../core/id';
 import { el, select } from './controls';
 import { openProjectDialog } from './dialog';
-import { type MessageKey, name, t } from './i18n';
-import { icon } from './icons';
+import { type MessageKey, name, t } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 
 export function showOverrides(app: App): void {
   openProjectDialog(app, (close) => {

@@ -37,7 +37,7 @@ import { LIBRARY_LIGHTS, POINT_LIGHT } from '../elements/object/library-lights';
 import { definitionMaterials } from '../elements/object/materials';
 import { isDefinition } from '../elements/object/valid';
 import { objectKind } from '../elements/kinds/object';
-import { DEFAULT_UNITS, isUnits } from '../ui/units';
+import { DEFAULT_UNITS, isUnits } from '../i18n/units';
 import { BUILT_IN_MATERIALS, CUT_PATTERNS, isColor, type Material, materialFor } from '../elements/material/schema';
 import { isPattern } from '../elements/material/pattern';
 import { isPhysics } from '../elements/material/physics';

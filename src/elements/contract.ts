@@ -12,9 +12,9 @@ import type { UprightPrism } from '../app/section-box';
 import type { Command } from '../core/store';
 import type { Point2 } from '../model/vector';
 import type { Transform } from '../tools/transform';
-import type { Field } from '../ui/fields';
-import type { MessageKey } from '../ui/i18n';
-import type { IconName } from '../ui/icons';
+import type { Field } from './fields';
+import type { MessageKey } from '../i18n/messages';
+import type { IconName } from '../i18n/icons';
 
 /** The document's lists the registry's kinds keep. */
 export type KindKey = 'measures' | 'references' | 'sections' | 'separators' | 'curtains' | 'zones' | 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'objects' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings' | 'walls';

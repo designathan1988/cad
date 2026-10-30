@@ -16,8 +16,8 @@ import type { StackedStep } from '../app/stacked';
 import type { ReferenceLine } from '../elements/wall/schema';
 import { el } from './controls';
 import { type Field, fieldsSection } from './fields';
-import { name, num, t, type MessageKey } from './i18n';
-import { icon, type IconName } from './icons';
+import { name, num, t, type MessageKey } from '../i18n/messages';
+import { icon, type IconName } from '../i18n/icons';
 import type { AnyKind } from '../elements/contract';
 import type { Command } from '../core/store';
 

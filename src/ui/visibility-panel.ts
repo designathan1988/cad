@@ -7,8 +7,8 @@
 import type { App } from '../app/app';
 import type { Category } from '../project/derive';
 import { el } from './controls';
-import { t, type MessageKey } from './i18n';
-import { icon } from './icons';
+import { t, type MessageKey } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 
 const CATEGORIES: readonly { id: Category; key: MessageKey }[] = [
   { id: 'walls', key: 'layer.walls' },

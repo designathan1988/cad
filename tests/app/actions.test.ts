@@ -7,7 +7,7 @@ import type { App } from '../../src/app/app';
 import { newDocument } from '../../src/project/doc';
 import { createStore } from '../../src/core/store';
 import { addLevel } from '../../src/elements/level/commands';
-import { setLang } from '../../src/ui/i18n';
+import { setLang } from '../../src/i18n/messages';
 import { VIEW_3D_DEFAULT } from '../../src/app/view-3d';
 
 // Only what appActions reads; the actions themselves are not run here.

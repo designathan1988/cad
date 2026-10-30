@@ -1,9 +1,9 @@
 // The fields curtain walls show in the panel (ui/fields.ts builds the rows): its height and foot, how
 // each direction is divided, its frame and its panels.
 
-import { lengthText } from '../../ui/units';
-import type { Field } from '../../ui/fields';
-import { t } from '../../ui/i18n';
+import { lengthText } from '../../i18n/units';
+import type { Field } from '../fields';
+import { t } from '../../i18n/messages';
 import type { CurtainPatch } from './commands';
 import type { CurtainSolid } from './geometry';
 import type { GridRule } from './schema';

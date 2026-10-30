@@ -16,10 +16,10 @@ import { libraryOf, mergeLibrary } from '../io/library-file';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { editDefinition } from './definition-editor';
-import { getLang, type MessageKey, t } from './i18n';
-import { icon } from './icons';
+import { getLang, type MessageKey, t } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 import { objectSnapshot } from './object-snapshot';
-import { lengthText } from './units';
+import { lengthText } from '../i18n/units';
 
 /** A new definition: one box, its width, depth and height, handles on them, one type. */
 export function blankDefinition(n: number): ObjectDefinition {

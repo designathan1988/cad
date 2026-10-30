@@ -5,7 +5,7 @@
 // write them; in ft² and ft³ in a project in feet.
 
 import { setBareUnit } from '../core/measure';
-import { getLang, num } from './i18n';
+import { getLang, num } from './messages';
 
 export type LengthUnit = 'm' | 'cm' | 'mm' | 'ft';
 export const LENGTH_UNITS: readonly LengthUnit[] = ['m', 'cm', 'mm', 'ft'];

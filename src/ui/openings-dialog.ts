@@ -9,10 +9,10 @@ import type { OpeningKind } from '../elements/opening/schema';
 import { OPENING_MODELS, type OpeningModel } from '../elements/opening/style';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
-import { type MessageKey, t } from './i18n';
-import { icon } from './icons';
+import { type MessageKey, t } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 import { openingSnapshot } from './opening-snapshot';
-import { lengthText } from './units';
+import { lengthText } from '../i18n/units';
 
 /** Pictures made once each, by model and size. */
 const pictures = new Map<string, string | null>();

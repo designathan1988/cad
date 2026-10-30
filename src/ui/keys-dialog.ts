@@ -6,7 +6,7 @@ import type { App } from '../app/app';
 import { assignKey, comboOf, keyOf } from '../app/keymap';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
-import { t } from './i18n';
+import { t } from '../i18n/messages';
 
 export function showKeys(app: App): void {
   let filter = '';

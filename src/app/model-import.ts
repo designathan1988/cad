@@ -6,7 +6,7 @@ import type { App } from './app';
 import type * as THREE from 'three';
 import { newId } from '../core/id';
 import { el } from '../ui/controls';
-import { t } from '../ui/i18n';
+import { t } from '../i18n/messages';
 import { MAX_TRIANGLES, type MeshGroup, meshDefinition } from '../io/import-mesh';
 
 /** The model's meshes as groups, in plan axes (three.js's y up is the plan's z; its z is the plan's −y). */

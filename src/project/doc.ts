@@ -13,7 +13,7 @@ import type { Reference } from '../elements/reference/schema';
 import { DEFAULT_DRAWING, type DrawingSettings } from '../elements/drawing/schema';
 import { LIBRARY } from '../elements/object/library';
 import type { ObjectDefinition, ObjectInstance } from '../elements/object/schema';
-import { DEFAULT_UNITS, type Units } from '../ui/units';
+import { DEFAULT_UNITS, type Units } from '../i18n/units';
 import { BUILT_IN_MATERIALS, type Material } from '../elements/material/schema';
 import { KINDS, listOf } from '../elements/registry';
 import type { Railing } from '../elements/railing/schema';

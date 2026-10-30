@@ -14,8 +14,8 @@ import { kindOfKey, withList } from '../elements/registry';
 import { previewMesh } from '../render/pattern-texture';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
-import { getLang, type MessageKey, t } from './i18n';
-import { icon } from './icons';
+import { getLang, type MessageKey, t } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 import { meshSnapshot } from './object-snapshot';
 
 const words = (x: Words) => (getLang() === 'pt' ? x.pt : x.en);

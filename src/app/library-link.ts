@@ -3,7 +3,7 @@
 // open as one undo step. The hash is taken off the address after, so a reload does not bring it twice.
 
 import { type LibraryFile, libraryFromHash, libraryHash, LINK_KEY, mergeLibrary } from '../io/library-file';
-import { t } from '../ui/i18n';
+import { t } from '../i18n/messages';
 import type { App } from './app';
 
 /** Past this a link is cut by mail and chat programs: the file is the way then (about 100 kB). */

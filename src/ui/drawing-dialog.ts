@@ -7,7 +7,7 @@ import type { Command } from '../core/store';
 import { type DrawingSettings, isDrawingSettings, PEN_MAX, PEN_MIN, PEN_ROLES, type PenRole, ROOM_TAGS, SCALES } from '../elements/drawing/schema';
 import { el, numberField, select } from './controls';
 import { openProjectDialog } from './dialog';
-import { type MessageKey, t } from './i18n';
+import { type MessageKey, t } from '../i18n/messages';
 
 export const setDrawing = (drawing: DrawingSettings): Command<Doc> => ({
   label: 'cmd.setDrawing',

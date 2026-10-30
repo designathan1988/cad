@@ -8,7 +8,7 @@ import { type DerivedGeometry, deriveGeometry } from '../project/derive';
 import { modelSolids, paintSection, sectionDrawing, type SectionDrawing, type Solid3 } from './section-drawing';
 import { scaleFactor } from '../elements/drawing/schema';
 import type { SectionMark } from '../elements/section/schema';
-import { name, num } from '../ui/i18n';
+import { name, num } from '../i18n/messages';
 import type { Point2 } from '../model/vector';
 
 /** The text of a drawing's cells and labels (mm). */

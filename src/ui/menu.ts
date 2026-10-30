@@ -2,7 +2,7 @@
 // item runs it; clicking anywhere else, Esc or Tab closes it, and the focus goes back where it was.
 
 import { el } from './controls';
-import { icon, type IconName } from './icons';
+import { icon, type IconName } from '../i18n/icons';
 import { menuKey } from './menu-keys';
 
 export interface MenuItem {

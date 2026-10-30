@@ -2,7 +2,7 @@
 // aim with (its centre is the point), the tool's own icon beside it. Drawn dark on a light outline, so
 // it reads on the light plan and the dark one alike.
 
-import { type IconName, iconPath } from './icons';
+import { type IconName, iconPath } from '../i18n/icons';
 import type { ToolId } from './shell';
 
 const GLYPH: Partial<Record<ToolId, IconName>> = {

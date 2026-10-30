@@ -14,10 +14,10 @@ import type { WallLayer, WallTypeId } from '../elements/wall/schema';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { fieldsSection } from './fields';
-import { defaultName, name, t } from './i18n';
-import { icon } from './icons';
+import { defaultName, name, t } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 import { layerEditor } from './layer-editor';
-import { lengthText } from './units';
+import { lengthText } from '../i18n/units';
 import { wallSnapshot } from './wall-snapshot';
 
 /** Pictures by layers and materials: a type's picture is made again only when they change. */

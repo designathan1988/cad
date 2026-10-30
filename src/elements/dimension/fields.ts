@@ -1,8 +1,8 @@
 // The fields permanent dimensions show in the panel (ui/fields.ts builds the rows).
 
-import { lengthText } from '../../ui/units';
-import type { Field } from '../../ui/fields';
-import { t } from '../../ui/i18n';
+import { lengthText } from '../../i18n/units';
+import type { Field } from '../fields';
+import { t } from '../../i18n/messages';
 import type { Dimension } from './schema';
 
 export interface DimensionFieldActions {

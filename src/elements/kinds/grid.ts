@@ -3,7 +3,7 @@
 
 import { isObject, isPoint } from '../../core/guards';
 import { add, distance, normalize, type Point2, sub } from '../../model/vector';
-import { t } from '../../ui/i18n';
+import { t } from '../../i18n/messages';
 import type { ElementKind, PlanPaint } from '../contract';
 import { renameGrid } from '../grid/commands';
 import { gridFields } from '../grid/fields';

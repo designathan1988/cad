@@ -8,11 +8,11 @@ import { DEPTH_MAX, elevationsAround, elevationsInside, lookOf, nextSectionName,
 import { addObject } from '../elements/object/commands';
 import { OBJECT_PREFIX } from '../elements/object/schema';
 import { words } from '../elements/object/fields';
-import { lengthNum } from '../ui/units';
+import { lengthNum } from '../i18n/units';
 import { distance, type Point2 } from '../model/vector';
 import { MIN_WALL_LENGTH } from '../model/tolerance';
 import { type PlanOverlay } from '../render/plan-view';
-import { t } from '../ui/i18n';
+import { t } from '../i18n/messages';
 import { solidsOf } from '../elements/registry';
 import { gridKind } from '../elements/kinds/grid';
 import { addRailing } from '../elements/railing/commands';

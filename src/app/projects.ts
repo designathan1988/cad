@@ -5,7 +5,7 @@
 
 import { newId } from '../core/id';
 import { deleteProject, forgetSaved, listProjects, type ProjectInfo, saveProject } from '../io/project-db';
-import { t } from '../ui/i18n';
+import { t } from '../i18n/messages';
 import type { App } from './app';
 import { PROJECT_PREFIX, readStored } from './boot';
 import { type Doc, newDocument, startLevel } from '../project/doc';

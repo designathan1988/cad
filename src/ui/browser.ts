@@ -4,8 +4,8 @@
 import type { App } from '../app/app';
 import { typeUsage } from '../app/browser-data';
 import { el, section } from './controls';
-import { name, t } from './i18n';
-import { icon } from './icons';
+import { name, t } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 import { layerSwatch } from './swatch';
 
 /** A full-width button row in a browser section. */

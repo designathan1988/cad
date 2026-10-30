@@ -1,6 +1,6 @@
 // The wall tool: the wall being drawn and its tags, the measures typed, a chain closing a loop. Functions over the app (app.ts delegates).
 
-import { angleNum, lengthText, typingExamples } from '../ui/units';
+import { angleNum, lengthText, typingExamples } from '../i18n/units';
 import { parseLength, parseLengthAngle, parseNumber, parsePoint, parsePointFrom } from '../core/measure';
 import { distance, type Point2 } from '../model/vector';
 import { MIN_WALL_LENGTH } from '../model/tolerance';
@@ -8,7 +8,7 @@ import { arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { addWalls, setWalls } from '../elements/wall/commands';
 import { ruleKeepingPosition, updateOpening } from '../elements/opening/commands';
 import { hasDistance } from '../elements/opening/schema';
-import { t } from '../ui/i18n';
+import { t } from '../i18n/messages';
 import { arcMiddle } from '../tools/arc-edit';
 import { bulgeThrough, rectangle, typedEnd, wallTransition, type WallToolEvent } from '../tools/wall-tool';
 import { type DocWall, wallNumber, wallOverrides } from '../project/doc';

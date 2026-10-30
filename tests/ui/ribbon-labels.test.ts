@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { ribbonTabs } from '../../src/app/ribbon-tabs';
-import { setLang, t } from '../../src/ui/i18n';
+import { setLang, t } from '../../src/i18n/messages';
 import { newDocument } from '../../src/project/doc';
 
 describe('ribbon labels', () => {

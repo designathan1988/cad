@@ -2,15 +2,15 @@
 // general (kind and size), position (rule and its reference), the door's leaf, the group the
 // selection is in, and arranging several. Also the size of the next opening the tool places.
 
-import { lengthNum, lengthText } from '../../ui/units';
+import { lengthNum, lengthText } from '../../i18n/units';
 import { type Doc, wallNumber } from '../../project/doc';
 import { stopAfter, stopBefore, wallStops } from '../../app/wall-stops';
 import { referenceLength } from './derive';
 import type { RoomSolid } from '../room/derive';
 import { openingSides } from './sides';
 import type { OpeningSolid } from '../../project/derive';
-import type { Field } from '../../ui/fields';
-import { name, t, type MessageKey } from '../../ui/i18n';
+import type { Field } from '../fields';
+import { name, t, type MessageKey } from '../../i18n/messages';
 import { alignCandidates, alignFits, referenceCandidates } from './commands';
 import { fitStyle, leafRange, modelOf, OPENING_MODELS, operationsOf, PANED } from './style';
 import { parseLength } from '../../core/measure';

@@ -3,7 +3,7 @@
 
 import { comboOf, resolveKey } from './keymap';
 import type { Point2 } from '../model/vector';
-import { t } from '../ui/i18n';
+import { t } from '../i18n/messages';
 import { viewKey } from './view-keys';
 import type { App } from './app';
 import { showHelp } from './input';

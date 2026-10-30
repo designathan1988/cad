@@ -14,8 +14,8 @@ import { JOINT_MAX, PATTERN_DEFAULTS, PATTERN_KINDS, PATTERN_LAYOUTS, PIECE_MAX,
 import { el, numberField, select } from './controls';
 import { openProjectDialog } from './dialog';
 import { textField } from './fields';
-import { materialLabel, t, type MessageKey } from './i18n';
-import { icon } from './icons';
+import { materialLabel, t, type MessageKey } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 
 export function showMaterials(app: App, first?: MaterialId): void {
   let chosen = first ?? app.store.get().materials[0]?.id ?? '';

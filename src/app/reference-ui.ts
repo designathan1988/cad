@@ -9,8 +9,8 @@ import { calibrated, DEFAULT_OPACITY, IMAGE_SCALE, REFERENCE_PREFIX, type Refere
 import { readDxfLines } from '../io/import-dxf';
 import { el, numberField } from '../ui/controls';
 import { openProjectDialog } from '../ui/dialog';
-import { t } from '../ui/i18n';
-import { lengthText } from '../ui/units';
+import { t } from '../i18n/messages';
+import { lengthText } from '../i18n/units';
 
 /** A PDF's page drawn at this resolution (dpi) to become a picture. */
 const PDF_DPI = 150;

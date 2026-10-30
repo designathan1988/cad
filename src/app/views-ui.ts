@@ -1,6 +1,6 @@
 // Saved views: saving, going to one, deleting. Functions over the app (app.ts delegates).
 
-import { name, t } from '../ui/i18n';
+import { name, t } from '../i18n/messages';
 import { savePrefs } from './persist';
 import { deleteView, nextViewName, type SavedView, saveView } from './saved-views';
 import { readView3D } from './view-3d';

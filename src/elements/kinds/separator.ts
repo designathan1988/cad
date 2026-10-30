@@ -3,7 +3,7 @@
 
 import { isObject, isPoint } from '../../core/guards';
 import { distance } from '../../model/vector';
-import { lengthText } from '../../ui/units';
+import { lengthText } from '../../i18n/units';
 import type { ElementKind } from '../contract';
 import { SEPARATOR_PREFIX, type Separator } from '../separator/schema';
 import { nearSegment } from './paint';

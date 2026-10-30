@@ -21,7 +21,7 @@
   "src/render/scene-3d.ts",
   "src/tools/snap.ts",
   "src/ui/definition-editor.ts",
-  "src/ui/i18n.ts",
+  "src/i18n/messages.ts",
   "src/ui/styles.css"
  ],
  "duplications": 4,

@@ -3,7 +3,7 @@
 // so tracing over it takes the walls first.
 
 import type { Point2 } from '../../model/vector';
-import { num, t } from '../../ui/i18n';
+import { num, t } from '../../i18n/messages';
 import { updateReferences } from '../reference/commands';
 import type { ElementKind, PlanPaint } from '../contract';
 import { isReference, type Reference, referenceCorners, referencePoint } from '../reference/schema';

@@ -13,10 +13,10 @@ import { FLOOR_BUILDUPS, type FloorLayer } from '../elements/room/schema';
 import { previewMesh } from '../render/pattern-texture';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
-import { materialLabel, type MessageKey, t } from './i18n';
-import { icon } from './icons';
+import { materialLabel, type MessageKey, t } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 import { meshSnapshot } from './object-snapshot';
-import { lengthText } from './units';
+import { lengthText } from '../i18n/units';
 
 const SIDE = 1;
 /** How much each layer under the top one reaches out further at the front corner (m). */

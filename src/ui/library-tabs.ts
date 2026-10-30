@@ -5,8 +5,8 @@
 
 import type { App } from '../app/app';
 import { el } from './controls';
-import { t, type MessageKey } from './i18n';
-import { icon, type IconName } from './icons';
+import { t, type MessageKey } from '../i18n/messages';
+import { icon, type IconName } from '../i18n/icons';
 
 export type LibraryTab = 'types' | 'floors' | 'openings' | 'presets' | 'objects' | 'materials';
 
