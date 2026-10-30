@@ -49,11 +49,7 @@ export function roomsGoingWith(doc: Doc, before: DerivedGeometry, moved: Readonl
 
 /** The rooms with the points of those in `going` moved by `transform`. */
 export const moveRooms = (rooms: readonly Room[], going: ReadonlySet<string>, transform: (p: Point2) => Point2): Room[] =>
-  rooms.map((room) => (going.has(room.id) ? { ...room, seed: transform(room.seed) } : room));
-
-export function carriedRooms(doc: Doc, before: DerivedGeometry, moved: ReadonlySet<string>, transform: (p: Point2) => Point2): Room[] {
-  return moveRooms(doc.rooms, roomsGoingWith(doc, before, moved), transform);
-}
+  rooms.map((r) => (going.has(r.id) ? { ...r, seed: transform(r.seed) } : r));
 
 /** The geometry of a version, derived once: the version before a drag is asked for at every step of it. */
 const derived = new WeakMap<Doc, DerivedGeometry>();

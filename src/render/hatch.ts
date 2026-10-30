@@ -3,7 +3,6 @@
 // The tile is drawn at device pixels and scaled back, so its lines stay sharp on a dense screen.
 
 import type { CutPattern } from '../elements/material/schema';
-import { isPdfCanvas } from '../io/pdf-canvas';
 
 /** The tile's side, in CSS pixels: the spacing of the pattern's lines on screen, at any zoom. */
 const TILE = 8;
@@ -49,8 +48,6 @@ function strokes(pattern: CutPattern): readonly (readonly [number, number][])[] 
 export function paperHatch(ctx: CanvasRenderingContext2D, pattern: CutPattern, color: string, mm: number, pxPerMm: number, pen: number): CanvasPattern | null {
   const lines = strokes(pattern);
   if (!lines) return null;
-  // On a vector page (io/pdf-canvas.ts): the tile's lines themselves, a millimetre-wide tile's.
-  if (isPdfCanvas(ctx)) return ctx.vectorPattern(lines, TILE, color, (pen * TILE) / mm, mm / TILE) as unknown as CanvasPattern;
   const tile = document.createElement('canvas');
   tile.width = tile.height = Math.max(4, Math.round(mm * pxPerMm));
   const c = tile.getContext('2d');
@@ -71,11 +68,6 @@ export function paperHatch(ctx: CanvasRenderingContext2D, pattern: CutPattern, c
 
 /** The repeating pattern of a cut, in `color`; null when the pattern has no lines. */
 export function hatchPattern(ctx: CanvasRenderingContext2D, pattern: CutPattern, color: string, dpr: number): CanvasPattern | null {
-  // On a vector page: the lines, a unit the tile's (the plan's pen units on paper), never kept.
-  if (isPdfCanvas(ctx)) {
-    const lines = strokes(pattern);
-    return lines ? (ctx.vectorPattern(lines, TILE, color, Math.max(0.75, 1 / dpr)) as unknown as CanvasPattern) : null;
-  }
   const key = `${pattern}|${color}|${dpr}`;
   if (tiles.has(key)) return tiles.get(key)!;
   const lines = strokes(pattern);

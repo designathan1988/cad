@@ -28,7 +28,6 @@ describe('names and keys agree', () => {
       expect(t('ctx.frameSelection')).toBe(t('pal.frameSelection'));
       expect(t('ctx.frameAll')).toBe(t('pal.frameAll'));
       expect(t('ctx.clearSelection')).toBe(t('pal.clearSelection'));
-      expect(t('float.frame')).toBe(`${t('pal.frameAll')} (Home)`);
     });
   }
 

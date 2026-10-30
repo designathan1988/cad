@@ -40,6 +40,13 @@ projeto gerado e IndexedDB 'cad2' removida; `scripts/baseline.mjs` avaliado na p
 
 Sem InstancedMesh/BatchedMesh: uma malha por peça por camada (1504 geometrias; 4819 chamadas de desenho).
 
+**Ressalva de comparabilidade (2026-10-30):** os números 3D desta tabela (chamadas, triângulos, geometrias e
+os hashes de pixels das paradas de vista 3D) são **do estado daquela sessão**: o frustum da câmera (o
+enquadramento da primeira vez consome uma flag por carga), o resíduo do estilo foto (céu/tonalidade) e o
+nível mostrado mudam os contadores e os pixels sem nenhuma mudança de código. A porta confiável entre
+sessões é: hash da **planta** (determinístico, provado), tsc, 0 erros de console, portões de arquitetura e
+inspeção visual do 3D (contadores lidos dentro da mesma sessão para comparar antes/depois de um passo).
+
 ## Estado do app durante a medição
 
 - 0 erros de console; sem overlay do Vite; boot limpo.

@@ -9,7 +9,7 @@ import type { OpeningWarning } from '../elements/opening/derive';
 import { nextOpeningPanel, openingPanel, openingTitle, type OpeningPanelActions, type OpeningSize } from '../elements/opening/panel';
 import type { OpeningId, OpeningKind } from '../elements/opening/schema';
 import type { RoomSolid } from '../elements/room/derive';
-import type { RoomPanelActions } from '../elements/room/panel';
+import type { RoomFieldActions as RoomPanelActions } from '../elements/room/fields';
 import { nextWallFields, wallFields } from '../elements/wall/fields';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { StackedStep } from '../app/stacked';

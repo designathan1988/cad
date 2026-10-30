@@ -2,7 +2,7 @@
 // room with a wall left behind stays where it is.
 
 import { describe, expect, it } from 'vitest';
-import { carriedRooms, wallsAround } from '../../src/app/carry';
+import { moveRooms, roomsGoingWith, wallsAround } from '../../src/app/carry';
 import { type Doc, type DocWall, newDocument } from '../../src/app/document';
 import { deriveGeometry } from '../../src/app/geometry';
 
@@ -32,18 +32,20 @@ const doc: Doc = {
 const shift = (p: { x: number; y: number }) => ({ x: p.x + 10, y: p.y });
 
 describe('rooms carried with their walls', () => {
+  // carriedRooms was a one-line composition of roomsGoingWith + moveRooms; this is the same call.
+  const carried = (moved: ReadonlySet<string>) => moveRooms(doc.rooms, roomsGoingWith(doc, deriveGeometry(doc), moved), shift);
   it('every wall moved: both rooms move', () => {
-    const rooms = carriedRooms(doc, deriveGeometry(doc), new Set(doc.walls.map((w) => w.id)), shift);
+    const rooms = carried(new Set(doc.walls.map((w) => w.id)));
     expect(rooms.map((r) => r.seed)).toEqual([{ x: 12, y: 1.5 }, { x: 16, y: 1.5 }]);
   });
 
   it('only the walls of the left room (with the shared one): the left room moves, the right one stays', () => {
-    const rooms = carriedRooms(doc, deriveGeometry(doc), new Set(['b1', 't1', 'l', 'm']), shift);
+    const rooms = carried(new Set(['b1', 't1', 'l', 'm']));
     expect(rooms.map((r) => r.seed)).toEqual([{ x: 12, y: 1.5 }, { x: 6, y: 1.5 }]);
   });
 
   it('one wall only: no room moves', () => {
-    expect(carriedRooms(doc, deriveGeometry(doc), new Set(['l']), shift)).toEqual(doc.rooms);
+    expect(carried(new Set(['l']))).toEqual(doc.rooms);
   });
 });
 

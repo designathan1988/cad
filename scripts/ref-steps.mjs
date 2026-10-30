@@ -17,20 +17,21 @@ function resetState() {
   return true;
 }
 
-/** The drawing of the view shown: a fresh synchronous draw first, then the canvas's pixels as a SHA-256
- * hash (exact comparison) and a 480-px JPEG thumbnail (to look at). Kept small: big payloads kill the channel. */
+/** The drawing of the view shown: a fresh draw, then the canvas's pixels as a SHA-256
+ * hash (exact comparison) and a 480-px JPEG thumbnail (to look at). Kept small: big payloads kill the channel.
+ * The 3D context has preserveDrawingBuffer:false: draw and toDataURL MUST be one synchronous task — toDataURL
+ * snapshots the bitmap at the call, toBlob's async read can land after the composite and read an empty buffer. */
 async function captureCanvas() {
   const app = window.__cad2;
-  if (app.ui.view === 'plan') app.render();
-  else {
-    app.render();
-    const scene = app.scene;
-    scene.invalidate();
-    scene.render(); // synchronous draw, so the GL buffer still holds this frame
+  app.render();
+  if (app.ui.view !== 'plan') {
+    app.scene.invalidate();
+    app.scene.render(); // synchronous draw
   }
   const c = app.ui.view === 'plan' ? app.shell.planCanvas : app.shell.glCanvas;
-  const buf = await new Promise((res) => c.toBlob((b) => b.arrayBuffer().then(res), 'image/png'));
-  const dig = new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(buf)));
+  const url = c.toDataURL('image/png');
+  const raw = Uint8Array.from(atob(url.split(',')[1]), (ch) => ch.charCodeAt(0));
+  const dig = new Uint8Array(await crypto.subtle.digest('SHA-256', raw));
   const hash = Array.from(dig).map((b) => b.toString(16).padStart(2, '0')).join('');
   const th = document.createElement('canvas');
   const k = 480 / c.width;

@@ -4,8 +4,6 @@ import type { Doc } from '../../app/document';
 import type { Command } from '../../core/store';
 import { isReference, type Reference } from './schema';
 
-export const referencesOf = (doc: Doc): readonly Reference[] => doc.references;
-
 export const addReference = (r: Reference): Command<Doc> => ({
   label: 'cmd.addReference',
   apply: (doc) => (!isReference(r) ? doc : { ...doc, references: [...doc.references, r] }),
