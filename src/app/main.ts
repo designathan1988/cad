@@ -12,6 +12,9 @@ void boot().then((b) => {
   const app = new App(root, b);
   wireInput(app);
   installTooltips();
+  // Read-only handle for the measurement scripts (scripts/baseline.mjs): the app itself, so ?perf's
+  // lastFrame, renderer.info and the undo history can be read without touching any internals.
+  (window as unknown as { __cad2: App }).__cad2 = app;
   // A library link (#lib=…) brings its objects and materials into the project open.
   wireLibraryLinks(app);
 });
