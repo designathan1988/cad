@@ -5,7 +5,7 @@
 // leaves, a pivoting leaf, sliding leaves side by side on two tracks, folding leaves, an overhead or
 // rolling door's dashed line; the frame in the jambs, the trim past them on both faces, the threshold.
 
-import { add, distance, normalize, type Point2, scale, sub } from '../../core/vector';
+import { add, distance, normalize, type Point2, scale, sub } from '../../model/vector';
 import type { Opening } from './schema';
 import { paneSpans } from './style';
 import type { OpeningFrame } from './void';

@@ -4,32 +4,35 @@
 
 import { describe, expect, it } from 'vitest';
 import { arrowStep, nudge } from '../../src/tools/nudge';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { deriveOpenings, hostsOf } from '../../src/elements/opening/derive';
 import { newOpening } from '../../src/elements/opening/schema';
+import { fid, gid, lid, oid, rid, tid, wid } from '../ids';
+import type { WallId } from '../../src/elements/wall/schema';
+import type { OpeningId } from '../../src/elements/opening/schema';
 
-const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
 });
 
 const doc: Doc = {
   ...newDocument(),
-  walls: [wall('b', [0, 0], [4, 0]), wall('r', [4, 0], [4, 3]), wall('t', [4, 3], [0, 3]), wall('l', [0, 3], [0, 0])],
+  walls: [wall(wid('b'), [0, 0], [4, 0]), wall(wid('r'), [4, 0], [4, 3]), wall(wid('t'), [4, 3], [0, 3]), wall(wid('l'), [0, 3], [0, 0])],
   openings: [
-    newOpening('d', 'b', 'door', { kind: 'fromStart', distance: 1 }),
-    newOpening('w', 't', 'window', { kind: 'fromEnd', distance: 0.5 }),
-    newOpening('c', 'r', 'window', { kind: 'centered' }),
+    newOpening(oid('d'), wid('b'), 'door', { kind: 'fromStart', distance: 1 }),
+    newOpening(oid('w'), wid('t'), 'window', { kind: 'fromEnd', distance: 0.5 }),
+    newOpening(oid('c'), wid('r'), 'window', { kind: 'centered' }),
   ],
-  rooms: [{ id: 'room', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
-  floors: [{ id: 'f', levelId: 'lvl_ground', source: { kind: 'outline', points: [{ x: 6, y: 0 }, { x: 7, y: 0 }, { x: 7, y: 1 }] }, thickness: 0.1, offset: 0 }],
+  rooms: [{ id: rid('room'), levelId: lid('lvl_ground'), seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
+  floors: [{ id: fid('f'), levelId: lid('lvl_ground'), source: { kind: 'outline', points: [{ x: 6, y: 0 }, { x: 7, y: 0 }, { x: 7, y: 1 }] }, thickness: 0.1, offset: 0 }],
 };
-const start = (d: Doc, id: string) => deriveOpenings(d.openings, hostsOf(d), d.openingGroups).placed.get(id)!.start;
+const start = (d: Doc, id: OpeningId) => deriveOpenings(d.openings, hostsOf(d), d.openingGroups).placed.get(id)!.start;
 const near = (a: number, b: number) => expect(a).toBeCloseTo(b, 9);
 
 describe('arrow steps', () => {
@@ -49,21 +52,21 @@ describe('nudging the selection', () => {
   });
 
   it('a door: slides along its wall by the step along it, whatever its rule', () => {
-    near(start(nudge(doc, deriveGeometry(doc), ['d'], { x: 0.05, y: 0 }), 'd'), 1.05);
+    near(start(nudge(doc, deriveGeometry(doc), ['d'], { x: 0.05, y: 0 }), oid('d')), 1.05);
     // Across the wall: no slide.
     expect(nudge(doc, deriveGeometry(doc), ['d'], { x: 0, y: 0.05 })).toBe(doc);
     // The top wall runs from x = 4 to x = 0: right is backwards along it.
-    const w0 = start(doc, 'w');
-    near(start(nudge(doc, deriveGeometry(doc), ['w'], { x: 0.05, y: 0 }), 'w'), w0 - 0.05);
+    const w0 = start(doc, oid('w'));
+    near(start(nudge(doc, deriveGeometry(doc), ['w'], { x: 0.05, y: 0 }), oid('w')), w0 - 0.05);
     // A centred one keeps where it goes: measured from the start from now on.
-    const c0 = start(doc, 'c');
+    const c0 = start(doc, oid('c'));
     const moved = nudge(doc, deriveGeometry(doc), ['c'], { x: 0, y: 0.01 });
-    near(start(moved, 'c'), c0 + 0.01);
+    near(start(moved, oid('c')), c0 + 0.01);
     expect(moved.openings.find((o) => o.id === 'c')!.rule.kind).toBe('fromStart');
   });
 
   it('a member of a distributed group stays where its group puts it', () => {
-    const grouped = { ...doc, openings: [{ ...doc.openings[0]!, rule: { kind: 'inGroup' as const, groupId: 'g' } }] };
+    const grouped = { ...doc, openings: [{ ...doc.openings[0]!, rule: { kind: 'inGroup' as const, groupId: gid('g') } }] };
     expect(nudge(grouped, deriveGeometry(grouped), ['d'], { x: 0.05, y: 0 })).toBe(grouped);
   });
 

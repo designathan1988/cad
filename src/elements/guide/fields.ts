@@ -1,7 +1,7 @@
 // The panel for selected guides, as fields (ui/fields.ts): what a guide is, and deleting the level's.
 
-import type { Field } from '../../ui/fields';
-import { t } from '../../ui/i18n';
+import type { Field } from '../fields';
+import { t } from '../../i18n/messages';
 import type { Guide } from './schema';
 
 export function guideFields(clearGuides: () => void): Field<Guide>[] {

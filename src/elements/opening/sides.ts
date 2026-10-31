@@ -1,8 +1,8 @@
 // What lies on each side of an opening: the room a door opens into, named in the panel instead of
 // "left" and "right" of the wall's drawing direction, which the user never sees.
 
-import { add, scale } from '../../core/vector';
-import { insidePolygon, type OpeningSolid } from '../../app/geometry';
+import { add, scale } from '../../model/vector';
+import { insidePolygon, type OpeningSolid } from '../../project/derive';
 import type { RoomSolid } from '../room/derive';
 
 /** How far past the wall's faces the side is looked at (m): clear of the wall, inside a small room. */

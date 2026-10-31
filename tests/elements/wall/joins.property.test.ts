@@ -14,6 +14,7 @@ import {
 import { abutmentPenetration, layerContainmentViolations, layerContinuity, notchFill } from './oracle-layers';
 import { buttOwnership, buttPenetration, cornerJoin, crossingOf, expectedCorner, expectedX, sidesOf, throughOf } from './oracle-x';
 import { crossedScene, lScene, type Mode, nodeScene, roomScene, tScene, xScene } from './scenes';
+import { wid } from '../../ids';
 
 const seed = Number(process.env.FUZZ_SEED ?? 20261024);
 const scale = Number(process.env.FUZZ_SCALE ?? 1);
@@ -200,7 +201,7 @@ describe('node with a passage in line', () => {
         const walls = [...passage, ...stems.map((s) => s.wall)];
         expect(geometry(walls).warnings, JSON.stringify(walls)).toEqual([]);
         // The passage as one host: the same type drawn head to tail is one straight band.
-        const host: Wall = { ...passage[0], id: 'passage', end: passage[1].end };
+        const host: Wall = { ...passage[0], id: wid('passage'), end: passage[1].end };
         const parts = stems.map((s) => expectedT(s.wall, s.end, host));
         const hostArea = shoelace(rectOf(host));
         const region: Region = {
@@ -227,8 +228,8 @@ describe('regressions found by larger runs', () => {
     // Same type, but b on its exterior face reads its layers reversed from the corner: a butt at 170°
     // against a 0.5 m through wall. I10 once sampled past the through wall's free end.
     const ls = [layer(0.014950893618385329, 'finish1'), layer(0.11960714894708263, 'structure'), layer(0.014950893618385329, 'finish2')];
-    const a = testWall('a', { x: 0.5, y: 0 }, { x: 0, y: 0 }, ls);
-    const b = testWall('b', { x: -0.49233721039619344, y: 0.08720132601798186 }, { x: 0, y: 0 }, ls, 'exteriorFace');
+    const a = testWall(wid('a'), { x: 0.5, y: 0 }, { x: 0, y: 0 }, ls);
+    const b = testWall(wid('b'), { x: -0.49233721039619344, y: 0.08720132601798186 }, { x: 0, y: 0 }, ls, 'exteriorFace');
     const walls = [a, b];
     const region = expectedCorner(a, 'end', b, 'end');
     if (region === 'overlap') throw new Error('expected a join');

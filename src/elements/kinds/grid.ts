@@ -2,8 +2,8 @@
 // level: it is on every one, and pasting onto another level leaves it out.
 
 import { isObject, isPoint } from '../../core/guards';
-import { add, distance, normalize, type Point2, sub } from '../../core/vector';
-import { t } from '../../ui/i18n';
+import { add, distance, normalize, type Point2, sub } from '../../model/vector';
+import { t } from '../../i18n/messages';
 import type { ElementKind, PlanPaint } from '../contract';
 import { renameGrid } from '../grid/commands';
 import { gridFields } from '../grid/fields';
@@ -20,7 +20,7 @@ export const gridKind: ElementKind<Grid, Grid> = {
   category: 'guides',
   everyLevel: true,
   icon: 'hash',
-  one: 'grid.title',
+  one: 'grid.one',
   many: 'grid.titleMany',
   title: (items) => ({ icon: 'hash', text: items.length === 1 ? t('grid.title', { name: items[0]!.name }) : t('grid.titleMany', { n: items.length }) }),
   hint: 'grid.held',

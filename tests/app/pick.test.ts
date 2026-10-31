@@ -2,23 +2,26 @@
 // on their centre lines, so the bottom wall's body runs from y = −0.1 to y = 0.1.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry, openingAt, wallAt } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
+import { openingAt, wallAt } from '../../src/project/derived-queries';
 import { newOpening } from '../../src/elements/opening/schema';
 import { symbolLines } from '../../src/elements/opening/symbol';
+import { lid, oid, tid, wid } from '../ids';
+import type { WallId } from '../../src/elements/wall/schema';
 
-const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
 });
 const doc: Doc = {
   ...newDocument(),
-  walls: [wall('b', [0, 0], [4, 0]), wall('r', [4, 0], [4, 3]), wall('t', [4, 3], [0, 3]), wall('l', [0, 3], [0, 0])],
-  openings: [newOpening('d', 'b', 'door', { kind: 'fromStart', distance: 0.5 })],
+  walls: [wall(wid('b'), [0, 0], [4, 0]), wall(wid('r'), [4, 0], [4, 3]), wall(wid('t'), [4, 3], [0, 3]), wall(wid('l'), [0, 3], [0, 0])],
+  openings: [newOpening(oid('d'), wid('b'), 'door', { kind: 'fromStart', distance: 0.5 })],
 };
 const g = deriveGeometry(doc);
 // 6 px at 1 cm a pixel.
@@ -40,7 +43,7 @@ describe('taking a wall', () => {
 
 describe('taking a door by what the plan draws of it', () => {
   it('a point 2 cm off its leaf or swing, well inside the room, takes the door', () => {
-    const o = g.openings.get('d')!;
+    const o = g.openings.get(oid('d'))!;
     // The symbol's farthest point from the wall: the leaf's free end or the swing's.
     const far = symbolLines(o, o.frame)
       .flat()

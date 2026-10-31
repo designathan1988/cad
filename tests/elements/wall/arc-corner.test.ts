@@ -8,6 +8,7 @@ import { geometry, layer, testWall, type TestWall as Wall } from './fixtures';
 import { arcBody, arcCorner, coverage, distanceToSegments, intoOf, segmentWall, segmentsOf, tBeyond, tFill, touchesArcElsewhere } from './oracle-arc';
 import { inside, rectOf } from './oracle';
 import { cornerJoin } from './oracle-x';
+import { wid } from '../../ids';
 
 const refs = ['interiorFace', 'centerline', 'exteriorFace'] as const;
 
@@ -16,11 +17,11 @@ describe('a thin arc and a thin wall at 30°', () => {
     for (const sref of refs)
       for (const left of [true, false]) {
         it(`${ref} arc, ${sref} wall, ${left ? 'left' : 'right'}: exactly the spec's L at the node`, () => {
-          const arc = { ...testWall('arc', { x: 0, y: 0 }, { x: 1, y: 0 }, [layer(0.01)], ref), bulge: 0.0437 } as Wall;
+          const arc = { ...testWall(wid('arc'), { x: 0, y: 0 }, { x: 1, y: 0 }, [layer(0.01)], ref), bulge: 0.0437 } as Wall;
           const u = intoOf(arc, 'start');
           const a = ((left ? 30 : -30) * Math.PI) / 180;
           const v = { x: u.x * Math.cos(a) - u.y * Math.sin(a), y: u.x * Math.sin(a) + u.y * Math.cos(a) };
-          const straight = testWall('s', v, { x: 0, y: 0 }, [layer(0.01)], sref);
+          const straight = testWall(wid('s'), v, { x: 0, y: 0 }, [layer(0.01)], sref);
           expect(geometry([arc, straight]).warnings).toEqual([]);
           const corner = arcCorner(arc, 'start', straight, 'end');
           if (corner === 'overlap') throw new Error('the spec makes this L');
@@ -39,10 +40,10 @@ describe('a thin arc and a thin wall at 30°', () => {
 describe('a butt L at an arc end, the arc abutting, reaching the next segments', () => {
   it("joined: exactly the spec's L at the node and each body once past it", () => {
     const arc = {
-      ...testWall('arc', { x: 0, y: -0.002418685132927909 }, { x: 1.9657386191438864, y: -0.002418685132927909 }, [layer(0.1300514413688485), layer(0.12397633477858412)], 'centerline'),
+      ...testWall(wid('arc'), { x: 0, y: -0.002418685132927909 }, { x: 1.9657386191438864, y: -0.002418685132927909 }, [layer(0.1300514413688485), layer(0.12397633477858412)], 'centerline'),
       bulge: 3.1137465367314023,
     } as Wall;
-    const straight = testWall('s', { x: -0.27900427372874276, y: 2.734447151892815 }, arc.start, [layer(0.14062467906004392), layer(0.1315533212302238), layer(0.0850371252577269)], 'exteriorFace');
+    const straight = testWall(wid('s'), { x: -0.27900427372874276, y: 2.734447151892815 }, arc.start, [layer(0.14062467906004392), layer(0.1315533212302238), layer(0.0850371252577269)], 'exteriorFace');
     const walls = [arc, straight];
     expect(geometry(walls).warnings).toEqual([]);
     const corner = arcCorner(arc, 'start', straight, 'end');
@@ -63,14 +64,14 @@ describe('a butt L at an arc end, the arc abutting, reaching the next segments',
 // the wall's own less what is past the arc, and what the T fills up to the face). Control: with that
 // end pulled back 5 mm, out of reach, the L alone joins and covers exactly.
 const thick = (ts: number[]) => ts.map((t) => layer(t));
-const arcA = { ...testWall('arc', { x: 0, y: 0 }, { x: 1.8146952434908599, y: 0 }, thick([0.07645804060623049, 0.059247538475319744, 0.04780983394011855]), 'exteriorFace'), bulge: -2.3791327284977184 } as Wall;
-const arcB = { ...testWall('arc', { x: 0, y: 0 }, { x: 1.2304911367828026, y: 0 }, thick([0.11508156635798514, 0.11388237481936812]), 'exteriorFace'), bulge: -3.316613919545999 } as Wall;
-const arcC = { ...testWall('arc', { x: 0, y: 0 }, { x: 2.722073347074911, y: 0 }, thick([0.10026307996362448]), 'centerline'), bulge: -1.2379008897940864 } as Wall;
+const arcA = { ...testWall(wid('arc'), { x: 0, y: 0 }, { x: 1.8146952434908599, y: 0 }, thick([0.07645804060623049, 0.059247538475319744, 0.04780983394011855]), 'exteriorFace'), bulge: -2.3791327284977184 } as Wall;
+const arcB = { ...testWall(wid('arc'), { x: 0, y: 0 }, { x: 1.2304911367828026, y: 0 }, thick([0.11508156635798514, 0.11388237481936812]), 'exteriorFace'), bulge: -3.316613919545999 } as Wall;
+const arcC = { ...testWall(wid('arc'), { x: 0, y: 0 }, { x: 2.722073347074911, y: 0 }, thick([0.10026307996362448]), 'centerline'), bulge: -1.2379008897940864 } as Wall;
 const twoJunctions: [string, Wall, Wall, 'start' | 'end'][] = [
-  ['miter at the start', arcA, testWall('s', { x: 0.2643777941779525, y: 1.9824490868482854 }, arcA.start, arcA.layers, 'exteriorFace'), 'start'],
-  ['miter at the end', arcB, testWall('s', { x: 0.967451917499866, y: 1.9826271381979577 }, arcB.end, arcB.layers, 'interiorFace'), 'end'],
-  ['a thin wall abuts the arc', arcB, testWall('s', { x: 0.967451917499866, y: 1.9826271381979577 }, arcB.end, [layer(0.0946182446410622, 'finish1')], 'interiorFace'), 'end'],
-  ['a thinner wall abuts a long arc', arcC, testWall('s', { x: 1.5503501696018507, y: 1.6208222590316421 }, arcC.end, [layer(0.032392485841842844, 'finish1')], 'interiorFace'), 'end'],
+  ['miter at the start', arcA, testWall(wid('s'), { x: 0.2643777941779525, y: 1.9824490868482854 }, arcA.start, arcA.layers, 'exteriorFace'), 'start'],
+  ['miter at the end', arcB, testWall(wid('s'), { x: 0.967451917499866, y: 1.9826271381979577 }, arcB.end, arcB.layers, 'interiorFace'), 'end'],
+  ['a thin wall abuts the arc', arcB, testWall(wid('s'), { x: 0.967451917499866, y: 1.9826271381979577 }, arcB.end, [layer(0.0946182446410622, 'finish1')], 'interiorFace'), 'end'],
+  ['a thinner wall abuts a long arc', arcC, testWall(wid('s'), { x: 1.5503501696018507, y: 1.6208222590316421 }, arcC.end, [layer(0.032392485841842844, 'finish1')], 'interiorFace'), 'end'],
 ];
 
 describe('candidates whose far end also meets the arc', () => {
@@ -126,10 +127,10 @@ describe('candidates whose far end also meets the arc', () => {
 // 2026-10-24 by §5.2). Here an arc of 88 segments of 10.7 cm and walls 40 and 60 cm thick at 100° and
 // 140°: the corner reaches past the end segment, and the L is made and is exactly the spec's.
 // Control: under the old rule (the end segment free at its own far end) the same corner is refused.
-const longArc = { ...testWall('arc', { x: 0, y: 0 }, { x: 6, y: 0 }, [layer(0.2)]), bulge: -1 } as Wall;
+const longArc = { ...testWall(wid('arc'), { x: 0, y: 0 }, { x: 6, y: 0 }, [layer(0.2)]), bulge: -1 } as Wall;
 const leaving = (deg: number, t: number) => {
   const a = (deg * Math.PI) / 180;
-  return testWall('s', { x: -2 * Math.sin(a), y: 2 * Math.cos(a) }, { x: 0, y: 0 }, [layer(t)]);
+  return testWall(wid('s'), { x: -2 * Math.sin(a), y: 2 * Math.cos(a) }, { x: 0, y: 0 }, [layer(t)]);
 };
 
 describe("an L whose corner reaches past the arc's end segment", () => {
@@ -159,14 +160,14 @@ describe("an L whose corner reaches past the arc's end segment", () => {
 // The rule stays whole at the real free ends: the arc's other end, and the straight wall's far end.
 describe('an L whose corner passes a real free end', () => {
   it("a 10 cm arc and a 50 cm wall: the corner passes the arc's other end, no join, a warning", () => {
-    const short = { ...testWall('arc', { x: 0, y: 0 }, { x: 0.1, y: 0 }, [layer(0.05)]), bulge: -0.2 } as Wall;
-    const straight = testWall('s', { x: -1.5, y: -1 }, { x: 0, y: 0 }, [layer(0.5)]);
+    const short = { ...testWall(wid('arc'), { x: 0, y: 0 }, { x: 0.1, y: 0 }, [layer(0.05)]), bulge: -0.2 } as Wall;
+    const straight = testWall(wid('s'), { x: -1.5, y: -1 }, { x: 0, y: 0 }, [layer(0.5)]);
     expect(segmentsOf(short)).toBe(5);
     expect(arcCorner(short, 'start', straight, 'end')).toBe('overlap');
     expect(geometry([short, straight]).warnings.map((w) => w.kind)).toEqual(['wallsOverlap']);
   });
   it("a 30 cm wall 60 cm thick on a long arc: the corner passes the wall's far end, no join, a warning", () => {
-    const straight = testWall('s', { x: -0.15, y: 0.26 }, { x: 0, y: 0 }, [layer(0.6)]);
+    const straight = testWall(wid('s'), { x: -0.15, y: 0.26 }, { x: 0, y: 0 }, [layer(0.6)]);
     expect(arcCorner(longArc, 'start', straight, 'end')).toBe('overlap');
     expect(geometry([longArc, straight]).warnings.map((w) => w.kind)).toEqual(['wallsOverlap']);
   });

@@ -2,8 +2,10 @@
 // the wall is always derived from the rule and the wall as it is now (derive.ts), never stored.
 
 import type { WallId } from '../wall/schema';
+import { type Brand, newId } from '../../core/id';
 
-export type OpeningId = string;
+/** A door's or window's id (opening_…). */
+export type OpeningId = Brand<'opening'>;
 export type OpeningKind = 'door' | 'window';
 
 /**
@@ -25,7 +27,8 @@ export type AlignEdge = 'start' | 'center' | 'end';
 /** The rules measured by a distance the user can type. */
 export type DistanceRule = Extract<PositionRule, { readonly distance: number }>;
 export const hasDistance = (r: PositionRule): r is DistanceRule => 'distance' in r;
-export type OpeningGroupId = string;
+/** A group of doors and windows spread together (group_…). */
+export type OpeningGroupId = Brand<'group'>;
 
 /**
  * Openings of one wall placed together, in wall order. Equal: the same space between the stretch's
@@ -132,5 +135,12 @@ export function newOpening(
 
 /** The ids every opening id starts with, so a selection can tell openings from walls. */
 export const OPENING_PREFIX = 'opening';
-export const isOpeningId = (id: string): boolean => id.startsWith(`${OPENING_PREFIX}_`);
+/** Whether an id (a selection's, of any kind) is a door's or window's: every one read or made starts opening_. */
+export const isOpeningId = (id: string): id is OpeningId => id.startsWith(`${OPENING_PREFIX}_`);
+
+/** A new door's or window's id (opening_…). */
+export const newOpeningId = (): OpeningId => newId(OPENING_PREFIX) as OpeningId;
 export const GROUP_PREFIX = 'group';
+
+/** A new group's id (group_…). */
+export const newGroupId = (): OpeningGroupId => newId(GROUP_PREFIX) as OpeningGroupId;

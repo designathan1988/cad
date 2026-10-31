@@ -5,10 +5,10 @@
 // is moved to share its length out evenly. Worked out again until nothing more moves (a wall moved by
 // one lock may stretch another's); what cannot be kept is said, and the change refused. Pure.
 
-import type { Doc } from '../../app/document';
-import { deriveGeometry } from '../../app/geometry';
-import { add, distance, dot, normalize, type Point2, scale, sub } from '../../core/vector';
-import { moveWalls, stretchEnd } from '../../tools/edit';
+import type { Doc } from '../../project/doc';
+import { deriveGeometry } from '../../project/derive';
+import { add, distance, dot, normalize, type Point2, scale, sub } from '../../model/vector';
+import { moveWalls, stretchEnd } from '../wall/edit';
 import type { PositionRule } from '../opening/schema';
 import { placeDimension, resolve } from './anchor';
 import type { DimAnchor, Dimension } from './schema';

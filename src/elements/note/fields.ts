@@ -1,6 +1,6 @@
 // The fields text notes show in the panel (ui/fields.ts builds the rows).
 
-import type { Field } from '../../ui/fields';
+import type { Field } from '../fields';
 import type { Note } from './schema';
 
 export interface NoteFieldActions {

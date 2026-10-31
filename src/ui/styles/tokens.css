@@ -1,0 +1,378 @@
+/* Design tokens and the base controls (scroll bars, sliders, colour wells) (one part of styles.css, read in its order). */
+
+/* Design tokens, defined once. Light by default; dark by preference or by the theme button. */
+:root {
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fs-xxs: 10px;
+  --fs-xs: 11px;
+  --fs-sm: 11px;
+  --fs-md: 12px;
+  --fs-lg: 13px;
+  --sp-half: 2px;
+  --sp-1: 4px;
+  --sp-2: 6px;
+  --sp-3: 10px;
+  --sp-4: 12px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 28px;
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 8px;
+  /* The window's rows (ui/shell.ts): the title bar, the fixed bar of commands, the drawing, the status bar. */
+  --top-h: 30px;
+  --cmd-h: 32px;
+  --foot-h: 22px;
+  /* Where the drawing starts under the frame: a panel over the drawing (narrow windows) starts there. */
+  --chrome-top: calc(var(--top-h) + var(--cmd-h));
+  /* The bars' parts (styles/bars.css), as the prototype's: a button, a floating bar, a line between groups,
+     a list's width, a status chip, the gap between the drawing's edge and what floats over it. */
+  --bar-btn: 24px;
+  --bar-h: 30px;
+  --bar-sep-h: 14px;
+  --list-w: 128px;
+  --chip-h: 18px;
+  --mark: 18px;
+  --float-gap: 8px;
+  --side-bar-w: 30px;
+  --side-btn-w: 28px;
+  --view-head-x: 52px;
+  --objs-dialog-h: 900px;
+  --objs-dialog-w: 1440px;
+  --objs-nav-w: 200px;
+  --objs-side-w: 360px;
+  --objs-side-w-sm: 280px;
+  --types-side-w: 560px;
+  --objs-card-min: 176px;
+  --objs-search-w: 360px;
+  --search-w: 220px;
+  --control-h: 26px;
+  --control-h-sm: 24px;
+  --field-h: 24px;
+  /* Lines and marks */
+  --line: 1px;
+  --line-2: 2px;
+  --own-bar: 3px;
+  --pill: 999px;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.08);
+  /* Component sizes */
+  --tool-w: 36px;
+  --label-w: 104px;
+  --name-w: 220px;
+  --head-h: 34px;
+  --summary-h: 28px;
+  --wide-btn-h: 26px;
+  --sep-w: 24px;
+  --cube: 60px;
+  --cube-wrap: 92px;
+  --cube-depth: 300px;
+  --dim-field-w: 72px;
+  --measure-w: 160px;
+  --coords-w: 120px;
+  --swatch-w: 28px;
+  --levels-col: 120px;
+  --menu-min-w: 180px;
+  --list-max-h: 220px;
+  --palette-max-h: 360px;
+  --dialog-w: 420px;
+  --dialog-w-lg: 560px;
+  --dialog-w-xl: 860px;
+  --dialog-top: min(10vh, 96px);
+  --types-list-w: 220px;
+  --thumb-sm: 36px;
+  --thumb-lg: 72px;
+  --field-min-w: 160px;
+  --browser-w: 240px;
+  --tooltip-w: 280px;
+  --touch: 44px;
+  --panel-w: 260px;
+  --editor-w: 1280px;
+  --editor-body-h: 56vh;
+  --editor-preview-h: 300px;
+  --editor-sliders-h: 180px;
+  --editor-cell-w: 92px;
+  --ease: 120ms ease-out;
+
+  --bg: #ffffff;
+  --bg-2: #f7f7f8;
+  /* Paper, white in either theme (a printed page's preview). */
+  --paper: #ffffff;
+  --canvas: #f3f4f6;
+  --field: #f1f2f4;
+  --hover: #eceef1;
+  --border: #e4e6ea;
+  --text: #17181c;
+  --text-2: #5c606b;
+  --text-3: #6b6f78;
+  --accent: #2563eb;
+  /* The accent a step darker: a pressed or hovered main button. */
+  --accent-strong: color-mix(in srgb, var(--accent) 85%, #000000);
+  --accent-soft: #e3ecfd;
+  --accent-text: #1d4ed8;
+  --accent-contrast: #ffffff;
+  --scrim: rgb(0 0 0 / 0.3);
+  --border-strong: #8b8f99;
+  /* 3D: wall faces, floors, glass and door leaves, selection and preview, and the light. */
+  --3d-side: #d6d0c6;
+  --3d-top: #b4aea6;
+  --3d-floor: #c9c5bd;
+  --3d-roof: #a8634a;
+  --3d-side-sel: #9db6e8;
+  --3d-preview: #7ea0e6;
+  /* What a cut through the walls shows of them, as the plan's poché. */
+  --3d-cut: #5b5f66;
+  /* The thin lines where the 3D's surfaces turn (edges.ts), drawn at 55 % over them. */
+  --3d-edge: #3f3a34;
+  --3d-glass: #9cc7e6;
+  --3d-leaf: #a0764f;
+  --3d-frame: #8d9298;
+  --3d-light: #ffffff;
+  --3d-ground-light: #9a9fa8;
+  /* The ground under the model, which a room with no floor shows. */
+  --3d-ground: #dcdfe4;
+  --layer-structure: #9c8f80;
+  /* Materials in plan: their own colours (elements/material), times this, and their cut patterns' lines. */
+  --material-shade: 1;
+  --hatch: rgb(17 18 22 / 0.5);
+  --warn: #c2410c;
+  --error: #dc2626;
+  /* The title bar (shell.ts), dark in both themes. */
+  --title-bg: #1f2329;
+  --title-text: #e8eaee;
+  --title-text-2: #a4a9b3;
+  --title-hover: rgb(255 255 255 / 0.09);
+  --title-field: rgb(255 255 255 / 0.08);
+  --title-border: rgb(255 255 255 / 0.14);
+  --saved-ok: #3fb27f;
+  --on-accent: #ffffff;
+  /* The bars (styles/bars.css): what floats over the drawing and the fixed ones, their lines, their icons,
+     a button pointed at or pressed, the window behind them, the right edge's bar and the status bar. */
+  --app-bg: #e9ebee;
+  --bar-bg: #ffffff;
+  --bar-border: #d7dae0;
+  --bar-sep: #d7dae0;
+  --bar-icon: #4b505a;
+  --bar-hover: #eceef1;
+  --bar-pressed: #2563eb;
+  --bar-shadow: 0 4px 14px rgb(16 24 40 / 0.12);
+  --cmd-bg: #f7f7f8;
+  --edge-bg: #f3f4f6;
+  --text-strong: #0b0c0f;
+  --warn-soft: #fff1e6;
+  --snap: #b45309;
+  --shadow: 0 2px 8px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.06);
+  --grid-minor: #e3e5e9;
+  --grid-major: #d3d6dc;
+  --axis-x: #e0827f;
+  --axis-y: #7cc49a;
+  --wall-fill: #9ea2aa;
+  /* A renovation's walls (layer-sets.ts: wallPhases): to be built red, to be demolished yellow, existing grey. */
+  --phase-new: #d64545;
+  --phase-existing: #9ea2aa;
+  --phase-demolish: #e0b034;
+  --wall-line: #111216;
+  --wall-sel: #2563eb;
+  --wall-sel-fill: #a9bde6;
+  --kbd-bg: #f1f2f4;
+  --kbd-border: #d7dae0;
+  --floor-fill: #e8e4dc;
+  /* Furniture and other objects in plan: they hide the floor under them, as on paper. */
+  --furniture: #ffffff;
+  /* The level below, under an upper level's plan. */
+  --underlay: #dcdee3;
+  /* Guides: construction lines, apart from the snap's amber and the selection's blue. */
+  --guide: #9333ea;
+  /* A wall's reference line, with its direction: apart from the selection's blue it lies on. */
+  --ref-line: #0d9488;
+  color-scheme: light;
+}
+
+/* The dark theme as the interface's prototype has it: the bars #202226 over a #141518 window, the drawing
+   #232528 with its grid, the panel #1b1c20, lines #2c2f35 and #34373e, the accent #4a8cff (#3b5bdb pressed). */
+:root[data-theme='dark'] {
+  --title-bg: #17181b;
+  --title-text: #d7dae0;
+  --title-text-2: #9aa0aa;
+  --title-hover: #2a2d33;
+  --title-field: #232529;
+  --title-border: #2a2c31;
+  --bg: #1b1c20;
+  --bg-2: #202226;
+  --canvas: #232528;
+  --field: #2a2d33;
+  --hover: #2a2d33;
+  --border: #2c2f35;
+  --text: #d7dae0;
+  --text-2: #9aa0aa;
+  --text-3: #868993;
+  --accent: #4a8cff;
+  --accent-soft: #33465f;
+  --accent-text: #8fb3ff;
+  --app-bg: #141518;
+  --bar-bg: #202226;
+  --bar-border: #34373e;
+  --bar-sep: #33363c;
+  --bar-icon: #b4b9c2;
+  --bar-hover: #2f3239;
+  --bar-pressed: #3b5bdb;
+  --bar-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
+  --cmd-bg: #202226;
+  --edge-bg: #17181b;
+  --text-strong: #ffffff;
+  --accent-contrast: #0f1115;
+  --scrim: rgb(0 0 0 / 0.62);
+  --border-strong: #666a75;
+  --3d-side: #d6d0c6;
+  --3d-top: #b4aea6;
+  --3d-floor: #c9c5bd;
+  --3d-roof: #a8634a;
+  --3d-side-sel: #9db6e8;
+  --3d-preview: #7ea0e6;
+  --3d-glass: #9cc7e6;
+  --3d-leaf: #a0764f;
+  --3d-frame: #8d9298;
+  --3d-light: #ffffff;
+  --3d-ground-light: #9a9fa8;
+  --3d-ground: #4a4d54;
+  /* Darker in the dark theme: the light wall line must read on every layer, with room for antialiasing. */
+  --layer-structure: #6f655a;
+  --material-shade: 0.5;
+  --hatch: rgb(236 236 240 / 0.42);
+  --warn: #fb923c;
+  --error: #f87171;
+  --warn-soft: #3a2618;
+  --snap: #f59e0b;
+  --shadow: 0 2px 10px rgb(0 0 0 / 0.4);
+  --grid-minor: #2b2d32;
+  --grid-major: #33363c;
+  --axis-x: #8a4644;
+  --axis-y: #3f7a56;
+  --wall-fill: #5d616b;
+  --phase-new: #e06a6a;
+  --phase-existing: #5d616b;
+  --phase-demolish: #d8b04a;
+  --wall-line: #e6e7eb;
+  --wall-sel: #4a8cff;
+  --wall-sel-fill: #3e5c94;
+  --kbd-bg: #2a2d33;
+  --kbd-border: #34373e;
+  --floor-fill: #26272d;
+  /* Lighter than the floors and the rooms' colours: the canvas's near black read as a hole in the room. */
+  --furniture: #464954;
+  --underlay: #2f3138;
+  --guide: #c084fc;
+  --ref-line: #2dd4bf;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font: var(--fs-md) / 1.4 var(--font);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: var(--line-2) solid var(--accent);
+  outline-offset: var(--line);
+}
+/* Every scroll bar thin and quiet, in the theme's colours (scrollbar-width / scrollbar-color, inherited:
+   on the root they reach every scrolling box): the platform's thick grey bars stood out of the design. */
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-3) 45%, transparent) transparent;
+  /* Checkboxes, radios and sliders in the accent, as the rest of the controls. */
+  accent-color: var(--accent);
+}
+/* Sliders (the light, the brightness, any range): a slim track, a round thumb of the accent. */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: var(--control-h-sm);
+  background: transparent;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: var(--sp-1);
+  border-radius: var(--pill);
+  background: color-mix(in srgb, var(--text-3) 30%, transparent);
+}
+input[type='range']::-moz-range-track {
+  height: var(--sp-1);
+  border-radius: var(--pill);
+  background: color-mix(in srgb, var(--text-3) 30%, transparent);
+}
+input[type='range']::-moz-range-progress {
+  height: var(--sp-1);
+  border-radius: var(--pill);
+  background: var(--accent);
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--sp-4);
+  height: var(--sp-4);
+  /* Centred on the track: (track − thumb) / 2. */
+  margin-top: calc((var(--sp-1) - var(--sp-4)) / 2);
+  border: var(--line-2) solid var(--bg);
+  border-radius: var(--pill);
+  background: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+input[type='range']::-moz-range-thumb {
+  width: var(--sp-4);
+  height: var(--sp-4);
+  border: var(--line-2) solid var(--bg);
+  border-radius: var(--pill);
+  background: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+input[type='range']:focus-visible {
+  outline: none;
+}
+input[type='range']:focus-visible::-webkit-slider-thumb {
+  outline: var(--line-2) solid var(--accent);
+  outline-offset: var(--line-2);
+}
+input[type='range']:focus-visible::-moz-range-thumb {
+  outline: var(--line-2) solid var(--accent);
+  outline-offset: var(--line-2);
+}
+/* A colour well: the colour itself, rounded, no inner frame. */
+input[type='color'] {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: var(--sp-half);
+  cursor: pointer;
+}
+input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+input[type='color']::-webkit-color-swatch {
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+input[type='color']::-moz-color-swatch {
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+.icon {
+  display: block;
+  flex: none;
+  /* The button, not its drawing, takes the pointer: clicks never land on a node that gets replaced. */
+  pointer-events: none;
+}

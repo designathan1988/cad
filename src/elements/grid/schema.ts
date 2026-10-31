@@ -2,12 +2,19 @@
 // other, the same on every level, with a bubble at each end. An axis moves alone: what lies on it is not
 // tied to it. Part of the project: saved, undone, moved as the rest.
 
-import type { Point2 } from '../../core/vector';
+import { type Point2 } from '../../model/vector';
+import { type Brand, newId } from '../../core/id';
 
 export const GRID_PREFIX = 'grid';
 
+/** A grid axis's id (grid…). */
+export type GridId = Brand<'grid'>;
+
+/** A new grid's id. */
+export const newGridId = (): GridId => newId(GRID_PREFIX) as GridId;
+
 export interface Grid {
-  readonly id: string;
+  readonly id: GridId;
   /** "1", "2", "A", "B"…: what its bubbles say. */
   readonly name: string;
   readonly start: Point2;

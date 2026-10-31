@@ -1,7 +1,7 @@
 // The measure tool's table, row by row, and what a tape reads.
 
 import { describe, expect, it } from 'vitest';
-import { MEASURE_IDLE, measureTransition, reading } from '../../src/tools/measure-tool';
+import { MEASURE_IDLE, measureTransition, reading } from '../../src/elements/measure/tool';
 
 const p = (x: number, y: number) => ({ x, y });
 

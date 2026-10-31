@@ -4,6 +4,8 @@ import fc from 'fast-check';
 import type { LayerFunction, ReferenceLine, WallEnd, WallLayer } from '../../../src/elements/wall/schema';
 import { layer, testWall, type TestWall as Wall } from './fixtures';
 import { frameOf, inside, rectOf, roomCorners, shoelace, type P } from './oracle';
+import type { WallId } from '../../../src/elements/wall/schema';
+import { wid } from '../../ids';
 
 export type Mode = 'normal' | 'degenerate';
 
@@ -43,7 +45,7 @@ function layersOf(thickness: number, r: Recipe): WallLayer[] {
   return r.split.map((part, i) => layer((thickness * part) / sum, r.fns[i]!));
 }
 
-const make = (id: string, from: P, to: P, layers: readonly WallLayer[], referenceLine: ReferenceLine): Wall =>
+const make = (id: WallId, from: P, to: P, layers: readonly WallLayer[], referenceLine: ReferenceLine): Wall =>
   testWall(id, from, to, layers, referenceLine);
 
 /** Where the line p + s·u meets q + r·w, as the parameter s. */
@@ -95,9 +97,9 @@ export function lScene(mode: Mode): fc.Arbitrary<LScene> {
       const fa = plus(pa, times(ua, r.lens[0]));
       const fb = plus(pb, times(ub, r.lens[1]));
       return {
-        a: r.away[0] ? make('a', pa, fa, la, r.refs[0]) : make('a', fa, pa, la, r.refs[0]),
+        a: r.away[0] ? make(wid('a'), pa, fa, la, r.refs[0]) : make(wid('a'), fa, pa, la, r.refs[0]),
         aEnd: (r.away[0] ? 'start' : 'end') as WallEnd,
-        b: r.away[1] ? make('b', pb, fb, lb, r.refs[1]) : make('b', fb, pb, lb, r.refs[1]),
+        b: r.away[1] ? make(wid('b'), pb, fb, lb, r.refs[1]) : make(wid('b'), fb, pb, lb, r.refs[1]),
         bEnd: (r.away[1] ? 'start' : 'end') as WallEnd,
       };
     })
@@ -140,7 +142,7 @@ export function tScene(mode: Mode): fc.Arbitrary<TScene> {
     .map((r) => {
       const hs = pt(r.start[0], r.start[1]);
       const hostEnd = plus(hs, times(dir(r.heading), r.hostLen));
-      const host = make('host', hs, hostEnd, layersOf(r.hostT, r.hostRecipe), r.hostRef);
+      const host = make(wid('host'), hs, hostEnd, layersOf(r.hostT, r.hostRecipe), r.hostRef);
       const f = frameOf(host);
       const sinPhi = Math.sin((r.phi * Math.PI) / 180);
       const margin = r.t / sinPhi + r.hostT + 0.1;
@@ -151,7 +153,7 @@ export function tScene(mode: Mode): fc.Arbitrary<TScene> {
       const u = plus(times(f.d, Math.cos((r.phi * Math.PI) / 180)), times(side, sinPhi));
       const q = plus(p, times(u, r.len));
       const tl = layersOf(r.t, r.tRecipe);
-      const abutting = r.away ? make('t', p, q, tl, r.tRef) : make('t', q, p, tl, r.tRef);
+      const abutting = r.away ? make(wid('t'), p, q, tl, r.tRef) : make(wid('t'), q, p, tl, r.tRef);
       return { host, abutting, end: (r.away ? 'start' : 'end') as WallEnd, ok: 2 * margin < r.hostLen };
     })
     .filter((s) => {
@@ -210,7 +212,7 @@ export function roomScene(): fc.Arbitrary<RoomScene> {
       const shared = layersOf(r.ts[0]!, r.recipes[0]!);
       const ring = v.map((from, i) => {
         const to = v[(i + 1) % 4]!;
-        const id = `w${i}`;
+        const id = wid(`w${i}`);
         const ls = r.sameType ? shared : layersOf(r.ts[i]!, r.recipes[i]!);
         return r.reversed[i] ? make(id, to, from, ls, r.refs[i]!) : make(id, from, to, ls, r.refs[i]!);
       });
@@ -219,7 +221,7 @@ export function roomScene(): fc.Arbitrary<RoomScene> {
       const q0 = lerp(v[0]!, v[1]!, r.at[0]);
       const q2 = lerp(v[2]!, v[3]!, r.at[1]);
       const dl = layersOf(r.dT, r.dRecipe);
-      const divider = r.dReversed ? make('d', q2, q0, dl, r.dRef) : make('d', q0, q2, dl, r.dRef);
+      const divider = r.dReversed ? make(wid('d'), q2, q0, dl, r.dRef) : make(wid('d'), q0, q2, dl, r.dRef);
       const startHost = r.dReversed ? ring[2]! : ring[0]!;
       const endHost = r.dReversed ? ring[0]! : ring[2]!;
       return { ring, ringEnds, divider, startHost, endHost, v };
@@ -292,9 +294,9 @@ export function crossedScene(): fc.Arbitrary<CrossedScene> {
       const fb = plus(x, times(ub, r.lens[1]));
       return {
         node: x,
-        a: r.away[0] ? make('a', pa, fa, la, r.refs[0]) : make('a', fa, pa, la, r.refs[0]),
+        a: r.away[0] ? make(wid('a'), pa, fa, la, r.refs[0]) : make(wid('a'), fa, pa, la, r.refs[0]),
         aEnd: (r.away[0] ? 'start' : 'end') as WallEnd,
-        b: r.away[1] ? make('b', pb, fb, lb, r.refs[1]) : make('b', fb, pb, lb, r.refs[1]),
+        b: r.away[1] ? make(wid('b'), pb, fb, lb, r.refs[1]) : make(wid('b'), fb, pb, lb, r.refs[1]),
         bEnd: (r.away[1] ? 'start' : 'end') as WallEnd,
       };
     })
@@ -348,7 +350,7 @@ export function xScene(mode: Mode): fc.Arbitrary<XScene> {
       const b0 = plus(x, times(db, -r.lens[1] * r.at[1]));
       const b1 = plus(b0, times(db, r.lens[1]));
       const a1 = plus(a0, times(da, r.lens[0]));
-      const [ida, idb] = r.swapIds ? ['b', 'a'] : ['a', 'b'];
+      const [ida, idb] = r.swapIds ? [wid('b'), wid('a')] : [wid('a'), wid('b')];
       return {
         a: r.reversed[0] ? make(ida!, a1, a0, la, r.refs[0]) : make(ida!, a0, a1, la, r.refs[0]),
         b: r.reversed[1] ? make(idb!, b1, b0, lb, r.refs[1]) : make(idb!, b0, b1, lb, r.refs[1]),
@@ -407,15 +409,15 @@ export function nodeScene(): fc.Arbitrary<NodeScene> {
       const u = dir(r.heading);
       const ls = layersOf(r.t, r.recipe);
       const passage = [
-        make('p0', plus(x, times(u, -r.lens[0])), x, ls, r.pRef),
-        make('p1', x, plus(x, times(u, r.lens[1])), ls, r.pRef),
+        make(wid('p0'), plus(x, times(u, -r.lens[0])), x, ls, r.pRef),
+        make(wid('p1'), x, plus(x, times(u, r.lens[1])), ls, r.pRef),
       ] as const;
       // The first stem on the left of u, the second on the right.
       const thetas = r.stems.map((s, i) => (i === 0 ? s.theta : -s.theta));
       const stems = r.stems.map((s, i) => {
         const far = plus(x, times(rot(u, thetas[i]!), s.len));
         const sl = layersOf(s.t, s.recipe);
-        const id = `s${i}`;
+        const id = wid(`s${i}`);
         return s.away
           ? { wall: make(id, x, far, sl, s.ref), end: 'start' as WallEnd }
           : { wall: make(id, far, x, sl, s.ref), end: 'end' as WallEnd };

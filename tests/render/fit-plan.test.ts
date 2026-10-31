@@ -1,7 +1,7 @@
 // Framing in plan fits the part of the canvas no panel covers (tablet drawer, phone sheet).
 
 import { describe, expect, it } from 'vitest';
-import { fitPlan } from '../../src/render/plan-view';
+import { fitPlan } from '../../src/render/plan-types';
 
 const box = { min: { x: 0, y: 0 }, max: { x: 10, y: 5 } };
 // Where a world point lands on a canvas of width w, height h.

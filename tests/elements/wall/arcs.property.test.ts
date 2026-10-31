@@ -8,6 +8,7 @@ import type { LayerFunction, WallEnd } from '../../../src/elements/wall/schema';
 import { geometry, layer, testWall, type TestWall as Wall } from './fixtures';
 import { arcBody, arcCorner, circleOf, cornerReach, coverage, distanceToSegments, faceRadii, intoOf, segmentsOf, tBeyond, tFill, touchesArcElsewhere } from './oracle-arc';
 import { inside, rectOf, shoelace } from './oracle';
+import { wid } from '../../ids';
 
 const seed = Number(process.env.FUZZ_SEED ?? 20261024);
 // As joins.property.test.ts: a run takes as long as it takes, more under a busy machine (a mutation run
@@ -31,7 +32,7 @@ const arcArb = fc
   .map((r) => {
     const s = { x: r.start[0], y: r.start[1] };
     const e = { x: s.x + r.chord * Math.cos(r.heading), y: s.y + r.chord * Math.sin(r.heading) };
-    return { ...testWall('arc', s, e, r.layers, r.ref), bulge: Math.tan((r.sweepDeg * Math.PI) / 180 / 4) } as Wall;
+    return { ...testWall(wid('arc'), s, e, r.layers, r.ref), bulge: Math.tan((r.sweepDeg * Math.PI) / 180 / 4) } as Wall;
   })
   // Keep arcs whose faces all have a positive radius: tighter ones are tested as arcTooTight by hand.
   .filter((w) => {
@@ -45,7 +46,7 @@ describe('lone arcs', () => {
       fc.property(arcArb, fc.nat(), (w, s) => {
         const g = geometry([w]);
         expect(g.warnings).toEqual([]);
-        const pieces = g.pieces.get('arc')!;
+        const pieces = g.pieces.get(wid('arc'))!;
         expect(pieces).toHaveLength(segmentsOf(w) * w.layers.length);
         const body = arcBody(w).reduce((t, p) => t + shoelace(p), 0);
         const got = pieces.reduce((t, p) => t + shoelace(p.polygon), 0);
@@ -82,7 +83,7 @@ describe('arc with a straight wall at one end', () => {
           // "ponta livre": the end segment is not free where the arc goes on). Beyond, it would be a
           // second junction, which this oracle does not model: the wall is shortened to 95 % of that
           // length.
-          const wallOf = (l: number) => testWall('s', { x: node.x + v.x * l, y: node.y + v.y * l }, node, ls, ref);
+          const wallOf = (l: number) => testWall(wid('s'), { x: node.x + v.x * l, y: node.y + v.y * l }, node, ls, ref);
           let len = len0;
           let spilling = false;
           if (touchesArcElsewhere(arc, end, wallOf(len))) {
@@ -99,7 +100,7 @@ describe('arc with a straight wall at one end', () => {
               spilling = true;
               // It can touch again farther on as well (a second junction): the stretch past the corner's
               // reach is shortened like any wall, to 95 % of where it would.
-              const tail = (l: number) => testWall('s', { x: node.x + v.x * l, y: node.y + v.y * l }, { x: node.x + v.x * reach, y: node.y + v.y * reach }, ls, ref);
+              const tail = (l: number) => testWall(wid('s'), { x: node.x + v.x * l, y: node.y + v.y * l }, { x: node.x + v.x * reach, y: node.y + v.y * reach }, ls, ref);
               if (len > reach && touchesArcElsewhere(arc, end, tail(len))) {
                 let [a2, b2] = [reach, len];
                 for (let k = 0; k < 14; k++) {
@@ -124,7 +125,7 @@ describe('arc with a straight wall at one end', () => {
             joined.nearOther++;
             return;
           }
-          const straight = testWall('s', far, node, ls, ref);
+          const straight = testWall(wid('s'), far, node, ls, ref);
           // Touching the arc again away from the node is a second junction too (an X or a T, which the
           // engine now makes: spec part 6), not modelled by this L oracle: skipped, counted.
           if (!spilling && touchesArcElsewhere(arc, end, straight)) {
@@ -192,7 +193,7 @@ describe('a straight wall abutting an arc', () => {
         const out = outside ? radial : { x: -radial.x, y: -radial.y };
         const dir = { x: out.x * Math.cos(a) - out.y * Math.sin(a), y: out.x * Math.sin(a) + out.y * Math.cos(a) };
         const start = { x: end.x + dir.x * len, y: end.y + dir.y * len };
-        const wall = testWall('t', start, end, ls, ref);
+        const wall = testWall(wid('t'), start, end, ls, ref);
         const rect = rectOf(wall);
         if (distanceToSegments(arc, start) < 0.2) {
           tees.skipped++;
@@ -298,7 +299,7 @@ describe('a straight wall crossing an arc', () => {
           crosses.noRoom++;
           return;
         }
-        const wall = testWall('x', { x: at.x - dir.x * half, y: at.y - dir.y * half }, { x: at.x + dir.x * half, y: at.y + dir.y * half }, ls, ref);
+        const wall = testWall(wid('x'), { x: at.x - dir.x * half, y: at.y - dir.y * half }, { x: at.x + dir.x * half, y: at.y + dir.y * half }, ls, ref);
         const rect = rectOf(wall);
         // Near the arc's ends, or its own ends on the arc: not a crossing there.
         const ends = [arc.start, arc.end];

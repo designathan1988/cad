@@ -3,25 +3,27 @@
 // from the box's corner (4, 0) to (6, 0), a door on b 1 m from its start, and the room inside.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { newOpening } from '../../src/elements/opening/schema';
-import { canTransform, copiesInSeries, copyToLevel, reflection, rotation, scaling, transformSelection, translation } from '../../src/tools/transform';
+import { canTransform, copiesInSeries, copyToLevel, reflection, rotation, scaling, transformSelection, translation } from '../../src/elements/transform';
+import { fid, lid, oid, rid, tid, wid } from '../ids';
+import type { WallId } from '../../src/elements/wall/schema';
 
-const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
 });
 const doc: Doc = {
   ...newDocument(),
-  walls: [wall('b', [0, 0], [4, 0]), wall('r', [4, 0], [4, 3]), wall('t', [4, 3], [0, 3]), wall('l', [0, 3], [0, 0]), wall('x', [4, 0], [6, 0])],
-  openings: [newOpening('opening_d', 'b', 'door', { kind: 'fromStart', distance: 1 }, { hinge: 'start', swing: 'left' })],
-  rooms: [{ id: 'room', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
-  floors: [{ id: 'floor', levelId: 'lvl_ground', source: { kind: 'room', roomId: 'room' }, thickness: 0.15, offset: 0 }],
+  walls: [wall(wid('b'), [0, 0], [4, 0]), wall(wid('r'), [4, 0], [4, 3]), wall(wid('t'), [4, 3], [0, 3]), wall(wid('l'), [0, 3], [0, 0]), wall(wid('x'), [4, 0], [6, 0])],
+  openings: [newOpening(oid('opening_d'), wid('b'), 'door', { kind: 'fromStart', distance: 1 }, { hinge: 'start', swing: 'left' })],
+  rooms: [{ id: rid('room'), levelId: lid('lvl_ground'), seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
+  floors: [{ id: fid('floor'), levelId: lid('lvl_ground'), source: { kind: 'room', roomId: rid('room') }, thickness: 0.15, offset: 0 }],
 };
 const g = deriveGeometry(doc);
 const box = ['b', 'r', 't', 'l'];
@@ -109,8 +111,8 @@ describe('a door selected without its wall', () => {
     const r = transformSelection(doc, g, ['opening_d'], translation({ x: 1, y: 0 }), false, newId);
     const d = r.doc.openings[0]!;
     expect(d.wallId).toBe('b');
-    expect(g.openings.get('opening_d')!.start).toBeCloseTo(1, 9);
-    expect(deriveGeometry(r.doc).openings.get('opening_d')!.start).toBeCloseTo(2, 9);
+    expect(g.openings.get(oid('opening_d'))!.start).toBeCloseTo(1, 9);
+    expect(deriveGeometry(r.doc).openings.get(oid('opening_d'))!.start).toBeCloseTo(2, 9);
     expect(find(r.doc, 'b')).toEqual(find(doc, 'b'));
     expect(r.selection).toEqual(['opening_d']);
   });
@@ -120,7 +122,7 @@ describe('a door selected without its wall', () => {
     const r = transformSelection(doc, g, ['opening_d'], translation({ x: 2.58, y: 1.5 }), false, newId);
     const d = r.doc.openings[0]!;
     expect(d.wallId).toBe('r');
-    const placed = deriveGeometry(r.doc).openings.get('opening_d')!;
+    const placed = deriveGeometry(r.doc).openings.get(oid('opening_d'))!;
     expect((placed.start + placed.end) / 2).toBeCloseTo(1.5, 9);
   });
 
@@ -137,11 +139,11 @@ describe('a door selected without its wall', () => {
 });
 
 describe('copied to another level (Ctrl+C, Ctrl+V)', () => {
-  const twoLevels: Doc = { ...doc, levels: [...doc.levels, { id: 'lvl_up', name: 'Upper', elevation: 3, height: 2.8 }] };
+  const twoLevels: Doc = { ...doc, levels: [...doc.levels, { id: lid('lvl_up'), name: 'Upper', elevation: 3, height: 2.8 }] };
   const g2 = deriveGeometry(twoLevels);
 
   it('the box, its door and its room: copies on the upper level in the same place, the originals kept', () => {
-    const r = copyToLevel(twoLevels, g2, [...box, 'room'], 'lvl_up', newId);
+    const r = copyToLevel(twoLevels, g2, [...box, 'room'], lid('lvl_up'), newId);
     const added = r.doc.walls.slice(twoLevels.walls.length);
     expect(added).toHaveLength(4);
     expect(added.every((w) => w.levelId === 'lvl_up')).toBe(true);
@@ -151,12 +153,12 @@ describe('copied to another level (Ctrl+C, Ctrl+V)', () => {
     const door = r.doc.openings.at(-1)!;
     expect(door.wallId).toBe(added[0]!.id);
     const room = r.doc.rooms.at(-1)!;
-    expect(room).toMatchObject({ levelId: 'lvl_up', number: '1', seed: { x: 2, y: 1.5 } });
+    expect(room).toMatchObject({ levelId: lid('lvl_up'), number: '1', seed: { x: 2, y: 1.5 } });
     expect(deriveGeometry(r.doc).rooms.get(room.id)!.enclosed).toBe(true);
   });
 
   it('a door selected without its wall is left out (its wall is not on that level)', () => {
-    const r = copyToLevel(twoLevels, g2, ['opening_d'], 'lvl_up', newId);
+    const r = copyToLevel(twoLevels, g2, ['opening_d'], lid('lvl_up'), newId);
     expect(r.doc.openings).toHaveLength(twoLevels.openings.length);
   });
 });

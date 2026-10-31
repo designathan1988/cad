@@ -7,10 +7,11 @@
 
 import { describe, expect, it } from 'vitest';
 import { setPrecision, union } from 'polyclip-ts';
-import { vec } from '../../../src/core/vector';
+import { vec } from '../../../src/model/vector';
 import { overlapArea } from '../../../src/elements/wall/geometry/convex';
 import { geometry, testWall, type TestWall } from './fixtures';
 import { checkAgainst, inside, type P, rectOf, type Region, shoelace } from './oracle';
+import { wid } from '../../ids';
 
 setPrecision(1e-9);
 
@@ -100,9 +101,9 @@ describe('three walls crossing at one point', () => {
   // 10 cm walls along 0°, 45° and 90° through the origin: six arms 45° apart. Each neighbouring pair
   // meets on the bisector, 0.05/sin 22.5° from the point.
   const walls = [
-    testWall('a', vec(-3, 0), vec(3, 0), 0.1),
-    testWall('b', vec(0, -3), vec(0, 3), 0.1),
-    testWall('c', vec(-3, -3), vec(3, 3), 0.1),
+    testWall(wid('a'), vec(-3, 0), vec(3, 0), 0.1),
+    testWall(wid('b'), vec(0, -3), vec(0, 3), 0.1),
+    testWall(wid('c'), vec(-3, -3), vec(3, 3), 0.1),
   ];
   const { g, polys } = piecesOf(walls);
 
@@ -129,9 +130,9 @@ describe('three walls crossing a few centimetres apart', () => {
   // As above, but the 45° wall passes 6 cm to the right of the origin along x (drawn by hand, no snap):
   // it crosses a at (0.06, 0) and b at (0, −0.06). Its faces are x − y = 0.06 ± 0.05·√2.
   const walls = [
-    testWall('a', vec(-3, 0), vec(3, 0), 0.1),
-    testWall('b', vec(0, -3), vec(0, 3), 0.1),
-    testWall('c', vec(-2.94, -3), vec(3.06, 3), 0.1),
+    testWall(wid('a'), vec(-3, 0), vec(3, 0), 0.1),
+    testWall(wid('b'), vec(0, -3), vec(0, 3), 0.1),
+    testWall(wid('c'), vec(-2.94, -3), vec(3.06, 3), 0.1),
   ];
   const { g, polys } = piecesOf(walls);
   const s = 0.05 * Math.SQRT2;
@@ -169,18 +170,18 @@ describe('three walls crossing a few centimetres apart', () => {
 describe('an end on a crossing', () => {
   // a and b cross at the origin; c, 10 cm, starts there and leaves at 45°.
   const walls = [
-    testWall('a', vec(-3, 0), vec(3, 0), 0.1),
-    testWall('b', vec(0, -3), vec(0, 3), 0.1),
-    testWall('c', vec(0, 0), vec(2, 2), 0.1),
+    testWall(wid('a'), vec(-3, 0), vec(3, 0), 0.1),
+    testWall(wid('b'), vec(0, -3), vec(0, 3), 0.1),
+    testWall(wid('c'), vec(0, 0), vec(2, 2), 0.1),
   ];
   const { g, polys } = piecesOf(walls);
   const s = 0.05 * Math.SQRT2;
 
   it('joins without a warning; a and b split at the point, c whole', () => {
     expect(g.warnings).toEqual([]);
-    expect(g.pieces.get('a')).toHaveLength(2);
-    expect(g.pieces.get('b')).toHaveLength(2);
-    expect(g.pieces.get('c')).toHaveLength(1);
+    expect(g.pieces.get(wid('a'))).toHaveLength(2);
+    expect(g.pieces.get(wid('b'))).toHaveLength(2);
+    expect(g.pieces.get(wid('c'))).toHaveLength(1);
   });
 
   it('covers exactly the three bands, nothing twice', () => {
@@ -203,9 +204,9 @@ describe('an end inside the corner of an L, from outside it', () => {
   // a comes along +x to the corner (0, 0), b leaves upward: an L. c comes from (2, −2) and stops 1 cm
   // inside both, at (−0.01, 0.01): its line is x + y = 0, its faces x + y = ±0.05·√2.
   const walls = [
-    testWall('a', vec(-3, 0), vec(0, 0), 0.1),
-    testWall('b', vec(0, 0), vec(0, 3), 0.1),
-    testWall('c', vec(2, -2), vec(-0.01, 0.01), 0.1),
+    testWall(wid('a'), vec(-3, 0), vec(0, 0), 0.1),
+    testWall(wid('b'), vec(0, 0), vec(0, 3), 0.1),
+    testWall(wid('c'), vec(2, -2), vec(-0.01, 0.01), 0.1),
   ];
   const { g, polys } = piecesOf(walls);
   const s = 0.05 * Math.SQRT2;
@@ -230,9 +231,9 @@ describe('a Y of unlike thicknesses', () => {
   // and above it. The lines start from the middle of the corners instead (§7.6), and the faces still
   // meet at those corners: no stretch of bare core, no step.
   const walls = [
-    testWall('a', vec(0, 0), vec(0, -3), 0.25),
-    testWall('b', vec(0, 0), vec(-2.4, 1.9), 0.15),
-    testWall('c', vec(0, 0), vec(2.4, 1.9), 0.1),
+    testWall(wid('a'), vec(0, 0), vec(0, -3), 0.25),
+    testWall(wid('b'), vec(0, 0), vec(-2.4, 1.9), 0.15),
+    testWall(wid('c'), vec(0, 0), vec(2.4, 1.9), 0.1),
   ];
   const { g, polys } = piecesOf(walls);
   const degB = Math.atan2(1.9, -2.4) / r;

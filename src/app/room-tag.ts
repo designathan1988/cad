@@ -4,8 +4,8 @@
 
 import type { RoomTagContent } from '../elements/drawing/schema';
 import type { Room } from '../elements/room/schema';
-import { name, t } from '../ui/i18n';
-import { areaText, lengthText } from '../ui/units';
+import { name, t } from '../i18n/messages';
+import { areaText, lengthText } from '../i18n/units';
 
 /** Its two lines, and what is left of the first when the room is narrow: its number. */
 export function roomTagText(room: Room, area: number, levelHeight: number, content: RoomTagContent = 'numberName'): { name: string; short: string; area: string } {

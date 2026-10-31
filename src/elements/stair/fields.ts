@@ -1,9 +1,9 @@
 // The fields stairs show in the panel (ui/fields.ts builds the rows).
 
-import { slopeFormat, slopeShown, slopeTyped, slopeUnit } from '../../ui/units';
-import { lengthText } from '../../ui/units';
-import type { Field } from '../../ui/fields';
-import { t } from '../../ui/i18n';
+import { slopeFormat, slopeShown, slopeTyped, slopeUnit } from '../../i18n/units';
+import { lengthText } from '../../i18n/units';
+import type { Field } from '../fields';
+import { t } from '../../i18n/messages';
 import type { StairPatch } from './commands';
 import { firstFlight, type StairSolid } from './geometry';
 import { RAMP_GRADE, type StairKind } from './schema';

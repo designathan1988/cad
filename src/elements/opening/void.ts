@@ -6,7 +6,7 @@
 // whatever the view's cut height.
 
 import type { TopPlane } from '../wall/geometry/under-roof';
-import { add, normalize, perp, type Point2, scale, sub } from '../../core/vector';
+import { add, normalize, perp, type Point2, scale, sub } from '../../model/vector';
 import { arcOf, pointAt, tangentAt } from '../wall/geometry/arc';
 import { clipOut, type ConvexPolygon, type HalfPlane, halfPlaneThrough } from '../wall/geometry/convex';
 import type { Piece } from '../wall/geometry/footprint';

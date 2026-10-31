@@ -3,7 +3,7 @@
 // top; distributed across or up with equal gaps between the boxes, the first and the last staying
 // where they are. Here only the steps each box takes; the app moves each element by its own.
 
-import type { Point2 } from '../core/vector';
+import type { Point2 } from '../model/vector';
 
 export type ArrangeHow = 'left' | 'centerX' | 'right' | 'bottom' | 'centerY' | 'top' | 'spreadX' | 'spreadY';
 export const ARRANGE_HOWS: readonly ArrangeHow[] = ['left', 'centerX', 'right', 'bottom', 'centerY', 'top', 'spreadX', 'spreadY'];

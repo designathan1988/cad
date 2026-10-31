@@ -2,7 +2,7 @@
 // box, with its dimensions and handles, lies in the part of the view that nothing covers.
 
 import { describe, expect, it } from 'vitest';
-import { fitFactor, keepInView } from '../../src/app/keep-in-view';
+import { fitFactor, keepInView } from '../../src/session/keep-in-view';
 
 const view = { w: 1000, h: 600 };
 const none = { right: 0, bottom: 0 };

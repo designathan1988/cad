@@ -3,17 +3,20 @@
 // on, measured again on it (from that part's start, or still from the end it was measured from when
 // that end is the same); a distributed group split by the cut is undone into plain positions.
 
-import type { Doc, DocWall } from '../app/document';
-import { hostsIn } from '../app/geometry';
-import { MIN_WALL_LENGTH } from '../core/tolerance';
-import { cross, distance, dot, normalize, type Point2, sub } from '../core/vector';
+import type { Doc, DocWall } from '../project/doc';
+import { hostsIn } from '../project/derived-queries';
+import { MIN_WALL_LENGTH } from '../model/tolerance';
+import { cross, distance, dot, normalize, type Point2, sub } from '../model/vector';
 import { deriveOpenings, referenceLength } from '../elements/opening/derive';
 import type { Opening, PositionRule } from '../elements/opening/schema';
 import type { EndJoin } from '../elements/wall/schema';
 import type { DimAnchor } from '../elements/dimension/schema';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
-import { meet, stretchEnd } from './edit';
-import { GRID_STEP } from './snap';
+import { stretchEnd } from '../elements/wall/edit';
+import { GRID_STEP } from '../session/snap';
+import type { WallId } from '../elements/wall/schema';
+import type { ElementId } from '../core/id';
+import { meet } from '../elements/wall/edit';
 
 /** A part shorter than the snap grid's step is a slip of the pointer, not a wall: no split leaves one. */
 const MIN_PART = GRID_STEP;
@@ -38,7 +41,7 @@ export type SplitProblem = 'tooShort' | 'throughOpening';
  * The wall split at the point's foot on it: the first part keeps its id, the second takes `newId`.
  * Refused when a part would be too short, or when the cut would go through a door or a window.
  */
-export function splitWall(doc: Doc, wallId: string, at: Point2, newId: string): Doc | SplitProblem {
+export function splitWall(doc: Doc, wallId: WallId, at: Point2, newId: WallId): Doc | SplitProblem {
   const w = doc.walls.find((x) => x.id === wallId);
   if (!w) return 'tooShort';
   const s = stationOf(w, at);
@@ -207,7 +210,7 @@ export function mergeWalls(doc: Doc, a: string, b: string): Doc | null {
  * their lines cross goes there, the walls joined at those ends following. Null when they are about
  * parallel (edit.ts meet) or either is an arc.
  */
-export function cornerWalls(doc: Doc, a: string, b: string): DocWall[] | null {
+export function cornerWalls(doc: Doc, a: ElementId, b: ElementId): DocWall[] | null {
   const wa = doc.walls.find((w) => w.id === a);
   const wb = doc.walls.find((w) => w.id === b);
   if (!wa || !wb || wa.bulge || wb.bulge || a === b) return null;
@@ -220,6 +223,6 @@ export function cornerWalls(doc: Doc, a: string, b: string): DocWall[] | null {
   // Either would vanish: the corner would fall on the other end.
   const other = (w: DocWall, e: 'start' | 'end') => (e === 'start' ? w.end : w.start);
   if (distance(other(wa, ea), x) < MIN_WALL_LENGTH || distance(other(wb, eb), x) < MIN_WALL_LENGTH) return null;
-  const first = stretchEnd(doc, a, ea, x);
-  return stretchEnd({ ...doc, walls: first }, b, eb, x);
+  const first = stretchEnd(doc, wa.id, ea, x);
+  return stretchEnd({ ...doc, walls: first }, wb.id, eb, x);
 }

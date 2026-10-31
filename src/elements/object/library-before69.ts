@@ -4,10 +4,11 @@
 // part may make, and its top shelves stood empty.
 
 import type { ObjectDefinition } from './schema';
+import type { DefinitionId } from './schema';
 
 export const BEFORE_69: readonly ObjectDefinition[] = [
   {
-    "id": "def_bookcase",
+    "id": "def_bookcase" as DefinitionId,
     "name": {
       "pt": "Estante",
       "en": "Bookcase"

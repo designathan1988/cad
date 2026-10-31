@@ -1,7 +1,7 @@
 // Stairs and ramps in the registry (contract.ts): elements/stair holds the element and its layout.
 
 import { finite, isObject, isPoint } from '../../core/guards';
-import { stairGeometry } from '../../render/prisms';
+import { stairGeometry } from '../prisms';
 import type { ElementKind } from '../contract';
 import { insideRing } from '../room/derive';
 import { updateStairs } from '../stair/commands';
@@ -9,12 +9,11 @@ import { stairFields } from '../stair/fields';
 import { type StairSolid, stairSolid } from '../stair/geometry';
 import { type Stair, STAIR_PREFIX } from '../stair/schema';
 import { trace } from './paint';
-import { newId } from '../../core/id';
 import { addRailing, addRailings } from '../railing/commands';
-import { RAILING_HEIGHT, RAILING_PREFIX, wellPath } from '../railing/schema';
+import { RAILING_HEIGHT, newRailingId, wellPath } from '../railing/schema';
 import { stairWell } from '../stair/geometry';
 import { arrivalOf, levelReached } from '../stair/well';
-import { levelOf, NO_LEVEL } from '../../app/document';
+import { levelOf, NO_LEVEL } from '../../project/doc';
 
 export const stairKind: ElementKind<Stair, StairSolid> = {
   key: 'stairs',
@@ -121,7 +120,7 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
         if (!level || !arrival || s.stair.well === false || doc.railings.some((r) => r.host !== undefined && 'stairId' in r.host && r.host.stairId === s.stair.id && r.host.side === undefined)) return null;
         const points = wellPath(stairWell(s), arrival[0], arrival[1]);
         if (points.length < 2) return null;
-        return () => dispatch(addRailing({ id: newId(RAILING_PREFIX), levelId: level, points, height: RAILING_HEIGHT, baseOffset: 0, host: { stairId: s.stair.id }, infill: 'balusters' }));
+        return () => dispatch(addRailing({ id: newRailingId(), levelId: level, points, height: RAILING_HEIGHT, baseOffset: 0, host: { stairId: s.stair.id }, infill: 'balusters' }));
       },
       // Along each side it has none on yet, on its level, rising with it: one step to undo.
       sideRailings: (s) => {
@@ -129,7 +128,7 @@ export const stairKind: ElementKind<Stair, StairSolid> = {
         const free = s.sides.flatMap((line, i) => (line.length >= 2 && !held.has(i) ? [i] : []));
         if (free.length === 0) return null;
         const made = free.map((i) => ({
-          id: newId(RAILING_PREFIX),
+          id: newRailingId(),
           levelId: s.stair.levelId,
           points: s.sides[i]!.map((p) => ({ x: p.x, y: p.y })),
           height: RAILING_HEIGHT,

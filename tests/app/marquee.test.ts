@@ -1,8 +1,8 @@
 // Window and crossing selection over screen outlines: walls, openings, rooms and floors alike.
 
 import { describe, expect, it } from 'vitest';
-import { marqueePick } from '../../src/app/select-drag';
-import { vec } from '../../src/core/vector';
+import { marqueePick } from '../../src/session/marquee';
+import { vec } from '../../src/model/vector';
 
 const rect = (x0: number, y0: number, x1: number, y1: number) => [vec(x0, y0), vec(x1, y0), vec(x1, y1), vec(x0, y1)];
 

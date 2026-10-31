@@ -4,18 +4,19 @@
 // 0.05 to 1.15 along it (x 1.45 to 2.55) and from 1.05 to 2.15 up.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
-import { deriveGeometry } from '../../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
+import { deriveGeometry } from '../../../src/project/derive';
 import { openingParts } from '../../../src/elements/opening/parts';
 import { newOpening, type OpeningStyle } from '../../../src/elements/opening/schema';
 import { fitStyle, isOpeningStyle, paneRows, paneSpans } from '../../../src/elements/opening/style';
 import { symbolLines } from '../../../src/elements/opening/symbol';
+import { lid, oid, tid, wid } from '../../ids';
 
-const wall: DocWall = { id: 'w', wallTypeId: 'wt_masonry15', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground', baseOffset: 0, top: { kind: 'level', offset: 0 } };
+const wall: DocWall = { id: wid('w'), wallTypeId: tid('wt_masonry15'), start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline', levelId: lid('lvl_ground'), baseOffset: 0, top: { kind: 'level', offset: 0 } };
 const fixed: OpeningStyle = { operation: 'fixed', leaves: 1, frame: 0.05, casing: 0, transom: 0, threshold: false };
 const placed = (style: OpeningStyle) => {
-  const doc: Doc = { ...newDocument(), walls: [wall], openings: [{ ...newOpening('win', 'w', 'window', { kind: 'centered' }, { width: 1.2, height: 1.2, style }), sill: 1 }] };
-  return deriveGeometry(doc).openings.get('win')!;
+  const doc: Doc = { ...newDocument(), walls: [wall], openings: [{ ...newOpening(oid('win'), wid('w'), 'window', { kind: 'centered' }, { width: 1.2, height: 1.2, style }), sill: 1 }] };
+  return deriveGeometry(doc).openings.get(oid('win'))!;
 };
 const glass = (style: OpeningStyle) => {
   const o = placed(style);

@@ -2,8 +2,8 @@
 // as a thin dashed line in plan; no solid. Rooms read them in app/geometry.ts.
 
 import { isObject, isPoint } from '../../core/guards';
-import { distance } from '../../core/vector';
-import { lengthText } from '../../ui/units';
+import { distance } from '../../model/vector';
+import { lengthText } from '../../i18n/units';
 import type { ElementKind } from '../contract';
 import { SEPARATOR_PREFIX, type Separator } from '../separator/schema';
 import { nearSegment } from './paint';

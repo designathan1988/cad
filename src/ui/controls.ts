@@ -1,10 +1,10 @@
 // Reusable controls, one place for all panels: number field with unit, segmented choice, select,
 // collapsible section. They only read values and report changes.
 
-import { lengthNum, lengthText, lengthUnit } from './units';
+import { lengthNum, lengthText, lengthUnit } from '../i18n/units';
 import { parseLength, parseNumber } from '../core/measure';
-import { icon, type IconName } from './icons';
-import { num, t } from './i18n';
+import { icon, type IconName } from '../i18n/icons';
+import { num, t } from '../i18n/messages';
 import { searchEntries } from './search';
 
 export function el<K extends keyof HTMLElementTagNameMap>(

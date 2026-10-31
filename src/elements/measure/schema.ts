@@ -3,9 +3,18 @@
 // length of an arc wall, held by that wall (its face or its reference line) and redrawn as it changes; and a
 // point's coordinates in the plan. Kept with the project, on a level.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
+import type { WallId } from '../wall/schema';
 
 export const MEASURE_PREFIX = 'meas';
+
+/** An angular, radius or coordinate dimension's id (measure…). */
+export type MeasureId = Brand<'measure'>;
+
+/** A new measure's id. */
+export const newMeasureId = (): MeasureId => newId(MEASURE_PREFIX) as MeasureId;
 
 /** What an arc wall's dimension says, and at which of its lines. */
 export type ArcMeasure = 'radius' | 'diameter' | 'arc';
@@ -14,8 +23,8 @@ export type ArcFace = 'exterior' | 'reference' | 'interior';
 export const ARC_FACES: readonly ArcFace[] = ['exterior', 'reference', 'interior'];
 
 interface Base {
-  readonly id: string;
-  readonly levelId: string;
+  readonly id: MeasureId;
+  readonly levelId: LevelId;
 }
 
 /** The angle from the vertex between the arms through `a` and `b` (the smaller, up to 180°), its arc at `radius` (m). */
@@ -30,7 +39,7 @@ export interface AngleMeasure extends Base {
 /** An arc wall's radius, diameter or length, at one of its lines; the leader meets the arc `t` of the way along it (0 to 1). */
 export interface WallArcMeasure extends Base {
   readonly type: ArcMeasure;
-  readonly wallId: string;
+  readonly wallId: WallId;
   readonly face: ArcFace;
   readonly t: number;
 }

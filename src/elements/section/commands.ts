@@ -1,6 +1,6 @@
 // Commands on sections and elevations. Each returns a new document; the store makes each one undo step.
 
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
 import { DEPTH_MAX, DEPTH_MIN, type SectionMark } from './schema';
 

@@ -2,15 +2,15 @@
 // modulo"). Each a name and a length; added, renamed, changed and removed, one command each, kept in
 // the project file (core/measure.ts reads them).
 
-import type { App } from '../app/app';
-import type { Doc } from '../app/document';
+import type { App } from '../session/app';
+import type { Doc } from '../project/doc';
 import { isVariableName } from '../core/measure';
 import type { Command } from '../core/store';
 import { el, numberField } from './controls';
 import { openProjectDialog } from './dialog';
 import { textField } from './fields';
-import { t } from './i18n';
-import { icon } from './icons';
+import { t } from '../i18n/messages';
+import { icon } from '../i18n/icons';
 
 export const setProjectVariables = (variables: Readonly<Record<string, number>>): Command<Doc> => ({
   label: 'cmd.setVariables',

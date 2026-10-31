@@ -3,9 +3,9 @@
 // a room's interior elevation keeps to its room's level.
 
 import { isObject } from '../../core/guards';
-import { distance, type Point2 } from '../../core/vector';
-import { lengthText } from '../../ui/units';
-import { t } from '../../ui/i18n';
+import { distance, type Point2 } from '../../model/vector';
+import { lengthText } from '../../i18n/units';
+import { t } from '../../i18n/messages';
 import type { ElementKind, PlanPaint } from '../contract';
 import { flipSections, renameSection, setSectionDepth } from '../section/commands';
 import { DEPTH_MIN, isSectionMark, lookOf, SECTION_PREFIX, type SectionMark } from '../section/schema';

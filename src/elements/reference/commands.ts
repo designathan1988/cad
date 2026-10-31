@@ -1,10 +1,8 @@
 // Commands on references. Each returns a new document; the store makes each one undo step.
 
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
 import { isPlacement, isReference, type Reference } from './schema';
-
-export const referencesOf = (doc: Doc): readonly Reference[] => doc.references;
 
 export const addReference = (r: Reference): Command<Doc> => ({
   label: 'cmd.addReference',

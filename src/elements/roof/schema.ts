@@ -3,9 +3,17 @@
 // flat (with a parapet, platibanda), one slope (uma água), two (duas águas), four (quatro águas).
 // geometry.ts builds the faces.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const ROOF_PREFIX = 'roof';
+
+/** A roof's id (roof…). */
+export type RoofId = Brand<'roof'>;
+
+/** A new roof's id. */
+export const newRoofId = (): RoofId => newId(ROOF_PREFIX) as RoofId;
 export type RoofKind = 'flat' | 'shed' | 'gable' | 'hip';
 
 /** A side's slope in % (rise per run; null: a gable, no slope on that side) and its overhang (m). */
@@ -15,8 +23,8 @@ export interface RoofEdge {
 }
 
 export interface Roof {
-  readonly id: string;
-  readonly levelId: string;
+  readonly id: RoofId;
+  readonly levelId: LevelId;
   /** Counter-clockwise; side i runs from point i to point i + 1. */
   readonly outline: readonly Point2[];
   readonly edges: readonly RoofEdge[];

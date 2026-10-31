@@ -2,13 +2,15 @@
 // with a transform; drawing snaps onto a circle and to where it crosses a line guide or a wall.
 
 import { describe, expect, it } from 'vitest';
-import { vec } from '../../src/core/vector';
+import { vec } from '../../src/model/vector';
 import { guideKind } from '../../src/elements/kinds/guide';
 import type { Guide } from '../../src/elements/guide/schema';
-import { snap, type SnapInput } from '../../src/tools/snap';
+import { snap } from '../../src/session/snap';
+import { type SnapInput } from '../../src/session/snap-types';
+import { lid, xid } from '../ids';
 
-const point: Guide = { id: 'guide_p', levelId: 'lvl_ground', point: vec(1, 1), dir: vec(1, 0), shape: 'point' };
-const circle: Guide = { id: 'guide_c', levelId: 'lvl_ground', point: vec(0, 0), dir: vec(1, 0), shape: 'circle', radius: 2 };
+const point: Guide = { id: xid('guide_p'), levelId: lid('lvl_ground'), point: vec(1, 1), dir: vec(1, 0), shape: 'point' };
+const circle: Guide = { id: xid('guide_c'), levelId: lid('lvl_ground'), point: vec(0, 0), dir: vec(1, 0), shape: 'circle', radius: 2 };
 const input = (cursor: [number, number], extra: Partial<SnapInput> = {}): SnapInput => ({
   cursor: vec(cursor[0], cursor[1]),
   mpp: 0.001,
@@ -38,7 +40,7 @@ describe('point and circle guides', () => {
 
   it('a circle is scaled with the transform it is copied by', () => {
     const t = { map: (p: { x: number; y: number }) => ({ x: p.x * 2, y: p.y * 2 }) };
-    const copy = guideKind.mapped(circle, t as never, 'guide_c2');
+    const copy = guideKind.mapped(circle, t as never, xid('guide_c2'));
     expect(copy.radius).toBeCloseTo(4, 12);
   });
 });

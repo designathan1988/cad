@@ -4,7 +4,7 @@
 // jamb and the side it opens to, a group keeps its members in place; a chosen corner join, a
 // dimension's end and an arc's measure keep theirs, named from the other end.
 
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
 import type { GroupSpacing, Opening, PositionRule } from '../opening/schema';
 import type { Wall, WallId } from './schema';
@@ -52,7 +52,7 @@ export function withSwappedJoins<W extends Pick<Wall, 'joins'>>(w: W): W {
 export const flipWalls = (ids: readonly WallId[]): Command<Doc> => ({
   label: 'cmd.flipWalls',
   apply: (doc) => {
-    const set = new Set(ids.filter((id) => doc.walls.some((w) => w.id === id)));
+    const set = new Set<string>(ids.filter((id) => doc.walls.some((w) => w.id === id)));
     if (set.size === 0) return doc;
     const hosted = new Set(doc.openings.filter((o) => set.has(o.wallId)).map((o) => o.id));
     // What a dimension is held by stays where it is: the same physical end or jamb under its new name,

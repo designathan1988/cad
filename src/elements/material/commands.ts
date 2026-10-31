@@ -4,12 +4,12 @@
 // changes nothing.
 
 import { definitionMaterials } from '../object/materials';
-import { ROOF_COVERING } from '../roof/schema';
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
 import { isPattern } from './pattern';
 import { isPhysics } from './physics';
 import { CUT_PATTERNS, isColor, type Material, type MaterialId } from './schema';
+import { ROOF_COVERING } from '../roof/schema';
 
 const unit = (n: number) => Number.isFinite(n) && n >= 0 && n <= 1;
 const usable = (m: Material): boolean => isColor(m.color) && unit(m.roughness) && unit(m.metalness) && CUT_PATTERNS.includes(m.cut) && (m.pattern === undefined || isPattern(m.pattern)) && (m.physics === undefined || isPhysics(m.physics));

@@ -2,16 +2,17 @@
 // and what a room's tag says, as the drawing sets it.
 
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
+import { newDocument } from '../../src/project/doc';
 import { roomTagText } from '../../src/app/room-tag';
 import { DEFAULT_DRAWING, isDrawingSettings } from '../../src/elements/drawing/schema';
 import { noteKind } from '../../src/elements/kinds/note';
 import { dropLeaders } from '../../src/elements/note/commands';
 import { leaderStart, type Note } from '../../src/elements/note/schema';
 import { layoutRoomTags } from '../../src/render/room-tags';
-import { setLang } from '../../src/ui/i18n';
+import { setLang } from '../../src/i18n/messages';
+import { lid, rid, xid } from '../ids';
 
-const callout: Note = { id: 'note_c', levelId: 'lvl_ground', at: { x: 0, y: 0 }, text: 'Ver detalhe', height: 0.25, leader: { x: 3, y: 1 } };
+const callout: Note = { id: xid('note_c'), levelId: lid('lvl_ground'), at: { x: 0, y: 0 }, text: 'Ver detalhe', height: 0.25, leader: { x: 3, y: 1 } };
 
 describe('callouts', () => {
   it("the leader leaves the text's box on the way to its point", () => {
@@ -30,7 +31,7 @@ describe('callouts', () => {
 
   it('moved or turned, its arrow goes along; read from a file, a bad arrow drops the note', () => {
     expect(noteKind.moved(callout, { x: 1, y: 2 }).leader).toEqual({ x: 4, y: 3 });
-    const mirrored = noteKind.mapped(callout, { map: (p: { x: number; y: number }) => ({ x: -p.x, y: p.y }), factor: 1, mirror: true } as never, 'note_d');
+    const mirrored = noteKind.mapped(callout, { map: (p: { x: number; y: number }) => ({ x: -p.x, y: p.y }), factor: 1, mirror: true } as never, xid('note_d'));
     expect(mirrored.leader).toEqual({ x: -3, y: 1 });
     expect(noteKind.valid(callout)).toBe(true);
     expect(noteKind.valid({ ...callout, leader: { x: 'a', y: 1 } })).toBe(false);
@@ -48,7 +49,7 @@ describe('callouts', () => {
 });
 
 describe('room tags', () => {
-  const room = { id: 'room_a', levelId: 'lvl_ground', seed: { x: 1, y: 1 }, name: 'Sala', number: '3' };
+  const room = { id: rid('room_a'), levelId: lid('lvl_ground'), seed: { x: 1, y: 1 }, name: 'Sala', number: '3' };
   setLang('pt');
 
   it('say what the drawing sets: number and name by default, the name, the number, or with the ceiling height', () => {

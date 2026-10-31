@@ -4,12 +4,13 @@
 // lay over the other. Here they become one junction, every wall passing the point two arms and every
 // end one (footprint.ts gives each its sector, sectors.ts).
 
-import { add, distance, dot, type Point2, scale, sub } from '../../../core/vector';
+import { add, distance, dot, type Point2, scale, sub } from '../../../model/vector';
 import { endPoint, faceOffsets, offsetOf, wallDirection } from '../geometry/offset';
 import type { WallShape } from '../geometry/shape';
 import { parentOf } from '../geometry/arc';
 import type { EndRef } from '../schema';
 import type { Abutment, Corner, Crossing, JoinNode, Junction } from './types';
+import type { WallId } from '../schema';
 
 /** How near points must be to be one junction: a quarter of the thinnest wall there. */
 const hubOf = (ws: readonly WallShape[]): number => Math.min(...ws.map((w) => w.thickness)) / 4;
@@ -33,7 +34,7 @@ export function gatherJunctions(
   graph: { corners: readonly Corner[]; nodes: readonly JoinNode[]; crossings: readonly Crossing[]; abutments: readonly Abutment[] },
   inside: (host: WallShape, p: Point2) => boolean,
 ): Junction[] {
-  const straight = (id: string) => parentOf(id) === id;
+  const straight = (id: WallId) => parentOf(id) === id;
   const at = (r: EndRef) => endPoint(byId.get(r.wallId)!, r.end);
   const junctions: Junction[] = [];
   const takenAbutments = new Set<Abutment>();

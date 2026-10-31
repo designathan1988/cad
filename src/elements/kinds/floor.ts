@@ -3,9 +3,9 @@
 // the room is deleted.
 
 import { finite, isObject, isPoint } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
-import { slabGeometry } from '../../render/prisms';
-import { name, t } from '../../ui/i18n';
+import type { Point2 } from '../../model/vector';
+import { slabGeometry } from '../prisms';
+import { name, t } from '../../i18n/messages';
 import type { ElementKind } from '../contract';
 import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor } from '../room/commands';
 import { cutOut, deriveFloor, type FloorSolid, insideRing, riseAt } from '../room/derive';
@@ -14,10 +14,9 @@ import { signedArea } from '../wall/geometry/convex';
 import { floorFields } from '../room/fields';
 import type { Floor } from '../room/schema';
 import { trace } from './paint';
-import { tilingDrawing } from '../../render/tiling';
-import { newId } from '../../core/id';
+import { tilingDrawing } from '../room/tiling';
 import { addRailing } from '../railing/commands';
-import { RAILING_HEIGHT, RAILING_PREFIX } from '../railing/schema';
+import { RAILING_HEIGHT, newRailingId } from '../railing/schema';
 import { materialIn } from '../material/schema';
 import { layerThicknessOk } from '../layers/stack';
 
@@ -89,10 +88,10 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
   transformed: (f, c) => {
     const map = (pts: readonly Point2[]) => pts.map(c.t.map);
     const holes = f.holes ? { holes: f.holes.map(map) } : {};
-    if (f.source.kind === 'outline') return c.selected ? { ...f, id: c.id, source: { kind: 'outline', points: map(f.source.points) }, ...holes } : null;
+    if (f.source.kind === 'outline') return c.selected ? { ...f, id: c.to(f.id), source: { kind: 'outline', points: map(f.source.points) }, ...holes } : null;
     const going = c.going(f.source.roomId);
     if (!c.copy) return going && f.holes ? { ...f, ...holes } : null;
-    return going ? { ...f, id: c.id, source: { kind: 'room', roomId: c.to(f.source.roomId) }, ...holes } : null;
+    return going ? { ...f, id: c.to(f.id), source: { kind: 'room', roomId: c.to(f.source.roomId) }, ...holes } : null;
   },
   similar: (a, b) => Math.abs(a.thickness - b.thickness) < 1e-6,
   // A floor's holes left out of it, crossed as voids are drawn. A ceiling is above the cut: only its
@@ -214,7 +213,7 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
         edgeRailing: (f) => {
           if (f.floor.kind === 'ceiling' || f.outline.length < 3 || c.doc.railings.some((r) => r.host && 'floorId' in r.host && r.host.floorId === f.floor.id)) return null;
           const points = [...f.outline, f.outline[0]!];
-          return () => c.dispatch(addRailing({ id: newId(RAILING_PREFIX), levelId: f.floor.levelId, points, height: RAILING_HEIGHT, baseOffset: 0, host: { floorId: f.floor.id }, infill: 'balusters' }));
+          return () => c.dispatch(addRailing({ id: newRailingId(), levelId: f.floor.levelId, points, height: RAILING_HEIGHT, baseOffset: 0, host: { floorId: f.floor.id }, infill: 'balusters' }));
         },
         materials: () => c.doc.materials,
         setFloorLayers: (ids, layers) => c.dispatch(setFloorLayers(ids, layers)),

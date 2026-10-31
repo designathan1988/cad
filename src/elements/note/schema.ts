@@ -6,17 +6,25 @@
 // level's elevation plus its own adjustment (a step down to a terrace, a raised floor), with the plan's
 // level symbol. Held by its level: raising the level changes what it says.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const NOTE_PREFIX = 'note';
+
+/** A note's id (note…). */
+export type NoteId = Brand<'note'>;
+
+/** A new note's id. */
+export const newNoteId = (): NoteId => newId(NOTE_PREFIX) as NoteId;
 /** A new note's letters (m): read at 1:50 and 1:100 alike. */
 export const NOTE_HEIGHT = 0.25;
 /** A new level mark's letters (m). */
 export const LEVEL_MARK_HEIGHT = 0.2;
 
 export interface Note {
-  readonly id: string;
-  readonly levelId: string;
+  readonly id: NoteId;
+  readonly levelId: LevelId;
   /** The middle of its text. */
   readonly at: Point2;
   readonly text: string;

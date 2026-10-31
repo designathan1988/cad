@@ -4,12 +4,14 @@
 // the walls and the doors as they move. The outer face is the one with no room behind it; a wall with
 // rooms on both sides is measured only when asked for by name, on its left. Pure.
 
-import type { Doc } from '../../app/document';
-import type { DerivedGeometry } from '../../app/geometry';
-import { distance, dot, normalize, perp, type Point2, sub } from '../../core/vector';
+import type { Doc } from '../../project/doc';
+import type { DerivedGeometry } from '../../project/derive';
+import { distance, dot, normalize, perp, type Point2, sub } from '../../model/vector';
 import { insideRing } from '../room/derive';
 import { placeDimension } from './anchor';
 import { DIM_PREFIX, type DimAnchor, type Dimension } from './schema';
+import type { LevelId } from '../../project/doc';
+import type { DimensionId } from './schema';
 
 /** How far the chain and the overall dimension stand off the face (m). */
 export const CHAIN_OFF = 0.6;
@@ -19,7 +21,7 @@ export const TOTAL_OFF = 1.1;
  * The dimensions for the level's walls: those given, or (none given) every straight wall with a face
  * that has no room behind it. `id` makes the ids (the app's newId).
  */
-export function autoDimensions(doc: Doc, g: DerivedGeometry, levelId: string, wallIds: readonly string[] | null, id: (prefix: string) => string): Dimension[] {
+export function autoDimensions(doc: Doc, g: DerivedGeometry, levelId: LevelId, wallIds: readonly string[] | null, id: (prefix: string) => string): Dimension[] {
   const rooms = [...g.rooms.values()].filter((r) => r.room.levelId === levelId && r.enclosed);
   const inRoom = (p: Point2) => rooms.some((r) => insideRing(r.outline, p));
   const out: Dimension[] = [];
@@ -79,8 +81,8 @@ export function autoDimensions(doc: Doc, g: DerivedGeometry, levelId: string, wa
     // The line a → b runs along the wall, so its left is the wall's left: the outer face's side.
     const chain = id('chain');
     if (kept.length > 2)
-      for (let i = 0; i + 1 < kept.length; i++) out.push({ id: id(DIM_PREFIX), levelId, a: kept[i]!.a, b: kept[i + 1]!.a, offset: side * (from + CHAIN_OFF), chain });
-    out.push({ id: id(DIM_PREFIX), levelId, a: kept[0]!.a, b: kept.at(-1)!.a, offset: side * (from + (kept.length > 2 ? TOTAL_OFF : CHAIN_OFF)) });
+      for (let i = 0; i + 1 < kept.length; i++) out.push({ id: id(DIM_PREFIX) as DimensionId, levelId, a: kept[i]!.a, b: kept[i + 1]!.a, offset: side * (from + CHAIN_OFF), chain });
+    out.push({ id: id(DIM_PREFIX) as DimensionId, levelId, a: kept[0]!.a, b: kept.at(-1)!.a, offset: side * (from + (kept.length > 2 ? TOTAL_OFF : CHAIN_OFF)) });
   }
   return out;
 }

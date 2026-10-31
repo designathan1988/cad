@@ -1,14 +1,15 @@
 // Finds which wall ends meet (corners, nodes) and which ends stop against another wall (abutments).
 // Pure and deterministic: walls are always visited in ascending id order.
 
-import { COLLINEAR_ANGLE, MIN_WALL_LENGTH, MITER_LIMIT, POINT_TOLERANCE } from '../../../core/tolerance';
-import { add, cross, distance, dot, intersectLines, normalize, type Point2, scale, sub } from '../../../core/vector';
+import { COLLINEAR_ANGLE, MIN_WALL_LENGTH, MITER_LIMIT, POINT_TOLERANCE } from '../../../model/tolerance';
+import { add, cross, distance, dot, intersectLines, normalize, type Point2, scale, sub } from '../../../model/vector';
 import { endPoint, faceOffsets, intoBody, offsetOf, stationOf, wallDirection, wallLength, wallNormal } from '../geometry/offset';
 import type { EndRef, WallEnd } from '../schema';
 import type { WallShape } from '../geometry/shape';
 import { parentOf, SEGMENT_MARK } from '../geometry/arc';
 import type { Corner, Crossing, JoinGraph, JoinWarning, JoinNode } from './types';
 import { gatherJunctions } from './junctions';
+import type { WallId } from '../schema';
 
 const ENDS: readonly WallEnd[] = ['start', 'end'];
 
@@ -96,7 +97,7 @@ export function deriveJoins(walls: readonly WallShape[], off: ReadonlySet<string
     }
   }
 
-  let abutments: { abutting: EndRef; hostId: string }[] = [];
+  let abutments: { abutting: EndRef; hostId: WallId }[] = [];
   for (const ref of free) {
     const wall = byId.get(ref.wallId)!;
     const p = at(ref);

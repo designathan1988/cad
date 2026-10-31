@@ -2,9 +2,9 @@
 // command when let go), its type, its height off the floor. A value is held to its parameter's range
 // and step here, so what is kept is what is drawn. A command that changes nothing returns the same doc.
 
-import type { Doc } from '../../app/document';
+import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
-import { held } from './evaluate';
+import { held } from './param-limits';
 import type { ObjectDefinition, ObjectId, ObjectInstance } from './schema';
 
 export const addObject = (o: ObjectInstance): Command<Doc> => ({

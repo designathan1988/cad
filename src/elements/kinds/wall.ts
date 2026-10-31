@@ -4,10 +4,10 @@
 // reads where each is and takes it in the selection, the views' filters, picking, windows, framing and
 // select similar. The plan, the 3D and the panel draw them as the wall system does.
 
-import type { DocWall } from '../../app/document';
-import type { WallSolid } from '../../app/geometry';
+import type { DocWall } from '../../project/doc';
+import type { WallSolid } from '../../project/derive';
 import { isObject } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import type { ElementKind } from '../contract';
 import { insideRing } from '../room/derive';
 

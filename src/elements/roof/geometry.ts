@@ -14,7 +14,7 @@
 
 import { union } from 'polyclip-ts';
 import { type ConvexPolygon, clipHalfPlane, signedArea } from '../wall/geometry/convex';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import type { Roof } from './schema';
 
 export interface RoofFace {

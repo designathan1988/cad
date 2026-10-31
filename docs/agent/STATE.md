@@ -5,44 +5,47 @@ context. Rewrite it at once when a task starts, ends or changes; what is finishe
 
 ## The project
 cad2: a parametric CAD/BIM application in the browser (TypeScript, Vite, three.js). Since 2026-10-28 only the fundamental: walls,
-building elements, objects, views, precision, edit and file (`src/` 274 files). The areas taken out (services, simulation, rules,
-costs, approval, lot/terrain, documentation, presentation, free tags, clouds, exports, points, debug panel) are in git tag
+building elements, objects, views, precision, edit and file (`src/` 277 ts files). The areas taken out are in git tag
 `escopo-completo-2026-10-28`; their data in saved projects is carried untouched in `Doc.kept` (file version 67).
-The spec is `docs/plano-de-escopo.md`; the scope order is `docs/prompt-escopo-fundamental.md`.
+The spec is `docs/plano-de-escopo.md`; the wall engine is specified in `docs/wall-joins-spec.md` (exact convex cuts, no booleans).
 Remote: github.com/designathan1988/cad (origin, main).
 
 ## The rules
-`CLAUDE.md` (the owner's rules of work) and `.claude/memoria/MEMORIA.md` (every lesson, one file each). Both come back after a
-compaction on their own; this file, the owner's orders (`docs/agent/orders.md`), the task's notebook (`docs/agent/work.md`) and where
-the work stood (read from the conversation on disk) are printed by the hooks in `.claude/settings.json`.
+`CLAUDE.md`, `.claude/memoria/MEMORIA.md` (each lesson its own file), `docs/agent/orders.md` (owner's words), `docs/agent/work.md`
+(this task's notebook). Task rules: no test suites/mutation, no heredoc, no asking, ONE headless Playwright window reused, commit+push
+per verified step, answers in pt-BR, work.md is the control point after compaction.
 
-## Where it stands (2026-10-28)
-- Step 1 of the scope task (take the areas out) done and verified: tsc passes, 0 imports of the areas left (scratchpad imports.cjs),
-  app opens with 0 console errors, an old v66 project with all 15 area fields opens, saves, reopens and saves with them byte-equal.
-- Test suites not run (rule `fix-in-code-verify-in-app`); tests touching removed areas removed or trimmed, tsc checks them.
-- vigia.json / vigia-log.txt are the guard hook's own untracked files: never touch them.
-- Known breaks of the wall engine (reports/breaks/RELATORIO.md, scripts/breaks): a moved wall throws its neighbour far, a piece
-  vanishes at a sharp T, overlaps without warning, split changes the plan, arc/line spike, wall gone at a 3-end node, and more.
+## Task now (2026-10-30): the whole-codebase refactor
+Branch `worktree-revisao-interface` in the worktree `.claude/worktrees/revisao-interface` (its own checkout with node_modules
+installed; main checkout stays untouched; work on the worktree only). Full order in `docs/agent/work.md` ("Task now" + steps).
+Nothing app-visible may change: 1:1 screenshots, project file format frozen (Doc.kept byte-equal round trip), no visual-quality
+tricks for speed, UI rules (one place per command, compact density, no raw px, styled controls).
 
-## Task now
-The scope task, step 2. The skill /reviewing-whole-codebase was STOPPED by the owner (2026-10-28, "já achou todos os
-problemas? se já, pare de usar ela"): hooks uninstalled; its record stays in .whole-review/ (FINDINGS.md: 139 findings, 2 rejected,
-18 marked fixed + F-0019 done in code, 1 blocked F-0138, 117 open; CURSOR.md: order and to-dos).
-2026-10-28 22:30: wall drag never moved the wall (pre-existing since bea7894: registry kindLists carried the walls and
-openings lists back over the moved ones); fixed in registry.ts kindLists (non-walled kinds only) and app.ts preview order.
-Checked in the app at 1280: door slide alone, typed distance, H, Ctrl+Z/Y, ?, wall move + undo/redo, wall takes its door; at
-1920: split keeps the plan. Committed 2d16f98. Then headless (owner's order): merge, flip, axis moves alone, door slides
-alone, reload keeps the project, wall move/undo at 880 all OK; fixed float bar over the views' card and an axis bubble, and
-the axis hint text (948333c). Then headless, all OK with no new code defect: mirror (copy), star of 8 walls (arms 20° apart
-split clean: F-0138 not reproduced), next-wall fields (ribbon = panel; -0.30 top reaches the drawn wall), scale list inside a
-saved view (F-0019: plan follows), download v68 + open + download again: only the name differs. Known, not fixed: a mirrored
-wall over a column with no warning (overlaps-without-warning break).
-Then F-0049 (curtain grid bounded by 10 cm panels) and F-0057 (level with elements cannot be deleted) fixed and checked
-(c791628). F-0023 (RC3) partly fixed, parts 1-4 (8f16083, 3a2ca4b, 703d154, 2765255): app/point-tools.ts holds 16 tools
-(beam, separator, curtain, railing, roof, stair, grid, section, callout, guide, column, note, levelMark, calibrate, mark,
-dimension), each checked headless. Left in the chains on purpose: tools with their own event machines (wall, floor, room,
-measure, modify, split, corner, opening, object). S3 fixed and checked headless: F-0095, F-0117, F-0047, F-0083, F-0035, F-0058 (+ roof covering field restored), F-0090, F-0104, F-0137, F-0020, F-0009, F-0029, F-0053, F-0075, F-0059, F-0113, F-0027, F-0120, F-0001, F-0111, F-0112, F-0024, F-0093, F-0034, F-0043, F-0032, F-0071, F-0078, F-0065 (file v69), shadow-map warning, F-0081, F-0073, F-0092, F-0094, F-0060, F-0040, F-0022, F-0086, F-0088, F-0038, F-0037, F-0098, F-0079, F-0074, F-0102, F-0067, F-0052, F-0016, F-0014, F-0011: every S3 fixed. S4 fixed so far: comments, dead code, CSS and i18n of the removed areas, F-0004, F-0121, F-0122, F-0055, F-0028, F-0061..F-0064 (file v70: library definitions as v69 stored them are replaced by the fixed ones), F-0140 (new: wall tag beside the wall), F-0044, F-0134, F-0056, F-0046, F-0048, F-0077, F-0080, F-0082, F-0109, F-0118, F-0124, F-0100, F-0135, F-0114, F-0123, F-0125, F-0130, F-0129, F-0132, F-0133. 22 S4 open. Third-party console noise left: three-bvh-csg 0.0.18 (latest) passes maxLeafSize. Tests run headless by scratchpad pw/drive.cjs.
-Fixed, tsc passes, committed with the above: F-0003, F-0010, F-0021, F-0030, F-0107, F-0136, F-0139, F-0045,
-F-0068 (file v68 migration), F-0008 (keepOpenings: own wall only), F-0006, F-0042, F-0050, F-0051 (axis moves alone), F-0101,
-F-0106, F-0087, F-0013, F-0019. To do: delete src/elements/grid/carry.ts and what only it used; test in the app (880/1280/1920 px,
-star of walls F-0138); commit and push; then the rest (F-0049, F-0057, F-0023 RC3, S3, S4).
+## Where it stands (2026-10-31)
+- Branch worktree-revisao-interface: the refactor is done (check-architecture 0: direction, mutableLets, oversize, duplications;
+  typed ids per kind; state machines: tool draft, drag, view 3D writer, lifecycle; fixes after the report). Notebook: work.md.
+- main merged in (2595317): its 93 commits (F-xxxx fixes, file v68-v70, point tools F-0023 now session/point-tools.ts on ui.draft,
+  per-frame derivation F-0014/F-0011) carried into the split files. tsc 0, gates 0, inventory 366/366, the file written byte-identical
+  to main's for both test projects. main is fully contained in this branch (0 commits ahead of it).
+- The interface of the owner's prototype (fixed bar of general commands, tools' rail, the tool's floating panel, view header,
+  one right panel at a time, dark tokens) is in: 8e59330, ada446b, c345ff4, pushed. Checked headless at 1920 and 1280; console
+  clean. Desktop only: never 880 or phone widths (owner, 2026-10-31).
+- Closed 2026-10-31 (owner's /goal "Termine de uma vez por todas o que ainda está aberto!"): F-0072 (e297fed: single sliding
+  leaf slides into the wall, shutter rolls up), F-0089 (unjoined straight walls overlapping reported), F-0091 (layer order
+  said in the layer editor), F-0097 (30cd3a9: typed ids renamed by kind, zones/railings/arc measures follow; the main
+  checkout still holds its own uncommitted copy of this fix in src/io/typed-ids.ts), general app test redone at 1920 in the
+  new frame (fixes d7d79dc). Wall over column: the plan draws the column clean over the wall, an embedded column is normal:
+  no warning added. F-0138 (627f8b9): a passage nearly straight of unlike walls refused its point; fixed, measured on
+  10,000 scenes (suite's generators, scratch script, no suite run), the suite asks 100 %. F-0023 (6cb3daa, 4a5dda3):
+  session/event-tools.ts, one descriptor per remaining tool; checked in the app tool by tool. The wrong roof drawn in the
+  3D view of a test project deleted. Ledger .whole-review/FINDINGS.md updated once the owner allowed it ("Sim, pode
+  editar", 2026-10-31): the six marked fixed with their Fix lines; 138 fixed, 2 rejected, none open.
+- Console in photorealistic mode: THREE.Clock, WebGLPathTracer deprecation, X4000 shader notes (library-level, latest versions).
+
+## Known traps (from memoria + repo)
+- vigia.json / vigia-log.txt are the guard hook's own files: never touch. .whole-review/ and docs/revisao-interface/audit/ are the
+  finished interface review's own files.
+- Playwright tests are headless since 2026-10-28; one page only, never reopened when lost; state between runs: project/zoom/view
+  persist, undo history does not (press Esc+Home and screenshot before coordinate clicks).
+- tsc must stay at 0 errors before every commit; `npm run check` runs typecheck+vitest+build — vitest is forbidden by memoria
+  fix-in-code-verify-in-app, so gates must be added as separate npm scripts (check cannot run vitest).

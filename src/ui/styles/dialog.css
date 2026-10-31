@@ -1,0 +1,120 @@
+/* Dialogs, then the narrow-screen, touch and reduced-motion rules (one part of styles.css, read in its order). */
+
+/* Dialog */
+.dialog-back {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  display: grid;
+  /* Its top kept still near the window's top, not centred: centred, a dialog that grows (a layer or a
+     level added) moved up by half of it, and the button just pressed slid from under the pointer. */
+  place-items: start center;
+  padding-top: var(--dialog-top);
+  z-index: 20;
+}
+.dialog-back[hidden] {
+  display: none;
+}
+.dialog {
+  width: min(var(--dialog-w), calc(100vw - 2 * var(--sp-4)));
+  /* A long list (the shortcuts) scrolls inside on short screens instead of leaving the window. */
+  max-height: calc(100vh - var(--dialog-top) - var(--sp-4));
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  border: var(--line) solid var(--border-strong);
+}
+.dialog h2 {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--fs-lg);
+  border-bottom: var(--line) solid var(--border);
+}
+.dialog dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sp-2) var(--sp-4);
+  margin: 0;
+  padding: var(--sp-4);
+}
+.dialog dd {
+  margin: 0;
+  color: var(--text-2);
+}
+.dialog .actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 var(--sp-4) var(--sp-3);
+}
+/* The shortcuts: only the list scrolls, the title and Close stay in sight (at 1080 px high Close was
+   below the fold, half cut, and reached only by scrolling). */
+.help-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* The keys' column takes its widest (Ctrl+Shift+Z / Ctrl+Y): at 420 px the descriptions wrapped in
+     three and four lines beside it. */
+  width: min(var(--dialog-w-lg), calc(100vw - 2 * var(--sp-4)));
+}
+.help-dialog dl {
+  min-height: 0;
+  overflow-y: auto;
+}
+.help-dialog .actions {
+  padding-top: var(--sp-3);
+  border-top: var(--line) solid var(--border);
+}
+
+/* Narrow screens: the panel becomes a drawer over the canvas; key hints go. */
+@media (max-width: 1100px) {
+  .foot .keys {
+    display: none;
+  }
+  /* What to do now in up to two lines: at 768 px the select tool's tip was cut at "por ja…". */
+  :root {
+    --foot-h: 48px;
+  }
+  .foot .instr {
+    white-space: normal;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+}
+@media (max-width: 900px) {
+  #app {
+    grid-template-columns: minmax(0, 1fr) var(--side-bar-w);
+  }
+  .side-bar {
+    grid-column: 2;
+  }
+  /* The panels lie over the drawing, beside the edge's icon bar, between the bars and the status bar. */
+  .panel,
+  .browser {
+    position: fixed;
+    right: var(--side-bar-w);
+    top: var(--chrome-top);
+    bottom: var(--foot-h);
+    z-index: 10;
+    box-shadow: var(--shadow);
+  }
+  .project-name {
+    max-width: calc(var(--name-w) * 0.55);
+  }
+  .segmented .has-icon .label {
+    display: none;
+  }
+  .coords {
+    display: none;
+  }
+}
+/* Phones: the title bar keeps the Project menu, undo and redo and the search; the panel is a sheet over the
+   lower part of the drawing, not a column over it. */
+/* Touch: every target at least 44 × 44 px (WCAG 2.5.5). */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

@@ -1,8 +1,17 @@
+import type { RoomId } from '../room/schema';
+import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 // Zones (phase 6): rooms of a level taken together under a name, a category (social, private, service)
 // and a colour, as Revit's areas and ArchiCAD's zone categories. The plan tints its rooms; its area is
 // theirs. It holds the rooms by id: a room deleted leaves it.
 
 export const ZONE_PREFIX = 'zone';
+
+/** A zone's id (zone…). */
+export type ZoneId = Brand<'zone'>;
+
+/** A new zone's id. */
+export const newZoneId = (): ZoneId => newId(ZONE_PREFIX) as ZoneId;
 export const ZONE_CATEGORIES = ['social', 'private', 'service', 'circulation', 'other'] as const;
 export type ZoneCategory = (typeof ZONE_CATEGORIES)[number];
 
@@ -16,10 +25,10 @@ export const ZONE_COLOURS: Readonly<Record<ZoneCategory, string>> = {
 };
 
 export interface Zone {
-  readonly id: string;
-  readonly levelId: string;
+  readonly id: ZoneId;
+  readonly levelId: LevelId;
   readonly name: string;
   readonly category: ZoneCategory;
   readonly color: string;
-  readonly rooms: readonly string[];
+  readonly rooms: readonly RoomId[];
 }

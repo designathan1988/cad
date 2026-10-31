@@ -1,8 +1,8 @@
 // The fields grid axes show in the panel (ui/fields.ts builds the rows).
 
-import { lengthText } from '../../ui/units';
-import { distance } from '../../core/vector';
-import type { Field } from '../../ui/fields';
+import { lengthText } from '../../i18n/units';
+import { distance } from '../../model/vector';
+import type { Field } from '../fields';
 import type { Grid } from './schema';
 
 export interface GridFieldActions {

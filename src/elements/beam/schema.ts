@@ -2,16 +2,24 @@
 // (plus an adjustment), its width across and its depth down. Above the plan's cut, so drawn dashed in
 // plan, as hidden lines are; solid in 3D.
 
-import { add, normalize, perp, type Point2, scale, sub } from '../../core/vector';
+import { add, normalize, perp, type Point2, scale, sub } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const BEAM_PREFIX = 'beam';
+
+/** A beam's id (beam…). */
+export type BeamId = Brand<'beam'>;
+
+/** A new beam's id. */
+export const newBeamId = (): BeamId => newId(BEAM_PREFIX) as BeamId;
 /** A new beam's section (m): 15 cm wide, 40 cm deep. */
 export const BEAM_WIDTH = 0.15;
 export const BEAM_DEPTH = 0.4;
 
 export interface Beam {
-  readonly id: string;
-  readonly levelId: string;
+  readonly id: BeamId;
+  readonly levelId: LevelId;
   /** Its axis, at its middle across. */
   readonly start: Point2;
   readonly end: Point2;

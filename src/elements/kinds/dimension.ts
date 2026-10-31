@@ -2,9 +2,9 @@
 // Held by walls, doors and windows: placed from their geometry, deleted with them, and carried, mirrored
 // or copied as they are (contract.ts: holders, transformed).
 
-import { lengthNum } from '../../ui/units';
+import { lengthNum } from '../../i18n/units';
 import { finite, isObject, isPoint } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import type { ElementKind, PlanPaint } from '../contract';
 import { placeDimension, resolve, segmentDistance } from '../dimension/anchor';
 import { lockDimensions, setDimensionDistance, setDimensionsEqual } from '../dimension/commands';
@@ -107,7 +107,7 @@ export const dimensionKind: ElementKind<Dimension, DimensionSolid> = {
     };
     const a = end(d.a);
     const b = end(d.b);
-    return a && b ? { ...d, id: c.id, a, b, offset: wholeOffset } : null;
+    return a && b ? { ...d, id: c.to(d.id), a, b, offset: wholeOffset } : null;
   },
   plan: (p, s, lit) => {
     if (s.at) drawDimension(p, s.at, valueText(s), lit ? p.color('--wall-sel') : p.color('--text-2'), s.dim.locked !== undefined);

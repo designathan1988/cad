@@ -3,15 +3,15 @@
 // option, Enter runs it, Esc closes and gives the focus back. Each option shows where the command
 // lives and its key, as Blender's menu search does.
 
-import type { Action } from '../app/actions';
+import type { Action } from '../session/actions';
 import { el } from './controls';
-import { t } from './i18n';
+import { t } from '../i18n/messages';
 import { searchEntries } from './search';
 
-let close: (() => void) | null = null;
+const oneOpen = { close: null as (() => void) | null };
 
 export function showPalette(actions: readonly Action[]): void {
-  close?.();
+  oneOpen.close?.();
   const back = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const overlay = el('div', { class: 'palette-back' });
   const input = el('input', {
@@ -90,10 +90,10 @@ export function showPalette(actions: readonly Action[]): void {
   /** Closes it; the focus goes back to where it was when nothing ran (a command moves it itself). */
   function finish(restore: boolean): void {
     overlay.remove();
-    close = null;
+    oneOpen.close = null;
     if (restore) back?.focus();
-  }
-  close = () => finish(true);
+  };
+  oneOpen.close = () => finish(true);
   document.body.append(overlay);
   update();
   input.focus();

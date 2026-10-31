@@ -1,18 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
-import { CURRENT_VERSION, isLevel, readProject, writeProject } from '../../src/io/project-file';
+import { newDocument } from '../../src/project/doc';
+import { CURRENT_VERSION, readProject, writeProject } from '../../src/project/file';
+import { isLevel } from '../../src/project/file-guards';
 import { BEFORE_65 } from '../../src/elements/object/library-before65';
 import { BEFORE_66 } from '../../src/elements/object/library-before66';
-import { BEFORE_69 } from '../../src/elements/object/library-before69';
+import { gid, lid, mid, oid, tid, wid, xid } from '../ids';
+import type { GuideId } from '../../src/elements/guide/schema';
 import { BEFORE_70 } from '../../src/elements/object/library-before70';
+import { BEFORE_69 } from '../../src/elements/object/library-before69';
 
 const wall = (id: string, x: number) => ({
   id,
-  wallTypeId: 'wt_masonry15',
+  wallTypeId: tid('wt_masonry15'),
   start: { x, y: 0 },
   end: { x: x + 1, y: 0 },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
 });
 
 describe('project files', () => {
@@ -54,13 +57,13 @@ describe('project files', () => {
   });
 
   it('opening groups and the new rules read back; a bad group is dropped and reported', () => {
-    const opening = (id: string, rule: unknown) => ({ id, wallId: 'wall_a', kind: 'window', width: 1, height: 1, sill: 1, hinge: 'start', swing: 'left', rule });
-    const group = { id: 'group_g', wallId: 'wall_a', members: ['opening_o1', 'opening_o2'], spacing: { kind: 'fixed', gap: 0.5, anchor: 'centered', distance: 0 } };
+    const opening = (id: string, rule: unknown) => ({ id, wallId: wid('wall_a'), kind: 'window', width: 1, height: 1, sill: 1, hinge: 'start', swing: 'left', rule });
+    const group = { id: 'group_g', wallId: wid('wall_a'), members: ['opening_o1', 'opening_o2'], spacing: { kind: 'fixed', gap: 0.5, anchor: 'centered', distance: 0 } };
     const doc = {
       ...newDocument(),
       walls: [wall('wall_a', 0)],
-      openings: [opening('opening_o1', { kind: 'inGroup', groupId: 'group_g' }), opening('opening_o2', { kind: 'inGroup', groupId: 'group_g' }), opening('opening_o3', { kind: 'aligned', openingId: 'opening_o1', edge: 'center' })],
-      openingGroups: [group, { id: 'group_bad', wallId: 'wall_a', members: 'opening_o1', spacing: { kind: 'equal' } }],
+      openings: [opening('opening_o1', { kind: 'inGroup', groupId: gid('group_g') }), opening('opening_o2', { kind: 'inGroup', groupId: gid('group_g') }), opening('opening_o3', { kind: 'aligned', openingId: oid('opening_o1'), edge: 'center' })],
+      openingGroups: [group, { id: 'group_bad', wallId: wid('wall_a'), members: 'opening_o1', spacing: { kind: 'equal' } }],
     };
     const r = readProject(JSON.stringify(doc));
     expect(r.ok && r.doc.openings.map((o) => o.id)).toEqual(['opening_o1', 'opening_o2', 'opening_o3']);
@@ -78,7 +81,7 @@ describe('project files', () => {
   });
 
   it('a wall on a level that does not exist moves to the first level, and says so', () => {
-    const doc = { ...newDocument(), walls: [{ ...wall('wall_a', 0), levelId: 'nowhere' }] };
+    const doc = { ...newDocument(), walls: [{ ...wall('wall_a', 0), levelId: lid('nowhere') }] };
     const r = readProject(JSON.stringify(doc));
     expect(r.ok && r.doc.walls[0]!.levelId).toBe('lvl_ground');
     expect(r.ok && r.fixes).toEqual([{ kind: 'movedToFirstLevel', count: 1 }]);
@@ -98,8 +101,8 @@ describe('version 3', () => {
   it('a wall without top or base offset, and a type with them, read back as they are', () => {
     const doc = {
       ...newDocument(),
-      wallTypes: [...newDocument().wallTypes, { id: 'wt_p', name: 'Parapet', layers: [{ thickness: 0.15, function: 'structure', materialId: 'brick' }], top: { kind: 'fixed', height: 1.1 } }],
-      walls: [{ id: 'wall_p', wallTypeId: 'wt_p', start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground' }],
+      wallTypes: [...newDocument().wallTypes, { id: 'wt_p', name: 'Parapet', layers: [{ thickness: 0.15, function: 'structure', materialId: mid('brick') }], top: { kind: 'fixed', height: 1.1 } }],
+      walls: [{ id: wid('wall_p'), wallTypeId: tid('wt_p'), start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, referenceLine: 'centerline', levelId: lid('lvl_ground') }],
     };
     const r = readProject(writeProject(doc as never));
     expect(r.ok && r.doc).toEqual({ ...doc, version: CURRENT_VERSION });
@@ -115,7 +118,7 @@ describe('version 3', () => {
 });
 
 describe('version 4', () => {
-  const group = { id: 'group_g', wallId: 'wall_a', members: ['x', 'y'], spacing: { kind: 'equal' } };
+  const group = { id: 'group_g', wallId: wid('wall_a'), members: ['x', 'y'], spacing: { kind: 'equal' } };
   it("a group's stretch reads back as it is; a version 3 group has none and keeps the whole wall", () => {
     expect(CURRENT_VERSION).toBeGreaterThanOrEqual(4);
     const doc = { ...newDocument(), openingGroups: [{ ...group, between: [null, 'c'] }] };
@@ -160,7 +163,7 @@ describe('walls from before version 3', () => {
 
 
 describe('version 5', () => {
-  const guide = { id: 'guide_1', levelId: 'lvl_ground', point: { x: 0, y: 1.2 }, dir: { x: 1, y: 0 } };
+  const guide = { id: xid<GuideId>('guide_1'), levelId: lid('lvl_ground'), point: { x: 0, y: 1.2 }, dir: { x: 1, y: 0 } };
   it('guides read back as they are; an older file has none', () => {
     expect(CURRENT_VERSION).toBeGreaterThanOrEqual(5);
     const back = readProject(writeProject({ ...newDocument(), guides: [guide] }));
@@ -170,8 +173,8 @@ describe('version 5', () => {
   });
 
   it('a malformed guide, or one on a level that is gone, is dropped and reported', () => {
-    const bad = [{ ...guide, id: 'guide_2', dir: { x: 2, y: 0 } }, { ...guide, id: 'guide_3', point: { x: 'a', y: 0 } }];
-    const r = readProject(JSON.stringify({ ...newDocument(), guides: [guide, ...bad, { ...guide, id: 'guide_4', levelId: 'gone' }] }));
+    const bad = [{ ...guide, id: xid<GuideId>('guide_2'), dir: { x: 2, y: 0 } }, { ...guide, id: xid<GuideId>('guide_3'), point: { x: 'a', y: 0 } }];
+    const r = readProject(JSON.stringify({ ...newDocument(), guides: [guide, ...bad, { ...guide, id: xid<GuideId>('guide_4'), levelId: lid('gone') }] }));
     expect(r.ok && r.doc.guides.map((g) => g.id)).toEqual(['guide_1']);
     expect(r.ok && r.fixes).toEqual([
       { kind: 'droppedGuides', count: 2 },
@@ -297,7 +300,7 @@ describe('version 5', () => {
 describe('the areas taken out of the app (version 67)', () => {
   // Services, rules, sheets and the rest as an older file has them: carried as read, written back the same.
   const areas = {
-    mepPoints: [{ id: 'mpt_1', levelId: 'lvl_ground', at: { x: 1, y: 0 }, height: 0.3, kind: 'socket', systemId: 'sys_power' }],
+    mepPoints: [{ id: 'mpt_1', levelId: lid('lvl_ground'), at: { x: 1, y: 0 }, height: 0.3, kind: 'socket', systemId: 'sys_power' }],
     rules: [{ id: 'r1', subject: 'stairRiser', max: 0.18, on: true }],
     sheets: [{ id: 'sheet_1', number: 'A-01', name: 'Planta', paper: 'A3', landscape: true, viewports: [] }],
     site: { latitude: -23.55, longitude: -46.63, north: 0, date: '2026-06-21', time: '10:00', utcOffset: -3, shadows: true },

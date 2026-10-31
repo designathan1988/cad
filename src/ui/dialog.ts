@@ -7,7 +7,8 @@
 // - Esc closes it wherever the focus is, and focus always lands on something enabled, so it is never
 //   lost (C): the control with the same data-focus key, else the given fallback, else Close.
 
-import type { App } from '../app/app';
+import type { App } from '../session/app';
+import * as appEdit from '../session/app-edit';
 
 export interface ProjectDialog {
   /** Draws it again now, keeping the focus by its data-focus key. */
@@ -19,10 +20,10 @@ export interface ProjectDialog {
  * What a dialog made inert behind it: the rest of the window but the toasts, so Tab and a screen reader stay
  * in the dialog (it says it is modal) and what it says still reaches them. One dialog layer: one list.
  */
-let shut: HTMLElement[] = [];
+const shut = { list: [] as HTMLElement[] };
 const reopen = () => {
-  for (const x of shut) x.inert = false;
-  shut = [];
+  for (const x of shut.list) x.inert = false;
+  shut.list = [];
 };
 function shutBehind(back: HTMLElement, toast: HTMLElement): void {
   reopen();
@@ -31,7 +32,7 @@ function shutBehind(back: HTMLElement, toast: HTMLElement): void {
     const inside = s.contains(toast) ? ([...s.children] as HTMLElement[]).filter((c) => c !== toast) : [s];
     for (const x of inside) if (!x.inert) {
       x.inert = true;
-      shut.push(x);
+      shut.list.push(x);
     }
   }
 }
@@ -107,8 +108,8 @@ export function openProjectDialog(app: App, render: (close: () => void) => HTMLE
       e.preventDefault();
       // Handled here only: the window's own shortcuts would undo a second time.
       e.stopPropagation();
-      if (key === 'y' || e.shiftKey) app.redo();
-      else app.undo();
+      if (key === 'y' || e.shiftKey) appEdit.redo(app);
+      else appEdit.undo(app);
     }
   };
   const onClick = (e: MouseEvent) => {

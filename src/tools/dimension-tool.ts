@@ -10,7 +10,7 @@
 // | placing    | escape  | from a     | the second end taken back               |
 // | idle       | escape  | idle       | (the app leaves the tool)               |
 
-import { distance, type Point2 } from '../core/vector';
+import { distance, type Point2 } from '../model/vector';
 
 export type DimensionToolState =
   | { readonly kind: 'idle' }

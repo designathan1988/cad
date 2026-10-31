@@ -3,17 +3,18 @@
 // size, how it opens, and placing it as the main action (the door or window tool, its next one of that
 // model and size). Laid out as the objects' store (objects-dialog.ts), with its styles.
 
-import type { App } from '../app/app';
-import { fold } from './search';
-import { pictureQueue } from './store-pictures';
+import { withLibrary } from './library-tabs';
+import type { App } from '../session/app';
 import type { OpeningKind } from '../elements/opening/schema';
 import { OPENING_MODELS, type OpeningModel } from '../elements/opening/style';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
-import { type MessageKey, t } from './i18n';
-import { icon } from './icons';
+import { type MessageKey, t } from '../i18n/messages';
 import { openingSnapshot } from './opening-snapshot';
-import { lengthText } from './units';
+import { lengthText } from '../i18n/units';
+import { folderButton, iconButton, storeSearch } from './store-parts';
+import { pictureQueue } from './store-pictures';
+import { fold } from './search';
 
 /** Pictures made once each, by model and size. */
 const pictures = new Map<string, string | null>();
@@ -37,32 +38,22 @@ export function showOpenings(app: App, kind?: OpeningKind): void {
     if (!shown.some((m) => m.id === chosen)) chosen = shown[0]?.id ?? '';
     const model = shown.find((m) => m.id === chosen);
 
-    const search = el('input', { type: 'search', class: 'objs-search', placeholder: t('opstore.search'), 'aria-label': t('opstore.search') });
-    search.value = query;
-    search.dataset.focus = 'search';
-    search.addEventListener('input', () => {
-      query = search.value;
+    const search = storeSearch(t('opstore.search'), query, (value) => {
+      query = value;
       if (query.trim() !== '') folder = 'all';
       scrolled = 0;
       dialog.redraw();
     });
-    const closeBtn = el('button', { type: 'button', class: 'icon-btn', 'aria-label': t('help.close'), title: t('help.close') });
-    closeBtn.innerHTML = icon('close', 18);
-    closeBtn.dataset.focus = 'close';
-    closeBtn.addEventListener('click', close);
+    const closeBtn = iconButton('close', t('help.close'), 'close', close);
     const head = el('div', { class: 'objs-head' }, el('h2', {}, t('opstore.title')), search, el('span', { class: 'objs-total' }, t('opstore.count', { n: found.length })), closeBtn);
 
     const nav = el('nav', { class: 'objs-nav', 'aria-label': t('objs.folders') });
-    const navItem = (key: OpeningKind | 'all', label: string, n: number) => {
-      const b = el('button', { type: 'button', class: 'objs-nav-item', 'aria-pressed': String(folder === key) }, el('span', { class: 'objs-nav-name' }, label), el('span', { class: 'objs-nav-count' }, String(n)));
-      b.dataset.focus = `folder:${key}`;
-      b.addEventListener('click', () => {
+    const navItem = (key: OpeningKind | 'all', label: string, n: number) =>
+      folderButton(key, label, n, folder === key, () => {
         folder = key;
         scrolled = 0;
         dialog.redraw();
       });
-      return b;
-    };
     nav.append(
       navItem('all', t('opstore.all'), found.length),
       navItem('door', t('opstore.doors'), found.filter((m) => m.kind === 'door').length),
@@ -125,7 +116,7 @@ export function showOpenings(app: App, kind?: OpeningKind): void {
       side.append(go, el('p', { class: 'objs-in-project' }, t('opstore.after')));
     }
     queue.work();
-    return el('div', { class: 'dialog objs-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('opstore.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side));
+    return withLibrary(app, 'openings', close, el('div', { class: 'dialog objs-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('opstore.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side)));
   };
   const dialog = openProjectDialog(app, render, () => `model:${chosen}`);
   app.shell.helpBack.querySelector<HTMLElement>(`[data-focus="model:${chosen}"]`)?.focus({ preventScroll: true });

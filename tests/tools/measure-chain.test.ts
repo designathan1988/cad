@@ -2,7 +2,7 @@
 // perimeter once closed on the first point; Enter ends it open; Esc drops it.
 
 import { describe, expect, it } from 'vitest';
-import { angleAt, chainArea, chainLength, MEASURE_IDLE, type MeasureState, measureTransition } from '../../src/tools/measure-tool';
+import { angleAt, chainArea, chainLength, MEASURE_IDLE, type MeasureState, measureTransition } from '../../src/elements/measure/tool';
 
 const p = (x: number, y: number) => ({ x, y });
 const click = (s: MeasureState, x: number, y: number) => measureTransition(s, { kind: 'click', point: p(x, y) }, 'chain');

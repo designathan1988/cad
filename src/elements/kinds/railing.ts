@@ -3,10 +3,8 @@
 // of its sides, rising with it.
 
 import { finite, isObject, isPoint } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
-import { num, t } from '../../ui/i18n';
-import type { DerivedGeometry } from '../../app/geometry';
-import { railingGeometry } from '../../render/prisms';
+import type { Point2 } from '../../model/vector';
+import { railingGeometry } from '../prisms';
 import type { ElementKind } from '../contract';
 import { updateRailings } from '../railing/commands';
 import { railingFields } from '../railing/fields';
@@ -18,6 +16,8 @@ import { RAIL_HEIGHT } from '../stair/schema';
 import { arrivalOf, solidOfStair } from '../stair/well';
 import { deriveFloor } from '../room/derive';
 import { nearSegment, throughElement, trace } from './paint';
+import type { DerivedGeometry } from '../../project/derive';
+import { num, t } from '../../i18n/messages';
 
 /** A guardrail as it stands: its foot's height and its path (its well's, when a stair holds it). */
 export interface RailingSolid {
@@ -124,7 +124,7 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
   transformed: (r, c) => {
     if (!c.selected) return null;
     const { host: _host, ...rest } = r;
-    return { ...rest, id: c.id, points: shownPath(r, c.geometry).map(c.t.map) };
+    return { ...rest, id: c.to(r.id), points: shownPath(r, c.geometry).map(c.t.map) };
   },
   // Its path, with a tick at each post.
   plan: (p, s, lit) => {

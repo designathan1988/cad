@@ -4,17 +4,21 @@
 // is its own file implementing this, and one line in the registry.
 
 import type * as THREE from 'three';
-import type { Doc } from '../app/document';
+import type { Doc } from '../project/doc';
 import type { Material } from './material/schema';
 import type { Detail, PenRole } from './drawing/schema';
-import type { Category, DerivedGeometry } from '../app/geometry';
-import type { UprightPrism } from '../app/section-box';
+import type { DerivedGeometry } from '../project/derive';
+import type { Category } from '../project/derived-filters';
+import type { UprightPrism } from '../model/section-box';
 import type { Command } from '../core/store';
-import type { Point2 } from '../core/vector';
-import type { Transform } from '../tools/transform';
-import type { Field } from '../ui/fields';
-import type { MessageKey } from '../ui/i18n';
-import type { IconName } from '../ui/icons';
+import type { Point2 } from '../model/vector';
+import type { Transform } from './transform';
+import type { Field } from './fields';
+import type { MessageKey } from '../i18n/messages';
+import type { IconName } from '../i18n/icons';
+import type { IdMap } from '../core/id';
+import type { FloorId } from './room/schema';
+import type { LevelId } from '../project/doc';
 
 /** The document's lists the registry's kinds keep. */
 export type KindKey = 'measures' | 'references' | 'sections' | 'separators' | 'curtains' | 'zones' | 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'objects' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings' | 'walls';
@@ -23,6 +27,9 @@ export type KindKey = 'measures' | 'references' | 'sections' | 'separators' | 'c
 export type BaseGeometry = Omit<DerivedGeometry, 'kinds'>;
 
 /** What the plan view lends a kind to draw itself with. */
+/** The type of an element's id (WallId for a wall), string for a kind that has none of its own. */
+export type IdOf<E> = E extends { readonly id: infer I } ? I : string;
+
 export interface PlanPaint {
   readonly ctx: CanvasRenderingContext2D;
   readonly toScreen: (p: Point2) => Point2;
@@ -67,7 +74,7 @@ export interface TransformContext {
   /** Whether a wall, or a door or window, goes along. */
   readonly going: (id: string) => boolean;
   /** The id a copied element got (its own when not copied). */
-  readonly to: (id: string) => string;
+  readonly to: IdMap;
   /** The document and its geometry before the tool. */
   readonly doc: Doc;
   readonly geometry: DerivedGeometry;
@@ -77,8 +84,11 @@ export interface TransformContext {
 export interface KindFieldContext {
   readonly dispatch: (c: Command<Doc>) => void;
   readonly doc: Doc;
+  /** Whether moved things are stopped by collisions (the session's preference, passed in): an object's
+   *  elevation is not allowed below its floor while it is on. */
+  readonly floorLocked: boolean;
   /** Draw a hole through a floor (the floor tool on it); not offered where there is no tool. */
-  readonly startFloorHole?: (id: string) => void;
+  readonly startFloorHole?: (id: FloorId) => void;
   /** Show a section's or an elevation's drawing (ui/sections-dialog.ts). */
   readonly openSection?: (id: string) => void;
   /** Make the rooms' four interior elevations (app/kind-tools.ts). */
@@ -95,7 +105,7 @@ export interface KeepOut {
   readonly lines: readonly { readonly a: Point2; readonly b: Point2 }[];
 }
 
-export interface ElementKind<E extends { readonly id: string; readonly levelId?: string }, S> {
+export interface ElementKind<E extends { readonly id: string; readonly levelId?: LevelId }, S> {
   readonly key: KindKey;
   /** Its ids start with this and an underscore. */
   readonly prefix: string;
@@ -107,7 +117,7 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
    * and groups): the registry's moving, copying and deleting leave it to the walls. */
   readonly walled?: true;
   /** Its level, for one whose element has none of its own (a door: its wall's). */
-  readonly levelOf?: (s: S) => string;
+  readonly levelOf?: (s: S) => LevelId;
   readonly levelIn?: (e: E, doc: Doc) => string | null;
   /** Drawn in plan under the walls (a floor), over the walls, the doors and the other kinds (a guide, a
    * text), or over the room tags too (`top`: a dimension, whose value under a room's name was lost). */
@@ -173,7 +183,7 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   /** Moved by d (arrows, a drag); `g`, the geometry before the move, for one whose shown place is derived (a hosted guardrail). */
   readonly moved: (e: E, d: Point2, g?: DerivedGeometry) => E;
   /** Taken by a Modify tool's transform, under `id` (its own, or its copy's). */
-  readonly mapped: (e: E, t: Transform, id: string) => E;
+  readonly mapped: (e: E, t: Transform, id: IdOf<E>) => E;
   /** A copy as added after `all` (an axis named on from the last). */
   readonly copied?: (all: readonly E[], e: E) => E;
   /** "Select similar": the same as `b`. */

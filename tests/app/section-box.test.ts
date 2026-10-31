@@ -1,7 +1,7 @@
 // The section box (section-box.ts): faces, moving one, the first box, the drag on screen. By hand.
 
 import { describe, expect, it } from 'vitest';
-import { boxAround, boxCaps, boxEdges, dragDistance, faceCenter, faceNormal, MIN_BOX, moveFace, readBox, readSection, type SectionBox, sectionCaps, sectionLooks } from '../../src/app/section-box';
+import { boxAround, boxCaps, boxEdges, dragDistance, faceCenter, faceNormal, MIN_BOX, moveFace, readBox, readSection, type SectionBox, sectionCaps, sectionLooks } from '../../src/model/section-box';
 
 const box: SectionBox = { min: { x: 0, y: 0, z: 0 }, max: { x: 4, y: 2, z: 3 } };
 

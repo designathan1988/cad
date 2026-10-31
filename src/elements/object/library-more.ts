@@ -4,6 +4,7 @@
 // along the width and y along the depth from the centre, z up from the floor; the front faces −y.
 
 import type { ObjectDefinition, ParamDef } from './schema';
+import type { DefinitionId } from './schema';
 
 const len = (name: string, pt: string, en: string, value: number, min: number, max: number, group: [string, string] = ['Dimensões', 'Dimensions']): ParamDef => ({
   name,
@@ -28,7 +29,7 @@ const boxHandles = (top: string, front = '-profundidade/2') => [
 ];
 
 export const SOFA: ObjectDefinition = {
-  id: 'def_sofa',
+  id: 'def_sofa' as DefinitionId,
   name: { pt: 'Sofá', en: 'Sofa' },
   category: 'furniture',
   params: [
@@ -68,7 +69,7 @@ export const SOFA: ObjectDefinition = {
 };
 
 export const BED: ObjectDefinition = {
-  id: 'def_bed',
+  id: 'def_bed' as DefinitionId,
   name: { pt: 'Cama', en: 'Bed' },
   category: 'furniture',
   params: [
@@ -112,7 +113,7 @@ export const BED: ObjectDefinition = {
 };
 
 export const KITCHEN: ObjectDefinition = {
-  id: 'def_kitchen',
+  id: 'def_kitchen' as DefinitionId,
   name: { pt: 'Armário de cozinha', en: 'Kitchen units' },
   category: 'casework',
   params: [
@@ -197,7 +198,7 @@ export const KITCHEN: ObjectDefinition = {
 };
 
 export const TOILET: ObjectDefinition = {
-  id: 'def_toilet',
+  id: 'def_toilet' as DefinitionId,
   name: { pt: 'Bacia sanitária', en: 'Toilet' },
   category: 'fixture',
   params: [
@@ -224,7 +225,7 @@ export const TOILET: ObjectDefinition = {
 };
 
 export const WASHBASIN: ObjectDefinition = {
-  id: 'def_washbasin',
+  id: 'def_washbasin' as DefinitionId,
   name: { pt: 'Lavatório com bancada', en: 'Washbasin and counter' },
   category: 'fixture',
   params: [
@@ -255,7 +256,7 @@ export const WASHBASIN: ObjectDefinition = {
 };
 
 export const SHOWER: ObjectDefinition = {
-  id: 'def_shower',
+  id: 'def_shower' as DefinitionId,
   name: { pt: 'Chuveiro com box', en: 'Shower' },
   category: 'fixture',
   params: [
@@ -290,7 +291,7 @@ export const SHOWER: ObjectDefinition = {
 };
 
 export const FRIDGE: ObjectDefinition = {
-  id: 'def_fridge',
+  id: 'def_fridge' as DefinitionId,
   name: { pt: 'Geladeira', en: 'Fridge' },
   category: 'equipment',
   params: [
@@ -324,7 +325,7 @@ export const FRIDGE: ObjectDefinition = {
 };
 
 export const COOKER: ObjectDefinition = {
-  id: 'def_cooker',
+  id: 'def_cooker' as DefinitionId,
   name: { pt: 'Fogão', en: 'Cooker' },
   category: 'equipment',
   params: [
@@ -362,7 +363,7 @@ export const COOKER: ObjectDefinition = {
 };
 
 export const PENDANT: ObjectDefinition = {
-  id: 'def_pendant',
+  id: 'def_pendant' as DefinitionId,
   name: { pt: 'Luminária pendente', en: 'Pendant lamp' },
   category: 'lighting',
   params: [
@@ -392,7 +393,7 @@ export const PENDANT: ObjectDefinition = {
 };
 
 export const TREE: ObjectDefinition = {
-  id: 'def_tree',
+  id: 'def_tree' as DefinitionId,
   name: { pt: 'Árvore', en: 'Tree' },
   category: 'plant',
   params: [
@@ -434,7 +435,7 @@ export const TREE: ObjectDefinition = {
 };
 
 export const POT_PLANT: ObjectDefinition = {
-  id: 'def_pot_plant',
+  id: 'def_pot_plant' as DefinitionId,
   name: { pt: 'Vaso com planta', en: 'Potted plant' },
   category: 'plant',
   params: [
@@ -459,5 +460,5 @@ export const POT_PLANT: ObjectDefinition = {
   types: [{ id: 'std', name: { pt: 'Médio', en: 'Medium' }, values: {} }],
 };
 
-/** Phase 8's definitions, in the order the ribbon and the library list them. */
+/** Phase 8's definitions, in the order the objects' list and the library show them. */
 export const LIBRARY_MORE: readonly ObjectDefinition[] = [SOFA, BED, KITCHEN, TOILET, WASHBASIN, SHOWER, FRIDGE, COOKER, PENDANT, TREE, POT_PLANT];

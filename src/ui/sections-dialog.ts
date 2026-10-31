@@ -3,13 +3,14 @@
 // round the building in one go, and a section drawn in plan with its tool. A room's interior elevations
 // are made from its panel and listed here with their level.
 
-import type { App } from '../app/app';
-import { type Doc, levelOf } from '../app/document';
+import type { App } from '../session/app';
+import { type Doc, levelOf } from '../project/doc';
 import type { SectionMark } from '../elements/section/schema';
-import { sectionCanvas, sectionOf } from '../app/section-view';
+import { sectionCanvas, sectionOf } from './section-canvas';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
-import { name, t } from './i18n';
+import { name, t } from '../i18n/messages';
+import { addElevations } from '../session/section-tools';
 
 /** The preview's size on screen (px). */
 const PREVIEW_W = 640;
@@ -48,7 +49,7 @@ export function showSections(app: App, first?: string): void {
       );
       const elevations = el('button', { type: 'button', class: 'btn' }, t('section.makeElevations'));
       elevations.dataset.focus = 'elevations';
-      elevations.addEventListener('click', () => app.addElevations());
+      elevations.addEventListener('click', () => addElevations(app));
       const draw = el('button', { type: 'button', class: 'btn' }, t('section.draw'));
       draw.dataset.focus = 'draw';
       draw.addEventListener('click', () => {

@@ -10,7 +10,7 @@ import { type Curtain, CURTAIN_PREFIX, isGridRule } from '../curtain/schema';
 import { type Material, materialIn } from '../material/schema';
 import { insideRing } from '../room/derive';
 import { nearSegment, trace } from './paint';
-import { levelOf, NO_LEVEL } from '../../app/document';
+import { levelOf, NO_LEVEL } from '../../project/doc';
 
 /** As built, with the materials its frame and panels are of. */
 export interface CurtainBuilt extends CurtainSolid {

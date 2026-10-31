@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { defaultName, name, setLang } from '../../src/ui/i18n';
+import { defaultName, name, setLang } from '../../src/i18n/messages';
 
 describe('stored names', () => {
   afterEach(() => setLang('en'));

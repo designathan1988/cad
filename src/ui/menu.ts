@@ -2,7 +2,7 @@
 // item runs it; clicking anywhere else, Esc or Tab closes it, and the focus goes back where it was.
 
 import { el } from './controls';
-import { icon, type IconName } from './icons';
+import { icon, type IconName } from '../i18n/icons';
 import { menuKey } from './menu-keys';
 
 export interface MenuItem {
@@ -14,15 +14,19 @@ export interface MenuItem {
   readonly disabled?: boolean;
   /** Draws a line before this item, to group the items. */
   readonly separated?: boolean;
+  /** A group's name, written small over this item, its first (the Project menu's FILE, IMPORT…). */
+  readonly group?: string;
+  /** Marked as the one in use (the level shown, a tool's way). */
+  readonly current?: boolean;
   readonly run: () => void;
 }
 
-let open: (() => void) | null = null;
+const shown = { close: null as (() => void) | null };
 
 /** Opens the menu with its top-left corner at the screen point, kept inside the window. */
 /** `closed`: told when it closes, however (an item, Esc, a click elsewhere): a menu button's aria-expanded goes back. */
 export function showMenu(items: readonly MenuItem[], at: { x: number; y: number }, label: string, start = 0, closed?: () => void): void {
-  open?.();
+  shown.close?.();
   if (items.length === 0) return;
   const back = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const menu = el('div', { class: 'menu', role: 'menu', 'aria-label': label });
@@ -32,11 +36,13 @@ export function showMenu(items: readonly MenuItem[], at: { x: number; y: number 
     if (item.keys) b.append(el('span', { class: 'menu-keys' }, item.keys));
     if (item.disabled) b.setAttribute('aria-disabled', 'true');
     if (item.separated) b.classList.add('separated');
+    if (item.current) b.setAttribute('aria-current', 'true');
     b.addEventListener('click', () => {
       if (item.disabled) return;
       close();
       item.run();
     });
+    if (item.group) menu.append(el('div', { class: 'menu-group', role: 'presentation' }, item.group));
     menu.append(b);
     return b;
   });
@@ -69,7 +75,7 @@ export function showMenu(items: readonly MenuItem[], at: { x: number; y: number 
     window.removeEventListener('pointerdown', outside, true);
     window.removeEventListener('resize', close);
     menu.remove();
-    open = null;
+    shown.close = null;
     back?.focus();
     closed?.();
   }
@@ -80,7 +86,7 @@ export function showMenu(items: readonly MenuItem[], at: { x: number; y: number 
   menu.style.top = `${Math.max(4, Math.min(at.y, window.innerHeight - h - 4))}px`;
   window.addEventListener('pointerdown', outside, true);
   window.addEventListener('resize', close);
-  open = close;
+  shown.close = close;
   // The first item that can be chosen, from `start`: a greyed one never takes the focus first.
   const first = items.findIndex((x, i) => i >= start && !x.disabled);
   focus(first >= 0 ? first : Math.min(start, items.length - 1));

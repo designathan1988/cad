@@ -2,13 +2,14 @@
 // element read back from a file.
 
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
+import { newDocument } from '../../src/project/doc';
 import { curtainSolid } from '../../src/elements/curtain/geometry';
 import { type Curtain, CURTAIN_DEFAULTS, gridLines } from '../../src/elements/curtain/schema';
 import { updateCurtains } from '../../src/elements/curtain/commands';
-import { readProject, writeProject } from '../../src/io/project-file';
+import { readProject, writeProject } from '../../src/project/file';
+import { lid, xid } from '../ids';
 
-const curtain: Curtain = { id: 'curtain_c', levelId: 'lvl_ground', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, ...CURTAIN_DEFAULTS };
+const curtain: Curtain = { id: xid('curtain_c'), levelId: lid('lvl_ground'), start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, ...CURTAIN_DEFAULTS };
 
 describe('a curtain wall grid', () => {
   it('divides by a fixed distance (the rest at the end), a number, or a largest spacing', () => {

@@ -3,8 +3,10 @@
 // STAIR_RISER). Pure.
 
 import { union } from 'polyclip-ts';
-import { add, type Point2, scale } from '../../core/vector';
-import { LOW_RAIL_HEIGHT, RAIL_EXTENSION, RAIL_HEIGHT, RAMP_GRADE, RAMP_LANDING, RAMP_RISE, type Stair, STAIR_RISER } from './schema';
+import { add, type Point2, scale } from '../../model/vector';
+import { RAIL_HEIGHT, RAMP_GRADE, RAMP_LANDING, RAMP_RISE, type Stair, STAIR_RISER } from './schema';
+import { RAIL_EXTENSION } from './schema';
+import { LOW_RAIL_HEIGHT } from './schema';
 
 export interface StairPart {
   /** In plan, counter-clockwise. */

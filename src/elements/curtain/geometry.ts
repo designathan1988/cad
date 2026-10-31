@@ -2,7 +2,7 @@
 // (a rectangle along it) between two heights. Mullions run its full height at each vertical line;
 // transoms run between them at each horizontal line; a panel fills each cell inside its frame. Pure.
 
-import { add, distance, normalize, perp, type Point2, scale, sub } from '../../core/vector';
+import { add, distance, normalize, perp, type Point2, scale, sub } from '../../model/vector';
 import { type Curtain, gridLines } from './schema';
 
 export interface CurtainBox {

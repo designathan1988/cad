@@ -6,12 +6,13 @@
 // comes in under a new id, and what refers to it follows, so an object looks as it did where it was
 // made. Pure but for the link's compression.
 
-import { newId } from '../core/id';
-import type { Doc } from '../app/document';
+import type { Doc } from '../project/doc';
 import type { Material } from '../elements/material/schema';
-import { DEFINITION_PREFIX, type ObjectDefinition, type Part } from '../elements/object/schema';
+import { type ObjectDefinition, type Part } from '../elements/object/schema';
 import { isDefinition } from '../elements/object/valid';
-import { isMaterial } from './project-file';
+import { isMaterial } from '../project/file-guards';
+import { newMaterialId } from '../elements/material/schema';
+import { type DefinitionId, newDefinitionId } from '../elements/object/schema';
 
 export const LIBRARY_VERSION = 2;
 
@@ -94,19 +95,19 @@ export function mergeLibrary(doc: Doc, raw: unknown): MergeResult {
   const same = (a: Material, b: Material) => JSON.stringify(a) === JSON.stringify(b);
   const matIds = new Map<string, string>();
   const addedMats: Material[] = [];
-  const takenMats = new Set(doc.materials.map((m) => m.id));
+  const takenMats = new Set<string>(doc.materials.map((m) => m.id));
   for (const m of goodMats) {
     const mine = doc.materials.find((x) => x.id === m.id);
     if (mine && same(mine, m)) continue;
-    const id = takenMats.has(m.id) ? newId('mat') : m.id;
+    const id = takenMats.has(m.id) ? newMaterialId() : m.id;
     takenMats.add(id);
     matIds.set(m.id, id);
     addedMats.push({ ...m, id });
   }
   // Definitions: the same one under its id is the project's; another under a taken id gets a new one; the
   // definitions of the library that nest it follow.
-  const taken = new Set(doc.definitions.map((d) => d.id));
-  const defIds = new Map<string, string>();
+  const taken = new Set<string>(doc.definitions.map((d) => d.id));
+  const defIds = new Map<string, DefinitionId>();
   const kept = new Set<string>();
   for (const d of good) {
     const mine = doc.definitions.find((x) => x.id === d.id);
@@ -124,7 +125,7 @@ export function mergeLibrary(doc: Doc, raw: unknown): MergeResult {
       defIds.set(d.id, d.id);
       continue;
     }
-    const id = taken.has(d.id) ? newId(DEFINITION_PREFIX) : d.id;
+    const id = taken.has(d.id) ? newDefinitionId() : d.id;
     taken.add(id);
     defIds.set(d.id, id);
   }

@@ -6,7 +6,9 @@
 
 import { type Material, materialIn } from '../material/schema';
 import { type Env, evaluateFormula, type Value } from './formula';
-import type { Expr, HandleDef, MeshData, ObjectDefinition, ObjectInstance, ParamDef, Part, Words } from './schema';
+import type { Expr, HandleDef, MeshData, ObjectDefinition, ObjectInstance, Part, Words } from './schema';
+import { pieceSpan } from './piece-shape';
+import { kelvinColour, values } from './param-limits';
 
 /** A piece in the world: a box (its centre, size and turn) or an upright cylinder (its base's centre); `cut`, a void
  * taken out of the solid pieces. */
@@ -81,85 +83,6 @@ const apply = (f: Frame, p: { x: number; y: number; z: number }) => {
   const s = Math.sin(f.angle);
   return { x: f.x + p.x * c - p.y * s, y: f.y + p.x * s + p.y * c, z: f.z + p.z };
 };
-
-/** Each parameter's value: given (instance, then type, then default), held to its range and step. */
-function values(def: ObjectDefinition, given: Readonly<Record<string, number | string>>, problems: string[]): { env: Record<string, number>; materials: Record<string, string> } {
-  const env: Record<string, number> = {};
-  const materials: Record<string, string> = {};
-  for (const p of def.params) {
-    if (p.formula !== undefined) continue;
-    const raw = given[p.name] ?? p.default;
-    if (p.kind === 'material') {
-      materials[p.name] = typeof raw === 'string' ? raw : String(p.default);
-      continue;
-    }
-    let v = typeof raw === 'number' ? raw : Number(raw);
-    if (!Number.isFinite(v)) {
-      problems.push(`${p.name}: not a number`);
-      v = typeof p.default === 'number' ? p.default : 0;
-    }
-    env[p.name] = held(p, v, def);
-  }
-  // Calculated parameters, each once its names are known: as many rounds as there are of them.
-  const calculated = def.params.filter((p) => p.formula !== undefined);
-  let pending = calculated;
-  for (let round = 0; round <= calculated.length && pending.length > 0; round++) {
-    const next: ParamDef[] = [];
-    for (const p of pending) {
-      const v = evaluateFormula(p.formula!, env);
-      if (v.ok) env[p.name] = p.kind === 'integer' ? Math.round(v.value) : v.value;
-      else next.push(p);
-    }
-    if (next.length === pending.length) break;
-    pending = next;
-  }
-  for (const p of pending) {
-    const v = evaluateFormula(p.formula!, env);
-    problems.push(`${p.name} = ${p.formula}: ${v.ok ? 'circular' : v.error}`);
-    env[p.name] = typeof p.default === 'number' ? p.default : 0;
-  }
-  return { env, materials };
-}
-
-/** The least and greatest length any object takes (m): a millimetre, a building's length. */
-export const LENGTH_LIMITS = { min: 0.001, max: 500 } as const;
-
-/** The names an object's overall size goes by: its width, depth, length and height. */
-const SIZE_NAMES = new Set(['largura', 'profundidade', 'comprimento', 'altura']);
-
-/**
- * The lengths that are the object's own size, not one of its parts': its width, depth, length and height,
- * and any length a handle drags. Below its least the object would fold up (a house bed lower than its
- * posts, a cabinet narrower than its doors), so that least is a floor for these, not a suggestion.
- */
-export function sizeParams(def: ObjectDefinition): ReadonlySet<string> {
-  const dragged = new Set(def.handles.map((h) => h.param));
-  return new Set(def.params.filter((p) => p.kind === 'length' && p.formula === undefined && p.min !== undefined && (SIZE_NAMES.has(p.name) || dragged.has(p.name))).map((p) => p.name));
-}
-
-/**
- * A value as the object takes it, on its step; whole for an integer, 0 or 1 for a yes/no. A length's or a
- * number's range is its usual one, not a lock above (a sofa of 5 m is the user's to make): it is held only
- * to what makes sense (a length from 1 mm to 500 m, and never below its least when it is the object's own
- * size, given its definition; a number not below 0 when its range starts there), and one outside its range
- * is said (outsideRange). A count (integer, choice) keeps its range: formulas rely on it.
- */
-export function held(p: ParamDef, v: number, def?: ObjectDefinition): number {
-  let x = v;
-  if (p.kind === 'bool') return x !== 0 ? 1 : 0;
-  if (p.kind === 'length') {
-    x = Math.min(LENGTH_LIMITS.max, Math.max(LENGTH_LIMITS.min, x));
-    if (def && p.min !== undefined && sizeParams(def).has(p.name)) x = Math.max(p.min, x);
-  }
-  else if (p.kind === 'number') x = p.min !== undefined && p.min >= 0 ? Math.max(0, x) : x;
-  else {
-    if (p.min !== undefined) x = Math.max(p.min, x);
-    if (p.max !== undefined) x = Math.min(p.max, x);
-  }
-  if (p.step !== undefined && p.step > 0) x = Math.round(x / p.step) * p.step;
-  if (p.kind === 'integer' || p.kind === 'choice') x = Math.round(x);
-  return x;
-}
 
 /**
  * An object as it stands. A length made smaller than its type's so far that parts of the object vanish
@@ -433,16 +356,6 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
   return { env, materials, pieces, handles, problems, warnings, lights, lost };
 }
 
-/** A light's colour from its temperature (K), as a #rrggbb (Tanner Helland's fit, 1000 K to 12000 K). */
-export function kelvinColour(k: number): string {
-  const t = Math.min(12000, Math.max(1000, k)) / 100;
-  const r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -0.1332047592);
-  const g = t <= 66 ? 99.4708025861 * Math.log(t) - 161.1195681661 : 288.1221695283 * Math.pow(t - 60, -0.0755148492);
-  const b = t >= 66 ? 255 : t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307;
-  const hex = (v: number) => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0');
-  return `#${hex(r)}${hex(g)}${hex(b)}`;
-}
-
 function placeHandle(h: HandleDef, env: Env, frame: Frame, problems: string[]): PlacedHandle[] {
   const p = h.at.map((e) => evaluateFormula(e, env));
   if (p.some((v) => !v.ok)) {
@@ -455,119 +368,4 @@ function placeHandle(h: HandleDef, env: Env, frame: Frame, problems: string[]): 
   const c = Math.cos(frame.angle);
   const s = Math.sin(frame.angle);
   return [{ param: h.param, axis: h.axis, at: apply(frame, { x, y, z }), dir: { x: local.x * c - local.y * s, y: local.x * s + local.y * c, z: local.z }, shift: h.shift ?? 0 }];
-}
-
-/** A piece's outline in plan: a box's four corners, a cylinder's circle as a polygon. */
-/** A leaning box's eight corners in the world (z above the level's floor). */
-export function boxCorners(p: Extract<Piece, { kind: 'box' }>): { x: number; y: number; z: number }[] {
-  const t = p.tilt ?? 0;
-  const r = p.roll ?? 0;
-  const c = Math.cos(p.angle);
-  const s = Math.sin(p.angle);
-  const out: { x: number; y: number; z: number }[] = [];
-  for (const x of [-p.w / 2, p.w / 2])
-    for (const y of [-p.d / 2, p.d / 2])
-      for (const z of [0, p.h]) {
-        // Tilt about its x axis, roll about its y axis, through its base's centre; then its turn in plan.
-        const y1 = y * Math.cos(t) + z * Math.sin(t);
-        const z1 = -y * Math.sin(t) + z * Math.cos(t);
-        const x2 = x * Math.cos(r) + z1 * Math.sin(r);
-        const z2 = -x * Math.sin(r) + z1 * Math.cos(r);
-        out.push({ x: p.cx + x2 * c - y1 * s, y: p.cy + x2 * s + y1 * c, z: p.z + z2 });
-      }
-  return out;
-}
-
-/** A point of a piece's own axes (x, y across its base's centre, z up its axis) in the world, leaning as it does. */
-function leant(p: { cx: number; cy: number; z: number; tilt?: number; roll?: number; angle?: number }, x: number, y: number, z: number): { x: number; y: number; z: number } {
-  const t = p.tilt ?? 0;
-  const r = p.roll ?? 0;
-  const c = Math.cos(p.angle ?? 0);
-  const s = Math.sin(p.angle ?? 0);
-  const y1 = y * Math.cos(t) + z * Math.sin(t);
-  const z1 = -y * Math.sin(t) + z * Math.cos(t);
-  const x2 = x * Math.cos(r) + z1 * Math.sin(r);
-  const z2 = -x * Math.sin(r) + z1 * Math.cos(r);
-  return { x: p.cx + x2 * c - y1 * s, y: p.cy + x2 * s + y1 * c, z: p.z + z2 };
-}
-
-/** A leaning cylinder's rims, 16 points each, in the world. */
-function cylinderRims(p: Extract<Piece, { kind: 'cylinder' }>): { x: number; y: number; z: number }[] {
-  return [0, 1].flatMap((top) => Array.from({ length: 16 }, (_, k) => {
-    const a = (k / 16) * 2 * Math.PI;
-    const rr = top ? p.r2 : p.r;
-    return leant(p, rr * Math.cos(a), rr * Math.sin(a), top ? p.h : 0);
-  }));
-}
-
-/** An ellipsoid's surface, sampled (three rings and its poles), in the world. */
-function ellipsoidPoints(p: Extract<Piece, { kind: 'sphere' }>): { x: number; y: number; z: number }[] {
-  const ry = p.ry ?? p.r;
-  const out: { x: number; y: number; z: number }[] = [];
-  for (const v of [-0.7, 0, 0.7])
-    for (let k = 0; k < 16; k++) {
-      const a = (k / 16) * 2 * Math.PI;
-      const c = Math.cos(Math.asin(v));
-      out.push(leant(p, p.r * c * Math.cos(a), ry * c * Math.sin(a), (p.h / 2) * (1 + v)));
-    }
-  out.push(leant(p, 0, 0, 0), leant(p, 0, 0, p.h));
-  return out;
-}
-
-/** The convex hull of points in plan, counter-clockwise (Andrew's monotone chain). */
-function hull(points: readonly { x: number; y: number }[]): { x: number; y: number }[] {
-  const ps = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
-  const cross = (o: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-  const half = (list: { x: number; y: number }[]) => {
-    const out: { x: number; y: number }[] = [];
-    for (const p of list) {
-      while (out.length >= 2 && cross(out[out.length - 2]!, out[out.length - 1]!, p) <= 1e-12) out.pop();
-      out.push(p);
-    }
-    out.pop();
-    return out;
-  };
-  return [...half(ps), ...half([...ps].reverse())];
-}
-
-/** A piece's lowest and highest point above the level's floor (a leaning box's by its corners). */
-export function pieceSpan(p: Piece): { readonly bottom: number; readonly top: number } {
-  if (p.kind === 'sphere' && p.ry !== undefined) {
-    const zs = ellipsoidPoints(p).map((q) => q.z);
-    return { bottom: Math.min(...zs), top: Math.max(...zs) };
-  }
-  if ((p.kind === 'box' || p.kind === 'cylinder') && (p.tilt || p.roll)) {
-    const zs = (p.kind === 'box' ? boxCorners(p) : cylinderRims(p)).map((q) => q.z);
-    return { bottom: Math.min(...zs), top: Math.max(...zs) };
-  }
-  return { bottom: p.z, top: p.z + p.h };
-}
-
-export function pieceOutline(p: Piece): { x: number; y: number }[] {
-  if (p.kind === 'box' && (p.tilt || p.roll)) return hull(boxCorners(p));
-  if (p.kind === 'cylinder' && (p.tilt || p.roll)) return hull(cylinderRims(p));
-  if (p.kind === 'sphere' && p.ry !== undefined) return hull(ellipsoidPoints(p));
-  if (p.kind === 'profile') return p.points.map((q) => ({ x: q.x, y: q.y }));
-  if (p.kind === 'cylinder' || p.kind === 'sphere' || p.kind === 'revolve') {
-    const r = p.kind === 'cylinder' ? Math.max(p.r, p.r2) : p.r;
-    return Array.from({ length: 24 }, (_, k) => ({ x: p.cx + r * Math.cos((k / 24) * 2 * Math.PI), y: p.cy + r * Math.sin((k / 24) * 2 * Math.PI) }));
-  }
-  const c = Math.cos(p.angle);
-  const s = Math.sin(p.angle);
-  if (p.kind === 'mesh') {
-    // Its hull, from the unit square to its box.
-    const out: { x: number; y: number }[] = [];
-    for (let i = 0; i + 1 < p.mesh.outline.length; i += 2) {
-      const a = (p.mesh.outline[i]! - 0.5) * p.w;
-      const b = (p.mesh.outline[i + 1]! - 0.5) * p.d;
-      out.push({ x: p.cx + a * c - b * s, y: p.cy + a * s + b * c });
-    }
-    return out;
-  }
-  return [
-    [-p.w / 2, -p.d / 2],
-    [p.w / 2, -p.d / 2],
-    [p.w / 2, p.d / 2],
-    [-p.w / 2, p.d / 2],
-  ].map(([a, b]) => ({ x: p.cx + a! * c - b! * s, y: p.cy + a! * s + b! * c }));
 }

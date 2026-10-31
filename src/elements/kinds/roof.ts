@@ -1,8 +1,8 @@
 // Roofs in the registry (contract.ts): elements/roof holds the element and its faces.
 
-import { materialLabel } from '../../ui/i18n';
+import { materialLabel } from '../../i18n/messages';
 import { finite, isObject, isPoint } from '../../core/guards';
-import { roofGeometry } from '../../render/prisms';
+import { roofGeometry } from '../prisms';
 import type { ElementKind } from '../contract';
 import { updateRoofs } from '../roof/commands';
 import { roofFields } from '../roof/fields';
@@ -11,7 +11,9 @@ import { type Roof, ROOF_COVERING, ROOF_PREFIX } from '../roof/schema';
 import { materialIn, type Material } from '../material/schema';
 import { insideRing } from '../room/derive';
 import { trace } from './paint';
-import { levelOf, NO_LEVEL, wallBand, wallTop } from '../../app/document';
+import { wallBand, wallTop } from '../../project/doc';
+import { NO_LEVEL } from '../../project/doc';
+import { levelOf } from '../../project/doc';
 
 export const roofKind: ElementKind<Roof, RoofSolid & { readonly covering: Material }> = {
   key: 'roofs',

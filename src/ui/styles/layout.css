@@ -1,0 +1,209 @@
+
+.project-name {
+  font-weight: 600;
+  font-size: var(--fs-md);
+  padding: 0 var(--sp-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: var(--name-w);
+}
+/* The name is a button that renames the project in place: text until pointed at. */
+button.project-name {
+  height: var(--control-h-sm);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  cursor: text;
+}
+button.project-name:hover {
+  background: var(--hover);
+}
+.project-name-input {
+  width: var(--name-w);
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-2);
+  border: var(--line) solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+.project-name-input:focus {
+  outline: none;
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  min-width: var(--control-h);
+  height: var(--control-h);
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease);
+}
+.icon-btn:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+.icon-btn:disabled,
+.icon-btn[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
+.icon-btn[aria-disabled='true']:hover {
+  background: transparent;
+  color: var(--text-2);
+}
+.icon-btn[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.levels-warn {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  color: var(--warn);
+  font-size: var(--fs-sm);
+}
+.text-btn {
+  font-weight: 600;
+  font-size: var(--fs-sm);
+}
+/* A button of words with an icon (Add layer): the icon beside its words, not over them (the icon button's
+   grid stacked them). */
+.icon-btn.text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.rows > .wide-btn,
+.rows > .panel-note {
+  grid-column: 1 / -1;
+}
+.wide-btn {
+  justify-content: flex-start;
+  width: 100%;
+  height: var(--wide-btn-h);
+  padding: 0 var(--sp-2);
+  border: var(--line) solid var(--border);
+}
+.panel-note {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.select select {
+  appearance: none;
+  height: var(--field-h);
+  padding: 0 var(--sp-7) 0 var(--sp-2);
+  border: var(--line) solid transparent;
+  border-radius: var(--radius);
+  background: var(--field);
+  cursor: pointer;
+  min-width: 0;
+  width: 100%;
+}
+.select select:hover {
+  border-color: var(--border);
+}
+.select .icon {
+  position: absolute;
+  right: var(--sp-2);
+  pointer-events: none;
+  color: var(--text-2);
+}
+/* The 3D view's style and quality (shell.ts): its icon and caption, then the list. */
+.look-select {
+  gap: var(--sp-1);
+  padding-left: var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.look-select > .icon:first-child {
+  position: static;
+}
+.look-select select {
+  width: auto;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.segmented {
+  display: inline-flex;
+  padding: var(--sp-half);
+  gap: var(--sp-half);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+.segmented button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* Words only: a long label (a room's name on a door's side) takes a second line, then gives way with
+   an ellipsis; the title holds it whole. Buttons with an icon keep one line, as before. */
+.segmented button:not(.has-icon) {
+  height: auto;
+  min-height: var(--control-h-sm);
+  padding: 0 var(--sp-1);
+  white-space: normal;
+  line-height: 1.2;
+  text-align: center;
+  overflow: hidden;
+}
+.segmented button:not(.has-icon) .label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  /* A word breaks where the language hyphenates it, not at any letter ("Esquerd / a"). */
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+.segmented button:hover:not(:disabled) {
+  color: var(--text);
+}
+.segmented button[aria-checked='true'],
+.segmented button[aria-pressed='true'] {
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+:root[data-theme='dark'] .segmented button[aria-checked='true'],
+:root[data-theme='dark'] .segmented button[aria-pressed='true'] {
+  background: var(--hover);
+}
+.segmented button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

@@ -3,10 +3,12 @@
 // file's built-in tiles, wood and brick get the patterns they have now.
 
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
+import { newDocument } from '../../src/project/doc';
 import { updateMaterial } from '../../src/elements/material/commands';
 import { isPattern, PATTERN_DEFAULTS, PATTERN_LAYOUTS, patternPieces, type SurfacePattern } from '../../src/elements/material/pattern';
-import { isMaterial, readProject } from '../../src/io/project-file';
+import { readProject } from '../../src/project/file';
+import { isMaterial } from '../../src/project/file-guards';
+import { mid } from '../ids';
 
 /**
  * How many pieces cover each of a grid of points over one period (pieces across its edge wrapped
@@ -76,15 +78,15 @@ describe('surface patterns', () => {
   it('the command sets, changes and takes off a pattern, and refuses one out of range', () => {
     const doc = newDocument();
     const plaster = () => (d: typeof doc) => d.materials.find((m) => m.id === 'plaster')!;
-    const set = updateMaterial('plaster', { pattern: PATTERN_DEFAULTS.tiles }).apply(doc);
+    const set = updateMaterial(mid('plaster'), { pattern: PATTERN_DEFAULTS.tiles }).apply(doc);
     expect(plaster()(set).pattern).toEqual(PATTERN_DEFAULTS.tiles);
-    const turned = updateMaterial('plaster', { pattern: { ...PATTERN_DEFAULTS.tiles, angle: 45 } }).apply(set);
+    const turned = updateMaterial(mid('plaster'), { pattern: { ...PATTERN_DEFAULTS.tiles, angle: 45 } }).apply(set);
     expect(plaster()(turned).pattern?.angle).toBe(45);
-    expect(updateMaterial('plaster', { pattern: { ...PATTERN_DEFAULTS.tiles, joint: 1 } }).apply(set)).toBe(set);
-    const off = updateMaterial('plaster', { pattern: null }).apply(turned);
+    expect(updateMaterial(mid('plaster'), { pattern: { ...PATTERN_DEFAULTS.tiles, joint: 1 } }).apply(set)).toBe(set);
+    const off = updateMaterial(mid('plaster'), { pattern: null }).apply(turned);
     expect('pattern' in plaster()(off)).toBe(false);
     // Other changes leave the pattern as it is.
-    expect(plaster()(updateMaterial('plaster', { roughness: 0.5 }).apply(set)).pattern).toEqual(PATTERN_DEFAULTS.tiles);
+    expect(plaster()(updateMaterial(mid('plaster'), { roughness: 0.5 }).apply(set)).pattern).toEqual(PATTERN_DEFAULTS.tiles);
   });
 
   it("an older file's built-in tiles, wood and brick get their patterns; one it made keeps none", () => {

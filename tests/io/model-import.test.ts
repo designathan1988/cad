@@ -2,10 +2,12 @@
 // width, depth and height).
 
 import { describe, expect, it } from 'vitest';
-import { newDocument } from '../../src/app/document';
-import { evaluateObject, pieceOutline } from '../../src/elements/object/evaluate';
+import { newDocument } from '../../src/project/doc';
+import { evaluateObject } from '../../src/elements/object/evaluate';
+import { pieceOutline } from '../../src/elements/object/piece-shape';
 import { isDefinition } from '../../src/elements/object/valid';
 import { hull, meshDefinition } from '../../src/io/import-mesh';
+import { lid, objid } from '../ids';
 
 /** A unit cube's twelve triangles, in centimetres, 80 × 40 × 120 cm, with its corner off the origin. */
 function box(sx: number, sy: number, sz: number, ox = 0): number[] {
@@ -52,7 +54,7 @@ describe('a 3D model as an object', () => {
   it('placed and stretched: its outline in plan grows with its width', () => {
     const made = meshDefinition('Caixa', [{ positions: box(1, 1, 1), color: '#808080' }], 'generic', ids)!;
     const doc = { ...newDocument(), materials: [...newDocument().materials, ...made.materials], definitions: [made.definition] };
-    const ev = evaluateObject(made.definition, { id: 'object_1', levelId: 'lvl_ground', definitionId: made.definition.id, typeId: 'imported', at: { x: 5, y: 5 }, angle: 0, elevation: 0, values: { largura: 2 } }, { definitions: doc.definitions, materials: doc.materials });
+    const ev = evaluateObject(made.definition, { id: objid('object_1'), levelId: lid('lvl_ground'), definitionId: made.definition.id, typeId: 'imported', at: { x: 5, y: 5 }, angle: 0, elevation: 0, values: { largura: 2 } }, { definitions: doc.definitions, materials: doc.materials });
     expect(ev.problems).toEqual([]);
     expect(ev.pieces).toHaveLength(1);
     const xs = pieceOutline(ev.pieces[0]!).map((q) => q.x);

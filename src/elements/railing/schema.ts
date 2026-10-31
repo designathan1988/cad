@@ -3,17 +3,25 @@
 // and a ramp's handrails are their own (elements/stair); a guardrail can go along one of their sides,
 // rising with it.
 
-import { distance, type Point2 } from '../../core/vector';
+import { distance, type Point2 } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const RAILING_PREFIX = 'railing';
+
+/** A guardrail's id (railing…). */
+export type RailingId = Brand<'railing'>;
+
+/** A new railing's id. */
+export const newRailingId = (): RailingId => newId(RAILING_PREFIX) as RailingId;
 /** A guardrail's height (m): 1.10 m, as NBR 9077 asks of a balcony's. */
 export const RAILING_HEIGHT = 1.1;
 /** Posts at most this far apart (m). */
 export const POST_SPACING = 1.2;
 
 export interface Railing {
-  readonly id: string;
-  readonly levelId: string;
+  readonly id: RailingId;
+  readonly levelId: LevelId;
   /** Its path, two points or more. */
   readonly points: readonly Point2[];
   readonly height: number;

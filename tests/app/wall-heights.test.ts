@@ -6,21 +6,23 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument, wallHeights } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
+import { type Doc, type DocWall, newDocument, wallHeights } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
 import { computeWallGeometry } from '../../src/elements/wall/geometry/footprint';
 import { area, overlapArea } from '../../src/elements/wall/geometry/convex';
 import { inside } from '../elements/wall/oracle';
+import { lid, tid, wid } from '../ids';
+import type { WallId } from '../../src/elements/wall/schema';
 
 type P = { x: number; y: number };
 // 20 cm of concrete on the centre line; base and top in metres above the ground level (2.8 m).
-const wall = (id: string, a: [number, number], b: [number, number], base = 0, top = 2.8): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number], base = 0, top = 2.8): DocWall => ({
   id,
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: base,
   top: { kind: 'fixed', height: top - base },
 });
@@ -34,7 +36,7 @@ describe('an L between a 1 m wall and a 2.8 m wall', () => {
   // a from (0, 0) to (4, 0), 1 m; b from (4, 0) to (4, 3), 2.8 m. Below 1 m: the mitre, the line
   // x + y = 4 through the outer corner (4.1, -0.1) and the inner one (3.9, 0.1). Above: b alone,
   // square at its start, y = 0.
-  const doc = docOf([wall('a', [0, 0], [4, 0], 0, 1), wall('b', [4, 0], [4, 3])]);
+  const doc = docOf([wall(wid('a'), [0, 0], [4, 0], 0, 1), wall(wid('b'), [4, 0], [4, 3])]);
   it("below 1 m, the mitre: the corner's outer triangle is b's, the inner one a's", () => {
     expect(wallsAt(doc, { x: 4.07, y: -0.05 }, 0.5)).toEqual(['b']);
     expect(wallsAt(doc, { x: 3.95, y: 0.03 }, 0.5)).toEqual(['a']);
@@ -46,8 +48,8 @@ describe('an L between a 1 m wall and a 2.8 m wall', () => {
   });
   it('b is two blocks high, a one', () => {
     const g = deriveGeometry(doc);
-    expect(g.solids.get('a')!.blocks.map((x) => [x.bottom, x.top])).toEqual([[0, 1]]);
-    expect(g.solids.get('b')!.blocks.map((x) => [x.bottom, x.top])).toEqual([
+    expect(g.solids.get(wid('a'))!.blocks.map((x) => [x.bottom, x.top])).toEqual([[0, 1]]);
+    expect(g.solids.get(wid('b'))!.blocks.map((x) => [x.bottom, x.top])).toEqual([
       [0, 1],
       [1, 2.8],
     ]);
@@ -58,7 +60,7 @@ describe('an L between a 1 m wall and a 2.8 m wall', () => {
 describe('a T whose host is lower than the abutting wall', () => {
   // Host h from (0, 0) to (6, 0), 1 m; stem s from (3, 3) to (3, 0), 2.8 m. Below 1 m the stem stops
   // at the host's face, y = 0.1; above, it runs to its own end, y = 0, square.
-  const doc = docOf([wall('h', [0, 0], [6, 0], 0, 1), wall('s', [3, 3], [3, 0])]);
+  const doc = docOf([wall(wid('h'), [0, 0], [6, 0], 0, 1), wall(wid('s'), [3, 3], [3, 0])]);
   it('inside the host band: the host below 1 m, the stem above it', () => {
     expect(wallsAt(doc, { x: 3, y: 0.05 }, 0.5)).toEqual(['h']);
     expect(wallsAt(doc, { x: 3, y: 0.05 }, 2)).toEqual(['s']);
@@ -68,7 +70,7 @@ describe('a T whose host is lower than the abutting wall', () => {
 
 describe('a T whose abutting wall is lower', () => {
   // Host 2.8 m, stem 1 m: the host is whole at every height; the stem stops at its face below 1 m.
-  const doc = docOf([wall('h', [0, 0], [6, 0]), wall('s', [3, 3], [3, 0], 0, 1)]);
+  const doc = docOf([wall(wid('h'), [0, 0], [6, 0]), wall(wid('s'), [3, 3], [3, 0], 0, 1)]);
   it('the host covers its band at every height, the stem only below 1 m', () => {
     for (const z of [0.5, 2]) expect(wallsAt(doc, { x: 3, y: 0.05 }, z)).toEqual(['h']);
     expect(wallsAt(doc, { x: 3, y: 0.5 }, 0.5)).toEqual(['s']);
@@ -79,7 +81,7 @@ describe('a T whose abutting wall is lower', () => {
 describe('a wall standing on a base offset', () => {
   // a from 0 to 2.8; b from 1 m to 2.8 m. Below 1 m a is alone and square at its end, x = 4; above,
   // the mitre.
-  const doc = docOf([wall('a', [0, 0], [4, 0]), wall('b', [4, 0], [4, 3], 1)]);
+  const doc = docOf([wall(wid('a'), [0, 0], [4, 0]), wall(wid('b'), [4, 0], [4, 3], 1)]);
   it('below b, a ends square; above, the mitre', () => {
     expect(wallsAt(doc, { x: 4.07, y: -0.05 }, 0.5)).toEqual([]);
     expect(wallsAt(doc, { x: 3.95, y: 0.03 }, 0.5)).toEqual(['a']);
@@ -93,22 +95,22 @@ describe('a wall standing on a base offset', () => {
 
 describe('walls whose heights do not overlap', () => {
   // a up to 1 m, b from 1.5 m: no join at all, in plan or in 3D, and no warning (§10).
-  const doc = docOf([wall('a', [0, 0], [4, 0], 0, 1), wall('b', [4, 0], [4, 3], 1.5)]);
+  const doc = docOf([wall(wid('a'), [0, 0], [4, 0], 0, 1), wall(wid('b'), [4, 0], [4, 3], 1.5)]);
   it('each is its own rectangle, square at the corner', () => {
     const g = deriveGeometry(doc);
     expect(g.warnings).toEqual([]);
-    expect(g.solids.get('a')!.pieces.map((p) => area(p.polygon))).toEqual([expect.closeTo(0.8, 9)]);
-    expect(g.solids.get('b')!.pieces.map((p) => area(p.polygon))).toEqual([expect.closeTo(0.6, 9)]);
+    expect(g.solids.get(wid('a'))!.pieces.map((p) => area(p.polygon))).toEqual([expect.closeTo(0.8, 9)]);
+    expect(g.solids.get(wid('b'))!.pieces.map((p) => area(p.polygon))).toEqual([expect.closeTo(0.6, 9)]);
     // Square ends: a stops at x = 4, b starts at y = 0.
     expect(wallsAt(doc, { x: 3.98, y: 0.07 }, 0.5)).toEqual(['a']);
     expect(wallsAt(doc, { x: 4.05, y: -0.05 }, 0.5)).toEqual([]);
     expect(wallsAt(doc, { x: 4.05, y: -0.05 }, 2)).toEqual([]);
   });
   it('touching heights (a up to 1 m, b from 1 m) do not join either', () => {
-    const g = deriveGeometry(docOf([wall('a', [0, 0], [4, 0], 0, 1), wall('b', [4, 0], [4, 3], 1)]));
-    expect(g.solids.get('a')!.pieces.map((p) => area(p.polygon))).toEqual([expect.closeTo(0.8, 9)]);
+    const g = deriveGeometry(docOf([wall(wid('a'), [0, 0], [4, 0], 0, 1), wall(wid('b'), [4, 0], [4, 3], 1)]));
+    expect(g.solids.get(wid('a'))!.pieces.map((p) => area(p.polygon))).toEqual([expect.closeTo(0.8, 9)]);
     // The area is the mitre's too: the square end tells them apart (x <= 4, x + y > 4 is a's).
-    const touching = docOf([wall('a', [0, 0], [4, 0], 0, 1), wall('b', [4, 0], [4, 3], 1)]);
+    const touching = docOf([wall(wid('a'), [0, 0], [4, 0], 0, 1), wall(wid('b'), [4, 0], [4, 3], 1)]);
     expect(wallsAt(touching, { x: 3.98, y: 0.07 }, 0.5)).toEqual(['a']);
     expect(wallsAt(touching, { x: 4.05, y: 0.05 }, 2)).toEqual(['b']);
   });
@@ -120,10 +122,10 @@ describe('walls whose heights do not overlap', () => {
 // the blocks' volume is the sum over heights of those joins' areas (spec §11, I2).
 const heightArb = fc.tuple(fc.integer({ min: 0, max: 12 }), fc.integer({ min: 1, max: 14 })).map(([b, h]) => [b / 10, Math.min(b + h, 28) / 10] as const);
 const scenes: [string, (hs: readonly (readonly [number, number])[]) => DocWall[]][] = [
-  ['L', ([a, b]) => [wall('a', [0, 0], [4, 0], ...a!), wall('b', [4, 0], [4, 3], ...b!)]],
-  ['T', ([a, b]) => [wall('a', [0, 0], [6, 0], ...a!), wall('b', [3, 3], [3, 0], ...b!)]],
-  ['X', ([a, b]) => [wall('a', [0, 0], [6, 0], ...a!), wall('b', [3, 3], [3, -3], ...b!)]],
-  ['L and T', ([a, b, c]) => [wall('a', [0, 0], [4, 0], ...a!), wall('b', [4, 0], [4, 3], ...b!), wall('c', [2, 3], [2, 0], ...c!)]],
+  ['L', ([a, b]) => [wall(wid('a'), [0, 0], [4, 0], ...a!), wall(wid('b'), [4, 0], [4, 3], ...b!)]],
+  ['T', ([a, b]) => [wall(wid('a'), [0, 0], [6, 0], ...a!), wall(wid('b'), [3, 3], [3, 0], ...b!)]],
+  ['X', ([a, b]) => [wall(wid('a'), [0, 0], [6, 0], ...a!), wall(wid('b'), [3, 3], [3, -3], ...b!)]],
+  ['L and T', ([a, b, c]) => [wall(wid('a'), [0, 0], [4, 0], ...a!), wall(wid('b'), [4, 0], [4, 3], ...b!), wall(wid('c'), [2, 3], [2, 0], ...c!)]],
 ];
 
 describe('cross-sections are the joins of the walls present', () => {
@@ -169,64 +171,64 @@ describe('cross-sections are the joins of the walls present', () => {
 // distintas"), 1.20 m above the level by default and set per level. A wall crossing it shows its
 // slice there, cut; a wall below it, or above it, is seen, not cut: its slice nearest to the cut,
 // drawn as an outline.
-const planOf = (doc: Doc, id: string) => deriveGeometry(doc).solids.get(id)!;
-const inPlan = (doc: Doc, id: string, p: P) => planOf(doc, id).pieces.some((q) => inside(q.polygon, p));
+const planOf = (doc: Doc, id: WallId) => deriveGeometry(doc).solids.get(id)!;
+const inPlan = (doc: Doc, id: WallId, p: P) => planOf(doc, id).pieces.some((q) => inside(q.polygon, p));
 
 describe('the plan: a section at the cut height', () => {
   it('a wall on a 1 m base offset and a full one: both cut at 1.20 m, the mitre, no overlap', () => {
     // The case where the lowest slice overlapped: a below 1 m is alone and square, b starts at 1 m.
-    const doc = docOf([wall('a', [0, 0], [4, 0]), wall('b', [4, 0], [4, 3], 1)]);
-    expect(planOf(doc, 'a').plan).toBe('cut');
-    expect(planOf(doc, 'b').plan).toBe('cut');
-    expect(inPlan(doc, 'a', { x: 3.98, y: 0.07 })).toBe(false);
-    expect(inPlan(doc, 'b', { x: 3.98, y: 0.07 })).toBe(true);
-    expect(inPlan(doc, 'b', { x: 4.07, y: -0.05 })).toBe(true);
-    const a = planOf(doc, 'a').pieces.map((q) => q.polygon);
-    const b = planOf(doc, 'b').pieces.map((q) => q.polygon);
+    const doc = docOf([wall(wid('a'), [0, 0], [4, 0]), wall(wid('b'), [4, 0], [4, 3], 1)]);
+    expect(planOf(doc, wid('a')).plan).toBe('cut');
+    expect(planOf(doc, wid('b')).plan).toBe('cut');
+    expect(inPlan(doc, wid('a'), { x: 3.98, y: 0.07 })).toBe(false);
+    expect(inPlan(doc, wid('b'), { x: 3.98, y: 0.07 })).toBe(true);
+    expect(inPlan(doc, wid('b'), { x: 4.07, y: -0.05 })).toBe(true);
+    const a = planOf(doc, wid('a')).pieces.map((q) => q.polygon);
+    const b = planOf(doc, wid('b')).pieces.map((q) => q.polygon);
     expect(a.flatMap((x) => b.map((y) => overlapArea(x, y))).reduce((s, v) => s + v, 0)).toBeCloseTo(0, 9);
   });
 
   it('a 1 m wall is below the cut: seen, its top slice (the mitre); the 2.8 m one is cut alone, square', () => {
-    const doc = docOf([wall('a', [0, 0], [4, 0], 0, 1), wall('b', [4, 0], [4, 3])]);
-    expect(planOf(doc, 'a').plan).toBe('below');
-    expect(planOf(doc, 'b').plan).toBe('cut');
-    expect(inPlan(doc, 'b', { x: 4.07, y: -0.05 })).toBe(false);
-    expect(inPlan(doc, 'b', { x: 3.95, y: 0.03 })).toBe(true);
-    expect(inPlan(doc, 'a', { x: 3.95, y: 0.03 })).toBe(true);
-    expect(inPlan(doc, 'a', { x: 3.98, y: 0.07 })).toBe(false);
+    const doc = docOf([wall(wid('a'), [0, 0], [4, 0], 0, 1), wall(wid('b'), [4, 0], [4, 3])]);
+    expect(planOf(doc, wid('a')).plan).toBe('below');
+    expect(planOf(doc, wid('b')).plan).toBe('cut');
+    expect(inPlan(doc, wid('b'), { x: 4.07, y: -0.05 })).toBe(false);
+    expect(inPlan(doc, wid('b'), { x: 3.95, y: 0.03 })).toBe(true);
+    expect(inPlan(doc, wid('a'), { x: 3.95, y: 0.03 })).toBe(true);
+    expect(inPlan(doc, wid('a'), { x: 3.98, y: 0.07 })).toBe(false);
   });
 
   it('a wall from 1.5 m is above the cut: seen, its lowest slice', () => {
-    const doc = docOf([wall('a', [0, 0], [4, 0]), wall('b', [4, 0], [4, 3], 1.5)]);
-    expect(planOf(doc, 'b').plan).toBe('above');
-    expect(planOf(doc, 'a').plan).toBe('cut');
+    const doc = docOf([wall(wid('a'), [0, 0], [4, 0]), wall(wid('b'), [4, 0], [4, 3], 1.5)]);
+    expect(planOf(doc, wid('b')).plan).toBe('above');
+    expect(planOf(doc, wid('a')).plan).toBe('cut');
     // At 1.20 m a is alone: square at x = 4.
-    expect(inPlan(doc, 'a', { x: 3.98, y: 0.07 })).toBe(true);
+    expect(inPlan(doc, wid('a'), { x: 3.98, y: 0.07 })).toBe(true);
     // b's lowest slice is joined with a: the mitre.
-    expect(inPlan(doc, 'b', { x: 4.07, y: -0.05 })).toBe(true);
+    expect(inPlan(doc, wid('b'), { x: 4.07, y: -0.05 })).toBe(true);
   });
 
   it("a wall ending at the cut height, or starting at it, is not cut", () => {
-    const doc = docOf([wall('a', [0, 0], [4, 0], 0, 1.2), wall('b', [0, 2], [4, 2], 1.2)]);
-    expect(planOf(doc, 'a').plan).toBe('below');
-    expect(planOf(doc, 'b').plan).toBe('above');
+    const doc = docOf([wall(wid('a'), [0, 0], [4, 0], 0, 1.2), wall(wid('b'), [0, 2], [4, 2], 1.2)]);
+    expect(planOf(doc, wid('a')).plan).toBe('below');
+    expect(planOf(doc, wid('b')).plan).toBe('above');
   });
 
   it("the cut height is the level's: at 0.50 m the 1 m wall is cut, and the corner is the mitre", () => {
-    const base = docOf([wall('a', [0, 0], [4, 0], 0, 1), wall('b', [4, 0], [4, 3])]);
+    const base = docOf([wall(wid('a'), [0, 0], [4, 0], 0, 1), wall(wid('b'), [4, 0], [4, 3])]);
     const doc: Doc = { ...base, levels: base.levels.map((l) => ({ ...l, cutHeight: 0.5 })) };
-    expect(planOf(doc, 'a').plan).toBe('cut');
-    expect(inPlan(doc, 'b', { x: 4.07, y: -0.05 })).toBe(true);
-    expect(inPlan(doc, 'a', { x: 3.95, y: 0.03 })).toBe(true);
+    expect(planOf(doc, wid('a')).plan).toBe('cut');
+    expect(inPlan(doc, wid('b'), { x: 4.07, y: -0.05 })).toBe(true);
+    expect(inPlan(doc, wid('a'), { x: 3.95, y: 0.03 })).toBe(true);
   });
 
   it('on an upper level the cut is above that level, not above zero', () => {
     const base = docOf([]);
     const doc: Doc = {
       ...base,
-      levels: [...base.levels, { id: 'lvl_up', name: 'Up', elevation: 2.8, height: 2.8 }],
-      walls: [{ ...wall('u', [0, 0], [4, 0], 0, 1), levelId: 'lvl_up' }],
+      levels: [...base.levels, { id: lid('lvl_up'), name: 'Up', elevation: 2.8, height: 2.8 }],
+      walls: [{ ...wall(wid('u'), [0, 0], [4, 0], 0, 1), levelId: lid('lvl_up') }],
     };
-    expect(planOf(doc, 'u').plan).toBe('below');
+    expect(planOf(doc, wid('u')).plan).toBe('below');
   });
 });

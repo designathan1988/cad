@@ -7,6 +7,7 @@ import { LIBRARY_FAMILIES } from './library-families';
 import type { ObjectDefinition, ParamDef } from './schema';
 import { LIBRARY_MORE } from './library-more';
 import { LIBRARY_LIGHTS } from './library-lights';
+import type { DefinitionId } from './schema';
 
 const len = (name: string, pt: string, en: string, value: number, min: number, max: number, group?: [string, string]): ParamDef => ({
   name,
@@ -23,7 +24,7 @@ const DIM: [string, string] = ['Dimensões', 'Dimensions'];
 const BUILD: [string, string] = ['Construção', 'Construction'];
 
 export const TABLE: ObjectDefinition = {
-  id: 'def_table',
+  id: 'def_table' as DefinitionId,
   name: { pt: 'Mesa', en: 'Table' },
   category: 'furniture',
   params: [
@@ -70,7 +71,7 @@ export const TABLE: ObjectDefinition = {
 };
 
 export const BOOKCASE: ObjectDefinition = {
-  id: 'def_bookcase',
+  id: 'def_bookcase' as DefinitionId,
   name: { pt: 'Estante', en: 'Bookcase' },
   category: 'casework',
   params: [
@@ -126,7 +127,7 @@ export const BOOKCASE: ObjectDefinition = {
 };
 
 export const CABINET: ObjectDefinition = {
-  id: 'def_cabinet',
+  id: 'def_cabinet' as DefinitionId,
   name: { pt: 'Armário', en: 'Cabinet' },
   category: 'casework',
   params: [
@@ -191,7 +192,7 @@ export const CABINET: ObjectDefinition = {
 };
 
 export const CHAIR: ObjectDefinition = {
-  id: 'def_chair',
+  id: 'def_chair' as DefinitionId,
   name: { pt: 'Cadeira', en: 'Chair' },
   category: 'furniture',
   params: [
@@ -230,7 +231,7 @@ export const CHAIR: ObjectDefinition = {
 };
 
 export const DINING_SET: ObjectDefinition = {
-  id: 'def_dining_set',
+  id: 'def_dining_set' as DefinitionId,
   name: { pt: 'Conjunto de jantar', en: 'Dining set' },
   category: 'furniture',
   params: [
@@ -242,12 +243,12 @@ export const DINING_SET: ObjectDefinition = {
     mat('matTampo', 'Tampo', 'Top', 'woodVeneer'),
   ],
   parts: [
-    { kind: 'object', name: { pt: 'Mesa', en: 'Table' }, definition: 'def_table', x: 0, y: 0, z: 0, values: { largura: 'largura', profundidade: 'profundidade', matTampo: 'matTampo' } },
+    { kind: 'object', name: { pt: 'Mesa', en: 'Table' }, definition: 'def_table' as DefinitionId, x: 0, y: 0, z: 0, values: { largura: 'largura', profundidade: 'profundidade', matTampo: 'matTampo' } },
     // One row of chairs on each long side, facing the table, spread over its width.
     {
       kind: 'object',
       name: { pt: 'Cadeira', en: 'Chair' },
-      definition: 'def_chair',
+      definition: 'def_chair' as DefinitionId,
       repeat: { count: 'porLado', dx: 'largura / porLado' },
       x: '-largura/2 + largura / porLado / 2',
       y: '-profundidade/2 - 0.12',
@@ -257,13 +258,13 @@ export const DINING_SET: ObjectDefinition = {
     {
       kind: 'object',
       name: { pt: 'Cadeira', en: 'Chair' },
-      definition: 'def_chair',
+      definition: 'def_chair' as DefinitionId,
       repeat: { count: 'porLado', dx: 'largura / porLado' },
       x: '-largura/2 + largura / porLado / 2',
       y: 'profundidade/2 + 0.12',
       z: 0,
     },
-    { kind: 'object', name: { pt: 'Cadeira da cabeceira', en: 'End chair' }, definition: 'def_chair', when: 'cabeceiras', repeat: { count: 2, dx: 'largura + 0.24' }, x: '-largura/2 - 0.12', y: 0, z: 0, angle: 'if(i == 0, 90, -90)' },
+    { kind: 'object', name: { pt: 'Cadeira da cabeceira', en: 'End chair' }, definition: 'def_chair' as DefinitionId, when: 'cabeceiras', repeat: { count: 2, dx: 'largura + 0.24' }, x: '-largura/2 - 0.12', y: 0, z: 0, angle: 'if(i == 0, 90, -90)' },
   ],
   handles: [
     { param: 'largura', axis: 'x', at: ['largura/2', 0, 0.75], shift: 0.5 },

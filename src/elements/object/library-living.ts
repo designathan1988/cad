@@ -4,9 +4,10 @@
 
 import type { ObjectDefinition } from './schema';
 import { boxHandles, BUILD, choice, counted, derived, len, mat, num, w, yes } from './library-kit';
+import type { DefinitionId } from './schema';
 
 export const ARMCHAIR: ObjectDefinition = {
-  id: 'def_armchair',
+  id: 'def_armchair' as DefinitionId,
   name: w('Poltrona', 'Armchair'),
   category: 'furniture',
   folder: 'Sala',
@@ -55,7 +56,7 @@ export const ARMCHAIR: ObjectDefinition = {
 };
 
 export const CHAISE_SOFA: ObjectDefinition = {
-  id: 'def_chaise_sofa',
+  id: 'def_chaise_sofa' as DefinitionId,
   name: w('Sofá com chaise', 'Sofa with chaise'),
   category: 'furniture',
   folder: 'Sala',
@@ -124,7 +125,7 @@ export const CHAISE_SOFA: ObjectDefinition = {
 };
 
 export const COFFEE_TABLE: ObjectDefinition = {
-  id: 'def_coffee_table',
+  id: 'def_coffee_table' as DefinitionId,
   name: w('Mesa de centro', 'Coffee table'),
   category: 'furniture',
   folder: 'Sala',
@@ -173,7 +174,7 @@ export const COFFEE_TABLE: ObjectDefinition = {
 };
 
 export const SIDE_TABLE: ObjectDefinition = {
-  id: 'def_side_table',
+  id: 'def_side_table' as DefinitionId,
   name: w('Mesa lateral', 'Side table'),
   category: 'furniture',
   folder: 'Sala',
@@ -201,7 +202,7 @@ export const SIDE_TABLE: ObjectDefinition = {
 };
 
 export const TELEVISION: ObjectDefinition = {
-  id: 'def_tv',
+  id: 'def_tv' as DefinitionId,
   name: w('Televisão', 'Television'),
   category: 'equipment',
   folder: 'Sala',
@@ -234,7 +235,7 @@ export const TELEVISION: ObjectDefinition = {
 };
 
 export const TV_UNIT: ObjectDefinition = {
-  id: 'def_tv_unit',
+  id: 'def_tv_unit' as DefinitionId,
   name: w('Rack de TV', 'TV unit'),
   category: 'casework',
   folder: 'Sala',
@@ -283,7 +284,7 @@ export const TV_UNIT: ObjectDefinition = {
 };
 
 export const SIDEBOARD: ObjectDefinition = {
-  id: 'def_sideboard',
+  id: 'def_sideboard' as DefinitionId,
   name: w('Aparador', 'Sideboard'),
   category: 'casework',
   folder: 'Sala',
@@ -329,7 +330,7 @@ export const SIDEBOARD: ObjectDefinition = {
 };
 
 export const RUG: ObjectDefinition = {
-  id: 'def_rug',
+  id: 'def_rug' as DefinitionId,
   name: w('Tapete', 'Rug'),
   category: 'furniture',
   folder: 'Decoração',
@@ -363,7 +364,7 @@ export const RUG: ObjectDefinition = {
 };
 
 export const POUF: ObjectDefinition = {
-  id: 'def_pouf',
+  id: 'def_pouf' as DefinitionId,
   name: w('Puff', 'Pouf'),
   category: 'furniture',
   folder: 'Sala',

@@ -1,12 +1,21 @@
+import { finite } from '../../core/guards';
 // References under the plan (docs/plano-de-escopo.md, phase 11: "importar imagem ou PDF de planta e
 // calibrar a escala por dois pontos"; DXF as reference): a picture (a photo, a scan, a PDF's page drawn
 // to a picture) or a DXF's lines, on a level, drawn faint under everything to be traced over. Placed by
 // its corner, turned and scaled; calibrated by two points of it and the distance they really are apart.
 // Nothing is built from it; it is saved with the project.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const REFERENCE_PREFIX = 'ref';
+
+/** A reference drawing's id (reference…). */
+export type ReferenceId = Brand<'reference'>;
+
+/** A new reference's id. */
+export const newReferenceId = (): ReferenceId => newId(REFERENCE_PREFIX) as ReferenceId;
 
 export type ReferenceSource =
   /** A picture as a data URL, and its size (px). */
@@ -15,8 +24,8 @@ export type ReferenceSource =
   | { readonly kind: 'dxf'; readonly lines: readonly number[]; readonly w: number; readonly h: number };
 
 export interface Reference {
-  readonly id: string;
-  readonly levelId: string;
+  readonly id: ReferenceId;
+  readonly levelId: LevelId;
   /** Its file's name. */
   readonly name: string;
   readonly source: ReferenceSource;
@@ -55,7 +64,6 @@ export function calibrated(r: Reference, a: Point2, b: Point2, real: number): Re
   return { ...r, scale: r.scale * k, at: { x: a.x + (r.at.x - a.x) * k, y: a.y + (r.at.y - a.y) * k } };
 }
 
-const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isPoint = (p: unknown): p is Point2 => typeof p === 'object' && p !== null && finite((p as Point2).x) && finite((p as Point2).y);
 
 /** Where a reference is and how it shows: its corner, scale, turn and opacity, each in its range. */

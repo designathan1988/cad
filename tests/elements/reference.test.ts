@@ -2,17 +2,18 @@
 // lines read in metres by its units; kept in the file.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, newDocument } from '../../src/app/document';
+import { type Doc, newDocument } from '../../src/project/doc';
 import { referenceKind } from '../../src/elements/kinds/reference';
 import { addReference, updateReferences } from '../../src/elements/reference/commands';
 import { calibrated, isReference, type Reference, referenceCorners, referencePoint } from '../../src/elements/reference/schema';
 import { readDxfLines } from '../../src/io/import-dxf';
-import { readProject, writeProject } from '../../src/io/project-file';
-import { rotation } from '../../src/tools/transform';
+import { readProject, writeProject } from '../../src/project/file';
+import { rotation } from '../../src/elements/transform';
+import { lid, xid } from '../ids';
 
 const pic: Reference = {
-  id: 'ref_1',
-  levelId: 'lvl_ground',
+  id: xid('ref_1'),
+  levelId: lid('lvl_ground'),
   name: 'planta.png',
   source: { kind: 'image', data: 'data:image/png;base64,AAAA', w: 1000, h: 500 },
   at: { x: 2, y: 1 },
@@ -51,7 +52,7 @@ describe('a reference placed', () => {
   });
 
   it('turned a quarter about a point: its corner goes round, its turn is a quarter', () => {
-    const r = referenceKind.mapped(pic, rotation({ x: 0, y: 0 }, Math.PI / 2), 'ref_1');
+    const r = referenceKind.mapped(pic, rotation({ x: 0, y: 0 }, Math.PI / 2), xid('ref_1'));
     expect(r.at.x).toBeCloseTo(-1, 9);
     expect(r.at.y).toBeCloseTo(2, 9);
     expect(r.angle).toBeCloseTo(Math.PI / 2, 9);

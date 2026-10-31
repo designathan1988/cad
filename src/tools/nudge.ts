@@ -2,15 +2,16 @@
 // joins (and the rooms they surround), doors and windows slide along their wall by the part of the
 // step along it, a room's point, an outline floor and a guide move. One document out, for one undo step.
 
-import { moveRooms, roomsGoingWith } from '../app/carry';
-import type { Doc } from '../app/document';
-import { type DerivedGeometry, hostsIn } from '../app/geometry';
-import { dot, normalize, type Point2, sub } from '../core/vector';
+import { moveRooms, roomsGoingWith } from '../project/carry';
+import type { Doc } from '../project/doc';
+import { type DerivedGeometry } from '../project/derive';
+import { hostsIn } from '../project/derived-queries';
+import { dot, normalize, type Point2, sub } from '../model/vector';
 import { detachedFrom } from '../elements/opening/commands';
 import { deriveOpenings } from '../elements/opening/derive';
 import { hasDistance, type PositionRule } from '../elements/opening/schema';
 import { moveKinds } from '../elements/registry';
-import { moveWalls } from './edit';
+import { moveWalls } from '../elements/wall/edit';
 
 /** The step of an arrow key: 5 cm (the snap grid), 1 cm with Alt; up is +y. Null for other keys. */
 export function arrowStep(key: string, fine: boolean): Point2 | null {

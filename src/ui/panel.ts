@@ -2,32 +2,39 @@
 // (elements/*/fields.ts, rendered by fields.ts). It only reads state and sends changes.
 
 import type { EndJoin } from '../elements/wall/schema';
-import { type Doc, type DocWall, type WallDefaults, wallNumber } from '../app/document';
-import type { DerivedGeometry, OpeningSolid } from '../app/geometry';
+import { cutHeightOf, type Doc, type DocWall, type Level, type WallDefaults, wallNumber } from '../project/doc';
+import { updateLevel } from '../elements/level/commands';
+import type { DerivedGeometry, OpeningSolid } from '../project/derive';
 import type { OpeningWarning } from '../elements/opening/derive';
-import { nextOpeningPanel, openingPanel, openingTitle, type OpeningPanelActions, type OpeningSize } from '../elements/opening/panel';
+import { nextOpeningPanel, openingPanel, openingTitle, type OpeningPanelActions, type OpeningSize } from './panels/opening';
 import type { OpeningId, OpeningKind } from '../elements/opening/schema';
 import type { RoomSolid } from '../elements/room/derive';
-import type { RoomPanelActions } from '../elements/room/panel';
-import { nextWall, wallFields } from '../elements/wall/fields';
-import type { WallPatch } from '../elements/wall/commands';
+import type { RoomFieldActions as RoomPanelActions } from '../elements/room/fields';
+import { wallFields } from '../elements/wall/fields';
 import type { JoinWarning } from '../elements/wall/join/types';
-import type { StackedStep } from '../app/stacked';
+import type { StackedStep } from '../session/stacked';
 import type { ReferenceLine } from '../elements/wall/schema';
 import { el } from './controls';
 import { type Field, fieldsSection } from './fields';
-import { name, num, t, type MessageKey } from './i18n';
-import { icon, type IconName } from './icons';
+import { name, num, t, type MessageKey } from '../i18n/messages';
+import { icon, type IconName } from '../i18n/icons';
 import type { AnyKind } from '../elements/contract';
 import type { Command } from '../core/store';
+import type { WallTypeId } from '../elements/wall/schema';
+import type { WallPatch } from '../elements/wall/commands';
+import { nextWall } from '../elements/wall/fields';
+import type { LevelId } from '../project/doc';
 
 export interface PanelInput {
   readonly doc: Doc;
+  /** Whether collisions are on (the session's preference): an object's elevation is not allowed below
+   *  its floor while it is. */
+  readonly collisions: boolean;
   readonly selected: readonly DocWall[];
   readonly drawing: boolean;
   readonly defaults: WallDefaults;
   /** The level shown: the next wall's (a top up to a level takes the one above it). */
-  readonly levelId: string;
+  readonly levelId: LevelId;
   readonly warnings: readonly JoinWarning[];
   /** Selected doors and windows; shown when no wall is selected. */
   readonly openings: readonly OpeningSolid[];
@@ -45,12 +52,14 @@ export interface PanelInput {
   readonly kind: { readonly kind: AnyKind; readonly items: readonly unknown[] } | null;
   /** Walls whose exterior face does not meet the face of the wall they stand on (app/stacked.ts). */
   readonly stacked: readonly StackedStep[];
+  /** The level shown: what the panel holds when nothing is selected and no tool places anything. */
+  readonly level?: Level;
 }
 
 export interface PanelActions {
   readonly updateWalls: (patch: WallPatch) => void;
   readonly setReferenceLine: (line: ReferenceLine) => void;
-  readonly setWallType: (typeId: string) => void;
+  readonly setWallType: (typeId: WallTypeId) => void;
   readonly keepClear: boolean;
   readonly setKeepClear: (on: boolean) => void;
   /** Takes these values off the selected walls, so they come from their type again. */
@@ -79,6 +88,8 @@ export interface PanelActions {
   readonly dispatch: (c: Command<Doc>) => void;
   /** Moves the wall so its exterior face meets the face of the wall below it. */
   readonly alignBelow: (step: StackedStep) => void;
+  /** Opens the levels dialog (the level panel's button). */
+  readonly openLevels: () => void;
 }
 
 /** The common value of a field across the selection, or null when it differs. */
@@ -158,7 +169,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     const title = kind.title ? kind.title(items) : { icon: kind.icon, text: n === 1 ? t(kind.one) : t(kind.many, { n }) };
     nodes.push(head(title.icon, title.text));
     part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, { dispatch: act.dispatch, doc, ...(act.room.startFloorHole ? { startFloorHole: act.room.startFloorHole } : {}), ...(act.openSection ? { openSection: act.openSection } : {}), ...(act.interiorElevations ? { interiorElevations: act.interiorElevations } : {}), ...(act.calibrate ? { calibrate: act.calibrate } : {}), ...(act.geometry ? { geometry: act.geometry } : {}) }), items));
+    nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, { dispatch: act.dispatch, doc, floorLocked: input.collisions, ...(act.room.startFloorHole ? { startFloorHole: act.room.startFloorHole } : {}), ...(act.openSection ? { openSection: act.openSection } : {}), ...(act.interiorElevations ? { interiorElevations: act.interiorElevations } : {}), ...(act.calibrate ? { calibrate: act.calibrate } : {}), ...(act.geometry ? { geometry: act.geometry } : {}) }), items));
     if (kind.hint) nodes.push(el('div', { class: 'panel-hint' }, t(kind.hint)));
     const problem = kind.warning?.(items, doc) ?? null;
     if (problem) {
@@ -179,9 +190,23 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     nodes.push(head('wall', t('panel.nextWall')), el('div', { class: 'panel-hint' }, t('panel.nextWallHint')));
     nodes.push(fieldsSection(t('panel.general'), true, next.fields, [next.item]));
   } else if (input.next) {
-    // What the tool will make, as its ribbon tab shows it: changed here, the next one is made so.
+    // What the tool will make: changed here, the next one is made so.
     nodes.push(head(input.next.icon, input.next.title), el('div', { class: 'panel-hint' }, t('panel.nextHint')));
     nodes.push(fieldsSection(t('panel.general'), true, input.next.fields, input.next.items));
+  } else if (input.level) {
+    // Nothing selected: the level shown, as Revit's palette shows the view; the panel stood there with only
+    // "Nothing selected" (docs/revisao-interface.md, P1).
+    const level = input.level;
+    const set = (patch: Partial<Omit<Level, 'id'>>) => act.dispatch(updateLevel(level.id, patch));
+    const fields: Field<Level>[] = [
+      { id: 'name', label: 'levels.name', kind: 'text', get: (l) => name(l.name), set: (v) => v.trim() !== '' && v.trim() !== name(level.name) && set({ name: v.trim() }) },
+      { id: 'elevation', label: 'levels.elevation', kind: 'number', icon: 'raise', get: (l) => l.elevation, set: (v) => set({ elevation: v }) },
+      { id: 'height', label: 'levels.height', kind: 'number', min: 0.01, get: (l) => l.height, set: (v) => set({ height: v }) },
+      { id: 'cutHeight', label: 'levels.cut', kind: 'number', icon: 'cut', min: 0.01, get: (l) => cutHeightOf(l), set: (v) => set({ cutHeight: v }) },
+      { id: 'levels', label: 'levels.edit', kind: 'action', run: act.openLevels },
+    ];
+    nodes.push(head('slab', t('panel.levelTitle', { name: name(level.name) })), el('div', { class: 'panel-hint' }, t('panel.levelHint')));
+    nodes.push(fieldsSection(t('panel.general'), true, fields, [level]));
   } else {
     nodes.push(head('pointer', t('panel.properties')));
     const empty = el('div', { class: 'empty-state' });

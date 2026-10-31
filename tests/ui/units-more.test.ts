@@ -3,10 +3,10 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseLength } from '../../src/core/measure';
-import { newDocument } from '../../src/app/document';
-import { readProject, writeProject } from '../../src/io/project-file';
-import { setLang } from '../../src/ui/i18n';
-import { angleNum, areaText, DEFAULT_UNITS, feetInches, isUnits, lengthText, setUnits, slopeShown, slopeTyped, slopeUnit } from '../../src/ui/units';
+import { newDocument } from '../../src/project/doc';
+import { readProject, writeProject } from '../../src/project/file';
+import { setLang } from '../../src/i18n/messages';
+import { angleNum, areaText, DEFAULT_UNITS, feetInches, isUnits, lengthText, setUnits, slopeShown, slopeTyped, slopeUnit } from '../../src/i18n/units';
 
 afterEach(() => {
   setUnits(DEFAULT_UNITS);

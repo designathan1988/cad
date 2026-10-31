@@ -3,9 +3,21 @@
 // wall (an end, a distance along it, a distance across it: its faces and corners), a door's or a window's
 // jamb, or nothing (a point in the plan). Moving, stretching or thickening the wall moves the point.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
+import type { OpeningId } from '../opening/schema';
+import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const DIM_PREFIX = 'dim';
+
+/** A dimension's id (dim…). */
+export type DimensionId = Brand<'dimension'>;
+
+/** A new dimension's id. */
+export const newDimensionId = (): DimensionId => newId(DIM_PREFIX) as DimensionId;
+
+/** The id of the dimension being drawn, before it is placed in the document. */
+export const DRAFT_DIMENSION_ID = '' as DimensionId;
 
 /**
  * Where an end of a dimension is held. On a wall: from its start or its end, `along` metres into it along
@@ -15,12 +27,12 @@ export const DIM_PREFIX = 'dim';
  */
 export type DimAnchor =
   | { readonly kind: 'wall'; readonly wallId: string; readonly end: 'start' | 'end'; readonly along: number; readonly offset: number }
-  | { readonly kind: 'opening'; readonly openingId: string; readonly jamb: 'start' | 'end'; readonly offset: number }
+  | { readonly kind: 'opening'; readonly openingId: OpeningId; readonly jamb: 'start' | 'end'; readonly offset: number }
   | { readonly kind: 'point'; readonly at: Point2 };
 
 export interface Dimension {
-  readonly id: string;
-  readonly levelId: string;
+  readonly id: DimensionId;
+  readonly levelId: LevelId;
   readonly a: DimAnchor;
   readonly b: DimAnchor;
   /** The dimension line's distance from the line a → b (m), to its left (negative: its right). */

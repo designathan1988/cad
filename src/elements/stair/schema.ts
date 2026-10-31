@@ -3,14 +3,22 @@
 // and a handrail on each side. Placed by its first step's front edge (`at`, the middle of it) and the way
 // it climbs (`angle`); a spiral is centred a radius ahead of that point. geometry.ts lays the steps out.
 
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const STAIR_PREFIX = 'stair';
+
+/** A stair's id (stair…). */
+export type StairId = Brand<'stair'>;
+
+/** A new stair's id. */
+export const newStairId = (): StairId => newId(STAIR_PREFIX) as StairId;
 export type StairKind = 'straight' | 'l' | 'u' | 'spiral' | 'ramp';
 
 export interface Stair {
-  readonly id: string;
-  readonly levelId: string;
+  readonly id: StairId;
+  readonly levelId: LevelId;
   readonly kind: StairKind;
   /** The middle of the first step's front edge (a spiral's centre is its radius ahead of it). */
   readonly at: Point2;

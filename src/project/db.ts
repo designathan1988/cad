@@ -1,0 +1,166 @@
+// Projects kept in the browser's IndexedDB (docs/plano-de-escopo.md, phase 2): many projects, each
+// saved element by element. A project is a record (its name, dates, the fields that are not lists,
+// and each list's order of ids) and its elements, one record each: saving writes only the elements
+// that changed since the last save (the document is never changed in place, so an element not changed
+// is the same object) and deletes those that went. Reading puts the lists back in their order and
+// gives the result to the file reader to check and repair, as a file is.
+
+import type { Doc } from './doc';
+
+const DB = 'cad2';
+const VERSION = 1;
+const PROJECTS = 'projects';
+const ITEMS = 'items';
+
+/** What the projects list shows. */
+export interface ProjectInfo {
+  readonly id: string;
+  readonly name: string;
+  readonly createdAt: number;
+  readonly updatedAt: number;
+  /** How many walls and other elements it has, for the list. */
+  readonly count: number;
+}
+
+interface ProjectRecord extends ProjectInfo {
+  /** The document's fields that are not lists of elements. */
+  readonly fields: Record<string, unknown>;
+  /** Each list's ids, in order. */
+  readonly order: Record<string, string[]>;
+}
+
+interface ItemRecord {
+  readonly project: string;
+  readonly list: string;
+  readonly id: string;
+  readonly item: unknown;
+}
+
+/** The lists that are the project's settings, not elements: left out of the list's element count. */
+const SETTINGS = new Set(['levels', 'wallTypes', 'materials', 'definitions', 'views', 'points']);
+
+const isItemList = (v: unknown): v is { readonly id: string }[] =>
+  Array.isArray(v) && v.every((x) => typeof x === 'object' && x !== null && typeof (x as { id?: unknown }).id === 'string');
+
+const request = <T>(r: IDBRequest<T>): Promise<T> =>
+  new Promise((resolve, reject) => {
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+
+const done = (tx: IDBTransaction): Promise<void> =>
+  new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error ?? new Error('aborted'));
+  });
+
+const connection = { opening: null as Promise<IDBDatabase> | null };
+
+/** The database, opened once; null when the browser has no IndexedDB (a private window may not). */
+export function openDb(): Promise<IDBDatabase> | null {
+  if (typeof indexedDB === 'undefined') return null;
+  connection.opening ??= new Promise((resolve, reject) => {
+    const r = indexedDB.open(DB, VERSION);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      if (!db.objectStoreNames.contains(PROJECTS)) db.createObjectStore(PROJECTS, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(ITEMS)) {
+        const items = db.createObjectStore(ITEMS, { keyPath: ['project', 'list', 'id'] });
+        items.createIndex('project', 'project');
+      }
+    };
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+  return connection.opening;
+}
+
+/** Every project, the last changed first. */
+export async function listProjects(db: IDBDatabase): Promise<ProjectInfo[]> {
+  const all = await request<ProjectRecord[]>(db.transaction(PROJECTS).objectStore(PROJECTS).getAll());
+  return all.map(({ id, name, createdAt, updatedAt, count }) => ({ id, name, createdAt, updatedAt, count })).sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/** A project as it was saved (not yet checked: io/project-file.ts repairProject does it), or null. */
+export async function loadProject(db: IDBDatabase, id: string): Promise<unknown | null> {
+  const tx = db.transaction([PROJECTS, ITEMS]);
+  const rec = await request<ProjectRecord | undefined>(tx.objectStore(PROJECTS).get(id));
+  if (!rec) return null;
+  const items = await request<ItemRecord[]>(tx.objectStore(ITEMS).index('project').getAll(id));
+  const byList = new Map<string, Map<string, unknown>>();
+  for (const it of items) {
+    if (!byList.has(it.list)) byList.set(it.list, new Map());
+    byList.get(it.list)!.set(it.id, it.item);
+  }
+  const doc: Record<string, unknown> = { ...rec.fields };
+  for (const [list, ids] of Object.entries(rec.order)) {
+    const found = byList.get(list) ?? new Map();
+    doc[list] = ids.flatMap((i) => (found.has(i) ? [found.get(i)] : []));
+  }
+  return doc;
+}
+
+/** What was last saved of each project: to tell what changed since (the same objects did not). */
+const lastSaved = new Map<string, Doc>();
+
+/**
+ * Saves a project: its record, and only the elements changed since its last save here (all of them
+ * the first time), deleting those that went. One transaction: a save is whole or not at all.
+ */
+export async function saveProject(db: IDBDatabase, id: string, doc: Doc): Promise<void> {
+  const before = lastSaved.get(id);
+  const tx = db.transaction([PROJECTS, ITEMS], 'readwrite');
+  const projects = tx.objectStore(PROJECTS);
+  const items = tx.objectStore(ITEMS);
+  const old = await request<ProjectRecord | undefined>(projects.get(id));
+  const fields: Record<string, unknown> = {};
+  const order: Record<string, string[]> = {};
+  let count = 0;
+  for (const [key, value] of Object.entries(doc)) {
+    if (!isItemList(value)) {
+      fields[key] = value;
+      continue;
+    }
+    order[key] = value.map((x) => x.id);
+    // What is drawn: not the project's settings kept as lists (levels, types, materials, views, points).
+    if (!SETTINGS.has(key)) count += value.length;
+    const was = before ? ((before as unknown as Record<string, unknown>)[key] as readonly { readonly id: string }[] | undefined) : undefined;
+    // Unchanged list: nothing to write. Else what is new or changed, and what went.
+    if (was === value) continue;
+    const wasById = new Map((was ?? []).map((x) => [x.id, x]));
+    for (const x of value) if (wasById.get(x.id) !== x) items.put({ project: id, list: key, id: x.id, item: x } satisfies ItemRecord);
+    if (was) {
+      const now = new Set(value.map((x) => x.id));
+      for (const x of was) if (!now.has(x.id)) items.delete([id, key, x.id]);
+    }
+  }
+  // The first save here: what the database holds of the project and the document no longer has goes.
+  if (!before) {
+    const keep = new Set(Object.entries(order).flatMap(([list, ids]) => ids.map((i) => `${list}\u0000${i}`)));
+    const keys = await request<IDBValidKey[]>(items.index('project').getAllKeys(id));
+    for (const k of keys) {
+      const [, list, item] = k as [string, string, string];
+      if (!keep.has(`${list}\u0000${item}`)) items.delete(k);
+    }
+  }
+  const now = Date.now();
+  projects.put({ id, name: doc.name, createdAt: old?.createdAt ?? now, updatedAt: now, count, fields, order } satisfies ProjectRecord);
+  await done(tx);
+  lastSaved.set(id, doc);
+}
+
+/** Forgets what was saved of a project in this page, so its next save writes it whole (a project read again). */
+export const forgetSaved = (id: string): void => {
+  lastSaved.delete(id);
+};
+
+/** A project and all its elements gone. */
+export async function deleteProject(db: IDBDatabase, id: string): Promise<void> {
+  const tx = db.transaction([PROJECTS, ITEMS], 'readwrite');
+  tx.objectStore(PROJECTS).delete(id);
+  const keys = await request<IDBValidKey[]>(tx.objectStore(ITEMS).index('project').getAllKeys(id));
+  for (const k of keys) tx.objectStore(ITEMS).delete(k);
+  await done(tx);
+  lastSaved.delete(id);
+}

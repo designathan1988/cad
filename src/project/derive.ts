@@ -1,0 +1,331 @@
+// Document → derived wall geometry, through the join engine. Recomputed when the document changes,
+// never stored.
+
+import { separatorStrip } from '../elements/separator/schema';
+import { add, insidePolygon, type Point2 as P, type Point2, polygonDistance, scale } from '../model/vector';
+import { deriveKinds, type KindSolids } from '../elements/registry';
+import { deriveOpenings, hostsOf, type OpeningWarning, type PlacedOpening } from '../elements/opening/derive';
+import type { Opening, OpeningId } from '../elements/opening/schema';
+import { swingRegion } from '../elements/opening/symbol';
+import { type Block, cutPlan, cutSolid, type OpeningCut, openingFrame, type OpeningFrame } from '../elements/opening/void';
+import { computeWallGeometry, type Piece } from '../elements/wall/geometry/footprint';
+import { area, clipHalfPlane, type ConvexPolygon, halfPlaneThrough, overlapArea, toCounterClockwise } from '../elements/wall/geometry/convex';
+import { faceOffsets, stationOf, wallLength, wallNormal } from '../elements/wall/geometry/offset';
+import { AREA_EPSILON, POINT_TOLERANCE } from '../model/tolerance';
+import { shapeOf } from '../elements/wall/geometry/shape';
+import type { JoinWarning } from '../elements/wall/join/types';
+import type { WallId, WallLayer, WallType } from '../elements/wall/schema';
+import { layerSeams, type Seam } from '../elements/wall/geometry/seams';
+import { deriveRooms, type RoomSolid, type RoomWarning, spacesOf } from '../elements/room/derive';
+import type { RoomId } from '../elements/room/schema';
+import { type Material, materialIn } from '../elements/material/schema';
+import { CUT_HEIGHT, cutHeightOf, type Doc, type DocWall, levelOf, roofCoversOf, wallHeights, wallTop } from './doc';
+import { blocksUnder } from '../elements/wall/geometry/under-roof';
+import type { LevelId } from './doc';
+import type { WallTypeId } from '../elements/wall/schema';
+
+/** How far past the host's faces another wall still counts as meeting it inside an opening (m). */
+const JOINT_REACH = 0.01;
+
+export type PlanCut = 'cut' | 'below' | 'above';
+
+export interface WallSolid {
+  readonly wall: DocWall;
+  /** Plan pieces, with the openings cut through. */
+  readonly pieces: readonly Piece[];
+  /**
+   * How it shows in plan, a section at its level's cut height: 'cut' when it crosses that height (its
+   * pieces there), 'below' or 'above' when it is only seen (its slice nearest to the cut).
+   */
+  readonly plan: PlanCut;
+  /** 3D blocks: the pieces sliced in height around the openings' holes. */
+  readonly blocks: readonly Block[];
+  readonly bottom: number;
+  readonly top: number;
+  /** Its type's layers, from the exterior face: what each piece's layerIndex is (none when the type is missing). */
+  readonly layers: readonly WallLayer[];
+  /** Lines in plan where its pieces meet pieces of another layer (geometry/seams.ts). */
+  readonly seams: readonly Seam[];
+  /** Each layer's material (the project's materials), in the order of `layers`: what paints it in plan and 3D. */
+  readonly materials: readonly Material[];
+}
+
+export interface OpeningSolid extends PlacedOpening {
+  /** Null when the host is missing or has no valid shape: nothing to draw. */
+  readonly frame: OpeningFrame | null;
+  /** Absolute heights of the bottom and the head. */
+  readonly bottom: number;
+  readonly top: number;
+  /** Its leaves', frame's and glass's materials where its style sets them (the project's); the scene's otherwise. */
+  readonly looks?: { readonly leaf?: Material; readonly frame?: Material; readonly glass?: Material };
+}
+
+export interface DerivedGeometry {
+  readonly solids: ReadonlyMap<WallId, WallSolid>;
+  readonly warnings: readonly JoinWarning[];
+  /** The wall ends a chosen miter, through, stop or square acts on (footprint.ts WallGeometry.choosable). */
+  readonly choosable: ReadonlySet<string>;
+  readonly openings: ReadonlyMap<OpeningId, OpeningSolid>;
+  readonly openingWarnings: readonly OpeningWarning[];
+  readonly rooms: ReadonlyMap<RoomId, RoomSolid>;
+  readonly roomWarnings: readonly RoomWarning[];
+  /** A level's spaces, the ones its walls close in (room/derive.ts): where the room tool can put a room. Found when asked. */
+  readonly spaces: (levelId: LevelId) => readonly (readonly P[])[];
+  /** The registry's kinds (elements/registry.ts), derived: by kind, then id. */
+  readonly kinds: KindSolids;
+}
+
+/**
+ * `extra` are walls being drawn: joined with the rest so the preview shows the real corner.
+ * `extraOpenings` are openings being placed, cut and checked like the others.
+ */
+export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOpenings: readonly Opening[] = []): DerivedGeometry {
+  const walls = [...doc.walls, ...extra];
+  const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
+  const { pieces, plan, slices, warnings, choosable } = wallPieces(walls, types, (w) => wallHeights(doc, w), (w) => planCutHeight(doc, w));
+  const { joints, ends } = jointsAndEnds(walls, types, pieces);
+  const placed = deriveOpenings([...doc.openings, ...extraOpenings], hostsOf(doc, walls, joints, ends), doc.openingGroups);
+  const byId = new Map(walls.map((w) => [w.id, w]));
+  const openings = new Map<OpeningId, OpeningSolid>();
+  const cuts = new Map<WallId, OpeningCut[]>();
+  for (const p of placed.placed.values()) {
+    const wall = byId.get(p.opening.wallId);
+    const shape = wall && shapeOf(wall, types.get(wall.wallTypeId));
+    const base = wall ? wallHeights(doc, wall).bottom : 0;
+    const bottom = base + p.opening.sill;
+    const top = bottom + p.opening.height;
+    const frame = wall && shape && typeof shape !== 'string' ? openingFrame(shape, p.start, p.end) : null;
+    const st = p.opening.style;
+    const looks = st && (st.leafMaterial || st.frameMaterial || st.glazing === 'frosted')
+      ? {
+          ...(st.leafMaterial ? { leaf: materialIn(doc.materials, st.leafMaterial) } : {}),
+          ...(st.frameMaterial ? { frame: materialIn(doc.materials, st.frameMaterial) } : {}),
+          ...(st.glazing === 'frosted' ? { glass: materialIn(doc.materials, 'frostedGlass') } : {}),
+        }
+      : undefined;
+    openings.set(p.opening.id, { ...p, frame, bottom, top, ...(looks ? { looks } : {}) });
+    // One that does not fit in its wall cuts nothing: it would open the wall past its end and undo the
+    // joint there. It is drawn with its warning until it is fixed.
+    if (frame && wall && !p.warnings.includes('openingOutside')) cuts.set(wall.id, [...(cuts.get(wall.id) ?? []), { region: frame.region, bottom, top }]);
+  }
+  // An opening over another wall's joint (a wall meeting its host inside the opening's span): the
+  // other wall's pieces touch the opening across the host's thickness, a hair beyond its faces.
+  const jointWarnings: OpeningWarning[] = [];
+  for (const [id, o] of openings) {
+    const host = o.frame && byId.get(o.opening.wallId);
+    if (!o.frame || !host || o.warnings.includes('openingOutside')) continue;
+    const f = o.frame;
+    const at = (p: Point2, offset: number) => add(p, scale(f.normal, offset));
+    const lo = Math.min(...f.faces) - JOINT_REACH;
+    const hi = Math.max(...f.faces) + JOINT_REACH;
+    const span = toCounterClockwise([at(f.start, lo), at(f.end, lo), at(f.end, hi), at(f.start, hi)]);
+    const touched = walls.some(
+      (w) => w.id !== host.id && w.levelId === host.levelId && (pieces.get(w.id) ?? []).some((p) => overlapArea(p.polygon, span) > AREA_EPSILON),
+    );
+    if (!touched) continue;
+    openings.set(id, { ...o, valid: false, warnings: [...o.warnings, 'openingAtJoint'] });
+    jointWarnings.push({ kind: 'openingAtJoint', openings: [id] });
+  }
+  // Two doors of a level whose leaves sweep the same floor: both warned. A door put beside another
+  // could open into it, with nothing said.
+  const doors = [...openings.values()].flatMap((o) => {
+    const region = swingRegion(o, o.frame);
+    const levelId = byId.get(o.opening.wallId)?.levelId;
+    return region && levelId ? [{ id: o.opening.id, levelId, region: toCounterClockwise(region) }] : [];
+  });
+  for (let i = 0; i < doors.length; i++) {
+    for (let j = i + 1; j < doors.length; j++) {
+      const a = doors[i]!;
+      const b = doors[j]!;
+      if (a.levelId !== b.levelId || overlapArea(a.region, b.region) <= AREA_EPSILON) continue;
+      for (const id of [a.id, b.id]) {
+        const o = openings.get(id)!;
+        if (!o.warnings.includes('openingSwingClash')) openings.set(id, { ...o, valid: false, warnings: [...o.warnings, 'openingSwingClash'] });
+      }
+      jointWarnings.push({ kind: 'openingSwingClash', openings: [a.id, b.id] });
+    }
+  }
+  const solids = new Map<WallId, WallSolid>();
+  const planPieces = new Map<WallId, Piece[]>();
+  for (const wall of walls) planPieces.set(wall.id, cutPlan(pieces.get(wall.id) ?? [], cuts.get(wall.id) ?? []));
+  // Seams per level: walls on two levels can lie over each other in plan without meeting. Only cut
+  // walls have them: a wall only seen is drawn as its outline.
+  const seams = new Map<WallId, Seam[]>();
+  for (const levelId of new Set(walls.map((w) => w.levelId))) {
+    const list = walls
+      .filter((w) => w.levelId === levelId && plan.get(w.id) === 'cut')
+      .flatMap((w) => {
+        const layers = types.get(w.wallTypeId)?.layers ?? [];
+        // A finish is one kind of layer on either face: a wall drawn the other way from its neighbour in
+        // line has its finish1 where the neighbour's finish2 is, the same plaster, and no line between.
+        const kind = (k: number) => (layers[k]?.function === 'finish2' ? 'finish1' : layers[k]?.function);
+        return (planPieces.get(w.id) ?? []).map((p) => ({ wallId: w.id, polygon: p.polygon, key: `${kind(p.layerIndex)}|${layers[p.layerIndex]?.materialId}` }));
+      });
+    for (const [id, s] of layerSeams(list)) seams.set(id, s);
+  }
+  for (const wall of walls) {
+    const { bottom, top } = wallHeights(doc, wall);
+    const mine = cuts.get(wall.id) ?? [];
+    const layers = types.get(wall.wallTypeId)?.layers ?? [];
+    const cut = (slices.get(wall.id) ?? []).flatMap((sl) => cutSolid(sl.pieces, sl.bottom, sl.top, mine));
+    // Under the roof: each block cut by the roof's faces, its top on their slope (under-roof.ts).
+    const covers = wallTop(doc, wall).kind === 'roof' ? roofCoversOf(doc, wall.levelId) : [];
+    const level = levelOf(doc, wall.levelId);
+    const bare = level ? level.elevation + level.height : top;
+    const blocks = covers.length > 0 ? cut.flatMap((b) => blocksUnder(b, covers, bare)) : cut;
+    const materials = layers.map((l) => materialIn(doc.materials, l.materialId));
+    solids.set(wall.id, { wall, pieces: planPieces.get(wall.id)!, plan: plan.get(wall.id)!, blocks, bottom, top, layers, seams: seams.get(wall.id) ?? [], materials });
+  }
+  // Rooms see the walls before doors and windows are cut: a door does not open a room.
+  const piecesByLevel = new Map<string, P[][]>();
+  for (const wall of doc.walls) {
+    const list = piecesByLevel.get(wall.levelId) ?? [];
+    for (const piece of pieces.get(wall.id) ?? []) list.push([...piece.polygon]);
+    piecesByLevel.set(wall.levelId, list);
+  }
+  // Separators bound rooms as walls of no thickness (elements/separator): the rooms and the spaces a room can go in.
+  const roomPieces = new Map(piecesByLevel);
+  for (const sep of doc.separators) roomPieces.set(sep.levelId, [...(roomPieces.get(sep.levelId) ?? []), separatorStrip(sep)]);
+  const roomResult = deriveRooms(doc.rooms, roomPieces);
+  const found = new Map<string, P[][]>();
+  const spaces = (levelId: LevelId): P[][] => {
+    if (!found.has(levelId)) found.set(levelId, spacesOf(roomPieces.get(levelId) ?? []));
+    return found.get(levelId)!;
+  };
+  const base = { solids, warnings, choosable, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, spaces };
+  // The registry's kinds last: a dimension is placed from the walls and doors.
+  return { ...base, kinds: deriveKinds(doc, base) };
+}
+
+/** A height range of a wall, and its plan pieces there: joined only with the walls standing over all of it. */
+interface WallSlice {
+  readonly bottom: number;
+  readonly top: number;
+  readonly pieces: readonly Piece[];
+}
+
+/**
+ * The joined pieces of every wall, by height (spec §7.5). Walls join only within their level: one
+ * level's walls never cut, notch or warn about another's. On a level, the walls' bases and tops cut
+ * the height into ranges, and each range is joined with only the walls standing over it, so a wall
+ * past the top of the one it meets ends there as if alone, and walls whose heights do not overlap do
+ * not join (§10). A wall's consecutive ranges with the same pieces are one slice. In plan a wall shows
+ * its slice at the cut height (`cutOf`, absolute) when it crosses it, and otherwise the slice nearest
+ * to it: its top one below the cut, its lowest above.
+ */
+export function wallPieces(
+  walls: readonly DocWall[],
+  types: ReadonlyMap<WallTypeId, WallType>,
+  heightOf: (w: DocWall) => { bottom: number; top: number },
+  cutOf: (w: DocWall) => number,
+): { pieces: Map<WallId, readonly Piece[]>; plan: Map<WallId, PlanCut>; slices: Map<WallId, WallSlice[]>; warnings: JoinWarning[]; choosable: Set<string> } {
+  const byLevel = new Map<string, DocWall[]>();
+  for (const w of walls) byLevel.set(w.levelId, [...(byLevel.get(w.levelId) ?? []), w]);
+  const slices = new Map<WallId, WallSlice[]>();
+  const warnings = new Map<string, JoinWarning>();
+  // An end whose chosen join acts at any height.
+  const choosable = new Set<string>();
+  for (const list of byLevel.values()) {
+    const range = new Map(list.map((w) => [w.id, heightOf(w)]));
+    const zs: number[] = [];
+    for (const z of [...range.values()].flatMap((r) => [r.bottom, r.top]).sort((a, b) => a - b)) {
+      if (zs.length === 0 || z > zs[zs.length - 1]! + POINT_TOLERANCE) zs.push(z);
+    }
+    for (let k = 0; k + 1 < zs.length; k++) {
+      const z0 = zs[k]!;
+      const z1 = zs[k + 1]!;
+      const present = list.filter((w) => range.get(w.id)!.bottom <= z0 + POINT_TOLERANCE && range.get(w.id)!.top >= z1 - POINT_TOLERANCE);
+      if (present.length === 0) continue;
+      const g = computeWallGeometry(present, types);
+      // The same problem at several heights is one warning.
+      for (const w of g.warnings) warnings.set(JSON.stringify(w), w);
+      for (const end of g.choosable) choosable.add(end);
+      for (const w of present) {
+        const pieces = g.pieces.get(w.id) ?? [];
+        const own = slices.get(w.id) ?? [];
+        const last = own[own.length - 1];
+        if (last && JSON.stringify(last.pieces) === JSON.stringify(pieces)) own[own.length - 1] = { ...last, top: z1 };
+        else own.push({ bottom: z0, top: z1, pieces });
+        slices.set(w.id, own);
+      }
+    }
+  }
+  const pieces = new Map<WallId, readonly Piece[]>();
+  const plan = new Map<WallId, PlanCut>();
+  for (const w of walls) {
+    const { bottom, top } = heightOf(w);
+    const z = cutOf(w);
+    // Ending or starting at the cut height is not crossing it.
+    const kind: PlanCut = bottom < z - POINT_TOLERANCE && top > z + POINT_TOLERANCE ? 'cut' : top <= z + POINT_TOLERANCE ? 'below' : 'above';
+    const own = slices.get(w.id) ?? [];
+    const shown = kind === 'cut' ? own.find((sl) => sl.bottom <= z && sl.top > z) : kind === 'below' ? own[own.length - 1] : own[0];
+    // A wall with no height stands in no range: in plan, its pieces alone, and nothing in 3D.
+    pieces.set(w.id, shown ? shown.pieces : (computeWallGeometry([w], types).pieces.get(w.id) ?? []));
+    plan.set(w.id, kind);
+  }
+  return { pieces, plan, slices, warnings: [...warnings.values()], choosable };
+}
+
+/**
+ * What other walls cover of each straight wall, measured once for both uses below: the stations along its
+ * reference line that their pieces cover within its faces (a hair beyond, as for an opening over a joint).
+ * The two uses repeated this clipping each, every pair of walls clipped twice per derivation.
+ * - joints: where they meet it inside its length (a T or an X); corners at its ends are not inside it.
+ * - ends: its length clear of the walls met at its ends (a corner, an end against another wall), from the
+ *   inner face of the one at its start to that of the one at its end. A distributed group's spaces at the
+ *   wall's ends are measured to these faces.
+ */
+export function jointsAndEnds(
+  walls: readonly DocWall[],
+  types: ReadonlyMap<WallTypeId, WallType>,
+  pieces: ReadonlyMap<WallId, readonly Piece[]>,
+): { joints: Map<WallId, Map<WallId, { lo: number; hi: number }>>; ends: Map<WallId, { from: number; to: number }> } {
+  const joints = new Map<WallId, Map<WallId, { lo: number; hi: number }>>();
+  const ends = new Map<WallId, { from: number; to: number }>();
+  for (const host of walls) {
+    if (host.bulge) continue;
+    const shape = shapeOf(host, types.get(host.wallTypeId));
+    if (typeof shape === 'string') continue;
+    const n = wallNormal(shape);
+    const [f0, f1] = faceOffsets(shape);
+    const band = [
+      halfPlaneThrough(add(shape.start, scale(n, f0 - JOINT_REACH)), n),
+      halfPlaneThrough(add(shape.start, scale(n, f1 + JOINT_REACH)), scale(n, -1)),
+    ];
+    const length = wallLength(shape);
+    const mine = new Map<WallId, { lo: number; hi: number }>();
+    let from = 0;
+    let to = length;
+    for (const other of walls) {
+      if (other.id === host.id || other.levelId !== host.levelId) continue;
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (const p of pieces.get(other.id) ?? []) {
+        const poly = band.reduce<ConvexPolygon>((q, h) => (q.length > 0 ? clipHalfPlane(q, h) : q), p.polygon);
+        if (poly.length === 0 || area(poly) <= AREA_EPSILON) continue;
+        for (const v of poly) {
+          const st = stationOf(shape, v);
+          lo = Math.min(lo, st);
+          hi = Math.max(hi, st);
+        }
+      }
+      if (lo > hi) continue;
+      if (lo > POINT_TOLERANCE && hi < length - POINT_TOLERANCE) mine.set(other.id, { lo, hi });
+      // Over the start or the end, not inside (those are joints): what it covers of the host's length.
+      else if (lo <= POINT_TOLERANCE && hi < length / 2) from = Math.max(from, hi);
+      else if (hi >= length - POINT_TOLERANCE && lo > length / 2) to = Math.min(to, lo);
+    }
+    if (mine.size > 0) joints.set(host.id, mine);
+    if (from > 0 || to < length) ends.set(host.id, { from, to });
+  }
+  return { joints, ends };
+}
+
+/** The absolute height where the plan of the wall's level cuts it. */
+export function planCutHeight(doc: Doc, wall: DocWall): number {
+  const level = levelOf(doc, wall.levelId);
+  return (level?.elevation ?? 0) + (level ? cutHeightOf(level) : CUT_HEIGHT);
+}
+
+// model/vector is the one copy of these; re-exported for the render and tools layers.
+export { polygonDistance, insidePolygon };

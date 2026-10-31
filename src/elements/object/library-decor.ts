@@ -5,6 +5,7 @@
 
 import type { ObjectDefinition, ParamDef } from './schema';
 import { BUILD, choice, counted, int, len, mat, num, w, yes } from './library-kit';
+import type { DefinitionId } from './schema';
 
 /** A light's own parameters, as the other luminaires' (library-lights.ts). */
 const light = (watts: number, kelvin: number): ParamDef[] => [
@@ -13,7 +14,7 @@ const light = (watts: number, kelvin: number): ParamDef[] => [
 ];
 
 export const TABLE_LAMP: ObjectDefinition = {
-  id: 'def_table_lamp',
+  id: 'def_table_lamp' as DefinitionId,
   name: w('Abajur', 'Table lamp'),
   category: 'lighting',
   folder: 'Iluminação',
@@ -41,7 +42,7 @@ export const TABLE_LAMP: ObjectDefinition = {
 };
 
 export const CHANDELIER: ObjectDefinition = {
-  id: 'def_chandelier',
+  id: 'def_chandelier' as DefinitionId,
   name: w('Lustre de braços', 'Arm chandelier'),
   category: 'lighting',
   folder: 'Iluminação',
@@ -73,7 +74,7 @@ export const CHANDELIER: ObjectDefinition = {
 };
 
 export const TRACK_LIGHT: ObjectDefinition = {
-  id: 'def_track_light',
+  id: 'def_track_light' as DefinitionId,
   name: w('Trilho com spots', 'Track with spotlights'),
   category: 'lighting',
   folder: 'Iluminação',
@@ -101,7 +102,7 @@ export const TRACK_LIGHT: ObjectDefinition = {
 };
 
 export const LED_PROFILE: ObjectDefinition = {
-  id: 'def_led_profile',
+  id: 'def_led_profile' as DefinitionId,
   name: w('Perfil de LED pendente', 'Suspended LED profile'),
   category: 'lighting',
   folder: 'Iluminação',
@@ -127,7 +128,7 @@ export const LED_PROFILE: ObjectDefinition = {
 };
 
 export const OUTDOOR_WALL_LIGHT: ObjectDefinition = {
-  id: 'def_outdoor_wall_light',
+  id: 'def_outdoor_wall_light' as DefinitionId,
   name: w('Arandela externa', 'Outdoor wall light'),
   category: 'lighting',
   folder: 'Iluminação',
@@ -151,7 +152,7 @@ export const OUTDOOR_WALL_LIGHT: ObjectDefinition = {
 };
 
 export const DESK_LAMP: ObjectDefinition = {
-  id: 'def_desk_lamp',
+  id: 'def_desk_lamp' as DefinitionId,
   name: w('Luminária articulada', 'Articulated desk lamp'),
   category: 'lighting',
   folder: 'Iluminação',
@@ -180,7 +181,7 @@ export const DESK_LAMP: ObjectDefinition = {
 };
 
 export const CURTAIN: ObjectDefinition = {
-  id: 'def_curtain',
+  id: 'def_curtain' as DefinitionId,
   name: w('Cortina', 'Curtain'),
   category: 'furniture',
   folder: 'Decoração',
@@ -220,7 +221,7 @@ export const CURTAIN: ObjectDefinition = {
 };
 
 export const BLIND: ObjectDefinition = {
-  id: 'def_blind',
+  id: 'def_blind' as DefinitionId,
   name: w('Persiana', 'Blind'),
   category: 'furniture',
   folder: 'Decoração',
@@ -248,7 +249,7 @@ export const BLIND: ObjectDefinition = {
 };
 
 export const WALL_ART: ObjectDefinition = {
-  id: 'def_wall_art',
+  id: 'def_wall_art' as DefinitionId,
   name: w('Quadros', 'Framed pictures'),
   category: 'furniture',
   folder: 'Decoração',
@@ -276,7 +277,7 @@ export const WALL_ART: ObjectDefinition = {
 };
 
 export const VASE: ObjectDefinition = {
-  id: 'def_vase',
+  id: 'def_vase' as DefinitionId,
   name: w('Vaso decorativo', 'Decorative vase'),
   category: 'furniture',
   folder: 'Decoração',
@@ -303,7 +304,7 @@ export const VASE: ObjectDefinition = {
 };
 
 export const LARGE_PLANT: ObjectDefinition = {
-  id: 'def_large_plant',
+  id: 'def_large_plant' as DefinitionId,
   name: w('Planta grande em vaso', 'Large potted plant'),
   category: 'plant',
   folder: 'Vegetação',
@@ -342,7 +343,7 @@ export const LARGE_PLANT: ObjectDefinition = {
 };
 
 export const WALL_CLOCK: ObjectDefinition = {
-  id: 'def_wall_clock',
+  id: 'def_wall_clock' as DefinitionId,
   name: w('Relógio de parede', 'Wall clock'),
   category: 'furniture',
   folder: 'Decoração',
@@ -370,7 +371,7 @@ export const WALL_CLOCK: ObjectDefinition = {
 };
 
 export const FLOATING_SHELF: ObjectDefinition = {
-  id: 'def_floating_shelf',
+  id: 'def_floating_shelf' as DefinitionId,
   name: w('Prateleira com objetos', 'Floating shelf with objects'),
   category: 'casework',
   folder: 'Decoração',

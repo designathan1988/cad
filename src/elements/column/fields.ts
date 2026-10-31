@@ -1,10 +1,10 @@
 // The fields columns show in the panel (ui/fields.ts builds the rows).
 
-import type { Field } from '../../ui/fields';
+import type { Field } from '../fields';
 import type { ColumnPatch } from './commands';
 import { type Column, COLUMN_PLATE, COLUMN_SHAPES, type ColumnShape } from './schema';
-import type { Doc } from '../../app/document';
-import { name, t } from '../../ui/i18n';
+import type { Doc } from '../../project/doc';
+import { name, t } from '../../i18n/messages';
 
 export interface ColumnFieldActions {
   readonly updateColumns: (ids: readonly string[], patch: ColumnPatch) => void;

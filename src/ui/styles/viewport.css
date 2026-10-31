@@ -1,0 +1,373 @@
+/* The viewport: the view bar, popovers, the light, toasts, the view cube (one part of styles.css, read in its order). */
+
+/* Viewport */
+.viewport {
+  position: relative;
+  overflow: hidden;
+  background: var(--canvas);
+  min-width: 0;
+  min-height: 0;
+}
+.viewport canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+.viewport canvas.hidden {
+  display: none;
+}
+.viewport canvas.overlay-3d {
+  pointer-events: none;
+}
+.temp-dims {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+.temp-dims > * {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  font: 600 var(--fs-sm) / 1 var(--font);
+  color: var(--wall-sel);
+  background: var(--canvas);
+  border: var(--line) solid transparent;
+  border-radius: var(--radius-sm);
+  padding: var(--sp-1) var(--sp-1);
+}
+.temp-dims button {
+  cursor: text;
+}
+.temp-dims button:hover,
+.temp-dims button:focus-visible {
+  border-color: var(--wall-sel);
+  outline: none;
+}
+.temp-dims input {
+  width: var(--dim-field-w);
+  text-align: center;
+  border-color: var(--wall-sel);
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+}
+/* The Display panel's lists, one over the other, wide enough for their names. */
+.light-lists {
+  display: grid;
+  gap: var(--sp-2);
+}
+.light-lists .look-select {
+  width: 100%;
+}
+.light-lists .look-select select {
+  flex: 1;
+}
+/* An open popover lies over the project browser's drawer (z-index 7) too. */
+.view-bar:has(.light-panel:not([hidden])) {
+  z-index: 8;
+}
+.vis-panel {
+  width: calc(10 * var(--sp-7));
+  max-height: 70vh;
+  overflow-y: auto;
+  gap: var(--sp-3);
+}
+.vis-head {
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+.vis-group {
+  display: grid;
+}
+.vis-title {
+  padding: 0 var(--sp-2) var(--sp-1);
+  color: var(--text-3, var(--text-2));
+  font-size: var(--fs-xs, var(--fs-sm));
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.vis-row,
+.vis-action {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: var(--control-h-sm);
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.vis-row:hover,
+.vis-action:hover {
+  background: var(--hover);
+}
+.vis-label {
+  flex: 1;
+  min-width: 0;
+}
+.vis-row[aria-pressed='false'] {
+  color: var(--text-2);
+}
+.vis-row[aria-pressed='true'] .icon {
+  color: var(--accent);
+}
+.vis-row[aria-current='true'] {
+  font-weight: 600;
+}
+.vis-action {
+  color: var(--accent-text, var(--accent));
+}
+.vis-set {
+  display: flex;
+  align-items: center;
+}
+/* While the photorealistic view is being prepared (app.ts): said beside the style, in the accent. */
+.look-preparing {
+  color: var(--accent-text);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.look-preparing[hidden] {
+  display: none;
+}
+.view-bar-group {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.view-bar-group[hidden] {
+  display: none;
+}
+.view-bar .light-btn[hidden] {
+  display: none;
+}
+.view-bar[hidden] {
+  display: none;
+}
+/* The light's sliders open up from its button. */
+.light-wrap {
+  position: relative;
+  display: flex;
+}
+.light-panel {
+  position: absolute;
+  bottom: calc(100% + var(--sp-2));
+  left: 0;
+  display: grid;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+.light-panel[hidden] {
+  display: none;
+}
+.light-row {
+  display: grid;
+  grid-template-columns: calc(2 * var(--sp-7)) minmax(0, 1fr) calc(1.75 * var(--sp-7));
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: var(--menu-min-w);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.light-value {
+  text-align: right;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+/* Explode with one level shown: dimmed, still clickable (it says why it does nothing). */
+.view-bar button[aria-disabled='true'] {
+  opacity: 0.45;
+}
+.empty-hint {
+  position: absolute;
+  left: 50%;
+  top: var(--sp-6);
+  transform: translateX(-50%);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--pill);
+  background: var(--bg);
+  border: var(--line) solid var(--border);
+  box-shadow: var(--shadow);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.empty-hint[hidden] {
+  display: none;
+}
+/* Hidden or isolated for a while: the drawing framed in the accent, and a chip with the way back. */
+.viewport.temp-view::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: var(--line-2) solid var(--accent);
+  pointer-events: none;
+  z-index: 3;
+}
+.temp-chip {
+  position: absolute;
+  left: var(--sp-3);
+  bottom: var(--sp-3);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
+  border: var(--line) solid var(--accent);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  font-size: var(--fs-sm);
+  z-index: 4;
+}
+.temp-chip[hidden] {
+  display: none;
+}
+/* What a dialog says when it has nothing to list. */
+.dialog-empty {
+  padding: 0 var(--sp-4);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+/* A question the dialog asks before acting (delete a project): in from the edges as the rows are. */
+.dialog-ask {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+}
+.projects-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+}
+.projects-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) auto var(--control-h) var(--control-h);
+  gap: var(--sp-2);
+  align-items: center;
+}
+.projects-row.current .text-field {
+  border-color: var(--accent);
+}
+.projects-info {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+.projects-open {
+  font-size: var(--fs-sm);
+  color: var(--accent);
+  padding: 0 var(--sp-2);
+}
+.text-btn.danger {
+  color: var(--warn);
+}
+/* The messages (app.ts toast): a stack over the bottom middle of the view, the newest at the bottom, each
+   with its button when it has one (Undone → Redo). */
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: var(--sp-4);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  pointer-events: none;
+  /* Over a dialog's scrim (20): said from a dialog ("link copied"), it was hidden under it. */
+  z-index: 25;
+}
+.toast-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
+  min-height: var(--control-h-sm);
+  border-radius: var(--radius);
+  background: var(--text);
+  color: var(--bg);
+  font-size: var(--fs-sm);
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+  animation: toast-in var(--ease);
+}
+.toast-item:not(:has(.toast-action)) {
+  padding-right: var(--sp-3);
+}
+.toast-action {
+  height: calc(var(--control-h-sm) - var(--sp-1));
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg) 18%, transparent);
+  color: var(--bg);
+  font-weight: 600;
+  cursor: pointer;
+}
+.toast-action:hover {
+  background: color-mix(in srgb, var(--bg) 30%, transparent);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--sp-1));
+  }
+}
+.cube-wrap {
+  width: var(--cube-wrap);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  z-index: 4;
+}
+.cube-wrap[hidden] {
+  display: none;
+}
+.cube {
+  width: var(--cube);
+  height: var(--cube);
+  margin: var(--sp-4);
+  perspective: var(--cube-depth);
+}
+.cube-inner {
+  position: relative;
+  width: var(--cube);
+  height: var(--cube);
+  transform-style: preserve-3d;
+}
+.cube-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: var(--line) solid var(--border);
+  background: var(--bg);
+  color: var(--text-2);
+  font: 600 var(--fs-xs) / 1 var(--font);
+  padding: 0;
+  cursor: pointer;
+  backface-visibility: hidden;
+  user-select: none;
+}
+.cube-face:focus-visible {
+  outline: var(--line-2) solid var(--accent);
+  outline-offset: calc(-1 * var(--line-2));
+}
+.cube-face:hover {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}

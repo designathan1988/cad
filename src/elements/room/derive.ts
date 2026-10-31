@@ -4,9 +4,10 @@
 // A point in no hole (outside the walls, or inside a wall) is "not enclosed", as Revit says.
 
 import { difference, setPrecision, union } from 'polyclip-ts';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import type { Floor, Room, RoomId } from './schema';
 import type { Material } from '../material/schema';
+import type { LevelId } from '../../project/doc';
 
 export interface RoomSolid {
   readonly room: Room;
@@ -272,7 +273,7 @@ export function deriveRooms(
 }
 
 /** A floor as built: its outline (its room's, or its own) wound counter-clockwise, its holes, area and heights. */
-export function deriveFloor(floor: Floor, rooms: ReadonlyMap<RoomId, RoomSolid>, elevation: (levelId: string) => number): FloorSolid {
+export function deriveFloor(floor: Floor, rooms: ReadonlyMap<RoomId, RoomSolid>, elevation: (levelId: LevelId) => number): FloorSolid {
   const raw = floor.source.kind === 'room' ? (rooms.get(floor.source.roomId)?.outline ?? []) : floor.source.points;
   const outline = signedArea(raw) < 0 ? [...raw].reverse() : [...raw];
   const top = elevation(floor.levelId) + floor.offset;

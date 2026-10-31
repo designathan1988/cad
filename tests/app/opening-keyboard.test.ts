@@ -3,19 +3,20 @@
 // places it centred.
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
-import { deriveGeometry } from '../../src/app/geometry';
-import { aimAlong, OPENING_PREVIEW_ID } from '../../src/app/opening-ui';
-import { openingTransition, ruleAt } from '../../src/tools/opening-tool';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
+import { deriveGeometry } from '../../src/project/derive';
+import { aimAlong, OPENING_PREVIEW_ID } from '../../src/elements/opening/aim';
+import { openingTransition, ruleAt } from '../../src/elements/opening/tool';
+import { lid, tid, wid } from '../ids';
 
-const wall: DocWall = { id: 'w', wallTypeId: 'wt_concrete20', start: { x: 0, y: 0 }, end: { x: 5, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground' };
+const wall: DocWall = { id: wid('w'), wallTypeId: tid('wt_concrete20'), start: { x: 0, y: 0 }, end: { x: 5, y: 0 }, referenceLine: 'centerline', levelId: lid('lvl_ground') };
 const doc: Doc = { ...newDocument(), walls: [wall] };
 
 describe('placing an opening by keyboard', () => {
-  const aim = aimAlong(doc, deriveGeometry(doc), 'w', 2.5, 0.01, OPENING_PREVIEW_ID)!;
+  const aim = aimAlong(doc, deriveGeometry(doc), wid('w'), 2.5, 0.01, OPENING_PREVIEW_ID)!;
 
   it('aims at the middle of the selected wall: centred', () => {
-    expect(aim).toMatchObject({ wallId: 'w', length: 5, station: 2.5 });
+    expect(aim).toMatchObject({ wallId: wid('w'), length: 5, station: 2.5 });
     expect(ruleAt(aim, 0.9)).toEqual({ kind: 'centered' });
   });
 
@@ -26,6 +27,6 @@ describe('placing an opening by keyboard', () => {
   });
 
   it('a wall that is not there gives no aim', () => {
-    expect(aimAlong(doc, deriveGeometry(doc), 'gone', 1, 0.01, OPENING_PREVIEW_ID)).toBeNull();
+    expect(aimAlong(doc, deriveGeometry(doc), wid('gone'), 1, 0.01, OPENING_PREVIEW_ID)).toBeNull();
   });
 });

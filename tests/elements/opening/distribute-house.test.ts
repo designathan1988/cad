@@ -3,34 +3,37 @@
 // dragging one of them afterwards moves only that one (the user's reports).
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
-import { hostsIn } from '../../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
+import { hostsIn } from '../../../src/project/derived-queries';
 import { distributeOpenings, updateOpening } from '../../../src/elements/opening/commands';
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { newOpening } from '../../../src/elements/opening/schema';
+import { gid, lid, oid, tid, wid } from '../../ids';
+import type { WallId } from '../../../src/elements/wall/schema';
+import type { OpeningId } from '../../../src/elements/opening/schema';
 
-const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
-  wallTypeId: 'wt_masonry15',
+  wallTypeId: tid('wt_masonry15'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level', offset: 0 },
 });
 
 // 9 × 4.6, a T wall at x = 4.6 between the rooms; the bottom wall runs (0,0) → (9,0).
-const walls = [wall('b', [0, 0], [9, 0]), wall('r', [9, 0], [9, 4.6]), wall('t', [9, 4.6], [0, 4.6]), wall('l', [0, 4.6], [0, 0]), wall('m', [4.6, 0], [4.6, 4.6])];
-const win = (id: string, at: number) => newOpening(id, 'b', 'window', { kind: 'fromStart', distance: at });
-const house = (): Doc => ({ ...newDocument(), walls, openings: [win('x', 2), win('y', 5.5), win('z', 7.5)] });
+const walls = [wall(wid('b'), [0, 0], [9, 0]), wall(wid('r'), [9, 0], [9, 4.6]), wall(wid('t'), [9, 4.6], [0, 4.6]), wall(wid('l'), [0, 4.6], [0, 0]), wall(wid('m'), [4.6, 0], [4.6, 4.6])];
+const win = (id: OpeningId, at: number) => newOpening(id, wid('b'), 'window', { kind: 'fromStart', distance: at });
+const house = (): Doc => ({ ...newDocument(), walls, openings: [win(oid('x'), 2), win(oid('y'), 5.5), win(oid('z'), 7.5)] });
 const placed = (d: Doc) => deriveOpenings(d.openings, hostsIn(d), d.openingGroups).placed;
 
 describe('distribute in a house', () => {
   it('the two windows of the right room: equal spaces from the T wall face to the corner wall face', () => {
-    const d = distributeOpenings('g', ['x', 'y', 'z'], { kind: 'equal' }).apply(house());
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(house());
     const p = placed(d);
-    const [y, z] = [p.get('y')!, p.get('z')!];
+    const [y, z] = [p.get(oid('y'))!, p.get(oid('z'))!];
     // Faces: the T wall's right face at 4.675, the right wall's inner face at 8.925 (15 cm walls on their axes).
     const gaps = [y.start - 4.675, z.start - y.end, 8.925 - z.end];
     expect(gaps[0]).toBeCloseTo(gaps[1]!, 6);
@@ -38,10 +41,10 @@ describe('distribute in a house', () => {
   });
 
   it('one dragged away: the others stay where they were', () => {
-    const d = distributeOpenings('g', ['x', 'y', 'z'], { kind: 'equal' }).apply(house());
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(house());
     const before = placed(d);
-    const next = updateOpening('y', { rule: { kind: 'fromStart', distance: 5 } }).apply(d);
+    const next = updateOpening(oid('y'), { rule: { kind: 'fromStart', distance: 5 } }).apply(d);
     const after = placed(next);
-    for (const id of ['x', 'z']) expect(after.get(id)!.start).toBeCloseTo(before.get(id)!.start, 9);
+    for (const id of [oid('x'), oid('z')]) expect(after.get(id)!.start).toBeCloseTo(before.get(id)!.start, 9);
   });
 });

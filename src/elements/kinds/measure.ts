@@ -4,9 +4,9 @@
 // "⌒"); a point's coordinates by a leader.
 
 import { finite, isObject, isPoint } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
-import { type MessageKey, num, t } from '../../ui/i18n';
-import { lengthNum } from '../../ui/units';
+import type { Point2 } from '../../model/vector';
+import { type MessageKey, num, t } from '../../i18n/messages';
+import { lengthNum } from '../../i18n/units';
 import type { ElementKind, PlanPaint } from '../contract';
 import { segmentDistance } from '../dimension/anchor';
 import { updateMeasures } from '../measure/commands';
@@ -89,7 +89,7 @@ export const measureKind: ElementKind<Measure, MeasureSolid> = {
     if (!isArcMeasure(m) || !c.going(m.wallId)) return null;
     // Mirrored, the wall's ends trade places (edit.ts: swap): the leader is counted from the other one.
     const t1 = c.t.mirror ? 1 - m.t : m.t;
-    if (c.copy) return { ...m, id: c.id, wallId: c.to(m.wallId), t: t1 };
+    if (c.copy) return { ...m, id: c.to(m.id), wallId: c.to(m.wallId), t: t1 };
     return t1 === m.t ? null : { ...m, t: t1 };
   },
   outlines: (s) => (s.at ? linesOf(s.at) : []),

@@ -1,25 +1,28 @@
 // The fields walls show in the panel, in three sections (ui/fields.ts builds the rows). Base offset
 // and top are the wall's own or its type's (app/document.ts): an own one is marked, with the way back.
 
-import { lengthText } from '../../ui/units';
-import { type Doc, type DocWall, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop, type WallPhase } from '../../app/document';
-import { distance } from '../../core/vector';
-import type { Field } from '../../ui/fields';
-import { name, t, type MessageKey } from '../../ui/i18n';
-import { layerSwatch } from '../../ui/swatch';
+import { lengthText } from '../../i18n/units';
+import { type Doc, type DocWall, type WallDefaults, wallBase, wallHeights, wallOverrides, wallTop, type WallPhase } from '../../project/doc';
+import { distance } from '../../model/vector';
+import type { Field } from '../fields';
+import { name, t, type MessageKey } from '../../i18n/messages';
+import { layerSwatch } from './swatch';
 import { referenceLength } from '../opening/derive';
 import { arcOf } from './geometry/arc';
-import type { EndJoin, HeightRule, ReferenceLine } from './schema';
-import { canAlignWalls, canDistributeWalls } from '../../tools/arrange-walls';
-import { withLiveType } from './types';
+import type { EndJoin, HeightRule, ReferenceLine, WallTypeId } from './schema';
+import { canAlignWalls, canDistributeWalls } from './arrange';
+import type { LevelId } from '../../project/doc';
+import { levelIn } from '../../project/doc';
 import type { WallPatch } from './commands';
+import { withLiveType } from './types';
+import type { WallId } from './schema';
 
 export interface WallFieldActions {
   readonly updateWalls: (patch: WallPatch) => void;
   /** Another reference line for the selected walls, their bodies kept where they are. */
   readonly setReferenceLine: (line: ReferenceLine) => void;
   /** Another type for the selected walls: the face against their room kept, or their reference line (keepClear). */
-  readonly setWallType: (typeId: string) => void;
+  readonly setWallType: (typeId: WallTypeId) => void;
   /** Whether a type changed keeps the clear span (the face against the room) or the reference line. */
   readonly keepClear: boolean;
   readonly setKeepClear: (on: boolean) => void;
@@ -70,24 +73,10 @@ export function wallFields(
         // Types are many and alike: a list with search and a thumbnail of each one's layers.
         options: doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name), keywords: w.name, thumb: layerSwatch(w.layers, doc.materials) })),
         get: (w) => w.wallTypeId,
-        set: (v) => act.setWallType(v),
-      },
-      {
-        // What stays where it was when the type, and so the thickness, changes: the room's clear size,
-        // the thickness going to the other side, or the reference line, the faces moving about it.
-        id: 'keepOnType',
-        label: 'panel.keepOnType',
-        icon: 'refInterior',
-        kind: 'segmented',
-        sub: true,
-        wide: true,
-        labelled: true,
-        options: [
-          { value: 'clear', label: t('keep.clear'), short: t('keep.clear') },
-          { value: 'line', label: t('keep.line'), short: t('keep.line') },
-        ],
-        get: () => (act.keepClear ? 'clear' : 'line'),
-        set: (v) => act.setKeepClear(v === 'clear'),
+        set: (v) => {
+          const type = doc.wallTypes.find((x) => x.id === v);
+          if (type) act.setWallType(type.id);
+        },
       },
       {
         id: 'editType',
@@ -110,21 +99,9 @@ export function wallFields(
         // The body stays where it is; the line moves to its face or centre (edit.ts).
         set: (v) => act.setReferenceLine(v as ReferenceLine),
       },
-      {
-        // Its phase in a renovation: drawn in a colour of its own with the overrides on (layer-sets.ts).
-        id: 'phase',
-        label: 'panel.phase',
-        kind: 'segmented',
-        options: [
-          { value: 'new', label: t('phase.new'), short: t('phase.new') },
-          { value: 'existing', label: t('phase.existing'), short: t('phase.existing') },
-          { value: 'demolish', label: t('phase.demolish'), short: t('phase.demolish') },
-        ],
-        labelled: true,
-        wide: true,
-        get: (w) => w.phase ?? 'new',
-        set: (v) => act.updateWalls((v === 'new' ? { phase: undefined } : { phase: v as WallPhase }) as Partial<Omit<DocWall, 'id'>>),
-      },
+      // What a wall is read by first, in the open section (they were under the closed "More options").
+      { id: 'length', label: 'panel.length', kind: 'readout', when: one, text: (ws) => `${lengthText(referenceLength(ws[0]!))}` },
+      { id: 'thickness', label: 'panel.thickness', kind: 'readout', text: (ws) => sameText(ws.map((w) => `${lengthText(thickness(doc, w), 3)}`)) },
     ],
     constraints: [
       {
@@ -133,7 +110,10 @@ export function wallFields(
         kind: 'select',
         options: doc.levels.map((l) => ({ value: l.id, label: name(l.name) })),
         get: (w) => w.levelId,
-        set: (v) => act.updateWalls({ levelId: v }),
+        set: (v) => {
+          const levelId = levelIn(doc.levels, v);
+          if (levelId) act.updateWalls({ levelId });
+        },
       },
       {
         id: 'baseOffset',
@@ -166,14 +146,17 @@ export function wallFields(
           const r = top(w);
           return r.kind === 'toLevel' ? r.levelId : '';
         },
-        set: (v) => act.updateWalls({ top: { kind: 'toLevel', levelId: v, offset: 0 } }),
+        set: (v) => {
+          const levelId = levelIn(doc.levels, v);
+          if (levelId) act.updateWalls({ top: { kind: 'toLevel', levelId, offset: 0 } });
+        },
       },
       {
         id: 'topLevelOffset',
         label: 'panel.offset',
         kind: 'number',
         sub: true,
-        when: (ws) => all('toLevel')(ws) && ws.every((w) => (top(w) as { levelId?: string }).levelId === (top(ws[0]!) as { levelId?: string }).levelId),
+        when: (ws) => all('toLevel')(ws) && ws.every((w) => (top(w) as { levelId?: LevelId }).levelId === (top(ws[0]!) as { levelId?: LevelId }).levelId),
         get: (w) => {
           const r = top(w);
           return r.kind === 'toLevel' ? r.offset : 0;
@@ -224,9 +207,39 @@ export function wallFields(
         set: (v) => act.updateWalls({ top: { kind: 'fixed', height: v } }),
       },
     ],
+    // Less used: the renovation phase and what a change of type keeps (docs/revisao-interface.md, P2).
     more: [
-      { id: 'thickness', label: 'panel.thickness', kind: 'readout', text: (ws) => sameText(ws.map((w) => `${lengthText(thickness(doc, w), 3)}`)) },
-      { id: 'length', label: 'panel.length', kind: 'readout', when: one, text: (ws) => `${lengthText(referenceLength(ws[0]!))}` },
+      {
+        // Its phase in a renovation: drawn in a colour of its own with the overrides on (layer-sets.ts).
+        id: 'phase',
+        label: 'panel.phase',
+        kind: 'segmented',
+        options: [
+          { value: 'new', label: t('phase.new'), short: t('phase.new') },
+          { value: 'existing', label: t('phase.existing'), short: t('phase.existing') },
+          { value: 'demolish', label: t('phase.demolish'), short: t('phase.demolish') },
+        ],
+        labelled: true,
+        wide: true,
+        get: (w) => w.phase ?? 'new',
+        set: (v) => act.updateWalls((v === 'new' ? { phase: undefined } : { phase: v as WallPhase }) as Partial<Omit<DocWall, 'id'>>),
+      },
+      {
+        // What stays where it was when the type, and so the thickness, changes: the room's clear size,
+        // the thickness going to the other side, or the reference line, the faces moving about it.
+        id: 'keepOnType',
+        label: 'panel.keepOnType',
+        icon: 'refInterior',
+        kind: 'segmented',
+        wide: true,
+        labelled: true,
+        options: [
+          { value: 'clear', label: t('keep.clear'), short: t('keep.clear') },
+          { value: 'line', label: t('keep.line'), short: t('keep.line') },
+        ],
+        get: () => (act.keepClear ? 'clear' : 'line'),
+        set: (v) => act.setKeepClear(v === 'clear'),
+      },
       { id: 'chord', label: 'panel.chord', kind: 'readout', when: (ws) => one(ws) && !!ws[0]!.bulge, text: (ws) => `${lengthText(distance(ws[0]!.start, ws[0]!.end))}` },
       {
         id: 'radius',
@@ -280,7 +293,7 @@ const topOptions = (doc: Doc) => [
 ];
 
 /** The level just above a level (by its floor), else the highest other one. */
-function levelAbove(doc: Doc, levelId: string | undefined): string | undefined {
+function levelAbove(doc: Doc, levelId: LevelId | undefined): LevelId | undefined {
   const own = doc.levels.find((l) => l.id === levelId);
   const others = [...doc.levels].filter((l) => l.id !== levelId).sort((a, b) => a.elevation - b.elevation);
   return (own ? others.find((l) => l.elevation > own.elevation) : undefined)?.id ?? others[others.length - 1]?.id;
@@ -292,7 +305,7 @@ function levelAbove(doc: Doc, levelId: string | undefined): string | undefined {
  * over (Revit's Top Offset), and from a fixed or roof top the offset keeps the wall's top where it is.
  * Built from constants, a 3.20 m wall made "fixed" dropped to 2.80 m and an offset was lost.
  */
-function topRule(doc: Doc, wall: DocWall, kind: string, above: string | undefined): HeightRule {
+function topRule(doc: Doc, wall: DocWall, kind: string, above: LevelId | undefined): HeightRule {
   const now = wallTop(doc, wall);
   const h = wallHeights(doc, wall);
   if (kind === now.kind) return now;
@@ -308,7 +321,7 @@ function topRule(doc: Doc, wall: DocWall, kind: string, above: string | undefine
 const sameText = (texts: readonly string[]) => (texts.every((x) => x === texts[0]) ? texts[0]! : t('panel.varies'));
 
 /** The template's id: never a wall's (theirs start with "wall_"), as next-element.ts's NEXT_ID. */
-const NEXT_WALL_ID = '__next__';
+const NEXT_WALL_ID = '__next__' as WallId;
 
 /** The fields a wall not yet drawn has: its type, line, base and top (its level is the one shown; its phase, joins and measures are a placed wall's). */
 const NEXT_WALL = new Set(['type', 'reference', 'baseOffset', 'top', 'topLevelId', 'topLevelOffset', 'topOffset', 'topHeight']);
@@ -319,7 +332,7 @@ const NEXT_WALL = new Set(['type', 'reference', 'baseOffset', 'top', 'topLevelId
  * level shown, with the same fields as a selected wall (wallFields), those a placed wall alone has left
  * out. A change to the template is a change to the settings.
  */
-export function nextWall(doc: Doc, chosen: WallDefaults, levelId: string, update: (patch: Partial<WallDefaults>) => void): { readonly fields: Field<DocWall>[]; readonly item: DocWall } {
+export function nextWall(doc: Doc, chosen: WallDefaults, levelId: LevelId, update: (patch: Partial<WallDefaults>) => void): { readonly fields: Field<DocWall>[]; readonly item: DocWall } {
   // Its type as the wall tool will draw it (types.ts: withLiveType), not one deleted since.
   const defaults = withLiveType(doc, chosen);
   const item: DocWall = { id: NEXT_WALL_ID, wallTypeId: defaults.wallTypeId, referenceLine: defaults.referenceLine, start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, levelId, baseOffset: defaults.baseOffset, top: defaults.top };

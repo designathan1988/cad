@@ -3,21 +3,22 @@
 // layers and thickness, and as its main action drawing a floor of it, or, with floors selected, giving
 // them this build-up. Laid out as the objects' store (objects-dialog.ts), with its styles.
 
+import { withLibrary } from './library-tabs';
 import * as THREE from 'three';
-import { fold } from './search';
-import { pictureQueue } from './store-pictures';
-import type { App } from '../app/app';
-import { nextOf } from '../app/next-element';
+import type { App } from '../session/app';
+import { nextOf } from '../session/next';
 import { SEE_THROUGH, materialIn, type Material } from '../elements/material/schema';
 import { setFloorLayers } from '../elements/room/commands';
 import { FLOOR_BUILDUPS, type FloorLayer } from '../elements/room/schema';
-import { previewMesh } from '../render/pattern-texture';
+import { previewMesh } from '../elements/object/textures';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
-import { materialLabel, type MessageKey, t } from './i18n';
-import { icon } from './icons';
+import { materialLabel, type MessageKey, t } from '../i18n/messages';
 import { meshSnapshot } from './object-snapshot';
-import { lengthText } from './units';
+import { lengthText } from '../i18n/units';
+import { iconButton, storeSearch } from './store-parts';
+import { pictureQueue } from './store-pictures';
+import { fold } from './search';
 
 const SIDE = 1;
 /** How much each layer under the top one reaches out further at the front corner (m). */
@@ -65,18 +66,12 @@ export function showFloors(app: App): void {
     const selected = doc.floors.filter((f) => app.ui.selection.has(f.id));
     const total = (k: string) => FLOOR_BUILDUPS[k]!.reduce((s, l) => s + l.thickness, 0);
 
-    const search = el('input', { type: 'search', class: 'objs-search', placeholder: t('flstore.search'), 'aria-label': t('flstore.search') });
-    search.value = query;
-    search.dataset.focus = 'search';
-    search.addEventListener('input', () => {
-      query = search.value;
+    const search = storeSearch(t('flstore.search'), query, (value) => {
+      query = value;
       scrolled = 0;
       dialog.redraw();
     });
-    const closeBtn = el('button', { type: 'button', class: 'icon-btn', 'aria-label': t('help.close'), title: t('help.close') });
-    closeBtn.innerHTML = icon('close', 18);
-    closeBtn.dataset.focus = 'close';
-    closeBtn.addEventListener('click', close);
+    const closeBtn = iconButton('close', t('help.close'), 'close', close);
     const head = el('div', { class: 'objs-head' }, el('h2', {}, t('flstore.title')), search, el('span', { class: 'objs-total' }, t('flstore.count', { n: shown.length })), closeBtn);
 
     queue.clear();
@@ -119,7 +114,6 @@ export function showFloors(app: App): void {
         if (selected.length > 0) app.store.dispatch(setFloorLayers(selected.map((f) => f.id), layers));
         else {
           // The floor tool's next floor of this build-up, its thickness theirs.
-          app.ui.ceilingTool = false;
           app.next = { ...app.next, floors: { ...nextOf(app, 'floors'), layers, thickness: total(chosen) } };
           app.setTool('floor');
         }
@@ -127,7 +121,7 @@ export function showFloors(app: App): void {
       side.append(go, el('p', { class: 'objs-in-project' }, selected.length > 0 ? t('flstore.applyNote') : t('flstore.drawNote')));
     }
     queue.work();
-    return el('div', { class: 'dialog objs-store flstore', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('flstore.title') }, head, el('div', { class: 'objs-main' }, grid, side));
+    return withLibrary(app, 'floors', close, el('div', { class: 'dialog objs-store flstore', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('flstore.title') }, head, el('div', { class: 'objs-main' }, grid, side)));
   };
   const dialog = openProjectDialog(app, render, () => `buildup:${chosen}`);
   app.shell.helpBack.querySelector<HTMLElement>(`[data-focus="buildup:${chosen}"]`)?.focus({ preventScroll: true });

@@ -1,10 +1,10 @@
 // The design system's tokens are defined once and used everywhere (ref/chat.txt:227): outside the
 // token definitions, styles.css has no size in px and no colour of its own.
 
-import { readFileSync } from 'node:fs';
+import { stylesText } from './styles-source';
 import { describe, expect, it } from 'vitest';
 
-const css = readFileSync(new URL('../../src/ui/styles.css', import.meta.url), 'utf8');
+const css = stylesText();
 // Declarations that are not token definitions, comments or media conditions.
 const declarations = css
   .split('\n')

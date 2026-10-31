@@ -3,7 +3,9 @@
 // one action taken from the other.
 
 import { describe, expect, it } from 'vitest';
-import { actionOfKey, assignKey, comboOf, keyOf, normalizeCombo, type KeyMap } from '../../src/app/keymap';
+import { assignKey, comboOf, keyOf, normalizeCombo } from '../../src/session/keymap';
+import type { KeyMap } from '../../src/session/keymap';
+import { actionOfKey } from '../../src/session/keymap';
 
 const ev = (key: string, mods: { ctrl?: boolean; alt?: boolean; shift?: boolean } = {}) => ({ key, ctrlKey: !!mods.ctrl, metaKey: false, altKey: !!mods.alt, shiftKey: !!mods.shift });
 const actions = [

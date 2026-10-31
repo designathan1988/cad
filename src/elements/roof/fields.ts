@@ -1,8 +1,8 @@
 // The fields roofs show in the panel (ui/fields.ts builds the rows).
 
-import { slopeFormat, slopeShown, slopeTyped, slopeUnit } from '../../ui/units';
-import type { Field } from '../../ui/fields';
-import { t } from '../../ui/i18n';
+import { slopeFormat, slopeShown, slopeTyped, slopeUnit } from '../../i18n/units';
+import type { Field } from '../fields';
+import { t } from '../../i18n/messages';
 import type { RoofPatch } from './commands';
 import { ROOF_COVERING, ROOF_GRADE_MAX, type RoofKind } from './schema';
 import type { RoofSolid } from './geometry';

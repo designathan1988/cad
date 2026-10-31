@@ -1,8 +1,27 @@
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 
-export type WallId = string;
-export type WallTypeId = string;
-export type MaterialId = string;
+import type { Brand } from '../../core/id';
+import { newId } from '../../core/id';
+import type { LevelId } from '../../project/doc';
+
+/** A wall's id (wall_…). */
+export type WallId = Brand<'wall'>;
+
+/** A new wall's id (wall_…). */
+export const newWallId = (): WallId => newId('wall') as WallId;
+
+/** The ids among `ids` that are walls of `walls` (a selection holds every kind). */
+export const wallsIn = (walls: readonly { readonly id: WallId }[], ids: Iterable<string>): WallId[] => {
+  const mine = new Set<string>(walls.map((w) => w.id));
+  return [...ids].filter((id): id is WallId => mine.has(id));
+};
+/** A wall type's id (wt_…). */
+export type WallTypeId = Brand<'wallType'>;
+
+/** A new wall type's id (wt_…). */
+export const newWallTypeId = (): WallTypeId => newId('wt') as WallTypeId;
+export type { MaterialId } from '../material/schema';
+import type { MaterialId } from '../material/schema';
 export type WallEnd = 'start' | 'end';
 export type ReferenceLine = 'centerline' | 'interiorFace' | 'exteriorFace';
 
@@ -32,7 +51,7 @@ export interface WallLayer {
 export type HeightRule =
   | { readonly kind: 'level'; readonly offset: number }
   | { readonly kind: 'fixed'; readonly height: number }
-  | { readonly kind: 'toLevel'; readonly levelId: string; readonly offset: number }
+  | { readonly kind: 'toLevel'; readonly levelId: LevelId; readonly offset: number }
   | { readonly kind: 'roof' };
 
 /**

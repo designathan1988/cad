@@ -6,7 +6,7 @@
 // leaves or panes by how they open; drawn open (opened in the view), swinging leaves stand square to the wall and
 // sliding ones are pushed to one side.
 
-import { add, distance, normalize, type Point2, scale, sub } from '../../core/vector';
+import { add, distance, normalize, type Point2, scale, sub } from '../../model/vector';
 import type { DoorHandle, LeafDesign, Opening } from './schema';
 import { paneRows, paneSpans } from './style';
 import { symbolLines } from './symbol';
@@ -218,13 +218,17 @@ export function openingParts(o: Placed, f: OpeningFrame, forceOpen: boolean): Op
   const n = s.leaves;
   const gap = Math.min(0.025, (hi - lo) / 5);
   // Leaves or panes on two tracks, each overlapping the next; open, slid toward the hinge side by `amount`.
+  // One alone has no other to slide over: it runs into the wall past the hinge-side jamb (a pocket leaf),
+  // 6 cm left out to take it by. Slid to where it was, it never moved.
   const sliding = (make: (t0: number, t1: number, off: number) => void) => {
     const lap = n > 1 ? 0.05 : 0;
     const w = Math.min(clear, (clear + lap * (n - 1)) / n);
+    const grip = Math.min(0.06, w / 4);
     for (let i = 0; i < n; i++) {
       const spread = n > 1 ? (i * (clear - w)) / (n - 1) : 0;
       const shut = a + spread;
-      const aside = op.hinge === 'start' ? a + Math.min(spread, 0.04 * i) : b - w - Math.min(spread, 0.04 * i);
+      const aside =
+        n === 1 ? (op.hinge === 'start' ? a - w + grip : b - grip) : op.hinge === 'start' ? a + Math.min(spread, 0.04 * i) : b - w - Math.min(spread, 0.04 * i);
       const t0 = shut + (aside - shut) * amount;
       make(t0, t0 + w, mid + (i % 2 === 0 ? -gap : gap));
     }
@@ -291,7 +295,8 @@ export function openingParts(o: Placed, f: OpeningFrame, forceOpen: boolean): Op
   const outside = o0 < o1 ? -1 : 1;
   // Its protection, just outside the exterior face, over the opening between the jambs: a shutter's
   // slats (5 cm apart, laid back 2 cm), or a grille's bars (12 mm, 12 cm apart, two cross bars). A
-  // shutter is drawn closed, and pushed aside when the window is drawn open (in the view); a grille stays.
+  // shutter rolls up toward the head as far as the window stands open, its guides at the jambs staying;
+  // drawn only while closed, it vanished from an open window. A grille stays.
   const face = o0 + outside * 0.03;
   if (s.screen === 'grille') {
     const bars = Math.max(1, Math.floor(width / 0.12 + 1e-9));
@@ -300,10 +305,11 @@ export function openingParts(o: Placed, f: OpeningFrame, forceOpen: boolean): Op
       push(box(t - 0.006, t + 0.006, face - 0.006, face + 0.006), o.bottom, o.top, 'frame');
     }
     for (const z of [o.bottom + 0.1, o.top - 0.1]) push(box(0, width, face - 0.006, face + 0.006), z - 0.006, z + 0.006, 'frame');
-  } else if (s.screen === 'shutter' && !open) {
+  } else if (s.screen === 'shutter') {
     push(box(0, 0.03, face - 0.015, face + 0.015), o.bottom, o.top, 'frame');
     push(box(width - 0.03, width, face - 0.015, face + 0.015), o.bottom, o.top, 'frame');
-    for (let z = o.bottom + 0.03; z + 0.03 <= o.top; z += 0.05) push(box(0.03, width - 0.03, face - 0.01, face + 0.01), z, z + 0.03, 'leaf');
+    const from = o.bottom + 0.03 + (o.top - o.bottom - 0.03) * amount;
+    for (let z = from; z + 0.03 <= o.top; z += 0.05) push(box(0.03, width - 0.03, face - 0.01, face + 0.01), z, z + 0.03, 'leaf');
   }
   // A window's pane: its sash (4 bars), its glass, its glazing bars when it has them.
   const pane = (t0: number, t1: number, off: number, z0 = bottom, z1 = top) => {

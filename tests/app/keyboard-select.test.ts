@@ -2,7 +2,7 @@
 // shown, Shift+Tab to the previous, in a fixed order (walls by number, then openings, rooms, floors).
 
 import { describe, expect, it } from 'vitest';
-import { stepSelection } from '../../src/app/keyboard-select';
+import { stepSelection } from '../../src/session/keyboard-select';
 
 const order = ['w1', 'w2', 'w3', 'o1', 'r1'];
 

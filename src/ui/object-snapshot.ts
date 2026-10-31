@@ -5,20 +5,22 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { SEE_THROUGH } from '../elements/material/schema';
-import { previewMesh } from '../render/pattern-texture';
-import type { Doc } from '../app/document';
+import { previewMesh } from '../elements/object/textures';
+import type { Doc } from '../project/doc';
 import { cutGeometries } from '../elements/kinds/object';
 import { evaluateObject } from '../elements/object/evaluate';
 import type { ObjectDefinition } from '../elements/object/schema';
+import { standInObjectId } from '../elements/object/schema';
+import { NO_LEVEL_ID } from '../project/doc';
 
 type Stage = { renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; group: THREE.Group; sun: THREE.DirectionalLight; ground: THREE.Mesh };
-let stage: Stage | null = null;
+const shared = { stage: null as Stage | null };
 /** Each picture drawn at this many times its size (see meshSnapshot). */
 const SUPERSAMPLE = 2;
 
 /** The stage, or null where the browser has no WebGL (the picture is then left out). */
 function stageOf(): Stage | null {
-  if (stage) return stage;
+  if (shared.stage) return shared.stage;
   // WebGL asked of a canvas of its own: a canvas keeps its first context, so asked of the renderer's one it
   // was the probe's, without the renderer's options (the drawing buffer not kept).
   if (!document.createElement('canvas').getContext('webgl2')) return null;
@@ -39,6 +41,7 @@ function stageOf(): Stage | null {
   // only from the front, a door, its frame and the wall read as one flat sheet).
   scene.add(new THREE.HemisphereLight(0xffffff, 0x6f7480, 0.55));
   renderer.shadowMap.enabled = true;
+  // PCF, softened by the light's shadow radius (three 0.186 removed PCFSoftShadowMap and fell back to this).
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const sun = new THREE.DirectionalLight(0xfff4e6, 2.2);
   sun.castShadow = true;
@@ -51,13 +54,13 @@ function stageOf(): Stage | null {
   ground.receiveShadow = true;
   const group = new THREE.Group();
   scene.add(sun, sun.target, ground, group);
-  stage = { renderer, scene, camera: new THREE.PerspectiveCamera(35, 4 / 3, 0.01, 200), group, sun, ground };
-  return stage;
+  shared.stage = { renderer, scene, camera: new THREE.PerspectiveCamera(35, 4 / 3, 0.01, 200), group, sun, ground };
+  return shared.stage;
 }
 
 /** The picture as a data URL, w × h device pixels, at the given type (its first by default); null with nothing to draw or no WebGL. */
 export function objectSnapshot(def: ObjectDefinition, doc: Doc, w: number, h: number, typeId = def.types[0]?.id ?? ''): string | null {
-  const ev = evaluateObject(def, { id: 'snapshot', levelId: '', definitionId: def.id, typeId, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
+  const ev = evaluateObject(def, { id: standInObjectId('snapshot'), levelId: NO_LEVEL_ID, definitionId: def.id, typeId, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
   if (ev.pieces.length === 0) return null;
   // Glass seen through, as in the 3D view (scene-3d.ts).
   return meshSnapshot(cutGeometries(ev.pieces).map(({ piece: p, geometry }) => previewMesh(geometry, p.material, SEE_THROUGH[p.material.id])), w, h);

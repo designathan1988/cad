@@ -1,3 +1,4 @@
+import { finite } from '../../core/guards';
 // Drawing scale and pens (docs/plano-de-escopo.md, phase 9): the plan's scale (1:20 to 1:500) and the
 // project's pen set, the width on paper of each kind of line. A pen is set at 1:100 and drawn heavier
 // at a larger scale and lighter at a smaller one (scaleFactor), as offices draw; texts keep their size
@@ -60,7 +61,6 @@ export const TEXT_MM: Readonly<Record<string, number>> = { '--fs-xs': 1.8, '--fs
 /** Paper sizes, landscape (mm). */
 export const PAPERS: Readonly<Record<string, readonly [number, number]>> = { A4: [297, 210], A3: [420, 297], A2: [594, 420], A1: [841, 594], A0: [1189, 841] };
 
-const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
 export const isDrawingSettings = (d: unknown): d is DrawingSettings => {
   if (typeof d !== 'object' || d === null) return false;

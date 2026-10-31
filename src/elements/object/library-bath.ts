@@ -4,9 +4,10 @@
 
 import type { ObjectDefinition } from './schema';
 import { boxHandles, BUILD, choice, len, mat, w, yes } from './library-kit';
+import type { DefinitionId } from './schema';
 
 export const VANITY_SINK: ObjectDefinition = {
-  id: 'def_vanity_sink',
+  id: 'def_vanity_sink' as DefinitionId,
   name: w('Bancada com cuba', 'Vanity with basin'),
   category: 'fixture',
   folder: 'Banheiro',
@@ -66,7 +67,7 @@ export const VANITY_SINK: ObjectDefinition = {
 };
 
 export const BATHTUB: ObjectDefinition = {
-  id: 'def_bathtub',
+  id: 'def_bathtub' as DefinitionId,
   name: w('Banheira', 'Bathtub'),
   category: 'fixture',
   folder: 'Banheiro',
@@ -101,7 +102,7 @@ export const BATHTUB: ObjectDefinition = {
 };
 
 export const SHOWER_GLASS: ObjectDefinition = {
-  id: 'def_shower_glass',
+  id: 'def_shower_glass' as DefinitionId,
   name: w('Box de vidro', 'Glass shower enclosure'),
   category: 'fixture',
   folder: 'Banheiro',
@@ -137,7 +138,7 @@ export const SHOWER_GLASS: ObjectDefinition = {
 };
 
 export const TOWEL_RAIL: ObjectDefinition = {
-  id: 'def_towel_rail',
+  id: 'def_towel_rail' as DefinitionId,
   name: w('Toalheiro', 'Towel rail'),
   category: 'fixture',
   folder: 'Banheiro',
@@ -170,7 +171,7 @@ export const TOWEL_RAIL: ObjectDefinition = {
 };
 
 export const MIRROR: ObjectDefinition = {
-  id: 'def_mirror',
+  id: 'def_mirror' as DefinitionId,
   name: w('Espelho', 'Mirror'),
   category: 'furniture',
   folder: 'Banheiro',
@@ -209,7 +210,7 @@ export const MIRROR: ObjectDefinition = {
 };
 
 export const URINAL: ObjectDefinition = {
-  id: 'def_urinal',
+  id: 'def_urinal' as DefinitionId,
   name: w('Mictório', 'Urinal'),
   category: 'fixture',
   folder: 'Banheiro',
@@ -232,7 +233,7 @@ export const URINAL: ObjectDefinition = {
 };
 
 export const GRAB_BARS: ObjectDefinition = {
-  id: 'def_grab_bars',
+  id: 'def_grab_bars' as DefinitionId,
   name: w('Barras de apoio', 'Grab bars'),
   category: 'fixture',
   folder: 'Banheiro',

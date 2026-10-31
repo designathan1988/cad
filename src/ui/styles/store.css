@@ -1,0 +1,432 @@
+/* The stores: objects, library, types, floor build-ups (one part of styles.css, read in its order). */
+
+/* The objects' store (objects-dialog.ts): a head with the search, the folders down the side, the objects
+   as cards with their pictures, the chosen one beside them with placing it as the main action. It keeps
+   its size while searched: nothing moves under the pointer. */
+.objs-store {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: min(var(--objs-dialog-w), calc(100vw - 2 * var(--sp-4)));
+  /* Below the dialogs' own top margin: at 943 px tall the bottom row of cards and the main button fell off the screen. */
+  height: min(var(--objs-dialog-h), calc(100vh - var(--dialog-top) - var(--sp-4)));
+  max-height: none;
+}
+/* The Library (ui/library-tabs.ts): its catalogs as tabs over each one, all of one size so switching
+   tabs never moves the window. */
+.in-library {
+  width: min(var(--objs-dialog-w), calc(100vw - 2 * var(--sp-4)));
+  height: min(var(--objs-dialog-h), calc(100vh - var(--dialog-top) - var(--sp-4)));
+  max-height: none;
+}
+.lib-tabs {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3) 0;
+  border-bottom: var(--line) solid var(--border);
+  background: var(--bg-2, var(--bg));
+}
+.lib-title {
+  margin-right: var(--sp-3);
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+.lib-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-bottom: var(--line-2) solid transparent;
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.lib-tab:hover {
+  color: var(--text);
+}
+.lib-tab[aria-selected='true'] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+.objs-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
+  border-bottom: var(--line) solid var(--border);
+}
+.objs-head h2 {
+  padding: 0;
+  border: 0;
+  font-size: var(--fs-lg);
+  white-space: nowrap;
+}
+.objs-search {
+  flex: 0 1 var(--objs-search-w);
+  min-width: 0;
+  height: var(--control-h);
+  margin-left: var(--sp-3);
+  padding: 0 var(--sp-3);
+  border: var(--line) solid var(--border);
+  border-radius: var(--pill);
+  background: var(--bg-2);
+  color: var(--text);
+  font: inherit;
+}
+.objs-search:focus-visible {
+  outline: var(--line-2) solid var(--accent);
+  outline-offset: 0;
+  background: var(--bg);
+}
+.objs-total {
+  flex: 1;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.objs-menu-wrap {
+  position: relative;
+}
+.objs-main {
+  display: grid;
+  flex: 1;
+  grid-template-columns: var(--objs-nav-w) minmax(0, 1fr) var(--objs-side-w);
+  min-height: 0;
+}
+.objs-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-half);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-3) var(--sp-2);
+  border-right: var(--line) solid var(--border);
+  background: var(--bg-2);
+}
+.objs-nav-head {
+  margin: var(--sp-3) var(--sp-2) var(--sp-1);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.objs-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--control-h);
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.objs-nav-item:hover {
+  background: var(--hover);
+}
+.objs-nav-item[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+.objs-nav-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.objs-nav-count {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+.objs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--objs-card-min), 1fr));
+  align-content: start;
+  gap: var(--sp-3);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-4);
+}
+.objs-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-half);
+  padding: var(--sp-2);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--ease), box-shadow var(--ease);
+}
+.objs-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow);
+}
+.objs-card[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 var(--line) var(--accent);
+}
+.objs-card-pic {
+  position: relative;
+  display: block;
+  margin-bottom: var(--sp-1);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  overflow: hidden;
+}
+.objs-card-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+}
+/* A picture not made yet: a soft pulse where it will be. */
+.objs-card-img.is-loading {
+  animation: objs-pulse 1.2s ease-in-out infinite;
+  background: var(--hover);
+}
+@keyframes objs-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+.objs-badge {
+  position: absolute;
+  top: var(--sp-1);
+  left: var(--sp-1);
+  padding: 0 var(--sp-2);
+  border-radius: var(--pill);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: var(--sp-5);
+}
+.objs-card-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.objs-card-meta {
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.objs-empty {
+  grid-column: 1 / -1;
+  color: var(--text-2);
+}
+.objs-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-4);
+  border-left: var(--line) solid var(--border);
+}
+/* Its parts keep their height: in a column that scrolls, the main button had been squeezed flat. */
+.objs-side > * {
+  flex-shrink: 0;
+}
+/* The wall types edit their layers beside the cards: a wider side for the layer table. */
+.types-store .objs-main {
+  grid-template-columns: var(--objs-nav-w) minmax(0, 1fr) var(--types-side-w);
+}
+/* The floor build-ups: no folders, the cards and the chosen one. */
+.flstore .objs-main {
+  grid-template-columns: minmax(0, 1fr) var(--objs-side-w);
+}
+.flstore-layers {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.flstore-layers li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-1) 0;
+  border-bottom: var(--line) solid var(--border);
+  font-size: var(--fs-sm);
+}
+.flstore-t {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.types-store .objs-preview {
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+}
+.objs-preview {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-lg);
+  background: var(--bg-2);
+}
+.objs-name {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.objs-folder-line {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+.objs-dims {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0;
+}
+.objs-dim {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-2);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+}
+.objs-dim-label {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+.objs-dim-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.objs-label {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.objs-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.objs-type {
+  min-height: var(--control-h);
+  padding: 0 var(--sp-3);
+  border: var(--line) solid var(--border);
+  border-radius: var(--pill);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.objs-type:hover {
+  border-color: var(--border-strong);
+}
+.objs-type[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+.objs-place {
+  height: var(--touch);
+  margin-top: var(--sp-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font: inherit;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  cursor: pointer;
+}
+.objs-place:hover {
+  background: var(--accent-strong);
+}
+.objs-in-project,
+.objs-summary {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+.objs-summary {
+  text-align: left;
+}
+.objs-side-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding-top: var(--sp-2);
+  border-top: var(--line) solid var(--border);
+}
+.objs-side-actions > button {
+  white-space: nowrap;
+}
+.objs-side-actions .spacer {
+  flex: 1;
+}
+/* Narrower (under 1088 px: a media query's rem is 16 px): the folders go; on a phone, one column. */
+@media (max-width: 68rem) {
+  .objs-main {
+    grid-template-columns: minmax(0, 1fr) var(--objs-side-w);
+  }
+  .types-store .objs-main {
+    grid-template-columns: minmax(0, 1fr) var(--types-side-w);
+  }
+  .objs-nav {
+    display: none;
+  }
+}
+@media (max-width: 56rem) {
+  .objs-main {
+    grid-template-columns: minmax(0, 1fr) var(--objs-side-w-sm);
+  }
+  .types-store .objs-main {
+    grid-template-columns: minmax(0, 1fr) var(--objs-side-w);
+  }
+  .objs-total {
+    display: none;
+  }
+}
+/* A phone: one column, the cards then the chosen one, scrolled together; each row its own height. */
+@media (max-width: 40rem) {
+  .objs-main,
+  .types-store .objs-main {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: max-content;
+    overflow-y: auto;
+  }
+  .objs-grid,
+  .objs-side {
+    min-height: auto;
+    overflow: visible;
+  }
+  /* The chosen one first, compact: picked from far down the list, it is not out of sight. */
+  .objs-side {
+    order: -1;
+    border-left: 0;
+    border-bottom: var(--line) solid var(--border);
+  }
+  .objs-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+  }
+}

@@ -1,0 +1,197 @@
+/* The object definition editor (one part of styles.css, read in its order). */
+
+/* The object editor (definition-editor.ts): name row, tabs and tables on the left, the preview and the
+   sliders on the right. */
+.ed-dialog {
+  width: min(var(--editor-w), calc(100vw - 2 * var(--sp-4)));
+}
+.ed-name {
+  display: grid;
+  /* Name (pt), name (en), category, folder; two by two on a narrow screen. */
+  grid-template-columns: repeat(auto-fit, minmax(var(--field-min-w), 1fr));
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4) var(--sp-2);
+}
+.ed-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: var(--sp-4);
+  padding: 0 var(--sp-4);
+  min-height: 0;
+}
+.ed-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.ed-tabs {
+  align-self: flex-start;
+}
+.ed-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-height: var(--editor-body-h);
+  overflow: auto;
+  padding-right: var(--sp-1);
+}
+.ed-row {
+  display: grid;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.ed-params {
+  grid-template-columns: 1fr 1.3fr 1.2fr 1fr 0.7fr 0.7fr 1.5fr var(--control-h);
+}
+.ed-handles {
+  grid-template-columns: 1.4fr 0.6fr 0.6fr 1fr 1fr 1fr 0.8fr var(--control-h);
+}
+.ed-rules {
+  grid-template-columns: 1.4fr 2fr var(--control-h);
+}
+.ed-head {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+.ed-tabs button {
+  flex: none;
+  padding: 0 var(--sp-3);
+}
+.ed-dialog .icon-btn.text-btn {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--sp-1);
+}
+/* The objects' list: the icon beside both lines, as a wall type's thumbnail. */
+.types-item > .icon {
+  grid-row: 1 / 3;
+}
+/* A profile's corners (definition-editor.ts): a cell across the grid, a line each. */
+.ed-points-cell {
+  grid-column: 1 / -1;
+}
+.ed-points {
+  width: 100%;
+  font: var(--fs-sm) / 1.5 var(--font);
+  color: var(--text);
+  background: var(--field);
+  border: var(--line) solid transparent;
+  border-radius: var(--radius);
+  padding: var(--sp-1) var(--sp-2);
+  resize: vertical;
+}
+/* A part marked as a void, in its card's head (definition-editor.ts). */
+.ed-cut {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.ed-in,
+.ed-select {
+  width: 100%;
+  min-width: 0;
+  height: var(--control-h);
+  padding: 0 var(--sp-2);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--field);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+}
+.ed-in.invalid {
+  border-color: var(--error);
+}
+.ed-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius);
+}
+.ed-card-head {
+  display: grid;
+  /* Number and kind, name, material, the void's box (a part's, not an object's), remove. */
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto var(--control-h);
+  align-items: center;
+  gap: var(--sp-2);
+}
+.ed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--editor-cell-w), 1fr));
+  gap: var(--sp-1);
+}
+.ed-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-half);
+  min-width: 0;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+}
+.ed-adds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.ed-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.ed-preview {
+  width: 100%;
+  height: var(--editor-preview-h);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--canvas);
+  cursor: grab;
+  touch-action: none;
+}
+.ed-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  max-height: var(--editor-sliders-h);
+  overflow: auto;
+}
+.ed-slider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.ed-problems,
+.ed-ok {
+  padding: var(--sp-2);
+  border-radius: var(--radius);
+  font-size: var(--fs-sm);
+}
+.ed-problems {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.ed-ok {
+  color: var(--text-2);
+}
+@media (max-width: 900px) {
+  .ed-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ed-params,
+  .ed-handles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ed-head {
+    display: none;
+  }
+}

@@ -8,7 +8,7 @@ import { type Beam, BEAM_PREFIX, beamOutline, beamSection } from '../beam/schema
 import type { ElementKind } from '../contract';
 import { insideRing } from '../room/derive';
 import { nearSegment, throughElement, trace } from './paint';
-import { levelOf, NO_LEVEL } from '../../app/document';
+import { levelOf, NO_LEVEL } from '../../project/doc';
 
 export interface BeamSolid {
   readonly beam: Beam;

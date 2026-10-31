@@ -2,31 +2,34 @@
 // ones that fit that kind of element (ref/chat.txt:206, 222).
 
 import { describe, expect, it } from 'vitest';
-import { contextIds } from '../../src/app/context-actions';
-import { type Doc, type DocWall, newDocument } from '../../src/app/document';
+import { contextIds } from '../../src/session/context-actions';
+import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { newOpening } from '../../src/elements/opening/schema';
+import { fid, lid, oid, rid, tid, wid, xid } from '../ids';
+import type { WallId } from '../../src/elements/wall/schema';
+import type { GuideId } from '../../src/elements/guide/schema';
 
-const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level', offset: 0 },
 });
 
 const doc: Doc = {
   ...newDocument(),
-  walls: [wall('w', [0, 0], [6, 0]), wall('v', [6, 0], [6, 4])],
+  walls: [wall(wid('w'), [0, 0], [6, 0]), wall(wid('v'), [6, 0], [6, 4])],
   openings: [
-    newOpening('d', 'w', 'door', { kind: 'fromStart', distance: 1 }),
-    newOpening('n', 'w', 'window', { kind: 'fromEnd', distance: 1 }),
-    newOpening('m', 'v', 'window', { kind: 'centered' }),
+    newOpening(oid('d'), wid('w'), 'door', { kind: 'fromStart', distance: 1 }),
+    newOpening(oid('n'), wid('w'), 'window', { kind: 'fromEnd', distance: 1 }),
+    newOpening(oid('m'), wid('v'), 'window', { kind: 'centered' }),
   ],
-  rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 3, y: 2 }, name: 'Room 1', number: '1' }],
-  floors: [{ id: 'f', levelId: 'lvl_ground', source: { kind: 'outline', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }] }, thickness: 0.1, offset: 0 }],
+  rooms: [{ id: rid('r'), levelId: lid('lvl_ground'), seed: { x: 3, y: 2 }, name: 'Room 1', number: '1' }],
+  floors: [{ id: fid('f'), levelId: lid('lvl_ground'), source: { kind: 'outline', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }] }, thickness: 0.1, offset: 0 }],
 };
 
 describe('actions for the selection', () => {
@@ -44,7 +47,7 @@ describe('actions for the selection', () => {
 
   it('a room without a floor offers one; with a floor, not', () => {
     expect(contextIds(doc, ['r'])).toEqual(['move', 'addFloor', 'addCeiling', 'properties', 'delete']);
-    const floored = { ...doc, floors: [{ ...doc.floors[0]!, source: { kind: 'room' as const, roomId: 'r' } }] };
+    const floored = { ...doc, floors: [{ ...doc.floors[0]!, source: { kind: 'room' as const, roomId: rid('r') } }] };
     expect(contextIds(floored, ['r'])).toEqual(['move', 'addCeiling', 'properties', 'delete']);
   });
 
@@ -68,16 +71,16 @@ describe('actions for the selection', () => {
 });
 
 describe('guides in the menu', () => {
-  const guide = { id: 'guide_1', levelId: 'lvl_ground', point: { x: 0, y: 1 }, dir: { x: 1, y: 0 } };
+  const guide = { id: xid<GuideId>('guide_1'), levelId: lid('lvl_ground'), point: { x: 0, y: 1 }, dir: { x: 1, y: 0 } };
   const withGuide: Doc = { ...doc, guides: [guide] };
 
   it('with nothing selected, deleting the guides of the level shown is offered only when it has some', () => {
-    expect(contextIds(withGuide, [], 'lvl_ground')).toEqual(['drawWall', 'addNote', 'frameAll', 'clearGuides']);
-    expect(contextIds(withGuide, [], 'other')).toEqual(['drawWall', 'addNote', 'frameAll', 'commands']);
-    expect(contextIds(doc, [], 'lvl_ground')).toEqual(['drawWall', 'addNote', 'frameAll', 'commands']);
+    expect(contextIds(withGuide, [], lid('lvl_ground'))).toEqual(['drawWall', 'addNote', 'frameAll', 'clearGuides']);
+    expect(contextIds(withGuide, [], lid('other'))).toEqual(['drawWall', 'addNote', 'frameAll', 'commands']);
+    expect(contextIds(doc, [], lid('lvl_ground'))).toEqual(['drawWall', 'addNote', 'frameAll', 'commands']);
   });
 
   it('a guide selected: no zoom to it (it has no ends), its properties, the level\'s guides, delete', () => {
-    expect(contextIds(withGuide, ['guide_1'], 'lvl_ground')).toEqual(['move', 'section', 'properties', 'clearGuides', 'delete']);
+    expect(contextIds(withGuide, ['guide_1'], lid('lvl_ground'))).toEqual(['move', 'section', 'properties', 'clearGuides', 'delete']);
   });
 });

@@ -2,8 +2,8 @@
 // and walls, faint; picked only on its own outline's inside when nothing else is there (last of all),
 // so tracing over it takes the walls first.
 
-import type { Point2 } from '../../core/vector';
-import { num, t } from '../../ui/i18n';
+import type { Point2 } from '../../model/vector';
+import { num, t } from '../../i18n/messages';
 import { updateReferences } from '../reference/commands';
 import type { ElementKind, PlanPaint } from '../contract';
 import { isReference, type Reference, referenceCorners, referencePoint } from '../reference/schema';
@@ -14,10 +14,10 @@ import { REFERENCE_PREFIX } from '../reference/schema';
  * let go with it: by their data in a Map, every picture ever shown stayed for the session.
  */
 const pictures = new WeakMap<object, HTMLImageElement>();
-/** Called when a picture has loaded, to draw the plan again (set by the app). */
-let loaded: () => void = () => {};
+/** Called when a picture has loaded, to draw the plan again (set by the app): the one owner. */
+const onLoad = { run: (): void => {} };
 export const onReferenceLoaded = (f: () => void): void => {
-  loaded = f;
+  onLoad.run = f;
 };
 
 function picture(source: { readonly data: string }): HTMLImageElement | null {
@@ -25,7 +25,7 @@ function picture(source: { readonly data: string }): HTMLImageElement | null {
   let img = pictures.get(source);
   if (!img) {
     img = new Image();
-    img.onload = () => loaded();
+    img.onload = () => onLoad.run();
     img.src = source.data;
     pictures.set(source, img);
   }

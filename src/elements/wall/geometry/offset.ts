@@ -1,6 +1,6 @@
 // Plan bands of a straight wall. The exterior face is on the right of the drawing direction.
 
-import { add, distance, dot, normalize, perp, type Point2, scale, sub } from '../../../core/vector';
+import { add, distance, dot, normalize, perp, type Point2, scale, sub } from '../../../model/vector';
 import type { WallEnd } from '../schema';
 import type { ConvexPolygon } from './convex';
 import type { WallShape } from './shape';

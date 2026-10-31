@@ -4,9 +4,10 @@
 
 import type { ObjectDefinition } from './schema';
 import { boxHandles, BUILD, choice, counted, derived, int, len, mat, num, w, yes } from './library-kit';
+import type { DefinitionId } from './schema';
 
 export const DINING_CHAIR: ObjectDefinition = {
-  id: 'def_dining_chair',
+  id: 'def_dining_chair' as DefinitionId,
   name: w('Cadeira estofada', 'Upholstered chair'),
   category: 'furniture',
   folder: 'Jantar',
@@ -41,7 +42,7 @@ export const DINING_CHAIR: ObjectDefinition = {
 };
 
 export const ROUND_TABLE: ObjectDefinition = {
-  id: 'def_round_table',
+  id: 'def_round_table' as DefinitionId,
   name: w('Mesa redonda com cadeiras', 'Round table with chairs'),
   category: 'furniture',
   folder: 'Jantar',
@@ -81,7 +82,7 @@ export const ROUND_TABLE: ObjectDefinition = {
     {
       kind: 'object',
       name: w('Cadeira', 'Chair'),
-      definition: 'def_dining_chair',
+      definition: 'def_dining_chair' as DefinitionId,
       repeat: { count: 'cadeiras' },
       x: '(largura/2 + 0.08) * cos(360 * i / cadeiras + 270)',
       y: '(largura/2 + 0.08) * sin(360 * i / cadeiras + 270)',
@@ -102,7 +103,7 @@ export const ROUND_TABLE: ObjectDefinition = {
 };
 
 export const BAR_STOOL: ObjectDefinition = {
-  id: 'def_bar_stool',
+  id: 'def_bar_stool' as DefinitionId,
   name: w('Banqueta alta', 'Bar stool'),
   category: 'furniture',
   folder: 'Jantar',
@@ -138,7 +139,7 @@ export const BAR_STOOL: ObjectDefinition = {
 };
 
 export const ISLAND: ObjectDefinition = {
-  id: 'def_kitchen_island',
+  id: 'def_kitchen_island' as DefinitionId,
   name: w('Ilha de cozinha', 'Kitchen island'),
   category: 'casework',
   folder: 'Cozinha',
@@ -186,7 +187,7 @@ export const ISLAND: ObjectDefinition = {
     { kind: 'cylinder', name: w('Bica', 'Spout'), when: 'cuba', x: 'largura/2 - 0.44', y: '-profundidade/2 + 0.58', z: 'altura + 0.33', r: 0.012, h: 0.24, tilt: -100, material: 'matMetal' },
     { kind: 'cylinder', name: w('Alavanca', 'Lever'), when: 'cuba', x: 'largura/2 - 0.44', y: '-profundidade/2 + 0.58', z: 'altura + 0.2', r: 0.006, h: 0.08, roll: 80, material: 'matMetal' },
     // The stools on the overhang's side, facing the island (a stool faces −y as placed).
-    { kind: 'object', name: w('Banqueta', 'Stool'), definition: 'def_bar_stool', when: 'balanco > 0.15', repeat: { count: 'banquetas', dx: 'largura / max(1, banquetas)' }, x: '-largura/2 + largura / max(1, banquetas) / 2', y: 'profundidade/2 + balanco - 0.05', z: 0, values: { altura: 'altura - 0.25' } },
+    { kind: 'object', name: w('Banqueta', 'Stool'), definition: 'def_bar_stool' as DefinitionId, when: 'balanco > 0.15', repeat: { count: 'banquetas', dx: 'largura / max(1, banquetas)' }, x: '-largura/2 + largura / max(1, banquetas) / 2', y: 'profundidade/2 + balanco - 0.05', z: 0, values: { altura: 'altura - 0.25' } },
   ],
   handles: boxHandles('altura'),
   types: [
@@ -197,7 +198,7 @@ export const ISLAND: ObjectDefinition = {
 };
 
 export const HOOD: ObjectDefinition = {
-  id: 'def_hood',
+  id: 'def_hood' as DefinitionId,
   name: w('Coifa', 'Cooker hood'),
   category: 'equipment',
   folder: 'Cozinha',
@@ -236,7 +237,7 @@ export const HOOD: ObjectDefinition = {
 };
 
 export const OVEN_TOWER: ObjectDefinition = {
-  id: 'def_oven_tower',
+  id: 'def_oven_tower' as DefinitionId,
   name: w('Torre de forno e micro-ondas', 'Oven tower'),
   category: 'casework',
   folder: 'Cozinha',
@@ -272,7 +273,7 @@ export const OVEN_TOWER: ObjectDefinition = {
 };
 
 export const DISHWASHER: ObjectDefinition = {
-  id: 'def_dishwasher',
+  id: 'def_dishwasher' as DefinitionId,
   name: w('Lava-louças', 'Dishwasher'),
   category: 'equipment',
   folder: 'Cozinha',
@@ -298,7 +299,7 @@ export const DISHWASHER: ObjectDefinition = {
 };
 
 export const WASHER: ObjectDefinition = {
-  id: 'def_washer',
+  id: 'def_washer' as DefinitionId,
   name: w('Lavadora / secadora', 'Washer / dryer'),
   category: 'equipment',
   folder: 'Lavanderia',
@@ -328,7 +329,7 @@ export const WASHER: ObjectDefinition = {
 };
 
 export const LAUNDRY_TUB: ObjectDefinition = {
-  id: 'def_laundry_tub',
+  id: 'def_laundry_tub' as DefinitionId,
   name: w('Tanque', 'Laundry tub'),
   category: 'fixture',
   folder: 'Lavanderia',
@@ -361,7 +362,7 @@ export const LAUNDRY_TUB: ObjectDefinition = {
 };
 
 export const WINE_COOLER: ObjectDefinition = {
-  id: 'def_wine_cooler',
+  id: 'def_wine_cooler' as DefinitionId,
   name: w('Adega climatizada', 'Wine cooler'),
   category: 'equipment',
   folder: 'Cozinha',

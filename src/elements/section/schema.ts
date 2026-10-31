@@ -1,3 +1,4 @@
+import { finite } from '../../core/guards';
 // Sections and elevations as drawings (docs/plano-de-escopo.md, phase 10: "cortes e elevações
 // documentados"): a line in plan, the same on every level, looking to its left (start → end) as far as
 // its depth. A section's line goes through the building and fills what it cuts; an elevation's stands
@@ -5,14 +6,25 @@
 // alone. Drawn from the model each time (app/section-drawing.ts), so it follows it, and shown in the
 // sections dialog at the drawing's scale (app/section-view.ts).
 
-import { type Point2, distance } from '../../core/vector';
+import { type Point2, distance } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const SECTION_PREFIX = 'sec';
+
+/** A section or elevation mark's id (section…). */
+export type SectionId = Brand<'section'>;
+
+/** A new section's id. */
+export const newSectionId = (): SectionId => newId(SECTION_PREFIX) as SectionId;
+
+/** The id of the section being drawn, before it is placed in the document. */
+export const DRAFT_SECTION_ID = '' as SectionId;
 
 export type SectionKind = 'section' | 'elevation';
 
 export interface SectionMark {
-  readonly id: string;
+  readonly id: SectionId;
   /** "A", "B"… for a section; a side's name for an elevation. */
   readonly name: string;
   readonly kind: SectionKind;
@@ -21,7 +33,7 @@ export interface SectionMark {
   /** How far past its line it sees (m). */
   readonly depth: number;
   /** A room's interior elevation: only this level's height is drawn, and the mark only on its plan. Absent: every level. */
-  readonly levelId?: string;
+  readonly levelId?: LevelId;
 }
 
 /** The least and greatest depth (m). */
@@ -34,7 +46,6 @@ export const lookOf = (m: Pick<SectionMark, 'start' | 'end'>): Point2 => {
   return { x: -(m.end.y - m.start.y) / len, y: (m.end.x - m.start.x) / len };
 };
 
-const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isPoint = (p: unknown): p is Point2 => typeof p === 'object' && p !== null && finite((p as Point2).x) && finite((p as Point2).y);
 
 export const isSectionMark = (m: unknown): m is SectionMark => {

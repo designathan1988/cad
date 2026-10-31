@@ -4,9 +4,10 @@
 
 import type { ObjectDefinition } from './schema';
 import { boxHandles, BUILD, choice, counted, int, len, mat, num, w, yes } from './library-kit';
+import type { DefinitionId } from './schema';
 
 export const OFFICE_CHAIR: ObjectDefinition = {
-  id: 'def_office_chair',
+  id: 'def_office_chair' as DefinitionId,
   name: w('Cadeira giratória', 'Swivel chair'),
   category: 'furniture',
   folder: 'Escritório',
@@ -50,7 +51,7 @@ export const OFFICE_CHAIR: ObjectDefinition = {
 };
 
 export const DESK: ObjectDefinition = {
-  id: 'def_desk',
+  id: 'def_desk' as DefinitionId,
   name: w('Mesa de trabalho', 'Desk'),
   category: 'furniture',
   folder: 'Escritório',
@@ -82,7 +83,7 @@ export const DESK: ObjectDefinition = {
     { kind: 'box', name: w('Gaveteiro', 'Drawer unit'), when: 'gaveteiro', x: 'largura/2 - 0.5', y: '-profundidade/2 + 0.05', z: 'altura - 0.025 - 0.36', w: 0.4, d: 'profundidade - 0.1', h: 0.36, material: 'matTampo' },
     { kind: 'box', name: w('Gaveta', 'Drawer'), when: 'gaveteiro', repeat: { count: 2, dz: 0.175 }, x: 'largura/2 - 0.498', y: '-profundidade/2 + 0.03', z: 'altura - 0.025 - 0.358', w: 0.396, d: 0.02, h: 0.171, material: 'matTampo' },
     { kind: 'cylinder', name: w('Puxador', 'Handle'), when: 'gaveteiro', repeat: { count: 2, dz: 0.175 }, x: 'largura/2 - 0.36', y: '-profundidade/2 + 0.025', z: 'altura - 0.025 - 0.21', r: 0.005, h: 0.12, roll: 90, material: 'matBase' },
-    { kind: 'object', name: w('Monitor', 'Monitor'), definition: 'def_monitor', when: 'monitor', x: 0, y: 'profundidade/2 - 0.2', z: 'altura', values: {} },
+    { kind: 'object', name: w('Monitor', 'Monitor'), definition: 'def_monitor' as DefinitionId, when: 'monitor', x: 0, y: 'profundidade/2 - 0.2', z: 'altura', values: {} },
   ],
   handles: boxHandles('altura'),
   types: [
@@ -94,7 +95,7 @@ export const DESK: ObjectDefinition = {
 };
 
 export const MONITOR: ObjectDefinition = {
-  id: 'def_monitor',
+  id: 'def_monitor' as DefinitionId,
   name: w('Monitor', 'Monitor'),
   category: 'equipment',
   folder: 'Escritório',
@@ -124,7 +125,7 @@ export const MONITOR: ObjectDefinition = {
 };
 
 export const PEDESTAL: ObjectDefinition = {
-  id: 'def_pedestal',
+  id: 'def_pedestal' as DefinitionId,
   name: w('Gaveteiro volante', 'Mobile pedestal'),
   category: 'casework',
   folder: 'Escritório',
@@ -152,7 +153,7 @@ export const PEDESTAL: ObjectDefinition = {
 };
 
 export const MEETING_TABLE: ObjectDefinition = {
-  id: 'def_meeting_table',
+  id: 'def_meeting_table' as DefinitionId,
   name: w('Mesa de reunião', 'Meeting table'),
   category: 'furniture',
   folder: 'Escritório',
@@ -171,8 +172,8 @@ export const MEETING_TABLE: ObjectDefinition = {
     { kind: 'box', name: w('Pedestal', 'Pedestal'), repeat: { count: 2, dx: 'largura * 0.5' }, x: '-largura * 0.25 - 0.1', y: '-profundidade * 0.3', z: 0, w: 0.2, d: 'profundidade * 0.6', h: 'altura - 0.035', material: 'matBase', round: 0.006 },
     { kind: 'box', name: w('Calha de cabos', 'Cable trough'), x: '-largura * 0.25', y: -0.07, z: 'altura - 0.035 - 0.08', w: 'largura * 0.5', d: 0.14, h: 0.08, material: 'matBase' },
     { kind: 'box', name: w('Tomada de mesa', 'Table socket'), x: -0.12, y: -0.05, z: 'altura - 0.002', w: 0.24, d: 0.1, h: 0.004, material: 'aluminium', round: 0.002 },
-    { kind: 'object', name: w('Cadeira', 'Chair'), definition: 'def_office_chair', when: 'cadeiras', repeat: { count: 'porLado', dx: '(largura - 0.3) / porLado' }, x: '-largura/2 + 0.15 + (largura - 0.3) / porLado / 2', y: '-profundidade/2 - 0.18', z: 0, angle: 180, values: { bracos: 1 } },
-    { kind: 'object', name: w('Cadeira', 'Chair'), definition: 'def_office_chair', when: 'cadeiras', repeat: { count: 'porLado', dx: '(largura - 0.3) / porLado' }, x: '-largura/2 + 0.15 + (largura - 0.3) / porLado / 2', y: 'profundidade/2 + 0.18', z: 0, values: { bracos: 1 } },
+    { kind: 'object', name: w('Cadeira', 'Chair'), definition: 'def_office_chair' as DefinitionId, when: 'cadeiras', repeat: { count: 'porLado', dx: '(largura - 0.3) / porLado' }, x: '-largura/2 + 0.15 + (largura - 0.3) / porLado / 2', y: '-profundidade/2 - 0.18', z: 0, angle: 180, values: { bracos: 1 } },
+    { kind: 'object', name: w('Cadeira', 'Chair'), definition: 'def_office_chair' as DefinitionId, when: 'cadeiras', repeat: { count: 'porLado', dx: '(largura - 0.3) / porLado' }, x: '-largura/2 + 0.15 + (largura - 0.3) / porLado / 2', y: 'profundidade/2 + 0.18', z: 0, values: { bracos: 1 } },
   ],
   handles: boxHandles('altura'),
   types: [
@@ -184,7 +185,7 @@ export const MEETING_TABLE: ObjectDefinition = {
 };
 
 export const SHELF_BOOKS: ObjectDefinition = {
-  id: 'def_shelf_books',
+  id: 'def_shelf_books' as DefinitionId,
   name: w('Estante industrial com livros', 'Industrial shelf with books'),
   category: 'casework',
   folder: 'Escritório',
@@ -232,7 +233,7 @@ export const SHELF_BOOKS: ObjectDefinition = {
 };
 
 export const FILING_CABINET: ObjectDefinition = {
-  id: 'def_filing_cabinet',
+  id: 'def_filing_cabinet' as DefinitionId,
   name: w('Arquivo de aço', 'Steel filing cabinet'),
   category: 'casework',
   folder: 'Escritório',

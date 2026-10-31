@@ -3,19 +3,21 @@
 // "4,68 from the wall start" while the plan said 0,10 from the partition).
 
 import { describe, expect, it } from 'vitest';
-import { type Doc, type DocWall, newDocument } from '../../../src/app/document';
-import { deriveGeometry } from '../../../src/app/geometry';
+import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
+import { deriveGeometry } from '../../../src/project/derive';
 import { leafFields, positionFields } from '../../../src/elements/opening/fields';
 import { newOpening } from '../../../src/elements/opening/schema';
 import { fieldStates } from '../../../src/ui/fields';
+import { lid, oid, rid, tid, wid } from '../../ids';
+import type { WallId } from '../../../src/elements/wall/schema';
 
-const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level', offset: 0 },
 });
@@ -23,13 +25,13 @@ const wall = (id: string, a: [number, number], b: [number, number]): DocWall => 
 // A 6 m wall, a 20 cm partition at x = 3 (faces 2.90 and 3.10), a door 0.50 past it.
 const doc = (): Doc => ({
   ...newDocument(),
-  walls: [wall('h', [0, 0], [6, 0]), wall('p', [3, 0], [3, 3])],
-  openings: [newOpening('o', 'h', 'door', { kind: 'fromStart', distance: 3.6 })],
+  walls: [wall(wid('h'), [0, 0], [6, 0]), wall(wid('p'), [3, 0], [3, 3])],
+  openings: [newOpening(oid('o'), wid('h'), 'door', { kind: 'fromStart', distance: 3.6 })],
 });
 
 const fieldsOf = (d: Doc, update: (patch: unknown) => void = () => {}) => {
   const g = deriveGeometry(d);
-  const one = g.openings.get('o')!;
+  const one = g.openings.get(oid('o'))!;
   const act = { update: (_: unknown, patch: unknown) => update(patch), setRule: () => {}, align: () => {}, alignHeads: () => {}, distribute: () => {}, setSpacing: () => {}, ungroup: () => {} };
   return fieldStates(positionFields(d, one, g.openings, act), [one]);
 };
@@ -54,7 +56,7 @@ describe('position in the panel', () => {
   });
 
   it('with no wall between it and the start: from the wall start, as before', () => {
-    const d = { ...doc(), walls: [wall('h', [0, 0], [6, 0])] };
+    const d = { ...doc(), walls: [wall(wid('h'), [0, 0], [6, 0])] };
     const states = fieldsOf(d);
     const rule = states.find((s) => s.field.id === 'rule')!;
     const options = (rule.field as Extract<typeof rule.field, { options: unknown }>).options;
@@ -68,12 +70,12 @@ describe("a door's sides in the panel", () => {
     // A closed 4 × 3 box with the door in its bottom wall (drawn left to right: its left is inside).
     const box: Doc = {
       ...newDocument(),
-      walls: [wall('a', [0, 0], [4, 0]), wall('b', [4, 0], [4, 3]), wall('c', [4, 3], [0, 3]), wall('d', [0, 3], [0, 0])],
-      openings: [newOpening('o', 'a', 'door', { kind: 'centered' })],
-      rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Kitchen', number: '1' }],
+      walls: [wall(wid('a'), [0, 0], [4, 0]), wall(wid('b'), [4, 0], [4, 3]), wall(wid('c'), [4, 3], [0, 3]), wall(wid('d'), [0, 3], [0, 0])],
+      openings: [newOpening(oid('o'), wid('a'), 'door', { kind: 'centered' })],
+      rooms: [{ id: rid('r'), levelId: lid('lvl_ground'), seed: { x: 2, y: 1.5 }, name: 'Kitchen', number: '1' }],
     };
     const g = deriveGeometry(box);
-    const one = g.openings.get('o')!;
+    const one = g.openings.get(oid('o'))!;
     const labels = (rooms: Parameters<typeof leafFields>[2]) => {
       const swing = fieldStates(leafFields(one, () => {}, rooms), [one]).find((s) => s.field.id === 'swing')!;
       return (swing.field as Extract<typeof swing.field, { options: unknown }>).options.map((x) => x.label);
@@ -89,12 +91,12 @@ describe("a door's hinge in the panel", () => {
     // wall (south), the right hand points west: the start jamb (x small) is on the right.
     const box: Doc = {
       ...newDocument(),
-      walls: [wall('a', [0, 0], [4, 0]), wall('b', [4, 0], [4, 3]), wall('c', [4, 3], [0, 3]), wall('d', [0, 3], [0, 0])],
-      openings: [{ ...newOpening('o', 'a', 'door', { kind: 'centered' }), swing: 'left' }],
-      rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Kitchen', number: '1' }],
+      walls: [wall(wid('a'), [0, 0], [4, 0]), wall(wid('b'), [4, 0], [4, 3]), wall(wid('c'), [4, 3], [0, 3]), wall(wid('d'), [0, 3], [0, 0])],
+      openings: [{ ...newOpening(oid('o'), wid('a'), 'door', { kind: 'centered' }), swing: 'left' }],
+      rooms: [{ id: rid('r'), levelId: lid('lvl_ground'), seed: { x: 2, y: 1.5 }, name: 'Kitchen', number: '1' }],
     };
     const g = deriveGeometry(box);
-    const one = g.openings.get('o')!;
+    const one = g.openings.get(oid('o'))!;
     const states = fieldStates(leafFields(one, () => {}, [...g.rooms.values()]), [one]);
     const hinge = states.find((s) => s.field.id === 'hinge')!;
     expect((hinge.field as Extract<typeof hinge.field, { options: unknown }>).options).toEqual([

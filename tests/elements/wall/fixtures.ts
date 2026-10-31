@@ -1,12 +1,14 @@
 // Test walls carry their layers inline; engineInput turns them into Walls plus a type map.
 
 import { computeWallGeometry } from '../../../src/elements/wall/geometry/footprint';
+import { mid, tid } from '../../ids';
 import type {
   LayerFunction,
   ReferenceLine,
   Wall,
   WallLayer,
   WallType,
+  WallId,
   WallTypeId,
 } from '../../../src/elements/wall/schema';
 
@@ -16,7 +18,7 @@ export interface XYPoint {
 }
 
 export interface TestWall {
-  readonly id: string;
+  readonly id: WallId;
   readonly start: XYPoint;
   readonly end: XYPoint;
   readonly referenceLine: ReferenceLine;
@@ -29,11 +31,11 @@ export interface TestWall {
 export const layer = (thickness: number, fn: LayerFunction = 'structure'): WallLayer => ({
   thickness,
   function: fn,
-  materialId: fn,
+  materialId: mid(fn),
 });
 
 export function testWall(
-  id: string,
+  id: WallId,
   start: XYPoint,
   end: XYPoint,
   layers: number | readonly WallLayer[],
@@ -47,7 +49,7 @@ export function testWall(
 export function engineInput(ws: readonly TestWall[]): { walls: Wall[]; types: Map<WallTypeId, WallType> } {
   const types = new Map<WallTypeId, WallType>();
   const walls = ws.map((w) => {
-    const id = JSON.stringify(w.layers);
+    const id = tid(JSON.stringify(w.layers));
     if (!types.has(id)) types.set(id, { id, name: id, layers: w.layers });
     return { id: w.id, wallTypeId: id, start: w.start, end: w.end, referenceLine: w.referenceLine, ...(w.bulge ? { bulge: w.bulge } : {}) };
   });

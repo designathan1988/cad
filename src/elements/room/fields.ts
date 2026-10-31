@@ -1,13 +1,18 @@
 // The fields rooms and floors show in the panel (ui/fields.ts builds the rows).
 
-import { areaText, lengthText, slopeFormat, slopeShown, slopeTyped, slopeUnit, volumeText } from '../../ui/units';
-import { ROOF_GRADE_MAX } from '../roof/schema';
-import type { Field } from '../../ui/fields';
-import { materialLabel, type MessageKey, name, t } from '../../ui/i18n';
+import { areaText, lengthText, volumeText } from '../../i18n/units';
+import type { Field } from '../fields';
+import { materialLabel, type MessageKey, name, t } from '../../i18n/messages';
 import type { Material } from '../material/schema';
 import type { RoomPatch } from './commands';
 import type { FloorSolid, RoomSolid } from './derive';
 import { type Floor, FLOOR_BUILDUPS, type FloorId, type FloorLayer, ROOM_USES, type RoomId, type RoomUse, TILE_PATTERNS, type TilePattern, type Tiling } from './schema';
+import type { LevelId } from '../../project/doc';
+import { ROOF_GRADE_MAX } from '../roof/schema';
+import { slopeUnit } from '../../i18n/units';
+import { slopeTyped } from '../../i18n/units';
+import { slopeShown } from '../../i18n/units';
+import { slopeFormat } from '../../i18n/units';
 
 /** What a floor's fields change. */
 export type FloorPatch = Partial<Pick<Floor, 'thickness' | 'offset' | 'slope'>>;
@@ -17,7 +22,7 @@ export interface RoomFieldActions {
   /** The same change to all the selected rooms, one undo step. */
   readonly updateRooms: (ids: readonly RoomId[], patch: RoomPatch) => void;
   /** A level's height: a room's ceiling when it has none of its own. */
-  readonly levelHeight: (levelId: string) => number;
+  readonly levelHeight: (levelId: LevelId) => number;
   /** The same patch on each, or one from each floor (its own direction kept when the grade changes). */
   readonly updateFloor: (ids: readonly FloorId[], patch: FloorPatch | ((f: Floor) => FloorPatch)) => void;
   /** Draws a hole in the one floor selected (the floor tool, for its outline). */

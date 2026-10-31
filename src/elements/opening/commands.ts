@@ -3,13 +3,18 @@
 // to keep their openings where they were. The one exception is a distributed group: losing a member
 // spreads the others out again, which is what the group is for.
 
-import { MIN_ELEMENT_SIZE, POINT_TOLERANCE } from '../../core/tolerance';
+import { MIN_ELEMENT_SIZE } from '../../model/tolerance';
 import { dropKinds, hasKinds } from '../registry';
-import { type Doc, wallHeights } from '../../app/document';
+import { type Doc, wallHeights } from '../../project/doc';
 import type { Command } from '../../core/store';
-import { deriveGeometry, hostsIn } from '../../app/geometry';
-import { alignedStart, deriveOpenings, type HostInfo, type OpeningWarningKind, type PlacedOpening } from './derive';
+import { deriveGeometry } from '../../project/derive';
+import { hostsIn } from '../../project/derived-queries';
+import { deriveOpenings, type HostInfo, type OpeningWarningKind, type PlacedOpening } from './derive';
 import type { AlignEdge, GroupSpacing, Opening, OpeningGroup, OpeningGroupId, OpeningId, PositionRule, RuleKind } from './schema';
+import type { WallId } from '../wall/schema';
+import type { ElementId } from '../../core/id';
+import { alignedStart } from './derive';
+import { POINT_TOLERANCE } from '../../model/tolerance';
 
 /** Why a new opening cannot go where it is aimed (it overlaps another, or does not fit), or null. */
 export function placementProblem(doc: Doc, opening: Opening): OpeningWarningKind | null {
@@ -127,7 +132,7 @@ export function wallRule(doc: Doc, o: Opening): PositionRule {
 }
 
 /** The openings placed from `id` (by distance or alignment) held where they are by their walls instead: `id` moves alone. */
-export function detachedFrom(doc: Doc, id: OpeningId): readonly Opening[] {
+export function detachedFrom(doc: Doc, id: ElementId): readonly Opening[] {
   if (!doc.openings.some((o) => (o.rule.kind === 'fromOpening' || o.rule.kind === 'aligned') && o.rule.openingId === id)) return doc.openings;
   return doc.openings.map((o) => (o.rule.kind === 'fromOpening' || o.rule.kind === 'aligned') && o.rule.openingId === id ? { ...o, rule: wallRule(doc, o) } : o);
 }
@@ -181,7 +186,7 @@ export function referenceCandidates(doc: Doc, id: OpeningId): Opening[] {
 }
 
 /** Whether `id`, aligned with `refId` by `edge`, stays inside its own wall. */
-export function alignFits(doc: Doc, id: OpeningId, refId: OpeningId, edge: AlignEdge, hosts: ReadonlyMap<string, HostInfo> = hostsIn(doc)): boolean {
+export function alignFits(doc: Doc, id: OpeningId, refId: OpeningId, edge: AlignEdge, hosts: ReadonlyMap<WallId, HostInfo> = hostsIn(doc)): boolean {
   const openings = doc.openings.map((o) => (o.id === id ? { ...o, rule: { kind: 'aligned' as const, openingId: refId, edge } } : o));
   const placed = deriveOpenings(openings, hosts, doc.openingGroups).placed.get(id);
   return placed !== undefined && !placed.warnings.includes('openingOutside') && !placed.warnings.includes('openingBadReference');
@@ -288,7 +293,7 @@ export const distributeOpenings = (groupId: OpeningGroupId, ids: readonly Openin
     // middle, so one sitting on the joint (a group from a version 3 file) goes to the side it is most
     // on. One alone in its stretch stays where it is.
     const mid = (id: OpeningId) => (placed.get(id)!.start + placed.get(id)!.end) / 2;
-    const joints = [...(host?.joints ?? new Map<string, { lo: number; hi: number }>())];
+    const joints = [...(host?.joints ?? new Map<WallId, { lo: number; hi: number }>())];
     const runs: OpeningId[][] = [[members[0]!]];
     for (let i = 1; i < members.length; i++) {
       const [a, b] = [mid(members[i - 1]!), mid(members[i]!)];
@@ -303,7 +308,7 @@ export const distributeOpenings = (groupId: OpeningGroupId, ids: readonly Openin
         const [lo, hi] = [mid(r[0]!), mid(r[r.length - 1]!)];
         const before = joints.filter(([, j]) => (j.lo + j.hi) / 2 <= lo).sort((x, y) => y[1].hi - x[1].hi)[0]?.[0] ?? null;
         const after = joints.filter(([, j]) => (j.lo + j.hi) / 2 > hi).sort((x, y) => x[1].lo - y[1].lo)[0]?.[0] ?? null;
-        return { id: k === 0 ? groupId : `${groupId}-${k + 1}`, wallId: list[0]!.wallId, members: r, spacing, ...(before !== null || after !== null ? { between: [before, after] as const } : {}) };
+        return { id: k === 0 ? groupId : (`${groupId}-${k + 1}` as OpeningGroupId), wallId: list[0]!.wallId, members: r, spacing, ...(before !== null || after !== null ? { between: [before, after] as const } : {}) };
       });
     if (groups.length === 0) return spread;
     // One left out that was in a group (a version 3 group split here) keeps its place, measured from the start.
@@ -320,10 +325,10 @@ export const distributeOpenings = (groupId: OpeningGroupId, ids: readonly Openin
  * The stretch a group keeps to, from where its openings are now: between the nearest joint wholly
  * before them and the nearest wholly after them (a T or an X), or nothing when there is neither.
  */
-function stretchAround(host: HostInfo | undefined, openings: readonly PlacedOpening[]): { between?: readonly [string | null, string | null] } {
+function stretchAround(host: HostInfo | undefined, openings: readonly PlacedOpening[]): { between?: readonly [WallId | null, WallId | null] } {
   const lo = Math.min(...openings.map((p) => p.start));
   const hi = Math.max(...openings.map((p) => p.end));
-  const joints = [...(host?.joints ?? new Map<string, { lo: number; hi: number }>())];
+  const joints = [...(host?.joints ?? new Map<WallId, { lo: number; hi: number }>())];
   const before = joints.filter(([, j]) => j.hi <= lo).sort((a, b) => b[1].hi - a[1].hi)[0]?.[0] ?? null;
   const after = joints.filter(([, j]) => j.lo >= hi).sort((a, b) => a[1].lo - b[1].lo)[0]?.[0] ?? null;
   return before !== null || after !== null ? { between: [before, after] } : {};

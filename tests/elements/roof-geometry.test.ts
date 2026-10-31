@@ -4,12 +4,13 @@
 import { describe, expect, it } from 'vitest';
 import { roofSolid } from '../../src/elements/roof/geometry';
 import type { Roof } from '../../src/elements/roof/schema';
-import type { Point2 } from '../../src/core/vector';
+import type { Point2 } from '../../src/model/vector';
+import { lid, xid } from '../ids';
 
 // An L: a 10 × 4 wing along x and a 4 × 10 wing along y, sharing the corner square [0, 4] × [0, 4].
 const L: Point2[] = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 4 }, { x: 4, y: 4 }, { x: 4, y: 10 }, { x: 0, y: 10 }];
 const roof = (outline: Point2[]): Roof =>
-  ({ id: 'roof_r', levelId: 'lvl_ground', kind: 'hip', outline, edges: outline.map(() => ({ grade: 100, overhang: 0 })), thickness: 0.1, baseOffset: 0 }) as Roof;
+  ({ id: xid('roof_r'), levelId: lid('lvl_ground'), kind: 'hip', outline, edges: outline.map(() => ({ grade: 100, overhang: 0 })), thickness: 0.1, baseOffset: 0 }) as Roof;
 
 /** The roof's height at p: the face it falls in. */
 const heightAt = (faces: ReturnType<typeof roofSolid>['faces'], p: Point2): number | null => {

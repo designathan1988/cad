@@ -1,10 +1,13 @@
 // Stair wells: a stair leaves the floor it reaches open over its steps (Revit's Shaft Opening, made by
 // the stair itself). A floor whose top is within WELL_REACH of a stair's top is cut by its footprint.
 
-import { type Doc, levelOf, NO_LEVEL } from '../../app/document';
-import type { Point2 } from '../../core/vector';
+import type { Doc } from '../../project/doc';
+import type { Point2 } from '../../model/vector';
 import { type StairSolid, stairSolid, stairWell } from './geometry';
 import { type Stair, WELL_REACH } from './schema';
+import type { LevelId } from '../../project/doc';
+import { NO_LEVEL } from '../../project/doc';
+import { levelOf } from '../../project/doc';
 
 /** The stair as built, from its level. */
 export function solidOfStair(doc: Doc, s: Stair) {
@@ -27,7 +30,7 @@ export function arrivalOf(s: StairSolid): [Point2, Point2] | null {
 }
 
 /** The level a stair arrives at: the one whose floor is nearest its top, within WELL_REACH. */
-export function levelReached(doc: Doc, s: Stair): string | null {
+export function levelReached(doc: Doc, s: Stair): LevelId | null {
   const solid = solidOfStair(doc, s);
   const top = solid.bottom + solid.height;
   const best = [...doc.levels].sort((a, b) => Math.abs(a.elevation - top) - Math.abs(b.elevation - top))[0];

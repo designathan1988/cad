@@ -2,13 +2,13 @@
 // and how many decimals they show. One command, undone as any other; nothing drawn moves, only what is
 // written changes. A sample under the choices shows a few lengths as they will read.
 
-import type { App } from '../app/app';
-import type { Doc } from '../app/document';
+import type { App } from '../session/app';
+import type { Doc } from '../project/doc';
 import type { Command } from '../core/store';
 import { el, segmented, select } from './controls';
 import { openProjectDialog } from './dialog';
-import { t } from './i18n';
-import { angleNum, LENGTH_UNITS, type LengthUnit, lengthText, MAX_ANGLE_DECIMALS, MAX_DECIMALS, setUnits, SLOPE_FORMATS, type SlopeFormat, type Units, USUAL_DECIMALS } from './units';
+import { t } from '../i18n/messages';
+import { angleNum, LENGTH_UNITS, type LengthUnit, lengthText, MAX_ANGLE_DECIMALS, MAX_DECIMALS, setUnits, SLOPE_FORMATS, type SlopeFormat, type Units, USUAL_DECIMALS } from '../i18n/units';
 
 export const setProjectUnits = (units: Units): Command<Doc> => ({
   label: 'cmd.setUnits',

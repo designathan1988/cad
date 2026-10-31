@@ -12,4 +12,7 @@ Never stop to ask the user questions or ask for authorization/approval during ca
 
 **Why:** The user said it several times, the last time angrily (2026-10-25): "JÁ MANDEI NÃO PARAR PARA PERGUNTAR NADA E NEM PEDIR AUTORIZAÇÃO... ESCOLHA A MELHOR DECISÃO".
 
+Again 2026-10-28, after turns ending with "Continuo pelos próximos itens?": "PARE DE PERGUNTAR O QUE FAZER E CONTINUE." A list of
+next items in a document is an order to do all of them, one after another, in the same turn.
+
 **How to apply:** No AskUserQuestion, no "want me to…?", no wrap_up questions or approval buttons; commit and push without asking (see [[commit-push-github]]). Report decisions made at the end instead.

@@ -4,17 +4,18 @@
 // Buttons start with a verb (:235).
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { appActions, tipOf, type Action } from '../../src/app/actions';
-import type { App } from '../../src/app/app';
-import { newDocument } from '../../src/app/document';
-import type { KeyMap } from '../../src/app/keymap';
+import { appActions, tipOf, type Action } from '../../src/session/actions';
+import type { App } from '../../src/session/app';
+import { newDocument } from '../../src/project/doc';
+import type { KeyMap } from '../../src/session/keymap';
 import { createStore } from '../../src/core/store';
-import { setLang, t, type MessageKey } from '../../src/ui/i18n';
-import { VIEW_3D_DEFAULT } from '../../src/app/view-3d';
+import { setLang, t, type MessageKey } from '../../src/i18n/messages';
+import { VIEW_3D_DEFAULT } from '../../src/session/view/view-3d';
+import { lid } from '../ids';
 
 // Only what appActions reads; no action runs here.
 function actions(keymap: KeyMap = {}): Map<string, Action> {
-  const app = { store: createStore(newDocument()), ui: { selection: new Set(), view: 'plan', levelId: 'lvl_ground', hidden: new Set(), view3d: VIEW_3D_DEFAULT }, keymap, canMergeSelection: () => false, selectedDoor: () => false, arrangeItems: () => [] } as unknown as App;
+  const app = { store: createStore(newDocument()), ui: { selection: new Set(), view: 'plan', levelId: lid('lvl_ground'), hidden: new Set(), view3d: VIEW_3D_DEFAULT }, keymap, canMergeSelection: () => false, selectedDoor: () => false, arrangeItems: () => [] } as unknown as App;
   const none = () => {};
   const list = appActions(app, { help: none, levels: none, wallTypes: none, materials: none, units: none, objects: none, openings: none, floors: none, presets: none, openFile: none, projects: none, drawing: none, keys: none, variables: none });
   return new Map(list.map((a) => [a.id, a]));

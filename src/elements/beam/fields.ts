@@ -1,11 +1,11 @@
 // The fields beams show in the panel (ui/fields.ts builds the rows).
 
-import { lengthText } from '../../ui/units';
-import { distance } from '../../core/vector';
-import type { Field } from '../../ui/fields';
+import { lengthText } from '../../i18n/units';
+import { distance } from '../../model/vector';
+import type { Field } from '../fields';
 import type { BeamPatch } from './commands';
 import { type Beam, BEAM_PLATE } from './schema';
-import { t } from '../../ui/i18n';
+import { t } from '../../i18n/messages';
 
 export interface BeamFieldActions {
   readonly updateBeams: (ids: readonly string[], patch: BeamPatch) => void;

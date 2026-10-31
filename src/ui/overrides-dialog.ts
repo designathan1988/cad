@@ -1,15 +1,16 @@
-// Graphic overrides (phase 9): walls of a type filled in plan with a colour of their own (walls to
-// demolish in red, new ones in green), rooms of a use too, shown or not as the view says. A row a type
+// Graphic overrides (phase 9): walls of a type filled in plan with a colour of their own, rooms of a
+// use too, shown or not as the view says (the phases' colours are styles.css --phase-*). A row a type
 // or a use: it, its colour, its remove button; one command each change (app/layer-sets.ts).
 
-import type { App } from '../app/app';
-import { type RoomOverride, setOverrides, setRoomOverrides, type WallOverride } from '../app/layer-sets';
+import type { App } from '../session/app';
+import { type RoomOverride, setOverrides, setRoomOverrides, type WallOverride } from '../project/layer-sets';
 import { ROOM_USES } from '../elements/room/schema';
 import { newId } from '../core/id';
 import { el, select } from './controls';
 import { openProjectDialog } from './dialog';
-import { type MessageKey, name, t } from './i18n';
-import { icon } from './icons';
+import { type MessageKey, name, t } from '../i18n/messages';
+import { icon } from '../i18n/icons';
+import * as appSettings from '../session/app-settings';
 
 export function showOverrides(app: App): void {
   openProjectDialog(app, (close) => {
@@ -77,7 +78,7 @@ export function showOverrides(app: App): void {
     const on = el('button', { type: 'button', class: 'icon-btn text-btn', 'aria-pressed': String(app.ui.overridesOn) }, t(app.ui.overridesOn ? 'ovr.shown' : 'ovr.hiddenNow'));
     on.dataset.focus = 'on';
     on.addEventListener('click', () => {
-      app.toggleOverrides();
+      appSettings.toggleOverrides(app);
       close();
       showOverrides(app);
     });

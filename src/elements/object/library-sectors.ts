@@ -6,11 +6,12 @@
 
 import type { ObjectDefinition } from './schema';
 import { boxHandles, BUILD, choice, counted, derived, int, len, mat, num, w, yes } from './library-kit';
+import type { DefinitionId } from './schema';
 
 // ---------- Children ----------
 
 export const KIDS_TABLE: ObjectDefinition = {
-  id: 'def_kids_table',
+  id: 'def_kids_table' as DefinitionId,
   name: w('Mesa infantil com cadeirinhas', 'Children\'s table with chairs'),
   category: 'furniture',
   folder: 'Infantil',
@@ -27,7 +28,7 @@ export const KIDS_TABLE: ObjectDefinition = {
     { kind: 'box', name: w('Tampo', 'Top'), x: '-largura/2', y: '-profundidade/2', z: 'altura - 0.022', w: 'largura', d: 'profundidade', h: 0.022, material: 'matTampo', round: 0.01 },
     { kind: 'cylinder', name: w('Pé', 'Leg'), repeat: { count: 4 }, x: 'if(i % 2 == 0, -largura/2 + 0.06, largura/2 - 0.06)', y: 'if(i < 2, -profundidade/2 + 0.06, profundidade/2 - 0.06)', z: 0, r: 0.016, r2: 0.022, h: 'altura - 0.022', roll: 'if(i % 2 == 0, 5, -5)', tilt: 'if(i < 2, 5, -5)', material: 'matPes' },
     // Little chairs at the long sides, facing the table: two each side at most.
-    { kind: 'object', name: w('Cadeirinha', 'Little chair'), definition: 'def_dining_chair', repeat: { count: 'cadeiras' }, x: 'if(cadeiras > 2, (i % 2 - 0.5) * largura * 0.5, 0)', y: 'if(i < max(1, cadeiras / 2), -profundidade/2 - 0.12, profundidade/2 + 0.12)', z: 0, angle: 'if(i < max(1, cadeiras / 2), 180, 0)', values: { largura: 0.32, profundidade: 0.32, assento: 0.28, altura: 0.55, reclinado: 4, matEstofado: 'matAssento', matPes: 'matPes' } },
+    { kind: 'object', name: w('Cadeirinha', 'Little chair'), definition: 'def_dining_chair' as DefinitionId, repeat: { count: 'cadeiras' }, x: 'if(cadeiras > 2, (i % 2 - 0.5) * largura * 0.5, 0)', y: 'if(i < max(1, cadeiras / 2), -profundidade/2 - 0.12, profundidade/2 + 0.12)', z: 0, angle: 'if(i < max(1, cadeiras / 2), 180, 0)', values: { largura: 0.32, profundidade: 0.32, assento: 0.28, altura: 0.55, reclinado: 4, matEstofado: 'matAssento', matPes: 'matPes' } },
   ],
   handles: boxHandles('altura'),
   types: [
@@ -37,7 +38,7 @@ export const KIDS_TABLE: ObjectDefinition = {
 };
 
 export const TOY_CHEST: ObjectDefinition = {
-  id: 'def_toy_chest',
+  id: 'def_toy_chest' as DefinitionId,
   name: w('Baú de brinquedos', 'Toy chest'),
   category: 'casework',
   folder: 'Infantil',
@@ -86,7 +87,7 @@ export const TOY_CHEST: ObjectDefinition = {
 };
 
 export const HOUSE_BED: ObjectDefinition = {
-  id: 'def_house_bed',
+  id: 'def_house_bed' as DefinitionId,
   name: w('Cama casinha (montessoriana)', 'House bed (Montessori)'),
   category: 'furniture',
   folder: 'Infantil',
@@ -117,7 +118,7 @@ export const HOUSE_BED: ObjectDefinition = {
 };
 
 export const CHANGING_DRESSER: ObjectDefinition = {
-  id: 'def_changing_dresser',
+  id: 'def_changing_dresser' as DefinitionId,
   name: w('Cômoda com trocador', 'Chest with changing top'),
   category: 'casework',
   folder: 'Infantil',
@@ -149,7 +150,7 @@ export const CHANGING_DRESSER: ObjectDefinition = {
 // ---------- Commerce ----------
 
 export const RECEPTION_DESK: ObjectDefinition = {
-  id: 'def_reception_desk',
+  id: 'def_reception_desk' as DefinitionId,
   name: w('Balcão de recepção', 'Reception desk'),
   category: 'casework',
   folder: 'Comercial',
@@ -187,7 +188,7 @@ export const RECEPTION_DESK: ObjectDefinition = {
 };
 
 export const GONDOLA: ObjectDefinition = {
-  id: 'def_gondola',
+  id: 'def_gondola' as DefinitionId,
   name: w('Gôndola com produtos', 'Shop gondola with goods'),
   category: 'casework',
   folder: 'Comercial',
@@ -229,7 +230,7 @@ export const GONDOLA: ObjectDefinition = {
 };
 
 export const BOOTH: ObjectDefinition = {
-  id: 'def_booth',
+  id: 'def_booth' as DefinitionId,
   name: w('Mesa de restaurante com bancos', 'Restaurant booth'),
   category: 'furniture',
   folder: 'Comercial',
@@ -261,7 +262,7 @@ export const BOOTH: ObjectDefinition = {
 };
 
 export const CLOTHES_RACK: ObjectDefinition = {
-  id: 'def_clothes_rack',
+  id: 'def_clothes_rack' as DefinitionId,
   name: w('Arara de roupas', 'Clothes rack'),
   category: 'furniture',
   folder: 'Comercial',
@@ -302,7 +303,7 @@ export const CLOTHES_RACK: ObjectDefinition = {
 // ---------- Health ----------
 
 export const HOSPITAL_BED: ObjectDefinition = {
-  id: 'def_hospital_bed',
+  id: 'def_hospital_bed' as DefinitionId,
   name: w('Cama hospitalar', 'Hospital bed'),
   category: 'furniture',
   folder: 'Saúde',
@@ -343,7 +344,7 @@ export const HOSPITAL_BED: ObjectDefinition = {
 };
 
 export const EXAM_COUCH: ObjectDefinition = {
-  id: 'def_exam_couch',
+  id: 'def_exam_couch' as DefinitionId,
   name: w('Maca de exame', 'Examination couch'),
   category: 'furniture',
   folder: 'Saúde',
@@ -376,7 +377,7 @@ export const EXAM_COUCH: ObjectDefinition = {
 };
 
 export const WHEELCHAIR: ObjectDefinition = {
-  id: 'def_wheelchair',
+  id: 'def_wheelchair' as DefinitionId,
   name: w('Cadeira de rodas', 'Wheelchair'),
   category: 'equipment',
   folder: 'Saúde',
@@ -416,7 +417,7 @@ export const WHEELCHAIR: ObjectDefinition = {
 // ---------- School ----------
 
 export const SCHOOL_DESKS: ObjectDefinition = {
-  id: 'def_school_desks',
+  id: 'def_school_desks' as DefinitionId,
   name: w('Carteiras escolares', 'School desks'),
   category: 'furniture',
   folder: 'Escolar',
@@ -455,7 +456,7 @@ export const SCHOOL_DESKS: ObjectDefinition = {
 };
 
 export const WHITEBOARD: ObjectDefinition = {
-  id: 'def_whiteboard',
+  id: 'def_whiteboard' as DefinitionId,
   name: w('Lousa / quadro branco', 'Whiteboard'),
   category: 'equipment',
   folder: 'Escolar',
@@ -489,7 +490,7 @@ export const WHITEBOARD: ObjectDefinition = {
 };
 
 export const LOCKERS: ObjectDefinition = {
-  id: 'def_lockers',
+  id: 'def_lockers' as DefinitionId,
   name: w('Armário de vestiário', 'Lockers'),
   category: 'casework',
   folder: 'Escolar',
@@ -519,7 +520,7 @@ export const LOCKERS: ObjectDefinition = {
 };
 
 export const TEACHER_DESK: ObjectDefinition = {
-  id: 'def_teacher_desk',
+  id: 'def_teacher_desk' as DefinitionId,
   name: w('Mesa do professor', 'Teacher\'s desk'),
   category: 'furniture',
   folder: 'Escolar',

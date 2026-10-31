@@ -8,16 +8,17 @@ import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Material } from '../material/schema';
-import { ARC_SAG } from '../../core/tolerance';
-import type { Doc } from '../../app/document';
+import { ARC_SAG } from '../../model/tolerance';
+import type { Doc } from '../../project/doc';
 import { insideRing } from '../room/derive';
 import type { ElementKind, KindSolid } from '../contract';
-import { evaluateObject, type ObjectEval, type Piece, pieceOutline, pieceSpan } from '../object/evaluate';
+import { evaluateObject, type ObjectEval, type Piece } from '../object/evaluate';
+import { pieceOutline, pieceSpan } from '../object/piece-shape';
 import { type ObjectItem, objectFields, words } from '../object/fields';
 import { isObjectInstance } from '../object/valid';
 import { OBJECT_PREFIX, type ObjectDefinition, type ObjectInstance } from '../object/schema';
 import { nearSegment, trace } from './paint';
-import { t } from '../../ui/i18n';
+import { t } from '../../i18n/messages';
 
 export interface ObjectSolid extends ObjectItem {
   /** Each piece's outline in plan, lowest first. */
@@ -392,5 +393,5 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
       // Its lights go with its first piece (a luminaire's: contract.ts, lights).
       return { geometry, y: s.floor, material, edges: true, ...(i === 0 && s.eval.lights.length > 0 ? { lights: s.eval.lights } : {}) };
     }),
-  fields: (items, { dispatch, doc }) => objectFields(items, doc, dispatch),
+  fields: (items, { dispatch, doc, floorLocked }) => objectFields(items, doc, dispatch, floorLocked),
 };

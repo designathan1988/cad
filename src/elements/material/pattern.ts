@@ -1,11 +1,10 @@
+import { finite, isColor } from '../../core/guards';
 // A material's surface pattern (docs/plano-de-escopo.md, phase 8: procedural textures): tiles by piece
 // size, joint width and colour, laid aligned, staggered, in herringbone or as a chequerboard, with
 // some variation of colour between the pieces; wood by board; brick by course. Made in the browser,
 // with no image: the pieces of one period of the pattern (here) are painted into a texture
 // (render/pattern-texture.ts) that the 3D lays on every face in the world's metres.
 
-/** A #rrggbb colour (as schema.ts's: that file builds on this one). */
-const isColor = (c: unknown): c is string => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
 
 export type PatternKind = 'tiles' | 'wood' | 'brick' | 'marble' | 'granite' | 'flagstone';
 export type PatternLayout = 'stack' | 'running' | 'herringbone' | 'checker';
@@ -47,7 +46,6 @@ export const PIECE_MIN = 0.01;
 export const PIECE_MAX = 5;
 export const JOINT_MAX = 0.05;
 
-const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
 export const isPattern = (p: unknown): p is SurfacePattern => {
   if (typeof p !== 'object' || p === null) return false;

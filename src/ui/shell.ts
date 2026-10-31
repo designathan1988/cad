@@ -1,79 +1,62 @@
-// The window layout, as the interface model (Revit's): a dark title bar (the projects, quick access,
-// the project's name, the command search), the ribbon's tabs and the ribbon (ui/ribbon.ts, filled by
-// app/chrome.ts), the options bar, the views' strip over the drawing (level, Plan, 3D, the project browser), the
-// drawing, the properties on the right and the status bar. Builds the DOM once and exposes the parts the
-// app updates; texts are refreshed by relabel() when the language changes.
+// The window layout, as the interface model (prototype "barra superior fixa e painel flutuante da ferramenta"):
+// the title bar (the Project menu, undo and redo, the project's name, the command search); the fixed bar of
+// general commands (ui/command-bar.ts); the drawing, with the tools' rail on its left (ui/tool-rail.ts), the
+// view's header (Plan, 3D, the level, the scale), the tool's or the selection's own panel at its top
+// (ui/context-panel.ts), the navigation at its right and the view's controls at its foot; the panel on the
+// right, one at a time, opened from the icon bar at the window's edge (ui/side-bar.ts); and the status bar.
+// Builds the DOM once and exposes the parts the app updates; texts are refreshed by relabel() when the
+// language changes.
 
 import { el } from './controls';
-import { t, type MessageKey } from './i18n';
-import { icon, type IconName } from './icons';
+import { t, type MessageKey } from '../i18n/messages';
+import { icon, type IconName } from '../i18n/icons';
 
 /** `modify`: Move, Copy, Rotate, Scale or Mirror on the selection (tools/modify-tool.ts), a button each. */
 export type ToolId = 'select' | 'wall' | 'door' | 'window' | 'room' | 'floor' | 'column' | 'beam' | 'separator' | 'mark' | 'curtain' | 'note' | 'levelMark' | 'roof' | 'stair' | 'railing' | 'grid' | 'object' | 'measure' | 'dimension' | 'modify' | 'split' | 'corner' | 'guide' | 'section' | 'callout' | 'calibrate';
 export type ViewId = '3d' | 'plan';
 
-
 function iconButton(name: IconName, cls = 'icon-btn'): HTMLButtonElement {
   const b = el('button', { type: 'button', class: cls });
-  b.innerHTML = icon(name);
+  b.innerHTML = icon(name, 16);
   return b;
 }
 
+/** A button with an icon, a label and, for a menu, a caret: the title bar's Project, the level, the 3D view's display. */
+function textButton(cls: string, ic: IconName | null, caret: IconName | null): { button: HTMLButtonElement; label: HTMLElement } {
+  const button = el('button', { type: 'button', class: cls });
+  if (ic) button.innerHTML = icon(ic, 16);
+  const label = el('span', { class: 'label' });
+  button.append(label);
+  if (caret) button.insertAdjacentHTML('beforeend', icon(caret, 14));
+  return { button, label };
+}
+
 export function buildShell(root: HTMLElement) {
-  // Title bar: the projects (the app's mark), quick access, the project's name, the search, settings.
+  // Title bar: the app's mark, the Project menu (files, import, settings, elevations, interface), undo and
+  // redo, the project's name and where it is kept, the command search.
   const top = el('header', { class: 'top titlebar' });
-  const left = el('div', { class: 'left' });
-  const homeBtn = iconButton('folder', 'icon-btn app-mark');
-  const open = iconButton('fileOpen', 'icon-btn quick');
-  const save = iconButton('download', 'icon-btn quick');
-  const undo = iconButton('undo');
-  const redo = iconButton('redo');
-  left.append(homeBtn, el('span', { class: 'sep' }), open, save, el('span', { class: 'sep' }), undo, redo);
+  const project = textButton('tb project-menu', null, 'chevronDown');
+  project.button.setAttribute('aria-haspopup', 'menu');
+  project.button.setAttribute('aria-expanded', 'false');
+  const undo = iconButton('undo', 'ib');
+  const redo = iconButton('redo', 'ib');
   const center = el('div', { class: 'center' });
   // A button: a click (or Enter) renames the project in place (input.ts).
   const projectName = el('button', { type: 'button', class: 'project-name' });
   const savedNote = el('span', { class: 'saved-note' });
-  center.append(projectName, savedNote);
-  const right = el('div', { class: 'right' });
+  center.append(projectName, el('span', { class: 'saved-dot', 'aria-hidden': 'true' }, '·'), savedNote);
   // The command search, as wide as a field, with its key cap: what the palette finds. The key is the one the
-  // user set (app/chrome.ts writes it from the action list).
+  // user set (ui/chrome.ts writes it from the action list).
   const commands = el('button', { type: 'button', class: 'search-btn' });
-  commands.innerHTML = icon('command', 16);
   const commandsLabel = el('span', { class: 'search-label' });
-  commands.append(commandsLabel, el('span', { class: 'kbd' }));
-  const shortcuts = iconButton('keyboard', 'icon-btn needs-keyboard');
-  const lang = el('button', { type: 'button', class: 'icon-btn text-btn' });
-  const theme = iconButton('moon');
-  const panelToggle = iconButton('panel');
+  commands.append(el('span', { class: 'search-lead' }), el('span', { class: 'kbd' }));
+  commands.firstElementChild!.innerHTML = icon('search', 16);
+  commands.firstElementChild!.append(commandsLabel);
   const fileInput = el('input', { type: 'file', accept: '.json,application/json', hidden: '' });
-  right.append(commands, shortcuts, lang, theme, panelToggle, fileInput);
-  top.append(left, center, right);
+  top.append(el('span', { class: 'app-mark', 'aria-hidden': 'true' }, 'c'), project.button, el('span', { class: 'tsep', 'aria-hidden': 'true' }), undo, redo, center, commands, fileInput);
 
-  // The ribbon's tabs (File first) and the ribbon: filled by app/chrome.ts from app/ribbon-tabs.ts.
-  const tabs = el('nav', { class: 'rb-tabs', role: 'tablist' });
-  const fileMenu = el('button', { type: 'button', class: 'rb-tab rb-file' });
-  fileMenu.setAttribute('aria-haspopup', 'menu');
-  const ribbon = el('div', { class: 'ribbon', id: 'ribbon-panel', role: 'tabpanel' });
-  // The level, Plan and 3D, and the project browser: in a small box under the view cube (a strip
-  // of their own over the drawing, and an options bar under the ribbon, were two rows for little).
-  const levelBox = el('div', { class: 'select level-select' });
-  const level = el('select');
-  levelBox.append(level);
-  levelBox.insertAdjacentHTML('beforeend', icon('chevronDown', 14));
-  const views = el('div', { class: 'view-tabs', role: 'group' });
-  const viewBtn = (id: '3d' | 'plan', ic: IconName) => {
-    const b = el('button', { type: 'button', 'data-view': id, class: 'view-tab has-icon' });
-    b.innerHTML = icon(ic, 16);
-    b.append(el('span', { class: 'label' }));
-    views.append(b);
-    return b;
-  };
-  const viewPlan = viewBtn('plan', 'map');
-  const view3d = viewBtn('3d', 'cube');
-  const sidebar = el('button', { type: 'button', class: 'icon-btn text-btn browser-toggle' });
-  sidebar.innerHTML = icon('sidebar', 16);
-  const sidebarLabel = el('span', { class: 'label' });
-  sidebar.append(sidebarLabel);
+  // The general commands, always in one place under the title bar (ui/command-bar.ts fills it).
+  const commandBar = el('section', { class: 'cmd-bar', role: 'toolbar' });
 
   const browser = el('aside', { class: 'browser', 'aria-label': 'Project browser' });
   browser.hidden = true;
@@ -83,8 +66,6 @@ export function buildShell(root: HTMLElement) {
   const glCanvas = el('canvas', { 'aria-label': '3D' });
   // What a tool shows while it works, over the 3D view (render/overlay-3d.ts); it takes no pointer.
   const overlay3d = el('canvas', { class: 'overlay-3d', 'aria-hidden': 'true' });
-  const floatBar = el('div', { class: 'float-bar', role: 'toolbar' });
-  floatBar.hidden = true;
   const dims = el('div', { class: 'temp-dims' });
   const emptyHint = el('div', { class: 'empty-hint' });
   const toast = el('div', { class: 'toast', role: 'status', 'aria-live': 'polite' });
@@ -94,25 +75,49 @@ export function buildShell(root: HTMLElement) {
   const tempLabel = el('span');
   const tempReset = el('button', { type: 'button', class: 'btn' });
   tempChip.append(tempLabel, tempReset);
-  // The view's control bar, under the drawing (the interface model's): the plan's scale; the 3D view's
-  // levels, toggles, style, quality and light (view-3d.ts); both views' visibility.
-  const viewBar = el('div', { class: 'view-bar', role: 'toolbar' });
-  const levelsBox = el('div', { class: 'segmented', role: 'group' });
+
+  // The tools, icons only, down the drawing's left edge (ui/tool-rail.ts fills it).
+  const rail = el('nav', { class: 'rail' });
+
+  // The view's header, top left beside the rail (Rhino's viewport title, Blender's view header): Plan or 3D,
+  // the level shown (a menu: the levels, then their editor) and the plan's scale or the 3D's style.
+  const views = el('div', { class: 'view-tabs', role: 'group' });
+  const viewBtn = (id: ViewId, ic: IconName) => {
+    const b = el('button', { type: 'button', 'data-view': id, class: 'tb view-tab' });
+    b.innerHTML = icon(ic, 16);
+    b.append(el('span', { class: 'label' }));
+    views.append(b);
+    return b;
+  };
+  const viewPlan = viewBtn('plan', 'map');
+  const view3d = viewBtn('3d', 'cube');
+  const level = textButton('tb level-btn', 'levelsAll', 'chevronDown');
+  level.button.setAttribute('aria-haspopup', 'menu');
+  level.button.setAttribute('aria-expanded', 'false');
+  const levelElevation = el('span', { class: 'u' });
+  level.label.after(levelElevation);
+  const viewNote = el('span', { class: 'view-note' });
+  const viewHead = el('div', { class: 'view-head' }, views, level.button, viewNote);
+
+  // The view's controls, under the drawing in its middle: the plan's scale; the 3D view's levels, toggles and
+  // display (style, quality and light); both views' visibility.
+  const viewBar = el('div', { class: 'view-bar mb', role: 'toolbar' });
+  const levelsBox = el('div', { class: 'bar-group', role: 'group' });
   const barButton = (box: HTMLElement, ic: IconName) => {
-    const b = el('button', { type: 'button', class: 'has-icon' });
+    const b = el('button', { type: 'button', class: 'ib' });
     b.innerHTML = icon(ic, 16);
     b.append(el('span', { class: 'label' }));
     box.append(b);
     return b;
   };
   const levelsShown = { all: barButton(levelsBox, 'levelsAll'), below: barButton(levelsBox, 'levelsBelow'), current: barButton(levelsBox, 'levelsOne') };
-  const togglesBox = el('div', { class: 'segmented view-toggles', role: 'group' });
+  const togglesBox = el('div', { class: 'bar-group', role: 'group' });
   const explode = barButton(togglesBox, 'explode');
   const cut = barButton(togglesBox, 'cut');
   const xray = barButton(togglesBox, 'xray');
   const box = barButton(togglesBox, 'box');
   const ortho = barButton(togglesBox, 'ortho');
-  // The visual style and the quality (view-3d.ts), as the model's view control bar has them: a list each.
+  // The visual style and the quality (view-3d.ts), a list each, in the Display popover.
   const lookSelect = (ic: IconName) => {
     const box = el('label', { class: 'select look-select' });
     box.insertAdjacentHTML('afterbegin', icon(ic, 16));
@@ -124,44 +129,51 @@ export function buildShell(root: HTMLElement) {
   };
   const look = { style: lookSelect('cube'), quality: lookSelect('sun'), preparing: el('span', { class: 'look-preparing', role: 'status' }) };
   look.preparing.hidden = true;
-  // The light: a button opening the view's brightness and the sun's strength, a slider each.
-  const lightBtn = el('button', { type: 'button', class: 'has-icon light-btn' });
-  lightBtn.innerHTML = icon('sun', 16);
-  lightBtn.append(el('span', { class: 'label' }));
-  lightBtn.setAttribute('aria-expanded', 'false');
+  // The 3D view's display: a button opening the style and quality lists over the brightness and the sun's strength.
+  const display = textButton('tb light-btn', 'cube', 'chevronUp');
+  display.button.setAttribute('aria-expanded', 'false');
   const lightSlider = () => {
     const caption = el('span', { class: 'light-caption' });
     const input = el('input', { type: 'range', min: '0.25', max: '3', step: '0.05' });
     const value = el('span', { class: 'light-value' });
     return { row: el('label', { class: 'light-row' }, caption, input, value), caption, input, value };
   };
-  const light = { button: lightBtn, panel: el('div', { class: 'light-panel', role: 'group' }), brightness: lightSlider(), sun: lightSlider() };
+  const light = { button: display.button, label: display.label, panel: el('div', { class: 'light-panel', role: 'group' }), brightness: lightSlider(), sun: lightSlider() };
   light.panel.hidden = true;
-  light.panel.append(light.brightness.row, light.sun.row);
-  // The plan's scale (the drawing's, drawing/schema.ts), a list as the model's "Escala 1:100".
-  const planScale = lookSelect('scale');
-  // Both views: the categories' visibility and overrides (the dialog), and everything back after a hide.
-  const visBtn = el('button', { type: 'button', class: 'has-icon light-btn' });
-  visBtn.innerHTML = icon('levelsAll', 16);
-  visBtn.append(el('span', { class: 'label' }));
-  const shown = { reset: el('button', { type: 'button', class: 'has-icon light-btn' }) };
-  shown.reset.innerHTML = icon('close', 16);
-  shown.reset.append(el('span', { class: 'label' }));
-  const only3d = el('div', { class: 'view-bar-group view-bar-3d' }, levelsBox, togglesBox, look.style.box, look.preparing, look.quality.box, el('span', { class: 'light-wrap' }, lightBtn, light.panel));
+  light.panel.append(el('div', { class: 'light-lists' }, look.style.box, look.quality.box), look.preparing, light.brightness.row, light.sun.row);
+  // The plan's scale (the drawing's, drawing/schema.ts), a list as the model's "1:50".
+  const planScale = lookSelect('ruler');
+  // Both views: the categories' visibility and overrides (a popover), and everything back after a hide.
+  const vis = textButton('tb light-btn', 'eye', 'chevronUp');
+  vis.button.setAttribute('aria-expanded', 'false');
+  const visBtn = vis.button;
+  // The Visibility popover over the bar (ui/visibility-panel.ts fills it while it is open).
+  const visPanel = el('div', { class: 'light-panel vis-panel', role: 'group' });
+  visPanel.hidden = true;
+  // A 3D section's way out, while the view is cut by one (view.sectionOff).
+  const sectionOff = textButton('tb section-off', 'close', null);
+  sectionOff.button.hidden = true;
+  const shown = { reset: textButton('tb', 'close', null) };
+  const only3d = el('div', { class: 'view-bar-group view-bar-3d' }, levelsBox, el('span', { class: 'tsep', 'aria-hidden': 'true' }), togglesBox, el('span', { class: 'tsep', 'aria-hidden': 'true' }), el('span', { class: 'light-wrap' }, light.button, light.panel), sectionOff.button);
   const onlyPlan = el('div', { class: 'view-bar-group' }, planScale.box);
-  // The way out of the tool in use (it was the options bar's), shown while one is.
-  const toolDone = el('button', { type: 'button', class: 'has-icon light-btn tool-done' });
+  viewBar.append(onlyPlan, only3d, el('span', { class: 'light-wrap' }, visBtn, visPanel), shown.reset.button);
+
+  // The tool in use, or the selection, at the top of the drawing (Revit's options bar, Figma's contextual
+  // bar): what only this tool or this element does, a family of ways behind a caret, and the way out.
+  const toolBody = el('div', { class: 'tool-strip-body' });
+  const toolDone = el('button', { type: 'button', class: 'tb tool-done' });
   toolDone.hidden = true;
-  viewBar.append(onlyPlan, only3d, el('span', { class: 'view-bar-sep' }), visBtn, shown.reset, el('span', { class: 'spacer' }), toolDone);
-  // The drawing's corner, top right, one panel (as a CAD's view cube with its navigation bar under it):
-  // the cube and its home (app.ts puts them first; in 3D only); the two views side by side as icons,
-  // each named in its tip; the level by its name, a list; the project browser, named (its icon alone
-  // says little).
-  const viewBox = el('div', { class: 'view-box' }, views, levelBox, sidebar);
-  const viewCorner = el('div', { class: 'view-corner' }, viewBox);
-  viewport.append(planCanvas, glCanvas, overlay3d, dims, floatBar, emptyHint, tempChip, toast, browser, viewCorner);
+  const toolStrip = el('div', { class: 'tool-strip mb', role: 'toolbar' }, toolBody, toolDone);
+  toolStrip.hidden = true;
+
+  // The navigation, top right: the view cube (3D; app.ts puts it in) over the frame-all button.
+  const frameAll = iconButton('frame', 'ib');
+  const viewCorner = el('div', { class: 'view-corner' }, el('div', { class: 'bar-column' }, frameAll));
+  viewport.append(planCanvas, glCanvas, overlay3d, dims, emptyHint, tempChip, toast, rail, viewHead, viewCorner, toolStrip, viewBar);
 
   const panel = el('aside', { class: 'panel', 'aria-label': 'Properties' });
+  // The right edge's icon bar: each icon opens its panel (ui/side-bar.ts fills it).
+  const sideBar = el('nav', { class: 'side-bar' });
 
   const foot = el('footer', { class: 'foot' });
   const instr = el('div', { class: 'instr', 'aria-live': 'polite' });
@@ -169,17 +181,19 @@ export function buildShell(root: HTMLElement) {
   const measureLabel = el('label', { for: 'measure' });
   const measure = el('input', { id: 'measure', type: 'text', autocomplete: 'off', spellcheck: 'false' });
   const measureBox = el('div', { class: 'measure' }, measureLabel, measure);
-  const snapBtn = iconButton('magnet');
+  const snap = textButton('chip', 'magnet', null);
+  const snapBtn = snap.button;
   // The snaps' division of segments (app.setSnapParts), beside their toggle.
-  const snapParts = el('select', { class: 'snap-parts' });
-  const collideBtn = iconButton('collide');
+  const snapParts = el('select', { class: 'chip snap-parts' });
+  const collide = textButton('chip', 'collide', null);
+  const collideBtn = collide.button;
   const snapBox = el('div', { class: 'snap-box' }, snapBtn, snapParts, collideBtn);
   const coords = el('div', { class: 'coords' });
-  foot.append(instr, keys, measureBox, snapBox, coords);
+  foot.append(instr, keys, measureBox, coords, el('span', { class: 'tsep', 'aria-hidden': 'true' }), snapBox);
 
   const helpBack = el('div', { class: 'dialog-back' });
   helpBack.hidden = true;
-  root.append(top, tabs, ribbon, viewport, viewBar, panel, foot, helpBack);
+  root.append(top, commandBar, viewport, browser, panel, sideBar, foot, helpBack);
 
   // The footer's tip comes first: the key hints that leave it no room go, the first ones first (Esc,
   // last, is the one most needed). At 1280 px the wall tool's tip was cut after a few words. The keys
@@ -198,27 +212,26 @@ export function buildShell(root: HTMLElement) {
   };
   new ResizeObserver(() => fitFoot(true)).observe(foot);
 
-  // The view's bar the same way: its steps (styles.css, .view-bar.fit-N) taken one by one until what it
-  // holds fits. Measured when its width changes, and when its contents do (another view, the language,
-  // a tool's way out shown).
+  // The view's bar the same way: its steps (viewport.css, .view-bar.fit-N) taken one by one until what it
+  // holds fits the drawing's width. Measured when its width changes, and when its contents do (another view,
+  // the language, a section's way out shown).
   let barKey = '';
   const fitViewBar = (force = false) => {
-    // Its width too: a narrower window is noticed when the chrome is drawn, not only by the observer
-    // (which waits for a frame, rare while the window is behind others).
-    const key = [viewBar.clientWidth, ...[...viewBar.querySelectorAll<HTMLElement>(':scope > *, .view-bar-group')].map((x) => (x.hidden ? '0' : '1') + x.textContent)].join('|');
+    const key = [viewport.clientWidth, ...[...viewBar.querySelectorAll<HTMLElement>(':scope > *, .view-bar-group')].map((x) => (x.hidden ? '0' : '1') + x.textContent)].join('|');
     if (!force && key === barKey) return;
     barKey = key;
     viewBar.classList.remove('fit-1', 'fit-2', 'fit-3');
-    for (let step = 1; step <= 3 && viewBar.scrollWidth > viewBar.clientWidth + 1; step++) {
+    for (let step = 1; step <= 3 && viewBar.offsetWidth > viewport.clientWidth - 16; step++) {
       if (step > 1) viewBar.classList.remove(`fit-${step - 1}`);
       viewBar.classList.add(`fit-${step}`);
     }
   };
-  new ResizeObserver(() => fitViewBar(true)).observe(viewBar);
+  new ResizeObserver(() => fitViewBar(true)).observe(viewport);
 
   const parts = {
-    homeBtn, projectName, savedNote, undo, redo, level, open, fileInput, view3d, viewPlan, commands, shortcuts, lang, theme, save,
-    panelToggle, tabs, fileMenu, ribbon, viewport, planCanvas, glCanvas, overlay3d, floatBar, viewBar, viewCorner, toolDone, levelsShown, explode, cut, xray, box, ortho, look, light, only3d, onlyPlan, planScale, visBtn, shownReset: shown.reset, dims, browser, sidebar,
+    projectMenu: project.button, projectName, savedNote, undo, redo, level: level.button, levelName: level.label, levelElevation, viewNote, fileInput, view3d, viewPlan, commands,
+    commandBar, rail, viewport, planCanvas, glCanvas, overlay3d, viewBar, viewCorner, frameAll, toolDone, toolStrip, toolBody, levelsShown, explode, cut, xray, box, ortho, look, light, only3d, onlyPlan, planScale, visBtn, visPanel,
+    sectionOff: sectionOff.button, shownReset: shown.reset.button, dims, browser, sideBar,
     emptyHint, tempChip, tempLabel, tempReset, toast, panel, foot, instr, keys, measureLabel, measure, snapBtn, snapParts, collideBtn, coords, helpBack, fitFoot, fitViewBar,
   };
 
@@ -227,24 +240,19 @@ export function buildShell(root: HTMLElement) {
       b.title = t(key);
       b.setAttribute('aria-label', t(key));
     };
-    tip(homeBtn, 'pal.projects');
+    project.label.textContent = t('top.project');
     projectName.title = t('top.rename');
-    // Undo, redo, the command search, the shortcuts, the language, save, open, the snaps and the views: their
-    // tips carry the key the user set, so app/chrome.ts writes them from the action list at every render.
-    commandsLabel.textContent = t('top.search');
-    tip(theme, 'top.theme');
-    tip(panelToggle, 'top.panel');
-    tip(sidebar, 'tool.sidebar');
-    tip(level, 'top.level');
-    sidebarLabel.textContent = t('browser.short');
-    fileMenu.textContent = t('rib.file');
-    tabs.setAttribute('aria-label', t('rib.tabs'));
-    ribbon.setAttribute('aria-label', t('rib.ribbon'));
+    // Undo, redo, the command search, the snaps and the views: their tips carry the key the user set, so
+    // ui/chrome.ts writes them from the action list at every render.
+    commandsLabel.textContent = t('top.commands');
+    commandBar.setAttribute('aria-label', t('bar.commands'));
+    rail.setAttribute('aria-label', t('bar.tools'));
+    sideBar.setAttribute('aria-label', t('bar.panels'));
+    tip(level.button, 'top.level');
     views.setAttribute('aria-label', t('rib.views'));
     browser.setAttribute('aria-label', t('browser.title'));
     view3d.querySelector('.label')!.textContent = t('view.3d');
     viewPlan.querySelector('.label')!.textContent = t('view.plan');
-    floatBar.setAttribute('aria-label', t('ctx.label'));
     viewBar.setAttribute('aria-label', t('view3d.bar'));
     levelsBox.setAttribute('aria-label', t('view3d.levels'));
     const labelled = (b: HTMLElement, label: MessageKey, tipKey: MessageKey) => {
@@ -260,13 +268,15 @@ export function buildShell(root: HTMLElement) {
     labelled(xray, 'view3d.xray', 'view3d.xrayTip');
     labelled(box, 'view3d.box', 'view3d.boxTip');
     labelled(ortho, 'view3d.ortho', 'view3d.orthoTip');
+    snap.label.textContent = t('foot.snapChip');
+    collide.label.textContent = t('foot.collideChip');
     tip(collideBtn, 'foot.collisions');
     tempReset.textContent = t('temp.reset');
     planCanvas.setAttribute('aria-label', t('view.plan'));
     glCanvas.setAttribute('aria-label', t('view.3d'));
     panel.setAttribute('aria-label', t('aria.properties'));
   };
-  return { ...parts, relabel };
+  return { ...parts, relabel, labels: { vis: vis.label, sectionOff: sectionOff.label, shownReset: shown.reset.label } };
 }
 
 export type Shell = ReturnType<typeof buildShell>;

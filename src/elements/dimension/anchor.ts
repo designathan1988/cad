@@ -2,10 +2,15 @@
 // (resolve). Read against the walls' chords, so an arc's ends hold, and a point along it is taken on its
 // chord. Pure.
 
-import type { Doc } from '../../app/document';
-import type { DerivedGeometry } from '../../app/geometry';
-import { add, distance, dot, normalize, perp, type Point2, scale, sub } from '../../core/vector';
+import type { Doc } from '../../project/doc';
+import type { DerivedGeometry } from '../../project/derive';
+import { add, distance, dot, normalize, perp, type Point2, scale, sub } from '../../model/vector';
+
+/** How far p is from the segment a–b (model/vector's; kept as anchor's API for the kinds). */
+export { segmentDistance } from '../../model/vector';
 import type { DimAnchor, Dimension } from './schema';
+import type { WallId } from '../wall/schema';
+import type { LevelId } from '../../project/doc';
 
 /** Points this near (m) are the same point: a jamb, a face. */
 const SAME = 1e-4;
@@ -18,9 +23,9 @@ const axes = (start: Point2, end: Point2) => {
 };
 
 /** What holds a point put at p on the level: a jamb, a wall, or nothing. */
-export function anchorAt(doc: Doc, g: DerivedGeometry, levelId: string, p: Point2): DimAnchor {
+export function anchorAt(doc: Doc, g: DerivedGeometry, levelId: LevelId, p: Point2): DimAnchor {
   const walls = new Map(doc.walls.filter((w) => w.levelId === levelId).map((w) => [w.id, w]));
-  const thick = (id: string) => g.solids.get(id)?.layers.reduce((t, l) => t + l.thickness, 0) ?? 0;
+  const thick = (id: WallId) => g.solids.get(id)?.layers.reduce((t, l) => t + l.thickness, 0) ?? 0;
   // A jamb first: a point on it is the door's, so it follows the door along its wall.
   for (const o of g.openings.values()) {
     const w = walls.get(o.opening.wallId);
@@ -87,10 +92,4 @@ export function placeDimension(doc: Doc, g: Pick<DerivedGeometry, 'openings'>, d
 /** The offset that puts a dimension from a to b through p: p's distance from the line, to its left. */
 export const offsetThrough = (a: Point2, b: Point2, p: Point2): number => dot(perp(normalize(sub(b, a))), sub(p, a));
 
-/** How far p is from the segment a–b. */
-export function segmentDistance(p: Point2, a: Point2, b: Point2): number {
-  const ab = sub(b, a);
-  const len2 = dot(ab, ab);
-  const k = len2 === 0 ? 0 : Math.max(0, Math.min(1, dot(sub(p, a), ab) / len2));
-  return distance(p, add(a, scale(ab, k)));
-}
+

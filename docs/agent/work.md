@@ -4,70 +4,44 @@ Rewrite this file when a task starts: the owner's order word for word, how the w
 what was read (files and lines), what was found (file:line), what was changed, the commit, and what is next. Keep it under 9,000
 characters: what is done moves to `docs/agent/history.md`.
 
-## Task now (2026-10-28): reduce cad2 to the fundamental and make it work
-The owner's order, word for word: `docs/prompt-escopo-fundamental.md` (the same text pasted in chat 2026-10-28; also in
-`docs/agent/orders.md`). In short: keep walls, building elements, objects, views, precision, edit/file and the settings they use;
-take out MEP, simulation, rules/diagnostics, budget, approval, lot/terrain, documentation, presentation (code leaves the app, stays in
-tag `escopo-completo-2026-10-28`); saved projects keep those fields untouched (Doc carries them opaque, versioned migration in
-io/project-file.ts). Then step 2: the `reviewing-whole-codebase` skill, `fix` mode, goal in the prompt.
-Rules: one session, no subagents, no heredoc, no new features, commit per verified step (English, `git add` by path), push origin main.
+## 2026-10-31, owner: "ENTÃO TERMINA E TESTA A APLICAÇÃO NO NAVEGADOR."
+Left after the merge: main's open findings F-0072 (single sliding leaf never opens; shutter vanishes), F-0089 (straight walls
+overlapping with no contact unreported), F-0091 (wall type layer order unchecked), F-0097 (typed-ids renames; IN PROGRESS
+uncommitted in the main checkout by another session: not duplicated here), F-0023 rest and F-0138 (main left/blocked), mirrored
+wall over a column with no warning. Test map (headless drive.cjs, 1920x1080, then 1280; never 880): file (new, open, download,
+projects), levels, walls (line, rect, arc, split, merge, corner, flip, align, distribute, types), openings (place, slide, handles,
+flip, groups, distribute), rooms/floors/ceilings/zones, roof (L hip), stair, railing, column, beam, curtain, separator, dims
+(linear, angle, radius, coord, level mark), measure (chain, crossing), guides, grid, sections/elevations, references, objects
+(store, editor, handles), materials, presets, overrides, layer sets, saved views, 3D (styles, box, explode, cut, xray), keys,
+help, palette, language, theme, panel, browser. Then fix what is found; then F-0072, F-0089, F-0091, wall over column.
 
-## Steps
-- [x] 0.1 Read the stray diff (3D wall handles: app.ts, frame.ts, overlay-3d.ts, plan-view.ts): coherent, tsc passes; committed 2c739a7
-      with scripts/breaks, the prompt, orders.md; .gitignore += .playwright-mcp/, .breaks/. vigia.json / vigia-log.txt left alone
-      (the guard's own files; touching them is denied by the hook).
-- [x] 0.2 Tag escopo-completo-2026-10-28 on 2c739a7, pushed.
-- [x] 0.3 This notebook.
-- [x] 1.1 Inventory: every file of the areas leaving, and every import of them from the files that stay (the cut points).
-- [x] 1.2 Boundary decisions (annotation, exports, points/analytic/debug panel), written below.
-- [x] 1.3 Opaque fields in Doc + migration in io/project-file.ts.
-- [x] 1.4 Remove each area and resolve each cut point at its cause.
-- [x] 1.5 tsc, import map again, app opens, old project opens/saves the same. Commit, push.
-- [ ] 2   Skill: install, read SKILL.md + references whole, run `fix` from start to end.
+## 2026-10-31, owner (mid-task): implement the prototype "cad2 — barra superior fixa (comandos gerais) e painel flutuante da
+ferramenta" (Desktop zip, Toolbar4.dc.html, read whole; extracted to scratchpad/proto) "E GARANTA QUE FIQUE FUNCIONAL E NÃO QUEBRE NADA".
+Layout: title 30 (logo, Projeto menu, undo/redo, name · saved, Comandos Ctrl K 220px); fixed command bar 32 (general commands, off when
+not applicable); viewport: view header top-left (Plan/3D, level menu + new/edit, scale), tool rail left (icon groups, families with
+caret), nav right (cube 3D, fit), context panel top centre (tool ways/stores or element actions + Terminar Esc), view bar bottom
+(3D toggles + Exibição, plan scale, Visibilidade); right: one panel at a time + 30px icon bar; status 22 (prompt, coords, Encaixe,
+÷ N, Colisão). Dark tokens = prototype colours. Ribbon and float bar go. Mapping of every command:
+Projeto menu: file.new/projects/open/save | ref.import, model.import | units.edit, settings.variables, settings.keys, drawing.edit
+| view.elevation.n/s/e/w | settings.language, settings.theme, help.shortcuts. Fixed bar: edit.move/copy/rotate/mirror/scale |
+edit.copyClip, edit.paste | view.tempHide/tempIsolate | edit.selectAll, select walls, edit.selectSimilar, view.frameSelection,
+edit.clearSelection, edit.delete. Rail: select, measure | wall(line/rect/arc), door, window, curtain, floor(floor/ceiling),
+room(room/separator), roof, stair(stair/railing) | column, beam, grid | object(list+library+import) | dimension(linear/angle/radius/
+levelMark/coord), note(text/callout), section, guide(line/point/circle). Context panel: tool ways + stores + Terminar; selection:
+ELEMENT_ACTIONS, offset, geometry family (split/corner/merge), zone.make, arrange family. Nav: cube, view.frameAll. View bar: as now
+(+ view.sectionOff while a 3D section is on). Right bar: properties, browser (views, sections, wall types), library, materials.
+Not built (no such feature: memory finish-before-new): Avisos panel, Zoom/Pan buttons.
 
-## Inventory (1.1, by scratchpad imports.cjs over all 358 files)
-The table's 8 areas: 62 files, 10,874 lines (rules 6/956, docs 11/2484, terrain 9/1029, mep 11/2713, sim 11/1868, walk 4/477,
-approval 3/286, costs 7/1061). 72 import cut points from kept files (actions, app, chrome, document, frame, input-buttons, input,
-next-element, ribbon-tabs, kinds/note, kinds/object, material/commands+schema, registry, wall/fields, export-ifc, project-file,
-plan-view, scene-3d, debug-panel, materials-dialog, sections-dialog). Members NOT in the table, found by imports:
-app/logo-image.ts (only sheets + lot dialog), io/xlsx.ts (only budget dialog), the analytic structure (elements/mep/coordination.ts).
-
-## Boundary decisions (criterion: serves the model of walls, elements, objects, views and precision?)
-- Annotation: notes STAY (elements/note holds the level mark, a kept dimension kind; its sheet link is cut). Room tags and opening
-  marks STAY (they show the model's own data in plan). Free tags (elements/tag, kinds/tag) and revision clouds (elements/cloud,
-  kinds/cloud) LEAVE: documentation, not model. Their saved data is kept opaque.
-- Exports: IFC/DXF/OBJ/GLB/image export and IFC import LEAVE (io/export-ifc, export-dxf, hatch-lines, export-obj, render/export-gltf,
-  import-ifc, step.ts, saveImage3d): interop and documentation, not modelling. DXF import STAYS (reference drawing), mesh import STAYS
-  (model as object).
-- Points of interest (app/points.ts, points-ui.ts, ui/points-dialog.ts, view.points) LEAVE: presentation (a visitor's cards). Data kept.
-- Analytic structure LEAVES with MEP (it lives in elements/mep/coordination.ts). Debug panel (ui/debug-panel.ts) LEAVES: it is built
-  on the rules' diagnostics; app/error-log.ts stays if anything else uses it.
-- Zones STAY (rooms taken together: part of rooms). app/stacked.ts STAYS (walls on the wall below).
-
-## Step 1 progress (not committed yet)
-- Done: files of all areas + boundary members git-rm'd (src and tests/mep,sim,rules,costs,approval). Doc: KEPT_FIELDS + `kept`
-  (document.ts), version 67; project-file.ts keptOf() reads them raw, writeProject spreads them back at the top; layer sets lose
-  'services' (category gone). Material physics moved to elements/material/physics.ts. registry/contract without terrain, mep, tag,
-  cloud. note (sheet ref cut), object (terrain ground cut), scene-3d (soil cut), plan-view (heat cut), section-drawing (ground flag
-  cut), wall/fields (modulation cut), ribbon-tabs, actions, kind-tools, next-element, room-ui, selection-ui, app.ts cleaned.
-- New files (moved code, not new features): app/section-view.ts (sectionOf/sectionCanvas from old sheets.ts, used by the sections
-  dialog); ui/drawing-dialog.ts (setDrawing + showDrawingSettings from old print-dialog.ts: the scale and pens dialog).
-- Left: app-files, chrome, context-menu, frame, input-buttons, input-keys, input, object-handles, view-ui, views-ui, ui/browser,
-  ui/shell (tour/point cards), i18n keys, CSS, tests; then tsc, import map, app opens, old project round trip.
-- Mistakes made and fixed: a heredoc command (hung, stopped); a `sed '/x/='` that wrote "170" into selection-ui.ts (removed).
-
-- Done after that: app-files (exports, IFC import), chrome, context menu (walkHere, addPoint), frame (sun, heat, norms, budget, points,
-  clouds, MEP), input/input-keys/input-buttons (walk, tour, points, tag, cloud, spot, MEP, F7, Ctrl+P), view-ui, views-ui (tour),
-  browser drawer, shell (walk button and stick, tour bar, point card, ToolId), scene-3d (site sun, walk camera, flights, walk doors),
-  panel (norms, detail, terrain actions), persist (tour/walk prefs). Orphans taken out too: error-log.ts, ui/callout.ts, io/pdf.ts,
-  io/zip.ts. i18n: 1,004 keys used only by the removed code (scratchpad i18n-unused.cjs, old vs new tree). CSS: 148 rules, 796 lines
-  (scratchpad css-gone.cjs). Tests: area-only ones removed; mixed ones trimmed; project-file test + kept-fields round trip.
-- Verified: tsc 0 errors; imports.cjs: 0 cut points, no area file left; orphans.cjs: only opening/index.ts (orphan before the cut);
-  roundtrip.mjs (old build of the tag vs new build): 15/15 area fields and 28 model fields equal after 2 open/save; old app refuses
-  the v67 file as newer. In the app (Playwright): opens, 0 errors; old-v66.json opened, saved, reopened, saved: 15/15 equal.
-- [x] 1.1–1.5. Commit next.
-
-## Next
-Step 2 running: skill phase fix (cursor .whole-review/CURSOR.md, ledger status). Fixed: F-0003, F-0010, F-0021; F-0030 in hand;
-then F-0107, F-0136, F-0139, F-0126, F-0045 (RC1), RC2, wall engine, RC3, the rest; then apptest, finish, commit, push.
-Step 1 committed and pushed (a574453). Step 2: skill extracted to C:/Users/Jonathan/.claude/skills/reviewing-whole-codebase (SKILL.md and both references read whole). It is NOT in this session's skill list and has disable-model-invocation: true, so the owner must restart Claude Code and type /reviewing-whole-codebase fix himself. Then: init --mode fix --goal (the goal of docs/prompt-escopo-fundamental.md, word for word) --check "npx tsc --noEmit"; set-app --start "npm run dev" --url http://localhost:5173/. Playwright is not in the project: the skill installs playwright-core in its own folder in phase apptest.
+### Interface progress (2026-10-31)
+- 8e59330 the frame: shell.ts rebuilt; ui/bars.ts (BarItem, barButton, families via ui/menu.ts showMenu, drawBar by key),
+  command-bar.ts, tool-rail.ts (listedObjects, objectFamily, railGroups), context-panel.ts (actionsWithContext, toolItems,
+  selectionItems, placeName, lowerFirst), project-menu.ts, view-header.ts (header, level menu, side bar); styles/bars.css;
+  ribbon*.ts, float-bar.ts, bar-place.ts, ribbon.css removed; menu.ts gets group headings and `current`; browser.ts trimmed to
+  saved views + wall types; one right panel at a time (togglePanel/toggleBrowser); covered() reads panel or browser on the right.
+- ada446b element actions from menuEntries (contextEntries removed), wand icon for dim.auto, navigator title class, stale texts.
+- c345ff4 owner: "ESSA APLICAÇÃO NÃO É PARA MOBILE" / "VAI TESTAR EM 880 POR QUE": phone, touch and narrow-drawing CSS removed;
+  memories desktop-only + test-window-sizes now say 1920 and 1280 only.
+- Checked headless at 1920 (light and dark) and 1280: Project menu, level menu + level editor, rail, object list, wall tool panel,
+  dimension family, wall and door selection panels, Move from the fixed bar, W wall + Ctrl+Z, language switch, 3D (cube, frame
+  all, display popover), navigator, library, visibility, palette. Console clean.
+- Then (goal "termine tudo"): F-0072 + F-0089 + F-0091 e297fed, test fixes d7d79dc, F-0097 30cd3a9; all checked in the app at 1920.

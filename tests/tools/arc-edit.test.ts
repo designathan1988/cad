@@ -3,7 +3,7 @@
 // since bulge = tan(θ/4) and s / (c/2) = tan(θ/4).
 
 import { describe, expect, it } from 'vitest';
-import { arcMiddle, bulgeKeepingSide, bulgeFromMiddle, straightNear } from '../../src/tools/arc-edit';
+import { arcMiddle, bulgeKeepingSide, bulgeFromMiddle, straightNear } from '../../src/elements/wall/arc-edit';
 
 const a = { x: 0, y: 0 };
 const b = { x: 2, y: 0 };

@@ -1,4 +1,4 @@
-import type { Point2 } from '../../../core/vector';
+import type { Point2 } from '../../../model/vector';
 import type { HalfPlane } from '../geometry/convex';
 import type { EndRef, WallId } from '../schema';
 

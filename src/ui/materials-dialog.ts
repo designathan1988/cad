@@ -3,18 +3,22 @@
 // the last). Every change is one command, and every layer made of the material follows at once, in plan
 // and in 3D. Laid out as the wall types dialog: the list on the left, the chosen one beside it.
 
-import type { App } from '../app/app';
-import { copyLibraryLink } from '../app/library-link';
+import { withLibrary } from './library-tabs';
+import type { App } from '../session/app';
+import { copyLibraryLink } from '../library/link';
 import { libraryOf } from '../io/library-file';
-import { newId } from '../core/id';
 import { addMaterial, deleteMaterial, materialDeleteBlocker, materialUses, type MaterialPatch, updateMaterial } from '../elements/material/commands';
 import { CUT_PATTERNS, type CutPattern, type MaterialId } from '../elements/material/schema';
 import { JOINT_MAX, PATTERN_DEFAULTS, PATTERN_KINDS, PATTERN_LAYOUTS, PIECE_MAX, PIECE_MIN, type PatternKind, type PatternLayout, type SurfacePattern } from '../elements/material/pattern';
-import { blockedBy, el, numberField, select } from './controls';
+import { el, numberField, select } from './controls';
 import { openProjectDialog } from './dialog';
 import { textField } from './fields';
-import { defaultName, materialLabel, nextCopy, t, type MessageKey } from './i18n';
-import { icon } from './icons';
+import { materialLabel, t, type MessageKey } from '../i18n/messages';
+import { icon } from '../i18n/icons';
+import { newMaterialId } from '../elements/material/schema';
+import { nextCopy } from '../i18n/messages';
+import { blockedBy } from './controls';
+import { defaultName } from '../i18n/messages';
 
 export function showMaterials(app: App, first?: MaterialId): void {
   let chosen = first ?? app.store.get().materials[0]?.id ?? '';
@@ -108,8 +112,8 @@ export function showMaterials(app: App, first?: MaterialId): void {
           row(t('pat.angle'), numberField(pat.angle, (v) => set({ angle: v }), -360, 0, '°', 360), 'patAngle'),
         );
       }
-      // Its physics (elements/material/physics.ts) is kept in the data but not shown: the simulations
-      // that read it left the app (tag escopo-completo-2026-10-28).
+      // Its physics (elements/material/physics.ts) fed the simulations, out of the app since 2026-10-28: not
+      // shown, kept in the material as saved. Five fields for a feature that is gone were noise in the form.
       detail.append(
         el('h3', {}, materialLabel(mat)),
         row(t('mats.name'), name, 'name'),
@@ -130,13 +134,13 @@ export function showMaterials(app: App, first?: MaterialId): void {
     };
     // The new one is the chosen one before the command runs: the dialog redraws on it at once.
     const add = btn(t('mats.new'), 'new', () => {
-      const id = newId('mat');
+      const id = newMaterialId();
       chosen = id;
       app.store.dispatch(addMaterial({ id, name: t('mats.newName', { n: doc.materials.length + 1 }), color: '#b4b0a8', roughness: 0.9, metalness: 0, cut: 'solid' }));
     });
     const dup = btn(t('mats.duplicate'), 'duplicate', () => {
       if (!mat) return;
-      const id = newId('mat');
+      const id = newMaterialId();
       chosen = id;
       const { base, n } = nextCopy(materialLabel(mat), app.store.get().materials.map(materialLabel));
       app.store.dispatch(addMaterial({ ...mat, id, name: defaultName.copy(base, n) }));
@@ -154,12 +158,17 @@ export function showMaterials(app: App, first?: MaterialId): void {
     const link = btn(t('lib.copyLink'), 'link', () => mat && void copyLibraryLink(app, libraryOf(app.store.get(), [], [mat.id])));
     link.disabled = !mat;
 
-    return el(
-      'div',
-      { class: 'dialog dialog-wide types-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('mats.title') },
-      el('h2', {}, t('mats.title')),
-      el('div', { class: 'types-body' }, list, detail),
-      el('div', { class: 'actions' }, add, dup, del, ...(whyNode ? [whyNode] : []), link, el('span', { class: 'spacer' }), btn(t('help.close'), 'close', close)),
+    return withLibrary(
+      app,
+      'materials',
+      close,
+      el(
+        'div',
+        { class: 'dialog dialog-wide types-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('mats.title') },
+        el('h2', {}, t('mats.title')),
+        el('div', { class: 'types-body' }, list, detail),
+        el('div', { class: 'actions' }, add, dup, del, ...(whyNode ? [whyNode] : []), link, el('span', { class: 'spacer' }), btn(t('help.close'), 'close', close)),
+      ),
     );
   };
 

@@ -2,13 +2,14 @@
 // walls of its whole level (room/derive.ts: deriveRooms, in the base geometry); the kind reads it there.
 
 import { finite, isObject, isPoint } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
-import { name, t } from '../../ui/i18n';
+import type { Point2 } from '../../model/vector';
+import { name, t } from '../../i18n/messages';
 import type { ElementKind } from '../contract';
 import { updateRooms } from '../room/commands';
 import { insideRing, type RoomSolid } from '../room/derive';
 import { roomFields } from '../room/fields';
 import { type Room, ROOM_USES } from '../room/schema';
+import type { LevelId } from '../../project/doc';
 
 export const ROOM_PREFIX = 'room';
 
@@ -16,7 +17,7 @@ export const ROOM_PREFIX = 'room';
 export type RoomItem = RoomSolid & { readonly elevation: number };
 
 /** The next number on a level, after those in `all` (the highest + 1: a count repeated one after a deletion). */
-export const nextNumber =(all: readonly Room[], levelId: string): string =>
+export const nextNumber = (all: readonly Room[], levelId: LevelId): string =>
   String(all.filter((r) => r.levelId === levelId).reduce((n, r) => Math.max(n, Number.parseInt(r.number, 10) || 0), 0) + 1);
 
 export const roomKind: ElementKind<Room, RoomItem> = {
@@ -26,7 +27,7 @@ export const roomKind: ElementKind<Room, RoomItem> = {
   // Lit under the walls; its tag is the plan's (room tags keep off the rest).
   layer: 'under',
   icon: 'room',
-  one: 'room.title',
+  one: 'room.one',
   many: 'room.titleMany',
   title: (items) => ({ icon: 'room', text: items.length === 1 ? t('room.title', { name: name(items[0]!.room.name) }) : t('room.titleMany', { n: items.length }) }),
   // One room not closed in, or sharing its space: said under its fields.
@@ -66,7 +67,7 @@ export const roomKind: ElementKind<Room, RoomItem> = {
   moved: (r, d) => ({ ...r, seed: { x: r.seed.x + d.x, y: r.seed.y + d.y } }),
   mapped: (r, tr, id) => ({ ...r, id, seed: tr.map(r.seed) }),
   // Selected, or going with all its walls (carry.ts: roomsGoingWith): its point goes.
-  transformed: (r, c) => (c.selected || c.going(r.id) ? { ...r, id: c.id, seed: c.t.map(r.seed) } : null),
+  transformed: (r, c) => (c.selected || c.going(r.id) ? { ...r, id: c.to(r.id), seed: c.t.map(r.seed) } : null),
   // A copy numbered on from its level's last, as a new room is.
   copied: (all, r) => ({ ...r, number: nextNumber(all, r.levelId) }),
   similar: (a, b) => a.use === undefined || a.use === b.use,

@@ -4,17 +4,19 @@
 // the selection, the views' filters, picking, framing and select similar. The plan, the 3D
 // and the panel draw them with their walls.
 
-import { openingOutline, type OpeningSolid } from '../../app/geometry';
+import { type OpeningSolid } from '../../project/derive';
+import { openingOutline } from '../../project/derived-queries';
 import { isObject } from '../../core/guards';
-import type { Point2 } from '../../core/vector';
+import type { Point2 } from '../../model/vector';
 import type { ElementKind } from '../contract';
 import { type Opening, OPENING_PREFIX } from '../opening/schema';
 import { symbolLines } from '../opening/symbol';
 import { insideRing } from '../room/derive';
 import { nearSegment } from './paint';
+import type { LevelId } from '../../project/doc';
 
 /** A door or window as placed, with its wall's level. */
-export type OpeningItem = OpeningSolid & { readonly levelId: string };
+export type OpeningItem = OpeningSolid & { readonly levelId: LevelId };
 
 /** Distance from p to a closed outline's sides, or to an open line's. */
 const toLines = (lines: readonly (readonly Point2[])[], p: Point2, closed: boolean): number => {

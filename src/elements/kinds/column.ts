@@ -8,7 +8,7 @@ import { columnFields } from '../column/fields';
 import { type Column, COLUMN_PREFIX, COLUMN_SHAPES, columnOutline } from '../column/schema';
 import type { ElementKind } from '../contract';
 import { nearSegment, throughElement, trace } from './paint';
-import { levelOf, NO_LEVEL } from '../../app/document';
+import { levelOf, NO_LEVEL } from '../../project/doc';
 
 export interface ColumnSolid {
   readonly column: Column;

@@ -5,8 +5,8 @@
 // on one side of it (they would overlap each other), every arm takes its sector (sectors.ts). Only
 // where neither is exact does it warn complexJoin and stay square.
 
-import { AREA_EPSILON, COLLINEAR_ANGLE } from '../../../core/tolerance';
-import { add, cross, distance, dot, type Point2, scale, sub } from '../../../core/vector';
+import { AREA_EPSILON, COLLINEAR_ANGLE } from '../../../model/tolerance';
+import { add, cross, distance, dot, type Point2, scale, sub } from '../../../model/vector';
 import { clipHalfPlane, type ConvexPolygon, type HalfPlane, halfPlaneThrough, overlapArea } from '../geometry/convex';
 import { endPoint, faceOffsets, intoBody, offsetOf, strip, wallDirection, wallLength, wallNormal } from '../geometry/offset';
 import type { WallShape } from '../geometry/shape';

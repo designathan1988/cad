@@ -2,10 +2,10 @@
 // settings kept in the file and changed by one command.
 
 import { describe, expect, it } from 'vitest';
-import { drawingOf, newDocument } from '../../src/app/document';
+import { drawingOf, newDocument } from '../../src/project/doc';
 import { DEFAULT_DRAWING, detailOf, isDrawingSettings, scaleFactor, SCALES } from '../../src/elements/drawing/schema';
-import { readProject, writeProject } from '../../src/io/project-file';
-import { setDrawing } from '../../src/ui/drawing-dialog';
+import { readProject, writeProject } from '../../src/project/file';
+import { setDrawing } from '../../src/elements/drawing/commands';
 
 describe('drawing scale and pens', () => {
   it('pens are heavier at a larger scale and lighter at a smaller one, 1:100 as set', () => {

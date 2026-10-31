@@ -3,8 +3,8 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { isVariableName, parseLength, parseNumber, parsePointFrom, setBareUnit, setVariables } from '../../src/core/measure';
-import { newDocument } from '../../src/app/document';
-import { readProject, writeProject } from '../../src/io/project-file';
+import { newDocument } from '../../src/project/doc';
+import { readProject, writeProject } from '../../src/project/file';
 import { setProjectVariables } from '../../src/ui/variables-dialog';
 
 afterEach(() => {
