@@ -36,6 +36,7 @@ aqui fica a decisão por arquivo.
 | --- | --- | --- | --- |
 | (movido no passo 4) src/project/doc.ts | dividir | project/doc.ts + level/… | Doc/niveis em project; wallHeights/wallBand → wall; covers WeakMap junto do roof |
 | (movido no passo 4) src/project/file.ts | mover | project/file.ts | valida via guards; migrações intactas (formato congelado) |
+| (novo no passo 6) src/project/file-guards.ts | manter | project/file-guards.ts | os guardas dos registros do arquivo (níveis, materiais, tipos, paredes, aberturas), antes em file.ts |
 | (movido no passo 4) src/project/typed-ids.ts | mover | project/typed-ids.ts | passa a emitir branded ids |
 | (movido no passo 4) src/project/db.ts | mover | project/db.ts | tira os 2 bytes NUL literais (arquivo lido como binário); 'points' vestigial sai |
 | (movido no passo 4) src/project/persist.ts | mover | project/persist.ts | pending/target viram o dono único da gravação |

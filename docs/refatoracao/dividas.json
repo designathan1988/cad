@@ -13,7 +13,6 @@
   "src/elements/section/drawing.ts",
   "src/elements/wall/geometry/footprint.ts",
   "src/project/derive.ts",
-  "src/project/file.ts",
   "src/render/plan-view.ts",
   "src/render/scene-3d.ts",
   "src/session/app.ts",
@@ -43,8 +42,7 @@
    "src/session/app.ts",
    "src/session/drag.ts",
    "src/session/snap.ts",
-   "src/ui/definition-editor.ts",
-   "src/ui/styles.css"
+   "src/ui/definition-editor.ts"
   ],
   "duplications": [
    "src/render/scene-3d.ts|src/ui/opening-snapshot.ts (12 grams)",

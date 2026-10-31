@@ -3,8 +3,8 @@
 // --strict: fails on ANY fix (a generated fixture must read with zero fixes).
 // --roundtrip: also writes it back with the app's writer and re-reads it; the kept-area fields must be
 //   byte-equal through open → save → reopen (the file-format gate of the refactor).
-import { readProject, writeProject } from '../src/io/project-file';
-import { KEPT_FIELDS } from '../src/app/document';
+import { readProject, writeProject } from '../src/project/file';
+import { KEPT_FIELDS } from '../src/project/doc';
 
 const file = process.argv[2]!;
 const strict = process.argv.includes('--strict');

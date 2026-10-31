@@ -11,7 +11,7 @@ import type { Doc } from '../project/doc';
 import type { Material } from '../elements/material/schema';
 import { DEFINITION_PREFIX, type ObjectDefinition, type Part } from '../elements/object/schema';
 import { isDefinition } from '../elements/object/valid';
-import { isMaterial } from '../project/file';
+import { isMaterial } from '../project/file-guards';
 
 export const LIBRARY_VERSION = 2;
 

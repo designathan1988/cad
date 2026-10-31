@@ -11,7 +11,7 @@ import { KINDS } from '../../src/elements/registry';
 import { addOpening, updateOpening } from '../../src/elements/opening/commands';
 import { newOpening } from '../../src/elements/opening/schema';
 import { addWalls } from '../../src/elements/wall/commands';
-import { isOpening, isWall } from '../../src/project/file';
+import { isOpening, isWall } from '../../src/project/file-guards';
 import { stretchEnd } from '../../src/elements/wall/edit';
 
 const wall = (id: string, x1: number, top: DocWall['top'] = { kind: 'level', offset: 0 }, baseOffset = 0): DocWall => ({
