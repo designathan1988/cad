@@ -1,6 +1,6 @@
 // One frame of the views: the plan's overlay (selection, previews, snaps, tags, temporary dimensions and their value fields) or the 3D's, and the panel. Functions over the app (app.ts delegates).
 
-import { covered, keepSelectionInView3d, keepSelectionInView } from '../session/view-ui';
+import { applyCovered, keepSelectionInView3d, keepSelectionInView } from '../session/view-ui';
 import { distance } from '../model/vector';
 import { resetWallsToType, setWalls, updateWalls } from '../elements/wall/commands';
 import { alignHeads, alignOpenings, distributeOpenings, ruleKeepingPosition, setGroupSpacing, ungroupOpenings, updateOpening } from '../elements/opening/commands';
@@ -28,7 +28,6 @@ import { renderBrowserDrawer } from './chrome';
 import { addInteriorElevations } from '../session/section-tools';
 import { startCalibration } from './reference-tool';
 import { startFloorHole } from '../session/room-tool';
-import * as sceneCamera from '../render/scene-camera';
 
 /** The panel's title over a placing tool's next element: its kind's name, an object's its own. */
 function nextTitle(app: App, slot: NextSlot): string {
@@ -58,9 +57,8 @@ export function renderFrame(app: App): void {
   shell.glCanvas.classList.toggle('hidden', plan);
   app.cube.root.hidden = plan;
   // The view's corner (the cube, the views' box) and the 3D view's centre stay in the part of the viewport the panel leaves free.
-  const cover = covered(app);
+  const cover = applyCovered(app);
   shell.viewCorner.style.right = `${20 + cover.right}px`;
-  sceneCamera.setCovered(app.scene, cover);
   drawPlanOverlay(app);
   app.overlay3d.canvas.classList.toggle('hidden', plan);
   shell.viewport.style.cursor = toolCursor(ui.tool);

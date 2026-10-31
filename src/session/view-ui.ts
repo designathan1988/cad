@@ -225,6 +225,13 @@ export function keepSelectionInView3d(app: App): boolean {
 }
 
 /** How much the panel covers of the viewport, at its right (drawer) or bottom (phone sheet). */
+/** The part of the viewport the panels cover, given to the 3D view so its centre stays in the rest (each frame). */
+export function applyCovered(app: App): Insets {
+  const c = covered(app);
+  sceneCamera.setCovered(app.scene, c);
+  return c;
+}
+
 export function covered(app: App): Insets {
   const vp = app.shell.viewport.getBoundingClientRect();
   const b = app.shell.browser.hidden ? null : app.shell.browser.getBoundingClientRect();

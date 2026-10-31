@@ -15,7 +15,6 @@ import { OPENING_PREVIEW_ID, ruleGuide } from '../elements/opening/aim';
 import { name, t } from '../i18n/messages';
 import { snapLabel } from '../session/snap-types';
 import { drawingOf, levelOf, wallNumber } from '../project/doc';
-import { cutAt } from '../session/view/view-3d';
 import { type App, PREVIEW_ID, SNAP_OF } from '../session/app';
 import { bendMeasure, drawingEnd, previewWall, rectCorner, turnMeasure, wallTags } from '../elements/wall/tool-ui';
 import { guideOffset } from '../elements/guide/tool-ui';
@@ -23,9 +22,7 @@ import { modifyMarks } from '../session/modify';
 import { dimensionDraft, gridDraft } from '../session/annotation-tools';
 import { sectionDraft } from '../session/section-tools';
 import { currentDims } from './temp-dims';
-import * as sceneLook from '../render/scene-look';
-import * as sceneSync from '../render/scene-sync';
-import * as sceneCut from '../render/scene-cut';
+import { syncScene } from '../session/scene-frame';
 
 export function drawPlanOverlay(app: App): void {
   const { ui } = app;
@@ -207,21 +204,7 @@ export function drawPlanOverlay(app: App): void {
     });
   } else {
     const shown = app.visibleGeometry();
-    sceneLook.setXray(app.scene, ui.view3d.xray);
-    // A renovation's walls by phase, as the plan draws them while the overrides are on.
-    const css = getComputedStyle(document.documentElement);
-    sceneLook.setPhases(app.scene, ui.overridesOn ? wallPhases(app.store.get()) : new Map(), (p) => css.getPropertyValue(`--phase-${p}`).trim());
-    app.scene.setOpened(ui.opened);
-    sceneCut.setBox(app.scene, ui.view3d.box);
-    sceneCut.setOrtho(app.scene, ui.view3d.ortho);
-    sceneLook.setLook(app.scene, ui.view3d.style, ui.view3d.quality);
-    sceneLook.setLight(app.scene, ui.view3d.brightness, ui.view3d.sun);
-    sceneCut.setSection(app.scene, ui.view3d.section);
-    sceneSync.sync(app.scene, shown, ui.selection, preview, (id) => app.lift(id));
-    // Cut at the level's cut height: where it goes through the level's walls, their plan pieces.
-    const doc = app.store.get();
-    const cut = cutAt(doc.levels, ui.levelId, ui.view3d);
-    sceneCut.setCut(app.scene, cut, cut === null ? [] : [...shown.solids.values()].filter((s) => s.wall.levelId === ui.levelId && s.plan === 'cut').flatMap((s) => s.pieces.map((p) => p.polygon)));
+    syncScene(app, preview, shown);
     app.cube.update(app.scene.camera);
     // Where the tool snaps and what it draws, over the 3D view as in plan.
     const level = levelOf(app.store.get(), ui.levelId);
