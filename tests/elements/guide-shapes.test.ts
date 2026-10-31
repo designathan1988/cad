@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { vec } from '../../src/model/vector';
 import { guideKind } from '../../src/elements/kinds/guide';
 import type { Guide } from '../../src/elements/guide/schema';
-import { snap, type SnapInput } from '../../src/session/snap';
+import { snap } from '../../src/session/snap';
+import { type SnapInput } from '../../src/session/snap-types';
 
 const point: Guide = { id: 'guide_p', levelId: 'lvl_ground', point: vec(1, 1), dir: vec(1, 0), shape: 'point' };
 const circle: Guide = { id: 'guide_c', levelId: 'lvl_ground', point: vec(0, 0), dir: vec(1, 0), shape: 'circle', radius: 2 };

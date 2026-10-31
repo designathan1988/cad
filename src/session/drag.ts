@@ -18,7 +18,8 @@ import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../elements/wa
 import { bulgeFromMiddle, straightNear } from '../elements/wall/arc-edit';
 import { handleAt } from './handles';
 import { moveRooms, roomsGoingWith } from '../project/carry';
-import { GRID_STEP, type Snap } from './snap';
+import { GRID_STEP } from './snap';
+import { type Snap } from './snap-types';
 import type { App } from './app';
 import type { DocWall } from '../project/doc';
 import { insidePolygon } from '../project/derive';

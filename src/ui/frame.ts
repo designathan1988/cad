@@ -19,7 +19,7 @@ import { OPENING_PREVIEW_ID, ruleGuide } from '../elements/opening/aim';
 import { toolCursor } from './cursors';
 import { getLang, name, t } from '../i18n/messages';
 import { renderPanel } from './panel';
-import { snapLabel } from '../session/snap';
+import { snapLabel } from '../session/snap-types';
 import { bulgeKeepingSide } from '../elements/wall/arc-edit';
 import { KINDS } from '../elements/registry';
 import { drawingOf, levelOf, wallNumber } from '../project/doc';

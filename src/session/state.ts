@@ -21,7 +21,7 @@ import type { OffsetLine } from './modify-tool';
 import type { OpeningKind } from '../elements/opening/schema';
 import type { OpeningToolState } from '../elements/opening/tool';
 import type { Point2 } from '../model/vector';
-import type { Snap } from './snap';
+import type { Snap } from './snap-types';
 import type { TemporaryView } from '../project/derived-filters';
 import type { ToolId } from '../ui/shell';
 import type { View3D } from '../project/view-prefs';

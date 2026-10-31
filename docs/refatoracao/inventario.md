@@ -249,6 +249,8 @@ aqui fica a decisão por arquivo.
 | src/tools/nudge.ts | mover | session/nudge.ts |  |
 | src/tools/smart-guides.ts | mover | session/smart-guides.ts |  |
 | (movido no passo 4) src/session/snap.ts | mover | session/snap.ts | slack fórmula repetida 5× → helper |
+| (novo no passo 6) src/session/snap-types.ts | manter | session/snap-types.ts | os tipos do encaixe (SnapKind, Snap, SnapInput, GuideLine) e seus rótulos, antes em snap.ts |
+| (novo no passo 6) src/session/snap-geometry.ts | manter | session/snap-geometry.ts | a geometria do encaixe (pés, cruzamentos, grade, ortogonal, travado), antes em snap.ts |
 | src/tools/arrange.ts | mover | session/arrange.ts |  |
 | (movido no passo 4) src/session/views-ui.ts | mover | session/views-ui.ts |  |
 | (movido no passo 4) src/session/view-ui.ts | dividir | session/view/*.ts | keepSelectionInView/3d paralelos fundem |
