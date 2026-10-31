@@ -11,15 +11,14 @@ import { guideBaseAt } from '../elements/guide/tool';
 import { nudgeSelection } from './selection';
 import { keyView } from './view-ui';
 import { cancelGuide, startGuide } from '../elements/guide/tool-ui';
-import { selectionCentre, seriesReady, toggleModifyCopy, toggleModifyDisjoin } from './modify';
-import { toggleWallFlip, wallEvent } from '../elements/wall/tool-ui';
-import { floorFinish } from './room-tool';
+import { seriesReady } from './modify';
 import { dropPress, type PointerState } from './pointer-state';
 import * as appPlacing from './app-placing';
 import * as appEdit from './app-edit';
-import { drawPoints, fromOf, pointsOf } from '../elements/tool-draft';
+import { fromOf } from '../elements/tool-draft';
 import { pointTool } from './point-tools';
 import { pointBusy } from './point-tools';
+import { eventTool } from './event-tools';
 import { actionOfKey } from './keymap';
 
 /** What the keys share with the pointer (input.ts). */
@@ -131,7 +130,8 @@ export function wireKeys(app: App, k: KeyContext): void {
     // temporary dimensions or in the panel, so 1 and 2 keep switching the view.
     // In the door and window tools a digit is always a measure, aimed or not: it never switches the view
     // (the tester's K2: "1" turned to 3D).
-    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'modify' || (ui.tool === 'guide' && fromOf(ui.draft, 'guide') !== null) || app.openingKind() !== null;
+    const tool = eventTool(app);
+    const typing = tool?.typing === true || ui.tool === 'dimension' || (ui.tool === 'guide' && fromOf(ui.draft, 'guide') !== null);
     // Right after a copy, its series is typed there: "3x", "/3".
     if (/^[\d/]$/.test(e.key) && ui.tool === 'select' && seriesReady(app)) {
       e.preventDefault();
@@ -155,66 +155,30 @@ export function wireKeys(app: App, k: KeyContext): void {
         shell.measure.value = '';
       }
       if (ui.guide) return cancelGuide(app);
-      if (ui.tool === 'modify') return app.modifyEvent({ kind: 'escape' });
+      // The tool's own Esc (event-tools.ts, point-tools.ts): Modify's before a drag under way.
+      if (tool?.first) return tool.escape(app);
       if (k.gestures.cancel()) {
         dropPress(k.pointer);
         return k.showMarquee();
       }
-      if (app.openingKind()) return app.setTool('select');
-      if (ui.tool === 'floor' && pointsOf(ui.draft, 'floor').length > 0) {
-        ui.draft = drawPoints(ui.draft, 'floor', []);
-        return app.render();
-      }
-      if (ui.tool === 'room' || ui.tool === 'floor') return app.setTool('select');
-      if (ui.tool === 'measure') return ui.measure.kind !== 'idle' ? app.measureEvent({ kind: 'escape' }) : app.setTool('select');
-      if (ui.tool === 'object') return app.setTool('select');
+      if (tool) return tool.escape(app);
       // The tools drawn by points: a beam, a roof, an axis, a section, a guide… (point-tools.ts).
       const drawing = pointTool(app);
       if (drawing) return !pointBusy(app, drawing) ? app.setTool('select') : drawing.escape(app);
-      if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? wallEvent(app, { kind: 'escape' }) : app.setTool('select');
-      if (ui.tool === 'split') return app.setTool('select');
-      // The Corner tool lets go of its first wall first (below), then of itself.
-      if (ui.tool === 'corner' && ui.selection.size === 0) return app.setTool('select');
       ui.selection.clear();
       return app.refresh();
     }
     if (e.key === 'Enter' && ui.guide) return app.placeGuide();
-    // Enter before the first point of a turn, a scale or a mirror: the selection's centre.
-    if (e.key === 'Enter' && ui.tool === 'modify' && ui.modify?.state.step === 'base' && ui.modify.kind !== 'offset') {
-      const c = selectionCentre(app);
-      if (c) return app.modifyEvent({ kind: 'click', point: c });
-      return;
-    }
-    if (e.key === 'Enter' && ui.tool === 'wall') return wallEvent(app, { kind: 'enter' });
-    if (e.key === 'Enter' && ui.tool === 'floor') return floorFinish(app);
-    // Measuring a chain: Enter ends it open; C switches between two points and a chain.
-    if (e.key === 'Enter' && ui.tool === 'measure') return app.measureEvent({ kind: 'enter' });
-    if (key === 'c' && !ctrl && !e.shiftKey && ui.tool === 'measure') return appEdit.toggleMeasureMode(app);
-    // Enter ends what is being drawn by points: a roof's outline, a guardrail's path, a beam chain.
+    // Enter: the tool's own (a wall chain, a floor outline, a measure chain, an opening aimed, Modify's
+    // centre), or ends what is being drawn by points (a roof's outline, a guardrail's path, a beam chain).
+    if (e.key === 'Enter' && tool?.enter) return tool.enter(app);
     const drawing = pointTool(app);
     if (e.key === 'Enter' && drawing?.enter && drawing.points(app).length > 0) return drawing.enter(app);
-    // Enter places the opening where it is aimed, as a click there does.
-    if (e.key === 'Enter' && app.openingKind() && ui.opening.kind === 'aiming') return app.openingEvent({ kind: 'click' });
     // Backspace while drawing a chain takes its last wall back and goes on from its start (ArchiCAD).
     if (e.key === 'Backspace' && appEdit.undoChainStep(app)) return;
     // The tools' own keys, not actions: they mean something only in that tool, before the actions' keys.
     if (!e.shiftKey) {
-      if (key === 'c' && ui.tool === 'modify') return toggleModifyCopy(app);
-      if (key === 'u' && ui.tool === 'modify') return toggleModifyDisjoin(app);
-      // A (arc) and Q (rectangles of four walls, two corners: Revit's and ArchiCAD's) in the wall tool,
-      // the second key of the "W, A" and "W, Q" actions.
-      if (key === 'a' && ui.tool === 'wall') return wallEvent(app, { kind: 'arc' });
-      if (key === 'q' && ui.tool === 'wall') return wallEvent(app, { kind: 'rect' });
-      // Space while drawing walls: the body to the other side of the line (Revit's flip).
-      if (e.key === ' ' && ui.tool === 'wall') {
-        e.preventDefault();
-        return toggleWallFlip(app);
-      }
-      // Space with the object tool: the next object a quarter turn on.
-      if (e.key === ' ' && ui.tool === 'object') {
-        e.preventDefault();
-        return appPlacing.turnObject(app);
-      }
+      if (tool?.key?.(app, key, e)) return;
       // A selected door, flipped from the keyboard: Space sends the leaf to the other side, as in Revit
       // (H, the hinge to the other jamb, is the edit.flipHinge action).
       if (e.key === ' ' && ui.tool === 'select' && appPlacing.flipDoor(app, 'swing')) return e.preventDefault();

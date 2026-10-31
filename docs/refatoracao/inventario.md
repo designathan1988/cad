@@ -423,3 +423,4 @@ aqui fica a decisão por arquivo.
 | (novo na interface nova) src/ui/project-menu.ts | manter | ui/project-menu.ts | o menu Projeto da barra de título, em grupos |
 | (novo na interface nova) src/ui/view-header.ts | manter | ui/view-header.ts | o cabeçalho da vista (Planta, 3D, pavimento, escala) e a barra de ícones da direita |
 | (novo na interface nova) src/ui/styles/bars.css | manter | ui/styles/bars.css | parte de styles.css: a moldura e as barras da interface nova |
+| (novo no F-0023) src/session/event-tools.ts | manter | session/event-tools.ts | um descritor por ferramenta com máquina própria (parede, piso, cômodo, medir, modificar, dividir, canto, objeto, abertura): clique, mover, botão direito, Esc, Enter, teclas, rodapé |

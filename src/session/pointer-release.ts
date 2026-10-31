@@ -3,36 +3,28 @@
 // pointer-handlers.ts, with the same state and helpers.
 
 import { endHandleDrag } from './object-handles';
-import { wallAt } from '../project/derived-queries';
 import type { App } from './app';
-import { insideRing } from '../elements/room/derive';
 import { cancelGuide } from '../elements/guide/tool-ui';
-import { wallEvent } from '../elements/wall/tool-ui';
-import { floorFinish, roomSpaceAt } from './room-tool';
-import { objectClick } from './kind-tools';
-import { cornerClick, splitAt } from './modify';
 import { PICK_PX } from './pointer-aim';
 import type { PointerDeps } from './pointer-handlers';
-import * as sceneCamera from '../render/scene-camera';
 import * as appView from './app-view';
-import { drawPoints, pointsOf } from '../elements/tool-draft';
 import { dropPress } from './pointer-state';
 import { pointBusy, pointTool } from './point-tools';
+import { eventTool } from './event-tools';
 
 export function pointerRelease(app: App, d: PointerDeps) {
   const { ui } = app;
   const { ptr, gestures, showMarquee, contextMenu, toolMenu } = d;
-  const { aimAt3d, planHits, snapped, splitSnap, worldAt } = d.aim;
+  const { aimAt3d, planHits, snapped, worldAt } = d.aim;
   /**
    * What a right click ends before it opens any menu: a wall chain (as Enter: the walls drawn stay), a
    * floor outline (closed from three corners, dropped before), the measure tool's tape, a drag (as
    * Esc). True when it ended something.
    */
   const endWithRightClick = (): boolean => {
-    if (ui.tool === 'modify') {
-      app.setTool('select');
-      return true;
-    }
+    // The tool's own (event-tools.ts, point-tools.ts); Modify's before a guide or a drag under way.
+    const tool = eventTool(app);
+    if (tool?.first && tool.rightClick?.(app)) return true;
     if (ui.guide) {
       cancelGuide(app);
       return true;
@@ -42,25 +34,10 @@ export function pointerRelease(app: App, d: PointerDeps) {
       showMarquee();
       return true;
     }
-    if (ui.tool === 'wall' && ui.wall.kind !== 'idle') {
-      wallEvent(app, { kind: 'enter' });
-      return true;
-    }
-    if (ui.tool === 'floor' && pointsOf(ui.draft, 'floor').length > 0) {
-      if (pointsOf(ui.draft, 'floor').length >= 3) floorFinish(app);
-      else {
-        ui.draft = drawPoints(ui.draft, 'floor', []);
-        app.render();
-      }
-      return true;
-    }
+    if (tool && !tool.first && tool.rightClick?.(app)) return true;
     const drawing = pointTool(app);
     if (drawing?.rightClick && pointBusy(app, drawing)) {
       drawing.rightClick(app);
-      return true;
-    }
-    if (ui.tool === 'measure' && ui.measure.kind !== 'idle') {
-      app.measureEvent({ kind: 'escape' });
       return true;
     }
     return false;
@@ -115,63 +92,15 @@ export function pointerRelease(app: App, d: PointerDeps) {
       return;
     }
     if (moved) return;
-    if (app.openingKind()) return app.openingEvent({ kind: 'click' });
-    if (ui.tool === 'modify') {
-      const at = aimAt3d(e);
-      if (at) app.modifyEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
-      return;
-    }
-    if (ui.tool === 'split') {
-      const s = splitSnap(e);
-      const at = aimAt3d(e);
-      if (at) splitAt(app, s?.point ?? at.p, s?.wallId ?? (ui.view === 'plan' ? (wallAt(app.visibleGeometry(), at.p, undefined, PICK_PX / app.plan.scale) ?? undefined) : undefined));
-      return;
-    }
-    if (ui.tool === 'corner') {
-      const at = worldAt(e);
-      if (at) cornerClick(app, ui.view === 'plan' ? wallAt(app.visibleGeometry(), at.p, undefined, PICK_PX / app.plan.scale) : sceneCamera.pick(app.scene, e.clientX, e.clientY));
-      return;
-    }
-    if (ui.tool === 'measure') {
-      const at = worldAt(e);
-      if (at) app.measureEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
-      return;
-    }
-    if (ui.tool === 'object') {
-      const at = aimAt3d(e);
-      if (at) objectClick(app, snapped(e)?.point ?? at.p);
-      return;
-    }
-    // The tools drawn by points (a beam, a roof, an axis, a guide…): their steps are point-tools.ts's.
+    // The tool's click: a wall, a room, Modify, a door… (event-tools.ts); the tools drawn by points (a beam,
+    // a roof, an axis, a guide…), point-tools.ts's.
+    const tool = eventTool(app);
+    if (tool) return tool.click(app, e, d.aim, PICK_PX / app.plan.scale);
     const drawing = pointTool(app);
     if (drawing) {
       const at = drawing.aim === '3d' ? aimAt3d(e) : worldAt(e);
       if (at && (drawing.aim !== 'planView' || ui.view === 'plan')) drawing.click(app, snapped(e)?.point ?? at.p, at.mpp, at.p);
-      return;
     }
-    if (ui.tool === 'room' || ui.tool === 'floor') {
-      const at = worldAt(e);
-      if (!at) return;
-      if (ui.tool === 'room') {
-        // A finger does not hover: its first tap in a space shows the room it would make there, as
-        // the pointer does before a click, and a second tap in that space makes it. One tap made it
-        // unseen.
-        if (e.pointerType === 'touch' && ui.view === 'plan') {
-          const space = roomSpaceAt(app, at.p);
-          if (space && !(ui.tapToConfirm && ui.roomSpace && insideRing(ui.roomSpace, at.p))) {
-            ui.roomSpace = space;
-            ui.tapToConfirm = true;
-            return app.render();
-          }
-        }
-        ui.tapToConfirm = false;
-        return app.roomClick(at.p);
-      }
-      // Inside a room (its floor) as clicked; a corner where it snaps.
-      return app.floorClick(at.p, at.mpp, false, snapped(e)?.point ?? at.p);
-    }
-    const s = snapped(e);
-    if (s) wallEvent(app, { kind: 'click', point: s.point });
   };
   return { onUp, endWithRightClick };
 }
