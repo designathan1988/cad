@@ -2,57 +2,33 @@
 
 import { kindOfKey, withList } from '../elements/registry';
 import { freePlace, obstacleShapes, shapesOf } from '../elements/sat';
-import { addSections } from '../elements/section/commands';
-import { deriveGeometry } from '../project/derive';
-import { boundsOf } from '../project/derived-queries';
-import { DEPTH_MAX, elevationsAround, elevationsInside, lookOf, nextSectionName, SECTION_PREFIX, type SectionMark } from '../elements/section/schema';
 import { addObject } from '../elements/object/commands';
-import { OBJECT_PREFIX } from '../elements/object/schema';
+import { OBJECT_PREFIX, type ObjectInstance } from '../elements/object/schema';
 import { words } from '../elements/object/fields';
-import { lengthNum } from '../i18n/units';
 import { distance, type Point2 } from '../model/vector';
 import { MIN_WALL_LENGTH } from '../model/tolerance';
-import { type PlanOverlay } from '../render/plan-view';
 import { t } from '../i18n/messages';
-import { solidsOf } from '../elements/registry';
-import { gridKind } from '../elements/kinds/grid';
 import { addRailing } from '../elements/railing/commands';
-import { RAILING_PREFIX } from '../elements/railing/schema';
+import { type Railing, RAILING_PREFIX } from '../elements/railing/schema';
 import { addStair } from '../elements/stair/commands';
-import { STAIR_PREFIX } from '../elements/stair/schema';
+import { type Stair, STAIR_PREFIX } from '../elements/stair/schema';
 import { addRoof } from '../elements/roof/commands';
 import { isConvex } from '../elements/roof/geometry';
-import { edgesFor, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, ROOF_PREFIX, type RoofKind } from '../elements/roof/schema';
+import { edgesFor, type Roof, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, ROOF_PREFIX, type RoofKind } from '../elements/roof/schema';
 import { addBeam } from '../elements/beam/commands';
 import { addSeparator } from '../elements/separator/commands';
 import { addCurtain } from '../elements/curtain/commands';
-import { CURTAIN_PREFIX } from '../elements/curtain/schema';
+import { type Curtain, CURTAIN_PREFIX } from '../elements/curtain/schema';
 import { SEPARATOR_PREFIX } from '../elements/separator/schema';
-import { BEAM_PREFIX } from '../elements/beam/schema';
+import { type Beam, BEAM_PREFIX } from '../elements/beam/schema';
 import { addColumn } from '../elements/column/commands';
-import { COLUMN_PREFIX } from '../elements/column/schema';
+import { type Column, COLUMN_PREFIX } from '../elements/column/schema';
 import { addNote } from '../elements/note/commands';
-import { addDimension } from '../elements/dimension/commands';
-import { anchorAt, offsetThrough, placeDimension } from '../elements/dimension/anchor';
-import { DIM_PREFIX, type Dimension } from '../elements/dimension/schema';
-import { addGrid } from '../elements/grid/commands';
-import { GRID_PREFIX, type Grid, nextGridName } from '../elements/grid/schema';
-import { DIMENSION_IDLE, type DimensionToolEvent, dimensionTransition } from '../tools/dimension-tool';
 import { LEVEL_MARK_HEIGHT, NOTE_HEIGHT, NOTE_PREFIX } from '../elements/note/schema';
 import { newId } from '../core/id';
 import { signedArea } from '../elements/room/derive';
 import type { App } from './app';
 import { made, nextOf } from './next';
-import type { Railing } from '../elements/railing/schema';
-import type { Stair } from '../elements/stair/schema';
-import type { Roof } from '../elements/roof/schema';
-import type { Curtain } from '../elements/curtain/schema';
-import type { ObjectInstance } from '../elements/object/schema';
-import type { Column } from '../elements/column/schema';
-import type { Beam } from '../elements/beam/schema';
-import { addMeasure } from '../elements/measure/commands';
-import { arcWallAt } from '../elements/measure/place';
-import { MEASURE_PREFIX } from '../elements/measure/schema';
 
 /** A level mark where the menu was opened (or the middle of the view), selected: it says the level's height. */
 export function addLevelMarkHere(app: App, at?: Point2): void {
@@ -234,219 +210,3 @@ export function columnClick(app: App, p: Point2): void {
   app.ui.info = t('hint.columnMade');
   app.render();
 }
-
-/** The grid tool: a click starts an axis, the next ends it (named on from the last of its kind). */
-export function gridClick(app: App, p: Point2): void {
-  const from = app.ui.gridFrom;
-  if (!from) {
-    app.ui.gridFrom = p;
-    return app.render();
-  }
-  if (distance(from, p) < MIN_WALL_LENGTH) return;
-  const doc = app.store.get();
-  const name = nextGridName(doc.grids, from, p);
-  app.store.dispatch(addGrid({ id: newId(GRID_PREFIX), name, start: from, end: p }));
-  app.ui.gridFrom = null;
-  app.ui.info = t('hint.gridMade', { name });
-  app.render();
-}
-
-/** Esc in the grid tool: the axis begun is dropped; none begun, the tool is left. */
-export function gridEscape(app: App): void {
-  if (app.ui.gridFrom) {
-    app.ui.gridFrom = null;
-    return app.render();
-  }
-  app.setTool('select');
-}
-
-/** How deep a new section sees: the far side of the model from its line, and a metre past it; 10 m with nothing. */
-function depthFrom(app: App, start: Point2, end: Point2): number {
-  const box = boundsOf(app.geometry);
-  if (!box) return 10;
-  const look = lookOf({ start, end });
-  const corners = [box.min, box.max, { x: box.min.x, y: box.max.y }, { x: box.max.x, y: box.min.y }];
-  const far = Math.max(...corners.map((c) => (c.x - start.x) * look.x + (c.y - start.y) * look.y));
-  return Math.min(DEPTH_MAX, Math.max(1, far + 1));
-}
-
-/** The section tool: a click starts its line, the next ends it; it looks to the line's left. */
-export function sectionClick(app: App, p: Point2): void {
-  const from = app.ui.sectionFrom;
-  if (!from) {
-    app.ui.sectionFrom = p;
-    return app.render();
-  }
-  if (distance(from, p) < MIN_WALL_LENGTH) return;
-  const doc = app.store.get();
-  const mark: SectionMark = { id: newId(SECTION_PREFIX), name: nextSectionName(doc.sections), kind: 'section', start: from, end: p, depth: depthFrom(app, from, p) };
-  app.store.dispatch(addSections([mark]));
-  app.ui.sectionFrom = null;
-  app.ui.info = t('hint.sectionMade', { name: mark.name });
-  app.render();
-}
-
-/** The callout tool: a click puts the arrow's point; the next puts the text there, selected to type. */
-export function calloutClick(app: App, p: Point2): void {
-  const from = app.ui.calloutFrom;
-  if (!from) {
-    app.ui.calloutFrom = p;
-    return app.render();
-  }
-  if (distance(from, p) < MIN_WALL_LENGTH) return;
-  app.ui.calloutFrom = null;
-  addNoteHere(app, p, from);
-}
-
-/** Esc in the section tool: the line begun is dropped; none begun, the tool is left. */
-export function sectionEscape(app: App): void {
-  if (app.ui.sectionFrom) {
-    app.ui.sectionFrom = null;
-    return app.render();
-  }
-  app.setTool('select');
-}
-
-/** The section being drawn with its tool; plan only. */
-export function sectionDraft(app: App): SectionMark | null {
-  const from = app.ui.view === 'plan' && app.ui.tool === 'section' ? app.ui.sectionFrom : null;
-  const to = app.ui.snap?.point ?? app.ui.cursor;
-  return from && to && distance(from, to) > 0 ? { id: '', name: nextSectionName(app.store.get().sections), kind: 'section', start: from, end: to, depth: 1 } : null;
-}
-
-/** The four elevations round the whole model, 3 m out: those whose side has none yet. */
-export function addElevations(app: App): void {
-  const doc = app.store.get();
-  const box = boundsOf(deriveGeometry(doc));
-  if (!box) {
-    app.toast(t('section.nothing'));
-    return;
-  }
-  const have = new Set(doc.sections.filter((m) => m.kind === 'elevation').map((m) => m.name));
-  const marks = elevationsAround(box, 3)
-    .map((e): SectionMark => ({ id: newId(SECTION_PREFIX), name: t(`section.side.${e.side}`), kind: 'elevation', start: e.start, end: e.end, depth: e.depth }))
-    .filter((m) => !have.has(m.name));
-  if (marks.length === 0) {
-    app.toast(t('section.allMade'));
-    return;
-  }
-  app.store.dispatch(addSections(marks));
-  app.toast(t('section.elevationsMade', { n: marks.length }));
-}
-
-/**
- * The rooms' four interior elevations each (elevationsInside, a centimetre off the wall behind, 30 cm into
- * the wall seen), on the room's level, named by its number and the side ("3-N"); those already there kept.
- */
-export function addInteriorElevations(app: App, roomIds: readonly string[]): void {
-  const doc = app.store.get();
-  const g = deriveGeometry(doc);
-  const have = new Set(doc.sections.map((m) => `${m.levelId ?? ''}|${m.name}`));
-  const marks: SectionMark[] = [];
-  let rooms = 0;
-  for (const id of roomIds) {
-    const r = g.rooms.get(id);
-    if (!r?.enclosed || r.outline.length < 3) continue;
-    rooms++;
-    const xs = r.outline.map((p) => p.x);
-    const ys = r.outline.map((p) => p.y);
-    const box = { min: { x: Math.min(...xs), y: Math.min(...ys) }, max: { x: Math.max(...xs), y: Math.max(...ys) } };
-    for (const e of elevationsInside(box, 0.01, 0.3)) {
-      const name = `${r.room.number}-${t(`section.sideShort.${e.side}`)}`;
-      if (have.has(`${r.room.levelId}|${name}`)) continue;
-      marks.push({ id: newId(SECTION_PREFIX), name, kind: 'elevation', start: e.start, end: e.end, depth: e.depth, levelId: r.room.levelId });
-    }
-  }
-  if (rooms === 0) return app.toast(t('section.interiorNone'));
-  if (marks.length === 0) return app.toast(t('section.interiorAll'));
-  app.store.dispatch(addSections(marks));
-  app.toast(t('section.interiorMade', { n: marks.length }));
-}
-
-/** The axis being drawn with the grid tool, and the name it will get; plan only. */
-export function gridDraft(app: App): { name: string; start: Point2; end: Point2 } | null {
-  const from = app.ui.view === 'plan' && app.ui.tool === 'grid' ? app.ui.gridFrom : null;
-  const to = app.ui.snap?.point ?? app.ui.cursor;
-  return from && to && distance(from, to) > 0 ? { name: nextGridName(app.store.get().grids, from, to), start: from, end: to } : null;
-}
-
-/** The axes as drawn now (a move being dragged or the Modify tool taking them): what snapping sees; plan only. */
-export function shownGrids(app: App): readonly Grid[] {
-  return app.ui.view === 'plan' ? solidsOf<Grid>(app.visibleGeometry().kinds, gridKind) : [];
-}
-
-/** The dimension tool: a click or Esc (dimension-tool.ts). The third click makes the dimension. */
-export function dimensionEvent(app: App, event: DimensionToolEvent): void {
-  const r = dimensionTransition(app.ui.dimension, event);
-  app.ui.dimension = r.state;
-  app.shell.measure.value = '';
-  if (r.make) {
-    const doc = app.store.get();
-    const g = app.visibleGeometry();
-    const dim: Dimension = {
-      id: newId(DIM_PREFIX),
-      levelId: app.ui.levelId,
-      a: anchorAt(doc, g, app.ui.levelId, r.make.a),
-      b: anchorAt(doc, g, app.ui.levelId, r.make.b),
-      offset: offsetThrough(r.make.a, r.make.b, r.make.through),
-    };
-    app.store.dispatch(addDimension(dim));
-    app.ui.info = t('hint.dimensionMade');
-  }
-  app.render();
-}
-
-/** The dimension being made with the dimension tool, placed, with its value; plan only. */
-export function dimensionDraft(app: App): (NonNullable<PlanOverlay['dimensionDraft']>) | null {
-  const s = app.ui.view === 'plan' && app.ui.tool === 'dimension' ? app.ui.dimension : DIMENSION_IDLE;
-  const at = app.ui.snap?.point ?? app.ui.cursor;
-  if (s.kind === 'idle' || !at) return null;
-  const a = s.a;
-  const b = s.kind === 'placing' ? s.b : at;
-  const offset = s.kind === 'placing' ? offsetThrough(a, b, at) : 0;
-  const p = placeDimension(app.store.get(), app.geometry, { id: '', levelId: '', a: { kind: 'point', at: a }, b: { kind: 'point', at: b }, offset });
-  return p ? { ...p, text: lengthNum(p.length) } : null;
-}
-
-/**
- * The measure tool. An angle: the vertex, a point on one arm, a point on the other; its arc at half the
- * shorter arm. An arc wall: a click on it, at the line nearest the click (its faces or its reference line).
- * A coordinate: the point, then where its text goes.
- */
-export function markClick(app: App, p: Point2): void {
-  const ui = app.ui;
-  const done = (key: 'hint.markMade') => {
-    ui.markDraft = [];
-    ui.info = t(key);
-    app.render();
-  };
-  if (ui.markMode === 'radius') {
-    const hit = arcWallAt(app.store.get(), ui.levelId, p, 8 / app.plan.scale);
-    if (!hit) {
-      ui.info = t('hint.markNoArc');
-      return app.render();
-    }
-    app.store.dispatch(addMeasure({ id: newId(MEASURE_PREFIX), levelId: ui.levelId, type: 'radius', ...hit }));
-    return done('hint.markMade');
-  }
-  const draft = [...ui.markDraft, p];
-  if (draft.length >= 2 && distance(draft.at(-1)!, draft.at(-2)!) < MIN_WALL_LENGTH) return;
-  if (ui.markMode === 'coord') {
-    if (draft.length < 2) {
-      ui.markDraft = draft;
-      return app.render();
-    }
-    app.store.dispatch(addMeasure({ id: newId(MEASURE_PREFIX), levelId: ui.levelId, type: 'coord', at: draft[0]!, label: draft[1]! }));
-    return done('hint.markMade');
-  }
-  if (draft.length < 3) {
-    ui.markDraft = draft;
-    return app.render();
-  }
-  const [vertex, a, b] = draft as [Point2, Point2, Point2];
-  if (distance(vertex, b) < MIN_WALL_LENGTH) return;
-  const radius = Math.max(0.3, Math.min(distance(vertex, a), distance(vertex, b)) / 2);
-  app.store.dispatch(addMeasure({ id: newId(MEASURE_PREFIX), levelId: ui.levelId, type: 'angle', vertex, a, b, radius }));
-  done('hint.markMade');
-}
-

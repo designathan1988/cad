@@ -3,7 +3,6 @@
  "mutableLets": 0,
  "oversize": [
   "src/session/input.ts",
-  "src/session/kind-tools.ts",
   "src/ui/chrome.ts",
   "src/ui/frame.ts",
   "src/ui/ribbon-tabs.ts",
@@ -35,7 +34,6 @@
    "src/render/plan-view.ts",
    "src/render/scene-3d.ts",
    "src/session/app.ts",
-   "src/session/drag.ts",
    "src/ui/definition-editor.ts"
   ],
   "duplications": [

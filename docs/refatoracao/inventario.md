@@ -153,6 +153,8 @@ aqui fica a decisão por arquivo.
 | src/elements/column/fields.ts | mover | column/fields.ts |  |
 | src/elements/kinds/column.ts | juntar | column/kind.ts |  |
 | (movido no passo 4) src/session/kind-tools.ts | dividir | column/tool-ui, beam/tool-ui, roof/…, stair/…, railing/…, curtain/…, separator/…, section/…, measure/…, note/tool-ui | o 452-l de "todas as ferramentas de tipos" explode para cada pasta (beamClick/separatorClick/curtainClick triplicados viram um genérico) |
+| (novo no passo 6) src/session/section-tools.ts | manter | session/section-tools.ts | ferramentas de corte, chamada e elevações, antes em kind-tools.ts |
+| (novo no passo 6) src/session/annotation-tools.ts | manter | session/annotation-tools.ts | ferramentas de eixos, cotas e marcas, antes em kind-tools.ts |
 | src/elements/beam/schema.ts | mover | beam/schema.ts |  |
 | src/elements/beam/commands.ts | mover | beam/commands.ts |  |
 | src/elements/beam/fields.ts | mover | beam/fields.ts |  |

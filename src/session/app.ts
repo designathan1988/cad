@@ -31,6 +31,8 @@ import * as modify from './modify';
 import * as roomsUi from './room-tool';
 import * as guides from '../elements/guide/tool-ui';
 import * as kindTools from './kind-tools';
+import * as sectionTools from './section-tools';
+import * as annotationTools from './annotation-tools';
 import * as views from './views-ui';
 import * as files from '../project/files';
 import * as THREE from 'three';
@@ -994,7 +996,7 @@ export class App {
   }
 
   markClick(p: Point2): void {
-    return kindTools.markClick(this, p);
+    return annotationTools.markClick(this, p);
   }
 
   /** The column tool: a click stands a column there, the section of the last one made. */
@@ -1004,27 +1006,27 @@ export class App {
 
   /** The grid tool: a click starts an axis, the next ends it (named on from the last of its kind). */
   gridClick(p: Point2): void {
-    return kindTools.gridClick(this, p);
+    return annotationTools.gridClick(this, p);
   }
 
   /** Esc in the grid tool: the axis begun is dropped; none begun, the tool is left. */
   gridEscape(): void {
-    return kindTools.gridEscape(this);
+    return annotationTools.gridEscape(this);
   }
 
   /** The axis being drawn with the grid tool, and the name it will get; plan only. */
   gridDraft(): { name: string; start: Point2; end: Point2 } | null {
-    return kindTools.gridDraft(this);
+    return annotationTools.gridDraft(this);
   }
 
   /** The section tool: a click starts its line, the next ends it (lettered on from the last). */
   sectionClick(p: Point2): void {
-    return kindTools.sectionClick(this, p);
+    return sectionTools.sectionClick(this, p);
   }
 
   /** Esc in the section tool: the line begun is dropped; none begun, the tool is left. */
   sectionEscape(): void {
-    return kindTools.sectionEscape(this);
+    return sectionTools.sectionEscape(this);
   }
 
   /** A glTF or OBJ model brought in as a library object (model-import.ts). */
@@ -1048,7 +1050,7 @@ export class App {
 
   /** The callout tool: a click puts the arrow's point, the next the text, ready to type. */
   calloutClick(p: Point2): void {
-    return kindTools.calloutClick(this, p);
+    return sectionTools.calloutClick(this, p);
   }
 
   /** The callout being placed: its arrow's point and the pointer; plan only. */
@@ -1060,17 +1062,17 @@ export class App {
 
   /** The section being drawn with its tool; plan only. */
   sectionDraft(): SectionMark | null {
-    return kindTools.sectionDraft(this);
+    return sectionTools.sectionDraft(this);
   }
 
   /** The four elevations round the building, those not made yet (elements/section). */
   addElevations(): void {
-    return kindTools.addElevations(this);
+    return sectionTools.addElevations(this);
   }
 
   /** The rooms' four interior elevations each (kind-tools.ts). */
   addInteriorElevations(roomIds: readonly string[]): void {
-    return kindTools.addInteriorElevations(this, roomIds);
+    return sectionTools.addInteriorElevations(this, roomIds);
   }
 
   /**
@@ -1088,17 +1090,17 @@ export class App {
 
   /** The axes as drawn now (a move being dragged or the Modify tool taking them): what snapping sees; plan only. */
   shownGrids(): readonly Grid[] {
-    return kindTools.shownGrids(this);
+    return annotationTools.shownGrids(this);
   }
 
   /** The dimension tool: a click or Esc (dimension-tool.ts). The third click makes the dimension. */
   dimensionEvent(event: DimensionToolEvent): void {
-    return kindTools.dimensionEvent(this, event);
+    return annotationTools.dimensionEvent(this, event);
   }
 
   /** The dimension being made with the dimension tool, placed, with its value; plan only. */
   dimensionDraft(): (NonNullable<PlanOverlay['dimensionDraft']>) | null {
-    return kindTools.dimensionDraft(this);
+    return annotationTools.dimensionDraft(this);
   }
 
   wallEvent(event: WallToolEvent): void {
