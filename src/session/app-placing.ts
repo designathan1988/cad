@@ -10,6 +10,7 @@ import { OPENING_PREVIEW_ID } from '../elements/opening/aim';
 import { t } from '../i18n/messages';
 import type { Doc } from '../project/doc';
 import { savePrefs } from '../project/persist';
+import type { DefinitionId } from '../elements/object/schema';
 
 
 export function previewOpening(app: App): Opening[] {
@@ -102,7 +103,7 @@ export function previewObject(app: App, doc: Doc): Doc | null {
 }
 
 /** The object tool with a definition (the ribbon's and the palette's Place table, Place bookcase…). */
-export function placeObject(app: App, definitionId: string, typeId?: string): void {
+export function placeObject(app: App, definitionId: DefinitionId, typeId?: string): void {
   app.ui.objectDef = definitionId;
   // A type chosen to place (the objects' store): the next object is of it, with its own values.
   if (typeId !== undefined) app.next = { ...app.next, objects: { ...nextOf(app, 'objects'), typeId, values: {} } };

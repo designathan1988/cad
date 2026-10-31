@@ -2,10 +2,11 @@
 // the parts in their order).
 
 import type { ObjectDefinition } from "./schema";
+import type { DefinitionId } from "./schema";
 
 export const BEFORE_66_PART_2: readonly ObjectDefinition[] = [
   {
-    id: "def_tree",
+    id: "def_tree" as DefinitionId,
     name: { pt: "Árvore", en: "Tree" },
     category: "plant",
     params: [
@@ -142,7 +143,7 @@ export const BEFORE_66_PART_2: readonly ObjectDefinition[] = [
     ],
   },
   {
-    id: "def_oven_tower",
+    id: "def_oven_tower" as DefinitionId,
     name: { pt: "Torre de forno e micro-ondas", en: "Oven tower" },
     category: "casework",
     folder: "Cozinha",

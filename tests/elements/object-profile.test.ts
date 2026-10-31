@@ -9,10 +9,11 @@ import { pieceOutline, pieceSpan } from '../../src/elements/object/piece-shape';
 import type { ObjectDefinition } from '../../src/elements/object/schema';
 import { isDefinition } from '../../src/elements/object/valid';
 import { lid, objid } from '../ids';
+import { did } from '../ids';
 
 /** An L-shaped counter: its arms as wide as `fundo`, its length `largura`, `lado` the other arm. */
 const counter: ObjectDefinition = {
-  id: 'def_l',
+  id: did('def_l'),
   name: { pt: 'Bancada em L', en: 'L counter' },
   category: 'furniture',
   params: [
@@ -85,7 +86,7 @@ describe('profile parts', () => {
   });
 
   it('a revolve: a rectangle turned is a cylinder (its sides as its size needs), its height and plan outline its own', () => {
-    const vase: ObjectDefinition = { ...counter, id: 'def_v', parts: [{ kind: 'revolve', x: 0, y: 0, z: 0.1, points: [[0.2, 0], [0.2, 1]], material: 'concrete' }] };
+    const vase: ObjectDefinition = { ...counter, id: did('def_v'), parts: [{ kind: 'revolve', x: 0, y: 0, z: 0.1, points: [[0.2, 0], [0.2, 1]], material: 'concrete' }] };
     expect(isDefinition(vase)).toBe(true);
     const ev = evaluateObject(vase, { id: objid('o'), levelId: lid('lvl_ground'), definitionId: vase.id, typeId: 't', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: [vase], materials: doc.materials });
     const g = pieceGeometry(ev.pieces[0]!);
@@ -97,7 +98,7 @@ describe('profile parts', () => {
   });
 
   it('a box leaning back 90° lies on its back: its outline, span and geometry where they should be', () => {
-    const board: ObjectDefinition = { ...counter, id: 'def_b', parts: [{ kind: 'box', x: 0, y: 0, z: 0.5, w: 1, d: 0.1, h: 1, tilt: 90, material: 'concrete' }] };
+    const board: ObjectDefinition = { ...counter, id: did('def_b'), parts: [{ kind: 'box', x: 0, y: 0, z: 0.5, w: 1, d: 0.1, h: 1, tilt: 90, material: 'concrete' }] };
     expect(isDefinition(board)).toBe(true);
     const ev = evaluateObject(board, { id: objid('o'), levelId: lid('lvl_ground'), definitionId: board.id, typeId: 't', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: [board], materials: doc.materials });
     const piece = ev.pieces[0]!;
@@ -111,7 +112,7 @@ describe('profile parts', () => {
     const box = new THREE.Box3().setFromBufferAttribute(pieceGeometry(piece).getAttribute('position') as THREE.BufferAttribute);
     expect([box.min.x, box.max.x, box.min.y, box.max.y, box.min.z, box.max.z]).toEqual([0, 1, 0.4, 0.5, -1, 0].map((v) => expect.closeTo(v, 6)));
     // Leaning sideways 30°: its top 1 m up goes half a metre toward +x.
-    const leg: ObjectDefinition = { ...counter, id: 'def_l2', parts: [{ kind: 'box', x: 0, y: 0, z: 0, w: 0.05, d: 0.05, h: 1, roll: 30, material: 'concrete' }] };
+    const leg: ObjectDefinition = { ...counter, id: did('def_l2'), parts: [{ kind: 'box', x: 0, y: 0, z: 0, w: 0.05, d: 0.05, h: 1, roll: 30, material: 'concrete' }] };
     const lev = evaluateObject(leg, { id: objid('o'), levelId: lid('lvl_ground'), definitionId: leg.id, typeId: 't', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: [leg], materials: doc.materials });
     const top = new THREE.Box3().setFromBufferAttribute(pieceGeometry(lev.pieces[0]!).getAttribute('position') as THREE.BufferAttribute);
     expect(top.max.x).toBeCloseTo(0.05 * Math.cos(Math.PI / 6) + Math.sin(Math.PI / 6), 6);
@@ -119,7 +120,7 @@ describe('profile parts', () => {
   });
 
   it('a cylinder leaning 90° lies along y: a rail, from its base to its length', () => {
-    const rail: ObjectDefinition = { ...counter, id: 'def_r', parts: [{ kind: 'cylinder', x: 0, y: 0, z: 1, r: 0.02, h: 0.6, tilt: 90, material: 'metal' }] };
+    const rail: ObjectDefinition = { ...counter, id: did('def_r'), parts: [{ kind: 'cylinder', x: 0, y: 0, z: 1, r: 0.02, h: 0.6, tilt: 90, material: 'metal' }] };
     expect(isDefinition(rail)).toBe(true);
     const ev = evaluateObject(rail, { id: objid('o'), levelId: lid('lvl_ground'), definitionId: rail.id, typeId: 't', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: [rail], materials: doc.materials });
     const piece = ev.pieces[0]!;
@@ -135,7 +136,7 @@ describe('profile parts', () => {
   it('a part turned in plan: a box about its base\'s centre, a lying cylinder\'s direction', () => {
     const turned: ObjectDefinition = {
       ...counter,
-      id: 'def_t',
+      id: did('def_t'),
       parts: [
         { kind: 'box', x: 0, y: 0, z: 0, w: 1, d: 0.2, h: 0.1, turn: 90, material: 'concrete' },
         { kind: 'cylinder', x: 0, y: 0, z: 0.5, r: 0.01, h: 0.4, tilt: 90, turn: 90, material: 'metal' },
@@ -153,7 +154,7 @@ describe('profile parts', () => {
   });
 
   it('an ellipsoid: its own radius along y, turned with it; its height its own', () => {
-    const leaf: ObjectDefinition = { ...counter, id: 'def_leaf', parts: [{ kind: 'sphere', x: 0, y: 0, z: 1, r: 0.05, d: 0.2, h: 0.01, turn: 90, material: 'foliage' }] };
+    const leaf: ObjectDefinition = { ...counter, id: did('def_leaf'), parts: [{ kind: 'sphere', x: 0, y: 0, z: 1, r: 0.05, d: 0.2, h: 0.01, turn: 90, material: 'foliage' }] };
     expect(isDefinition(leaf)).toBe(true);
     const ev = evaluateObject(leaf, { id: objid('o'), levelId: lid('lvl_ground'), definitionId: leaf.id, typeId: 't', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: [leaf], materials: doc.materials });
     const ring = pieceOutline(ev.pieces[0]!);

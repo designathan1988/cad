@@ -2,10 +2,11 @@
 // unchanged by the user is replaced by the one now; one the user changed is kept.
 
 import type { ObjectDefinition } from "./schema";
+import type { DefinitionId } from "./schema";
 
 export const BEFORE_65: readonly ObjectDefinition[] = [
   {
-    id: "def_cooker",
+    id: "def_cooker" as DefinitionId,
     name: { pt: "Fogão", en: "Cooker" },
     category: "equipment",
     params: [
@@ -155,7 +156,7 @@ export const BEFORE_65: readonly ObjectDefinition[] = [
     ],
   },
   {
-    id: "def_pot_plant",
+    id: "def_pot_plant" as DefinitionId,
     name: { pt: "Vaso com planta", en: "Potted plant" },
     category: "plant",
     params: [
@@ -245,7 +246,7 @@ export const BEFORE_65: readonly ObjectDefinition[] = [
     types: [{ id: "std", name: { pt: "Médio", en: "Medium" }, values: {} }],
   },
   {
-    id: "def_vanity_sink",
+    id: "def_vanity_sink" as DefinitionId,
     name: { pt: "Bancada com cuba", en: "Vanity with basin" },
     category: "fixture",
     folder: "Banheiro",

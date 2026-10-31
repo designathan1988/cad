@@ -8,6 +8,7 @@
 import type { Material } from '../elements/material/schema';
 import type { DefinitionCategory, MeshData, ObjectDefinition, ParamDef, Part } from '../elements/object/schema';
 import type { MaterialId } from '../elements/material/schema';
+import type { DefinitionId } from '../elements/object/schema';
 
 /** A mesh as the loader gives it, already in plan axes (x, y, z up), in the file's units. */
 export interface MeshGroup {
@@ -107,7 +108,7 @@ export function meshDefinition(name: string, groups: readonly MeshGroup[], categ
     ...materials.map((m, i): ParamDef => ({ name: `material${i + 1}`, label: { pt: `Material ${i + 1}`, en: `Material ${i + 1}` }, kind: 'material', default: m.id, group: { pt: 'Materiais', en: 'Materials' } })),
   ];
   const definition: ObjectDefinition = {
-    id: id('def'),
+    id: id('def') as DefinitionId,
     name: { pt: name, en: name },
     category,
     params,

@@ -11,7 +11,14 @@ import type { LevelId } from '../../project/doc';
 export const OBJECT_PREFIX = 'object';
 export const DEFINITION_PREFIX = 'def';
 
-export type DefinitionId = string;
+/** An object definition's id (def_…). */
+export type DefinitionId = Brand<'definition'>;
+
+/** A new definition's id (def_…). */
+export const newDefinitionId = (): DefinitionId => newId(DEFINITION_PREFIX) as DefinitionId;
+
+/** No definition: an object part just added in the editor, before one is chosen for it. */
+export const NO_DEFINITION = '' as DefinitionId;
 /** A placed object's id (object_…). */
 export type ObjectId = Brand<'object'>;
 

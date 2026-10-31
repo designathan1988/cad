@@ -8,13 +8,14 @@ import type { ObjectDefinition } from '../../src/elements/object/schema';
 import { isDefinition } from '../../src/elements/object/valid';
 import { libraryFromHash, libraryHash, libraryOf, materialsUsed, mergeLibrary } from '../../src/io/library-file';
 import { mid } from '../ids';
+import { did } from '../ids';
 
 const words = (s: string) => ({ pt: s, en: s });
 const gold: Material = { id: mid('mat_gold'), name: 'Ouro', color: '#d4a937', roughness: 0.3, metalness: 1, cut: 'solid' };
 
 // A handle in a finish of its own, and a door that nests it in another material.
 const handle: ObjectDefinition = {
-  id: 'def_handle',
+  id: did('def_handle'),
   name: words('Puxador'),
   category: 'generic',
   params: [{ name: 'acabamento', label: words('Acabamento'), kind: 'material', default: 'mat_gold' }],
@@ -23,13 +24,13 @@ const handle: ObjectDefinition = {
   types: [{ id: 'type_1', name: words('Padrão'), values: {} }],
 };
 const door: ObjectDefinition = {
-  id: 'def_door',
+  id: did('def_door'),
   name: words('Porta'),
   category: 'generic',
   params: [],
   parts: [
     { kind: 'box', x: 0, y: 0, z: 0, w: 0.8, d: 0.04, h: 2.1, material: 'wood' },
-    { kind: 'object', definition: 'def_handle', x: 0.3, y: 0, z: 1, values: { acabamento: 'mat_gold' } },
+    { kind: 'object', definition: did('def_handle'), x: 0.3, y: 0, z: 1, values: { acabamento: 'mat_gold' } },
   ],
   handles: [],
   types: [{ id: 'type_1', name: words('Padrão'), values: {} }],

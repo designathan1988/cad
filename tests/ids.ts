@@ -3,7 +3,7 @@
 
 import type { OpeningGroupId, OpeningId } from '../src/elements/opening/schema';
 import type { FloorId, RoomId } from '../src/elements/room/schema';
-import type { ObjectId } from '../src/elements/object/schema';
+import type { DefinitionId, ObjectId } from '../src/elements/object/schema';
 import type { LevelId } from '../src/project/doc';
 import type { MaterialId, WallId, WallTypeId } from '../src/elements/wall/schema';
 
@@ -33,3 +33,6 @@ export const tid = (id: string): WallTypeId => id as WallTypeId;
 
 /** A material's id written in a test. */
 export const mid = (id: string): MaterialId => id as MaterialId;
+
+/** An object definition's id written in a test. */
+export const did = (id: string): DefinitionId => id as DefinitionId;

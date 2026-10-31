@@ -4,9 +4,10 @@
 
 import type { ObjectDefinition } from './schema';
 import { boxHandles, BUILD, choice, counted, int, len, mat, w, yes } from './library-kit';
+import type { DefinitionId } from './schema';
 
 export const BOX_BED: ObjectDefinition = {
-  id: 'def_box_bed',
+  id: 'def_box_bed' as DefinitionId,
   name: w('Cama box com cabeceira', 'Box bed with headboard'),
   category: 'furniture',
   folder: 'Quarto',
@@ -78,7 +79,7 @@ export const BOX_BED: ObjectDefinition = {
 };
 
 export const NIGHTSTAND: ObjectDefinition = {
-  id: 'def_nightstand',
+  id: 'def_nightstand' as DefinitionId,
   name: w('Criado-mudo', 'Nightstand'),
   category: 'casework',
   folder: 'Quarto',
@@ -107,7 +108,7 @@ export const NIGHTSTAND: ObjectDefinition = {
 };
 
 export const DRESSER: ObjectDefinition = {
-  id: 'def_dresser',
+  id: 'def_dresser' as DefinitionId,
   name: w('Cômoda', 'Chest of drawers'),
   category: 'casework',
   folder: 'Quarto',
@@ -162,7 +163,7 @@ export const DRESSER: ObjectDefinition = {
 };
 
 export const WARDROBE: ObjectDefinition = {
-  id: 'def_wardrobe',
+  id: 'def_wardrobe' as DefinitionId,
   name: w('Guarda-roupa', 'Wardrobe'),
   category: 'casework',
   folder: 'Quarto',
@@ -264,7 +265,7 @@ export const WARDROBE: ObjectDefinition = {
 };
 
 export const CRIB: ObjectDefinition = {
-  id: 'def_crib',
+  id: 'def_crib' as DefinitionId,
   name: w('Berço', 'Crib'),
   category: 'furniture',
   folder: 'Quarto',
@@ -296,7 +297,7 @@ export const CRIB: ObjectDefinition = {
 };
 
 export const BUNK_BED: ObjectDefinition = {
-  id: 'def_bunk_bed',
+  id: 'def_bunk_bed' as DefinitionId,
   name: w('Beliche', 'Bunk bed'),
   category: 'furniture',
   folder: 'Quarto',
@@ -330,7 +331,7 @@ export const BUNK_BED: ObjectDefinition = {
 };
 
 export const VANITY: ObjectDefinition = {
-  id: 'def_vanity',
+  id: 'def_vanity' as DefinitionId,
   name: w('Penteadeira', 'Dressing table'),
   category: 'furniture',
   folder: 'Quarto',
@@ -360,7 +361,7 @@ export const VANITY: ObjectDefinition = {
 };
 
 export const BENCH: ObjectDefinition = {
-  id: 'def_bed_bench',
+  id: 'def_bed_bench' as DefinitionId,
   name: w('Recamier', 'Bed bench'),
   category: 'furniture',
   folder: 'Quarto',

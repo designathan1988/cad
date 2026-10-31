@@ -6,6 +6,7 @@ import { el } from './controls';
 import { materialLabel, type MessageKey, t } from '../i18n/messages';
 import type { EditorState } from './definition-editor';
 import type { EditorKit } from './definition-kit';
+import { NO_DEFINITION } from '../elements/object/schema';
 
 
 
@@ -184,7 +185,7 @@ export function editorTabs(app: App, d: TabDeps) {
             ? { kind, name: { pt: 'Perfil', en: 'Profile' }, x: 0, y: 0, z: 0, points: [[0, 0], [0.4, 0], [0.4, 0.2], [0.2, 0.4], [0, 0.4]], h: 0.1 }
           : kind === 'sphere'
             ? { kind, name: { pt: 'Esfera', en: 'Sphere' }, x: 0, y: 0, z: 0, r: 0.1, h: 0.2 }
-            : { kind, name: { pt: 'Objeto', en: 'Object' }, definition: defs[0]?.id ?? '', x: 0, y: 0, z: 0 };
+            : { kind, name: { pt: 'Objeto', en: 'Object' }, definition: defs[0]?.id ?? NO_DEFINITION, x: 0, y: 0, z: 0 };
     // Its light, a luminaire's: where (as a part's x, y, z), its power and its colour temperature.
     const light = ed.draft.light;
     const lightCard = light

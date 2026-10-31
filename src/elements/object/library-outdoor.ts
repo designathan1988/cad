@@ -3,9 +3,10 @@
 
 import type { ObjectDefinition } from './schema';
 import { boxHandles, BUILD, choice, counted, len, mat, num, w, yes } from './library-kit';
+import type { DefinitionId } from './schema';
 
 export const LOUNGER: ObjectDefinition = {
-  id: 'def_lounger',
+  id: 'def_lounger' as DefinitionId,
   name: w('Espreguiçadeira', 'Sun lounger'),
   category: 'furniture',
   folder: 'Área externa',
@@ -40,7 +41,7 @@ export const LOUNGER: ObjectDefinition = {
 };
 
 export const PARASOL: ObjectDefinition = {
-  id: 'def_parasol',
+  id: 'def_parasol' as DefinitionId,
   name: w('Guarda-sol', 'Parasol'),
   category: 'furniture',
   folder: 'Área externa',
@@ -70,7 +71,7 @@ export const PARASOL: ObjectDefinition = {
 };
 
 export const GARDEN_BENCH: ObjectDefinition = {
-  id: 'def_garden_bench',
+  id: 'def_garden_bench' as DefinitionId,
   name: w('Banco de jardim', 'Garden bench'),
   category: 'furniture',
   folder: 'Área externa',
@@ -102,7 +103,7 @@ export const GARDEN_BENCH: ObjectDefinition = {
 };
 
 export const BBQ: ObjectDefinition = {
-  id: 'def_bbq',
+  id: 'def_bbq' as DefinitionId,
   name: w('Churrasqueira', 'Barbecue'),
   category: 'equipment',
   folder: 'Área externa',
@@ -145,7 +146,7 @@ export const BBQ: ObjectDefinition = {
 };
 
 export const PERGOLA: ObjectDefinition = {
-  id: 'def_pergola',
+  id: 'def_pergola' as DefinitionId,
   name: w('Pergolado', 'Pergola'),
   category: 'generic',
   folder: 'Área externa',
@@ -175,7 +176,7 @@ export const PERGOLA: ObjectDefinition = {
 };
 
 export const PLANTER: ObjectDefinition = {
-  id: 'def_planter',
+  id: 'def_planter' as DefinitionId,
   name: w('Floreira', 'Planter'),
   category: 'plant',
   folder: 'Vegetação',
@@ -204,7 +205,7 @@ export const PLANTER: ObjectDefinition = {
 };
 
 export const BIKE_RACK: ObjectDefinition = {
-  id: 'def_bike_rack',
+  id: 'def_bike_rack' as DefinitionId,
   name: w('Bicicletário', 'Bike rack'),
   category: 'generic',
   folder: 'Área externa',
@@ -228,7 +229,7 @@ export const BIKE_RACK: ObjectDefinition = {
 };
 
 export const FIRE_PIT: ObjectDefinition = {
-  id: 'def_fire_pit',
+  id: 'def_fire_pit' as DefinitionId,
   name: w('Fogo de chão', 'Fire pit'),
   category: 'equipment',
   folder: 'Área externa',

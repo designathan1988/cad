@@ -7,12 +7,11 @@ import { withLibrary } from './library-tabs';
 import type { App } from '../session/app';
 import type { Doc } from '../project/doc';
 import { copyLibraryLink } from '../library/link';
-import { newId } from '../core/id';
 import { addDefinition, definitionDeleteBlocker, deleteDefinition } from '../elements/object/commands';
 import { evaluateObject } from '../elements/object/evaluate';
 import { pieceOutline, pieceSpan } from '../elements/object/piece-shape';
 import { words } from '../elements/object/fields';
-import { DEFINITION_PREFIX, type ObjectDefinition } from '../elements/object/schema';
+import { type ObjectDefinition } from '../elements/object/schema';
 import { libraryOf, mergeLibrary } from '../io/library-file';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
@@ -25,12 +24,13 @@ import * as appPlacing from '../session/app-placing';
 import { folderButton, iconButton, storeSearch, textButton } from './store-parts';
 import { standInObjectId } from '../elements/object/schema';
 import { NO_LEVEL } from '../project/doc';
+import { newDefinitionId } from '../elements/object/schema';
 
 /** A new definition: one box, its width, depth and height, handles on them, one type. */
 export function blankDefinition(n: number): ObjectDefinition {
   const len = (name: string, pt: string, en: string, v: number) => ({ name, label: { pt, en }, kind: 'length' as const, default: v, min: 0.01, max: 10, step: 0.005 });
   return {
-    id: newId(DEFINITION_PREFIX),
+    id: newDefinitionId(),
     name: { pt: `Objeto ${n}`, en: `Object ${n}` },
     category: 'generic',
     params: [len('largura', 'Largura', 'Width', 0.6), len('profundidade', 'Profundidade', 'Depth', 0.6), len('altura', 'Altura', 'Height', 0.75), { name: 'mat', label: { pt: 'Material', en: 'Material' }, kind: 'material', default: 'wood' }],
@@ -292,7 +292,7 @@ export function showObjects(app: App, first?: string): void {
       // Editing opens the editor in this dialog's place; it comes back here when closed.
       const edit = textButton(t('objs.edit'), 'edit', () => (close(), editDefinition(app, def, false, () => showObjects(app, def.id))));
       const dup = textButton(t('objs.duplicate'), 'duplicate', () => {
-        const copy: ObjectDefinition = { ...def, id: newId(DEFINITION_PREFIX), name: { pt: `${def.name.pt} (2)`, en: `${def.name.en} (2)` } };
+        const copy: ObjectDefinition = { ...def, id: newDefinitionId(), name: { pt: `${def.name.pt} (2)`, en: `${def.name.en} (2)` } };
         chosen = copy.id;
         app.store.dispatch(addDefinition(copy));
       });

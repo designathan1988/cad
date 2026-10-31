@@ -5,6 +5,7 @@
 // along the width and y along the depth from the centre, z up from the floor; the front faces −y.
 
 import type { ObjectDefinition, ParamDef } from './schema';
+import type { DefinitionId } from './schema';
 
 const len = (name: string, pt: string, en: string, value: number, min: number, max: number): ParamDef => ({
   name,
@@ -24,7 +25,7 @@ const light = (watts: number, kelvin: number): ParamDef[] => [
 ];
 
 export const DOWNLIGHT: ObjectDefinition = {
-  id: 'def_downlight',
+  id: 'def_downlight' as DefinitionId,
   name: { pt: 'Spot de embutir', en: 'Recessed downlight' },
   category: 'lighting',
   params: [len('largura', 'Diâmetro', 'Diameter', 0.1, 0.05, 0.3), len('teto', 'Altura do teto', 'Ceiling height', 2.7, 2.2, 6), ...light(7, 3000), mat('matAro', 'Aro', 'Trim', 'metal')],
@@ -38,7 +39,7 @@ export const DOWNLIGHT: ObjectDefinition = {
 };
 
 export const SCONCE: ObjectDefinition = {
-  id: 'def_sconce',
+  id: 'def_sconce' as DefinitionId,
   name: { pt: 'Arandela', en: 'Wall sconce' },
   category: 'lighting',
   params: [len('largura', 'Largura', 'Width', 0.15, 0.08, 0.5), len('altura', 'Altura de instalação', 'Mounting height', 1.8, 0.3, 3), ...light(6, 2700), mat('matCorpo', 'Corpo', 'Body', 'metal'), mat('matDifusor', 'Difusor', 'Diffuser', 'glass')],
@@ -55,7 +56,7 @@ export const SCONCE: ObjectDefinition = {
 };
 
 export const FLOOR_LAMP: ObjectDefinition = {
-  id: 'def_floor_lamp',
+  id: 'def_floor_lamp' as DefinitionId,
   name: { pt: 'Luminária de piso', en: 'Floor lamp' },
   category: 'lighting',
   params: [len('largura', 'Diâmetro da cúpula', 'Shade diameter', 0.4, 0.2, 0.8), len('altura', 'Altura', 'Height', 1.6, 0.8, 2.2), ...light(10, 2700), mat('matHaste', 'Haste e base', 'Stem and base', 'metal'), mat('matCupula', 'Cúpula', 'Shade', 'fabric')],
@@ -73,7 +74,7 @@ export const FLOOR_LAMP: ObjectDefinition = {
 };
 
 export const GARDEN_POST: ObjectDefinition = {
-  id: 'def_garden_post',
+  id: 'def_garden_post' as DefinitionId,
   name: { pt: 'Poste de jardim', en: 'Garden post light' },
   category: 'lighting',
   params: [len('altura', 'Altura', 'Height', 0.9, 0.3, 4), len('largura', 'Largura da lanterna', 'Lantern width', 0.18, 0.08, 0.5), ...light(12, 3000), mat('matPoste', 'Poste', 'Post', 'metal'), mat('matLanterna', 'Lanterna', 'Lantern', 'glass')],
@@ -91,7 +92,7 @@ export const GARDEN_POST: ObjectDefinition = {
 };
 
 export const POINT_LIGHT: ObjectDefinition = {
-  id: 'def_point_light',
+  id: 'def_point_light' as DefinitionId,
   name: { pt: 'Ponto de luz', en: 'Point of light' },
   category: 'lighting',
   params: [len('altura', 'Altura', 'Height', 2.4, 0.1, 10), ...light(10, 3000), mat('matBulbo', 'Bulbo', 'Bulb', 'glass'), mat('matSoquete', 'Soquete', 'Socket', 'ceramic')],

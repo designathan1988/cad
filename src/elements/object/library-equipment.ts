@@ -5,6 +5,7 @@
 
 import type { ObjectDefinition, ParamDef } from './schema';
 import { BUILD, choice, derived, int, len, mat, num, w, yes } from './library-kit';
+import type { DefinitionId } from './schema';
 
 const light = (watts: number, kelvin: number): ParamDef[] => [
   { name: 'potencia', label: w('Potência (W, LED)', 'Power (W, LED)'), kind: 'number', default: watts, min: 1, max: 200, step: 0.5, group: w('Luz', 'Light') },
@@ -12,7 +13,7 @@ const light = (watts: number, kelvin: number): ParamDef[] => [
 ];
 
 export const SPLIT_AC: ObjectDefinition = {
-  id: 'def_split_ac',
+  id: 'def_split_ac' as DefinitionId,
   name: w('Ar-condicionado split', 'Split air conditioner'),
   category: 'equipment',
   folder: 'Equipamentos',
@@ -47,7 +48,7 @@ export const SPLIT_AC: ObjectDefinition = {
 };
 
 export const CEILING_FAN: ObjectDefinition = {
-  id: 'def_ceiling_fan',
+  id: 'def_ceiling_fan' as DefinitionId,
   name: w('Ventilador de teto', 'Ceiling fan'),
   category: 'equipment',
   folder: 'Equipamentos',
@@ -80,7 +81,7 @@ export const CEILING_FAN: ObjectDefinition = {
 };
 
 export const WATER_HEATER: ObjectDefinition = {
-  id: 'def_water_heater',
+  id: 'def_water_heater' as DefinitionId,
   name: w('Aquecedor de água', 'Water heater'),
   category: 'equipment',
   folder: 'Equipamentos',
@@ -113,7 +114,7 @@ export const WATER_HEATER: ObjectDefinition = {
 };
 
 export const ELECTRIC_PANEL: ObjectDefinition = {
-  id: 'def_electric_panel',
+  id: 'def_electric_panel' as DefinitionId,
   name: w('Quadro de distribuição', 'Distribution board'),
   category: 'equipment',
   folder: 'Equipamentos',
@@ -143,7 +144,7 @@ export const ELECTRIC_PANEL: ObjectDefinition = {
 };
 
 export const PIANO: ObjectDefinition = {
-  id: 'def_piano',
+  id: 'def_piano' as DefinitionId,
   name: w('Piano', 'Piano'),
   category: 'furniture',
   folder: 'Sala',
@@ -198,7 +199,7 @@ export const PIANO: ObjectDefinition = {
 };
 
 export const TREADMILL: ObjectDefinition = {
-  id: 'def_treadmill',
+  id: 'def_treadmill' as DefinitionId,
   name: w('Esteira', 'Treadmill'),
   category: 'equipment',
   folder: 'Academia',
@@ -222,7 +223,7 @@ export const TREADMILL: ObjectDefinition = {
 };
 
 export const WATER_TANK: ObjectDefinition = {
-  id: 'def_water_tank',
+  id: 'def_water_tank' as DefinitionId,
   name: w('Caixa d\'água', 'Water tank'),
   category: 'equipment',
   folder: 'Equipamentos',
@@ -249,7 +250,7 @@ export const WATER_TANK: ObjectDefinition = {
 };
 
 export const SOLAR_HEATER: ObjectDefinition = {
-  id: 'def_solar_heater',
+  id: 'def_solar_heater' as DefinitionId,
   name: w('Aquecedor solar', 'Solar water heater'),
   category: 'equipment',
   folder: 'Equipamentos',
@@ -266,7 +267,7 @@ export const SOLAR_HEATER: ObjectDefinition = {
     { kind: 'box', name: w('Vidro', 'Glazing'), repeat: { count: 'placas', dx: 1.02 }, x: '-largura/2 + 0.04', y: -1.004, z: 0.1, w: 0.94, d: 0.004, h: 1.94, tilt: '90 - inclinacao', material: 'graniteBlack' },
     { kind: 'box', name: w('Suporte', 'Stand'), repeat: { count: 'placas + 1', dx: 1.02 }, x: '-largura/2 - 0.015', y: '-1 + 2 * cos(inclinacao) - 0.04', z: 0, w: 0.03, d: 0.04, h: '0.1 + 2 * sin(inclinacao)', material: 'matMoldura' },
     // The tank above, lying on its saddles, where the hot water rises to.
-    { kind: 'object', name: w('Reservatório', 'Storage tank'), definition: 'def_water_heater', when: 'reservatorio', x: 0, y: '-1 + 2 * cos(inclinacao) + 0.6', z: '0.1 + 2 * sin(inclinacao) + 0.1', values: { modelo: 2, litros: 'placas * 100 + 100', base: 0 } },
+    { kind: 'object', name: w('Reservatório', 'Storage tank'), definition: 'def_water_heater' as DefinitionId, when: 'reservatorio', x: 0, y: '-1 + 2 * cos(inclinacao) + 0.6', z: '0.1 + 2 * sin(inclinacao) + 0.1', values: { modelo: 2, litros: 'placas * 100 + 100', base: 0 } },
   ],
   handles: [],
   types: [
