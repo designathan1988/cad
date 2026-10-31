@@ -128,6 +128,15 @@ kind of Drag; ui.handleDrag gone; ptr.boxDrag kept in PointerState with panning:
 the one owner of db + project id, app.db/app.projectId gone; showProject in files.ts the one "another project shown" transition).
 Each checked headless (door and table handles mid-drag/Esc/release/undo; X-ray + box + box face drag across reloads; saved 3D view;
 projects dialog new/open/delete; file opened as project). Gates 0, round trips byte-equal. Next: report (pt-BR).
-Found, not changed (behaviour): levels-dialog sets ui.levelId directly (add/delete), so a saved view's scale (viewDen) is not reset
-there as setLevel does; opening another project keeps viewDen too.
-Pre-existing, not caused here: headless drag of an unselected wall does not move it (same on 84cbe8f).
+Owner's order 2026-10-31 "ENTÃO CORRIJA TUDO!!!!" (fix all that the report left): done.
+- d155ea4 level shown: setLevel the one way (levels dialog too); a level gone left in the store subscriber (not in chrome render);
+  another project at the project's scale. Scale shown: footer read drawingOf (project) while plan drew drawingNow (saved view's);
+  now drawingNow + chooseScale (footer and drawing dialog); setDrawing moved to elements/drawing/commands.ts.
+- 0ae40d8 wall drag never moved a wall: this branch left main (4d41084) before main's fix 2d16f98; ported (kindLists non-walled,
+  preview order). main has 93 commits this branch lacks (merge = a task of its own).
+- 6ab72e6 + d48056f console: PCFShadowMap by name; vite.config.ts renames maxLeafSize/maxLeafTris/Source in libraries as bundled
+  (206 warnings -> 0). Left, library-level: THREE.Clock, WebGLPathTracer (WebGPU only), X4000 shader notes (photoreal only).
+- 947c2fd left button one state (LeftPress: press | box); middle/right keep theirs (can be held together).
+- wall/guide tool-ui stay in elements: inventory rows 84/153 and ADR put a tool in its element's folder (my earlier note was wrong).
+- Checked headless: levels add/delete/undo, saved view scale reset, footer scale, wall + column drag, marquee, Esc, box face,
+  Distribute two windows + undo, file opened without IndexedDB (NODB=1 driver profile) + undo, photoreal picture unchanged.
