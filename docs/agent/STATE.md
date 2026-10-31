@@ -24,10 +24,11 @@ tricks for speed, UI rules (one place per command, compact density, no raw px, s
 ## Where it stands (2026-10-31)
 - Branch worktree-revisao-interface: the refactor is done (check-architecture 0: direction, mutableLets, oversize, duplications;
   typed ids per kind; state machines: tool draft, drag, view 3D writer, lifecycle; fixes after the report). Notebook: work.md.
-- Merging main (93 commits: the F-xxxx fixes, file v68-v70, point tools F-0023, per-frame derivation F-0014/F-0011) into it:
-  in progress, see work.md "merge of main". Until it is committed the tree does not build.
-- main's own state before the merge (its STATE.md, 2026-10-28): every S3 finding fixed, 22 S4 open in .whole-review/FINDINGS.md
-  (the skill stopped by the owner); known break: a mirrored wall over a column with no warning.
+- main merged in (2595317): its 93 commits (F-xxxx fixes, file v68-v70, point tools F-0023 now session/point-tools.ts on ui.draft,
+  per-frame derivation F-0014/F-0011) carried into the split files. tsc 0, gates 0, inventory 366/366, the file written byte-identical
+  to main's for both test projects. main is fully contained in this branch (0 commits ahead of it).
+- Known, from main (not fixed here): 22 S4 findings open in .whole-review/FINDINGS.md; a mirrored wall over a column with no warning.
+- Console in photorealistic mode: THREE.Clock, WebGLPathTracer deprecation, X4000 shader notes (library-level, latest versions).
 
 ## Known traps (from memoria + repo)
 - vigia.json / vigia-log.txt are the guard hook's own files: never touch. .whole-review/ and docs/revisao-interface/audit/ are the

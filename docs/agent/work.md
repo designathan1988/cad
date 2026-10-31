@@ -162,3 +162,11 @@ Merge progress (uncommitted, merge in progress; tools in .scratchpad: hunks.py, 
   LEVEL_HEIGHT, moveKinds g), input.ts port (floorZ, pointTape, pointTool click/rightClick, wallUnderRay lift, onCancel F-0024,
   showHelp from actions in ui/help-dialog), kind-tools/section-drawing small ports. src/app/point-tools.ts removed.
   Next: context-menu, chrome, frame, i18n, project-db, ui/* hunks, tests, styles.css, grid/carry; app.ts is 411 lines (cap 400).
+- MERGE DONE 2595317 (pushed). Ported per split file: app.ts (action-list.ts, boot failed/repaired, replaces, afterChange in
+  app-store, wireTraceNotes in scene-frame), input.ts (pointer-aim floorZ/pointTape, pointer-release point tools + rightClick,
+  onCancel F-0024, help from actions), input-keys (byKey), chrome (footer pointTool + actionHint, tips, float bar), frame (F-0014
+  shared snap/measure/axis/anchor/draft in plan-overlay; panel levelId, endChoosable, floor patch fn), i18n (port-i18n.cjs: 137 keys
+  out, 69 changed, 19 added per language), styles (port-css.py 28 placed + 3 by hand), editor/store (definition-tabs/preview,
+  objects-dialog). Notes: move.mjs drops the DESTINATION file's header comment (restored by hand twice: param-limits, file-guards).
+  Checked headless: beam/roof by key, Esc/Enter/undo, help + context keys, wall tag beside wall, wall drag, next door/wall panels,
+  3D snap with beam, object store menu + Esc. Not checked: every one of main's 93 fixes one by one in the app.
