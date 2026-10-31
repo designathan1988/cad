@@ -1,13 +1,12 @@
 // Saved views: saving, going to one, deleting. Functions over the app (app.ts delegates).
 
 import { name, t } from '../i18n/messages';
-import { savePrefs } from '../project/persist';
 import { deleteView, nextViewName, type SavedView, saveView } from '../project/saved-views';
 import { readView3D } from './view/view-3d';
 import { newId } from '../core/id';
 import type { App } from './app';
 import { drawingOf } from '../project/doc';
-import { setView } from './view-ui';
+import { putView3D, setView } from './view-ui';
 import * as appEdit from './app-edit';
 
 /**
@@ -43,8 +42,7 @@ export function goToView(app: App, id: string): void {
   if (v.overrides !== undefined) app.ui.overridesOn = v.overrides;
   if (v.kind === '3d') {
     // Read as stored views are: a file's view may hold anything.
-    app.ui.view3d = readView3D(v.view3d);
-    savePrefs({ view3d: app.ui.view3d });
+    putView3D(app, readView3D(v.view3d));
     setView(app, '3d');
     app.framed['3d'] = true;
     app.scene.camera.position.set(...v.position);

@@ -62,10 +62,15 @@ export function boxFaceOnScreen(app: App, face: BoxFace): Point2 {
   return a && b ? { x: b.x - a.x, y: b.y - a.y } : { x: 0, y: 0 };
 }
 
+/** The 3D view's settings, their one writer: kept with the preferences unless `keep` is false (mid-drag). */
+export function putView3D(app: App, next: View3D, keep = true): void {
+  app.ui.view3d = next;
+  if (keep) savePrefs({ view3d: next });
+}
+
 /** The box as dragged: drawn now, kept with the view when `keep` (the drag's end). */
 export function setBox(app: App, box: SectionBox, keep: boolean): void {
-  app.ui.view3d = { ...app.ui.view3d, box };
-  if (keep) savePrefs({ view3d: app.ui.view3d });
+  putView3D(app, { ...app.ui.view3d, box }, keep);
   app.render();
 }
 
@@ -84,10 +89,9 @@ export function toggleExplode(app: App): void {
 export function setView3D(app: App, patch: Partial<View3D>): void {
   // From the plan (the palette), the 3D view it is about is shown.
   if (app.ui.view !== '3d') setView(app, '3d');
-  app.ui.view3d = { ...app.ui.view3d, ...patch };
+  putView3D(app, { ...app.ui.view3d, ...patch });
   // A word on the view as it was (Explode with one level shown) no longer holds.
   app.ui.info = null;
-  savePrefs({ view3d: app.ui.view3d });
   // Levels hidden now leave the selection, as a hidden category does.
   const shown = app.visibleGeometry();
   for (const id of [...app.ui.selection]) {
