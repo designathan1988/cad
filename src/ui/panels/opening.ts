@@ -12,18 +12,8 @@ import { markPrefix, t, type MessageKey } from '../../i18n/messages';
 import { icon } from '../../i18n/icons';
 import type { OpeningWarning } from '../../elements/opening/derive';
 import type { RoomSolid } from '../../elements/room/derive';
-import {
-  arrangeFields,
-  groupFields,
-  kindName,
-  leafFields,
-  nextOpeningFields,
-  openingFields,
-  type OpeningPanelActions,
-  type OpeningSize,
-  positionFields,
-  styleFields,
-} from '../../elements/opening/fields';
+import { arrangeFields, groupFields, kindName, leafFields, nextOpeningFields, openingFields, type OpeningPanelActions, type OpeningSize, positionFields } from '../../elements/opening/fields';
+import { styleFields } from '../../elements/opening/style-fields';
 import type { OpeningId, OpeningKind } from '../../elements/opening/schema';
 import { openingMarks } from '../../elements/opening/marks';
 

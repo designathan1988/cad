@@ -20,7 +20,7 @@ import { newId } from '../core/id';
 import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
 import { type App } from '../session/app';
 import { nextFields, type NextSlot } from '../session/next';
-import { lowerFirst } from './ribbon-tabs';
+import { lowerFirst } from './ribbon-context-tabs';
 import { words } from '../elements/object/fields';
 import { drawPlanOverlay } from './plan-overlay';
 import { currentDims, placeDims } from './temp-dims';

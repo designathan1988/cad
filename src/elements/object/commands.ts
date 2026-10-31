@@ -4,7 +4,7 @@
 
 import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
-import { held } from './evaluate';
+import { held } from './param-limits';
 import type { ObjectDefinition, ObjectId, ObjectInstance } from './schema';
 
 export const addObject = (o: ObjectInstance): Command<Doc> => ({

@@ -2,11 +2,7 @@
  "direction": 0,
  "mutableLets": 0,
  "oversize": [
-  "src/ui/ribbon-tabs.ts",
-  "src/elements/object/evaluate.ts",
   "src/elements/object/library-before66.ts",
-  "src/elements/opening/fields.ts",
-  "src/elements/section/drawing.ts",
   "src/elements/wall/geometry/footprint.ts",
   "src/render/plan-view.ts",
   "src/render/scene-3d.ts",
@@ -18,7 +14,6 @@
   "direction": [],
   "mutableLets": [],
   "oversize": [
-   "src/session/input.ts",
    "src/ui/ribbon-tabs.ts",
    "src/elements/object/evaluate.ts",
    "src/elements/object/library-before66.ts",

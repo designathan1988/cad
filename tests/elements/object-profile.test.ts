@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
 import { pieceGeometry, roundSides } from '../../src/elements/kinds/object';
-import { evaluateObject, pieceOutline, pieceSpan } from '../../src/elements/object/evaluate';
+import { evaluateObject } from '../../src/elements/object/evaluate';
+import { pieceOutline, pieceSpan } from '../../src/elements/object/piece-shape';
 import type { ObjectDefinition } from '../../src/elements/object/schema';
 import { isDefinition } from '../../src/elements/object/valid';
 

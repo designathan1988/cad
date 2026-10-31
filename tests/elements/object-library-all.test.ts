@@ -7,7 +7,7 @@ import { BUILT_IN_MATERIALS } from '../../src/elements/material/schema';
 import { evaluateObject } from '../../src/elements/object/evaluate';
 import { LIBRARY } from '../../src/elements/object/library';
 import { isDefinition } from '../../src/elements/object/valid';
-import { pieceSpan } from '../../src/elements/object/evaluate';
+import { pieceSpan } from '../../src/elements/object/piece-shape';
 
 const context = { definitions: LIBRARY, materials: BUILT_IN_MATERIALS };
 

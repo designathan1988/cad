@@ -96,6 +96,7 @@ aqui fica a decisão por arquivo.
 | src/elements/opening/commands.ts | mover | opening/commands.ts | dependsOn funde com badReference (ciclo de referências) |
 | src/elements/opening/derive.ts | mover | opening/derive.ts |  |
 | src/elements/opening/fields.ts | dividir | opening/fields.ts + style-fields.ts | 555 l → 2 arquivos |
+| (novo no passo 6) src/elements/opening/style-fields.ts | manter | elements/opening/style-fields.ts | modelo e estilo da esquadria no painel (antes em fields.ts) |
 | src/elements/opening/parts.ts | mover | opening/parts.ts | constantes de folha nomeadas |
 | src/elements/opening/style.ts | mover | opening/style.ts | identidade de estilo por JSON em 3 lugares → um helper |
 | src/elements/opening/symbol.ts | mover | opening/symbol.ts | arcos de 24 passos cacheados |
@@ -198,6 +199,8 @@ aqui fica a decisão por arquivo.
 | src/elements/kinds/reference.ts | juntar | reference/kind.ts | inside() usa room/derive |
 | (movido no passo 4) (movido no passo 4) src/ui/reference-tool.ts | mover | reference/tool-ui.ts |  |
 | (movido no passo 4) src/elements/section/drawing.ts | dividir | section/drawing.ts | 711 l → desenho (paint) e geometria (clip/outline) separados |
+| (novo no passo 6) src/elements/section/paint.ts | manter | elements/section/paint.ts | pintura do corte no canvas (antes em drawing.ts) |
+| (novo no passo 6) src/elements/section/edges.ts | manter | elements/section/edges.ts | arestas, recortes e contornos do corte (antes em drawing.ts) |
 | (movido no passo 4) src/ui/section-canvas.ts | mover | section/view.ts | caches ficam |
 | src/ui/sections-dialog.ts | mover | section/dialog.ts |  |
 | src/elements/drawing/schema.ts | mover | project/drawing.ts |  |
@@ -206,6 +209,8 @@ aqui fica a decisão por arquivo.
 | src/elements/object/schema.ts | mover | library/schema.ts |  |
 | src/elements/object/commands.ts | mover | library/commands.ts |  |
 | src/elements/object/evaluate.ts | mover | library/evaluate.ts | 541 l ok (< 600 de dados/lógica); binary search medido |
+| (novo no passo 6) src/elements/object/piece-shape.ts | manter | elements/object/piece-shape.ts | forma das peças avaliadas (antes em evaluate.ts) |
+| (novo no passo 6) src/elements/object/param-limits.ts | manter | elements/object/param-limits.ts | limites dos parâmetros e cor da luz (antes em evaluate.ts) |
 | src/elements/object/valid.ts | mover | library/valid.ts |  |
 | src/elements/object/formula.ts | mover | library/formula.ts |  |
 | src/elements/object/fields.ts | mover | library/fields.ts |  |
@@ -265,6 +270,7 @@ aqui fica a decisão por arquivo.
 | (movido no passo 4) src/session/view-ui.ts | dividir | session/view/*.ts | keepSelectionInView/3d paralelos fundem |
 | (movido no passo 4) src/session/actions.ts | mover | session/actions.ts | SNAP_PARTS duplicado com chrome sai |
 | (movido no passo 4) src/ui/ribbon-tabs.ts | mover | ui/ribbon-tabs.ts | grupos repetidos (guides/dims ×2) → helpers |
+| (novo no passo 6) src/ui/ribbon-context-tabs.ts | manter | ui/ribbon-context-tabs.ts | abas que vêm e vão: a da ferramenta e a contextual (antes em ribbon-tabs.ts) |
 | (movido no passo 4) src/session/context-menu.ts | mover | session/context-menu.ts |  |
 | (movido no passo 4) src/session/context-actions.ts | juntar | session/context-menu.ts |  |
 

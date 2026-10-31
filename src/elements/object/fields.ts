@@ -3,7 +3,7 @@
 // way back to the type's value. Calculated parameters are shown, not edited. Several objects of one
 // definition are edited together; of several definitions, only their place.
 
-import { LENGTH_LIMITS, sizeParams } from './evaluate';
+import { LENGTH_LIMITS, sizeParams } from './param-limits';
 import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
 import type { Field } from '../fields';

@@ -4,7 +4,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { BUILT_IN_MATERIALS } from '../../src/elements/material/schema';
-import { boxCorners, evaluateObject, pieceSpan, type Piece } from '../../src/elements/object/evaluate';
+import { evaluateObject, type Piece } from '../../src/elements/object/evaluate';
+import { boxCorners, pieceSpan } from '../../src/elements/object/piece-shape';
 import { LIBRARY } from '../../src/elements/object/library';
 import * as THREE from 'three';
 import { byMaterial, cutGeometries } from '../../src/elements/kinds/object';

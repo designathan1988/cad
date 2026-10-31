@@ -6,7 +6,8 @@
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
-import { featureEdges, loopsOf, modelSolids, outlineOf, sectionDims, sectionDrawing } from '../../src/elements/section/drawing';
+import { modelSolids, sectionDims, sectionDrawing } from '../../src/elements/section/drawing';
+import { featureEdges, loopsOf, outlineOf } from '../../src/elements/section/edges';
 import type { Point3 } from '../../src/model/section-box';
 import { elevationsAround, elevationsInside, isSectionMark, lookOf, nextSectionName, type SectionMark } from '../../src/elements/section/schema';
 import { flipSections, renameSection, setSectionDepth } from '../../src/elements/section/commands';
