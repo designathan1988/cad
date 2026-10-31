@@ -9,3 +9,9 @@ caíram em outro lugar e apagaram um cômodo de teste sem querer. Sem histórico
 
 **Como aplicar:** no começo de cada execução que clica por coordenadas, apertar Esc e `Home` (enquadrar) e tirar uma captura antes
 de clicar; apagar só depois de conferir na captura (e no painel) o que está selecionado; desfazer na mesma execução.
+
+Também (2026-10-31):
+- `<select>` nativo (escala do rodapé, estilo do 3D): no headless o clique na lista aberta não chega; clicar no seletor, Esc e setas
+  (é gesto de usuário). Depois clicar no vazio: com o foco no seletor, Ctrl+K não abre a paleta.
+- Paleta aberta engole Ctrl+Z: fechar (Esc) antes de desfazer.
+- Sem IndexedDB (janela privada): `NODB=1 node drive.cjs …` usa o perfil `profile-nodb` sem `indexedDB` (ambiente, não gesto).

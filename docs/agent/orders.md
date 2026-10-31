@@ -180,3 +180,162 @@ Sim, seguir
 2026-10-28 23:22:05
 
 /goal Pare de perguntar e interromper o trabalho e continue os trabalhos
+
+
+---
+2026-10-31 00:32:25
+
+<pasted_content id="87f1">
+Projeto: cad2, um CAD/BIM no navegador (TypeScript, Vite, three.js).
+Pasta: C:\Users\Jonathan\Documents\Projects\cad2\.claude\worktrees\revisao-interface
+Branch: worktree-revisao-interface. Remote: github.com/designathan1988/cad.
+
+Tarefa: organizar o código e os arquivos. Só refatoração: o app tem de continuar fazendo exatamente o
+mesmo, com a mesma aparência, e o formato do arquivo de projeto não muda.
+
+Já foi feito: as pastas por recurso existem (src/model, project, session, elements, render, tools, ui,
+i18n, library, io, core), a direção dos imports está certa e o código morto saiu. O destino de cada
+arquivo está em docs/refatoracao/inventario.md e a arquitetura em docs/adr/0004-arquitetura.md.
+O que ainda está errado, scripts/check-architecture.mjs mostra.
+
+Falta fazer:
+1. Dividir os arquivos grandes demais por responsabilidade, cada parte na pasta do seu recurso:
+   session/app.ts, session/input.ts, ui/chrome.ts, ui/frame.ts, render/scene-3d.ts,
+   render/plan-view.ts, session/snap.ts, session/drag.ts, session/kind-tools.ts,
+   project/derive.ts, project/file.ts, i18n/messages.ts (por assunto), ui/styles.css (por componente)
+   e os outros que o check-architecture listar.
+2. Juntar os arquivos pequenos que têm um chamador só e as funções que fazem a mesma coisa em dois
+   lugares.
+3. Dar a cada estado um dono só, sem cópias sincronizadas na mão. Trocar as flags soltas do UiState por
+   máquinas de estados: ferramenta → submodo → arrasto, vista e ciclo de vida.
+4. IDs com tipo próprio por tipo de elemento.
+
+Como trabalhar: um pedaço por vez. Depois de cada um: npx tsc --noEmit sem erros, node
+scripts/check-architecture.mjs sem piorar, npm run dev, abra o app e use o que você mexeu para ver
+que funciona e que o console está limpo. Então faça commit (em inglês, git add por caminho) e
+git push. Não pergunte nada, não escreva relatório e não rode suítes de teste. Pare quando o
+check-architecture zerar.
+
+Não toque em vigia.json, vigia-log.txt, .whole-review/ nem docs/revisao-interface/. Fale comigo em
+português do Brasil.
+</pasted_content id="87f1">
+
+
+---
+2026-10-31 00:35:35
+
+para de abrir navegador na minha cara
+
+
+---
+2026-10-31 00:40:33
+
+ACELERA OS TRABALHOS, MANTENDO O RIGOR
+
+
+---
+2026-10-31 00:41:02
+
+NÃO PARALELIZA NADA
+
+
+---
+2026-10-31 01:03:22
+
+FAÇA LOGO ESSA REFATORAÇÃO. VOCÊ ESTÁ DEMORANDO DEMAIS
+
+
+---
+2026-10-31 01:15:28
+
+faça commit regularmente
+
+
+---
+2026-10-31 01:28:21
+
+VAI LOGO, QUE DEMORA!!! ACELERA ISSO MANTENDO O RIGOR! ACELERA, JÁ DEMOROU MUITO!
+
+
+---
+2026-10-31 01:53:14
+
+Sim, continuar
+
+
+---
+2026-10-31 03:16:16
+
+ENTÃO CORRIJA TUDO!!!!
+
+
+---
+2026-10-31 03:40:33
+
+Sim, trazer o main
+
+
+---
+2026-10-31 04:18:51
+
+ENTÃO TERMINA E TESTA A APLICAÇÃO NO NAVEGADOR.
+
+
+---
+2026-10-31 04:23:28
+
+@"C:\Users\Jonathan\Desktop\cad2 — barra superior fixa (comandos gerais) e painel flutuante da ferramenta-html.zip"
+APROVEITA E IMPLEMENTA ESSA INTERFACE NA APLICAÇÃO E GARANTA QUE FIQUE FUNCIONAL E NÃO QUEBRE NADA
+
+
+---
+2026-10-31 04:50:41
+
+PELA ÚLTIMA VEZ. ESSA APLICAÇÃO NÃO É PARA MOBILE!!!
+
+
+---
+2026-10-31 04:51:00
+
+VAI TESTAR EM 880 POR QUE, CARALHO?
+
+
+---
+2026-10-31 04:55:35
+
+/goal Termine de uma vez por todas o que ainda está aberto!
+
+
+---
+2026-10-31 05:25:19
+
+Sim, pode editar
+Sim, pode editar
+
+
+---
+2026-10-31 05:25:52
+
+Sim, pode editar
+
+Sim, pode editar
+
+Sim, pode editar
+
+
+---
+2026-10-31 05:26:18
+
+FAÇA O COMIT
+
+
+---
+2026-10-31 05:26:53
+
+VC JÁ DEU MERGE NO MAIN NÉ?
+
+
+---
+2026-10-31 05:27:19
+
+FAÇA LOGO ESSA MERDA

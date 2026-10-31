@@ -15,6 +15,8 @@ Aprendizados guardados entre sessões, um por arquivo nesta pasta. Este índice 
 - [Plano de escopo](scope-plan.md) — docs/plano-de-escopo.md é a especificação (15 fases, contrato primeiro); construir e testar num projeto novo em branco
 - [Fotorrealista limpo](photoreal-trace.md) — como o traçado evita trava, grão, fireflies, sombra em degraus e luz sob as paredes; nunca FEATURE_MIS 0
 - [Memória que sobrevive à compactação](compaction-memory.md) — o trabalho em andamento fica em docs/agent (orders.md, STATE.md, work.md), reimpresso pelos hooks a cada compactação
-- [Larguras de janela no teste](test-window-sizes.md) — testar também com ~880 e ~1280 px de largura; comparar as capturas para a vista nunca pular ao selecionar
+- [Larguras de janela no teste](test-window-sizes.md) — só 1920×1080 e 1280 de largura; NUNCA 880 nem janela estreita (regra antiga revogada em 2026-10-31)
+- [Só desktop](desktop-only.md) — a aplicação não é para celular nem janela estreita: nunca testar, projetar nem escrever CSS para isso
 - [Conferir o desenho antes de tirar um campo](check-render-before-removing.md) — antes de tirar um campo "só da área removida", grep quem o lê na planta, no 3D e na geometria
-- [Estado entre execuções headless](headless-run-state.md) — cada execução recarrega: zoom e pavimento ficam, desfazer some; Home e captura antes de clicar por coordenadas
+- [Estado entre execuções headless](headless-run-state.md) — cada execução recarrega: zoom e pavimento ficam, desfazer some; Home e captura antes de clicar por coordenadas; select nativo por teclado; NODB=1 sem IndexedDB
+- [Ramo sem as correções do main](ramo-sem-correcoes-do-main.md) — num worktree, conferir se o main já corrigiu um defeito antes de chamá-lo de antigo; portar e contar os commits que faltam
