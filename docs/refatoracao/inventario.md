@@ -364,6 +364,7 @@ aqui fica a decisão por arquivo.
 | src/ui/types-dialog.ts | dividir | ui/dialogs/store.ts (andaime) + wall/types-dialog.ts | andaime de loja ×6 → ui/dialogs/store.ts |
 | src/ui/materials-dialog.ts | dividir | ui/dialogs/store.ts + material/dialog.ts | idem; row() duplicado com drawing-dialog |
 | src/ui/objects-dialog.ts | dividir | ui/dialogs/store.ts + library/dialog.ts | fold local sai |
+| (novo no passo 6) src/ui/store-parts.ts | manter | ui/store-parts.ts | botão de pasta, busca, botão de ícone e de texto das cinco lojas (eram cópias em cada uma) |
 | src/ui/presets-dialog.ts | dividir | ui/dialogs/store.ts + library/presets-dialog.ts |  |
 | src/ui/floors-dialog.ts | dividir | ui/dialogs/store.ts + room/floors-dialog.ts | floorSnapshot → room/snapshot.ts (gêmeo do wall-snapshot) |
 | src/ui/openings-dialog.ts | dividir | ui/dialogs/store.ts + opening/dialog.ts |  |

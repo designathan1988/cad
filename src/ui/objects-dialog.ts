@@ -18,11 +18,11 @@ import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { editDefinition } from './definition-editor';
 import { getLang, type MessageKey, t } from '../i18n/messages';
-import { icon } from '../i18n/icons';
 import { objectSnapshot } from './object-snapshot';
 import { lengthText } from '../i18n/units';
 import { download, fileBase } from '../project/files';
 import * as appPlacing from '../session/app-placing';
+import { folderButton, iconButton, storeSearch, textButton } from './store-parts';
 
 /** A new definition: one box, its width, depth and height, handles on them, one type. */
 export function blankDefinition(n: number): ObjectDefinition {
@@ -161,24 +161,14 @@ export function showObjects(app: App, first?: string): void {
     const typeId = def ? (typeOf.get(def.id) ?? def.types[0]?.id ?? '') : '';
 
     // The head: title, search, how many, the library's menu, close.
-    const search = el('input', { type: 'search', class: 'objs-search', placeholder: t('objs.search'), 'aria-label': t('objs.search') });
-    search.value = query;
-    search.dataset.focus = 'search';
-    search.addEventListener('input', () => {
-      query = search.value;
+    const search = storeSearch(t('objs.search'), query, (value) => {
+      query = value;
       // A search is through every object: a folder chosen before hid most of what it finds.
       if (query.trim() !== '') folder = ALL;
       scrolled = 0;
       dialog.redraw();
     });
-    const iconBtn = (name: Parameters<typeof icon>[0], label: string, focus: string, run: () => void) => {
-      const b = el('button', { type: 'button', class: 'icon-btn', 'aria-label': label, title: label });
-      b.innerHTML = icon(name, 18);
-      b.dataset.focus = focus;
-      b.addEventListener('click', run);
-      return b;
-    };
-    const more = iconBtn('more', t('objs.more'), 'more', () => {
+    const more = iconButton('more', t('objs.more'), 'more', () => {
       menu = !menu;
       dialog.redraw();
     });
@@ -218,22 +208,18 @@ export function showObjects(app: App, first?: string): void {
       search,
       el('span', { class: 'objs-total' }, t('objs.countAll', { n: found.length })),
       el('div', { class: 'objs-menu-wrap' }, more, libraryMenu),
-      iconBtn('close', t('help.close'), 'close', close),
+      iconButton('close', t('help.close'), 'close', close),
       fileInput,
     );
 
     // The folders down the side.
     const nav = el('nav', { class: 'objs-nav', 'aria-label': t('objs.folders') });
-    const navItem = (key: string, label: string, n: number) => {
-      const b = el('button', { type: 'button', class: 'objs-nav-item', 'aria-pressed': String(folder === key) }, el('span', { class: 'objs-nav-name' }, label), el('span', { class: 'objs-nav-count' }, String(n)));
-      b.dataset.focus = `folder:${key}`;
-      b.addEventListener('click', () => {
+    const navItem = (key: string, label: string, n: number) =>
+      folderButton(key, label, n, folder === key, () => {
         folder = key;
         scrolled = 0;
         dialog.redraw();
       });
-      return b;
-    };
     nav.append(navItem(ALL, t('objs.all'), found.length), navItem(PLACED, t('objs.inProject'), inProject.length), el('div', { class: 'objs-nav-head' }, t('objs.folders')));
     for (const name of [...counts.keys()].sort((x, y) => x.localeCompare(y, lang))) nav.append(navItem(name, name, counts.get(name)!));
 
@@ -301,25 +287,19 @@ export function showObjects(app: App, first?: string): void {
         close();
         appPlacing.placeObject(app, def.id, typeId);
       });
-      const textBtn = (label: string, focus: string, run: () => void) => {
-        const b = el('button', { type: 'button', class: 'icon-btn text-btn' }, label);
-        b.dataset.focus = focus;
-        b.addEventListener('click', run);
-        return b;
-      };
       // Editing opens the editor in this dialog's place; it comes back here when closed.
-      const edit = textBtn(t('objs.edit'), 'edit', () => (close(), editDefinition(app, def, false, () => showObjects(app, def.id))));
-      const dup = textBtn(t('objs.duplicate'), 'duplicate', () => {
+      const edit = textButton(t('objs.edit'), 'edit', () => (close(), editDefinition(app, def, false, () => showObjects(app, def.id))));
+      const dup = textButton(t('objs.duplicate'), 'duplicate', () => {
         const copy: ObjectDefinition = { ...def, id: newId(DEFINITION_PREFIX), name: { pt: `${def.name.pt} (2)`, en: `${def.name.en} (2)` } };
         chosen = copy.id;
         app.store.dispatch(addDefinition(copy));
       });
       // The chosen one by link: with what it nests and the materials it uses.
-      const link = textBtn(t('lib.copyLink'), 'link', () => void copyLibraryLink(app, libraryOf(app.store.get(), [def.id])));
+      const link = textButton(t('lib.copyLink'), 'link', () => void copyLibraryLink(app, libraryOf(app.store.get(), [def.id])));
       const blocker = definitionDeleteBlocker(doc, def.id);
       const action = t('objs.deleteNamed', { name: words(def.name) });
       const why = blocker === 'inUse' ? t('objs.cantDeleteInUse') : blocker === 'nested' ? t('objs.cantDeleteNested') : null;
-      const del = iconBtn('trash', action, 'delete', () => app.store.dispatch(deleteDefinition(def.id)));
+      const del = iconButton('trash', action, 'delete', () => app.store.dispatch(deleteDefinition(def.id)));
       del.disabled = why !== null;
       del.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;
       const n = placed(def.id);

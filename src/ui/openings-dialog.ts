@@ -10,9 +10,9 @@ import { OPENING_MODELS, type OpeningModel } from '../elements/opening/style';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { type MessageKey, t } from '../i18n/messages';
-import { icon } from '../i18n/icons';
 import { openingSnapshot } from './opening-snapshot';
 import { lengthText } from '../i18n/units';
+import { folderButton, iconButton, storeSearch } from './store-parts';
 
 /** Pictures made once each, by model and size. */
 const pictures = new Map<string, string | null>();
@@ -59,32 +59,22 @@ export function showOpenings(app: App, kind?: OpeningKind): void {
     if (!shown.some((m) => m.id === chosen)) chosen = shown[0]?.id ?? '';
     const model = shown.find((m) => m.id === chosen);
 
-    const search = el('input', { type: 'search', class: 'objs-search', placeholder: t('opstore.search'), 'aria-label': t('opstore.search') });
-    search.value = query;
-    search.dataset.focus = 'search';
-    search.addEventListener('input', () => {
-      query = search.value;
+    const search = storeSearch(t('opstore.search'), query, (value) => {
+      query = value;
       if (query.trim() !== '') folder = 'all';
       scrolled = 0;
       dialog.redraw();
     });
-    const closeBtn = el('button', { type: 'button', class: 'icon-btn', 'aria-label': t('help.close'), title: t('help.close') });
-    closeBtn.innerHTML = icon('close', 18);
-    closeBtn.dataset.focus = 'close';
-    closeBtn.addEventListener('click', close);
+    const closeBtn = iconButton('close', t('help.close'), 'close', close);
     const head = el('div', { class: 'objs-head' }, el('h2', {}, t('opstore.title')), search, el('span', { class: 'objs-total' }, t('opstore.count', { n: found.length })), closeBtn);
 
     const nav = el('nav', { class: 'objs-nav', 'aria-label': t('objs.folders') });
-    const navItem = (key: OpeningKind | 'all', label: string, n: number) => {
-      const b = el('button', { type: 'button', class: 'objs-nav-item', 'aria-pressed': String(folder === key) }, el('span', { class: 'objs-nav-name' }, label), el('span', { class: 'objs-nav-count' }, String(n)));
-      b.dataset.focus = `folder:${key}`;
-      b.addEventListener('click', () => {
+    const navItem = (key: OpeningKind | 'all', label: string, n: number) =>
+      folderButton(key, label, n, folder === key, () => {
         folder = key;
         scrolled = 0;
         dialog.redraw();
       });
-      return b;
-    };
     nav.append(
       navItem('all', t('opstore.all'), found.length),
       navItem('door', t('opstore.doors'), found.filter((m) => m.kind === 'door').length),

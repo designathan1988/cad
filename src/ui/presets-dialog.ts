@@ -15,8 +15,8 @@ import { previewMesh } from '../elements/object/textures';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { getLang, type MessageKey, t } from '../i18n/messages';
-import { icon } from '../i18n/icons';
 import { meshSnapshot } from './object-snapshot';
+import { folderButton, iconButton, storeSearch } from './store-parts';
 
 const words = (x: Words) => (getLang() === 'pt' ? x.pt : x.en);
 /** The scene's own materials, as the 3D view's (scene-3d.ts) in the light style. */
@@ -96,30 +96,20 @@ export function showPresets(app: App, slot?: PresetSlot): void {
     if (!shown.some((p) => p.id === chosen)) chosen = shown[0]?.id ?? '';
     const preset = shown.find((p) => p.id === chosen);
 
-    const search = el('input', { type: 'search', class: 'objs-search', placeholder: t('prstore.search'), 'aria-label': t('prstore.search') });
-    search.value = query;
-    search.dataset.focus = 'search';
-    search.addEventListener('input', () => {
-      query = search.value;
+    const search = storeSearch(t('prstore.search'), query, (value) => {
+      query = value;
       if (query.trim() !== '') folder = 'all';
       dialog.redraw();
     });
-    const closeBtn = el('button', { type: 'button', class: 'icon-btn', 'aria-label': t('help.close'), title: t('help.close') });
-    closeBtn.innerHTML = icon('close', 18);
-    closeBtn.dataset.focus = 'close';
-    closeBtn.addEventListener('click', close);
+    const closeBtn = iconButton('close', t('help.close'), 'close', close);
     const head = el('div', { class: 'objs-head' }, el('h2', {}, t('prstore.title')), search, el('span', { class: 'objs-total' }, t('opstore.count', { n: found.length })), closeBtn);
 
     const nav = el('nav', { class: 'objs-nav', 'aria-label': t('objs.folders') });
-    const navItem = (key: PresetSlot | 'all', label: string, n: number) => {
-      const b = el('button', { type: 'button', class: 'objs-nav-item', 'aria-pressed': String(folder === key) }, el('span', { class: 'objs-nav-name' }, label), el('span', { class: 'objs-nav-count' }, String(n)));
-      b.dataset.focus = `folder:${key}`;
-      b.addEventListener('click', () => {
+    const navItem = (key: PresetSlot | 'all', label: string, n: number) =>
+      folderButton(key, label, n, folder === key, () => {
         folder = key;
         dialog.redraw();
       });
-      return b;
-    };
     nav.append(navItem('all', t('opstore.all'), found.length), ...FOLDERS.map((f) => navItem(f, folderName(f), found.filter((p) => p.slot === f).length)));
 
     const place = (p: Preset) => {

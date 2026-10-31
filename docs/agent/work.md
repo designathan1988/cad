@@ -110,3 +110,10 @@ commit (en) + push; update this notebook + STATE.md.
     round-trip byte-equal, 0 console errors); history.md update; memory files for new learnings.
 
 Defects found on the way are fixed at cause in their own commit (before/after captures), per the order.
+
+## 2026-10-30, refactor stage 6 (owner's order: split big files, merge duplicates, one owner per state, typed IDs; stop when check-architecture is zero)
+check-architecture at zero (direction 0, mutableLets 0, oversize 0, duplications 0) at the commit after 8d9b771. Every piece: tsc 0, gate not
+worse, headless gestures + screenshots (scratchpad pw/drive.cjs, port 5180; the owner forbade the visible browser), commit, push.
+One owner per state done where a split needed it: PointerState (input.ts lets + get/set bridge), EditorState (object editor lets).
+NOT done (stop condition reached first): UiState flags as state machines (tool -> submode -> drag, view, lifecycle) and typed IDs per kind.
+Known, not caused here: object-snapshot.ts sets PCFSoftShadowMap (three warns); three-bvh-csg maxLeafSize warnings.

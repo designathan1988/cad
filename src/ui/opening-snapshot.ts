@@ -7,7 +7,7 @@ import type { Point2 } from '../model/vector';
 import { openingParts } from '../elements/opening/parts';
 import { newOpening } from '../elements/opening/schema';
 import type { OpeningModel } from '../elements/opening/style';
-import { prism } from '../elements/prisms';
+import { partPrism, prism } from '../elements/prisms';
 import { meshSnapshot } from './object-snapshot';
 import { materialIn, SEE_THROUGH } from '../elements/material/schema';
 import { previewMesh } from '../elements/object/textures';
@@ -42,13 +42,7 @@ export function openingSnapshot(m: OpeningModel, w: number, h: number): string |
   // A floor under it, a little wider than the wall.
   meshes.push(new THREE.Mesh(prism([{ x: -MARGIN - 0.2, y: -0.6 }, { x: width + MARGIN + 0.2, y: -0.6 }, { x: width + MARGIN + 0.2, y: 0.6 }, { x: -MARGIN - 0.2, y: 0.6 }], -0.02, 0), look('#b9b2a6', 0.8)));
   for (const part of openingParts({ opening, start: 0, end: width, bottom, top }, frame, false)) {
-    const geo = prism(part.polygon, part.bottom, part.top);
-    if (part.turn) {
-      const { origin, axis, angle } = part.turn;
-      const o3 = new THREE.Vector3(origin.x, origin.z, -origin.y);
-      const r = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(axis.x, 0, -axis.y).normalize(), angle);
-      geo.applyMatrix4(new THREE.Matrix4().makeTranslation(-o3.x, -o3.y, -o3.z)).applyMatrix4(r).applyMatrix4(new THREE.Matrix4().makeTranslation(o3.x, o3.y, o3.z));
-    }
+    const geo = partPrism(part);
     // In the model's own materials where it sets them (frosted glass too), else a timber leaf in a white frame.
     const own = part.role === 'leaf' ? m.style.leafMaterial : part.role === 'frame' ? m.style.frameMaterial : m.style.glazing === 'frosted' ? 'frostedGlass' : undefined;
     if (own) {

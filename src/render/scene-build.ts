@@ -6,7 +6,7 @@ import type { DerivedGeometry, OpeningSolid, WallSolid } from '../project/derive
 import type { WallId } from '../elements/wall/schema';
 import { blockPaint, type Paint } from './wall-paint';
 import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
-import { prism, shownPrism, slopedPrism, toThree } from '../elements/prisms';
+import { partPrism, prism, shownPrism, slopedPrism, toThree } from '../elements/prisms';
 import { eachSolid } from '../elements/registry';
 import { featureEdges, type SlopedTop, underSlopes } from '../elements/wall/geometry/edges';
 import { openingParts } from '../elements/opening/parts';
@@ -46,14 +46,7 @@ export function buildOpening(view: Scene3D, o: OpeningSolid, state: 'p' | 's' | 
     // Its own materials where its style sets them (frosted glass seen through, as the materials' glass is).
     const own = part.role === 'leaf' ? o.looks?.leaf : part.role === 'glass' ? o.looks?.glass : o.looks?.frame;
     const mat = shown ?? (own ? layerMaterial(view, own) : part.role === 'leaf' ? m.leaf : part.role === 'glass' ? m.glass : m.frame);
-    const geo = prism(part.polygon, part.bottom, part.top);
-    if (part.turn) {
-      // Tilted about its level axis: three.js's (x, height, −y) for the plan's (x, y, height).
-      const { origin, axis, angle } = part.turn;
-      const o3 = new THREE.Vector3(origin.x, origin.z, -origin.y);
-      const r = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(axis.x, 0, -axis.y).normalize(), angle);
-      geo.applyMatrix4(new THREE.Matrix4().makeTranslation(-o3.x, -o3.y, -o3.z)).applyMatrix4(r).applyMatrix4(new THREE.Matrix4().makeTranslation(o3.x, o3.y, o3.z));
-    }
+    const geo = partPrism(part);
     group.add(new THREE.Mesh(geo, [mat, mat]), outline(view, geo));
   }
   return group;

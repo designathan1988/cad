@@ -14,9 +14,9 @@ import { previewMesh } from '../elements/object/textures';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { materialLabel, type MessageKey, t } from '../i18n/messages';
-import { icon } from '../i18n/icons';
 import { meshSnapshot } from './object-snapshot';
 import { lengthText } from '../i18n/units';
+import { iconButton, storeSearch } from './store-parts';
 
 const SIDE = 1;
 /** How much each layer under the top one reaches out further at the front corner (m). */
@@ -82,18 +82,12 @@ export function showFloors(app: App): void {
     const selected = doc.floors.filter((f) => app.ui.selection.has(f.id));
     const total = (k: string) => FLOOR_BUILDUPS[k]!.reduce((s, l) => s + l.thickness, 0);
 
-    const search = el('input', { type: 'search', class: 'objs-search', placeholder: t('flstore.search'), 'aria-label': t('flstore.search') });
-    search.value = query;
-    search.dataset.focus = 'search';
-    search.addEventListener('input', () => {
-      query = search.value;
+    const search = storeSearch(t('flstore.search'), query, (value) => {
+      query = value;
       scrolled = 0;
       dialog.redraw();
     });
-    const closeBtn = el('button', { type: 'button', class: 'icon-btn', 'aria-label': t('help.close'), title: t('help.close') });
-    closeBtn.innerHTML = icon('close', 18);
-    closeBtn.dataset.focus = 'close';
-    closeBtn.addEventListener('click', close);
+    const closeBtn = iconButton('close', t('help.close'), 'close', close);
     const head = el('div', { class: 'objs-head' }, el('h2', {}, t('flstore.title')), search, el('span', { class: 'objs-total' }, t('flstore.count', { n: shown.length })), closeBtn);
 
     pending = [];

@@ -15,10 +15,10 @@ import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { fieldsSection } from './fields';
 import { defaultName, name, t } from '../i18n/messages';
-import { icon } from '../i18n/icons';
 import { layerEditor } from './layer-editor';
 import { lengthText } from '../i18n/units';
 import { wallSnapshot } from './wall-snapshot';
+import { folderButton, iconButton, storeSearch, textButton } from './store-parts';
 
 /** Pictures by layers and materials: a type's picture is made again only when they change. */
 const pictures = new WeakMap<readonly Material[], WeakMap<readonly WallLayer[], Map<string, string | null>>>();
@@ -76,30 +76,14 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
     const type = doc.wallTypes.find((x) => x.id === chosen)!;
     const thickness = (layers: readonly WallLayer[]) => layers.reduce((s, l) => s + l.thickness, 0);
 
-    const search = el('input', { type: 'search', class: 'objs-search', placeholder: t('types.search'), 'aria-label': t('types.search') });
-    search.value = query;
-    search.dataset.focus = 'search';
-    search.addEventListener('input', () => {
-      query = search.value;
+    const search = storeSearch(t('types.search'), query, (value) => {
+      query = value;
       if (query.trim() !== '') folder = ALL;
       scrolled = 0;
       dialog.redraw();
     });
-    const iconBtn = (iconName: Parameters<typeof icon>[0], label: string, focus: string, run: () => void) => {
-      const b = el('button', { type: 'button', class: 'icon-btn', 'aria-label': label, title: label });
-      b.innerHTML = icon(iconName, 18);
-      b.dataset.focus = focus;
-      b.addEventListener('click', run);
-      return b;
-    };
-    const textBtn = (label: string, focus: string, run: () => void) => {
-      const b = el('button', { type: 'button', class: 'icon-btn text-btn' }, label);
-      b.dataset.focus = focus;
-      b.addEventListener('click', run);
-      return b;
-    };
     // The new type is the chosen one before the command runs: the dialog redraws on it at once.
-    const add = textBtn(t('types.new'), 'new', () => {
+    const add = textButton(t('types.new'), 'new', () => {
       const id = newId('wt');
       chosen = id;
       // It starts from the chosen one's layers, under a name of its own.
@@ -112,20 +96,16 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
       search,
       el('span', { class: 'objs-total' }, t('types.count', { n: found.length })),
       add,
-      iconBtn('close', t('help.close'), 'close', close),
+      iconButton('close', t('help.close'), 'close', close),
     );
 
     const nav = el('nav', { class: 'objs-nav', 'aria-label': t('types.list') });
-    const navItem = (key: string, label: string, n: number) => {
-      const b = el('button', { type: 'button', class: 'objs-nav-item', 'aria-pressed': String(folder === key) }, el('span', { class: 'objs-nav-name' }, label), el('span', { class: 'objs-nav-count' }, String(n)));
-      b.dataset.focus = `folder:${key}`;
-      b.addEventListener('click', () => {
+    const navItem = (key: string, label: string, n: number) =>
+      folderButton(key, label, n, folder === key, () => {
         folder = key;
         scrolled = 0;
         dialog.redraw();
       });
-      return b;
-    };
     nav.append(navItem(ALL, t('types.all'), found.length), navItem(USED, t('objs.inProject'), inProject.length));
 
     pending = [];
@@ -177,7 +157,7 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
     });
     const n = used(type.id);
     side.append(draw, el('p', { class: 'objs-in-project' }, n === 0 ? t('types.unused') : n === 1 ? t('types.usedByOne') : t('types.usedBy', { n })));
-    const dup = textBtn(t('types.duplicate'), 'duplicate', () => {
+    const dup = textButton(t('types.duplicate'), 'duplicate', () => {
       const id = newId('wt');
       chosen = id;
       const copies = doc.wallTypes.filter((x) => x.name.startsWith(`${type.name} (`)).length;
@@ -186,7 +166,7 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
     const blocker = typeDeleteBlocker(doc, type.id);
     const action = t('types.deleteNamed', { name: name(type.name) });
     const why = blocker === 'inUse' ? t('types.cantDeleteInUse') : blocker === 'last' ? t('types.cantDeleteLast') : null;
-    const del = iconBtn('trash', action, 'delete', () => app.store.dispatch(deleteWallType(type.id)));
+    const del = iconButton('trash', action, 'delete', () => app.store.dispatch(deleteWallType(type.id)));
     del.disabled = why !== null;
     // What it does, then why it cannot.
     del.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;

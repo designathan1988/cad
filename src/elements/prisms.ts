@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { Point2 } from '../model/vector';
 import type { PrismFaces } from './wall/geometry/faces';
 import { planeAt, type TopPlane } from './wall/geometry/under-roof';
+import type { OpeningPart } from './opening/parts';
 
 export const toThree = (p: Point2, z: number) => new THREE.Vector3(p.x, z, -p.y);
 
@@ -290,4 +291,17 @@ export function railingGeometry(
   panes.setAttribute('position', new THREE.Float32BufferAttribute(glass, 3));
   panes.computeVertexNormals();
   return { frame, glass: panes };
+}
+
+/** A door's or window's part as a prism, tilted about its level axis when it turns (a top-hung sash):
+ * three.js's (x, height, −y) for the plan's (x, y, height). The 3D view and the openings' pictures share it. */
+export function partPrism(part: OpeningPart): THREE.BufferGeometry {
+  const geo = prism(part.polygon, part.bottom, part.top);
+  if (part.turn) {
+    const { origin, axis, angle } = part.turn;
+    const o3 = new THREE.Vector3(origin.x, origin.z, -origin.y);
+    const r = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(axis.x, 0, -axis.y).normalize(), angle);
+    geo.applyMatrix4(new THREE.Matrix4().makeTranslation(-o3.x, -o3.y, -o3.z)).applyMatrix4(r).applyMatrix4(new THREE.Matrix4().makeTranslation(o3.x, o3.y, o3.z));
+  }
+  return geo;
 }

@@ -2,17 +2,11 @@
  "direction": 0,
  "mutableLets": 0,
  "oversize": [],
- "duplications": 3,
+ "duplications": 0,
  "detail": {
   "direction": [],
   "mutableLets": [],
-  "oversize": [
-   "src/session/app.ts"
-  ],
-  "duplications": [
-   "src/render/scene-build.ts|src/ui/opening-snapshot.ts (12 grams)",
-   "src/ui/openings-dialog.ts|src/ui/presets-dialog.ts (3 grams)",
-   "src/ui/objects-dialog.ts|src/ui/types-dialog.ts (5 grams)"
-  ]
+  "oversize": [],
+  "duplications": []
  }
 }
