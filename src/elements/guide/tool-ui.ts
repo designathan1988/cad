@@ -5,10 +5,9 @@ import { parseLength } from '../../core/measure';
 import { type Point2, distance, normalize, sub } from '../../model/vector';
 import { draftAt, type GuideBase, newGuide } from './tool';
 import { addGuide, clearGuides } from './commands';
-import { GUIDE_PREFIX, type Guide, isLineGuide } from './schema';
+import { isLineGuide, newGuideId, type Guide } from './schema';
 import { solidsOf } from '../registry';
 import { guideKind } from '../kinds/guide';
-import { newId } from '../../core/id';
 import type { App } from '../../session/app';
 
 /** The guides of the level shown, unless hidden, as a move being dragged takes them. Plan only: they
@@ -27,7 +26,7 @@ export function setGuideTool(app: App, mode: GuideMode): void {
 export function guideClick(app: App, p: Point2): void {
   const ui = app.ui;
   const make = (g: Omit<Guide, 'id' | 'levelId'>) => {
-    app.store.dispatch(addGuide({ id: newId(GUIDE_PREFIX), levelId: ui.levelId, ...g }));
+    app.store.dispatch(addGuide({ id: newGuideId(), levelId: ui.levelId, ...g }));
     ui.guideFrom = null;
     ui.info = t('hint.guideMade');
     app.render();
@@ -48,7 +47,7 @@ export function guideClick(app: App, p: Point2): void {
 export function guideRadius(app: App, radius: number): boolean {
   const from = app.ui.guideFrom;
   if (app.ui.tool !== 'guide' || app.ui.guideMode !== 'circle' || !from || radius < MIN_GUIDE_RUN) return false;
-  app.store.dispatch(addGuide({ id: newId(GUIDE_PREFIX), levelId: app.ui.levelId, point: from, dir: { x: 1, y: 0 }, shape: 'circle', radius }));
+  app.store.dispatch(addGuide({ id: newGuideId(), levelId: app.ui.levelId, point: from, dir: { x: 1, y: 0 }, shape: 'circle', radius }));
   app.ui.guideFrom = null;
   app.ui.info = t('hint.guideMade');
   app.render();
@@ -103,7 +102,7 @@ export function placeGuide(app: App, offset = guideOffset(app)): void {
   if (!g || offset === null) return;
   app.ui.guide = null;
   app.shell.measure.value = '';
-  app.store.dispatch(addGuide(newGuide(newId(GUIDE_PREFIX), app.ui.levelId, g, offset)));
+  app.store.dispatch(addGuide(newGuide(newGuideId(), app.ui.levelId, g, offset)));
 }
 
 export function cancelGuide(app: App): void {

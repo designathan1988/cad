@@ -6,8 +6,18 @@
 import type { Point2 } from '../../model/vector';
 import type { OpeningId } from '../opening/schema';
 import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const DIM_PREFIX = 'dim';
+
+/** A dimension's id (dim…). */
+export type DimensionId = Brand<'dimension'>;
+
+/** A new dimension's id. */
+export const newDimensionId = (): DimensionId => newId(DIM_PREFIX) as DimensionId;
+
+/** The id of the dimension being drawn, before it is placed in the document. */
+export const DRAFT_DIMENSION_ID = '' as DimensionId;
 
 /**
  * Where an end of a dimension is held. On a wall: from its start or its end, `along` metres into it along
@@ -21,7 +31,7 @@ export type DimAnchor =
   | { readonly kind: 'point'; readonly at: Point2 };
 
 export interface Dimension {
-  readonly id: string;
+  readonly id: DimensionId;
   readonly levelId: LevelId;
   readonly a: DimAnchor;
   readonly b: DimAnchor;

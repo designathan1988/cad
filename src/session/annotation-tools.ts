@@ -3,22 +3,22 @@
 import type { App } from './app';
 import { distance, type Point2 } from '../model/vector';
 import { MIN_WALL_LENGTH } from '../model/tolerance';
-import { type Grid, GRID_PREFIX, nextGridName } from '../elements/grid/schema';
+import { newGridId, nextGridName, type Grid } from '../elements/grid/schema';
 import { addGrid } from '../elements/grid/commands';
-import { newId } from '../core/id';
 import { t } from '../i18n/messages';
 import { solidsOf } from '../elements/registry';
 import { gridKind } from '../elements/kinds/grid';
 import { DIMENSION_IDLE, type DimensionToolEvent, dimensionTransition } from '../tools/dimension-tool';
-import { DIM_PREFIX, type Dimension } from '../elements/dimension/schema';
+import { newDimensionId, type Dimension } from '../elements/dimension/schema';
 import { anchorAt, offsetThrough, placeDimension } from '../elements/dimension/anchor';
 import { addDimension } from '../elements/dimension/commands';
 import type { PlanOverlay } from '../render/plan-types';
 import { lengthNum } from '../i18n/units';
 import { arcWallAt } from '../elements/measure/place';
 import { addMeasure } from '../elements/measure/commands';
-import { MEASURE_PREFIX } from '../elements/measure/schema';
+import { newMeasureId } from '../elements/measure/schema';
 import { NO_LEVEL } from '../project/doc';
+import { DRAFT_DIMENSION_ID } from '../elements/dimension/schema';
 
 /** The grid tool: a click starts an axis, the next ends it (named on from the last of its kind). */
 export function gridClick(app: App, p: Point2): void {
@@ -30,7 +30,7 @@ export function gridClick(app: App, p: Point2): void {
   if (distance(from, p) < MIN_WALL_LENGTH) return;
   const doc = app.store.get();
   const name = nextGridName(doc.grids, from, p);
-  app.store.dispatch(addGrid({ id: newId(GRID_PREFIX), name, start: from, end: p }));
+  app.store.dispatch(addGrid({ id: newGridId(), name, start: from, end: p }));
   app.ui.gridFrom = null;
   app.ui.info = t('hint.gridMade', { name });
   app.render();
@@ -66,7 +66,7 @@ export function dimensionEvent(app: App, event: DimensionToolEvent): void {
     const doc = app.store.get();
     const g = app.visibleGeometry();
     const dim: Dimension = {
-      id: newId(DIM_PREFIX),
+      id: newDimensionId(),
       levelId: app.ui.levelId,
       a: anchorAt(doc, g, app.ui.levelId, r.make.a),
       b: anchorAt(doc, g, app.ui.levelId, r.make.b),
@@ -86,7 +86,7 @@ export function dimensionDraft(app: App): (NonNullable<PlanOverlay['dimensionDra
   const a = s.a;
   const b = s.kind === 'placing' ? s.b : at;
   const offset = s.kind === 'placing' ? offsetThrough(a, b, at) : 0;
-  const p = placeDimension(app.store.get(), app.geometry, { id: '', levelId: NO_LEVEL, a: { kind: 'point', at: a }, b: { kind: 'point', at: b }, offset });
+  const p = placeDimension(app.store.get(), app.geometry, { id: DRAFT_DIMENSION_ID, levelId: NO_LEVEL, a: { kind: 'point', at: a }, b: { kind: 'point', at: b }, offset });
   return p ? { ...p, text: lengthNum(p.length) } : null;
 }
 
@@ -108,7 +108,7 @@ export function markClick(app: App, p: Point2): void {
       ui.info = t('hint.markNoArc');
       return app.render();
     }
-    app.store.dispatch(addMeasure({ id: newId(MEASURE_PREFIX), levelId: ui.levelId, type: 'radius', ...hit }));
+    app.store.dispatch(addMeasure({ id: newMeasureId(), levelId: ui.levelId, type: 'radius', ...hit }));
     return done('hint.markMade');
   }
   const draft = [...ui.markDraft, p];
@@ -118,7 +118,7 @@ export function markClick(app: App, p: Point2): void {
       ui.markDraft = draft;
       return app.render();
     }
-    app.store.dispatch(addMeasure({ id: newId(MEASURE_PREFIX), levelId: ui.levelId, type: 'coord', at: draft[0]!, label: draft[1]! }));
+    app.store.dispatch(addMeasure({ id: newMeasureId(), levelId: ui.levelId, type: 'coord', at: draft[0]!, label: draft[1]! }));
     return done('hint.markMade');
   }
   if (draft.length < 3) {
@@ -128,6 +128,6 @@ export function markClick(app: App, p: Point2): void {
   const [vertex, a, b] = draft as [Point2, Point2, Point2];
   if (distance(vertex, b) < MIN_WALL_LENGTH) return;
   const radius = Math.max(0.3, Math.min(distance(vertex, a), distance(vertex, b)) / 2);
-  app.store.dispatch(addMeasure({ id: newId(MEASURE_PREFIX), levelId: ui.levelId, type: 'angle', vertex, a, b, radius }));
+  app.store.dispatch(addMeasure({ id: newMeasureId(), levelId: ui.levelId, type: 'angle', vertex, a, b, radius }));
   done('hint.markMade');
 }

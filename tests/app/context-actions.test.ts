@@ -5,8 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { contextIds } from '../../src/session/context-actions';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { newOpening } from '../../src/elements/opening/schema';
-import { fid, lid, oid, rid, tid, wid } from '../ids';
+import { fid, lid, oid, rid, tid, wid, xid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import type { GuideId } from '../../src/elements/guide/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -70,7 +71,7 @@ describe('actions for the selection', () => {
 });
 
 describe('guides in the menu', () => {
-  const guide = { id: 'guide_1', levelId: lid('lvl_ground'), point: { x: 0, y: 1 }, dir: { x: 1, y: 0 } };
+  const guide = { id: xid<GuideId>('guide_1'), levelId: lid('lvl_ground'), point: { x: 0, y: 1 }, dir: { x: 1, y: 0 } };
   const withGuide: Doc = { ...doc, guides: [guide] };
 
   it('with nothing selected, deleting the guides of the level shown is offered only when it has some', () => {

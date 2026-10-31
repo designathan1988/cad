@@ -11,6 +11,7 @@ import { insideRing } from '../room/derive';
 import { placeDimension } from './anchor';
 import { DIM_PREFIX, type DimAnchor, type Dimension } from './schema';
 import type { LevelId } from '../../project/doc';
+import type { DimensionId } from './schema';
 
 /** How far the chain and the overall dimension stand off the face (m). */
 export const CHAIN_OFF = 0.6;
@@ -80,8 +81,8 @@ export function autoDimensions(doc: Doc, g: DerivedGeometry, levelId: LevelId, w
     // The line a → b runs along the wall, so its left is the wall's left: the outer face's side.
     const chain = id('chain');
     if (kept.length > 2)
-      for (let i = 0; i + 1 < kept.length; i++) out.push({ id: id(DIM_PREFIX), levelId, a: kept[i]!.a, b: kept[i + 1]!.a, offset: side * (from + CHAIN_OFF), chain });
-    out.push({ id: id(DIM_PREFIX), levelId, a: kept[0]!.a, b: kept.at(-1)!.a, offset: side * (from + (kept.length > 2 ? TOTAL_OFF : CHAIN_OFF)) });
+      for (let i = 0; i + 1 < kept.length; i++) out.push({ id: id(DIM_PREFIX) as DimensionId, levelId, a: kept[i]!.a, b: kept[i + 1]!.a, offset: side * (from + CHAIN_OFF), chain });
+    out.push({ id: id(DIM_PREFIX) as DimensionId, levelId, a: kept[0]!.a, b: kept.at(-1)!.a, offset: side * (from + (kept.length > 2 ? TOTAL_OFF : CHAIN_OFF)) });
   }
   return out;
 }

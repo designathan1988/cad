@@ -7,8 +7,15 @@ import { finite } from '../../core/guards';
 
 import type { Point2 } from '../../model/vector';
 import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const REFERENCE_PREFIX = 'ref';
+
+/** A reference drawing's id (reference…). */
+export type ReferenceId = Brand<'reference'>;
+
+/** A new reference's id. */
+export const newReferenceId = (): ReferenceId => newId(REFERENCE_PREFIX) as ReferenceId;
 
 export type ReferenceSource =
   /** A picture as a data URL, and its size (px). */
@@ -17,7 +24,7 @@ export type ReferenceSource =
   | { readonly kind: 'dxf'; readonly lines: readonly number[]; readonly w: number; readonly h: number };
 
 export interface Reference {
-  readonly id: string;
+  readonly id: ReferenceId;
   readonly levelId: LevelId;
   /** Its file's name. */
   readonly name: string;

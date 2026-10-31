@@ -8,13 +8,23 @@ import { finite } from '../../core/guards';
 
 import { type Point2, distance } from '../../model/vector';
 import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const SECTION_PREFIX = 'sec';
+
+/** A section or elevation mark's id (section…). */
+export type SectionId = Brand<'section'>;
+
+/** A new section's id. */
+export const newSectionId = (): SectionId => newId(SECTION_PREFIX) as SectionId;
+
+/** The id of the section being drawn, before it is placed in the document. */
+export const DRAFT_SECTION_ID = '' as SectionId;
 
 export type SectionKind = 'section' | 'elevation';
 
 export interface SectionMark {
-  readonly id: string;
+  readonly id: SectionId;
   /** "A", "B"… for a section; a side's name for an elevation. */
   readonly name: string;
   readonly kind: SectionKind;

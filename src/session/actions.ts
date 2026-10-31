@@ -4,10 +4,9 @@
 
 import { keyOf } from './keymap';
 import { ARRANGE_HOWS, arrangeNeeds } from '../tools/arrange';
-import { newId } from '../core/id';
 import { distributeOpenings } from '../elements/opening/commands';
 import { addZone } from '../elements/zone/commands';
-import { ZONE_COLOURS, ZONE_PREFIX } from '../elements/zone/schema';
+import { ZONE_COLOURS, newZoneId } from '../elements/zone/schema';
 import { words } from '../elements/object/fields';
 import { tBoth, name, t, type MessageKey } from '../i18n/messages';
 import type { App } from './app';
@@ -147,7 +146,7 @@ export function appActions(app: App, open: Openers): Action[] {
         const rooms = doc.rooms.filter((r) => ui.selection.has(r.id));
         const first = rooms[0];
         if (!first) return;
-        const id = newId(ZONE_PREFIX);
+        const id = newZoneId();
         store.dispatch(addZone({ id, levelId: first.levelId, name: t('zone.default', { n: doc.zones.length + 1 }), category: 'social', color: ZONE_COLOURS.social, rooms: rooms.filter((r) => r.levelId === first.levelId).map((r) => r.id) }));
         ui.selection = new Set([id]);
         appSettings.showProperties(app);

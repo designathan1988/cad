@@ -4,13 +4,20 @@
 
 import { add, type Point2, scale } from '../../model/vector';
 import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const COLUMN_PREFIX = 'column';
+
+/** A column's id (column…). */
+export type ColumnId = Brand<'column'>;
+
+/** A new column's id. */
+export const newColumnId = (): ColumnId => newId(COLUMN_PREFIX) as ColumnId;
 /** A new column's section (m): 25 × 25 cm. */
 export const COLUMN_SIZE = 0.25;
 
 export interface Column {
-  readonly id: string;
+  readonly id: ColumnId;
   readonly levelId: LevelId;
   /** Its centre. */
   readonly at: Point2;

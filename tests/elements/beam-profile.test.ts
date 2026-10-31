@@ -5,9 +5,9 @@ import { newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import { type Beam, beamSection } from '../../src/elements/beam/schema';
 import { beamKind, type BeamSolid } from '../../src/elements/kinds/beam';
-import { lid } from '../ids';
+import { lid, xid } from '../ids';
 
-const beam = (extra: Partial<Beam> = {}): Beam => ({ id: 'beam_b', levelId: lid('lvl_ground'), start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, width: 0.15, depth: 0.4, ...extra });
+const beam = (extra: Partial<Beam> = {}): Beam => ({ id: xid('beam_b'), levelId: lid('lvl_ground'), start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, width: 0.15, depth: 0.4, ...extra });
 
 describe('beams', () => {
   it("an I's section is its flanges and web, inside its width and depth", () => {

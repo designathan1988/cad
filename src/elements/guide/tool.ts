@@ -11,6 +11,7 @@ import { faceOffsets, wallDirection, wallNormal } from '../wall/geometry/offset'
 import { shapeOf } from '../wall/geometry/shape';
 import { GRID_STEP } from '../../model/tolerance';
 import type { LevelId } from '../../project/doc';
+import type { GuideId } from './schema';
 
 /** What a guide is set off from: a line, and the band its body takes across it (a wall's faces). */
 export interface GuideBase {
@@ -92,6 +93,6 @@ export function guideMeasure(d: GuideDraft, offset = d.offset): { a: Point2; b: 
   return { a, b: add(a, scale(n, d.side * offset)) };
 }
 
-export function newGuide(id: string, levelId: LevelId, d: GuideDraft, offset = d.offset): Guide {
+export function newGuide(id: GuideId, levelId: LevelId, d: GuideDraft, offset = d.offset): Guide {
   return { id, levelId, ...guideLine(d, offset) };
 }

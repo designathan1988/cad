@@ -9,10 +9,10 @@ import { calibrated, isReference, type Reference, referenceCorners, referencePoi
 import { readDxfLines } from '../../src/io/import-dxf';
 import { readProject, writeProject } from '../../src/project/file';
 import { rotation } from '../../src/elements/transform';
-import { lid } from '../ids';
+import { lid, xid } from '../ids';
 
 const pic: Reference = {
-  id: 'ref_1',
+  id: xid('ref_1'),
   levelId: lid('lvl_ground'),
   name: 'planta.png',
   source: { kind: 'image', data: 'data:image/png;base64,AAAA', w: 1000, h: 500 },
@@ -52,7 +52,7 @@ describe('a reference placed', () => {
   });
 
   it('turned a quarter about a point: its corner goes round, its turn is a quarter', () => {
-    const r = referenceKind.mapped(pic, rotation({ x: 0, y: 0 }, Math.PI / 2), 'ref_1');
+    const r = referenceKind.mapped(pic, rotation({ x: 0, y: 0 }, Math.PI / 2), xid('ref_1'));
     expect(r.at.x).toBeCloseTo(-1, 9);
     expect(r.at.y).toBeCloseTo(2, 9);
     expect(r.angle).toBeCloseTo(Math.PI / 2, 9);

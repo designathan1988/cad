@@ -9,6 +9,7 @@ import { shapeOf } from '../wall/geometry/shape';
 import type { DocWall } from '../../project/doc';
 import { angleBetween, type ArcFace, type Measure } from './schema';
 import type { LevelId } from '../../project/doc';
+import type { WallId } from '../wall/schema';
 
 /** An arc wall's circle at a line: its centre, radius, the angle its start is at and its signed sweep. */
 export interface PlacedArc {
@@ -68,8 +69,8 @@ export function placeMeasure(doc: Doc, m: Measure): Placed | null {
  * The arc wall on a level under a point (within `near` of its faces), with the line nearest the point and
  * how far along the arc it is; null when there is none.
  */
-export function arcWallAt(doc: Doc, levelId: LevelId, p: Point2, near: number): { wallId: string; face: ArcFace; t: number } | null {
-  let best: { wallId: string; face: ArcFace; t: number; d: number } | null = null;
+export function arcWallAt(doc: Doc, levelId: LevelId, p: Point2, near: number): { wallId: WallId; face: ArcFace; t: number } | null {
+  let best: { wallId: WallId; face: ArcFace; t: number; d: number } | null = null;
   for (const w of doc.walls) {
     if (w.levelId !== levelId || !w.bulge) continue;
     const lines = (['exterior', 'reference', 'interior'] as const).flatMap((face) => {

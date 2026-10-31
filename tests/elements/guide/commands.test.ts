@@ -7,9 +7,10 @@ import { deleteElements } from '../../../src/elements/opening/commands';
 import { addGuide, clearGuides } from '../../../src/elements/guide/commands';
 import { isGuideId } from '../../../src/elements/guide/schema';
 import { nudge } from '../../../src/tools/nudge';
-import { lid } from '../../ids';
+import { lid, xid } from '../../ids';
+import type { GuideId } from '../../../src/elements/guide/schema';
 
-const g = (id: string, levelId = 'lvl_ground') => ({ id, levelId: lid(levelId), point: { x: 0, y: 1 }, dir: { x: 1, y: 0 } });
+const g = (id: string, levelId = 'lvl_ground') => ({ id: xid<GuideId>(id), levelId: lid(levelId), point: { x: 0, y: 1 }, dir: { x: 1, y: 0 } });
 const doc: Doc = { ...newDocument(), levels: [...newDocument().levels, { id: lid('up'), name: 'Up', elevation: 3, height: 3 }], guides: [g('guide_a'), g('guide_b'), g('guide_c', 'up')] };
 
 describe('guides', () => {

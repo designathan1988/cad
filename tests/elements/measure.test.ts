@@ -10,18 +10,19 @@ import { arcWallAt, placeMeasure } from '../../src/elements/measure/place';
 import { angleBetween, type Measure } from '../../src/elements/measure/schema';
 import { readProject, writeProject } from '../../src/project/file';
 import { setLang } from '../../src/i18n/messages';
-import { lid, tid, wid } from '../ids';
+import { lid, tid, wid, xid } from '../ids';
+import type { MeasureId } from '../../src/elements/measure/schema';
 
 // A half circle of 2 m radius on its reference line (the centreline), from (0, 0) to (4, 0): bulge tan(π/4).
 const arcWall: DocWall = { id: wid('w_arc'), levelId: lid('lvl_ground'), wallTypeId: tid('wt_masonry15'), start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline', bulge: 1 };
 const doc: Doc = { ...newDocument(), walls: [arcWall] };
-const held = (type: 'radius' | 'diameter' | 'arc', face: 'exterior' | 'reference' | 'interior' = 'reference'): Measure => ({ id: 'meas_1', levelId: lid('lvl_ground'), type, wallId: wid('w_arc'), face, t: 0.5 });
+const held = (type: 'radius' | 'diameter' | 'arc', face: 'exterior' | 'reference' | 'interior' = 'reference'): Measure => ({ id: xid('meas_1'), levelId: lid('lvl_ground'), type, wallId: wid('w_arc'), face, t: 0.5 });
 
 describe('measures', () => {
   it('an angle between two arms, the smaller, in degrees', () => {
     expect(angleBetween({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 2 })).toBeCloseTo(90, 9);
     expect(angleBetween({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: -1, y: -1 })).toBeCloseTo(135, 9);
-    const at = placeMeasure(doc, { id: 'meas_a', levelId: lid('lvl_ground'), type: 'angle', vertex: { x: 0, y: 0 }, a: { x: 1, y: 0 }, b: { x: 1, y: -1 }, radius: 0.5 })!;
+    const at = placeMeasure(doc, { id: xid('meas_a'), levelId: lid('lvl_ground'), type: 'angle', vertex: { x: 0, y: 0 }, a: { x: 1, y: 0 }, b: { x: 1, y: -1 }, radius: 0.5 })!;
     // From the first arm to the second the short way: clockwise, 45°.
     expect(at.type === 'angle' && [at.value, at.sweep]).toEqual([expect.closeTo(45, 9), expect.closeTo(-Math.PI / 4, 9)]);
   });
@@ -46,7 +47,7 @@ describe('measures', () => {
   });
 
   it('deleting its wall deletes it; an angle stays', () => {
-    const angle: Measure = { id: 'meas_a', levelId: lid('lvl_ground'), type: 'angle', vertex: { x: 0, y: 0 }, a: { x: 1, y: 0 }, b: { x: 0, y: 1 }, radius: 0.5 };
+    const angle: Measure = { id: xid('meas_a'), levelId: lid('lvl_ground'), type: 'angle', vertex: { x: 0, y: 0 }, a: { x: 1, y: 0 }, b: { x: 0, y: 1 }, radius: 0.5 };
     const before: Doc = { ...doc, measures: [held('radius'), angle] };
     const after = dropKinds(before, new Set(['w_arc']), deriveGeometry(before));
     expect(after.measures.map((m) => m.id)).toEqual(['meas_a']);
@@ -78,19 +79,19 @@ describe('measures', () => {
     expect(measureText(placeMeasure(doc, held('diameter'))!)).toBe('Ø 4,00');
     expect(measureText({ type: 'coord', at: { x: 3.25, y: -1.5 }, label: { x: 4, y: 0 } })).toBe('x 3,25 · y -1,50');
     // A coordinate is picked anywhere along its text, which runs right from where it was put.
-    const c0: MeasureSolid = { m: { id: 'meas_c', levelId: lid('lvl_ground'), type: 'coord', at: { x: 0, y: 0 }, label: { x: 1, y: 0 } }, at: { type: 'coord', at: { x: 0, y: 0 }, label: { x: 1, y: 0 } } };
+    const c0: MeasureSolid = { m: { id: xid('meas_c'), levelId: lid('lvl_ground'), type: 'coord', at: { x: 0, y: 0 }, label: { x: 1, y: 0 } }, at: { type: 'coord', at: { x: 0, y: 0 }, label: { x: 1, y: 0 } } };
     expect(measureKind.hit(c0, { x: 1.8, y: 0.02 }, 0.05, 100)).toBe(true);
     expect(measureKind.hit(c0, { x: 2.5, y: 0 }, 0.05, 100)).toBe(false);
     // In the DXF (code page 1252): AutoCAD's codes for ° and Ø, the arc's length in words.
     expect(measureDxfText(placeMeasure(doc, held('diameter'))!)).toBe('%%c 4,00');
     expect(measureDxfText(placeMeasure(doc, held('arc'))!)).toBe('Arco 6,28');
     expect(measureDxfText({ type: 'angle', vertex: { x: 0, y: 0 }, radius: 1, start: 0, sweep: 1, value: 45, arms: [1, 1] })).toBe('45,0%%d');
-    const coord: Measure = { id: 'meas_c', levelId: lid('lvl_ground'), type: 'coord', at: { x: 3.25, y: -1.5 }, label: { x: 4, y: 0 } };
-    const withAll: Doc = { ...doc, measures: [held('arc'), coord, { id: 'meas_a', levelId: lid('lvl_ground'), type: 'angle', vertex: { x: 0, y: 0 }, a: { x: 1, y: 0 }, b: { x: 0, y: 1 }, radius: 0.5 }] };
+    const coord: Measure = { id: xid('meas_c'), levelId: lid('lvl_ground'), type: 'coord', at: { x: 3.25, y: -1.5 }, label: { x: 4, y: 0 } };
+    const withAll: Doc = { ...doc, measures: [held('arc'), coord, { id: xid('meas_a'), levelId: lid('lvl_ground'), type: 'angle', vertex: { x: 0, y: 0 }, a: { x: 1, y: 0 }, b: { x: 0, y: 1 }, radius: 0.5 }] };
     const r = readProject(writeProject(withAll));
     expect(r.ok && r.doc.measures).toEqual(withAll.measures);
     // A bad one is left out and said.
-    const bad = readProject(writeProject({ ...withAll, measures: [...withAll.measures, { ...coord, id: 'meas_x', at: { x: 'a' } } as unknown as Measure] }));
+    const bad = readProject(writeProject({ ...withAll, measures: [...withAll.measures, { ...coord, id: xid<MeasureId>('meas_x'), at: { x: 'a' } } as unknown as Measure] }));
     expect(bad.ok && bad.doc.measures.length).toBe(3);
   });
 });

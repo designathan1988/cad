@@ -15,8 +15,9 @@ import { readProject, writeProject } from '../../src/project/file';
 import { newOpening } from '../../src/elements/opening/schema';
 import { levelOfSolid } from '../../src/elements/registry';
 import { sectionKind } from '../../src/elements/kinds/section';
-import { lid, oid, rid, tid, wid } from '../ids';
+import { lid, oid, rid, tid, wid, xid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import type { SectionId } from '../../src/elements/section/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -32,7 +33,7 @@ const box = (southY = 0): Doc => ({
   walls: [wall(wid('w1'), [0, southY], [4, southY]), wall(wid('w2'), [4, southY], [4, 3]), wall(wid('w3'), [4, 3], [0, 3]), wall(wid('w4'), [0, 3], [0, southY])],
 });
 
-const across: SectionMark = { id: 'sec_a', name: 'A', kind: 'section', start: { x: 1, y: -1 }, end: { x: 1, y: 4 }, depth: 5 };
+const across: SectionMark = { id: xid('sec_a'), name: 'A', kind: 'section', start: { x: 1, y: -1 }, end: { x: 1, y: 4 }, depth: 5 };
 
 /** The cut's extent along the line and up, per closed outline. */
 // The outlines of what is cut: the walls' over their layers (lines alone), any other group's own; a
@@ -158,7 +159,7 @@ describe('a section drawn from the model', () => {
     expect(lookOf(north)).toEqual({ x: expect.closeTo(0, 9), y: 1 });
     expect(north.depth).toBeCloseTo(2.85 - 0.01 + 0.3, 9);
     const solids = modelSolids(doc, deriveGeometry(doc));
-    const ground = sectionDrawing(doc, solids, { id: 'sec_n', name: '1-N', kind: 'elevation', ...north, levelId: lid('lvl_ground') });
+    const ground = sectionDrawing(doc, solids, { id: xid('sec_n'), name: '1-N', kind: 'elevation', ...north, levelId: lid('lvl_ground') });
     // The north wall's inside face, 2.84 m beyond the line; nothing of the level above.
     expect(ground.faces.some((f) => Math.abs(f.depth - 2.84) < 1e-6)).toBe(true);
     expect(ground.box!.min.y).toBeCloseTo(0, 6);
@@ -172,13 +173,13 @@ describe('a section drawn from the model', () => {
       [4.15, 4.3, 0, 2.8],
     ]);
     // On the upper level: from its floor, 2.8, to its ceiling; its dimensions measured from its floor.
-    const up = sectionDrawing(doc, solids, { id: 'sec_n2', name: '1-N', kind: 'elevation', ...north, levelId: lid('lvl_1') });
+    const up = sectionDrawing(doc, solids, { id: xid('sec_n2'), name: '1-N', kind: 'elevation', ...north, levelId: lid('lvl_1') });
     expect(up.box!.min.y).toBeCloseTo(2.8, 6);
     expect(up.box!.max.y).toBeCloseTo(5.6, 6);
     expect(up.base).toBe(2.8);
     expect(sectionDims(up)!.heights).toEqual([2.8, expect.closeTo(5.6, 6)]);
     // Without a level, the whole height as before.
-    const whole = sectionDrawing(doc, solids, { id: 'sec_n3', name: 'N', kind: 'elevation', ...north });
+    const whole = sectionDrawing(doc, solids, { id: xid('sec_n3'), name: 'N', kind: 'elevation', ...north });
     expect(whole.box!.max.y).toBeCloseTo(5.6, 6);
     expect(whole.base).toBe(0);
   });
@@ -281,7 +282,7 @@ describe('the lines of a face', () => {
 describe('section marks', () => {
   it('a new section is lettered on from the last; a mark looks to the left of its line', () => {
     expect(nextSectionName([])).toBe('A');
-    expect(nextSectionName([across, { ...across, id: 'sec_b', name: 'B' }])).toBe('C');
+    expect(nextSectionName([across, { ...across, id: xid('sec_b'), name: 'B' }])).toBe('C');
     expect(lookOf(across)).toEqual({ x: -1, y: 0 });
   });
 
@@ -297,7 +298,7 @@ describe('section marks', () => {
   });
 
   it('commands: renamed, deepened and turned round, each refusing what is not one', () => {
-    const doc = { ...box(), sections: [across, { ...across, id: 'sec_b', name: 'B' }] };
+    const doc = { ...box(), sections: [across, { ...across, id: xid<SectionId>('sec_b'), name: 'B' }] };
     expect(renameSection('sec_a', 'B').apply(doc)).toBe(doc);
     expect(renameSection('sec_a', '  ').apply(doc)).toBe(doc);
     expect(renameSection('sec_a', 'C').apply(doc).sections[0]!.name).toBe('C');

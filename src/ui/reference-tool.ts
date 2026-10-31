@@ -2,10 +2,9 @@
 // the current level's plan, and calibrated by two points of it and the distance between them typed.
 
 import type { App } from '../session/app';
-import { newId } from '../core/id';
 import type { Point2 } from '../model/vector';
 import { addReference, setReference } from '../elements/reference/commands';
-import { calibrated, DEFAULT_OPACITY, IMAGE_SCALE, REFERENCE_PREFIX, type Reference } from '../elements/reference/schema';
+import { DEFAULT_OPACITY, IMAGE_SCALE, calibrated, newReferenceId, type Reference } from '../elements/reference/schema';
 import { readDxfLines } from '../io/import-dxf';
 import { el, numberField } from './controls';
 import { openProjectDialog } from './dialog';
@@ -55,7 +54,7 @@ async function pdfPicture(file: File): Promise<string> {
 /** A file as a reference on the current level: its middle at the plan's, a DXF where its own coordinates put it. */
 export async function importReference(app: App, file: File): Promise<void> {
   const name = file.name;
-  const base = { id: newId(REFERENCE_PREFIX), levelId: app.ui.levelId, name, angle: 0, opacity: DEFAULT_OPACITY };
+  const base = { id: newReferenceId(), levelId: app.ui.levelId, name, angle: 0, opacity: DEFAULT_OPACITY };
   try {
     let r: Reference;
     if (/\.dxf$/i.test(name)) {

@@ -36,3 +36,6 @@ export const mid = (id: string): MaterialId => id as MaterialId;
 
 /** An object definition's id written in a test. */
 export const did = (id: string): DefinitionId => id as DefinitionId;
+
+/** Any other element's id written in a test (a guide's, a dimension's…): its type comes from where it goes. */
+export const xid = <I extends string>(id: string): I => id as I;

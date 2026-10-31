@@ -7,9 +7,9 @@ import { updateColumns } from '../../src/elements/column/commands';
 import { type Column, columnOutline } from '../../src/elements/column/schema';
 import type { ColumnSolid } from '../../src/elements/kinds/column';
 import { signedArea } from '../../src/elements/wall/geometry/convex';
-import { lid } from '../ids';
+import { lid, xid } from '../ids';
 
-const column = (extra: Partial<Column> = {}): Column => ({ id: 'column_c', levelId: lid('lvl_ground'), at: { x: 0, y: 0 }, width: 0.4, depth: 0.25, angle: 0, ...extra });
+const column = (extra: Partial<Column> = {}): Column => ({ id: xid('column_c'), levelId: lid('lvl_ground'), at: { x: 0, y: 0 }, width: 0.4, depth: 0.25, angle: 0, ...extra });
 
 describe('column sections', () => {
   it('each is counter-clockwise, with its area: rectangle, ellipse, I, H and L', () => {

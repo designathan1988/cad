@@ -8,8 +8,7 @@ import { evaluateObject } from '../../src/elements/object/evaluate';
 import { pieceOutline, pieceSpan } from '../../src/elements/object/piece-shape';
 import type { ObjectDefinition } from '../../src/elements/object/schema';
 import { isDefinition } from '../../src/elements/object/valid';
-import { lid, objid } from '../ids';
-import { did } from '../ids';
+import { did, lid, objid } from '../ids';
 
 /** An L-shaped counter: its arms as wide as `fundo`, its length `largura`, `lado` the other arm. */
 const counter: ObjectDefinition = {

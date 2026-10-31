@@ -6,7 +6,8 @@ import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { draftAt, guideBaseAt, guideLine, guideMeasure, newGuide } from '../../src/elements/guide/tool';
 import { vec } from '../../src/model/vector';
 import type { WallId } from '../../src/elements/wall/schema';
-import { lid, tid, wid } from '../ids';
+import { lid, tid, wid, xid } from '../ids';
+import type { GuideId } from '../../src/elements/guide/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
   id,
@@ -35,7 +36,7 @@ describe('what a guide is set off from', () => {
   });
 
   it('a guide, off any wall: a line without a body', () => {
-    const g = { id: 'guide_a', levelId: lid('lvl_ground'), point: vec(0, 2), dir: vec(1, 0) };
+    const g = { id: xid<GuideId>('guide_a'), levelId: lid('lvl_ground'), point: vec(0, 2), dir: vec(1, 0) };
     const withGuide = { ...doc, guides: [g] };
     expect(guideBaseAt(withGuide, lid('lvl_ground'), vec(40, 2.03), MPP)).toMatchObject({ guideId: 'guide_a', faces: [0, 0] });
     expect(guideBaseAt(withGuide, lid('lvl_ground'), vec(40, 2.03), MPP, { walls: true, guides: false })).toBeNull();
@@ -70,6 +71,6 @@ describe('the distance the pointer sets', () => {
     expect(m.a.x).toBeCloseTo(2.5, 12);
     expect(m.a.y).toBeCloseTo(0.1, 12);
     expect(m.b.y).toBeCloseTo(1.3, 12);
-    expect(newGuide('guide_x', lid('lvl_ground'), d, 1.2)).toMatchObject({ id: 'guide_x', levelId: lid('lvl_ground'), dir: vec(1, 0) });
+    expect(newGuide(xid('guide_x'), lid('lvl_ground'), d, 1.2)).toMatchObject({ id: xid<GuideId>('guide_x'), levelId: lid('lvl_ground'), dir: vec(1, 0) });
   });
 });

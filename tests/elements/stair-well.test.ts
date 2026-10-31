@@ -13,11 +13,12 @@ import { arrivalOf, levelReached, wellsReaching } from '../../src/elements/stair
 import { signedArea } from '../../src/elements/wall/geometry/convex';
 import { readProject, writeProject } from '../../src/project/file';
 import type { FloorSolid } from '../../src/elements/room/derive';
-import { fid, lid } from '../ids';
+import { fid, lid, xid } from '../ids';
+import type { RailingId } from '../../src/elements/railing/schema';
 
 const upper = { id: lid('lvl_up'), name: 'Upper', elevation: 2.8, height: 2.8 };
 const stair = (kind: Stair['kind'], extra: Partial<Stair> = {}): Stair => ({
-  id: 'stair_s',
+  id: xid('stair_s'),
   levelId: lid('lvl_ground'),
   kind,
   at: { x: 0, y: 0 },
@@ -88,7 +89,7 @@ describe('the guardrail round a well', () => {
     const s = stair('u');
     const solid = stairSolid(s, 2.8, 0);
     const [a, b] = arrivalOf(solid)!;
-    const railing = { id: 'railing_r', levelId: lid('lvl_up'), points: wellPath(stairWell(solid), a, b), height: 1.1, baseOffset: 0, host: { stairId: s.id } };
+    const railing = { id: xid<RailingId>('railing_r'), levelId: lid('lvl_up'), points: wellPath(stairWell(solid), a, b), height: 1.1, baseOffset: 0, host: { stairId: s.id } };
     const doc = docOf(s, { railings: [railing] });
     const moved = { ...doc, stairs: [{ ...s, at: { x: 1, y: 0 } }] };
     const r0 = deriveGeometry(doc).kinds.get('railings')!.get('railing_r') as RailingSolid;
@@ -103,7 +104,7 @@ describe('the guardrail round a well', () => {
 
 describe("the guardrail along a floor's edge", () => {
   it('goes all round its outline, closed, on its top; raising the floor takes it along', () => {
-    const r = { id: 'railing_e', levelId: lid('lvl_up'), points: [{ x: 0, y: 0 }, { x: 1, y: 0 }], height: 1.1, baseOffset: 0, host: { floorId: 'floor_f' } };
+    const r = { id: xid<RailingId>('railing_e'), levelId: lid('lvl_up'), points: [{ x: 0, y: 0 }, { x: 1, y: 0 }], height: 1.1, baseOffset: 0, host: { floorId: 'floor_f' } };
     const doc = docOf(stair('straight', { well: false }), { railings: [r] });
     const s = deriveGeometry(doc).kinds.get('railings')!.get('railing_e') as RailingSolid;
     expect(s.points).toHaveLength(5);

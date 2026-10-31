@@ -5,8 +5,15 @@
 
 import type { Point2 } from '../../model/vector';
 import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const CURTAIN_PREFIX = 'curtain';
+
+/** A curtain wall's id (curtain…). */
+export type CurtainId = Brand<'curtain'>;
+
+/** A new curtain's id. */
+export const newCurtainId = (): CurtainId => newId(CURTAIN_PREFIX) as CurtainId;
 
 /** How a direction is divided: every `value` metres from the start (the rest at the end), in `value`
  * equal parts, or in as few equal parts as keep each under `value` metres. */
@@ -16,7 +23,7 @@ export interface GridRule {
 }
 
 export interface Curtain {
-  readonly id: string;
+  readonly id: CurtainId;
   readonly levelId: LevelId;
   readonly start: Point2;
   readonly end: Point2;

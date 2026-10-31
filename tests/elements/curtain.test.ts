@@ -7,9 +7,9 @@ import { curtainSolid } from '../../src/elements/curtain/geometry';
 import { type Curtain, CURTAIN_DEFAULTS, gridLines } from '../../src/elements/curtain/schema';
 import { updateCurtains } from '../../src/elements/curtain/commands';
 import { readProject, writeProject } from '../../src/project/file';
-import { lid } from '../ids';
+import { lid, xid } from '../ids';
 
-const curtain: Curtain = { id: 'curtain_c', levelId: lid('lvl_ground'), start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, ...CURTAIN_DEFAULTS };
+const curtain: Curtain = { id: xid('curtain_c'), levelId: lid('lvl_ground'), start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, ...CURTAIN_DEFAULTS };
 
 describe('a curtain wall grid', () => {
   it('divides by a fixed distance (the rest at the end), a number, or a largest spacing', () => {

@@ -4,11 +4,18 @@
 
 import { add, normalize, perp, type Point2, scale, sub } from '../../model/vector';
 import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const SEPARATOR_PREFIX = 'sep';
 
+/** A room separator's id (separator…). */
+export type SeparatorId = Brand<'separator'>;
+
+/** A new separator's id. */
+export const newSeparatorId = (): SeparatorId => newId(SEPARATOR_PREFIX) as SeparatorId;
+
 export interface Separator {
-  readonly id: string;
+  readonly id: SeparatorId;
   readonly levelId: LevelId;
   readonly start: Point2;
   readonly end: Point2;

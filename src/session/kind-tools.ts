@@ -9,23 +9,22 @@ import { distance, type Point2 } from '../model/vector';
 import { MIN_WALL_LENGTH } from '../model/tolerance';
 import { t } from '../i18n/messages';
 import { addRailing } from '../elements/railing/commands';
-import { type Railing, RAILING_PREFIX } from '../elements/railing/schema';
+import { newRailingId, type Railing } from '../elements/railing/schema';
 import { addStair } from '../elements/stair/commands';
-import { type Stair, STAIR_PREFIX } from '../elements/stair/schema';
+import { newStairId, type Stair } from '../elements/stair/schema';
 import { addRoof } from '../elements/roof/commands';
 import { isConvex } from '../elements/roof/geometry';
-import { edgesFor, type Roof, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, ROOF_PREFIX, type RoofKind } from '../elements/roof/schema';
+import { ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, edgesFor, newRoofId, type Roof, type RoofKind } from '../elements/roof/schema';
 import { addBeam } from '../elements/beam/commands';
 import { addSeparator } from '../elements/separator/commands';
 import { addCurtain } from '../elements/curtain/commands';
-import { type Curtain, CURTAIN_PREFIX } from '../elements/curtain/schema';
-import { SEPARATOR_PREFIX } from '../elements/separator/schema';
-import { type Beam, BEAM_PREFIX } from '../elements/beam/schema';
+import { newCurtainId, type Curtain } from '../elements/curtain/schema';
+import { newSeparatorId } from '../elements/separator/schema';
+import { newBeamId, type Beam } from '../elements/beam/schema';
 import { addColumn } from '../elements/column/commands';
-import { type Column, COLUMN_PREFIX } from '../elements/column/schema';
+import { newColumnId, type Column } from '../elements/column/schema';
 import { addNote } from '../elements/note/commands';
-import { LEVEL_MARK_HEIGHT, NOTE_HEIGHT, NOTE_PREFIX } from '../elements/note/schema';
-import { newId } from '../core/id';
+import { LEVEL_MARK_HEIGHT, NOTE_HEIGHT, newNoteId } from '../elements/note/schema';
 import { signedArea } from '../elements/room/derive';
 import type { App } from './app';
 import { made, nextOf } from './next';
@@ -36,7 +35,7 @@ import { newObjectId } from '../elements/object/schema';
 /** A level mark where the menu was opened (or the middle of the view), selected: it says the level's height. */
 export function addLevelMarkHere(app: App, at?: Point2): void {
   const p = at ?? app.plan.center;
-  const id = newId(NOTE_PREFIX);
+  const id = newNoteId();
   app.store.dispatch(addNote({ id, levelId: app.ui.levelId, at: { x: p.x, y: p.y }, text: '', height: LEVEL_MARK_HEIGHT, elevation: { offset: 0 } }));
   if (app.ui.view !== 'plan') setView(app, 'plan');
   app.setTool('select');
@@ -52,7 +51,7 @@ export function addLevelMarkHere(app: App, at?: Point2): void {
 /** A text note where the menu was opened (or the middle of the view), selected, its text ready to type in the panel. */
 export function addNoteHere(app: App, at?: Point2, leader?: Point2): void {
   const p = at ?? app.plan.center;
-  const id = newId(NOTE_PREFIX);
+  const id = newNoteId();
   app.store.dispatch(addNote({ id, levelId: app.ui.levelId, at: { x: p.x, y: p.y }, text: t('note.default'), height: NOTE_HEIGHT, ...(leader ? { leader: { x: leader.x, y: leader.y } } : {}) }));
   if (app.ui.view !== 'plan') setView(app, 'plan');
   app.setTool('select');
@@ -78,7 +77,7 @@ export function railingFinish(app: App): void {
   const points = app.ui.railingDraft;
   app.ui.railingDraft = [];
   if (points.length < 2) return app.render();
-  const id = newId(RAILING_PREFIX);
+  const id = newRailingId();
   // As the next guardrail is set (next-element.ts): the last one made, else balusters, as the norm asks of an opening (railingGap).
   app.store.dispatch(addRailing(made<Railing>(app, 'railings', { id, points })));
   app.ui.info = t('hint.railingMade');
@@ -96,7 +95,7 @@ export function stairClick(app: App, p: Point2): void {
     return app.render();
   }
   if (distance(from, p) < 0.05) return;
-  const id = newId(STAIR_PREFIX);
+  const id = newStairId();
   app.store.dispatch(addStair(made<Stair>(app, 'stairs', { id, at: from, angle: Math.atan2(p.y - from.y, p.x - from.x) })));
   app.setTool('select');
   app.ui.selection = new Set([id]);
@@ -121,7 +120,7 @@ export function roofFinish(app: App): void {
   if (raw.length < 3) return app.render();
   // Counter-clockwise, so side i runs from corner i to corner i + 1 as roof/geometry.ts reads them.
   const outline = signedArea(raw) < 0 ? [...raw].reverse() : raw;
-  const id = newId(ROOF_PREFIX);
+  const id = newRoofId();
   // The next roof's (next-element.ts) form, grade, overhang, thickness and covering (a model from the store
   // sets them); a sloped form only over a convex outline, flat otherwise.
   const next = nextOf(app, 'roofs') as unknown as Roof;
@@ -145,7 +144,7 @@ export function beamClick(app: App, p: Point2): void {
     return app.render();
   }
   if (distance(from, p) < MIN_WALL_LENGTH) return;
-  app.store.dispatch(addBeam(made<Beam>(app, 'beams', { id: newId(BEAM_PREFIX), start: from, end: p })));
+  app.store.dispatch(addBeam(made<Beam>(app, 'beams', { id: newBeamId(), start: from, end: p })));
   // On from its end, as walls are drawn in a chain.
   app.ui.beamFrom = p;
   app.ui.info = t('hint.beamMade');
@@ -160,7 +159,7 @@ export function separatorClick(app: App, p: Point2): void {
     return app.render();
   }
   if (distance(from, p) < MIN_WALL_LENGTH) return;
-  app.store.dispatch(addSeparator({ id: newId(SEPARATOR_PREFIX), levelId: app.ui.levelId, start: from, end: p }));
+  app.store.dispatch(addSeparator({ id: newSeparatorId(), levelId: app.ui.levelId, start: from, end: p }));
   app.ui.beamFrom = p;
   app.ui.info = t('hint.separatorMade');
   app.render();
@@ -174,7 +173,7 @@ export function curtainClick(app: App, p: Point2): void {
     return app.render();
   }
   if (distance(from, p) < MIN_WALL_LENGTH) return;
-  app.store.dispatch(addCurtain(made<Curtain>(app, 'curtains', { id: newId(CURTAIN_PREFIX), start: from, end: p })));
+  app.store.dispatch(addCurtain(made<Curtain>(app, 'curtains', { id: newCurtainId(), start: from, end: p })));
   app.ui.beamFrom = p;
   app.ui.info = t('hint.curtainMade');
   app.render();
@@ -208,7 +207,7 @@ export function objectClick(app: App, p: Point2): void {
 
 /** The column tool: a click stands a column there, the section of the last one made. */
 export function columnClick(app: App, p: Point2): void {
-  const id = newId(COLUMN_PREFIX);
+  const id = newColumnId();
   app.store.dispatch(addColumn(made<Column>(app, 'columns', { id, at: { x: p.x, y: p.y } })));
   app.ui.info = t('hint.columnMade');
   app.render();

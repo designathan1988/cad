@@ -3,11 +3,18 @@
 // it is moved. Part of the project: saved, undone, moved as the rest.
 
 import { distance, dot, normalize, type Point2, sub } from '../../model/vector';
+import { type Brand, newId } from '../../core/id';
 
 export const GRID_PREFIX = 'grid';
 
+/** A grid axis's id (grid…). */
+export type GridId = Brand<'grid'>;
+
+/** A new grid's id. */
+export const newGridId = (): GridId => newId(GRID_PREFIX) as GridId;
+
 export interface Grid {
-  readonly id: string;
+  readonly id: GridId;
   /** "1", "2", "A", "B"…: what its bubbles say. */
   readonly name: string;
   readonly start: Point2;

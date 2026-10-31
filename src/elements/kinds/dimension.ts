@@ -109,7 +109,7 @@ export const dimensionKind: ElementKind<Dimension, DimensionSolid> = {
     };
     const a = end(d.a);
     const b = end(d.b);
-    return a && b ? { ...d, id: c.id, a, b, offset: wholeOffset } : null;
+    return a && b ? { ...d, id: c.to(d.id), a, b, offset: wholeOffset } : null;
   },
   plan: (p, s, lit) => {
     if (s.at) drawDimension(p, s.at, valueText(s), lit ? p.color('--wall-sel') : p.color('--text-2'), s.dim.locked !== undefined);

@@ -7,11 +7,18 @@
 
 import type { Point2 } from '../../model/vector';
 import type { LevelId } from '../../project/doc';
+import { type Brand, newId } from '../../core/id';
 
 export const GUIDE_PREFIX = 'guide';
 
+/** A guide's id (guide…). */
+export type GuideId = Brand<'guide'>;
+
+/** A new guide's id. */
+export const newGuideId = (): GuideId => newId(GUIDE_PREFIX) as GuideId;
+
 export interface Guide {
-  readonly id: string;
+  readonly id: GuideId;
   readonly levelId: LevelId;
   /** A point of the line and its unit direction: the line has no ends. A point guide's or a circle's centre. */
   readonly point: Point2;

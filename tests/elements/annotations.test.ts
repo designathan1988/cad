@@ -10,9 +10,9 @@ import { dropLeaders } from '../../src/elements/note/commands';
 import { leaderStart, type Note } from '../../src/elements/note/schema';
 import { layoutRoomTags } from '../../src/render/room-tags';
 import { setLang } from '../../src/i18n/messages';
-import { lid, rid } from '../ids';
+import { lid, rid, xid } from '../ids';
 
-const callout: Note = { id: 'note_c', levelId: lid('lvl_ground'), at: { x: 0, y: 0 }, text: 'Ver detalhe', height: 0.25, leader: { x: 3, y: 1 } };
+const callout: Note = { id: xid('note_c'), levelId: lid('lvl_ground'), at: { x: 0, y: 0 }, text: 'Ver detalhe', height: 0.25, leader: { x: 3, y: 1 } };
 
 describe('callouts', () => {
   it("the leader leaves the text's box on the way to its point", () => {
@@ -31,7 +31,7 @@ describe('callouts', () => {
 
   it('moved or turned, its arrow goes along; read from a file, a bad arrow drops the note', () => {
     expect(noteKind.moved(callout, { x: 1, y: 2 }).leader).toEqual({ x: 4, y: 3 });
-    const mirrored = noteKind.mapped(callout, { map: (p: { x: number; y: number }) => ({ x: -p.x, y: p.y }), factor: 1, mirror: true } as never, 'note_d');
+    const mirrored = noteKind.mapped(callout, { map: (p: { x: number; y: number }) => ({ x: -p.x, y: p.y }), factor: 1, mirror: true } as never, xid('note_d'));
     expect(mirrored.leader).toEqual({ x: -3, y: 1 });
     expect(noteKind.valid(callout)).toBe(true);
     expect(noteKind.valid({ ...callout, leader: { x: 'a', y: 1 } })).toBe(false);

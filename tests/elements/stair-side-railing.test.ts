@@ -9,11 +9,11 @@ import { type RailingSolid, railingKind } from '../../src/elements/kinds/railing
 import { postsOf, type Railing } from '../../src/elements/railing/schema';
 import { stairSolid } from '../../src/elements/stair/geometry';
 import { RAIL_HEIGHT, type Stair } from '../../src/elements/stair/schema';
-import { lid } from '../ids';
+import { lid, xid } from '../ids';
 
 const upper = { id: lid('lvl_up'), name: 'Upper', elevation: 2.8, height: 2.8 };
 const stair = (kind: Stair['kind'], extra: Partial<Stair> = {}): Stair => ({
-  id: 'stair_s',
+  id: xid('stair_s'),
   levelId: lid('lvl_ground'),
   kind,
   at: { x: 0, y: 0 },
@@ -23,7 +23,7 @@ const stair = (kind: Stair['kind'], extra: Partial<Stair> = {}): Stair => ({
   turn: 'left',
   ...extra,
 });
-const side = (n: number): Railing => ({ id: `railing_${n}`, levelId: lid('lvl_ground'), points: [{ x: 9, y: 9 }, { x: 10, y: 9 }], height: 1.1, baseOffset: 0, host: { stairId: 'stair_s', side: n }, infill: 'balusters' });
+const side = (n: number): Railing => ({ id: xid(`railing_${n}`), levelId: lid('lvl_ground'), points: [{ x: 9, y: 9 }, { x: 10, y: 9 }], height: 1.1, baseOffset: 0, host: { stairId: 'stair_s', side: n }, infill: 'balusters' });
 const docOf = (s: Stair, railings: Railing[]): Doc => ({ ...newDocument(), levels: [...newDocument().levels, upper], stairs: [s], railings });
 const solidOf = (doc: Doc, id: string) => deriveGeometry(doc).kinds.get('railings')!.get(id) as RailingSolid;
 
