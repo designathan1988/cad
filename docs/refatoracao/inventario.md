@@ -218,6 +218,8 @@ aqui fica a decisão por arquivo.
 | src/elements/object/fields.ts | mover | library/fields.ts |  |
 | src/elements/object/materials.ts | juntar | library/file.ts | 17 l |
 | src/elements/object/library.ts, src/elements/object/library-more.ts, src/elements/object/library-bath.ts, src/elements/object/library-bedroom.ts, src/elements/object/library-before65.ts, src/elements/object/library-before66.ts, src/elements/object/library-decor.ts, src/elements/object/library-equipment.ts, src/elements/object/library-kit.ts, src/elements/object/library-kitchen.ts, src/elements/object/library-lights.ts, src/elements/object/library-living.ts, src/elements/object/library-office.ts, src/elements/object/library-outdoor.ts, src/elements/object/library-sectors.ts | mover | library/catalog/*.ts | dados; sem mudança de conteúdo |
+| (novo no passo 6) src/elements/object/library-before66-a.ts | manter | object/library-before66-a.ts | 1a metade dos dados antes da v66 (estante, geladeira) |
+| (novo no passo 6) src/elements/object/library-before66-b.ts | manter | object/library-before66-b.ts | 2a metade dos dados antes da v66 (árvore, torre de forno) |
 | src/elements/object/library-families.ts | mover | library/catalog/families.ts |  |
 | src/elements/presets.ts | mover | library/presets.ts |  |
 | src/elements/kinds/object.ts | dividir | library/kind.ts + canvas/object-batch.ts | byMaterial/creaseEdges (3D batching) → canvas |

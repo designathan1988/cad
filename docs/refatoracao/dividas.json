@@ -2,7 +2,6 @@
  "direction": 0,
  "mutableLets": 0,
  "oversize": [
-  "src/elements/object/library-before66.ts",
   "src/render/plan-view.ts",
   "src/render/scene-3d.ts",
   "src/session/app.ts"
@@ -13,11 +12,9 @@
   "mutableLets": [],
   "oversize": [
    "src/elements/object/library-before66.ts",
-   "src/elements/wall/geometry/footprint.ts",
    "src/render/plan-view.ts",
    "src/render/scene-3d.ts",
-   "src/session/app.ts",
-   "src/ui/definition-editor.ts"
+   "src/session/app.ts"
   ],
   "duplications": [
    "src/render/scene-build.ts|src/ui/opening-snapshot.ts (12 grams)",
