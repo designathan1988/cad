@@ -3,11 +3,11 @@
 // height of the level, so it reads in depth), the line being drawn with its length, its start, and a
 // floor outline being drawn. Screen space, on a canvas laid over the WebGL one; it takes no pointer.
 
-import { snapMark } from './plan-view';
+import { snapMark } from './plan-text';
 import { drawObjectHandles, type ScreenHandle } from '../session/object-handles';
 import type { Point2 } from '../model/vector';
 import { BOX_FACES, type BoxFace, boxEdges, faceCenter, type SectionBox } from '../model/section-box';
-import { drawHandles } from './plan-view';
+import { drawHandles } from './plan-strokes';
 import type { Handles } from '../session/handles';
 
 export interface Overlay3DState {
