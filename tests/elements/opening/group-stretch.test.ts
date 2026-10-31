@@ -4,7 +4,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
-import { deriveGeometry, hostsIn } from '../../../src/project/derive';
+import { deriveGeometry } from '../../../src/project/derive';
+import { hostsIn } from '../../../src/project/derived-queries';
 import { deleteElements, distributeOpenings, setGroupSpacing } from '../../../src/elements/opening/commands';
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { newOpening, type Opening, type PositionRule } from '../../../src/elements/opening/schema';

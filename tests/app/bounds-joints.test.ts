@@ -3,7 +3,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
-import { boundsOf, deriveGeometry } from '../../src/project/derive';
+import { deriveGeometry } from '../../src/project/derive';
+import { boundsOf } from '../../src/project/derived-queries';
 import { newOpening } from '../../src/elements/opening/schema';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({

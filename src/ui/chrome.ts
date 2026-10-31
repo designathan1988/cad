@@ -15,7 +15,7 @@ import { keyHint } from './shell';
 import { kindOfId, levelOfSolid } from '../elements/registry';
 import { drawingOf, elementIds, wallNumber } from '../project/doc';
 import { SCALES } from '../elements/drawing/schema';
-import { boundsOf, openingOutline } from '../project/derive';
+import { boundsOf, openingOutline } from '../project/derived-queries';
 import { renderBrowser } from './browser';
 import { renderVisibility } from './visibility-panel';
 import { renderRibbonTab, renderRibbonTabs, type RibbonTab } from './ribbon';

@@ -2,7 +2,7 @@
 // what it shows, or a plan's level, zoom and position, under a name. In the document, so they go
 // with the file; saving and deleting one are undo steps. Going to one changes only the interface.
 
-import type { Category } from '../project/derive';
+import type { Category } from './derived-filters';
 import { nextName } from '../project/layer-sets';
 import { isCategoryList } from '../project/layer-sets';
 import type { Command } from '../core/store';

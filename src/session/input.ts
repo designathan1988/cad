@@ -20,7 +20,7 @@ import type { Point2 } from '../model/vector';
 import { snap } from './snap';
 import { t } from '../i18n/messages';
 import { el } from '../ui/controls';
-import { wallAt } from '../project/derive';
+import { wallAt } from '../project/derived-queries';
 import { aimAt, OPENING_PREVIEW_ID, wallUnderRay } from '../elements/opening/aim';
 import type { App } from './app';
 import { levelOf } from '../project/doc';

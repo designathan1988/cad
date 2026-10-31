@@ -87,7 +87,9 @@ export const SNAP_OF = {
   parallel: 'snap.parallelOf',
   intersection: 'snap.intersectionOf',
 } as const;
-import { applyTemporary, boundsOf, type Category, deriveGeometry, type DerivedGeometry, hideCategories, type OpeningSolid, type TemporaryView } from '../project/derive';
+import { deriveGeometry, type DerivedGeometry, type OpeningSolid } from '../project/derive';
+import { applyTemporary, type Category, hideCategories, type TemporaryView } from '../project/derived-filters';
+import { boundsOf } from '../project/derived-queries';
 import { markPoint, openingMarks } from '../elements/opening/marks';
 import { loadPrefs, savePrefs, scheduleSave, wireSaving } from '../project/persist';
 import type { Boot } from '../project/boot';

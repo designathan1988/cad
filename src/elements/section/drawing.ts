@@ -10,7 +10,8 @@
 
 import * as THREE from 'three';
 import { type Doc, levelOf } from '../../project/doc';
-import { type DerivedGeometry, hideCategories } from '../../project/derive';
+import { type DerivedGeometry } from '../../project/derive';
+import { hideCategories } from '../../project/derived-filters';
 import { type Point2, sub } from '../../model/vector';
 import type { Point3 } from '../../model/section-box';
 import { eachSolid } from '../registry';

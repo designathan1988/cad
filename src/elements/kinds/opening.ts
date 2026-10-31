@@ -4,7 +4,8 @@
 // the selection, the views' filters, picking, framing and select similar. The plan, the 3D, the GLB,
 // the DXF and the panel draw them with their walls.
 
-import { openingOutline, type OpeningSolid } from '../../project/derive';
+import { type OpeningSolid } from '../../project/derive';
+import { openingOutline } from '../../project/derived-queries';
 import { isObject } from '../../core/guards';
 import type { Point2 } from '../../model/vector';
 import type { ElementKind } from '../contract';

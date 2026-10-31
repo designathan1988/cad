@@ -4,7 +4,7 @@
 // that end is the same); a distributed group split by the cut is undone into plain positions.
 
 import type { Doc, DocWall } from '../project/doc';
-import { hostsIn } from '../project/derive';
+import { hostsIn } from '../project/derived-queries';
 import { MIN_WALL_LENGTH } from '../model/tolerance';
 import { cross, distance, dot, intersectLines, normalize, type Point2, sub } from '../model/vector';
 import { deriveOpenings, referenceLength } from '../elements/opening/derive';

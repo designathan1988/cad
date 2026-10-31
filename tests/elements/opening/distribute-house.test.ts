@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
-import { hostsIn } from '../../../src/project/derive';
+import { hostsIn } from '../../../src/project/derived-queries';
 import { distributeOpenings, updateOpening } from '../../../src/elements/opening/commands';
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { newOpening } from '../../../src/elements/opening/schema';

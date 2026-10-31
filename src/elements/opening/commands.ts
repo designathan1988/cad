@@ -7,7 +7,8 @@ import { MIN_ELEMENT_SIZE } from '../../model/tolerance';
 import { dropKinds, hasKinds } from '../registry';
 import { type Doc, wallHeights } from '../../project/doc';
 import type { Command } from '../../core/store';
-import { deriveGeometry, hostsIn } from '../../project/derive';
+import { deriveGeometry } from '../../project/derive';
+import { hostsIn } from '../../project/derived-queries';
 import { deriveOpenings, type HostInfo, type OpeningWarningKind, type PlacedOpening } from './derive';
 import type { AlignEdge, GroupSpacing, Opening, OpeningGroup, OpeningGroupId, OpeningId, PositionRule, RuleKind } from './schema';
 

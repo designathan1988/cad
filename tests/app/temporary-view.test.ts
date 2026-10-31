@@ -4,7 +4,8 @@
 import { floorsOf } from '../../src/elements/registry';
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
-import { applyTemporary, deriveGeometry } from '../../src/project/derive';
+import { deriveGeometry } from '../../src/project/derive';
+import { applyTemporary } from '../../src/project/derived-filters';
 import { newOpening } from '../../src/elements/opening/schema';
 
 const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({

@@ -2,29 +2,28 @@
 // never stored.
 
 import { separatorStrip } from '../elements/separator/schema';
-import { add, insidePolygon, polygonDistance, polylineDistance, type Point2, scale } from '../model/vector';
-import { deriveKinds, eachSolid, filterKinds, type KindSolids } from '../elements/registry';
+import { add, insidePolygon, type Point2 as P, type Point2, polygonDistance, scale } from '../model/vector';
+import { deriveKinds, type KindSolids } from '../elements/registry';
 import { deriveOpenings, hostsOf, type OpeningWarning, type PlacedOpening } from '../elements/opening/derive';
 import type { Opening, OpeningId } from '../elements/opening/schema';
-import { swingRegion, symbolLines } from '../elements/opening/symbol';
-import { type Block, cutPlan, cutSolid, type OpeningCut, type OpeningFrame, openingFrame } from '../elements/opening/void';
+import { swingRegion } from '../elements/opening/symbol';
+import { type Block, cutPlan, cutSolid, type OpeningCut, openingFrame, type OpeningFrame } from '../elements/opening/void';
 import { computeWallGeometry, type Piece } from '../elements/wall/geometry/footprint';
 import { area, clipHalfPlane, type ConvexPolygon, halfPlaneThrough, overlapArea, toCounterClockwise } from '../elements/wall/geometry/convex';
 import { faceOffsets, stationOf, wallLength, wallNormal } from '../elements/wall/geometry/offset';
 import { AREA_EPSILON, POINT_TOLERANCE } from '../model/tolerance';
-
-/** How far past the host's faces another wall still counts as meeting it inside an opening (m). */
-const JOINT_REACH = 0.01;
 import { shapeOf } from '../elements/wall/geometry/shape';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { WallId, WallLayer, WallType } from '../elements/wall/schema';
 import { layerSeams, type Seam } from '../elements/wall/geometry/seams';
 import { deriveRooms, type RoomSolid, type RoomWarning, spacesOf } from '../elements/room/derive';
 import type { RoomId } from '../elements/room/schema';
-import type { Point2 as P } from '../model/vector';
 import { type Material, materialIn } from '../elements/material/schema';
 import { CUT_HEIGHT, cutHeightOf, type Doc, type DocWall, levelOf, roofCoversOf, wallHeights, wallTop } from './doc';
 import { blocksUnder } from '../elements/wall/geometry/under-roof';
+
+/** How far past the host's faces another wall still counts as meeting it inside an opening (m). */
+const JOINT_REACH = 0.01;
 
 export type PlanCut = 'cut' | 'below' | 'above';
 
@@ -211,7 +210,7 @@ interface WallSlice {
  * its slice at the cut height (`cutOf`, absolute) when it crosses it, and otherwise the slice nearest
  * to it: its top one below the cut, its lowest above.
  */
-function wallPieces(
+export function wallPieces(
   walls: readonly DocWall[],
   types: ReadonlyMap<string, WallType>,
   heightOf: (w: DocWall) => { bottom: number; top: number },
@@ -266,7 +265,7 @@ function wallPieces(
  * reference line that their pieces cover within its faces (a hair beyond, as for an opening over a
  * joint). Corners at the wall's ends are not inside it.
  */
-function jointsIn(
+export function jointsIn(
   walls: readonly DocWall[],
   types: ReadonlyMap<string, WallType>,
   pieces: ReadonlyMap<WallId, readonly Piece[]>,
@@ -301,7 +300,7 @@ function jointsIn(
 }
 
 /** The absolute height where the plan of the wall's level cuts it. */
-function planCutHeight(doc: Doc, wall: DocWall): number {
+export function planCutHeight(doc: Doc, wall: DocWall): number {
   const level = levelOf(doc, wall.levelId);
   return (level?.elevation ?? 0) + (level ? cutHeightOf(level) : CUT_HEIGHT);
 }
@@ -311,7 +310,7 @@ function planCutHeight(doc: Doc, wall: DocWall): number {
  * wall): from the inner face of the one at its start to that of the one at its end, along its
  * reference line. A distributed group's spaces at the wall's ends are measured to these faces.
  */
-function endsIn(
+export function endsIn(
   walls: readonly DocWall[],
   types: ReadonlyMap<string, WallType>,
   pieces: ReadonlyMap<WallId, readonly Piece[]>,
@@ -348,136 +347,5 @@ function endsIn(
   return out;
 }
 
-/** Hosts for placing openings, with the joints inside each (which bound a distributed group's stretch). */
-export function hostsIn(doc: Doc, walls: readonly DocWall[] = doc.walls) {
-  const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
-  const pieces = wallPieces(walls, types, (w) => wallHeights(doc, w), (w) => planCutHeight(doc, w)).pieces;
-  return hostsOf(doc, walls, jointsIn(walls, types, pieces), endsIn(walls, types, pieces));
-}
-
-/** The opening's outline in plan: the jambs across the wall's thickness. */
-export function openingOutline(o: OpeningSolid): Point2[] {
-  const f = o.frame;
-  if (!f) return [];
-  const at = (p: Point2, k: number) => add(p, scale(f.normal, f.faces[k]!));
-  return [at(f.start, 0), at(f.end, 0), at(f.end, 1), at(f.start, 1)];
-}
-
-/** The opening whose outline contains p, last placed first. */
-/**
- * The door or window under p: inside its outline in the wall, or within `reach` (m) of it or of its
- * symbol (a door's leaf and swing, a window's panes), the nearest winning. Its symbol is what the plan
- * shows of it: a click on a door's leaf took the room behind it.
- */
-export function openingAt(g: DerivedGeometry, p: Point2, reach = 0): OpeningId | null {
-  let best: OpeningId | null = null;
-  let bestD = reach;
-  for (const o of [...g.openings.values()].reverse()) {
-    const outline = openingOutline(o);
-    if (insidePolygon(outline, p)) return o.opening.id;
-    if (reach <= 0) continue;
-    const d = Math.min(polygonDistance(outline, p), ...symbolLines(o, o.frame).map((line) => polylineDistance(line, p)));
-    if (d <= bestD) {
-      best = o.opening.id;
-      bestD = d;
-    }
-  }
-  return best;
-}
-
 // model/vector is the one copy of these; re-exported for the render and tools layers.
 export { polygonDistance, insidePolygon };
-
-/**
- * The wall whose drawn pieces contain p, topmost (last drawn) first; else the one whose pieces come
- * nearest p within `reach` (m): a wall 15 cm thick is a few pixels wide, and missing it by one took
- * the room beside it.
- */
-export function wallAt(g: DerivedGeometry, p: Point2, ids?: ReadonlySet<WallId>, reach = 0): WallId | null {
-  const list = [...g.solids.values()].reverse().filter((s) => !ids || ids.has(s.wall.id));
-  for (const s of list) if (s.pieces.some((piece) => insidePolygon(piece.polygon, p))) return s.wall.id;
-  let best: WallId | null = null;
-  let bestD = reach;
-  for (const s of reach > 0 ? list : []) {
-    const d = Math.min(...s.pieces.map((piece) => polygonDistance(piece.polygon, p)));
-    if (d <= bestD) {
-      best = s.wall.id;
-      bestD = d;
-    }
-  }
-  return best;
-}
-
-/** Bounding box of the drawn pieces and openings, or null when there is nothing. */
-export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: Point2; max: Point2 } | null {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  // Rooms and floors: their outlines.
-  const outlines = [
-    ...[...g.rooms.values()].filter((r) => !ids || ids.has(r.room.id)).map((r) => r.outline),
-    // A guide has no ends: its point only.
-    // A guide has no ends: its point only. A door with its swing (contract.ts: extent).
-    ...[...eachSolid(g.kinds)]
-      .filter((x) => !ids || ids.has(x.id))
-      .flatMap((x) => (x.kind.endless ? [x.kind.outlines(x.solid)[0]!.slice(0, 1)] : x.kind.extent ? [x.kind.extent(x.solid)] : x.kind.outlines(x.solid))),
-  ];
-  for (const v of outlines.flat()) {
-    minX = Math.min(minX, v.x);
-    minY = Math.min(minY, v.y);
-    maxX = Math.max(maxX, v.x);
-    maxY = Math.max(maxY, v.y);
-  }
-  return minX === Infinity ? null : { min: { x: minX, y: minY }, max: { x: maxX, y: maxY } };
-}
-
-/** Categories of elements the project browser can hide from view (not from the document). Guides have no geometry: the plan and the snaps leave them out themselves. */
-export type Category = 'walls' | 'openings' | 'rooms' | 'floors' | 'objects' | 'guides';
-
-/** The geometry without the hidden categories; the same object when nothing is hidden. */
-/**
- * Elements hidden or isolated for a while (Revit's Temporary Hide/Isolate, HH and HI): the document keeps
- * them, only the views leave them out. Hidden: those elements go, and the doors and windows of a hidden
- * wall with it. Isolated: only those stay, and the doors and windows of an isolated wall with it.
- */
-export interface TemporaryView {
-  readonly mode: 'hide' | 'isolate';
-  readonly ids: ReadonlySet<string>;
-}
-
-/** Whether an element shows in a temporary view (its doors and windows go with a wall: applyTemporary). */
-export const shownFor = (temp: TemporaryView | null, id: string): boolean => !temp || (temp.mode === 'hide' ? !temp.ids.has(id) : temp.ids.has(id));
-
-export function applyTemporary(g: DerivedGeometry, temp: TemporaryView | null): DerivedGeometry {
-  if (!temp) return g;
-  const keep = (id: string) => shownFor(temp, id);
-  const solids = new Map([...g.solids].filter(([id]) => keep(id)));
-  const openings = new Map(
-    [...g.openings].filter(([id, o]) => (temp.mode === 'hide' ? keep(id) && solids.has(o.opening.wallId) : keep(id) || solids.has(o.opening.wallId))),
-  );
-  return {
-    ...g,
-    solids,
-    openings,
-    rooms: new Map([...g.rooms].filter(([id]) => keep(id))),
-    // One held by a wall (a door) goes with it hidden, and stays with it isolated.
-    kinds: filterKinds(g.kinds, (k, x) => {
-      const e = k.element(x) as { readonly id: string };
-      const held = k.holders?.(e) ?? [];
-      return temp.mode === 'hide' ? keep(e.id) && held.every(keep) : keep(e.id) || held.some(keep);
-    }),
-  };
-}
-
-export function hideCategories(g: DerivedGeometry, hidden: ReadonlySet<Category>): DerivedGeometry {
-  if (hidden.size === 0) return g;
-  return {
-    ...g,
-    solids: hidden.has('walls') ? new Map() : g.solids,
-    openings: hidden.has('openings') ? new Map() : g.openings,
-    rooms: hidden.has('rooms') ? new Map() : g.rooms,
-    // Each kind with its category (structure with the walls, stairs and guardrails with the floors).
-    kinds: filterKinds(g.kinds, (k) => k.category === null || !hidden.has(k.category)),
-  };
-}

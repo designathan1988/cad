@@ -5,7 +5,7 @@
 // It only reads the state and calls the app.
 
 import type { App } from '../session/app';
-import type { Category } from '../project/derive';
+import type { Category } from '../project/derived-filters';
 import { el } from './controls';
 import { t, type MessageKey } from '../i18n/messages';
 import { icon } from '../i18n/icons';

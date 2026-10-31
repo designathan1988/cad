@@ -3,7 +3,8 @@
 import { floorsOf } from '../../src/elements/registry';
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
-import { deriveGeometry, hideCategories } from '../../src/project/derive';
+import { deriveGeometry } from '../../src/project/derive';
+import { hideCategories } from '../../src/project/derived-filters';
 import { typeUsage } from '../../src/session/browser-data';
 import { newOpening } from '../../src/elements/opening/schema';
 

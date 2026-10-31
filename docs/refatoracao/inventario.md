@@ -24,6 +24,8 @@ aqui fica a decisão por arquivo.
 | (movido no passo 4) src/elements/opening/keep.ts | mover | opening/keep.ts | anda com wall-stops |
 | (movido no passo 4) src/elements/wall/stops.ts | mover | wall/stops.ts | funde com a ideia de jointsIn/endsIn (uma implementação só) |
 | (movido no passo 4) src/project/derive.ts | dividir | project/derive/*.ts | deriveGeometry vira o orquestrador; jointsIn/endsIn fundidos em wall/stops; helpers p/ model; hideCategories → session |
+| (novo no passo 6) src/project/derived-queries.ts | manter | project/derived-queries.ts | consultas à geometria derivada (hostsIn, wallAt, openingAt, boundsOf), antes em derive.ts |
+| (novo no passo 6) src/project/derived-filters.ts | manter | project/derived-filters.ts | categorias ocultas e vista temporária sobre a geometria, antes em derive.ts |
 | (movido no passo 4) src/session/keep-in-view.ts | mover | session/view/keep.ts |  |
 | (movido no passo 4) src/session/dim-labels.ts | mover | canvas/plan/labels.ts |  |
 | (movido no passo 4) src/model/section-box.ts | mover | session/view/section-box.ts | topAt duplicado funde com section-drawing |

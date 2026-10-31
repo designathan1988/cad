@@ -7,7 +7,7 @@ import { t } from '../i18n/messages';
 import { type ViewId } from '../ui/shell';
 import { hasSolid } from '../elements/registry';
 import { levelOf } from '../project/doc';
-import { boundsOf } from '../project/derive';
+import { boundsOf } from '../project/derived-queries';
 import { savePrefs } from '../project/persist';
 import { fitFactor, keepInView } from './keep-in-view';
 import type { ViewKey } from './view-keys';

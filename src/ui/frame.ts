@@ -23,7 +23,7 @@ import { snapLabel } from '../session/snap';
 import { bulgeKeepingSide } from '../elements/wall/arc-edit';
 import { KINDS } from '../elements/registry';
 import { drawingOf, levelOf, wallNumber } from '../project/doc';
-import { shownFor } from '../project/derive';
+import { shownFor } from '../project/derived-filters';
 import { stackedSteps } from '../session/stacked';
 import { type TempDim, tempDims } from '../session/temp-dims';
 import { cutAt } from '../session/view/view-3d';

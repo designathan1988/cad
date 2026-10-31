@@ -7,7 +7,7 @@ import type { GuideMode } from '../elements/guide/tool-ui';
 
 
 
-import type { Category } from '../project/derive';
+import type { Category } from '../project/derived-filters';
 import type { DimensionToolState } from '../tools/dimension-tool';
 import type { Drag } from './drag';
 import type { GuideDraft } from '../elements/guide/tool';
@@ -22,7 +22,7 @@ import type { OpeningKind } from '../elements/opening/schema';
 import type { OpeningToolState } from '../elements/opening/tool';
 import type { Point2 } from '../model/vector';
 import type { Snap } from './snap';
-import type { TemporaryView } from '../project/derive';
+import type { TemporaryView } from '../project/derived-filters';
 import type { ToolId } from '../ui/shell';
 import type { View3D } from '../project/view-prefs';
 import type { ViewId } from '../ui/shell';

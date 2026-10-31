@@ -5,7 +5,8 @@
 import { wallsOnGrids } from '../elements/grid/carry';
 import { moveRooms, roomsGoingWith } from '../project/carry';
 import type { Doc } from '../project/doc';
-import { type DerivedGeometry, hostsIn } from '../project/derive';
+import { type DerivedGeometry } from '../project/derive';
+import { hostsIn } from '../project/derived-queries';
 import { dot, normalize, type Point2, sub } from '../model/vector';
 import { detachedFrom } from '../elements/opening/commands';
 import { deriveOpenings } from '../elements/opening/derive';

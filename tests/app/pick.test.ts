@@ -3,7 +3,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
-import { deriveGeometry, openingAt, wallAt } from '../../src/project/derive';
+import { deriveGeometry } from '../../src/project/derive';
+import { openingAt, wallAt } from '../../src/project/derived-queries';
 import { newOpening } from '../../src/elements/opening/schema';
 import { symbolLines } from '../../src/elements/opening/symbol';
 
