@@ -1,12 +1,12 @@
-// The ribbon (the interface model, docs/prototipo-interface: Revit's ribbon): tabs, and under the chosen
-// one its panels of buttons, large with the label under the icon or small with it beside. Every button
-// is an action of the app (app/actions.ts), so it has the palette's name, key and enabled state, and
-// only what the app does is on it. What does not fit scrolls sideways, never wraps.
-
 import type { Action } from '../session/actions';
 import { el } from './controls';
-import { t, type MessageKey } from '../i18n/messages';
+import { getLang, type MessageKey, t } from '../i18n/messages';
 import { icon, type IconName } from '../i18n/icons';
+import type { App } from '../session/app';
+import { contextEntries } from '../session/context-menu';
+import { ribbonTabs } from './ribbon-tabs';
+import { words } from '../elements/object/fields';
+
 
 export interface RibbonItem {
   /** The action it runs (app/actions.ts). */
@@ -187,4 +187,81 @@ export function renderRibbonTabs(box: HTMLElement, tabs: readonly RibbonTab[], c
     const left = active.offsetLeft - box.offsetLeft;
     if (left < box.scrollLeft || left + active.offsetWidth > box.scrollLeft + box.clientWidth) box.scrollLeft = Math.max(0, left - (box.clientWidth - active.offsetWidth) / 2);
   }
+}
+
+/**
+ * The ribbon's tabs and the chosen tab's panels (ui/ribbon.ts), from the app's actions: drawn again only
+ * when what they show changes (the tab, the language, an action's name, key, state or pressed state).
+ */
+export function renderRibbon(app: App): void {
+  const { shell } = app;
+  const list = app.actionList();
+  const actions = new Map(list.map((a) => [a.id, a]));
+  // The selection's own actions (the context menu's), for the contextual tab: ctx.<id>.
+  if (app.ui.selection.size > 0)
+    for (const e of contextEntries(app, () => app.openCommands())) actions.set(`ctx.${e.id}`, { id: `ctx.${e.id}`, label: e.label, group: 'edit', keywords: '', ...(e.keys ? { keys: e.keys } : {}), enabled: true, run: e.run });
+  const all = ribbonTabs(app);
+  // A placing tool's tab ("Place wall") is the tool strip over the drawing now, not a tab of the ribbon.
+  const placing = app.ui.tool !== 'select';
+  const placeTab = placing ? all.find((x) => x.context) : undefined;
+  const tabs = all.filter((x) => x !== placeTab);
+  if (!tabs.some((x) => x.id === app.ribbonTab) || app.ribbonTab === 'context') app.ribbonTab = tabs[0]!.id;
+  // The selection's tab (Modify | Wall) is shown, coloured apart, but never brought forward on its own:
+  // the ribbon jumped to it on every click on the model (R2). The floating bar and the right-click menu
+  // carry the selection's commands; a click on the tab opens it, until the selection changes.
+  const contextual = tabs.find((x) => x.context);
+  const selected = `${app.ui.tool} ${[...app.ui.selection].join(' ')}`;
+  if (!contextual || selected !== app.ribbonSelected) app.ribbonAway = true;
+  app.ribbonSelected = selected;
+  const shown = contextual && !app.ribbonAway ? contextual.id : app.ribbonTab;
+  const tab = tabs.find((x) => x.id === shown)!;
+  renderToolStrip(app, placeTab, actions);
+  const states = tab.panels.flatMap((p) => p.items.map((i) => {
+    const a = actions.get(i.id);
+    return a ? [i.id, a.label, a.keys ?? '', a.enabled, i.pressed?.() ?? null] : [i.id];
+  }));
+  // The selection too: the buttons run the actions made for it (the context's close over its ids), and kept
+  // from a selection of two, Distribute on three windows spread two of them.
+  const key = JSON.stringify([getLang(), shown, selected, tabs.map((x) => x.text ?? x.id), states, tab.panels.map((p) => p.key ?? '')]);
+  if (key === app.ribbonKey) return;
+  app.ribbonKey = key;
+  // Keep the focus on the same button, or in the same field, across the rebuild.
+  const active = document.activeElement instanceof HTMLElement && shell.ribbon.contains(document.activeElement) ? document.activeElement : null;
+  const focused = active?.dataset.action;
+  const field = active?.closest<HTMLElement>('[data-rf]')?.dataset.rf;
+  renderRibbonTabs(shell.tabs, tabs, shown, (id) => app.chooseRibbonTab(id), shell.fileMenu);
+  renderRibbonTab(shell.ribbon, tab, actions);
+  if (focused) shell.ribbon.querySelector<HTMLElement>(`[data-action="${focused}"]`)?.focus();
+  else if (field) shell.ribbon.querySelector<HTMLElement>(`[data-rf="${field}"] input, [data-rf="${field}"] select, [data-rf="${field}"] button`)?.focus();
+}
+
+/**
+ * The tool in use, over the top of the drawing: its name, its ways and types (the place tab's panels but
+ * Select, which Esc and the way out stand for), and the way out. Drawn again only when what it shows changes.
+ */
+export function renderToolStrip(app: App, tab: RibbonTab | undefined, actions: ReadonlyMap<string, Action>): void {
+  const { shell, ui } = app;
+  const on = ui.tool !== 'select';
+  shell.toolStrip.hidden = !on;
+  shell.toolDone.hidden = !on;
+  if (!on) {
+    delete shell.toolStrip.dataset.key;
+    return;
+  }
+  const panels = (tab?.panels ?? []).filter((p) => p.title !== 'rib.p.select');
+  const states = panels.flatMap((p) => p.items.map((i) => [i.id, actions.get(i.id)?.label ?? '', i.pressed?.() ?? null]));
+  const key = JSON.stringify([getLang(), ui.tool, tab?.text ?? '', states]);
+  if (shell.toolStrip.dataset.key === key) return;
+  shell.toolStrip.dataset.key = key;
+  shell.toolName.textContent = tab?.text ?? '';
+  shell.toolName.hidden = !tab?.text;
+  renderRibbonTab(shell.toolBody, { id: 'tool', title: 'rib.tab.context', panels }, actions);
+  shell.toolDone.replaceChildren(el('span', { class: 'label' }, t('opt.finish')), el('span', { class: 'kbd' }, 'Esc'));
+  shell.toolDone.title = t('opt.finishTip');
+}
+
+/** The object tool's definition, named in the interface's language. */
+export function objectName(app: App): string {
+  const def = app.store.get().definitions.find((d) => d.id === app.ui.objectDef);
+  return def ? words(def.name) : '';
 }

@@ -3,7 +3,6 @@
  "mutableLets": 0,
  "oversize": [
   "src/session/input.ts",
-  "src/ui/chrome.ts",
   "src/ui/frame.ts",
   "src/ui/ribbon-tabs.ts",
   "src/elements/object/evaluate.ts",
@@ -22,7 +21,6 @@
   "mutableLets": [],
   "oversize": [
    "src/session/input.ts",
-   "src/session/kind-tools.ts",
    "src/ui/chrome.ts",
    "src/ui/frame.ts",
    "src/ui/ribbon-tabs.ts",

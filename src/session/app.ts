@@ -26,6 +26,7 @@ import * as viewing from './view-ui';
 import * as selecting from './selection';
 import * as walls from '../elements/wall/tool-ui';
 import * as chrome from '../ui/chrome';
+import * as floatBar from '../ui/float-bar';
 import * as frame from '../ui/frame';
 import * as modify from './modify';
 import * as roomsUi from './room-tool';
@@ -1715,7 +1716,7 @@ export class App {
 
   /** The footer for the measure tool: what to click, or what the tape read. */
   measureHint(): string {
-    return chrome.measureHint(this);
+    return floatBar.measureHint(this);
   }
 
   /** The selection's quick actions, above the selection and never over it. */
@@ -1724,6 +1725,6 @@ export class App {
   floatKey = '';
 
   placeFloatBar(): void {
-    return chrome.placeFloatBar(this);
+    return floatBar.placeFloatBar(this);
   }
 }

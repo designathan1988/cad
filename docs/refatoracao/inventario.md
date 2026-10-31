@@ -338,6 +338,9 @@ aqui fica a decisão por arquivo.
 | src/ui/dialog.ts | mover | ui/dialog.ts | o andaime |
 | (movido no passo 4) src/i18n/icons.ts | manter | i18n/icons.ts | nomes de ícone usados pelo contrato dos elementos |
 | (movido no passo 4) src/ui/chrome.ts | dividir | ui/chrome/*.ts | renderRibbon/actionList por quadro → memo por chave |
+| (novo no passo 6) src/ui/footer.ts | manter | ui/footer.ts | o rodapé a cada quadro (dica, teclas, campo de medida), antes em chrome.ts |
+| (novo no passo 6) src/ui/float-bar.ts | manter | ui/float-bar.ts | a barra flutuante sobre a seleção e a dica de medida, antes em chrome.ts |
+| (novo no passo 6) src/ui/ribbon.ts | manter | ui/ribbon.ts | a faixa desenhada a cada quadro e a tira da ferramenta, antes em chrome.ts |
 | (movido no passo 4) src/ui/frame.ts | dividir | ui/frame/*.ts | rótulos O(rooms²); nextFields por quadro → memo |
 | src/app/section-view (ver acima) |  |  |  |
 
