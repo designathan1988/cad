@@ -28,6 +28,7 @@ import * as appPlacing from '../session/app-placing';
 import * as appView from '../session/app-view';
 import { fromOf, pointsOf } from '../elements/tool-draft';
 import { pointDraft, pointTool } from '../session/point-tools';
+import { eventTool } from '../session/event-tools';
 import { NO_LEVEL } from '../project/doc';
 
 export function drawPlanOverlay(app: App): void {
@@ -94,7 +95,7 @@ export function drawPlanOverlay(app: App): void {
   // Where the tool snaps, its measure, the line being drawn and its draft: the same over the plan and the 3D.
   const snap =
     // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-        (pointTool(app) || ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+        (pointTool(app) || eventTool(app)?.snaps || ui.drag?.kind === 'grip') && ui.snap
           ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null), ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
           : null;
   const measure = guideDim

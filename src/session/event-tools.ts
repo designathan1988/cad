@@ -41,6 +41,8 @@ export interface FootKeys {
 export interface EventTool {
   /** A digit typed goes to the measure field (a length, a point, a distance), not to the shortcuts. */
   readonly typing?: true;
+  /** Where it snaps is drawn, said as it is (plan-overlay.ts): drawing, measuring, modifying, dividing. */
+  readonly snaps?: true;
   /** Esc and a right click end it before a drag or a guide under way (Modify's). */
   readonly first?: true;
   /** The pointer moved over the drawing: where it snaps, what it lights, the preview. `at`: on the plan's floor. */
@@ -105,6 +107,7 @@ function objectName(app: App): string {
 
 const wall: EventTool = {
   typing: true,
+  snaps: true,
   move: (app, e, aim) => {
     const s = aim.snapped(e);
     app.ui.snap = s;
@@ -158,6 +161,7 @@ const wall: EventTool = {
 
 const floor: EventTool = {
   typing: true,
+  snaps: true,
   // The outline's next corner where a click would put it: snapped, shown with its label; before the first,
   // the room under the pointer lit, as the room tool's.
   move: (app, e, aim, at) => {
@@ -224,6 +228,7 @@ const room: EventTool = {
 
 const measure: EventTool = {
   typing: true,
+  snaps: true,
   move: (app, e, aim) => {
     app.ui.snap = aim.snapped(e);
     app.render();
@@ -251,6 +256,7 @@ const measure: EventTool = {
 
 const modify: EventTool = {
   typing: true,
+  snaps: true,
   first: true,
   // The result follows the pointer: a preview of the whole selection, copies included.
   move: (app, e, aim) => {
@@ -291,6 +297,7 @@ const modify: EventTool = {
 };
 
 const split: EventTool = {
+  snaps: true,
   // Where the cut would go: on a wall's body or its middle, named.
   move: (app, e, aim) => {
     app.ui.snap = aim.splitSnap(e);
