@@ -4,12 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { similarTo } from '../../src/session/select-similar';
 import { newOpening } from '../../src/elements/opening/schema';
-import { lid, oid, rid, wid } from '../ids';
+import { lid, oid, rid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, type: string, levelId = lid('lvl_ground'), y = 0): DocWall => ({
   id,
-  wallTypeId: type,
+  wallTypeId: tid(type),
   start: { x: 0, y },
   end: { x: 4, y },
   referenceLine: 'centerline',

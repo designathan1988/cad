@@ -6,11 +6,11 @@ import { describe, expect, it } from 'vitest';
 import { doorFlips, handleAt, handlesFor } from '../../src/session/handles';
 import type { DocWall } from '../../src/project/doc';
 import type { WallId } from '../../src/elements/wall/schema';
-import { lid, wid } from '../ids';
+import { lid, tid, wid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
   id,
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   ...(bulge ? { bulge } : {}),

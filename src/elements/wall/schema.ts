@@ -15,7 +15,11 @@ export const wallsIn = (walls: readonly { readonly id: WallId }[], ids: Iterable
   const mine = new Set<string>(walls.map((w) => w.id));
   return [...ids].filter((id): id is WallId => mine.has(id));
 };
-export type WallTypeId = string;
+/** A wall type's id (wt_…). */
+export type WallTypeId = Brand<'wallType'>;
+
+/** A new wall type's id (wt_…). */
+export const newWallTypeId = (): WallTypeId => newId('wt') as WallTypeId;
 export type MaterialId = string;
 export type WallEnd = 'start' | 'end';
 export type ReferenceLine = 'centerline' | 'interiorFace' | 'exteriorFace';

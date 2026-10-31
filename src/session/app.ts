@@ -44,6 +44,7 @@ import * as modelView from './model-view';
 import { initialUi } from './ui-initial';
 import { keepingStore } from './app-store';
 import type { LevelId } from '../project/doc';
+import type { WallTypeId } from '../elements/wall/schema';
 
 export type { UiState } from './state';
 
@@ -366,7 +367,7 @@ export class App {
   /** Opens the levels dialog; set by the input layer, which owns the dialogs. */
   openLevels: () => void = () => {};
   /** Opens the wall types dialog, on a type if given; set by the input layer too. */
-  openWallTypes: (typeId?: string) => void = () => {};
+  openWallTypes: (typeId?: WallTypeId) => void = () => {};
   openMaterials: () => void = () => {};
   openUnits: () => void = () => {};
   openObjects: () => void = () => {};

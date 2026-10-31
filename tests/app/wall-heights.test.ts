@@ -11,14 +11,14 @@ import { deriveGeometry } from '../../src/project/derive';
 import { computeWallGeometry } from '../../src/elements/wall/geometry/footprint';
 import { area, overlapArea } from '../../src/elements/wall/geometry/convex';
 import { inside } from '../elements/wall/oracle';
-import { lid, wid } from '../ids';
+import { lid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 type P = { x: number; y: number };
 // 20 cm of concrete on the centre line; base and top in metres above the ground level (2.8 m).
 const wall = (id: WallId, a: [number, number], b: [number, number], base = 0, top = 2.8): DocWall => ({
   id,
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',

@@ -4,13 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { wallStops } from '../../src/elements/wall/stops';
 import { vec } from '../../src/model/vector';
-import { wid } from '../ids';
+import { lid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
-import { lid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], levelId = lid('lvl_ground')): DocWall => ({
   id,
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: vec(a[0], a[1]),
   end: vec(b[0], b[1]),
   referenceLine: 'centerline',

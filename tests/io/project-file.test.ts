@@ -4,11 +4,11 @@ import { CURRENT_VERSION, readProject, writeProject } from '../../src/project/fi
 import { isLevel } from '../../src/project/file-guards';
 import { BEFORE_65 } from '../../src/elements/object/library-before65';
 import { BEFORE_66 } from '../../src/elements/object/library-before66';
-import { gid, lid, oid, wid } from '../ids';
+import { gid, lid, oid, tid, wid } from '../ids';
 
 const wall = (id: string, x: number) => ({
   id,
-  wallTypeId: 'wt_masonry15',
+  wallTypeId: tid('wt_masonry15'),
   start: { x, y: 0 },
   end: { x: x + 1, y: 0 },
   referenceLine: 'centerline',
@@ -99,7 +99,7 @@ describe('version 3', () => {
     const doc = {
       ...newDocument(),
       wallTypes: [...newDocument().wallTypes, { id: 'wt_p', name: 'Parapet', layers: [{ thickness: 0.15, function: 'structure', materialId: 'brick' }], top: { kind: 'fixed', height: 1.1 } }],
-      walls: [{ id: wid('wall_p'), wallTypeId: 'wt_p', start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, referenceLine: 'centerline', levelId: lid('lvl_ground') }],
+      walls: [{ id: wid('wall_p'), wallTypeId: tid('wt_p'), start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, referenceLine: 'centerline', levelId: lid('lvl_ground') }],
     };
     const r = readProject(writeProject(doc as never));
     expect(r.ok && r.doc).toEqual({ ...doc, version: CURRENT_VERSION });

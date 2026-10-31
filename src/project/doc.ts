@@ -192,7 +192,7 @@ export function newDocument(): Doc {
     materials: [...BUILT_IN_MATERIALS],
     wallTypes: [
       {
-        id: 'wt_masonry15',
+        id: 'wt_masonry15' as WallTypeId,
         name: 'Masonry 15 cm',
         layers: [
           { thickness: 0.015, function: 'finish1', materialId: 'plaster' },
@@ -201,7 +201,7 @@ export function newDocument(): Doc {
         ],
       },
       {
-        id: 'wt_masonry20',
+        id: 'wt_masonry20' as WallTypeId,
         name: 'Masonry 20 cm',
         layers: [
           { thickness: 0.02, function: 'finish1', materialId: 'plaster' },
@@ -209,9 +209,9 @@ export function newDocument(): Doc {
           { thickness: 0.02, function: 'finish2', materialId: 'plaster' },
         ],
       },
-      { id: 'wt_concrete20', name: 'Concrete 20 cm', layers: [{ thickness: 0.2, function: 'structure', materialId: 'concrete' }] },
+      { id: 'wt_concrete20' as WallTypeId, name: 'Concrete 20 cm', layers: [{ thickness: 0.2, function: 'structure', materialId: 'concrete' }] },
       {
-        id: 'wt_drywall10',
+        id: 'wt_drywall10' as WallTypeId,
         name: 'Drywall 10 cm',
         layers: [
           { thickness: 0.0125, function: 'finish1', materialId: 'gypsum' },

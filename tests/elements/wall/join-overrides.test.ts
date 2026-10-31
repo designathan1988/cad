@@ -10,11 +10,11 @@ import type { Point2 } from '../../../src/model/vector';
 import { newDocument } from '../../../src/project/doc';
 import { readProject, writeProject } from '../../../src/project/file';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { lid, wid } from '../../ids';
+import { lid, tid, wid } from '../../ids';
 
-const solid: WallType = { id: 'solid', name: 'solid', layers: [{ thickness: 0.2, function: 'structure', materialId: 'concrete' }] };
+const solid: WallType = { id: tid('solid'), name: 'solid', layers: [{ thickness: 0.2, function: 'structure', materialId: 'concrete' }] };
 const layered: WallType = {
-  id: 'layered',
+  id: tid('layered'),
   name: 'layered',
   layers: [
     { thickness: 0.02, function: 'finish1', materialId: 'plaster' },
@@ -25,8 +25,8 @@ const layered: WallType = {
 const types = new Map([solid, layered].map((t) => [t.id, t]));
 
 const L = (aJoin?: EndJoin, bJoin?: EndJoin, bType = 'solid'): Wall[] => [
-  { id: wid('a'), wallTypeId: 'solid', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline', ...(aJoin ? { joins: { start: aJoin } } : {}) },
-  { id: wid('b'), wallTypeId: bType, start: { x: 0, y: 0 }, end: { x: 0, y: 3 }, referenceLine: 'centerline', ...(bJoin ? { joins: { start: bJoin } } : {}) },
+  { id: wid('a'), wallTypeId: tid('solid'), start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline', ...(aJoin ? { joins: { start: aJoin } } : {}) },
+  { id: wid('b'), wallTypeId: tid(bType), start: { x: 0, y: 0 }, end: { x: 0, y: 3 }, referenceLine: 'centerline', ...(bJoin ? { joins: { start: bJoin } } : {}) },
 ];
 
 /** Whether a point lies inside one of a wall's pieces (convex, counter-clockwise), not on an edge. */
@@ -89,8 +89,8 @@ describe('join choices at a wall end', () => {
     // b to (−1.5, 2.598): its outer face is n·p = −0.1, n = (0.866, 0.5). a's faces y = ±0.1 meet it at
     // x = −0.173 (y = 0.1) and x = −0.058 (y = −0.1): the square end is x = −0.173.
     const w: Wall[] = [
-      { id: wid('a'), wallTypeId: 'solid', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline' },
-      { id: wid('b'), wallTypeId: 'solid', start: { x: 0, y: 0 }, end: { x: -1.5, y: 1.5 * Math.sqrt(3) }, referenceLine: 'centerline' },
+      { id: wid('a'), wallTypeId: tid('solid'), start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline' },
+      { id: wid('b'), wallTypeId: tid('solid'), start: { x: 0, y: 0 }, end: { x: -1.5, y: 1.5 * Math.sqrt(3) }, referenceLine: 'centerline' },
     ];
     const square = [{ ...w[0]!, joins: { start: 'square' as const } }, w[1]!];
     const through = [{ ...w[0]!, joins: { start: 'through' as const } }, w[1]!];

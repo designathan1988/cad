@@ -7,9 +7,9 @@ import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import { aimAlong, OPENING_PREVIEW_ID } from '../../src/elements/opening/aim';
 import { openingTransition, ruleAt } from '../../src/elements/opening/tool';
-import { lid, wid } from '../ids';
+import { lid, tid, wid } from '../ids';
 
-const wall: DocWall = { id: wid('w'), wallTypeId: 'wt_concrete20', start: { x: 0, y: 0 }, end: { x: 5, y: 0 }, referenceLine: 'centerline', levelId: lid('lvl_ground') };
+const wall: DocWall = { id: wid('w'), wallTypeId: tid('wt_concrete20'), start: { x: 0, y: 0 }, end: { x: 5, y: 0 }, referenceLine: 'centerline', levelId: lid('lvl_ground') };
 const doc: Doc = { ...newDocument(), walls: [wall] };
 
 describe('placing an opening by keyboard', () => {

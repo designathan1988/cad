@@ -8,12 +8,12 @@ import { deriveGeometry } from '../../../src/project/derive';
 import { leafFields, positionFields } from '../../../src/elements/opening/fields';
 import { newOpening } from '../../../src/elements/opening/schema';
 import { fieldStates } from '../../../src/ui/fields';
-import { lid, oid, rid, wid } from '../../ids';
+import { lid, oid, rid, tid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',

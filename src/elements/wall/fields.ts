@@ -9,7 +9,7 @@ import { name, t, type MessageKey } from '../../i18n/messages';
 import { layerSwatch } from './swatch';
 import { referenceLength } from '../opening/derive';
 import { arcOf } from './geometry/arc';
-import type { EndJoin, HeightRule, ReferenceLine } from './schema';
+import type { EndJoin, HeightRule, ReferenceLine, WallTypeId } from './schema';
 import { canAlignWalls, canDistributeWalls } from './arrange';
 import type { LevelId } from '../../project/doc';
 import { levelIn } from '../../project/doc';
@@ -19,7 +19,7 @@ export interface WallFieldActions {
   /** Another reference line for the selected walls, their bodies kept where they are. */
   readonly setReferenceLine: (line: ReferenceLine) => void;
   /** Another type for the selected walls: the face against their room kept, or their reference line (keepClear). */
-  readonly setWallType: (typeId: string) => void;
+  readonly setWallType: (typeId: WallTypeId) => void;
   /** Whether a type changed keeps the clear span (the face against the room) or the reference line. */
   readonly keepClear: boolean;
   readonly setKeepClear: (on: boolean) => void;
@@ -67,7 +67,10 @@ export function wallFields(
         // Types are many and alike: a list with search and a thumbnail of each one's layers.
         options: doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name), keywords: w.name, thumb: layerSwatch(w.layers, doc.materials) })),
         get: (w) => w.wallTypeId,
-        set: (v) => act.setWallType(v),
+        set: (v) => {
+          const type = doc.wallTypes.find((x) => x.id === v);
+          if (type) act.setWallType(type.id);
+        },
       },
       {
         id: 'editType',
@@ -297,7 +300,10 @@ const sameText = (texts: readonly string[]) => (texts.every((x) => x === texts[0
 export function nextWallFields(doc: Doc, update: (patch: Partial<WallDefaults>) => void): Field<WallDefaults>[] {
   const types = doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name), keywords: w.name, thumb: layerSwatch(w.layers, doc.materials) }));
   return [
-    { id: 'type', label: 'panel.type', kind: 'search', options: types, get: (d) => d.wallTypeId, set: (v) => update({ wallTypeId: v }) },
+    { id: 'type', label: 'panel.type', kind: 'search', options: types, get: (d) => d.wallTypeId, set: (v) => {
+      const type = doc.wallTypes.find((x) => x.id === v);
+      if (type) update({ wallTypeId: type.id });
+    } },
     {
       id: 'reference',
       label: 'panel.reference',

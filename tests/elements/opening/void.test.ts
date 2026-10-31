@@ -7,12 +7,12 @@ import { deriveGeometry } from '../../../src/project/derive';
 import { area } from '../../../src/elements/wall/geometry/convex';
 import { newOpening, type Opening } from '../../../src/elements/opening/schema';
 import { insidePolygon } from '../../../src/project/derive';
-import { lid, oid, wid } from '../../ids';
+import { lid, oid, tid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], extra: Partial<DocWall> = {}): DocWall => ({
   id,
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
@@ -110,7 +110,7 @@ describe('door: from the floor', () => {
 
 describe('layers, joins, offsets, invalid', () => {
   it('masonry 15 cm, three layers: every layer is cut, 0.60 − 0.18 = 0.42 m²', () => {
-    const m = measure(docWith([{ ...W, wallTypeId: 'wt_masonry15' }], [newOpening(oid('o'), wid('w'), 'window', { kind: 'centered' })]));
+    const m = measure(docWith([{ ...W, wallTypeId: tid('wt_masonry15') }], [newOpening(oid('o'), wid('w'), 'window', { kind: 'centered' })]));
     expect(m.plan).toBeCloseTo(0.42, 12);
     expect(m.g.solids.get(wid('w'))!.pieces).toHaveLength(6);
     expect(m.volume).toBeCloseTo(0.6 * 2.8 - 1.2 * 0.15 * 1.2, 12);

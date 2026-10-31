@@ -5,13 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { stackedSteps } from '../../src/session/stacked';
 import { moveWalls } from '../../src/elements/wall/edit';
-import { lid, wid } from '../ids';
+import { lid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 import type { LevelId } from '../../src/project/doc';
 
 const wall = (id: WallId, levelId: LevelId, type: string, a: [number, number], b: [number, number], referenceLine: DocWall['referenceLine'] = 'centerline'): DocWall => ({
   id,
-  wallTypeId: type,
+  wallTypeId: tid(type),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine,

@@ -6,12 +6,12 @@ import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import { boundsOf } from '../../src/project/derived-queries';
 import { newOpening } from '../../src/elements/opening/schema';
-import { fid, lid, oid, rid, wid } from '../ids';
+import { fid, lid, oid, rid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',

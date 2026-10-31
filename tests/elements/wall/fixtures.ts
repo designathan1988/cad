@@ -1,6 +1,7 @@
 // Test walls carry their layers inline; engineInput turns them into Walls plus a type map.
 
 import { computeWallGeometry } from '../../../src/elements/wall/geometry/footprint';
+import { tid } from '../../ids';
 import type {
   LayerFunction,
   ReferenceLine,
@@ -48,7 +49,7 @@ export function testWall(
 export function engineInput(ws: readonly TestWall[]): { walls: Wall[]; types: Map<WallTypeId, WallType> } {
   const types = new Map<WallTypeId, WallType>();
   const walls = ws.map((w) => {
-    const id = JSON.stringify(w.layers);
+    const id = tid(JSON.stringify(w.layers));
     if (!types.has(id)) types.set(id, { id, name: id, layers: w.layers });
     return { id: w.id, wallTypeId: id, start: w.start, end: w.end, referenceLine: w.referenceLine, ...(w.bulge ? { bulge: w.bulge } : {}) };
   });

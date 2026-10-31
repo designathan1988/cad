@@ -8,6 +8,7 @@ import { isColor } from '../elements/material/schema';
 import type { Doc } from './doc';
 import type { Category } from './derived-filters';
 import { ROOM_USES } from '../elements/room/schema';
+import type { WallTypeId } from '../elements/wall/schema';
 
 export const CATEGORIES: readonly Category[] = ['walls', 'openings', 'rooms', 'floors', 'objects', 'guides'];
 
@@ -20,7 +21,7 @@ export interface LayerSet {
 
 export interface WallOverride {
   readonly id: string;
-  readonly wallTypeId: string;
+  readonly wallTypeId: WallTypeId;
   /** The plan's fill for walls of that type, #rrggbb. */
   readonly color: string;
 }

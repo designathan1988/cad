@@ -8,12 +8,12 @@ import { deriveGeometry } from '../../src/project/derive';
 import { insideRing } from '../../src/elements/room/derive';
 import type { ReferenceLine } from '../../src/elements/wall/schema';
 import { changeWallType, roomFace } from '../../src/elements/wall/edit';
-import { lid, rid, wid } from '../ids';
+import { lid, rid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], type = 'wt_masonry15', referenceLine: ReferenceLine = 'centerline'): DocWall => ({
   id,
-  wallTypeId: type,
+  wallTypeId: tid(type),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine,
@@ -41,7 +41,7 @@ const keepRoom = (doc: Doc) => {
 describe('a wall type changed', () => {
   it('a room\'s walls 15 → 20 cm: the room keeps its size, the walls grow outwards', () => {
     expect(areas(box)).toEqual([5.85 * 3.85]);
-    const walls = changeWallType(box, [wid('s'), wid('e'), wid('n'), wid('w')], 'wt_concrete20', keepRoom(box));
+    const walls = changeWallType(box, [wid('s'), wid('e'), wid('n'), wid('w')], tid('wt_concrete20'), keepRoom(box));
     const next = { ...box, walls };
     expect(walls.every((w) => w.wallTypeId === 'wt_concrete20')).toBe(true);
     expect(areas(next)[0]).toBeCloseTo(5.85 * 3.85, 9);
@@ -50,13 +50,13 @@ describe('a wall type changed', () => {
   });
 
   it('with the option off the reference line stays, and the room is smaller', () => {
-    const walls = changeWallType(box, [wid('s'), wid('e'), wid('n'), wid('w')], 'wt_concrete20', () => null);
+    const walls = changeWallType(box, [wid('s'), wid('e'), wid('n'), wid('w')], tid('wt_concrete20'), () => null);
     expect(walls.find((w) => w.id === 's')!.start).toEqual({ x: 0, y: 0 });
     expect(areas({ ...box, walls })[0]).toBeCloseTo(5.8 * 3.8, 9);
   });
 
   it('one wall alone: only it moves, its neighbours keep their joins to it', () => {
-    const walls = changeWallType(box, [wid('s')], 'wt_concrete20', keepRoom(box));
+    const walls = changeWallType(box, [wid('s')], tid('wt_concrete20'), keepRoom(box));
     const g = deriveGeometry({ ...box, walls });
     expect(areas({ ...box, walls })[0]).toBeCloseTo(5.85 * 3.85, 9);
     expect(g.warnings).toEqual([]);
@@ -82,7 +82,7 @@ describe('a wall type changed', () => {
     const w = doc.walls.find((x) => x.id === 'p')!;
     expect(roomFace(doc, w, inRoomOf(doc))).toBe('middle');
     const before = areas(doc);
-    const next = { ...doc, walls: changeWallType(doc, [wid('p')], 'wt_drywall10', keepRoom(doc)) };
+    const next = { ...doc, walls: changeWallType(doc, [wid('p')], tid('wt_drywall10'), keepRoom(doc)) };
     const after = areas(next);
     // 10 cm thinner, 5 cm to each room: 5 cm × 3.85 m more each.
     expect(after[0]! - before[0]!).toBeCloseTo(0.05 * 3.85, 9);
@@ -92,7 +92,7 @@ describe('a wall type changed', () => {
   it('a wall with no room on either side keeps its reference line', () => {
     const doc: Doc = { ...newDocument(), walls: [wall(wid('a'), [0, 0], [5, 0])] };
     expect(roomFace(doc, doc.walls[0]!, inRoomOf(doc))).toBeNull();
-    expect(changeWallType(doc, [wid('a')], 'wt_concrete20', keepRoom(doc))[0]!.start).toEqual({ x: 0, y: 0 });
+    expect(changeWallType(doc, [wid('a')], tid('wt_concrete20'), keepRoom(doc))[0]!.start).toEqual({ x: 0, y: 0 });
   });
 
   it('an arc wall round a room: its radius changes so its inner face stays', () => {
@@ -104,7 +104,7 @@ describe('a wall type changed', () => {
     };
     const before = areas(doc)[0]!;
     expect(roomFace(doc, doc.walls[1]!, inRoomOf(doc))).not.toBeNull();
-    const next = { ...doc, walls: changeWallType(doc, [wid('c')], 'wt_concrete20', keepRoom(doc)) };
+    const next = { ...doc, walls: changeWallType(doc, [wid('c')], tid('wt_concrete20'), keepRoom(doc)) };
     expect(areas(next)[0]).toBeCloseTo(before, 3);
   });
 });

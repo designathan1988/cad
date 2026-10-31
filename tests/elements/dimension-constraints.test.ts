@@ -11,12 +11,12 @@ import { equalChains, settleDimensions } from '../../src/elements/dimension/cons
 import type { Dimension } from '../../src/elements/dimension/schema';
 import { newOpening } from '../../src/elements/opening/schema';
 import { moveWalls } from '../../src/elements/wall/edit';
-import { lid, oid, rid, wid } from '../ids';
+import { lid, oid, rid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
-  wallTypeId: 'wt_masonry15',
+  wallTypeId: tid('wt_masonry15'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',

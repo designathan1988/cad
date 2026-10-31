@@ -19,12 +19,12 @@ import {
 import { deriveOpenings, hostsOf } from '../../../src/elements/opening/derive';
 import { newOpening, type PositionRule } from '../../../src/elements/opening/schema';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { gid, lid, oid, wid } from '../../ids';
+import { gid, lid, oid, tid, wid } from '../../ids';
 import type { OpeningId } from '../../../src/elements/opening/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], extra: Partial<DocWall> = {}): DocWall => ({
   id,
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',

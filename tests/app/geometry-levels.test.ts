@@ -5,13 +5,12 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import { addLevel } from '../../src/elements/level/commands';
-import { wid } from '../ids';
+import { lid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
-import { lid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], levelId = lid('lvl_ground')): DocWall => ({
   id,
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',

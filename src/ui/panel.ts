@@ -20,6 +20,7 @@ import { name, num, t, type MessageKey } from '../i18n/messages';
 import { icon, type IconName } from '../i18n/icons';
 import type { AnyKind } from '../elements/contract';
 import type { Command } from '../core/store';
+import type { WallTypeId } from '../elements/wall/schema';
 
 export interface PanelInput {
   readonly doc: Doc;
@@ -53,7 +54,7 @@ export interface PanelInput {
 export interface PanelActions {
   readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
   readonly setReferenceLine: (line: ReferenceLine) => void;
-  readonly setWallType: (typeId: string) => void;
+  readonly setWallType: (typeId: WallTypeId) => void;
   readonly keepClear: boolean;
   readonly setKeepClear: (on: boolean) => void;
   /** Takes these values off the selected walls, so they come from their type again. */

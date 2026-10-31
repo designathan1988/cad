@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { elementIds, newDocument, startLevel } from '../../src/project/doc';
 import { newOpening } from '../../src/elements/opening/schema';
-import { fid, lid, oid, rid, wid } from '../ids';
+import { fid, lid, oid, rid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 describe('selectable elements', () => {
@@ -19,7 +19,7 @@ describe('selectable elements', () => {
 describe('wall numbers', () => {
   it('each wall is numbered on its level in the order drawn', async () => {
     const { wallNumber } = await import('../../src/project/doc');
-    const w = (id: WallId, levelId: string) => ({ id, levelId: lid(levelId), wallTypeId: 'wt_concrete20', start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, referenceLine: 'centerline' as const });
+    const w = (id: WallId, levelId: string) => ({ id, levelId: lid(levelId), wallTypeId: tid('wt_concrete20'), start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, referenceLine: 'centerline' as const });
     const doc = { ...newDocument(), walls: [w(wid('a'), 'lvl_ground'), w(wid('u'), 'lvl_up'), w(wid('b'), 'lvl_ground')] };
     expect([wallNumber(doc, 'a'), wallNumber(doc, 'b'), wallNumber(doc, 'u'), wallNumber(doc, 'x')]).toEqual([1, 2, 1, null]);
   });

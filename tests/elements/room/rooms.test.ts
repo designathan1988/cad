@@ -7,12 +7,12 @@ import { deriveGeometry } from '../../../src/project/derive';
 import { vec } from '../../../src/model/vector';
 import { deleteElements } from '../../../src/elements/opening/commands';
 import { moveWalls } from '../../../src/elements/wall/edit';
-import { fid, lid, rid, wid } from '../../ids';
+import { fid, lid, rid, tid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], type = 'wt_concrete20'): DocWall => ({
   id,
-  wallTypeId: type,
+  wallTypeId: tid(type),
   start: vec(a[0], a[1]),
   end: vec(b[0], b[1]),
   referenceLine: 'centerline',

@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { type DocWall, newDocument } from '../../../src/project/doc';
 import { wallFields } from '../../../src/elements/wall/fields';
 import { fieldStates } from '../../../src/ui/fields';
-import { lid, wid } from '../../ids';
+import { lid, tid, wid } from '../../ids';
 
-const wall: DocWall = { id: wid('w'), wallTypeId: 'wt_concrete20', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline', levelId: lid('lvl_ground') };
+const wall: DocWall = { id: wid('w'), wallTypeId: tid('wt_concrete20'), start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline', levelId: lid('lvl_ground') };
 const act = { updateWalls: () => {}, setReferenceLine: () => {}, setWallType: () => {}, keepClear: true, setKeepClear: () => {}, resetToType: () => {}, editType: () => {}, arrangeWalls: () => {}, setEndJoin: () => {}, updateRadius: () => {} };
 
 describe("a wall's height in the panel", () => {

@@ -11,6 +11,7 @@ import { exteriorOffset } from './geometry/shape';
 import { arcOf } from './geometry/arc';
 import { wallThickness } from '../../project/doc';
 import type { LevelId } from '../../project/doc';
+import type { WallTypeId } from './schema';
 
 type Ends = { start: Point2; end: Point2 };
 
@@ -241,7 +242,7 @@ export type KeptFace = 'exterior' | 'interior' | 'middle' | null;
  * 3), its middle between two rooms, which share the change. The line moves across by the difference,
  * the walls joined to it keep their joins, as for a move; its reference line stays the same kind.
  */
-export function changeWallType(doc: Doc, ids: readonly WallId[], typeId: string, kept: (w: DocWall) => KeptFace): DocWall[] {
+export function changeWallType(doc: Doc, ids: readonly WallId[], typeId: WallTypeId, kept: (w: DocWall) => KeptFace): DocWall[] {
   let walls: readonly DocWall[] = doc.walls;
   const type = doc.wallTypes.find((x) => x.id === typeId);
   if (!type) return [...walls];

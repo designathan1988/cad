@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
 import { createStore } from '../../src/core/store';
 import { addWalls, deleteWalls, updateWalls } from '../../src/elements/wall/commands';
-import { lid, wid } from '../ids';
+import { lid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, x: number) => ({
   id,
-  wallTypeId: 'wt_masonry15',
+  wallTypeId: tid('wt_masonry15'),
   start: { x, y: 0 },
   end: { x: x + 1, y: 0 },
   referenceLine: 'centerline' as const,

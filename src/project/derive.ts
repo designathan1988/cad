@@ -22,6 +22,7 @@ import { type Material, materialIn } from '../elements/material/schema';
 import { CUT_HEIGHT, cutHeightOf, type Doc, type DocWall, levelOf, roofCoversOf, wallHeights, wallTop } from './doc';
 import { blocksUnder } from '../elements/wall/geometry/under-roof';
 import type { LevelId } from './doc';
+import type { WallTypeId } from '../elements/wall/schema';
 
 /** How far past the host's faces another wall still counts as meeting it inside an opening (m). */
 const JOINT_REACH = 0.01;
@@ -213,7 +214,7 @@ interface WallSlice {
  */
 export function wallPieces(
   walls: readonly DocWall[],
-  types: ReadonlyMap<string, WallType>,
+  types: ReadonlyMap<WallTypeId, WallType>,
   heightOf: (w: DocWall) => { bottom: number; top: number },
   cutOf: (w: DocWall) => number,
 ): { pieces: Map<WallId, readonly Piece[]>; plan: Map<WallId, PlanCut>; slices: Map<WallId, WallSlice[]>; warnings: JoinWarning[] } {
@@ -268,7 +269,7 @@ export function wallPieces(
  */
 export function jointsIn(
   walls: readonly DocWall[],
-  types: ReadonlyMap<string, WallType>,
+  types: ReadonlyMap<WallTypeId, WallType>,
   pieces: ReadonlyMap<WallId, readonly Piece[]>,
 ): Map<WallId, Map<WallId, { lo: number; hi: number }>> {
   const out = new Map<WallId, Map<WallId, { lo: number; hi: number }>>();
@@ -313,7 +314,7 @@ export function planCutHeight(doc: Doc, wall: DocWall): number {
  */
 export function endsIn(
   walls: readonly DocWall[],
-  types: ReadonlyMap<string, WallType>,
+  types: ReadonlyMap<WallTypeId, WallType>,
   pieces: ReadonlyMap<WallId, readonly Piece[]>,
 ): Map<WallId, { from: number; to: number }> {
   const out = new Map<WallId, { from: number; to: number }>();

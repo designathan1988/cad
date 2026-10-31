@@ -9,7 +9,7 @@ import { edgesFor, type Roof } from '../../src/elements/roof/schema';
 import { planeAt } from '../../src/elements/wall/geometry/under-roof';
 import { deleteLevel } from '../../src/elements/level/commands';
 import { readProject, writeProject } from '../../src/project/file';
-import { lid, wid } from '../ids';
+import { lid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 // A 10 × 6 m outline, gable roof at 30 %: its two slopes rise from the long sides (y = 0 and y = 6),
@@ -23,7 +23,7 @@ const outline = [
 const roof: Roof = { id: 'roof_r', levelId: lid('lvl_ground'), outline, edges: edgesFor('gable', outline, 30, 0), kind: 'gable', thickness: 0.12, baseOffset: 0 };
 const wall = (id: WallId, a: [number, number], b: [number, number], top?: DocWall['top']): DocWall => ({
   id,
-  wallTypeId: 'wt_masonry15',
+  wallTypeId: tid('wt_masonry15'),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',

@@ -7,7 +7,7 @@ import { shapeOf } from '../../../src/elements/wall/geometry/shape';
 import type { Wall, WallType } from '../../../src/elements/wall/schema';
 import { geometry, layer, testWall } from './fixtures';
 import { shoelace } from './oracle';
-import { wid } from '../../ids';
+import { tid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 
 type XY = readonly [number, number];
@@ -170,8 +170,8 @@ describe('layered L corner', () => {
 });
 
 describe('derived shape', () => {
-  const wall: Wall = { id: wid('w'), wallTypeId: 't', start: vec(0, 0), end: vec(1, 0), referenceLine: 'centerline' };
-  const typeOf = (layers: WallType['layers']): WallType => ({ id: 't', name: 't', layers });
+  const wall: Wall = { id: wid('w'), wallTypeId: tid('t'), start: vec(0, 0), end: vec(1, 0), referenceLine: 'centerline' };
+  const typeOf = (layers: WallType['layers']): WallType => ({ id: tid('t'), name: 't', layers });
 
   it('thickness is the sum of the layers and the core spans first to last structure layer', () => {
     const s = shapeOf(
@@ -208,9 +208,9 @@ describe('derived shape', () => {
   });
 
   it('a wall with a bad type warns, draws nothing, and does not stop the others', () => {
-    const ok: Wall = { id: wid('ok'), wallTypeId: 'good', start: vec(0, 0), end: vec(4, 0), referenceLine: 'centerline' };
-    const lost: Wall = { ...ok, id: wid('lost'), wallTypeId: 'nowhere', start: vec(0, 2), end: vec(4, 2) };
-    const types = new Map([['good', { id: 'good', name: 'good', layers: [layer(0.2)] }]]);
+    const ok: Wall = { id: wid('ok'), wallTypeId: tid('good'), start: vec(0, 0), end: vec(4, 0), referenceLine: 'centerline' };
+    const lost: Wall = { ...ok, id: wid('lost'), wallTypeId: tid('nowhere'), start: vec(0, 2), end: vec(4, 2) };
+    const types = new Map([[tid('good'), { id: tid('good'), name: 'good', layers: [layer(0.2)] }]]);
     const g = computeWallGeometry([ok, lost], types);
     expect(g.warnings).toEqual([{ kind: 'missingWallType', walls: ['lost'] }]);
     expect(g.pieces.get(wid('lost'))).toEqual([]);

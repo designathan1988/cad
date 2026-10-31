@@ -5,12 +5,12 @@ import { describe, expect, it } from 'vitest';
 import { newDocument, type DocWall } from '../../src/project/doc';
 import { vec } from '../../src/model/vector';
 import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../../src/elements/wall/edit';
-import { lid, wid } from '../ids';
+import { lid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
-  wallTypeId: 'wt_masonry15',
+  wallTypeId: tid('wt_masonry15'),
   start: vec(a[0], a[1]),
   end: vec(b[0], b[1]),
   referenceLine: 'centerline',

@@ -8,11 +8,11 @@ import { deriveGeometry } from '../../../src/project/derive';
 import { createStore } from '../../../src/core/store';
 import { addWallType, deleteWallType, duplicateWallType, typeDeleteBlocker, updateWallType } from '../../../src/elements/wall/types';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { lid, wid } from '../../ids';
+import { lid, tid, wid } from '../../ids';
 
 const wall = (id: WallId, typeId: string): DocWall => ({
   id,
-  wallTypeId: typeId,
+  wallTypeId: tid(typeId),
   start: { x: 0, y: 0 },
   end: { x: 4, y: 0 },
   referenceLine: 'centerline',
@@ -27,19 +27,19 @@ const widthOf = (d: Doc, id: WallId) => {
 
 describe('wall types', () => {
   it('a new type is added as given', () => {
-    const t = { id: 'wt_new', name: 'Brick 25', layers: [layer(0.25)] };
+    const t = { id: tid('wt_new'), name: 'Brick 25', layers: [layer(0.25)] };
     expect(addWallType(t).apply(doc()).wallTypes.at(-1)).toEqual(t);
   });
 
   it('a type with no layer or a layer of no thickness is not added', () => {
     const d = doc();
-    expect(addWallType({ id: 'x', name: 'X', layers: [] }).apply(d)).toBe(d);
-    expect(addWallType({ id: 'x', name: 'X', layers: [layer(0)] }).apply(d)).toBe(d);
-    expect(addWallType({ id: 'wt_concrete20', name: 'Same id', layers: [layer(0.1)] }).apply(d)).toBe(d);
+    expect(addWallType({ id: tid('x'), name: 'X', layers: [] }).apply(d)).toBe(d);
+    expect(addWallType({ id: tid('x'), name: 'X', layers: [layer(0)] }).apply(d)).toBe(d);
+    expect(addWallType({ id: tid('wt_concrete20'), name: 'Same id', layers: [layer(0.1)] }).apply(d)).toBe(d);
   });
 
   it('duplicating copies the layers, top and base, under a new id and name', () => {
-    const d = duplicateWallType('wt_concrete20', 'wt_copy', 'Concrete 20 cm (2)').apply(doc());
+    const d = duplicateWallType(tid('wt_concrete20'), tid('wt_copy'), 'Concrete 20 cm (2)').apply(doc());
     const src = d.wallTypes.find((t) => t.id === 'wt_concrete20')!;
     expect(d.wallTypes.at(-1)).toEqual({ ...src, id: 'wt_copy', name: 'Concrete 20 cm (2)' });
   });
@@ -47,7 +47,7 @@ describe('wall types', () => {
   it('editing the layers changes every wall of the type: 20 cm becomes 30 cm, in one undo step', () => {
     const s = createStore(doc());
     expect(widthOf(s.get(), wid('a'))).toBeCloseTo(0.2, 9);
-    s.dispatch(updateWallType('wt_concrete20', { layers: [layer(0.3)] }));
+    s.dispatch(updateWallType(tid('wt_concrete20'), { layers: [layer(0.3)] }));
     expect(widthOf(s.get(), wid('a'))).toBeCloseTo(0.3, 9);
     s.undo();
     expect(widthOf(s.get(), wid('a'))).toBeCloseTo(0.2, 9);
@@ -55,27 +55,27 @@ describe('wall types', () => {
 
   it('a blank name, no layers or a bad thickness change nothing; the same values make no step', () => {
     const d = doc();
-    expect(updateWallType('wt_concrete20', { name: '  ' }).apply(d)).toBe(d);
-    expect(updateWallType('wt_concrete20', { layers: [] }).apply(d)).toBe(d);
-    expect(updateWallType('wt_concrete20', { layers: [layer(-0.1)] }).apply(d)).toBe(d);
+    expect(updateWallType(tid('wt_concrete20'), { name: '  ' }).apply(d)).toBe(d);
+    expect(updateWallType(tid('wt_concrete20'), { layers: [] }).apply(d)).toBe(d);
+    expect(updateWallType(tid('wt_concrete20'), { layers: [layer(-0.1)] }).apply(d)).toBe(d);
     const same = d.wallTypes.find((t) => t.id === 'wt_concrete20')!;
-    expect(updateWallType('wt_concrete20', { name: same.name }).apply(d)).toBe(d);
+    expect(updateWallType(tid('wt_concrete20'), { name: same.name }).apply(d)).toBe(d);
   });
 
   it('a name is kept trimmed; top and base can be given to the type and taken back', () => {
-    const d = updateWallType('wt_concrete20', { name: ' Concrete 22 ', top: { kind: 'fixed', height: 1.1 }, baseOffset: 0.1 }).apply(doc());
+    const d = updateWallType(tid('wt_concrete20'), { name: ' Concrete 22 ', top: { kind: 'fixed', height: 1.1 }, baseOffset: 0.1 }).apply(doc());
     const t = d.wallTypes.find((x) => x.id === 'wt_concrete20')!;
     expect(t.name).toBe('Concrete 22');
     expect(t.top).toEqual({ kind: 'fixed', height: 1.1 });
-    const back = updateWallType('wt_concrete20', { top: undefined, baseOffset: undefined }).apply(d);
+    const back = updateWallType(tid('wt_concrete20'), { top: undefined, baseOffset: undefined }).apply(d);
     expect(back.wallTypes.find((x) => x.id === 'wt_concrete20')!.top).toBeUndefined();
     expect('baseOffset' in back.wallTypes.find((x) => x.id === 'wt_concrete20')!).toBe(false);
   });
 
   it('a type in use, or the last one, is not deleted, and says why', () => {
     const d = doc();
-    expect(typeDeleteBlocker(d, 'wt_concrete20')).toBe('inUse');
-    expect(deleteWallType('wt_concrete20').apply(d)).toBe(d);
+    expect(typeDeleteBlocker(d, tid('wt_concrete20'))).toBe('inUse');
+    expect(deleteWallType(tid('wt_concrete20')).apply(d)).toBe(d);
     const unused = d.wallTypes.find((t) => t.id !== 'wt_concrete20')!.id;
     expect(typeDeleteBlocker(d, unused)).toBeNull();
     expect(deleteWallType(unused).apply(d).wallTypes.some((t) => t.id === unused)).toBe(false);

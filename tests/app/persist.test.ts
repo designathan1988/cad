@@ -5,11 +5,11 @@ import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
 import { validateDocument } from '../../src/project/persist';
 import { newOpening } from '../../src/elements/opening/schema';
-import { lid, oid, wid } from '../ids';
+import { lid, oid, tid, wid } from '../ids';
 
 const wall = {
   id: wid('wall_w'),
-  wallTypeId: 'wt_concrete20',
+  wallTypeId: tid('wt_concrete20'),
   start: { x: 0, y: 0 },
   end: { x: 4, y: 0 },
   referenceLine: 'centerline',

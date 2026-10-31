@@ -7,12 +7,12 @@ import { deriveGeometry } from '../../src/project/derive';
 import { hideCategories } from '../../src/project/derived-filters';
 import { typeUsage } from '../../src/session/browser-data';
 import { newOpening } from '../../src/elements/opening/schema';
-import { fid, lid, oid, rid, wid } from '../ids';
+import { fid, lid, oid, rid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, type: string, a: [number, number], b: [number, number]): DocWall => ({
   id,
-  wallTypeId: type,
+  wallTypeId: tid(type),
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',

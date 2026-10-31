@@ -6,7 +6,6 @@
 
 import { withLibrary } from './library-tabs';
 import type { App } from '../session/app';
-import { newId } from '../core/id';
 import type { Material } from '../elements/material/schema';
 import { wallTypeFields } from '../elements/wall/type-fields';
 import { addWallType, deleteWallType, duplicateWallType, typeDeleteBlocker, updateWallType } from '../elements/wall/types';
@@ -19,6 +18,7 @@ import { layerEditor } from './layer-editor';
 import { lengthText } from '../i18n/units';
 import { wallSnapshot } from './wall-snapshot';
 import { folderButton, iconButton, storeSearch, textButton } from './store-parts';
+import { newWallTypeId } from '../elements/wall/schema';
 
 /** Pictures by layers and materials: a type's picture is made again only when they change. */
 const pictures = new WeakMap<readonly Material[], WeakMap<readonly WallLayer[], Map<string, string | null>>>();
@@ -84,7 +84,7 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
     });
     // The new type is the chosen one before the command runs: the dialog redraws on it at once.
     const add = textButton(t('types.new'), 'new', () => {
-      const id = newId('wt');
+      const id = newWallTypeId();
       chosen = id;
       // It starts from the chosen one's layers, under a name of its own.
       app.store.dispatch(addWallType({ id, name: defaultName.wallType(doc.wallTypes.length + 1), layers: type.layers }));
@@ -158,7 +158,7 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
     const n = used(type.id);
     side.append(draw, el('p', { class: 'objs-in-project' }, n === 0 ? t('types.unused') : n === 1 ? t('types.usedByOne') : t('types.usedBy', { n })));
     const dup = textButton(t('types.duplicate'), 'duplicate', () => {
-      const id = newId('wt');
+      const id = newWallTypeId();
       chosen = id;
       const copies = doc.wallTypes.filter((x) => x.name.startsWith(`${type.name} (`)).length;
       app.store.dispatch(duplicateWallType(type.id, id, defaultName.copy(type.name, copies + 2)));

@@ -4,12 +4,12 @@ import { createStore } from '../../../src/core/store';
 import { vec } from '../../../src/model/vector';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../../../src/elements/level/commands';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { lid, wid } from '../../ids';
+import { lid, tid, wid } from '../../ids';
 import type { LevelId } from '../../../src/project/doc';
 
 const wall = (id: WallId, levelId: LevelId): DocWall => ({
   id,
-  wallTypeId: 'wt_masonry15',
+  wallTypeId: tid('wt_masonry15'),
   start: vec(0, 0),
   end: vec(4, 0),
   referenceLine: 'centerline',

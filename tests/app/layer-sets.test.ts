@@ -6,7 +6,7 @@ import { newDocument } from '../../src/project/doc';
 import { deleteLayerSet, isLayerSet, isRoomOverride, nextName, overrideColours, roomOverrideColours, saveLayerSet, setOverrides, setRoomOverrides, wallPhases } from '../../src/project/layer-sets';
 import { isSavedView } from '../../src/project/saved-views';
 import { readProject, writeProject } from '../../src/project/file';
-import { lid, wid } from '../ids';
+import { lid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 describe('layer combinations', () => {
@@ -75,7 +75,7 @@ describe('room overrides', () => {
   });
 
   it('walls by their phase in a renovation: none until one has a phase, then every wall by its own; the file keeps it', () => {
-    const wall = (id: WallId, phase?: 'existing' | 'demolish') => ({ id, levelId: lid('lvl_ground'), wallTypeId: 'wt_masonry15', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline' as const, ...(phase ? { phase } : {}) });
+    const wall = (id: WallId, phase?: 'existing' | 'demolish') => ({ id, levelId: lid('lvl_ground'), wallTypeId: tid('wt_masonry15'), start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline' as const, ...(phase ? { phase } : {}) });
     const plain = { ...newDocument(), walls: [wall(wid('wall_a')), wall(wid('wall_b'))] };
     expect(wallPhases(plain).size).toBe(0);
     const reform = { ...plain, walls: [wall(wid('wall_a'), 'demolish'), wall(wid('wall_b')), wall(wid('wall_c'), 'existing')] };
