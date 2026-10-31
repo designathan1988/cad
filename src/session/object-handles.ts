@@ -44,7 +44,7 @@ const reach = (): number => (matchMedia('(pointer: coarse)').matches ? 22 : 10);
 /** The selected object's handles on screen: one object selected with the select tool. */
 export function objectHandles(app: App): ScreenHandle[] {
   const { ui } = app;
-  if (ui.tool !== 'select' || ui.selection.size !== 1 || ui.drag) return [];
+  if (ui.tool !== 'select' || ui.selection.size !== 1 || (ui.drag && ui.drag.kind !== 'handle')) return [];
   const id = [...ui.selection][0]!;
   if (isOpeningId(id) && app.geometry.openings.has(id)) return openingHandles(app, id);
   const s = app.geometry.kinds.get('objects')?.get(id) as ObjectSolid | undefined;
@@ -125,6 +125,7 @@ export function objectHandleAt(app: App, p: Point2): ScreenHandle | null {
 
 /** A handle being dragged: where it was taken and what the object was then. */
 export interface HandleDrag {
+  readonly kind: 'handle';
   readonly handle: ScreenHandle;
   readonly from: Point2;
   readonly start: number;
@@ -191,12 +192,12 @@ export function startHandleDrag(app: App, handle: ScreenHandle, from: Point2): H
     const most = wallTop !== undefined ? wallTop - placed.bottom : undefined;
     const start = handle.opening === 'head' ? o.height : handle.opening === 'sill' ? o.sill : o.width;
     const rate = handle.opening === 'start' || handle.opening === 'end' ? jambRate(app, o, handle.opening) : 1;
-    return { handle, from, start, startAt: { x: 0, y: 0 }, value: start, at: { x: 0, y: 0 }, patch: {}, base: o, rate, ...(most !== undefined ? { most } : {}) };
+    return { kind: 'handle', handle, from, start, startAt: { x: 0, y: 0 }, value: start, at: { x: 0, y: 0 }, patch: {}, base: o, rate, ...(most !== undefined ? { most } : {}) };
   }
   const s = app.geometry.kinds.get('objects')?.get(handle.id) as ObjectSolid | undefined;
   const start = s?.eval.env[handle.param];
   if (!s || start === undefined) return null;
-  return { handle, from, start, startAt: s.object.at, value: start, at: s.object.at, rate: objectRate(app, s, handle, start) };
+  return { kind: 'handle', handle, from, start, startAt: s.object.at, value: start, at: s.object.at, rate: objectRate(app, s, handle, start) };
 }
 
 /** The drag with the pointer at `p`: the change in metres along the axis on screen, held to the parameter. */

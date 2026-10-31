@@ -154,7 +154,7 @@ export function keepSelectionInView(app: App): boolean {
   app.seenShape = shape;
   if (app.ui.selection.size === 0) return false;
   // Never under the pointer's hand: a drag that brought the panel in slid the drawing mid-gesture.
-  if (app.ui.drag || app.ui.handleDrag) return false;
+  if (app.ui.drag) return false;
   if (!resized && !reshaped && cover.right === 0 && cover.bottom === 0 && !cover.left) return false;
   const box = boundsOf(app.geometry, app.ui.selection);
   if (!box) return false;
@@ -208,7 +208,7 @@ export function keepSelectionInView3d(app: App): boolean {
   const key = JSON.stringify([ids, cover]);
   if (key === app.seenSelection3d) return false;
   app.seenSelection3d = key;
-  if (app.ui.selection.size === 0 || app.ui.drag || app.ui.handleDrag) return false;
+  if (app.ui.selection.size === 0 || app.ui.drag) return false;
   if (cover.right === 0 && cover.bottom === 0 && !cover.left) return false;
   const box = boundsOf(app.geometry, app.ui.selection);
   if (!box) return false;

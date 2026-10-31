@@ -14,7 +14,7 @@ import { parseLength } from '../core/measure';
  */
 export function currentDims(app: App): TempDim[] {
   const d = app.ui.drag;
-  if (app.ui.tool !== 'select' || (d && d.kind !== 'slide' && d.kind !== 'move')) return [];
+  if (app.ui.tool !== 'select' || (d && d.kind !== 'slide' && d.kind !== 'move' && d.kind !== 'handle')) return [];
   const doc = app.store.get();
   const moved = d?.kind === 'slide' ? { ...doc, openings: d.openings, openingGroups: d.groups } : d?.kind === 'move' ? { ...doc, walls: d.walls } : doc;
   // Measured only to what shows: an isolated wall measured 2,55 m to a wall hidden for now.

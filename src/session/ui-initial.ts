@@ -56,7 +56,6 @@ export function initialUi(doc: Doc, prefs: ReturnType<typeof loadPrefs>): UiStat
     objectDef: 'def_table',
     objectAngle: 0,
     doorFlip: { swing: false, hinge: false },
-    handleDrag: null,
     opened: new Set(),
     markMode: 'angle',
     viewDen: null,

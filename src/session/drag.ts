@@ -26,6 +26,7 @@ import * as appView from './app-view';
 import { wallsIn } from '../elements/wall/schema';
 import type { ElementId } from '../core/id';
 import type { OpeningId } from '../elements/opening/schema';
+import type { HandleDrag } from './object-handles';
 
 // The select tool's gestures. Click: select (Shift adds or removes). Drag a wall: move the selection,
 // with joins kept and a live preview (the rooms all of whose walls go, go too); with Alt the walls move
@@ -80,7 +81,9 @@ export type Drag =
     }
   /** A dimension's line dragged off what it measures: `offset` as it would be. */
   | { readonly kind: 'dimLine'; readonly id: string; readonly offset: number }
-  | { readonly kind: 'marquee'; readonly a: Point2; readonly b: Point2 };
+  | { readonly kind: 'marquee'; readonly a: Point2; readonly b: Point2 }
+  /** A selected object's or opening's handle (object-handles.ts): its parameter goes with the pointer. */
+  | HandleDrag;
 
 type Pending =
   | { kind: 'wall'; at: Point2; screen: Point2 }
@@ -211,7 +214,7 @@ export function selectGestures(app: App): SelectGestures {
         else if (pending.kind === 'empty') ui.drag = { kind: 'marquee', a: pending.screen, b: screen };
       }
       const d = ui.drag;
-      if (!d) return;
+      if (!d || d.kind === 'handle') return;
       const doc = app.store.get();
       if (d.kind === 'marquee') ui.drag = { ...d, b: screen };
       else if (d.kind === 'dimLine' && world) {
@@ -331,7 +334,8 @@ export function selectGestures(app: App): SelectGestures {
     },
 
     cancel() {
-      if (!ui.drag && !pending) return false;
+      // A handle drag is not the gestures' own: Esc ends it in input-keys.ts.
+      if ((!ui.drag || ui.drag.kind === 'handle') && !pending) return false;
       pending = null;
       ui.drag = null;
       ui.snap = null;

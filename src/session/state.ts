@@ -1,4 +1,3 @@
-import type { HandleDrag } from './object-handles';
 import type { OpeningSize } from '../ui/panels/opening';
 import type { GuideMode } from '../elements/guide/tool-ui';
 import type { Category, TemporaryView } from '../project/derived-filters';
@@ -86,7 +85,6 @@ export interface UiState {
   /** The door tool's next door: its leaf to the side away from the pointer (Space), its hinge on the far jamb (H). */
   doorFlip: { readonly swing: boolean; readonly hinge: boolean };
   /** An object's handle being dragged (object-handles.ts): its preview until let go. */
-  handleDrag: HandleDrag | null;
   /** Doors and windows shown open in 3D (a double click, the selection's Open): the view's, not saved. */
   opened: ReadonlySet<string>;
   /** The measure tool (kind-tools.ts: markClick): what it measures, and its points so far. */

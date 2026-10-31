@@ -58,7 +58,7 @@ export function placeFloatBar(app: App): void {
       }),
     );
   }
-  const box = app.ui.tool === 'select' && !app.ui.drag ? boundsOf(app.geometry, app.ui.selection) : null;
+  const box = app.ui.tool === 'select' && (!app.ui.drag || app.ui.drag.kind === 'handle') ? boundsOf(app.geometry, app.ui.selection) : null;
   bar.hidden = box === null;
   if (box === null) return;
   const vp = app.shell.viewport.getBoundingClientRect();

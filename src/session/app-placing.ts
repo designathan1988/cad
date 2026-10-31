@@ -91,7 +91,7 @@ export function toggleOpeningTags(app: App): void {
 /** The object tool's object where the pointer is (snapped), as it would be placed; null otherwise. */
 export function previewObject(app: App, doc: Doc): Doc | null {
   // An object's handle dragged: the object as it would be with the value and position so far.
-  const h = app.ui.handleDrag;
+  const h = app.ui.drag?.kind === 'handle' ? app.ui.drag : null;
   if (h?.handle.opening) return { ...doc, openings: doc.openings.map((o) => (o.id === h.handle.id ? { ...o, ...h.patch } : o)) };
   if (h) return { ...doc, objects: doc.objects.map((o) => (o.id === h.handle.id ? { ...o, at: h.at, values: { ...o.values, [h.handle.param]: h.value } } : o)) };
   const at = app.ui.tool === 'object' && app.ui.view === 'plan' ? (app.ui.snap?.point ?? app.ui.cursor) : null;

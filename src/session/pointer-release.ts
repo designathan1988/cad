@@ -119,9 +119,9 @@ export function pointerRelease(app: App, d: PointerDeps) {
       contextMenu(e);
       return;
     }
-    if (e.button === 0 && ui.handleDrag) {
-      const d = ui.handleDrag;
-      ui.handleDrag = null;
+    if (e.button === 0 && ui.drag?.kind === 'handle') {
+      const d = ui.drag;
+      ui.drag = null;
       endHandleDrag(app, d);
       return app.refresh();
     }

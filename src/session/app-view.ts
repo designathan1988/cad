@@ -26,7 +26,7 @@ import type { LevelId } from '../project/doc';
 export function handles(app: App): Handles {
   const d = app.ui.drag;
   if (app.ui.tool !== 'select' || d?.kind === 'move' || d?.kind === 'marquee' || d?.kind === 'dimLine') return handlesFor([], (p) => p);
-  const walls = d ? d.walls : app.store.get().walls;
+  const walls = d && d.kind !== 'handle' ? d.walls : app.store.get().walls;
   // In 3D on the level's floor, where a drag takes its points (input.ts, worldAt): a wall selected there
   // had no end, arrow or turn to take, only its panel. Behind the camera, off the screen.
   const floor = app.ui.view === '3d' ? (levelOf(app.store.get(), app.ui.levelId)?.elevation ?? 0) + lift(app, app.ui.levelId) : 0;

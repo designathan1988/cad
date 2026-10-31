@@ -152,8 +152,8 @@ export function wireKeys(app: App, k: KeyContext): void {
     }
     // Esc cancels a drag whatever is held: with Alt (a wall dragged alone) it never got below, and
     // letting go of the button then kept the move.
-    if (e.key === 'Escape' && ui.handleDrag) {
-      ui.handleDrag = null;
+    if (e.key === 'Escape' && ui.drag?.kind === 'handle') {
+      ui.drag = null;
       return app.refresh();
     }
     if (e.key === 'Escape' && k.gestures.cancel()) {

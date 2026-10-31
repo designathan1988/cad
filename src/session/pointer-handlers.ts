@@ -133,8 +133,8 @@ export function pointerHandlers(app: App, d: PointerDeps) {
       const seen = onWall ? { p: onWall.p, mpp: sceneCamera.metresPerPixel(app.scene, onWall.p, onWall.height) } : aimAt3d(e);
       return app.openingEvent({ kind: 'hover', aim: seen ? aimAt(app.store.get(), app.geometry, ui.levelId, seen.p, seen.mpp, OPENING_PREVIEW_ID) : null });
     }
-    if (ui.handleDrag) {
-      ui.handleDrag = moveHandleDrag(app, ui.handleDrag, local(e));
+    if (ui.drag?.kind === 'handle') {
+      ui.drag = moveHandleDrag(app, ui.drag, local(e));
       return app.refresh();
     }
     if (ui.tool === 'select' && !ptr.downAt) {
@@ -180,7 +180,7 @@ export function pointerHandlers(app: App, d: PointerDeps) {
     const handle = ui.tool === 'select' ? objectHandleAt(app, local(e)) : null;
     if (handle) {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      ui.handleDrag = startHandleDrag(app, handle, local(e));
+      ui.drag = startHandleDrag(app, handle, local(e));
       return app.refresh();
     }
     ptr.downAt = { x: e.clientX, y: e.clientY };

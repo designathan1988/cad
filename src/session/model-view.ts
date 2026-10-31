@@ -53,7 +53,7 @@ export function refresh(app: App): void {
         : d?.kind === 'dimLine'
           ? // A dimension's line where it is dragged.
             { ...doc, dimensions: doc.dimensions.map((x) => (x.id === d.id ? { ...x, offset: d.offset } : x)) }
-          : d && d.kind !== 'marquee'
+          : d && d.kind !== 'marquee' && d.kind !== 'handle'
             ? { ...doc, walls: d.walls }
             : doc;
   // Walls being dragged: doors and windows keep to their faces and a room they pass over keeps its
