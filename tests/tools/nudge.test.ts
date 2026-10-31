@@ -8,7 +8,7 @@ import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import { deriveOpenings, hostsOf } from '../../src/elements/opening/derive';
 import { newOpening } from '../../src/elements/opening/schema';
-import { fid, oid, rid, wid } from '../ids';
+import { fid, gid, oid, rid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 import type { OpeningId } from '../../src/elements/opening/schema';
 
@@ -66,7 +66,7 @@ describe('nudging the selection', () => {
   });
 
   it('a member of a distributed group stays where its group puts it', () => {
-    const grouped = { ...doc, openings: [{ ...doc.openings[0]!, rule: { kind: 'inGroup' as const, groupId: 'g' } }] };
+    const grouped = { ...doc, openings: [{ ...doc.openings[0]!, rule: { kind: 'inGroup' as const, groupId: gid('g') } }] };
     expect(nudge(grouped, deriveGeometry(grouped), ['d'], { x: 0.05, y: 0 })).toBe(grouped);
   });
 

@@ -10,7 +10,7 @@ import { deleteElements, distributeOpenings, setGroupSpacing } from '../../../sr
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { newOpening, type Opening, type PositionRule } from '../../../src/elements/opening/schema';
 import { CURRENT_VERSION, readProject } from '../../../src/project/file';
-import { oid, wid } from '../../ids';
+import { gid, oid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 import type { OpeningId } from '../../../src/elements/opening/schema';
 
@@ -44,7 +44,7 @@ describe('a group distributed beside a joint', () => {
     ['a T', t],
   ] as const) {
     it(`three windows left of ${name}: equal spaces between the wall start and the joint, (2.90 − 1.80) / 4 = 0.275`, () => {
-      const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(docOf([w, other], left));
+      const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(docOf([w, other], left));
       expect(d.openingGroups[0]!.between).toEqual([null, other.id]);
       near(startOf(d, oid('x')), 0.275);
       near(startOf(d, oid('y')), 1.15);
@@ -62,7 +62,7 @@ describe('a group distributed beside a joint', () => {
       win(oid('v'), { kind: 'fromEnd', distance: 0.9 }),
       win(oid('u'), { kind: 'fromEnd', distance: 0.2 }),
     ];
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z'), oid('v'), oid('u')], { kind: 'equal' }).apply(docOf([w, c], five));
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z'), oid('v'), oid('u')], { kind: 'equal' }).apply(docOf([w, c], five));
     expect(d.openingGroups.map((g) => [g.id, g.members, g.between])).toEqual([
       ['g', ['x', 'y'], [null, 'c']],
       ['g-2', ['z', 'v', 'u'], ['c', null]],
@@ -78,14 +78,14 @@ describe('a group distributed beside a joint', () => {
 
   it('two left of the X and one right: over the wall the second would land on it (1.05 spaces), so the two spread on their side and the one stays', () => {
     const three = [win(oid('x'), { kind: 'fromStart', distance: 0.2 }), win(oid('y'), { kind: 'fromStart', distance: 0.9 }), win(oid('z'), { kind: 'fromEnd', distance: 0.9 })];
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(docOf([w, c], three));
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(docOf([w, c], three));
     expect(d.openingGroups.map((g) => g.members)).toEqual([['x', 'y']]);
     near(startOf(d, oid('z')), 4.5);
     expect(d.openings.find((o) => o.id === 'z')!.rule).toEqual({ kind: 'fromEnd', distance: 0.9 });
   });
 
   it('right of the X: between the joint and the wall end, from 3.10', () => {
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(docOf([w, c], right));
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(docOf([w, c], right));
     expect(d.openingGroups[0]!.between).toEqual(['c', null]);
     // Wall order: z (at 3.80) first, then y, then x.
     near(startOf(d, oid('z')), 3.375);
@@ -95,24 +95,24 @@ describe('a group distributed beside a joint', () => {
   });
 
   it('the stretch follows the joint: c moved to x = 2.5 leaves 0 to 2.40, spaces of 0.15', () => {
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(docOf([w, c], left));
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(docOf([w, c], left));
     const moved = { ...d, walls: [w, wall(wid('c'), [2.5, -2], [2.5, 2])] };
     near(startOf(moved, oid('x')), 0.15);
     near(startOf(moved, oid('z')), 0.15 * 3 + 1.2);
   });
 
   it('fixed spacing is measured from the stretch: anchored at its end, the row ends at the joint', () => {
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(docOf([w, c], left));
-    const fixed = setGroupSpacing('g', { kind: 'fixed', gap: 0.1, anchor: 'end', distance: 0 }).apply(d);
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(docOf([w, c], left));
+    const fixed = setGroupSpacing(gid('g'), { kind: 'fixed', gap: 0.1, anchor: 'end', distance: 0 }).apply(d);
     near(startOf(fixed, oid('z')) + 0.6, 2.9);
     expect(fixed.openingGroups[0]!.between).toEqual([null, 'c']);
   });
 
   it('a group from before stretches (version 3) gets one when its spacing is changed: it stays clear of the X', () => {
     // The tester's F12: made before the fix, switched from fixed back to equal, it landed on the X.
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'fixed', gap: 0.1, anchor: 'start', distance: 0.2 }).apply(docOf([w, c], left));
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'fixed', gap: 0.1, anchor: 'start', distance: 0.2 }).apply(docOf([w, c], left));
     const old: Doc = { ...d, openingGroups: d.openingGroups.map(({ between: _b, ...g }) => g) };
-    const equal = setGroupSpacing('g', { kind: 'equal' }).apply(old);
+    const equal = setGroupSpacing(gid('g'), { kind: 'equal' }).apply(old);
     expect(equal.openingGroups[0]!.between).toEqual([null, 'c']);
     near(startOf(equal, oid('x')), 0.275);
     expect(clean(equal)).toBe(true);
@@ -124,7 +124,7 @@ describe('a group distributed beside a joint', () => {
       ...newDocument(),
       version: 3,
       walls: [w, c],
-      openings: left.map((o) => ({ ...o, rule: { kind: 'inGroup', groupId: 'g' } })),
+      openings: left.map((o) => ({ ...o, rule: { kind: 'inGroup', groupId: gid('g') } })),
       openingGroups: [{ id: 'g', wallId: wid('w'), members: ['x', 'y', 'z'], spacing: { kind: 'fixed', gap: 0.1, anchor: 'start', distance: 0.2 } }],
     });
     const read = readProject(v3);
@@ -133,13 +133,13 @@ describe('a group distributed beside a joint', () => {
     expect(read.doc.version).toBe(CURRENT_VERSION);
     expect(read.doc.openingGroups[0]!.between).toBeUndefined();
     // Read, its ids are typed (io/typed-ids.ts): the group is group_g, the crossing wall wall_c.
-    const equal = setGroupSpacing('group_g', { kind: 'equal' }).apply(read.doc);
+    const equal = setGroupSpacing(gid('group_g'), { kind: 'equal' }).apply(read.doc);
     expect(equal.openingGroups[0]!.between).toEqual([null, 'wall_c']);
     expect(clean(equal)).toBe(true);
   });
 
   it('with the bounding wall gone, the group takes the whole wall again', () => {
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(docOf([w, c], left));
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(docOf([w, c], left));
     const gone = deleteElements(['c']).apply(d);
     near(startOf(gone, oid('x')), (6 - 1.8) / 4);
   });
@@ -150,7 +150,7 @@ describe('a group distributed beside a joint', () => {
       ...newDocument(),
       version: 3,
       walls: [w, c],
-      openings: left.map((o) => ({ ...o, rule: { kind: 'inGroup', groupId: 'g' } })),
+      openings: left.map((o) => ({ ...o, rule: { kind: 'inGroup', groupId: gid('g') } })),
       openingGroups: [{ id: 'g', wallId: wid('w'), members: ['x', 'y', 'z'], spacing: { kind: 'equal' } }],
     });
     const before = readProject(v3.replace('"version":3', '"version":4'));
@@ -169,13 +169,13 @@ describe('a group distributed beside a joint', () => {
 
   it('openings on both sides of the X: no joint outside them, so the whole wall, as before', () => {
     const both = [win(oid('x'), { kind: 'fromStart', distance: 0.5 }), win(oid('y'), { kind: 'fromEnd', distance: 0.5 })];
-    const d = distributeOpenings('g', [oid('x'), oid('y')], { kind: 'equal' }).apply(docOf([w, c], both));
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y')], { kind: 'equal' }).apply(docOf([w, c], both));
     expect(d.openingGroups[0]!.between).toBeUndefined();
     near(startOf(d, oid('x')), (6 - 1.2) / 3);
   });
 
   it('a wall with no joint inside it: no stretch recorded, the group is as before', () => {
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(docOf([w], left));
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(docOf([w], left));
     expect(d.openingGroups[0]!.between).toBeUndefined();
     near(startOf(d, oid('x')), 1.05);
   });

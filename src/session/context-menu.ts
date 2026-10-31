@@ -2,9 +2,7 @@
 // The right-click menu and the floating bar both show these, so the same action has the same name,
 // icon and key in both (ref/chat.txt:200).
 
-import { newId } from '../core/id';
 import { distributeOpenings, updateOpening } from '../elements/opening/commands';
-import { GROUP_PREFIX } from '../elements/opening/schema';
 import { flipWalls } from '../elements/wall/flip';
 import { t, type MessageKey } from '../i18n/messages';
 import type { IconName } from '../i18n/icons';
@@ -21,6 +19,7 @@ import * as appSettings from './app-settings';
 import * as appEdit from './app-edit';
 import { wallsIn } from '../elements/wall/schema';
 import { isOpeningId } from '../elements/opening/schema';
+import { newGroupId } from '../elements/opening/schema';
 
 export interface ContextEntry {
   readonly id: ContextId;
@@ -108,7 +107,7 @@ function entriesFor(app: App, openCommands: () => void): (id: ContextId) => Cont
     centerOpening: () => opening && app.store.dispatch(updateOpening(opening.id, { rule: { kind: 'centered' } })),
     addFloor: () => one && addFloorToRoom(app, one),
     addCeiling: () => one && addCeilingToRoom(app, one),
-    distribute: () => app.store.dispatch(distributeOpenings(newId(GROUP_PREFIX), ids.filter(isOpeningId), { kind: 'equal' })),
+    distribute: () => app.store.dispatch(distributeOpenings(newGroupId(), ids.filter(isOpeningId), { kind: 'equal' })),
     frameSelection: () => frameSelection(app),
     properties: () => appSettings.showProperties(app),
     clearSelection: () => clearSelection(app),

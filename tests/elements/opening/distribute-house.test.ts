@@ -11,6 +11,7 @@ import { newOpening } from '../../../src/elements/opening/schema';
 import { oid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 import type { OpeningId } from '../../../src/elements/opening/schema';
+import { gid } from '../../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -31,7 +32,7 @@ const placed = (d: Doc) => deriveOpenings(d.openings, hostsIn(d), d.openingGroup
 
 describe('distribute in a house', () => {
   it('the two windows of the right room: equal spaces from the T wall face to the corner wall face', () => {
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(house());
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(house());
     const p = placed(d);
     const [y, z] = [p.get(oid('y'))!, p.get(oid('z'))!];
     // Faces: the T wall's right face at 4.675, the right wall's inner face at 8.925 (15 cm walls on their axes).
@@ -41,7 +42,7 @@ describe('distribute in a house', () => {
   });
 
   it('one dragged away: the others stay where they were', () => {
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(house());
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(house());
     const before = placed(d);
     const next = updateOpening(oid('y'), { rule: { kind: 'fromStart', distance: 5 } }).apply(d);
     const after = placed(next);

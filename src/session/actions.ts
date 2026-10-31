@@ -6,7 +6,6 @@ import { keyOf } from './keymap';
 import { ARRANGE_HOWS, arrangeNeeds } from '../tools/arrange';
 import { newId } from '../core/id';
 import { distributeOpenings } from '../elements/opening/commands';
-import { GROUP_PREFIX } from '../elements/opening/schema';
 import { addZone } from '../elements/zone/commands';
 import { ZONE_COLOURS, ZONE_PREFIX } from '../elements/zone/schema';
 import { words } from '../elements/object/fields';
@@ -28,6 +27,7 @@ import * as appPlacing from './app-placing';
 import * as appSettings from './app-settings';
 import * as appEdit from './app-edit';
 import { isOpeningId } from '../elements/opening/schema';
+import { newGroupId } from '../elements/opening/schema';
 
 export interface Action {
   readonly id: string;
@@ -254,7 +254,7 @@ export function appActions(app: App, open: Openers): Action[] {
       const onOneWall = ids.length >= 2 && sel.every((o) => o !== undefined && o.wallId === sel[0]!.wallId);
       return ARRANGE_HOWS.map((how) =>
         onOneWall && (how === 'spreadX' || how === 'spreadY')
-          ? make(`arrange.${how}`, `arrange.${how}` as MessageKey, edit, () => app.store.dispatch(distributeOpenings(newId(GROUP_PREFIX), ids.filter(isOpeningId), { kind: 'equal' })), { keywords: 'alinhar align distribuir distribute organizar arrange' })
+          ? make(`arrange.${how}`, `arrange.${how}` as MessageKey, edit, () => app.store.dispatch(distributeOpenings(newGroupId(), ids.filter(isOpeningId), { kind: 'equal' })), { keywords: 'alinhar align distribuir distribute organizar arrange' })
           : make(`arrange.${how}`, `arrange.${how}` as MessageKey, edit, () => appEdit.arrange(app, how), { enabled: n >= arrangeNeeds(how), keywords: 'alinhar align distribuir distribute organizar arrange' }),
       );
     })(),

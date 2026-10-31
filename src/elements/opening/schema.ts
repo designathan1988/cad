@@ -27,7 +27,8 @@ export type AlignEdge = 'start' | 'center' | 'end';
 /** The rules measured by a distance the user can type. */
 export type DistanceRule = Extract<PositionRule, { readonly distance: number }>;
 export const hasDistance = (r: PositionRule): r is DistanceRule => 'distance' in r;
-export type OpeningGroupId = string;
+/** A group of doors and windows spread together (group_…). */
+export type OpeningGroupId = Brand<'group'>;
 
 /**
  * Openings of one wall placed together, in wall order. Equal: the same space between the stretch's
@@ -140,3 +141,6 @@ export const isOpeningId = (id: string): id is OpeningId => id.startsWith(`${OPE
 /** A new door's or window's id (opening_…). */
 export const newOpeningId = (): OpeningId => newId(OPENING_PREFIX) as OpeningId;
 export const GROUP_PREFIX = 'group';
+
+/** A new group's id (group_…). */
+export const newGroupId = (): OpeningGroupId => newId(GROUP_PREFIX) as OpeningGroupId;

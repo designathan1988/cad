@@ -1,7 +1,7 @@
 // Element ids in test fixtures: a literal written in a test is given its kind here, as the file's
 // reader (project/typed-ids.ts) gives one read from a file. Only tests use it.
 
-import type { OpeningId } from '../src/elements/opening/schema';
+import type { OpeningGroupId, OpeningId } from '../src/elements/opening/schema';
 import type { FloorId, RoomId } from '../src/elements/room/schema';
 import type { WallId } from '../src/elements/wall/schema';
 
@@ -16,3 +16,6 @@ export const rid = (id: string): RoomId => id as RoomId;
 
 /** A floor's id written in a test. */
 export const fid = (id: string): FloorId => id as FloorId;
+
+/** A group's id written in a test. */
+export const gid = (id: string): OpeningGroupId => id as OpeningGroupId;

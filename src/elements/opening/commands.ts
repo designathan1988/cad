@@ -302,7 +302,7 @@ export const distributeOpenings = (groupId: OpeningGroupId, ids: readonly Openin
         const [lo, hi] = [mid(r[0]!), mid(r[r.length - 1]!)];
         const before = joints.filter(([, j]) => (j.lo + j.hi) / 2 <= lo).sort((x, y) => y[1].hi - x[1].hi)[0]?.[0] ?? null;
         const after = joints.filter(([, j]) => (j.lo + j.hi) / 2 > hi).sort((x, y) => x[1].lo - y[1].lo)[0]?.[0] ?? null;
-        return { id: k === 0 ? groupId : `${groupId}-${k + 1}`, wallId: list[0]!.wallId, members: r, spacing, ...(before !== null || after !== null ? { between: [before, after] as const } : {}) };
+        return { id: k === 0 ? groupId : (`${groupId}-${k + 1}` as OpeningGroupId), wallId: list[0]!.wallId, members: r, spacing, ...(before !== null || after !== null ? { between: [before, after] as const } : {}) };
       });
     if (groups.length === 0) return spread;
     // One left out that was in a group (a version 3 group split here) keeps its place, measured from the start.

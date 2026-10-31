@@ -4,7 +4,6 @@ import { applyCovered, keepSelectionInView3d, keepSelectionInView } from '../ses
 import { distance } from '../model/vector';
 import { resetWallsToType, setWalls, updateWalls } from '../elements/wall/commands';
 import { alignHeads, alignOpenings, distributeOpenings, ruleKeepingPosition, setGroupSpacing, ungroupOpenings, updateOpening } from '../elements/opening/commands';
-import { GROUP_PREFIX } from '../elements/opening/schema';
 import { alignWalls, distributeWalls } from '../elements/wall/arrange';
 import { toolCursor } from './cursors';
 import { getLang, t } from '../i18n/messages';
@@ -16,7 +15,6 @@ import { stackedSteps } from '../session/stacked';
 import { changeReferenceLine, changeWallType, moveWalls, roomFace } from '../elements/wall/edit';
 import { insideRing } from '../elements/room/derive';
 import { loadPrefs, savePrefs } from '../project/persist';
-import { newId } from '../core/id';
 import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
 import { type App } from '../session/app';
 import { nextFields, type NextSlot } from '../session/next';
@@ -32,6 +30,7 @@ import * as appPlacing from '../session/app-placing';
 import * as appSettings from '../session/app-settings';
 import * as appView from '../session/app-view';
 import { wallsIn } from '../elements/wall/schema';
+import { newGroupId } from '../elements/opening/schema';
 
 /** The panel's title over a placing tool's next element: its kind's name, an object's its own. */
 function nextTitle(app: App, slot: NextSlot): string {
@@ -210,7 +209,7 @@ export function renderFrame(app: App): void {
         },
         align: (refId, ids, edge) => app.store.dispatch(alignOpenings(refId, ids, edge)),
         alignHeads: (refId, ids) => app.store.dispatch(alignHeads(refId, ids)),
-        distribute: (ids, spacing) => app.store.dispatch(distributeOpenings(newId(GROUP_PREFIX), ids, spacing)),
+        distribute: (ids, spacing) => app.store.dispatch(distributeOpenings(newGroupId(), ids, spacing)),
         setSpacing: (groupId, spacing) => app.store.dispatch(setGroupSpacing(groupId, spacing)),
         ungroup: (groupId) => app.store.dispatch(ungroupOpenings(groupId)),
       },

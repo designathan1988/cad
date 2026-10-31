@@ -19,7 +19,7 @@ import {
 import { deriveOpenings, hostsOf } from '../../../src/elements/opening/derive';
 import { newOpening, type PositionRule } from '../../../src/elements/opening/schema';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { oid, wid } from '../../ids';
+import { gid, oid, wid } from '../../ids';
 import type { OpeningId } from '../../../src/elements/opening/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], extra: Partial<DocWall> = {}): DocWall => ({
@@ -114,7 +114,7 @@ describe('distributed groups', () => {
     docOf([w], [win(oid('x'), wid('w'), { kind: 'fromEnd', distance: 0.1 }), win(oid('y'), wid('w'), { kind: 'fromStart', distance: 0 }), win(oid('z'), wid('w'), { kind: 'centered' })]);
 
   it('equal spaces: (6 − 3 × 1.20) / 4 = 0.60 between the wall ends and each window, in wall order', () => {
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(three());
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(three());
     // y was first along the wall, then z, then x.
     expect(d.openingGroups).toEqual([{ id: 'g', wallId: wid('w'), members: ['y', 'z', 'x'], spacing: { kind: 'equal' } }]);
     near(startOf(d, oid('y')), 0.6);
@@ -124,33 +124,33 @@ describe('distributed groups', () => {
   });
 
   it('the spaces follow the wall: on an 8 m wall they become 1.10', () => {
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(three());
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(three());
     const long = { ...d, walls: [{ ...w, end: { x: 8, y: 0 } }] };
     near(startOf(long, oid('y')), 1.1);
     near(startOf(long, oid('x')), 1.1 * 3 + 2.4);
   });
 
   it('fixed spacing of 0.50: the row of 4.60 is centred, or measured from either end', () => {
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'fixed', gap: 0.5, anchor: 'centered', distance: 0 }).apply(three());
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'fixed', gap: 0.5, anchor: 'centered', distance: 0 }).apply(three());
     near(startOf(d, oid('y')), 0.7);
     near(startOf(d, oid('z')), 2.4);
     near(startOf(d, oid('x')), 4.1);
-    const fromStart = setGroupSpacing('g', { kind: 'fixed', gap: 0.5, anchor: 'start', distance: 0.2 }).apply(d);
+    const fromStart = setGroupSpacing(gid('g'), { kind: 'fixed', gap: 0.5, anchor: 'start', distance: 0.2 }).apply(d);
     near(startOf(fromStart, oid('y')), 0.2);
     near(startOf(fromStart, oid('x')), 3.6);
-    const fromEnd = setGroupSpacing('g', { kind: 'fixed', gap: 0.5, anchor: 'end', distance: 0.3 }).apply(d);
+    const fromEnd = setGroupSpacing(gid('g'), { kind: 'fixed', gap: 0.5, anchor: 'end', distance: 0.3 }).apply(d);
     near(startOf(fromEnd, oid('y')), 6 - 0.3 - 4.6);
   });
 
   it('needs two or more openings on one wall; otherwise nothing changes', () => {
     const d = docOf([w, v], [win(oid('x'), wid('w'), { kind: 'centered' }), win(oid('y'), wid('v'), { kind: 'centered' })]);
-    expect(distributeOpenings('g', [oid('x'), oid('y')], { kind: 'equal' }).apply(d)).toBe(d);
-    expect(distributeOpenings('g', [oid('x')], { kind: 'equal' }).apply(d)).toBe(d);
+    expect(distributeOpenings(gid('g'), [oid('x'), oid('y')], { kind: 'equal' }).apply(d)).toBe(d);
+    expect(distributeOpenings(gid('g'), [oid('x')], { kind: 'equal' }).apply(d)).toBe(d);
   });
 
   it('ungrouping keeps every window where it is', () => {
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(three());
-    const loose = ungroupOpenings('g').apply(d);
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(three());
+    const loose = ungroupOpenings(gid('g')).apply(d);
     expect(loose.openingGroups).toEqual([]);
     for (const id of [oid('x'), oid('y'), oid('z')]) near(startOf(loose, id), startOf(d, id));
     expect(loose.openings.every((o) => o.rule.kind === 'fromStart')).toBe(true);
@@ -158,7 +158,7 @@ describe('distributed groups', () => {
 
   // Spread again without it, the others all jumped when one was dragged (the user's report).
   it('a member given another rule undoes the group; the others stay exactly where they were', () => {
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(three());
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(three());
     const [y, z] = [startOf(d, oid('y')), startOf(d, oid('z'))];
     const next = updateOpening(oid('x'), { rule: { kind: 'fromEnd', distance: 0 } }).apply(d);
     expect(next.openingGroups).toEqual([]);
@@ -168,7 +168,7 @@ describe('distributed groups', () => {
   });
 
   it('a group left with one member is dissolved and that member stays where it was', () => {
-    const d = distributeOpenings('g', [oid('x'), oid('y')], { kind: 'equal' }).apply(three());
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y')], { kind: 'equal' }).apply(three());
     const before = startOf(d, oid('y'));
     const next = deleteElements(['x']).apply(d);
     expect(next.openingGroups).toEqual([]);
@@ -177,7 +177,7 @@ describe('distributed groups', () => {
   });
 
   it('deleting the wall deletes its groups', () => {
-    const d = distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(three());
+    const d = distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }).apply(three());
     const next = deleteElements(['w']).apply(d);
     expect(next.openings).toEqual([]);
     expect(next.openingGroups).toEqual([]);
@@ -185,8 +185,8 @@ describe('distributed groups', () => {
 
   it('each command is one undo step', () => {
     const s = createStore<Doc>(three());
-    s.dispatch(distributeOpenings('g', [oid('x'), oid('y'), oid('z')], { kind: 'equal' }));
-    s.dispatch(setGroupSpacing('g', { kind: 'fixed', gap: 0.5, anchor: 'centered', distance: 0 }));
+    s.dispatch(distributeOpenings(gid('g'), [oid('x'), oid('y'), oid('z')], { kind: 'equal' }));
+    s.dispatch(setGroupSpacing(gid('g'), { kind: 'fixed', gap: 0.5, anchor: 'centered', distance: 0 }));
     s.undo();
     expect(s.get().openingGroups[0]!.spacing).toEqual({ kind: 'equal' });
     s.undo();
@@ -194,7 +194,7 @@ describe('distributed groups', () => {
   });
 
   it('a member with no group that lists it is a bad reference: centred, with the warning', () => {
-    const d = docOf([w], [win(oid('x'), wid('w'), { kind: 'inGroup', groupId: 'gone' })]);
+    const d = docOf([w], [win(oid('x'), wid('w'), { kind: 'inGroup', groupId: gid('gone') })]);
     near(startOf(d, oid('x')), 2.4);
     expect(placed(d).get(oid('x'))!.warnings).toContain('openingBadReference');
   });

@@ -4,7 +4,7 @@ import { CURRENT_VERSION, readProject, writeProject } from '../../src/project/fi
 import { isLevel } from '../../src/project/file-guards';
 import { BEFORE_65 } from '../../src/elements/object/library-before65';
 import { BEFORE_66 } from '../../src/elements/object/library-before66';
-import { oid, wid } from '../ids';
+import { gid, oid, wid } from '../ids';
 
 const wall = (id: string, x: number) => ({
   id,
@@ -59,7 +59,7 @@ describe('project files', () => {
     const doc = {
       ...newDocument(),
       walls: [wall('wall_a', 0)],
-      openings: [opening('opening_o1', { kind: 'inGroup', groupId: 'group_g' }), opening('opening_o2', { kind: 'inGroup', groupId: 'group_g' }), opening('opening_o3', { kind: 'aligned', openingId: oid('opening_o1'), edge: 'center' })],
+      openings: [opening('opening_o1', { kind: 'inGroup', groupId: gid('group_g') }), opening('opening_o2', { kind: 'inGroup', groupId: gid('group_g') }), opening('opening_o3', { kind: 'aligned', openingId: oid('opening_o1'), edge: 'center' })],
       openingGroups: [group, { id: 'group_bad', wallId: wid('wall_a'), members: 'opening_o1', spacing: { kind: 'equal' } }],
     };
     const r = readProject(JSON.stringify(doc));

@@ -10,6 +10,7 @@ import { flipWalls } from '../../../src/elements/wall/flip';
 import { oid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 import type { OpeningId } from '../../../src/elements/opening/schema';
+import { gid } from '../../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], extra: Partial<DocWall> = {}): DocWall => ({
   id,
@@ -62,7 +63,7 @@ describe('flip a wall', () => {
   });
 
   it('a distributed group keeps its members in place: reversed order, fixed row anchored at the other end', () => {
-    const g = distributeOpenings('g', [oid('d'), oid('n')], { kind: 'fixed', gap: 0.5, anchor: 'start', distance: 0.3 }).apply(base);
+    const g = distributeOpenings(gid('g'), [oid('d'), oid('n')], { kind: 'fixed', gap: 0.5, anchor: 'start', distance: 0.3 }).apply(base);
     const f = flipWalls([wid('w')]).apply(g);
     expect(f.openingGroups[0]).toMatchObject({ members: ['n', 'd'], spacing: { kind: 'fixed', gap: 0.5, anchor: 'end', distance: 0.3 } });
     for (const id of [oid('d'), oid('n')]) jambs(f, id).forEach((x, i) => expect(x).toBeCloseTo(jambs(g, id)[i]!, 12));
