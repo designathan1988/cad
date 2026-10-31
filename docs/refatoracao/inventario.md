@@ -275,6 +275,15 @@ aqui fica a decisão por arquivo.
 | Arquivo | Ação | Destino | Nota |
 | --- | --- | --- | --- |
 | (movido no passo 4) src/i18n/messages.ts | dividir | i18n/*.ts (en/pt por domínio) | camada neutra (elementos e ui a usam; ADR: nenhum elemento importa ui) |
+| (novo no passo 6) src/i18n/messages/ribbon.ts | manter | i18n/messages/ribbon.ts | textos en/pt: a faixa |
+| (novo no passo 6) src/i18n/messages/hints.ts | manter | i18n/messages/hints.ts | textos en/pt: dicas de ferramenta, encaixes, medir, entrada digitada |
+| (novo no passo 6) src/i18n/messages/commands.ts | manter | i18n/messages/commands.ts | textos en/pt: comandos e teclas |
+| (novo no passo 6) src/i18n/messages/shell.ts | manter | i18n/messages/shell.ts | textos en/pt: barra de cima, paleta, menus, avisos, ajuda, rodapé |
+| (novo no passo 6) src/i18n/messages/panel.ts | manter | i18n/messages/panel.ts | textos en/pt: painel de propriedades e avisos |
+| (novo no passo 6) src/i18n/messages/editor.ts | manter | i18n/messages/editor.ts | textos en/pt: editor de definições, biblioteca, lojas |
+| (novo no passo 6) src/i18n/messages/materials.ts | manter | i18n/messages/materials.ts | textos en/pt: materiais, padrões, camadas, tipos |
+| (novo no passo 6) src/i18n/messages/elements.ts | manter | i18n/messages/elements.ts | textos en/pt: os elementos de construção |
+| (novo no passo 6) src/i18n/messages/views.ts | manter | i18n/messages/views.ts | textos en/pt: vistas, referências, pavimentos, desenho, projetos, unidades |
 | src/ui/styles.css | dividir | ui/styles/*.css por componente (tokens.css, shell.css…) | 3583 l; importa por ordem no styles.css raiz |
 | src/ui/shell.ts | mover | ui/shell.ts |  |
 | src/ui/controls.ts | mover | ui/controls.ts | searchSelect ≡ palette combobox → um |

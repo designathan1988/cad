@@ -104,7 +104,8 @@ const K = 60;
 const gramOwners = new Map(); // hash -> first file
 const dupPairs = new Map(); // "a|b" -> count
 for (const [f, t] of texts) {
-  if (/library|\.test\.|assets\.d/.test(f)) continue;
+  // Data tables are skipped: a library's items and the i18n texts tokenize to the same 'S: S,' runs.
+  if (/library|\.test\.|assets\.d|i18n\/messages\//.test(f)) continue;
   const tokens = tokenize(t);
   for (let i = 0; i + K <= tokens.length; i++) {
     let h = 0;

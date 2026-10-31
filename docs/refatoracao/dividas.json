@@ -12,7 +12,6 @@
   "src/elements/opening/fields.ts",
   "src/elements/section/drawing.ts",
   "src/elements/wall/geometry/footprint.ts",
-  "src/i18n/messages.ts",
   "src/project/derive.ts",
   "src/project/file.ts",
   "src/render/plan-view.ts",
