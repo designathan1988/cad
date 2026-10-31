@@ -30,8 +30,13 @@ tricks for speed, UI rules (one place per command, compact density, no raw px, s
 - The interface of the owner's prototype (fixed bar of general commands, tools' rail, the tool's floating panel, view header,
   one right panel at a time, dark tokens) is in: 8e59330, ada446b, c345ff4, pushed. Checked headless at 1920 and 1280; console
   clean. Desktop only: never 880 or phone widths (owner, 2026-10-31).
-- Not done: the general app test redone in the new frame; main's open F-0072, F-0089, F-0091 and a mirrored wall over a column
-  with no warning. F-0097 is another session's (main checkout), not here. Progress notes: work.md.
+- Closed 2026-10-31 (owner's /goal "Termine de uma vez por todas o que ainda está aberto!"): F-0072 (e297fed: single sliding
+  leaf slides into the wall, shutter rolls up), F-0089 (unjoined straight walls overlapping reported), F-0091 (layer order
+  said in the layer editor), F-0097 (30cd3a9: typed ids renamed by kind, zones/railings/arc measures follow; the main
+  checkout still holds its own uncommitted copy of this fix in src/io/typed-ids.ts), general app test redone at 1920 in the
+  new frame (fixes d7d79dc). Wall over column: the plan draws the column clean over the wall, an embedded column is normal:
+  no warning added. F-0138: star of 8 and a third wall through a crossing both clean in the app: not reproduced, stays
+  blocked (no failing scene to fix from). F-0023 rest: left by main on purpose (tools with their own state machines).
 - Console in photorealistic mode: THREE.Clock, WebGLPathTracer deprecation, X4000 shader notes (library-level, latest versions).
 
 ## Known traps (from memoria + repo)

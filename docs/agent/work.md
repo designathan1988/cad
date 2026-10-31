@@ -44,4 +44,4 @@ Not built (no such feature: memory finish-before-new): Avisos panel, Zoom/Pan bu
 - Checked headless at 1920 (light and dark) and 1280: Project menu, level menu + level editor, rail, object list, wall tool panel,
   dimension family, wall and door selection panels, Move from the fixed bar, W wall + Ctrl+Z, language switch, 3D (cube, frame
   all, display popover), navigator, library, visibility, palette. Console clean.
-- Not done yet: the general app test redone in the new frame (step 6), F-0072, F-0089, F-0091, wall over column (step 7).
+- Then (goal "termine tudo"): F-0072 + F-0089 + F-0091 e297fed, test fixes d7d79dc, F-0097 30cd3a9; all checked in the app at 1920.
