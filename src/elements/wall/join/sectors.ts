@@ -232,7 +232,10 @@ function splitSectors(arms: readonly SectorArm[], point: Point2, { dirs, order, 
       // side (a gap up to three quarters of a turn). Only an acute L's outer tip is bevelled: a nearly
       // straight passage of unlike walls, bevelled on its outer side, ran the thin wall 2 m along the
       // thick one.
-      if (c !== null && gap >= Math.PI / 2 && gap <= 1.5 * Math.PI && distance(c, centre) > limit) c = null;
+      // So too when that corner lies past either arm's far end, short of the limit: a passage 2° off straight
+      // of a 8 cm and a 32 cm wall put it 3.1 m out, past a 3 m arm, and the whole point was refused (F-0138).
+      const past = (cc: Point2) => dot(sub(cc, centre), da) > arms[a]!.reach || dot(sub(cc, centre), db) > arms[b]!.reach;
+      if (c !== null && gap >= Math.PI / 2 && gap <= 1.5 * Math.PI && (distance(c, centre) > limit || past(c))) c = null;
       let u: Point2;
       if (c === null) u = rotate(da, gap / 2);
       else if (distance(c, centre) <= POINT_TOLERANCE) u = rotate(da, gap / 2);

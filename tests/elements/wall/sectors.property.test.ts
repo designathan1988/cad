@@ -5,7 +5,8 @@
 // - ends: no two pieces overlap, every point of a band away from the point is covered once, and the
 //   pieces seen from the point are covered all the way to it (star-shaped: no hole, no pocket).
 // No polygon library: polyclip-ts, given these pieces, overflowed its stack or could not close a ring.
-// A scene the engine cannot split exactly says so (`complexJoin`); most must not.
+// A scene the engine cannot split exactly would say so (`complexJoin`): none may (F-0138; measured on 10,000
+// scenes of three seeds, all split, after a passage nearly straight stopped refusing its point).
 // FUZZ_SEED picks a different seed; FUZZ_SCALE multiplies the run counts.
 
 import fc from 'fast-check';
@@ -160,10 +161,10 @@ describe('junctions by sectors, random scenes', () => {
     );
   }, TIMEOUT);
 
-  it('most scenes were split by sectors, not left with a warning', () => {
+  it('every scene was split by sectors, none left with a warning', () => {
     expect(tally.crossings).toBeGreaterThan(0);
     expect(tally.stars).toBeGreaterThan(0);
-    expect(tally.crossingsSplit / tally.crossings, JSON.stringify(tally)).toBeGreaterThan(0.9);
-    expect(tally.starsSplit / tally.stars, JSON.stringify(tally)).toBeGreaterThan(0.9);
+    expect(tally.crossingsSplit, JSON.stringify(tally)).toBe(tally.crossings);
+    expect(tally.starsSplit, JSON.stringify(tally)).toBe(tally.stars);
   });
 });
