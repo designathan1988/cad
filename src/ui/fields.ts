@@ -130,27 +130,6 @@ export function fieldsSection<T>(title: string, open: boolean, fields: readonly 
   return section(title, open, ...rows);
 }
 
-/**
- * The fields as the ribbon's rows (a tool's tab: the next element's type and properties, prototype v7's
- * fields in the ribbon): its label, then its control, three to a column. What only reads or acts is the
- * panel's. Each row is marked by its field (data-rf), so the focus finds it again once drawn anew.
- */
-export function ribbonFieldRows<T>(fields: readonly Field<T>[], items: readonly T[]): HTMLElement[] {
-  return fieldStates(fields, items).flatMap(({ field, value }) => {
-    if (field.kind === 'readout' || field.kind === 'note' || field.kind === 'action') return [];
-    const label = el('span', { class: 'rb-field-label' });
-    const ic = field.icon ?? FIELD_ICONS[field.id];
-    if (ic) label.innerHTML = icon(ic, 14);
-    label.append(el('span', {}, t(field.label, field.labelVars)));
-    const control = controlFor(field, value, items);
-    control.querySelector('input, textarea, select, button')?.setAttribute('aria-label', t(field.label, field.labelVars));
-    if (field.kind === 'number') scrub(label, () => value as number | null, field.set, minOf(field, items), field.unit ?? 'm');
-    const r = el('div', { class: `rb-field rb-field-${field.kind}` }, label, control);
-    r.dataset.rf = field.id;
-    return [r];
-  });
-}
-
 const minOf = <T>(field: Extract<Field<T>, { kind: 'number' }>, items: readonly T[]): number =>
   typeof field.min === 'function' ? field.min(items) : (field.min ?? -Infinity);
 

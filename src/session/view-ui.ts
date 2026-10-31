@@ -240,14 +240,15 @@ export function applyCovered(app: App): Insets {
 
 export function covered(app: App): Insets {
   const vp = app.shell.viewport.getBoundingClientRect();
-  const b = app.shell.browser.hidden ? null : app.shell.browser.getBoundingClientRect();
-  const left = b && b.width > 0 ? b.right - vp.left : 0;
-  if (app.shell.panel.hidden) return { right: 0, bottom: 0, left };
-  const p = app.shell.panel.getBoundingClientRect();
-  if (p.width === 0 || p.height === 0) return { right: 0, bottom: 0, left };
-  if (p.top > vp.top + 8 && p.top < vp.bottom) return { right: 0, bottom: vp.bottom - p.top, left };
-  if (p.left > vp.left && p.left < vp.right) return { right: vp.right - p.left, bottom: 0, left };
-  return { right: 0, bottom: 0, left };
+  // The panel or the navigator, in one place on the right: a column beside the drawing, or over it in a
+  // narrow window (a sheet over its lower part on a phone).
+  const side = [app.shell.panel, app.shell.browser].find((x) => !x.hidden);
+  if (!side) return { right: 0, bottom: 0, left: 0 };
+  const p = side.getBoundingClientRect();
+  if (p.width === 0 || p.height === 0) return { right: 0, bottom: 0, left: 0 };
+  if (p.top > vp.top + 8 && p.top < vp.bottom) return { right: 0, bottom: vp.bottom - p.top, left: 0 };
+  if (p.left > vp.left && p.left < vp.right) return { right: vp.right - p.left, bottom: 0, left: 0 };
+  return { right: 0, bottom: 0, left: 0 };
 }
 
 export function frameAll(app: App): void {

@@ -3,6 +3,7 @@
 /* Design tokens, defined once. Light by default; dark by preference or by the theme button. */
 :root {
   --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fs-xxs: 10px;
   --fs-xs: 11px;
   --fs-sm: 11px;
   --fs-md: 12px;
@@ -18,20 +19,24 @@
   --radius-sm: 4px;
   --radius: 6px;
   --radius-lg: 8px;
-  --top-h: 34px;
-  --tabs-h: 26px;
-  --ribbon-h: 76px;
-  --vcb-h: 30px;
-  --foot-h: 28px;
+  /* The window's rows (ui/shell.ts): the title bar, the fixed bar of commands, the drawing, the status bar. */
+  --top-h: 30px;
+  --cmd-h: 32px;
+  --foot-h: 22px;
   /* Where the drawing starts under the frame: a panel over the drawing (narrow windows) starts there. */
-  --chrome-top: calc(var(--top-h) + var(--tabs-h) + var(--ribbon-h));
-  --rb-large-w: 62px;
-  --rb-small-h: 20px;
-  /* A field on the ribbon (a tool's next element): its label, then its control. */
-  --rb-field-label-w: 136px;
-  --rb-field-w: 136px;
-  --rb-field-label-w-sm: 104px;
-  --rb-field-w-sm: 112px;
+  --chrome-top: calc(var(--top-h) + var(--cmd-h));
+  /* The bars' parts (styles/bars.css), as the prototype's: a button, a floating bar, a line between groups,
+     a list's width, a status chip, the gap between the drawing's edge and what floats over it. */
+  --bar-btn: 24px;
+  --bar-h: 30px;
+  --bar-sep-h: 14px;
+  --list-w: 128px;
+  --chip-h: 18px;
+  --mark: 18px;
+  --float-gap: 8px;
+  --side-bar-w: 30px;
+  --side-btn-w: 28px;
+  --view-head-x: 52px;
   --objs-dialog-h: 900px;
   --objs-dialog-w: 1440px;
   --objs-nav-w: 200px;
@@ -40,7 +45,7 @@
   --types-side-w: 560px;
   --objs-card-min: 176px;
   --objs-search-w: 360px;
-  --search-w: 300px;
+  --search-w: 220px;
   --control-h: 26px;
   --control-h-sm: 24px;
   --field-h: 24px;
@@ -58,7 +63,6 @@
   --summary-h: 28px;
   --wide-btn-h: 26px;
   --sep-w: 24px;
-  --sep-h: 20px;
   --cube: 60px;
   --cube-wrap: 92px;
   --cube-depth: 300px;
@@ -81,7 +85,7 @@
   --browser-w: 240px;
   --tooltip-w: 280px;
   --touch: 44px;
-  --panel-w: 272px;
+  --panel-w: 260px;
   --editor-w: 1280px;
   --editor-body-h: 56vh;
   --editor-preview-h: 300px;
@@ -141,6 +145,19 @@
   --title-border: rgb(255 255 255 / 0.14);
   --saved-ok: #3fb27f;
   --on-accent: #ffffff;
+  /* The bars (styles/bars.css): what floats over the drawing and the fixed ones, their lines, their icons,
+     a button pointed at or pressed, the window behind them, the right edge's bar and the status bar. */
+  --app-bg: #e9ebee;
+  --bar-bg: #ffffff;
+  --bar-border: #d7dae0;
+  --bar-sep: #d7dae0;
+  --bar-icon: #4b505a;
+  --bar-hover: #eceef1;
+  --bar-pressed: #2563eb;
+  --bar-shadow: 0 4px 14px rgb(16 24 40 / 0.12);
+  --cmd-bg: #f7f7f8;
+  --edge-bg: #f3f4f6;
+  --text-strong: #0b0c0f;
   --warn-soft: #fff1e6;
   --snap: #b45309;
   --shadow: 0 2px 8px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.06);
@@ -170,20 +187,38 @@
   color-scheme: light;
 }
 
+/* The dark theme as the interface's prototype has it: the bars #202226 over a #141518 window, the drawing
+   #232528 with its grid, the panel #1b1c20, lines #2c2f35 and #34373e, the accent #4a8cff (#3b5bdb pressed). */
 :root[data-theme='dark'] {
-  --title-bg: #111215;
+  --title-bg: #17181b;
+  --title-text: #d7dae0;
+  --title-text-2: #9aa0aa;
+  --title-hover: #2a2d33;
+  --title-field: #232529;
+  --title-border: #2a2c31;
   --bg: #1b1c20;
-  --bg-2: #202126;
-  --canvas: #1b1c20;
-  --field: #2a2b31;
-  --hover: #2d2e35;
-  --border: #303139;
-  --text: #ececf0;
-  --text-2: #a8abb4;
+  --bg-2: #202226;
+  --canvas: #232528;
+  --field: #2a2d33;
+  --hover: #2a2d33;
+  --border: #2c2f35;
+  --text: #d7dae0;
+  --text-2: #9aa0aa;
   --text-3: #868993;
-  --accent: #5b8def;
-  --accent-soft: #24324f;
-  --accent-text: #9ab8f6;
+  --accent: #4a8cff;
+  --accent-soft: #33465f;
+  --accent-text: #8fb3ff;
+  --app-bg: #141518;
+  --bar-bg: #202226;
+  --bar-border: #34373e;
+  --bar-sep: #33363c;
+  --bar-icon: #b4b9c2;
+  --bar-hover: #2f3239;
+  --bar-pressed: #3b5bdb;
+  --bar-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
+  --cmd-bg: #202226;
+  --edge-bg: #17181b;
+  --text-strong: #ffffff;
   --accent-contrast: #0f1115;
   --scrim: rgb(0 0 0 / 0.62);
   --border-strong: #666a75;
@@ -208,8 +243,8 @@
   --warn-soft: #3a2618;
   --snap: #f59e0b;
   --shadow: 0 2px 10px rgb(0 0 0 / 0.4);
-  --grid-minor: #24252b;
-  --grid-major: #2e3038;
+  --grid-minor: #2b2d32;
+  --grid-major: #33363c;
   --axis-x: #8a4644;
   --axis-y: #3f7a56;
   --wall-fill: #5d616b;
@@ -217,10 +252,10 @@
   --phase-existing: #5d616b;
   --phase-demolish: #d8b04a;
   --wall-line: #e6e7eb;
-  --wall-sel: #5b8def;
+  --wall-sel: #4a8cff;
   --wall-sel-fill: #3e5c94;
-  --kbd-bg: #2a2b31;
-  --kbd-border: #3a3b43;
+  --kbd-bg: #2a2d33;
+  --kbd-border: #34373e;
   --floor-fill: #26272d;
   /* Lighter than the floors and the rooms' colours: the canvas's near black read as a hole in the room. */
   --furniture: #464954;

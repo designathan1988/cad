@@ -22,17 +22,6 @@
 .viewport canvas.overlay-3d {
   pointer-events: none;
 }
-.float-bar {
-  position: absolute;
-  display: flex;
-  gap: var(--sp-half);
-  padding: var(--sp-1);
-  border: var(--line) solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--bg);
-  box-shadow: var(--shadow);
-  z-index: 5;
-}
 .temp-dims {
   position: absolute;
   inset: 0;
@@ -66,42 +55,6 @@
   background: var(--bg);
   outline: none;
 }
-.float-bar[hidden] {
-  display: none;
-}
-/* The view's control bar (shell.ts): a row of its own under the drawing, as the interface model's;
-   one line, what does not fit scrolls sideways. */
-.view-bar {
-  grid-row: 5;
-  grid-column: 1;
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  min-width: 0;
-  padding: 0 var(--sp-2);
-  background: var(--bg);
-  border-top: var(--line) solid var(--border);
-  z-index: 4;
-}
-/* When what it holds does not fit (measured, shell.ts fitViewBar; it cannot scroll sideways: that
-   would clip the light's sliders, which open above it), it gives way a step at a time: the 3D's lists'
-   captions (each select keeps its name; the plan's scale, alone, keeps its), then the buttons' words,
-   then the light's and the visibility's: each named and with its tip. */
-.view-bar.fit-2 .light-btn .label,
-.view-bar.fit-3 .light-btn .label {
-  display: none;
-}
-/* The 3D's toggles as icons, each named in its tip (shell.ts relabel): a row of fourteen words of the
-   same weight read as a form (docs/revisao-interface.md, B1). */
-.view-bar-3d .segmented .label {
-  display: none;
-}
-.view-bar-3d .segmented button.has-icon {
-  width: var(--control-h);
-  justify-content: center;
-  padding: 0;
-}
 /* The Display panel's lists, one over the other, wide enough for their names. */
 .light-lists {
   display: grid;
@@ -112,73 +65,6 @@
 }
 .light-lists .look-select select {
   flex: 1;
-}
-/* The Visibility popover (ui/visibility-panel.ts): groups of rows, an eye at each row's end. */
-/* The tool in use (shell.ts toolStrip), over the top middle of the drawing: one row, its name, its ways
-   and types as small buttons, the way out. */
-.tool-strip {
-  position: absolute;
-  top: var(--sp-3);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  max-width: calc(100% - 2 * var(--sp-7));
-  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
-  border: var(--line) solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--bg);
-  box-shadow: var(--shadow);
-}
-.tool-strip[hidden] {
-  display: none;
-}
-.tool-strip-name {
-  font-weight: 600;
-  font-size: var(--fs-sm);
-  white-space: nowrap;
-}
-.tool-strip-name[hidden] {
-  display: none;
-}
-.tool-strip-body,
-.tool-strip-body .rb-panel,
-.tool-strip-body .rb-body,
-.tool-strip-body .rb-column {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: var(--line-2);
-}
-.tool-strip-body .rb-panel {
-  padding: 0 0 0 var(--sp-2);
-  border-left: var(--line) solid var(--border);
-}
-.tool-strip-body .rb-title {
-  display: none;
-}
-.tool-strip-body button {
-  flex-direction: row;
-  width: auto;
-  min-width: 0;
-  max-width: none;
-  height: var(--control-h-sm);
-  padding: 0 var(--sp-2);
-  white-space: nowrap;
-}
-.tool-strip-body .rb-large .rb-label {
-  display: inline;
-  font-size: var(--fs-sm);
-}
-.tool-strip-body .rb-large .icon {
-  width: var(--sp-4);
-  height: var(--sp-4);
-}
-.tool-strip .tool-done {
-  height: var(--control-h-sm);
-  margin-left: var(--sp-1);
 }
 /* An open popover lies over the project browser's drawer (z-index 7) too. */
 .view-bar:has(.light-panel:not([hidden])) {
@@ -262,34 +148,11 @@
 .view-bar-group[hidden] {
   display: none;
 }
-.view-bar-sep {
-  align-self: stretch;
-  margin: var(--sp-1) 0;
-  border-left: var(--line) solid var(--border);
-}
 .view-bar .light-btn[hidden] {
   display: none;
 }
 .view-bar[hidden] {
   display: none;
-}
-/* The light (shell.ts): its button, and under the bar's right end its two sliders. */
-.light-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-1);
-  padding: 0 var(--sp-2);
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--text-2);
-  font-size: var(--fs-sm);
-  cursor: pointer;
-}
-.light-btn:hover,
-.light-btn[aria-expanded='true'] {
-  background: var(--hover);
-  color: var(--text);
 }
 /* The light's sliders open up from its button. */
 .light-wrap {
@@ -462,81 +325,6 @@
     opacity: 0;
     transform: translateY(var(--sp-1));
   }
-}
-
-/* View cube */
-/* The drawing's corner (shell.ts): the view cube and its home alone, no card around them; quiet until
-   the pointer comes to it, as Fusion's cube. */
-.view-corner {
-  position: absolute;
-  right: var(--sp-5);
-  top: var(--sp-4);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--sp-1);
-  z-index: 4;
-  opacity: 0.72;
-  transition: opacity 0.15s;
-}
-.view-corner:hover,
-.view-corner:focus-within {
-  opacity: 1;
-}
-.view-corner:empty,
-.view-corner:not(:has(.cube-wrap:not([hidden]))) {
-  display: none;
-}
-/* In the title bar (shell.ts): Plan | 3D as one segmented switch, the level, the project browser. */
-.view-box {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-}
-.view-box .view-tabs {
-  align-self: center;
-  padding: var(--line-2);
-  border-radius: var(--radius);
-  background: var(--title-hover);
-}
-.view-box .view-tab {
-  height: calc(var(--control-h-sm) - 2 * var(--line-2));
-  padding: 0 var(--sp-3);
-  border: 0;
-  border-radius: calc(var(--radius) - var(--line-2));
-  color: var(--title-text-2);
-  font-size: var(--fs-sm);
-}
-.view-box .view-tab:hover {
-  color: var(--title-text);
-}
-.view-box .view-tab[aria-pressed='true'] {
-  background: var(--title-bg);
-  color: var(--title-text);
-  font-weight: 600;
-}
-.view-box .level-select {
-  min-width: calc(5 * var(--sp-7));
-  color: var(--title-text);
-}
-.view-box .level-select select {
-  height: var(--control-h-sm);
-  border-color: var(--title-border);
-  background: var(--title-hover);
-  color: var(--title-text);
-  font-size: var(--fs-sm);
-}
-.view-box .level-select select option {
-  color: var(--text);
-  background: var(--bg);
-}
-/* An icon alone, beside the properties' toggle; its name is its tip. */
-.titlebar .browser-toggle {
-  justify-content: center;
-  padding: 0;
-}
-.titlebar .browser-toggle .label {
-  display: none;
 }
 .cube-wrap {
   width: var(--cube-wrap);

@@ -283,8 +283,8 @@ aqui fica a decisão por arquivo.
 | (movido no passo 4) src/session/views-ui.ts | mover | session/views-ui.ts |  |
 | (movido no passo 4) src/session/view-ui.ts | dividir | session/view/*.ts | keepSelectionInView/3d paralelos fundem |
 | (movido no passo 4) src/session/actions.ts | mover | session/actions.ts | SNAP_PARTS duplicado com chrome sai |
-| (movido no passo 4) src/ui/ribbon-tabs.ts | mover | ui/ribbon-tabs.ts | grupos repetidos (guides/dims ×2) → helpers |
-| (novo no passo 6) src/ui/ribbon-context-tabs.ts | manter | ui/ribbon-context-tabs.ts | abas que vêm e vão: a da ferramenta e a contextual (antes em ribbon-tabs.ts) |
+| (removido na interface nova) src/ui/ribbon-tabs.ts | remover | ui/ribbon-tabs.ts | grupos repetidos (guides/dims ×2) → helpers |
+| (removido na interface nova) src/ui/ribbon-context-tabs.ts | remover | ui/ribbon-context-tabs.ts | abas que vêm e vão: a da ferramenta e a contextual (antes em ribbon-tabs.ts) |
 | (movido no passo 4) src/session/context-menu.ts | mover | session/context-menu.ts |  |
 | (movido no passo 4) src/session/context-actions.ts | juntar | session/context-menu.ts |  |
 
@@ -340,7 +340,7 @@ aqui fica a decisão por arquivo.
 | (novo no passo 6) src/ui/styles/dialog.css | manter | ui/styles/dialog.css | parte de styles.css, na ordem da cascata |
 | (novo no passo 6) src/ui/styles/popups.css | manter | ui/styles/popups.css | parte de styles.css, na ordem da cascata |
 | (novo no passo 6) src/ui/styles/dialogs.css | manter | ui/styles/dialogs.css | parte de styles.css, na ordem da cascata |
-| (novo no passo 6) src/ui/styles/ribbon.css | manter | ui/styles/ribbon.css | parte de styles.css, na ordem da cascata |
+| (removido na interface nova) src/ui/styles/ribbon.css | remover | ui/styles/ribbon.css | parte de styles.css, na ordem da cascata |
 | (novo no passo 6) src/ui/styles/editor.css | manter | ui/styles/editor.css | parte de styles.css, na ordem da cascata |
 | (novo no passo 6) src/ui/styles/store.css | manter | ui/styles/store.css | parte de styles.css, na ordem da cascata |
 | src/ui/shell.ts | mover | ui/shell.ts |  |
@@ -348,7 +348,7 @@ aqui fica a decisão por arquivo.
 | src/ui/fields.ts | dividir | elements/fields.ts (tipos) + ui/fields.ts (render) | fieldStates JSON.stringify por campo por render → barato, mantém; tipos no contrato dos elementos |
 | (novo no passo 4) src/elements/fields.ts | manter | elements/fields.ts | os tipos Field/FieldOption/FieldState, o contrato que os kinds implementam |
 | src/ui/panel.ts | mover | ui/panel.ts |  |
-| src/ui/ribbon.ts | mover | ui/ribbon.ts | openMenu/menu.ts/searchSelect: um só sistema de popover |
+| (removido na interface nova) src/ui/ribbon.ts | remover | ui/ribbon.ts | openMenu/menu.ts/searchSelect: um só sistema de popover |
 | src/ui/menu.ts | mover | ui/menu.ts | idem |
 | src/ui/palette.ts | mover | ui/palette.ts | combobox compartilhado |
 | src/ui/search.ts | mover | ui/search.ts | os 5 `fold` locais dos diálogos importam daqui |
@@ -356,7 +356,7 @@ aqui fica a decisão por arquivo.
 | src/ui/browser.ts | mover | ui/browser.ts |  |
 | src/ui/visibility-panel.ts | mover | ui/visibility-panel.ts |  |
 | src/ui/library-tabs.ts | mover | ui/library-tabs.ts |  |
-| src/ui/bar-place.ts | mover | ui/bar-place.ts |  |
+| (removido na interface nova) src/ui/bar-place.ts | remover | ui/bar-place.ts |  |
 | src/ui/cursors.ts | mover | ui/cursors.ts |  |
 | (movido no passo 4) src/elements/wall/swatch.ts | mover | ui/swatch.ts | layer-editor reusa layerSwatch parametrizado |
 | (movido no passo 4) src/i18n/units.ts | dividir | i18n/units.ts | formatação compartilhada por elementos e ui | `current` espelha doc.units → deriva por render (sem cópia) |
@@ -383,8 +383,8 @@ aqui fica a decisão por arquivo.
 | (movido no passo 4) src/i18n/icons.ts | manter | i18n/icons.ts | nomes de ícone usados pelo contrato dos elementos |
 | (movido no passo 4) src/ui/chrome.ts | dividir | ui/chrome/*.ts | renderRibbon/actionList por quadro → memo por chave |
 | (novo no passo 6) src/ui/footer.ts | manter | ui/footer.ts | o rodapé a cada quadro (dica, teclas, campo de medida), antes em chrome.ts |
-| (novo no passo 6) src/ui/float-bar.ts | manter | ui/float-bar.ts | a barra flutuante sobre a seleção e a dica de medida, antes em chrome.ts |
-| (novo no passo 6) src/ui/ribbon.ts | manter | ui/ribbon.ts | a faixa desenhada a cada quadro e a tira da ferramenta, antes em chrome.ts |
+| (removido na interface nova) src/ui/float-bar.ts | remover | ui/float-bar.ts | a barra flutuante sobre a seleção e a dica de medida, antes em chrome.ts |
+| (removido na interface nova) src/ui/ribbon.ts | remover | ui/ribbon.ts | a faixa desenhada a cada quadro e a tira da ferramenta, antes em chrome.ts |
 | (movido no passo 4) src/ui/frame.ts | dividir | ui/frame/*.ts | rótulos O(rooms²); nextFields por quadro → memo |
 | (novo no passo 6) src/ui/plan-overlay.ts | manter | ui/plan-overlay.ts | a planta a cada quadro: prévias, medidas, encaixe, guias, marcas (drawPlanOverlay), antes em frame.ts |
 | (novo no passo 6) src/session/scene-frame.ts | manter | session/scene-frame.ts | a cena 3D posta em dia com a sessão a cada quadro (antes em ui/plan-overlay.ts; ui não importa render) |
@@ -416,3 +416,10 @@ aqui fica a decisão por arquivo.
 | (novo no merge do main) src/session/action-list.ts | manter | session/action-list.ts | as ações construídas uma vez por quadro e a tecla de cada uma (F-0011, do main) |
 | (novo no merge do main) src/session/point-tools.ts | manter | session/point-tools.ts | as ferramentas de pontos num lugar só (F-0023, do main), sobre o rascunho ui.draft |
 | (novo no merge do main) src/ui/store-pictures.ts | manter | ui/store-pictures.ts | a fila de imagens das cinco lojas (F-0126, do main) |
+| (novo na interface nova) src/ui/bars.ts | manter | ui/bars.ts | os botões das barras (só ícone, família com menu) e o desenho por chave |
+| (novo na interface nova) src/ui/command-bar.ts | manter | ui/command-bar.ts | a barra fixa de comandos gerais sob a barra de título |
+| (novo na interface nova) src/ui/tool-rail.ts | manter | ui/tool-rail.ts | o trilho de ferramentas à esquerda do desenho e a lista de objetos |
+| (novo na interface nova) src/ui/context-panel.ts | manter | ui/context-panel.ts | o painel flutuante da ferramenta ou da seleção no alto do desenho |
+| (novo na interface nova) src/ui/project-menu.ts | manter | ui/project-menu.ts | o menu Projeto da barra de título, em grupos |
+| (novo na interface nova) src/ui/view-header.ts | manter | ui/view-header.ts | o cabeçalho da vista (Planta, 3D, pavimento, escala) e a barra de ícones da direita |
+| (novo na interface nova) src/ui/styles/bars.css | manter | ui/styles/bars.css | parte de styles.css: a moldura e as barras da interface nova |

@@ -1,0 +1,539 @@
+/* The window's frame and its bars (ui/shell.ts), as the interface's prototype: the title bar, the fixed bar of
+   general commands, the tools' rail, the view's header, the tool's panel, the navigation and the view's
+   controls floating over the drawing, the right edge's panels and icon bar, the status bar (one part of
+   styles.css, read in its order). */
+
+#app {
+  display: grid;
+  /* minmax(0, 1fr): the middle row never grows past the window, so the status bar stays visible. */
+  grid-template-rows: var(--top-h) var(--cmd-h) minmax(0, 1fr) var(--foot-h);
+  grid-template-columns: minmax(0, 1fr) auto var(--side-bar-w);
+  height: 100%;
+  background: var(--app-bg);
+}
+
+/* The bars' buttons. A word with an icon (.tb), an icon alone (.ib, .ti, .rt), a list (.tdd), the right
+   edge's panels (.vt), the status bar's switches (.chip); a line between groups (.tsep). */
+.tb {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-1);
+  height: calc(var(--bar-btn) - var(--line-2));
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tb:hover {
+  background: var(--bar-hover);
+  color: var(--text-strong);
+}
+.tb[aria-pressed='true'],
+.tb[aria-expanded='true'] {
+  background: var(--accent-soft);
+  color: var(--text-strong);
+}
+.tb[hidden] {
+  display: none;
+}
+.ib,
+.ti,
+.rt {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--bar-btn);
+  height: var(--bar-btn);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--bar-icon);
+  cursor: pointer;
+}
+.ib:hover:not(:disabled),
+.ti:hover,
+.rt:hover {
+  background: var(--bar-hover);
+  color: var(--text-strong);
+}
+.ib[aria-pressed='true'],
+.ti[aria-pressed='true'],
+.rt[aria-pressed='true'] {
+  background: var(--bar-pressed);
+  color: var(--on-accent);
+}
+.ib:disabled,
+.ib[aria-disabled='true'] {
+  opacity: 0.35;
+  cursor: default;
+}
+/* Off while the selection does not take it: greyed, and a click does nothing (the prototype's). */
+.ti[aria-disabled='true'],
+.rt[aria-disabled='true'] {
+  opacity: 0.35;
+  pointer-events: none;
+}
+/* A family or a tool with more ways: a small triangle in the corner. */
+.tri {
+  position: absolute;
+  right: var(--line-2);
+  bottom: var(--line-2);
+  width: 0;
+  height: 0;
+  border-left: var(--sp-1) solid transparent;
+  border-bottom: var(--sp-1) solid var(--text-3);
+}
+[aria-pressed='true'] > .tri {
+  border-bottom-color: currentColor;
+}
+.tsep {
+  flex: none;
+  width: var(--line);
+  height: var(--bar-sep-h);
+  margin: 0 var(--sp-2);
+  background: var(--bar-sep);
+}
+.tdd {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-1);
+  width: var(--list-w);
+  height: calc(var(--bar-btn) - var(--line-2));
+  padding: 0 var(--sp-1) 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.tdd .label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tdd:hover {
+  background: var(--bar-hover);
+  color: var(--text-strong);
+}
+.u {
+  color: var(--text-3);
+}
+/* A bar floating over the drawing: one row of buttons in a box. */
+.mb {
+  display: flex;
+  align-items: center;
+  height: var(--bar-h);
+  padding: 0 var(--sp-1);
+  gap: var(--line);
+  border: var(--line) solid var(--bar-border);
+  border-radius: var(--radius);
+  background: var(--bar-bg);
+  box-shadow: var(--bar-shadow);
+}
+.mb[hidden] {
+  display: none;
+}
+.bar-group,
+.bar-column {
+  display: flex;
+  gap: var(--line);
+}
+.bar-column {
+  flex-direction: column;
+  padding: var(--line-2);
+  border: var(--line) solid var(--bar-border);
+  border-radius: var(--radius);
+  background: var(--bar-bg);
+}
+
+/* The title bar: the app's mark, the Project menu, undo and redo, the project's name in the middle, the search. */
+.top {
+  grid-row: 1;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-half);
+  min-width: 0;
+  padding: 0 var(--sp-2);
+  border-bottom: var(--line) solid var(--title-border);
+  background: var(--title-bg);
+  color: var(--title-text);
+}
+.app-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--mark);
+  height: var(--mark);
+  margin-right: var(--sp-1);
+  border-radius: var(--radius-sm);
+  background: var(--bar-pressed);
+  color: var(--on-accent);
+  font-weight: 700;
+  font-size: var(--fs-xs);
+}
+.titlebar .tb,
+.titlebar .ib {
+  color: var(--title-text);
+}
+.titlebar .tb:hover,
+.titlebar .ib:hover:not(:disabled),
+.titlebar .tb[aria-expanded='true'] {
+  background: var(--title-hover);
+  color: var(--title-text);
+}
+.titlebar .tsep {
+  background: var(--title-border);
+}
+.top .center {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  color: var(--title-text-2);
+}
+.titlebar .project-name {
+  height: calc(var(--bar-btn) - var(--line-2));
+  color: var(--title-text);
+  font-size: var(--fs-xs);
+}
+.titlebar .project-name:hover {
+  background: var(--title-hover);
+}
+.saved-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-btn {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  width: var(--search-w);
+  /* It gives way before it covers the project's name in the middle (a narrow window). */
+  min-width: 0;
+  height: calc(var(--bar-btn) - var(--line-2));
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--title-field);
+  color: var(--title-text-2);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.search-btn:hover {
+  color: var(--title-text);
+}
+.search-lead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.search-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-btn .kbd {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--title-text-2);
+  font-size: var(--fs-xs);
+}
+
+/* The fixed bar of general commands, under the title bar. */
+.cmd-bar {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-half);
+  min-width: 0;
+  padding: 0 var(--sp-2);
+  overflow: hidden;
+  border-bottom: var(--line) solid var(--title-border);
+  background: var(--cmd-bg);
+}
+
+/* The drawing and what floats over it. */
+.viewport {
+  grid-row: 3;
+  grid-column: 1;
+}
+/* The tools' rail, down the left edge, in groups. */
+.rail {
+  position: absolute;
+  left: var(--float-gap);
+  top: var(--float-gap);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-height: calc(100% - 2 * var(--float-gap));
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.rail-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--line);
+  padding: var(--line-2);
+  border: var(--line) solid var(--bar-border);
+  border-radius: var(--radius);
+  background: var(--bar-bg);
+}
+/* The view's header, beside the rail: Plan | 3D, the level, the scale or the style. */
+.view-head {
+  position: absolute;
+  left: var(--view-head-x);
+  top: var(--float-gap);
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+}
+.view-tabs {
+  display: flex;
+  gap: var(--line);
+  padding: var(--line);
+  border: var(--line) solid var(--bar-border);
+  border-radius: var(--radius-sm);
+  background: var(--bar-bg);
+}
+.view-tab .icon,
+.level-btn .icon {
+  flex: none;
+}
+.level-btn {
+  height: calc(var(--bar-btn) + var(--line-2));
+  border: var(--line) solid var(--bar-border);
+  border-radius: var(--radius-sm);
+  background: var(--bar-bg);
+}
+.view-note {
+  margin-left: var(--sp-1);
+  white-space: nowrap;
+}
+/* The navigation, top right: the cube (3D) over the frame-all button. Placed beside the panel when it lies
+   over the drawing (ui/frame.ts sets its right). */
+.view-corner {
+  position: absolute;
+  right: var(--float-gap);
+  top: var(--float-gap);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+}
+/* The tool's or the selection's panel, top middle. */
+.tool-strip {
+  position: absolute;
+  left: 50%;
+  top: var(--float-gap);
+  z-index: 8;
+  max-width: calc(100% - 2 * var(--float-gap) - 2 * var(--view-head-x));
+  transform: translateX(-50%);
+}
+.tool-strip-body {
+  display: flex;
+  align-items: center;
+  gap: var(--line);
+  min-width: 0;
+}
+.tool-strip-body[hidden],
+.tool-done[hidden] {
+  display: none;
+}
+.tool-strip-body:not([hidden]):has(+ .tool-done:not([hidden]))::after {
+  content: '';
+  flex: none;
+  width: var(--line);
+  height: var(--bar-sep-h);
+  margin: 0 var(--sp-1);
+  background: var(--bar-sep);
+}
+/* The view's controls, bottom middle: the plan's scale; the 3D's levels, toggles and display; visibility. */
+.view-bar {
+  position: absolute;
+  left: 50%;
+  bottom: var(--float-gap);
+  z-index: 6;
+  max-width: calc(100% - 2 * var(--float-gap));
+  transform: translateX(-50%);
+}
+/* An open popover lies over everything else that floats. */
+.view-bar:has(.light-panel:not([hidden])) {
+  z-index: 9;
+}
+.view-bar .ib .label {
+  display: none;
+}
+.view-bar .look-select {
+  height: calc(var(--bar-btn) - var(--line-2));
+  padding-left: var(--sp-2);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: var(--fs-xs);
+}
+.view-bar .look-select:hover {
+  background: var(--bar-hover);
+}
+.view-bar .look-caption {
+  display: none;
+}
+.view-bar .look-select select {
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: var(--fs-xs);
+}
+/* Narrower than the drawing: the words go, each button keeps its icon and its tip. */
+.view-bar.fit-1 .tb .label {
+  display: none;
+}
+.light-panel {
+  border-color: var(--bar-border);
+  border-radius: var(--radius);
+  background: var(--bar-bg);
+  box-shadow: var(--bar-shadow);
+}
+
+/* The right side: one panel at a time, the properties or the navigator, opened from the edge's icon bar. */
+.panel,
+.browser {
+  grid-row: 3;
+  grid-column: 2;
+  width: var(--panel-w);
+  min-height: 0;
+  overflow-y: auto;
+  border-left: var(--line) solid var(--border);
+  background: var(--bg);
+}
+.browser[hidden] {
+  display: none;
+}
+.side-bar {
+  grid-row: 3;
+  grid-column: 3;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--line-2);
+  border-left: var(--line) solid var(--border);
+  background: var(--edge-bg);
+}
+.vt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--side-btn-w);
+  height: var(--bar-btn);
+  padding: 0;
+  border: 0;
+  border-left: var(--line-2) solid transparent;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+.vt:hover {
+  color: var(--text-strong);
+}
+.vt[aria-pressed='true'] {
+  border-left-color: var(--accent);
+  background: var(--bar-hover);
+  color: var(--text-strong);
+}
+
+/* The status bar: what to do now, the keys, the typed measure, the pointer's place, the snaps and collisions. */
+.foot {
+  grid-row: 4;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: 0 var(--sp-2);
+  border-top: var(--line) solid var(--title-border);
+  background: var(--edge-bg);
+  color: var(--text-2);
+  font-size: var(--fs-xxs);
+}
+.foot .tsep {
+  margin: 0;
+  height: var(--sp-4);
+}
+.foot .measure input {
+  height: var(--chip-h);
+  font-size: var(--fs-xxs);
+}
+.foot .kbd {
+  line-height: var(--sp-3);
+  font-size: var(--fs-xxs);
+}
+.chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-1);
+  height: var(--chip-h);
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-xxs);
+  cursor: pointer;
+}
+.chip:hover:not(:disabled) {
+  background: var(--field);
+  color: var(--text-strong);
+}
+.chip[aria-pressed='true'] {
+  color: var(--accent-text);
+}
+.chip .icon {
+  width: var(--sp-4);
+  height: var(--sp-4);
+}
+/* The snaps' division, a chip with a list: its own chevron drawn in. */
+select.chip {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: var(--sp-4);
+  background: transparent no-repeat right var(--line-2) center / var(--sp-3)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+select.chip:disabled {
+  color: var(--text-3);
+  cursor: default;
+}
+select.chip option {
+  background: var(--bg);
+  color: var(--text);
+}

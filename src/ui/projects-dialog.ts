@@ -19,7 +19,7 @@ export function showProjectsDialog(app: App): void {
     back.hidden = true;
     back.replaceChildren();
     window.removeEventListener('keydown', onKey, true);
-    app.shell.sidebar.focus();
+    app.shell.projectMenu.focus();
   };
   const onKey = (e: KeyboardEvent) => {
     if (e.key !== 'Escape') return;

@@ -34,7 +34,6 @@ import type { Boot } from '../project/boot';
 import type { BoxFace } from '../model/section-box';
 import { insideRing } from '../elements/room/derive';
 import { PREVIEW_ID } from '../elements/preview';
-import { placeFloatBar } from '../ui/float-bar';
 import * as sceneCamera from '../render/scene-camera';
 import { placesLeaf } from './app-placing';
 import { applyTheme } from './app-settings';
@@ -103,7 +102,6 @@ export class App {
     this.shell.viewCorner.prepend(this.cube.root);
     this.scene.onChange = () => {
       this.cube.update(this.scene.camera);
-      placeFloatBar(this);
       // The handles found again where the camera now shows them (screen points: kept, they stayed behind).
       if (this.ui.view === '3d' && this.overlayState) this.overlay3d.draw({ ...this.overlayState, objectHandles: objectHandles(this), handles: handles(this) });
     };
@@ -371,22 +369,12 @@ export class App {
   keyName(id: string): string {
     return keyName(this, id);
   }
-  /** The ribbon's tab shown, kept between visits, and what it was last drawn from (chrome.ts). */
-  ribbonTab = loadPrefs().ribbonTab ?? 'home';
-  ribbonKey = '';
   /** The next element each placing tool makes, as the user set it (next-element.ts); unset, the last one made. */
   next: Partial<Record<NextSlot, unknown>> = {};
-  /** The selection's tab is not shown: it opens only when the user picks it, until the selection changes (chrome.ts, renderRibbon). */
-  ribbonAway = false;
-  /** The selection the contextual tab was last shown for: a new one brings it forward again. */
-  ribbonSelected = '';
-
   renderChrome(): void {
     return chrome.renderChrome(this);
   }
 
-  /** The selection's quick actions, above the selection and never over it. */
   /** Opens the command palette; set by the input layer, which owns the dialogs. */
   openCommands: () => void = () => {};
-  floatKey = '';
 }

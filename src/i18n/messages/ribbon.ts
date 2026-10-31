@@ -177,6 +177,20 @@ export const en = {
   'rib.s.ref.import': 'Reference',
   'rib.s.tool.callout': 'Callout',
   'rib.s.dim.auto': 'Auto',
+  // The window's bars (ui/shell.ts): the title bar's Project menu and search, the bars' names, the status bar's chips.
+  'top.project': 'Project',
+  'top.commands': 'Commands',
+  'bar.commands': 'General commands',
+  'bar.tools': 'Tools',
+  'bar.panels': 'Panels',
+  'rib.p.guides': 'Guide',
+  'menu.g.file': 'File',
+  'menu.g.import': 'Import',
+  'menu.g.settings': 'Settings',
+  'menu.g.elevations': 'Elevations',
+  'menu.g.interface': 'Interface',
+  'foot.snapChip': 'Snap',
+  'foot.collideChip': 'Collision',
 } as const;
 
 export const pt: Record<keyof typeof en, string> = {
@@ -356,4 +370,17 @@ export const pt: Record<keyof typeof en, string> = {
   'rib.s.ref.import': 'Referência',
   'rib.s.tool.callout': 'Chamada',
   'rib.s.dim.auto': 'Automática',
+  'top.project': 'Projeto',
+  'top.commands': 'Comandos',
+  'bar.commands': 'Comandos gerais',
+  'bar.tools': 'Ferramentas',
+  'bar.panels': 'Painéis',
+  'rib.p.guides': 'Guia',
+  'menu.g.file': 'Arquivo',
+  'menu.g.import': 'Importar',
+  'menu.g.settings': 'Configurações',
+  'menu.g.elevations': 'Elevações',
+  'menu.g.interface': 'Interface',
+  'foot.snapChip': 'Encaixe',
+  'foot.collideChip': 'Colisão',
 };

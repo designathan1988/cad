@@ -192,19 +192,6 @@
   display: flex;
   gap: var(--sp-2);
 }
-
-/* Footer */
-.foot {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: 0 var(--sp-2) 0 var(--sp-3);
-  border-top: var(--line) solid var(--border);
-  background: var(--bg);
-  font-size: var(--fs-sm);
-  min-width: 0;
-}
 .foot .instr {
   flex: 1 1 auto;
   min-width: 0;
@@ -258,26 +245,6 @@
   display: flex;
   align-items: center;
   gap: var(--sp-1);
-}
-/* The snaps' division, a list like the others (.select): the field's fill, its own chevron drawn in. */
-.snap-parts {
-  -webkit-appearance: none;
-  appearance: none;
-  height: var(--control-h-sm);
-  padding: 0 var(--sp-5) 0 var(--sp-2);
-  font: inherit;
-  color: var(--text);
-  border: var(--line) solid transparent;
-  border-radius: var(--radius);
-  background: var(--field) no-repeat right var(--sp-1) center / var(--sp-4)
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  cursor: pointer;
-}
-.snap-parts:hover {
-  border-color: var(--border);
-}
-.snap-parts:disabled {
-  color: var(--text-3);
 }
 .coords {
   color: var(--text-3);

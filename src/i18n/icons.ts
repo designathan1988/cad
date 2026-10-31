@@ -8,6 +8,7 @@ const paths = {
   undo: 'M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
   redo: 'm15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13',
   chevronDown: 'm6 9 6 6 6-6',
+  chevronUp: 'm6 15 6-6 6 6',
   chevronRight: 'm9 6 6 6-6 6',
   chevronLeft: 'm15 6-6 6 6 6',
   play: 'M8 5v14l11-7z',
@@ -101,6 +102,19 @@ const paths = {
   alignCenterY: 'M3 12h18M6 6h4v12H6zM14 8h4v8h-4z',
   alignTop: 'M3 4h18M6 8h4v11H6zM14 8h4v7h-4z',
   distributeY: 'M4 4h16M4 20h16M9 8h6v3H9zM9 13h6v3H9z',
+  // The command bar's (ui/command-bar.ts): the clipboard's copy and paste, the whole level and none of it, hiding for a while.
+  clipCopy: 'M9 4h6v3H9zM7 5H5v16h14V5h-2M9 12h6M9 16h4',
+  paste: 'M9 4h6v3H9zM7 5H5v16h6M17 5h2v5M13 12h8v9h-8z',
+  selectAll: 'M4 4h3M10 4h4M17 4h3v3M20 10v4M20 17v3h-3M14 20h-4M7 20H4v-3M4 14v-4M4 7V4M8 8h8v8H8z',
+  deselect: 'M4 4h3M10 4h4M17 4h3v3M20 10v4M20 17v3h-3M14 20h-4M7 20H4v-3M4 14v-4M4 7V4M9 9l6 6M15 9l-6 6',
+  isolate: 'M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
+  similar: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM17.5 14v7M14 17.5h7',
+  // The right bar's panels (ui/side-bar.ts): the properties, the project's navigator, the library, the materials.
+  tune: 'M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4',
+  tree: 'M4 4h6v5H4zM14 15h6v5h-6zM14 4h6v5h-6zM7 9v8.5h7M10 6.5h4',
+  library: 'M4 4h4v16H4zM10 4h4v16h-4zM16 5l3.5-1 2.5 15-3.5 1z',
+  palette: 'M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.9 1.2-1.8-.5-1-.1-2.2 1.2-2.2H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10zM7.5 11h.01M9.5 7h.01M14.5 7h.01M16.5 11h.01',
+  search: 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM20 20l-4.8-4.8',
 } as const;
 
 export type IconName = keyof typeof paths;

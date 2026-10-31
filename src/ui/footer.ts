@@ -1,7 +1,9 @@
-// The footer as drawn each frame: what to do now, the keys that work now, the measure field and the
-// wall tool's arc and rectangle modes on the ribbon (chrome.ts calls it).
+// The footer as drawn each frame: what to do now, the keys that work now and the measure field (chrome.ts calls it).
 
-import { lengthText, typingExamples } from '../i18n/units';
+import { angleNum, areaText, lengthText, typingExamples } from '../i18n/units';
+import { angleAt, chainArea, chainLength, reading } from '../elements/measure/tool';
+import { distance } from '../model/vector';
+import { words } from '../elements/object/fields';
 import { ruleBase } from '../elements/opening/tool';
 import { OPENING_PREVIEW_ID, ruleText } from '../elements/opening/aim';
 import { type MessageKey, num, t } from '../i18n/messages';
@@ -9,9 +11,7 @@ import { keyHint } from './shell';
 import { wallNumber } from '../project/doc';
 import { signedArea } from '../elements/room/derive';
 import { type App } from '../session/app';
-import { objectName } from './ribbon';
 import { currentDims } from './temp-dims';
-import { measureHint } from './float-bar';
 import { guideOffset } from '../elements/guide/tool-ui';
 import * as appPlacing from '../session/app-placing';
 import * as appView from '../session/app-view';
@@ -234,7 +234,32 @@ export function renderFooter(app: App): void {
   const what = shell.measureLabel.textContent ?? '';
   shell.measure.setAttribute('aria-label', what === t('foot.measure') ? what : `${t('foot.measure')}: ${what}`);
   shell.measure.placeholder = t(sidesMode ? 'foot.sidesHint' : angleMode ? 'foot.angleHint' : factorMode ? 'foot.factorHint' : ui.guide ? 'foot.distanceHint' : pointMode && !lengthMode ? 'foot.pointHint' : lengthMode ? 'foot.lengthHint' : distanceMode ? 'foot.distanceHint' : 'foot.measureHint', typingExamples());
-  // The wall tool's arc and rectangle modes, pressed on the ribbon while on.
-  shell.ribbon.querySelector('[data-action="tool.arcWall"]')?.setAttribute('aria-pressed', String(drawing && arc));
-  shell.ribbon.querySelector('[data-action="tool.rectWall"]')?.setAttribute('aria-pressed', String(drawing && rect));
+}
+
+/** The object tool's definition, named in the interface's language. */
+function objectName(app: App): string {
+  const def = app.store.get().definitions.find((d) => d.id === app.ui.objectDef);
+  return def ? words(def.name) : '';
+}
+
+/** The footer for the measure tool: what to click, or what the tape read. */
+function measureHint(app: App): string {
+  const m = app.ui.measure;
+  if (m.kind === 'idle') return t(app.ui.measureMode === 'chain' ? 'hint.chainStart' : 'hint.measureStart');
+  if (m.kind === 'from') return t('hint.measureEnd');
+  if (m.kind === 'chain') {
+    // The stretches so far and the one to the pointer; the angle where the last two meet.
+    const to = app.ui.snap?.point ?? app.ui.cursor;
+    const pts = to ? [...m.points, to] : [...m.points];
+    if (pts.length < 2) return t('hint.chainNext');
+    const n = pts.length;
+    const angle = n >= 3 ? angleAt(pts[n - 3]!, pts[n - 2]!, pts[n - 1]!) : null;
+    return t(angle === null ? 'hint.chainSoFar' : 'hint.chainSoFarAngle', { total: lengthText(chainLength(pts, false)), n: n - 1, last: lengthText(distance(pts[n - 2]!, pts[n - 1]!)), a: angleNum(angle ?? 0) });
+  }
+  if (m.kind === 'chainDone') {
+    if (m.closed) return t('hint.areaDone', { area: ((a) => (a === null ? t('meas.crosses') : areaText(a)))(chainArea(m.points)), p: lengthText(chainLength(m.points, true)), n: m.points.length });
+    return t('hint.chainDone', { total: lengthText(chainLength(m.points, false)), n: m.points.length - 1 });
+  }
+  const r = reading(m.a, m.b);
+  return t('hint.measured', { d: lengthText(r.length), dx: lengthText(Math.abs(r.dx)), dy: lengthText(Math.abs(r.dy)), a: angleNum(r.angle) });
 }

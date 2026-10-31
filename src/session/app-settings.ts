@@ -1,5 +1,5 @@
 // The session's settings and panels: snaps and collisions, language and theme, keys, reference lines,
-//  the project browser, overrides and layer sets, categories, the ribbon tab and the properties panel.
+//  the project browser, overrides and layer sets, categories and the properties panel.
 
 import type { App } from './app';
 import { deleteLayerSet as deleteLayerSetCommand, nextName, saveLayerSet as saveLayerSetCommand } from '../project/layer-sets';
@@ -7,10 +7,8 @@ import type { KeyMap } from './keymap';
 import { getLang, htmlLang, setLang, t, type Lang } from '../i18n/messages';
 import { hasSolid } from '../elements/registry';
 import { type Category } from '../project/derived-filters';
-import { boundsOf } from '../project/derived-queries';
 import { savePrefs } from '../project/persist';
 import { newId } from '../core/id';
-import { covered } from './view-ui';
 import * as sceneLook from '../render/scene-look';
 
 /** Division points cut segments into n parts (2 to 10): kept with the preferences. */
@@ -71,23 +69,20 @@ export function toggleRefLines(app: App): void {
   app.render();
 }
 
+/**
+ * The project's navigator on the right, in the properties' place: one panel there at a time, as the right
+ * bar's icons open them (ui/view-header.ts, renderSideBar).
+ */
 export function toggleBrowser(app: App, open = !app.ui.browserOpen): void {
-  const before = covered(app).left ?? 0;
   app.ui.browserOpen = open;
   savePrefs({ browserOpen: open });
-  app.shell.browser.hidden = !open;
-  const after = covered(app).left ?? 0;
-  // The plan moves only when the drawer comes over the drawing, and only as far as it covers it:
-  // sliding by half the drawer each time it opened or closed was a jump of the whole drawing.
-  const box = boundsOf(app.geometry);
-  if (app.ui.view === 'plan' && box && after > before) {
-    const left = app.plan.toScreen({ x: box.min.x, y: box.max.y }).x;
-    const need = after + 16 - left;
-    if (need > 0) app.plan.panBy(need, 0);
+  if (open && app.ui.panelOpen) {
+    app.ui.panelOpen = false;
+    savePrefs({ panelOpen: false });
   }
   app.render();
   if (open) app.shell.browser.querySelector<HTMLElement>('button')?.focus();
-  else app.shell.sidebar.focus();
+  else app.shell.sideBar.querySelector<HTMLElement>('[data-action="settings.browser"]')?.focus();
 }
 
 /** Shows or hides a category of elements; what is hidden leaves the selection. */
@@ -133,16 +128,6 @@ export function toggleCategory(app: App, c: Category): void {
   app.refresh();
 }
 
-export function chooseRibbonTab(app: App, id: string): void {
-  // The contextual tab is the selection's, not a tab to come back to.
-  if (id === 'context') app.ribbonAway = false;
-  else {
-    app.ribbonAway = app.ui.selection.size > 0 || app.ui.tool !== 'select';
-    app.ribbonTab = id;
-    savePrefs({ ribbonTab: id });
-  }
-  app.renderChrome();
-}
 
 /**
  * The button toggles what is on screen. On a narrow screen the panel waits hidden while it has
@@ -153,6 +138,11 @@ export function togglePanel(app: App, open = app.shell.panel.hidden): void {
   app.ui.panelOpen = open;
   app.ui.panelPeek = open;
   savePrefs({ panelOpen: open });
+  // In the navigator's place: it closes.
+  if (open && app.ui.browserOpen) {
+    app.ui.browserOpen = false;
+    savePrefs({ browserOpen: false });
+  }
   app.render();
 }
 

@@ -159,6 +159,20 @@
   color: var(--text-2);
   font-size: var(--fs-sm);
 }
+/* A group's name over its first item (the Project menu): small capitals, not an item. */
+.menu-group {
+  padding: var(--sp-2) var(--sp-2) var(--sp-half);
+  color: var(--text-3);
+  font-size: var(--fs-xxs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.menu-group:first-child {
+  padding-top: var(--sp-1);
+}
+.menu-item[aria-current='true'] {
+  color: var(--accent-text);
+}
 .text-btn.primary {
   background: var(--accent);
   color: var(--accent-contrast);
@@ -246,23 +260,6 @@
 }
 .search-pop-option.current {
   font-weight: 600;
-}
-
-/* Project browser: a drawer at the left edge of the viewport */
-.browser {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  z-index: 7;
-  width: min(var(--browser-w), 80vw);
-  overflow-y: auto;
-  border-right: var(--line) solid var(--border);
-  background: var(--bg);
-  box-shadow: var(--shadow);
-}
-.browser[hidden] {
-  display: none;
 }
 /* A saved view: its name goes to it, the button beside deletes it. */
 .browser-row {

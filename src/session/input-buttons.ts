@@ -1,17 +1,13 @@
-// The interface's buttons (input.ts): the top bar, the tool bar, the 3D bar, the file, language and
-// theme buttons. Each sends what it says to the app.
+// The interface's buttons (input.ts): the title bar, the view's header, its controls and the status bar's.
+// Each sends what it says to the app. The bars of actions (ui/bars.ts) run their actions themselves.
 
 import { t } from '../i18n/messages';
 import type { App } from './app';
-import { EDIT_LEVELS } from './state';
-import { showLevels } from '../ui/levels-dialog';
-import { type MenuItem, showMenu } from '../ui/menu';
-import { FILE_MENU } from '../ui/ribbon-tabs';
+import { openProjectMenu } from '../ui/project-menu';
+import { openLevelMenu } from '../ui/view-header';
 import type { LevelsShown, RenderQuality, VisualStyle } from './view/view-3d';
 import { renameInPlace } from '../ui/rename-in-place';
-import { showHelp } from '../ui/help-dialog';
 import { setView, setView3D, toggleBox, toggleExplode } from './view-ui';
-import { saveFile } from '../project/files';
 import { resetTemporary } from './selection';
 import * as appSettings from './app-settings';
 import * as appEdit from './app-edit';
@@ -21,55 +17,18 @@ export function wireButtons(app: App, palette: () => void): void {
   const { shell, ui } = app;
   shell.undo.addEventListener('click', () => appEdit.undo(app));
   shell.redo.addEventListener('click', () => appEdit.redo(app));
-  shell.homeBtn.addEventListener('click', () => app.openProjects());
+  shell.projectMenu.addEventListener('click', () => openProjectMenu(app));
   shell.view3d.addEventListener('click', () => setView(app, '3d'));
   shell.viewPlan.addEventListener('click', () => setView(app, 'plan'));
-  shell.level.addEventListener('change', () => {
-    if (shell.level.value === EDIT_LEVELS) {
-      shell.level.value = ui.levelId;
-      return showLevels(app);
-    }
-    appEdit.setLevel(app, shell.level.value);
-  });
-  shell.lang.addEventListener('click', () => appSettings.setLanguage(app, appSettings.otherLanguage()));
-  shell.theme.addEventListener('click', () => appSettings.toggleTheme(app));
-  shell.save.addEventListener('click', () => saveFile(app));
-  shell.open.addEventListener('click', () => shell.fileInput.click());
+  shell.level.addEventListener('click', () => openLevelMenu(app));
+  shell.frameAll.addEventListener('click', () => app.frameAll());
+  shell.sectionOff.addEventListener('click', () => app.actionList().find((a) => a.id === 'view.sectionOff')?.run());
   shell.projectName.addEventListener('click', () => renameInPlace(app));
   shell.fileInput.addEventListener('change', () => {
     const file = shell.fileInput.files?.[0];
     shell.fileInput.value = '';
     if (file) void appView.openFile(app, file);
   });
-  shell.panelToggle.addEventListener('click', () => appSettings.togglePanel(app));
-  // The File menu, under its tab: the project's files, help and settings (app/ribbon-tabs.ts).
-  shell.fileMenu.addEventListener('click', () => {
-    const actions = new Map(app.actionList().map((a) => [a.id, a]));
-    const r = shell.fileMenu.getBoundingClientRect();
-    let line = false;
-    const items: MenuItem[] = [];
-    for (const id of FILE_MENU) {
-      if (id === '-') {
-        line = items.length > 0;
-        continue;
-      }
-      const a = actions.get(id);
-      if (!a) continue;
-      items.push({ label: a.label, ...(a.keys ? { keys: a.keys } : {}), disabled: !a.enabled, separated: line, run: a.run });
-      line = false;
-    }
-    showMenu(items, { x: r.left, y: r.bottom + 2 }, t('rib.file'));
-  });
-  // The ribbon wider than the window: the mouse wheel scrolls it sideways, as Office's does.
-  shell.ribbon.addEventListener(
-    'wheel',
-    (e) => {
-      if (shell.ribbon.scrollWidth <= shell.ribbon.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-      e.preventDefault();
-      shell.ribbon.scrollLeft += e.deltaY;
-    },
-    { passive: false },
-  );
   shell.snapBtn.addEventListener('click', () => appSettings.toggleSnaps(app));
   shell.collideBtn.addEventListener('click', () => appSettings.toggleCollisions(app));
   shell.toolDone.addEventListener('click', () => app.actionList().find((a) => a.id === 'tool.select')?.run());
@@ -121,6 +80,5 @@ export function wireButtons(app: App, palette: () => void): void {
   shell.light.brightness.input.addEventListener('input', () => setView3D(app, { brightness: Number(shell.light.brightness.input.value) }));
   shell.light.sun.input.addEventListener('input', () => setView3D(app, { sun: Number(shell.light.sun.input.value) }));
   shell.tempReset.addEventListener('click', () => resetTemporary(app));
-  shell.shortcuts.addEventListener('click', () => showHelp(app));
   shell.commands.addEventListener('click', () => palette());
 }

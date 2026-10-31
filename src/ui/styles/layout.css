@@ -1,45 +1,4 @@
-/* Layout: the app grid, the title bar, the 3D bar (one part of styles.css, read in its order). */
 
-/* Layout */
-#app {
-  display: grid;
-  /* minmax(0, 1fr): the middle row never grows past the window, so the footer stays visible. */
-  grid-template-rows: var(--top-h) var(--tabs-h) var(--ribbon-h) minmax(0, 1fr) var(--vcb-h) var(--foot-h);
-  grid-template-columns: minmax(0, 1fr) auto;
-  height: 100%;
-}
-.top {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: 0 var(--sp-2);
-  border-bottom: var(--line) solid var(--border);
-  background: var(--bg);
-  min-width: 0;
-}
-.top .left,
-.top .right {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-half);
-  flex: 1 1 0;
-  min-width: 0;
-}
-.top .right {
-  justify-content: flex-end;
-}
-.top .center {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-1);
-  min-width: 0;
-  flex: 0 1 auto;
-}
-/* The views keep their whole name: shared out equally, "Caminhar" (the longest) was cut at its end. */
-.top .segmented button {
-  min-width: max-content;
-}
 .project-name {
   font-weight: 600;
   font-size: var(--fs-md);
@@ -76,12 +35,6 @@ button.project-name:hover {
 }
 .project-name-input:focus {
   outline: none;
-}
-.sep {
-  width: var(--line);
-  height: var(--sep-h);
-  background: var(--border);
-  margin: 0 var(--sp-2);
 }
 
 .icon-btn {

@@ -18,7 +18,7 @@ import { loadPrefs, savePrefs } from '../project/persist';
 import { clearFloorHoles, setFloorLayers, setFloorTiling, updateFloor, updateRoom, updateRooms } from '../elements/room/commands';
 import { type App } from '../session/app';
 import { nextFields, type NextSlot } from '../session/next';
-import { lowerFirst } from './ribbon-context-tabs';
+import { lowerFirst } from './context-panel';
 import { words } from '../elements/object/fields';
 import { drawPlanOverlay } from './plan-overlay';
 import { currentDims, placeDims } from './temp-dims';
@@ -62,7 +62,7 @@ export function renderFrame(app: App): void {
   app.cube.root.hidden = plan;
   // The view's corner (the cube, the views' box) and the 3D view's centre stay in the part of the viewport the panel leaves free.
   const cover = applyCovered(app);
-  shell.viewCorner.style.right = `${20 + cover.right}px`;
+  shell.viewCorner.style.right = `${8 + cover.right}px`;
   drawPlanOverlay(app);
   app.overlay3d.canvas.classList.toggle('hidden', plan);
   shell.viewport.style.cursor = toolCursor(ui.tool);

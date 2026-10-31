@@ -35,7 +35,6 @@ import { showHelp } from '../ui/help-dialog';
 import { pointerState } from './pointer-state';
 import { pointerHandlers } from './pointer-handlers';
 import * as appPlacing from './app-placing';
-import * as appSettings from './app-settings';
 import { fromOf, pointsOf } from '../elements/tool-draft';
 import * as appView from './app-view';
 
@@ -70,7 +69,6 @@ export function wireInput(app: App): void {
   app.openUnits = () => showUnits(app);
   app.openObjects = () => showObjects(app);
   app.openOverrides = () => showOverrides(app);
-  shell.sidebar.addEventListener('click', () => appSettings.toggleBrowser(app));
   /** The menu for what is under the pointer: it becomes the selection, unless it is already in it. */
   const contextMenu = (e: PointerEvent) => {
     if (ui.error !== null) shell.measure.value = '';

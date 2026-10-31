@@ -85,14 +85,18 @@
 }
 @media (max-width: 900px) {
   #app {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) var(--side-bar-w);
   }
-  .panel {
+  .side-bar {
+    grid-column: 2;
+  }
+  /* The panels lie over the drawing, beside the edge's icon bar, between the bars and the status bar. */
+  .panel,
+  .browser {
     position: fixed;
-    right: 0;
+    right: var(--side-bar-w);
     top: var(--chrome-top);
-    /* Over the drawing only: the view's bar under it stays whole. */
-    bottom: calc(var(--foot-h) + var(--vcb-h));
+    bottom: var(--foot-h);
     z-index: 10;
     box-shadow: var(--shadow);
   }
@@ -106,25 +110,17 @@
     display: none;
   }
 }
-/* Phones: the title bar keeps the projects, undo and redo and the search; the ribbon scrolls sideways
-   with smaller buttons; the panel is a sheet over the lower part of the drawing, not a column over it. */
+/* Phones: the title bar keeps the Project menu, undo and redo and the search; the panel is a sheet over the
+   lower part of the drawing, not a column over it. */
 @media (max-width: 600px) {
-  :root {
-    --ribbon-h: 80px;
-    --rb-large-w: 52px;
-  }
-  /* The panels' names leave (each button keeps its own); the views show their icons, the level a name. */
-  .rb-title,
-  .view-tab .label,
-  .browser-toggle .label {
+  /* The views show their icons, the level a name. */
+  .view-tab .label {
     display: none;
   }
-  .titlebar .quick,
-  .titlebar .sep,
+  .saved-dot,
   .saved-note,
   .search-label,
-  .search-btn .kbd,
-  .top .needs-keyboard {
+  .search-btn .kbd {
     display: none;
   }
   .search-btn {
@@ -166,10 +162,6 @@
     --field-h: 44px;
     --wide-btn-h: 44px;
     --top-h: 48px;
-    --tabs-h: 40px;
-    --vcb-h: 48px;
-    --rb-small-h: 44px;
-    --ribbon-h: 128px;
     --foot-h: 52px;
   }
   .menu-item,
@@ -181,9 +173,8 @@
   :root {
     /* The footer's three lines, as on any phone (the touch sizes above came later and won). */
     --foot-h: 60px;
-    --ribbon-h: 104px;
   }
-  /* Home, undo, redo, commands, open, save and panel at 44 px fill the row: the name gives way. */
+  /* The Project menu, undo, redo and the search at 44 px fill the row: the name gives way. */
   .project-name {
     display: none;
   }

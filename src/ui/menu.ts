@@ -14,6 +14,10 @@ export interface MenuItem {
   readonly disabled?: boolean;
   /** Draws a line before this item, to group the items. */
   readonly separated?: boolean;
+  /** A group's name, written small over this item, its first (the Project menu's FILE, IMPORT…). */
+  readonly group?: string;
+  /** Marked as the one in use (the level shown, a tool's way). */
+  readonly current?: boolean;
   readonly run: () => void;
 }
 
@@ -32,11 +36,13 @@ export function showMenu(items: readonly MenuItem[], at: { x: number; y: number 
     if (item.keys) b.append(el('span', { class: 'menu-keys' }, item.keys));
     if (item.disabled) b.setAttribute('aria-disabled', 'true');
     if (item.separated) b.classList.add('separated');
+    if (item.current) b.setAttribute('aria-current', 'true');
     b.addEventListener('click', () => {
       if (item.disabled) return;
       close();
       item.run();
     });
+    if (item.group) menu.append(el('div', { class: 'menu-group', role: 'presentation' }, item.group));
     menu.append(b);
     return b;
   });

@@ -1,8 +1,7 @@
-// The interface around the views: the tool bar, the level list, the footer's hints and keys, the float bar, the browser drawer. Functions over the app (app.ts delegates).
+// The interface around the views: the bars, the view's header and controls, the footer's hints and keys, the browser. Functions over the app (app.ts delegates).
 
 import { lengthText } from '../i18n/units';
-import { getLang, type MessageKey, name, t } from '../i18n/messages';
-import { icon } from '../i18n/icons';
+import { getLang, type MessageKey, t } from '../i18n/messages';
 import { elementIds } from '../project/doc';
 import { savedAs } from '../project/persist';
 import { drawingNow } from '../session/app-view';
@@ -11,11 +10,12 @@ import { renderBrowser } from './browser';
 import { renderVisibility } from './visibility-panel';
 import { exploding, RENDER_QUALITIES, shownLevels, VISUAL_STYLES } from '../session/view/view-3d';
 import { type App } from '../session/app';
-import { EDIT_LEVELS } from '../session/state';
-import { renderRibbon } from './ribbon';
 import { renderFooter } from './footer';
-import { placeFloatBar } from './float-bar';
 import { tipOf } from '../session/actions';
+import { renderCommandBar } from './command-bar';
+import { renderRail } from './tool-rail';
+import { actionsWithContext, renderContextPanel } from './context-panel';
+import { renderSideBar, renderViewHeader } from './view-header';
 
 /** The parts the snaps divide a segment into, as the palette's (actions.ts). */
 const SNAP_PARTS = [2, 3, 4, 5, 6, 8, 10];
@@ -23,7 +23,6 @@ const SNAP_PARTS = [2, 3, 4, 5, 6, 8, 10];
 export function renderBrowserDrawer(app: App): void {
   const { ui, shell } = app;
   shell.browser.hidden = !ui.browserOpen;
-  shell.sidebar.setAttribute('aria-pressed', String(ui.browserOpen));
   if (!ui.browserOpen) return;
   const doc = app.store.get();
   // What the drawer shows: also the units (its Units item) and the materials (the types' thumbnails).
@@ -33,14 +32,13 @@ export function renderBrowserDrawer(app: App): void {
   app.browserKey = key;
   // Keep the focus on the same button across the rebuild.
   const focused = document.activeElement instanceof HTMLElement && shell.browser.contains(document.activeElement) ? [...shell.browser.querySelectorAll('button')].indexOf(document.activeElement as HTMLButtonElement) : -1;
-  renderBrowser(app, shell.browser, () => app.openLevels(), () => app.openWallTypes(), () => app.openMaterials());
+  renderBrowser(app, shell.browser, () => app.openWallTypes());
   if (focused >= 0) shell.browser.querySelectorAll('button')[focused]?.focus();
 }
 
 export function renderChrome(app: App): void {
   const { ui, shell, store } = app;
   const doc = store.get();
-  shell.panelToggle.setAttribute('aria-pressed', String(!shell.panel.hidden));
   const projectName = doc.name || t('app.untitled');
   if (shell.projectName.textContent !== projectName) shell.projectName.textContent = projectName;
   // Where the project is kept: in this browser's database, else in its local storage.
@@ -48,12 +46,10 @@ export function renderChrome(app: App): void {
   document.title = `${projectName} · cad2`;
   shell.undo.disabled = !store.canUndo();
   shell.redo.disabled = !store.canRedo();
-  shell.view3d.setAttribute('aria-pressed', String(ui.view === '3d'));
-  shell.viewPlan.setAttribute('aria-pressed', String(ui.view === 'plan'));
   // The title bar's, the view buttons' and the snaps button's tips: each its action's name and key as the
   // user has it (a key changed in the keys dialog shows here as in the palette); the command search's key cap
   // too. Written only when they change.
-  const byId = new Map(app.actionList().map((a) => [a.id, a]));
+  const byId = actionsWithContext(app);
   const tipFrom = (b: HTMLElement, id: string, label = true) => {
     const a = byId.get(id);
     if (!a || b.title === tipOf(a)) return;
@@ -63,11 +59,9 @@ export function renderChrome(app: App): void {
   tipFrom(shell.undo, 'edit.undo');
   tipFrom(shell.redo, 'edit.redo');
   tipFrom(shell.commands, 'help.commands');
-  tipFrom(shell.shortcuts, 'help.shortcuts');
-  tipFrom(shell.lang, 'settings.language');
-  tipFrom(shell.save, 'file.save');
-  tipFrom(shell.open, 'file.open');
   tipFrom(shell.snapBtn, 'settings.snaps');
+  tipFrom(shell.frameAll, 'view.frameAll');
+  tipFrom(shell.sectionOff, 'view.sectionOff');
   // Their visible words name them: the key in the tip only.
   tipFrom(shell.view3d, 'view.3d', false);
   tipFrom(shell.viewPlan, 'view.plan', false);
@@ -77,15 +71,12 @@ export function renderChrome(app: App): void {
     cap.textContent = commandsKey;
     cap.hidden = commandsKey === '';
   }
-  renderRibbon(app);
-  shell.lang.textContent = getLang().toUpperCase();
-  // Rewritten only when it changes: replacing the icon under the pointer between press and release
-  // would cancel the click.
-  const themeIcon = ui.theme === 'dark' ? 'sun' : 'moon';
-  if (shell.theme.dataset.icon !== themeIcon) {
-    shell.theme.innerHTML = icon(themeIcon);
-    shell.theme.dataset.icon = themeIcon;
-  }
+  // The bars: each drawn again only when what it shows changes (ui/bars.ts).
+  renderCommandBar(app, byId);
+  renderRail(app, byId);
+  renderContextPanel(app, byId);
+  renderSideBar(app, byId);
+  renderViewHeader(app);
   shell.snapBtn.setAttribute('aria-pressed', String(ui.snaps));
   shell.collideBtn.setAttribute('aria-pressed', String(ui.collisions));
   if (shell.snapParts.dataset.lang !== getLang()) {
@@ -104,11 +95,14 @@ export function renderChrome(app: App): void {
     shell.planScale.caption.textContent = t('vcb.scale');
     shell.planScale.box.title = t('vcb.scaleTip');
     shell.planScale.select.replaceChildren(...SCALES.map((d) => new Option(`1:${d}`, String(d))));
-    shell.visBtn.querySelector('.label')!.textContent = t('vcb.visibility');
+    shell.labels.vis.textContent = t('vcb.visibility');
     shell.visBtn.title = t('vis.title');
-    shell.shownReset.querySelector('.label')!.textContent = t('vcb.showAll');
+    shell.labels.shownReset.textContent = t('vcb.showAll');
     shell.shownReset.title = t('temp.reset');
+    shell.labels.sectionOff.textContent = t('pal.sectionOff');
   }
+  // A 3D section's way out, while the 3D view is cut by one.
+  shell.sectionOff.hidden = ui.view !== '3d' || ui.view3d.section === null;
   shell.planScale.select.value = String(drawingNow(app).scale);
   // The Visibility popover, drawn again only when what it shows changes (not on every pointer move).
   shell.visBtn.setAttribute('aria-expanded', String(!shell.visPanel.hidden));
@@ -148,7 +142,8 @@ export function renderChrome(app: App): void {
   quality.select.value = ui.view3d.quality;
   // The light's sliders, their captions and values (%), the panel open or not.
   const { light } = shell;
-  light.button.querySelector('.label')!.textContent = t('view3d.light');
+  // The display's button names the style shown, as the prototype's "Sombreado ▴".
+  light.label.textContent = t(`view3d.style.${ui.view3d.style}` as MessageKey);
   light.button.title = t('view3d.lightTip');
   light.brightness.caption.textContent = t('view3d.brightness');
   light.sun.caption.textContent = t('view3d.sunStrength');
@@ -157,13 +152,6 @@ export function renderChrome(app: App): void {
     s.value.textContent = `${Math.round(v * 100)} %`;
   }
   light.button.setAttribute('aria-expanded', String(!light.panel.hidden));
-  const levelKey = JSON.stringify([getLang(), doc.levels.map((l) => [l.id, l.name, l.elevation])]);
-  if (shell.level.dataset.key !== levelKey) {
-    const sorted = [...doc.levels].sort((a, b) => b.elevation - a.elevation);
-    shell.level.replaceChildren(...sorted.map((l) => new Option(name(l.name), l.id)), new Option(t('levels.edit'), EDIT_LEVELS));
-    shell.level.dataset.key = levelKey;
-  }
-  shell.level.value = ui.levelId;
   // Gone once the wall tool is on: "press W" no longer applies, and the footer says what to click.
   // Only on an empty project: a column, a roof or a note drawn first is under it otherwise.
   shell.emptyHint.hidden = doc.walls.length > 0 || elementIds(doc).size > 0 || ui.tool !== 'select';
@@ -181,5 +169,4 @@ export function renderChrome(app: App): void {
   shell.coords.textContent = ui.cursor ? `x ${lengthText(ui.cursor.x)}  y ${lengthText(ui.cursor.y)}` : '';
   shell.fitFoot();
   shell.fitViewBar();
-  placeFloatBar(app);
 }

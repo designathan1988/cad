@@ -39,8 +39,6 @@ export interface Prefs {
   planView?: { scale: number; center: { x: number; y: number } };
   /** The project open last, of those kept in the browser (io/project-db.ts). */
   projectId?: string;
-  /** The ribbon's tab shown last (app/ribbon-tabs.ts). */
-  ribbonTab?: string;
   /** A wall's type changed keeps the face against its room where it was (default on), or its reference line. */
   keepClear?: boolean;
 }
