@@ -17,4 +17,8 @@ Aprendizados guardados entre sessões, um por arquivo nesta pasta. Este índice 
 - [Memória que sobrevive à compactação](compaction-memory.md) — o trabalho em andamento fica em docs/agent (orders.md, STATE.md, work.md), reimpresso pelos hooks a cada compactação
 - [Interface densa](interface-densa.md) — compacta como app profissional (24 px, 12 px, barras baixas); controles e rolagem sempre estilizados; medir antes de mudar
 - [Só desktop](desktop-only.md) — a aplicação não é para celular: nunca testar nem projetar para mobile
+- [Copiar a referência](copiar-a-referencia.md) — imagem de outro software é o pedido: listar cada traço dela e copiar, nunca uma "versão moderna" parecida
+- [Opções reais no protótipo](prototipo-opcoes-reais.md) — abas, campos, nomes e teclas do protótipo vêm do código do app; onde ler cada um
+- [Prancheta nova por mudança](prancheta-nova-por-mudanca.md) — no protótipo, cada mudança é uma prancheta nova ao lado; nunca sobrescrever as anteriores
+- [Um lugar por comando](um-lugar-por-comando.md) — nenhum comando em dois lugares; conferir com find-duplicates.cjs antes de publicar
 - [Larguras de janela no teste](test-window-sizes.md) — testar também com ~880 e ~1280 px de largura; comparar as capturas para a vista nunca pular ao selecionar
