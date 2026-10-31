@@ -170,3 +170,14 @@ Merge progress (uncommitted, merge in progress; tools in .scratchpad: hunks.py, 
   objects-dialog). Notes: move.mjs drops the DESTINATION file's header comment (restored by hand twice: param-limits, file-guards).
   Checked headless: beam/roof by key, Esc/Enter/undo, help + context keys, wall tag beside wall, wall drag, next door/wall panels,
   3D snap with beam, object store menu + Esc. Not checked: every one of main's 93 fixes one by one in the app.
+
+## 2026-10-31, owner: "ENTÃO TERMINA E TESTA A APLICAÇÃO NO NAVEGADOR."
+Left after the merge: main's open findings F-0072 (single sliding leaf never opens; shutter vanishes), F-0089 (straight walls
+overlapping with no contact unreported), F-0091 (wall type layer order unchecked), F-0097 (typed-ids renames; IN PROGRESS
+uncommitted in the main checkout by another session: not duplicated here), F-0023 rest and F-0138 (main left/blocked), mirrored
+wall over a column with no warning. Test map (headless drive.cjs, 1920x1080, then 1280 and 880): file (new, open, download,
+projects), levels, walls (line, rect, arc, split, merge, corner, flip, align, distribute, types), openings (place, slide, handles,
+flip, groups, distribute), rooms/floors/ceilings/zones, roof (L hip), stair, railing, column, beam, curtain, separator, dims
+(linear, angle, radius, coord, level mark), measure (chain, crossing), guides, grid, sections/elevations, references, objects
+(store, editor, handles), materials, presets, overrides, layer sets, saved views, 3D (styles, box, explode, cut, xray), keys,
+help, palette, language, theme, panel, browser. Then fix what is found; then F-0072, F-0089, F-0091, wall over column.

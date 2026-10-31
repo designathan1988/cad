@@ -27,7 +27,7 @@ export const roomKind: ElementKind<Room, RoomItem> = {
   // Lit under the walls; its tag is the plan's (room tags keep off the rest).
   layer: 'under',
   icon: 'room',
-  one: 'room.title',
+  one: 'room.one',
   many: 'room.titleMany',
   title: (items) => ({ icon: 'room', text: items.length === 1 ? t('room.title', { name: name(items[0]!.room.name) }) : t('room.titleMany', { n: items.length }) }),
   // One room not closed in, or sharing its space: said under its fields.
