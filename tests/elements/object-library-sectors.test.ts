@@ -11,10 +11,11 @@ import * as THREE from 'three';
 import { byMaterial, cutGeometries } from '../../src/elements/kinds/object';
 import { GONDOLA, HOUSE_BED, LIBRARY_SECTORS, TOY_CHEST, WHITEBOARD } from '../../src/elements/object/library-sectors';
 import type { ObjectDefinition } from '../../src/elements/object/schema';
+import { objid } from '../ids';
 
 const context = { definitions: LIBRARY, materials: BUILT_IN_MATERIALS };
 const at = (def: ObjectDefinition, typeId: string, values: Record<string, number | string>) =>
-  evaluateObject(def, { id: 'o', levelId: 'l', definitionId: def.id, typeId, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values }, context);
+  evaluateObject(def, { id: objid('o'), levelId: 'l', definitionId: def.id, typeId, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values }, context);
 const low = (pieces: readonly Piece[]) => Math.min(...pieces.filter((p) => !p.cut).map((p) => pieceSpan(p).bottom));
 const tilted = (pieces: readonly Piece[]) => pieces.filter((p): p is Extract<Piece, { kind: 'box' }> => p.kind === 'box' && p.material.id === 'lacquerSage' && p.w > 0.5);
 

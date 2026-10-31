@@ -31,6 +31,7 @@ import type { App } from './app';
 import { made, nextOf } from './next';
 import { setView } from './view-ui';
 import * as appSettings from './app-settings';
+import { newObjectId } from '../elements/object/schema';
 
 /** A level mark where the menu was opened (or the middle of the view), selected: it says the level's height. */
 export function addLevelMarkHere(app: App, at?: Point2): void {
@@ -188,7 +189,7 @@ export function objectClick(app: App, p: Point2): void {
   const def = doc.definitions.find((d) => d.id === app.ui.objectDef);
   if (!def) return;
   // Its type, elevation and parameters as the next object is set (next-element.ts), turned as the tool is.
-  let o = made<ObjectInstance>(app, 'objects', { id: newId(OBJECT_PREFIX), at: { x: p.x, y: p.y }, angle: app.ui.objectAngle });
+  let o = made<ObjectInstance>(app, 'objects', { id: newObjectId(), at: { x: p.x, y: p.y }, angle: app.ui.objectAngle });
   // With collisions on, not into a wall or another object: moved to the nearest clear place, not below its floor.
   if (app.ui.collisions) {
     o = { ...o, elevation: Math.max(0, o.elevation) };

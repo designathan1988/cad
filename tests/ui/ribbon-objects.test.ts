@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { RIBBON_OBJECTS, ribbonObjects } from '../../src/ui/ribbon-tabs';
 import { newDocument } from '../../src/project/doc';
+import { objid } from '../ids';
 
 describe('ribbon objects', () => {
   const doc = newDocument();
@@ -18,7 +19,7 @@ describe('ribbon objects', () => {
   it('the one being placed and one placed are shown, in the library order', () => {
     const last = ids[ids.length - 1]!;
     const placed = ids[ids.length - 2]!;
-    const object = { id: 'object_1', levelId: doc.levels[0]!.id, definitionId: placed, typeId: 'standard', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} };
+    const object = { id: objid('object_1'), levelId: doc.levels[0]!.id, definitionId: placed, typeId: 'standard', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} };
     const shown = ribbonObjects(appOf({ ...doc, objects: [object] }, 'object', last)).map((d) => d.id);
     expect(shown).toHaveLength(RIBBON_OBJECTS);
     expect(shown.slice(-2)).toEqual([placed, last]);

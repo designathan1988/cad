@@ -16,6 +16,7 @@ import { type MessageKey, t } from '../i18n/messages';
 import { Preview } from './definition-preview';
 import { editorKit } from './definition-kit';
 import { editorTabs, withoutKey } from './definition-tabs';
+import { standInObjectId } from '../elements/object/schema';
 
 export type Tab = 'params' | 'parts' | 'handles' | 'types' | 'rules';
 const TABS: readonly Tab[] = ['params', 'parts', 'handles', 'types', 'rules'];
@@ -74,7 +75,7 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
     out.push(...ev.problems, ...ev.warnings.map(words));
     return out;
   };
-  const previewInstance = () => ({ id: 'object_editor', levelId: '', definitionId: ed.draft.id, typeId: ed.draft.types[0]?.id ?? '', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: ed.flex });
+  const previewInstance = () => ({ id: standInObjectId('object_editor'), levelId: '', definitionId: ed.draft.id, typeId: ed.draft.types[0]?.id ?? '', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: ed.flex });
 
   const kit = editorKit(app, ed);
   const { input, choose } = kit;

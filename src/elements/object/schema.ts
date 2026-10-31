@@ -5,12 +5,24 @@
 // code for one object: a table, a bookcase and a cabinet are the same machine with other data.
 
 import type { MaterialId } from '../material/schema';
+import { type Brand, newId } from '../../core/id';
 
 export const OBJECT_PREFIX = 'object';
 export const DEFINITION_PREFIX = 'def';
 
 export type DefinitionId = string;
-export type ObjectId = string;
+/** A placed object's id (object_…). */
+export type ObjectId = Brand<'object'>;
+
+/** A new placed object's id (object_…). */
+export const newObjectId = (): ObjectId => newId(OBJECT_PREFIX) as ObjectId;
+
+/** Whether an id (a selection's or a handle's) is a placed object's: every one read or made starts object_. */
+export const isObjectId = (id: string): id is ObjectId => id.startsWith(`${OBJECT_PREFIX}_`);
+
+/** The id of an instance evaluated only to draw a picture of its definition (a thumbnail, the editor's
+ * preview, a size read): it is never put in a document. */
+export const standInObjectId = (name: string): ObjectId => name as ObjectId;
 
 /** Words in the interface's two languages: a definition is data, so it carries its own names. */
 export interface Words {

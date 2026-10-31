@@ -18,6 +18,7 @@ import type { App } from './app';
 import * as appView from './app-view';
 import { placedOf } from '../project/derived-queries';
 import { isOpeningId, type OpeningId } from '../elements/opening/schema';
+import { isObjectId } from '../elements/object/schema';
 
 export interface ScreenHandle {
   readonly id: string;
@@ -240,7 +241,7 @@ export function endHandleDrag(app: App, d: HandleDrag): void {
     if (d.patch && isOpeningId(d.handle.id)) app.store.dispatch(updateOpening(d.handle.id, d.patch));
     return;
   }
-  app.store.dispatch(setObjectValues([{ id: d.handle.id, values: { [d.handle.param]: d.value }, at: d.at }]));
+  if (isObjectId(d.handle.id)) app.store.dispatch(setObjectValues([{ id: d.handle.id, values: { [d.handle.param]: d.value }, at: d.at }]));
 }
 
 /** The handles drawn: a disc with an arrow along the axis, out and in. */
