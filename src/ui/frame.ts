@@ -28,6 +28,9 @@ import { renderBrowserDrawer } from './chrome';
 import { addInteriorElevations } from '../session/section-tools';
 import { startCalibration } from './reference-tool';
 import { startFloorHole } from '../session/room-tool';
+import * as appPlacing from '../session/app-placing';
+import * as appSettings from '../session/app-settings';
+import * as appView from '../session/app-view';
 
 /** The panel's title over a placing tool's next element: its kind's name, an object's its own. */
 function nextTitle(app: App, slot: NextSlot): string {
@@ -43,7 +46,7 @@ export function renderFrame(app: App): void {
   const plan = ui.view === 'plan';
   // The point under a pointer that has not moved changes with the view (Home, F, the keys, a drawer):
   // taken again, so the footer's coordinates and a floor outline's last side follow it.
-  if (app.pointer) ui.cursor = app.pointerWorld();
+  if (app.pointer) ui.cursor = appView.pointerWorld(app);
   // On narrow screens the panel is a drawer over the drawing: it opens only when it has something
   // to show, so it never covers the model for nothing. Set first: what it covers shapes the view.
   const narrow = matchMedia('(max-width: 900px)').matches;
@@ -93,7 +96,7 @@ export function renderFrame(app: App): void {
       levelRooms: [...app.geometry.rooms.values()].filter((r) => r.room.levelId === ui.levelId),
       placed: app.geometry.openings,
       openingWarnings: app.geometry.openingWarnings,
-      openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing], sides: app.placeSideFields(placing) } : null,
+      openingTool: placing ? { kind: placing, size: ui.openingDefaults[placing], sides: appPlacing.placeSideFields(app, placing) } : null,
       next: next ? { icon: kindOfKey(next.slot === 'ceilings' ? 'floors' : next.slot).icon, title: nextTitle(app, next.slot), fields: next.fields, items: next.items } : null,
       total: ui.selection.size,
       // The first registry kind with a selected element, and those of its elements, as derived.
@@ -169,7 +172,7 @@ export function renderFrame(app: App): void {
         ui.defaults = { ...ui.defaults, ...patch };
         app.refresh();
       },
-      close: () => app.togglePanel(false),
+      close: () => appSettings.togglePanel(app, false),
       openSection: (id) => app.openSections(id),
       interiorElevations: (ids) => addInteriorElevations(app, ids),
       calibrate: (id) => startCalibration(app, id),

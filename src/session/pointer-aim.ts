@@ -10,6 +10,7 @@ import { outerSides } from '../elements/wall/geometry/seams';
 import { guideShapes, levelGuides } from '../elements/guide/tool-ui';
 import { shownGrids } from './annotation-tools';
 import * as sceneCamera from '../render/scene-camera';
+import * as appView from './app-view';
 
 
 export function pointerAim(app: App, isShift: () => boolean) {
@@ -43,7 +44,7 @@ export function pointerAim(app: App, isShift: () => boolean) {
       const r = shell.planCanvas.getBoundingClientRect();
       return { p: app.plan.toWorld({ x: e.clientX - r.left, y: e.clientY - r.top }), mpp: 1 / app.plan.scale };
     }
-    const z = (levelOf(app.store.get(), ui.levelId)?.elevation ?? 0) + app.lift(ui.levelId);
+    const z = (levelOf(app.store.get(), ui.levelId)?.elevation ?? 0) + appView.lift(app, ui.levelId);
     const p = sceneCamera.groundPoint(app.scene, e.clientX, e.clientY, z);
     return p ? { p, mpp: sceneCamera.metresPerPixel(app.scene, p, z) } : null;
   };
@@ -57,7 +58,7 @@ export function pointerAim(app: App, isShift: () => boolean) {
   const aimAt3d = (e: PointerEvent | MouseEvent): { p: Point2; mpp: number } | null => {
     if (ui.view === 'plan') return worldAt(e);
     const doc = app.store.get();
-    const levels = new Set([ui.levelId, app.levelBelow()]);
+    const levels = new Set([ui.levelId, appView.levelBelow(app)]);
     const onLevel = new Set([
       ...doc.walls.filter((w) => levels.has(w.levelId)).map((w) => w.id),
       // The registry's surfaces (a floor) on those levels.
@@ -153,7 +154,7 @@ export function pointerAim(app: App, isShift: () => boolean) {
     const faces = measuring ? levelFaces() : [];
     // The level below's walls too, without their numbers (those are the other level's): drawing an
     // upper floor snaps onto the walls it stands on.
-    const below = ui.hidden.has('walls') ? null : app.levelBelow();
+    const below = ui.hidden.has('walls') ? null : appView.levelBelow(app);
     const walls = app.store.get().walls;
     const onFace = ui.tool === 'wall' && ui.defaults.referenceLine !== 'centerline' && below !== null;
     const from = tape ?? modifyFrom ?? (draft ? (draft.at(-1) ?? null) : w.kind === 'drawing' ? w.last : null);

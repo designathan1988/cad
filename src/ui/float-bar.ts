@@ -11,6 +11,7 @@ import { boundsOf, openingOutline } from '../project/derived-queries';
 import * as THREE from 'three';
 import { kindOfId, levelOfSolid } from '../elements/registry';
 import { placeBarY } from './bar-place';
+import * as appView from '../session/app-view';
 
 /** The footer for the measure tool: what to click, or what the tape read. */
 export function measureHint(app: App): string {
@@ -84,7 +85,7 @@ export function placeFloatBar(app: App): void {
       // Each at its level's height in the view (lifted when exploded).
       const opening = app.geometry.openings.get(id);
       if (opening) {
-        const up = app.lift(app.geometry.solids.get(opening.opening.wallId)?.wall.levelId ?? '');
+        const up = appView.lift(app, app.geometry.solids.get(opening.opening.wallId)?.wall.levelId ?? '');
         for (const v of openingOutline(opening)) [opening.bottom, opening.top].forEach((z) => project(v, z + up));
       }
       // The registry's with a height (a room at its level's floor, a floor): their outlines at both faces.
@@ -92,12 +93,12 @@ export function placeFloatBar(app: App): void {
       const s = k?.span ? app.geometry.kinds.get(k.key)?.get(id) : undefined;
       if (k?.span && s !== undefined) {
         const { bottom, top } = k.span(s);
-        const up = app.lift(levelOfSolid(k, s) ?? app.ui.levelId);
+        const up = appView.lift(app, levelOfSolid(k, s) ?? app.ui.levelId);
         for (const v of k.outlines(s).flat()) [bottom, top].forEach((z) => project(v, z + up));
       }
       const solid = app.geometry.solids.get(id);
       if (!solid) continue;
-      const up = app.lift(solid.wall.levelId);
+      const up = appView.lift(app, solid.wall.levelId);
       for (const piece of solid.pieces) {
         for (const v of piece.polygon) {
           for (const z of [solid.bottom, solid.top]) project(v, z + up);
@@ -122,7 +123,7 @@ export function placeFloatBar(app: App): void {
   const left = Math.min(Math.max(8, x - w / 2), right - w - 8);
   // Never over a temporary dimension's value, a room's tag or a handle of the selection (bar-place.ts):
   // on a phone after F it sat on the handle at an arc's end (the tester's R04).
-  const h0 = app.handles();
+  const h0 = appView.handles(app);
   const grip = (p: Point2) => ({ top: p.y - 12, bottom: p.y + 12, left: p.x - 12, right: p.x + 12 });
   const boxes = [
     ...[...h0.squares, ...h0.arrows, ...(h0.bulge ? [h0.bulge] : []), ...(h0.rotate ? [h0.rotate] : [])].map((x) => grip(x.at)),

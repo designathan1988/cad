@@ -15,7 +15,8 @@ import { OPENING_PREVIEW_ID, ruleGuide } from '../elements/opening/aim';
 import { name, t } from '../i18n/messages';
 import { snapLabel } from '../session/snap-types';
 import { drawingOf, levelOf, wallNumber } from '../project/doc';
-import { type App, PREVIEW_ID, SNAP_OF } from '../session/app';
+import { type App, PREVIEW_ID } from '../session/app';
+import { SNAP_OF } from '../session/snap-types';
 import { bendMeasure, drawingEnd, previewWall, rectCorner, turnMeasure, wallTags } from '../elements/wall/tool-ui';
 import { guideOffset } from '../elements/guide/tool-ui';
 import { modifyMarks } from '../session/modify';
@@ -23,11 +24,13 @@ import { dimensionDraft, gridDraft } from '../session/annotation-tools';
 import { sectionDraft } from '../session/section-tools';
 import { currentDims } from './temp-dims';
 import { syncScene } from '../session/scene-frame';
+import * as appPlacing from '../session/app-placing';
+import * as appView from '../session/app-view';
 
 export function drawPlanOverlay(app: App): void {
   const { ui } = app;
   const plan = ui.view === 'plan';
-  const preview = new Set([...previewWall(app), ...app.previewOpening()].map((w) => w.id));
+  const preview = new Set([...previewWall(app), ...appPlacing.previewOpening(app)].map((w) => w.id));
   const guide = app.openingKind() ? ruleGuide(app.store.get(), app.geometry, OPENING_PREVIEW_ID) : null;
   const w = ui.wall;
   const drawing = ui.tool === 'wall' && w.kind === 'drawing';
@@ -85,7 +88,7 @@ export function drawPlanOverlay(app: App): void {
       : null;
   const guideDim = ui.guide && guideOff !== null ? guideMeasure(ui.guide, guideOff) : null;
   if (plan) {
-    app.plan.drawing = app.drawingNow();
+    app.plan.drawing = appView.drawingNow(app);
     app.plan.overrides = ui.overridesOn ? overrideColours(app.store.get()) : new Map();
     app.plan.phases = ui.overridesOn ? wallPhases(app.store.get()) : new Map();
     app.plan.roomOverrides = ui.overridesOn ? roomOverrideColours(app.store.get()) : new Map();
@@ -137,7 +140,7 @@ export function drawPlanOverlay(app: App): void {
       refLines: app.refLines(),
       openingTags: app.openingTags(),
       ray: marks?.ref ? { start: marks.base, end: marks.ref } : null,
-      handles: app.handles(),
+      handles: appView.handles(app),
       objectHandles: objectHandles(app),
       hotHandle: app.hotHandle,
       anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
@@ -194,7 +197,7 @@ export function drawPlanOverlay(app: App): void {
         ...(guide ? [guide.dim] : []),
         ...(guideDim && guideOff! > 0 ? [{ ...guideDim, side: ui.guide!.base.dir, clear: 0 }] : []),
       ],
-      underlay: app.underlay(),
+      underlay: appView.underlay(app),
       acquired: ui.acquired,
       circleDraft:
         ui.tool === 'guide' && ui.guideMode === 'circle' && ui.guideFrom && (ui.snap?.point ?? ui.cursor)
@@ -210,8 +213,8 @@ export function drawPlanOverlay(app: App): void {
     const level = levelOf(app.store.get(), ui.levelId);
     const active = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'modify';
     app.overlayState = {
-      project: (p, z) => app.projectAt(p, z),
-      floor: (level?.elevation ?? 0) + app.lift(ui.levelId),
+      project: (p, z) => appView.projectAt(app, p, z),
+      floor: (level?.elevation ?? 0) + appView.lift(app, ui.levelId),
       height: level?.height ?? 2.8,
       snap: active && ui.snap ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null) } : null,
       axis:
@@ -257,7 +260,7 @@ export function drawPlanOverlay(app: App): void {
       boxHot: app.boxHot,
       objectHandles: objectHandles(app),
       hotHandle: app.hotHandle,
-      handles: app.handles(),
+      handles: appView.handles(app),
     };
     app.overlay3d.draw(app.overlayState);
   }

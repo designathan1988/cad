@@ -1,15 +1,12 @@
 {
  "direction": 0,
  "mutableLets": 0,
- "oversize": [
-  "src/session/app.ts"
- ],
+ "oversize": [],
  "duplications": 3,
  "detail": {
   "direction": [],
   "mutableLets": [],
   "oversize": [
-   "src/render/scene-3d.ts",
    "src/session/app.ts"
   ],
   "duplications": [

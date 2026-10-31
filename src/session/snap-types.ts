@@ -1,7 +1,6 @@
-// What a snap is: its kinds and their labels, the result, and what the snapper is given to look at.
-
 import type { Point2 } from '../model/vector';
 import type { MessageKey } from '../i18n/messages';
+
 
 export type SnapKind =
   | 'endpoint'
@@ -118,3 +117,15 @@ export const snapLabel: Readonly<Record<SnapKind, MessageKey | null>> = {
   grid: null,
   none: null,
 };
+
+/** The snap labels that name their wall. */
+export const SNAP_OF = {
+  endpoint: 'snap.endpointOf',
+  midpoint: 'snap.midpointOf',
+  onWall: 'snap.onWallOf',
+  aligned: 'snap.alignedOf',
+  perpendicular: 'snap.perpendicularOf',
+  extension: 'snap.extensionOf',
+  parallel: 'snap.parallelOf',
+  intersection: 'snap.intersectionOf',
+} as const;

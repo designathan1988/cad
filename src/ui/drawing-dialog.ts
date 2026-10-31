@@ -8,6 +8,7 @@ import { type DrawingSettings, isDrawingSettings, PEN_MAX, PEN_MIN, PEN_ROLES, t
 import { el, numberField, select } from './controls';
 import { openProjectDialog } from './dialog';
 import { type MessageKey, t } from '../i18n/messages';
+import * as appView from '../session/app-view';
 
 export const setDrawing = (drawing: DrawingSettings): Command<Doc> => ({
   label: 'cmd.setDrawing',
@@ -29,7 +30,7 @@ export function showDrawingSettings(app: App): void {
     // The scale shown (a saved view's own while it is shown); a new one is the project's, for every view without one.
     const scale = select(
       SCALES.map((x) => ({ value: String(x), label: `1:${x}` })),
-      String(app.drawingNow().scale),
+      String(appView.drawingNow(app).scale),
       (v) => {
         app.ui.viewDen = null;
         change({ ...d, scale: Number(v) });

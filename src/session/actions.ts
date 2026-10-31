@@ -24,6 +24,9 @@ import { goToView, saveCurrentView } from './views-ui';
 import { pickModel } from '../ui/import-model';
 import { pickReference } from '../ui/reference-tool';
 import { addElevations } from './section-tools';
+import * as appPlacing from './app-placing';
+import * as appSettings from './app-settings';
+import * as appEdit from './app-edit';
 
 export interface Action {
   readonly id: string;
@@ -120,7 +123,7 @@ export function appActions(app: App, open: Openers): Action[] {
       // Found by either language's words, "place" as "colocar".
       keywords: `${tBoth('pal.object', { name: words(d.name) })} ${d.name.pt} ${d.name.en} inserir insert objeto object mobiliário furniture`,
       enabled: true,
-      run: () => app.placeObject(d.id),
+      run: () => appPlacing.placeObject(app, d.id),
     })),
     make('view.3d', 'view.3d', views, () => setView(app, '3d'), { keys: '1', enabled: ui.view !== '3d' }),
     make('view.plan', 'view.plan', views, () => setView(app, 'plan'), { keys: '2', enabled: ui.view !== 'plan' }),
@@ -146,17 +149,17 @@ export function appActions(app: App, open: Openers): Action[] {
         const id = newId(ZONE_PREFIX);
         store.dispatch(addZone({ id, levelId: first.levelId, name: t('zone.default', { n: doc.zones.length + 1 }), category: 'social', color: ZONE_COLOURS.social, rooms: rooms.filter((r) => r.levelId === first.levelId).map((r) => r.id) }));
         ui.selection = new Set([id]);
-        app.showProperties();
+        appSettings.showProperties(app);
         app.refresh();
       },
       { enabled: doc.rooms.some((r) => ui.selection.has(r.id)), keywords: 'zona zonas zone área setor social íntima serviço' },
     ),
-    make('view.section', 'pal.section', views, () => app.sectionAtGuide(), { enabled: doc.guides.some((g) => ui.selection.has(g.id) && !g.shape) }),
-    make('view.sectionFlip', 'pal.sectionFlip', views, () => app.sectionAtGuide(true), { enabled: doc.guides.some((g) => ui.selection.has(g.id) && !g.shape) }),
+    make('view.section', 'pal.section', views, () => appEdit.sectionAtGuide(app), { enabled: doc.guides.some((g) => ui.selection.has(g.id) && !g.shape) }),
+    make('view.sectionFlip', 'pal.sectionFlip', views, () => appEdit.sectionAtGuide(app, true), { enabled: doc.guides.some((g) => ui.selection.has(g.id) && !g.shape) }),
     make('view.sectionOff', 'pal.sectionOff', views, () => clearSection(app), { enabled: ui.view3d.section !== null }),
     ...(['north', 'south', 'east', 'west'] as const).map((side) => make(`view.elevation.${side}`, `pal.elevation.${side}`, views, () => elevation(app, side))),
-    make('edit.undo', 'pal.undo', edit, () => app.undo(), { keys: 'Ctrl+Z', enabled: store.canUndo() }),
-    make('edit.redo', 'pal.redo', edit, () => app.redo(), { keys: 'Ctrl+Shift+Z', enabled: store.canRedo() }),
+    make('edit.undo', 'pal.undo', edit, () => appEdit.undo(app), { keys: 'Ctrl+Z', enabled: store.canUndo() }),
+    make('edit.redo', 'pal.redo', edit, () => appEdit.redo(app), { keys: 'Ctrl+Shift+Z', enabled: store.canRedo() }),
     make('edit.delete', 'pal.delete', edit, () => deleteSelection(app), { keys: 'Del', enabled: has }),
     make('edit.selectAll', 'pal.selectAll', edit, () => selectAllShown(app), { keys: 'Ctrl+A' }),
     make('edit.selectAllWalls', 'pal.selectAllWalls', edit, () => selectAllWalls(app), { keywords: 'paredes walls todas all' }),
@@ -183,16 +186,16 @@ export function appActions(app: App, open: Openers): Action[] {
     make('file.new', 'pal.new', file, () => newProject(app)),
     make('file.open', 'pal.open', file, open.openFile, { keys: 'Ctrl+O' }),
     make('file.save', 'pal.save', file, () => saveFile(app), { keys: 'Ctrl+S' }),
-    make('settings.snaps', 'pal.snaps', settings, () => app.toggleSnaps(), { keys: 'S' }),
-    make('settings.collisions', 'pal.collisions', settings, () => app.toggleCollisions(), { keys: 'K', keywords: 'colisão collision atravessar through física physics' }),
-    make('settings.theme', 'pal.theme', settings, () => app.toggleTheme()),
-    make('settings.language', 'pal.language', settings, () => app.setLanguage(app.otherLanguage()), { keys: 'Shift+L', keywords: 'English Português' }),
-    make('settings.panel', 'pal.panel', settings, () => app.togglePanel()),
-    make('settings.browser', 'pal.browser', settings, () => app.toggleBrowser()),
-    make('settings.refLines', 'pal.refLines', settings, () => app.toggleRefLines()),
-    make('settings.openingTags', 'pal.openingTags', settings, () => app.toggleOpeningTags(), { keywords: 'etiquetas tags marks tipo type portas janelas doors windows' }),
+    make('settings.snaps', 'pal.snaps', settings, () => appSettings.toggleSnaps(app), { keys: 'S' }),
+    make('settings.collisions', 'pal.collisions', settings, () => appSettings.toggleCollisions(app), { keys: 'K', keywords: 'colisão collision atravessar through física physics' }),
+    make('settings.theme', 'pal.theme', settings, () => appSettings.toggleTheme(app)),
+    make('settings.language', 'pal.language', settings, () => appSettings.setLanguage(app, appSettings.otherLanguage()), { keys: 'Shift+L', keywords: 'English Português' }),
+    make('settings.panel', 'pal.panel', settings, () => appSettings.togglePanel(app)),
+    make('settings.browser', 'pal.browser', settings, () => appSettings.toggleBrowser(app)),
+    make('settings.refLines', 'pal.refLines', settings, () => appSettings.toggleRefLines(app)),
+    make('settings.openingTags', 'pal.openingTags', settings, () => appPlacing.toggleOpeningTags(app), { keywords: 'etiquetas tags marks tipo type portas janelas doors windows' }),
     ...(['walls', 'openings', 'rooms', 'floors', 'objects', 'guides'] as const).map((c) =>
-      make(`layer.${c}`, ui.hidden.has(c) ? (`pal.show.${c}` as const) : (`pal.hide.${c}` as const), settings, () => app.toggleCategory(c)),
+      make(`layer.${c}`, ui.hidden.has(c) ? (`pal.show.${c}` as const) : (`pal.hide.${c}` as const), settings, () => appSettings.toggleCategory(app, c)),
     ),
     ...[...doc.levels]
       .sort((a, b) => b.elevation - a.elevation)
@@ -203,7 +206,7 @@ export function appActions(app: App, open: Openers): Action[] {
         // Either language's command, with the stored name and the shown one.
         keywords: `${tBoth('pal.goLevel', { name: l.name })} ${name(l.name)}`,
         enabled: l.id !== ui.levelId,
-        run: () => app.setLevel(l.id),
+        run: () => appEdit.setLevel(app, l.id),
       })),
     make('view.save', 'views.save', views, () => saveCurrentView(app)),
     make('view.sections', 'section.dialogOpen', views, () => app.openSections(), { keywords: 'corte cortes section sections elevação elevações elevation fachada facade' }),
@@ -211,10 +214,10 @@ export function appActions(app: App, open: Openers): Action[] {
     make('model.import', 'model.import', file, () => pickModel(app), { keywords: 'glTF GLB OBJ modelo model 3D importar import objeto object biblioteca library' }),
     make('ref.import', 'ref.import', file, () => pickReference(app), { keywords: 'referência reference imagem image foto PDF DXF calibrar calibrate fundo underlay planta escaneada scan' }),
     make('tool.callout', 'tool.callout', tools, () => app.setTool('callout'), { keywords: 'chamada callout seta leader texto com seta nota anotação' }),
-    make('mark.angle', 'mark.angle', tools, () => app.setMarkMode('angle'), { keywords: 'cota angular ângulo angle angular dimension graus' }),
-    make('mark.radius', 'mark.radius', tools, () => app.setMarkMode('radius'), { keywords: 'cota de raio diâmetro arco radius diameter arc length parede curva' }),
-    make('mark.coord', 'mark.coord', tools, () => app.setMarkMode('coord'), { keywords: 'cota por coordenada coordenadas coordinate ponto x y' }),
-    make('dim.auto', 'dim.auto', tools, () => app.autoDimension(), { keywords: 'cotagem automática auto dimension cotar paredes cotas fachada exterior' }),
+    make('mark.angle', 'mark.angle', tools, () => appEdit.setMarkMode(app, 'angle'), { keywords: 'cota angular ângulo angle angular dimension graus' }),
+    make('mark.radius', 'mark.radius', tools, () => appEdit.setMarkMode(app, 'radius'), { keywords: 'cota de raio diâmetro arco radius diameter arc length parede curva' }),
+    make('mark.coord', 'mark.coord', tools, () => appEdit.setMarkMode(app, 'coord'), { keywords: 'cota por coordenada coordenadas coordinate ponto x y' }),
+    make('dim.auto', 'dim.auto', tools, () => appEdit.autoDimension(app), { keywords: 'cotagem automática auto dimension cotar paredes cotas fachada exterior' }),
     make('section.elevations', 'section.makeElevations', views, () => addElevations(app), { keywords: 'elevação elevações elevation fachadas facades norte sul leste oeste' }),
     // Tools: the text or the level mark goes where the next click is (it went in the middle of the view).
     make('edit.addNote', 'ctx.addNote', edit, () => app.setTool('note'), { keywords: 'texto text nota note anotação annotation' }),
@@ -238,7 +241,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('openings.store', 'opstore.open', edit, open.openings, { keywords: `${tBoth('opstore.title')} catálogo catalog modelo model porta door janela window` }),
     make('units.edit', 'units.edit', edit, open.units, { keywords: `${tBoth('units.title')} ${tBoth('units.cm')} ${tBoth('units.mm')}` }),
     ...[2, 3, 4, 5, 6, 8, 10].map((n) =>
-      make(`snap.parts.${n}`, 'pal.snapParts', settings, () => app.setSnapParts(n), { enabled: ui.snapParts !== n, keywords: `${n} encaixe snap divisão division terços thirds partes parts` }),
+      make(`snap.parts.${n}`, 'pal.snapParts', settings, () => appSettings.setSnapParts(app, n), { enabled: ui.snapParts !== n, keywords: `${n} encaixe snap divisão division terços thirds partes parts` }),
     ).map((a, i) => ({ ...a, label: t('pal.snapParts', { n: [2, 3, 4, 5, 6, 8, 10][i]! }) })),
     // Align and distribute the selection (tools/arrange.ts): enabled when enough of it can.
     ...(() => {
@@ -251,14 +254,14 @@ export function appActions(app: App, open: Openers): Action[] {
       return ARRANGE_HOWS.map((how) =>
         onOneWall && (how === 'spreadX' || how === 'spreadY')
           ? make(`arrange.${how}`, `arrange.${how}` as MessageKey, edit, () => app.store.dispatch(distributeOpenings(newId(GROUP_PREFIX), ids, { kind: 'equal' })), { keywords: 'alinhar align distribuir distribute organizar arrange' })
-          : make(`arrange.${how}`, `arrange.${how}` as MessageKey, edit, () => app.arrange(how), { enabled: n >= arrangeNeeds(how), keywords: 'alinhar align distribuir distribute organizar arrange' }),
+          : make(`arrange.${how}`, `arrange.${how}` as MessageKey, edit, () => appEdit.arrange(app, how), { enabled: n >= arrangeNeeds(how), keywords: 'alinhar align distribuir distribute organizar arrange' }),
       );
     })(),
     make('settings.variables', 'vars.open', settings, open.variables, { keywords: 'variáveis variables pé-direito módulo module medida measure nome name' }),
     make('view.overrides', 'ovr.open', views, () => app.openOverrides(), { keywords: 'substituição override filtro filter cor color demolir demolish' }),
-    make('view.overridesToggle', app.ui.overridesOn ? 'ovr.turnOff' : 'ovr.turnOn', views, () => app.toggleOverrides(), { enabled: (doc.overrides ?? []).length + (doc.roomOverrides ?? []).length > 0 }),
-    make('layers.save', 'layers.save', views, () => app.saveLayerSet(), { keywords: 'camadas layers combinação combination salvar save' }),
-    ...(doc.layerSets ?? []).map((s) => ({ ...make(`layers.apply.${s.id}`, 'layers.apply', views, () => app.applyLayerSet(s.id)), label: t('layers.apply', { name: s.name }) })),
+    make('view.overridesToggle', app.ui.overridesOn ? 'ovr.turnOff' : 'ovr.turnOn', views, () => appSettings.toggleOverrides(app), { enabled: (doc.overrides ?? []).length + (doc.roomOverrides ?? []).length > 0 }),
+    make('layers.save', 'layers.save', views, () => appSettings.saveLayerSet(app), { keywords: 'camadas layers combinação combination salvar save' }),
+    ...(doc.layerSets ?? []).map((s) => ({ ...make(`layers.apply.${s.id}`, 'layers.apply', views, () => appSettings.applyLayerSet(app, s.id)), label: t('layers.apply', { name: s.name }) })),
     make('settings.keys', 'keys.open', settings, open.keys, { keywords: 'atalhos shortcuts teclado keyboard teclas keys remapear remap desligar' }),
     make('drawing.edit', 'draw.open', edit, open.drawing, { keywords: `${tBoth('draw.title')} 1:50 1:100 pena pen espessura lineweight` }),
     make('help.shortcuts', 'pal.shortcuts', help, open.help, { keys: '?' }),

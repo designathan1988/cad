@@ -6,6 +6,7 @@ import type { App } from '../session/app';
 import { contextEntries } from '../session/context-menu';
 import { ribbonTabs } from './ribbon-tabs';
 import { words } from '../elements/object/fields';
+import * as appSettings from '../session/app-settings';
 
 
 export interface RibbonItem {
@@ -229,7 +230,7 @@ export function renderRibbon(app: App): void {
   const active = document.activeElement instanceof HTMLElement && shell.ribbon.contains(document.activeElement) ? document.activeElement : null;
   const focused = active?.dataset.action;
   const field = active?.closest<HTMLElement>('[data-rf]')?.dataset.rf;
-  renderRibbonTabs(shell.tabs, tabs, shown, (id) => app.chooseRibbonTab(id), shell.fileMenu);
+  renderRibbonTabs(shell.tabs, tabs, shown, (id) => appSettings.chooseRibbonTab(app, id), shell.fileMenu);
   renderRibbonTab(shell.ribbon, tab, actions);
   if (focused) shell.ribbon.querySelector<HTMLElement>(`[data-action="${focused}"]`)?.focus();
   else if (field) shell.ribbon.querySelector<HTMLElement>(`[data-rf="${field}"] input, [data-rf="${field}"] select, [data-rf="${field}"] button`)?.focus();

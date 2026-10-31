@@ -8,6 +8,7 @@
 //   lost (C): the control with the same data-focus key, else the given fallback, else Close.
 
 import type { App } from '../session/app';
+import * as appEdit from '../session/app-edit';
 
 export interface ProjectDialog {
   /** Draws it again now, keeping the focus by its data-focus key. */
@@ -81,8 +82,8 @@ export function openProjectDialog(app: App, render: (close: () => void) => HTMLE
       e.preventDefault();
       // Handled here only: the window's own shortcuts would undo a second time.
       e.stopPropagation();
-      if (key === 'y' || e.shiftKey) app.redo();
-      else app.undo();
+      if (key === 'y' || e.shiftKey) appEdit.redo(app);
+      else appEdit.undo(app);
     }
   };
   const onClick = (e: MouseEvent) => {

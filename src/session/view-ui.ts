@@ -19,6 +19,7 @@ import type { App } from './app';
 import { currentDims } from '../ui/temp-dims';
 import * as sceneCamera from '../render/scene-camera';
 import * as sceneCut from '../render/scene-cut';
+import * as appView from './app-view';
 
 /** The section box on, around what the 3D shows, or off. */
 export function toggleBox(app: App): void {
@@ -39,7 +40,7 @@ export function boxHandleAt(app: App, clientX: number, clientY: number): BoxFace
   let bestD = BOX_HANDLE_HIT;
   for (const f of BOX_FACES) {
     const c = faceCenter(box, f);
-    const p = app.projectAt(c, c.z);
+    const p = appView.projectAt(app, c, c.z);
     if (!p) continue;
     const d = Math.hypot(p.x + r.left - clientX, p.y + r.top - clientY);
     if (d <= bestD) {
@@ -56,8 +57,8 @@ export function boxFaceOnScreen(app: App, face: BoxFace): Point2 {
   if (!box) return { x: 0, y: 0 };
   const c = faceCenter(box, face);
   const n = faceNormal(face);
-  const a = app.projectAt(c, c.z);
-  const b = app.projectAt({ x: c.x + n.x, y: c.y + n.y }, c.z + n.z);
+  const a = appView.projectAt(app, c, c.z);
+  const b = appView.projectAt(app, { x: c.x + n.x, y: c.y + n.y }, c.z + n.z);
   return a && b ? { x: b.x - a.x, y: b.y - a.y } : { x: 0, y: 0 };
 }
 
@@ -165,7 +166,7 @@ export function keepSelectionInView(app: App): boolean {
     const b = app.plan.toScreen({ x: box.max.x, y: box.min.y });
     const xs = [a.x, b.x];
     // The turn handle: under the selection, lower still where it keeps clear of an end's arrow.
-    const turn = app.handles().rotate?.at.y;
+    const turn = appView.handles(app).rotate?.at.y;
     const ys = [a.y, Math.max(b.y + ROTATE_OFFSET, turn ?? 0) + 12];
     const TEXT = 12;
     // The dimensions count under a phone's sheet (the tester's P07); beside a drawer only the element
@@ -212,9 +213,9 @@ export function keepSelectionInView3d(app: App): boolean {
   const box = boundsOf(app.geometry, app.ui.selection);
   if (!box) return false;
   const level = levelOf(app.store.get(), app.ui.levelId);
-  const z0 = (level?.elevation ?? 0) + app.lift(app.ui.levelId);
+  const z0 = (level?.elevation ?? 0) + appView.lift(app, app.ui.levelId);
   const z1 = z0 + (level?.height ?? 2.8);
-  const pts = [box.min, box.max, { x: box.min.x, y: box.max.y }, { x: box.max.x, y: box.min.y }].flatMap((p) => [app.projectAt(p, z0), app.projectAt(p, z1)]).filter((p): p is Point2 => p !== null);
+  const pts = [box.min, box.max, { x: box.min.x, y: box.max.y }, { x: box.max.x, y: box.min.y }].flatMap((p) => [appView.projectAt(app, p, z0), appView.projectAt(app, p, z1)]).filter((p): p is Point2 => p !== null);
   if (pts.length === 0) return false;
   const vp = app.shell.viewport.getBoundingClientRect();
   const screen = { left: Math.min(...pts.map((p) => p.x)), right: Math.max(...pts.map((p) => p.x)), top: Math.min(...pts.map((p) => p.y)), bottom: Math.max(...pts.map((p) => p.y)) };
@@ -251,7 +252,7 @@ export function frameAll(app: App): void {
   const box = boundsOf(app.visibleGeometry());
   sceneCamera.setCovered(app.scene, covered(app));
   if (app.ui.view === 'plan') app.plan.frame(box, covered(app));
-  else sceneCamera.frame(app.scene, box, app.height());
+  else sceneCamera.frame(app.scene, box, appView.height(app));
   app.render();
 }
 
@@ -266,7 +267,7 @@ export function elevation(app: App, side: 'north' | 'south' | 'east' | 'west'): 
   const dir = { north: new THREE.Vector3(0, 0, -1), south: new THREE.Vector3(0, 0, 1), east: new THREE.Vector3(1, 0, 0), west: new THREE.Vector3(-1, 0, 0) }[side];
   sceneCamera.setCovered(app.scene, covered(app));
   app.framed['3d'] = true;
-  sceneCamera.frame(app.scene, boundsOf(app.visibleGeometry()), app.height(), dir);
+  sceneCamera.frame(app.scene, boundsOf(app.visibleGeometry()), appView.height(app), dir);
   app.render();
 }
 
@@ -295,7 +296,7 @@ export function sectionAtGuide(app: App, flip = false): void {
   sceneCamera.setCovered(app.scene, covered(app));
   app.framed['3d'] = true;
   // From the cut side, looking across the line at what it keeps.
-  sceneCamera.frame(app.scene, boundsOf(app.visibleGeometry()), app.height(), new THREE.Vector3(-n.x, 0, n.y));
+  sceneCamera.frame(app.scene, boundsOf(app.visibleGeometry()), appView.height(app), new THREE.Vector3(-n.x, 0, n.y));
   app.toast(t('toast.section'));
   app.render();
 }
@@ -311,7 +312,7 @@ export function frameSelection(app: App): void {
   if (box === null) return app.frameAll();
   sceneCamera.setCovered(app.scene, covered(app));
   if (app.ui.view === 'plan') app.plan.frame(box, covered(app));
-  else sceneCamera.frame(app.scene, box, app.height());
+  else sceneCamera.frame(app.scene, box, appView.height(app));
   app.render();
 }
 

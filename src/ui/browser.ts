@@ -10,6 +10,8 @@ import { layerSwatch } from '../elements/wall/swatch';
 import { setView } from '../session/view-ui';
 import { deleteSavedView, goToView, saveCurrentView } from '../session/views-ui';
 import { selectWallsOfType } from '../session/selection';
+import * as appSettings from '../session/app-settings';
+import * as appEdit from '../session/app-edit';
 
 /** A full-width button row in a browser section. */
 function item(label: string, onClick: () => void, extra: { pressed?: boolean; current?: boolean; disabled?: boolean; lead?: string; trail?: string } = {}): HTMLElement {
@@ -39,7 +41,7 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
   const doc = app.store.get();
   const close = el('button', { type: 'button', class: 'icon-btn', title: t('browser.close'), 'aria-label': t('browser.close') });
   close.innerHTML = icon('close', 16);
-  close.addEventListener('click', () => app.toggleBrowser(false));
+  close.addEventListener('click', () => appSettings.toggleBrowser(app, false));
   const levels = [...doc.levels].sort((a, b) => b.elevation - a.elevation);
   // Counted on the level shown: what a click on a type selects.
   const usage = typeUsage(doc, ui.levelId);
@@ -56,7 +58,7 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
     section(
       t('browser.levels'),
       true,
-      ...levels.map((l) => item(name(l.name), () => app.setLevel(l.id), { current: l.id === ui.levelId, lead: icon('slab', 16), ...(l.id === ui.levelId ? { trail: t('browser.current') } : {}) })),
+      ...levels.map((l) => item(name(l.name), () => appEdit.setLevel(app, l.id), { current: l.id === ui.levelId, lead: icon('slab', 16), ...(l.id === ui.levelId ? { trail: t('browser.current') } : {}) })),
       item(t('levels.edit'), openLevels),
     ),
     section(

@@ -22,6 +22,7 @@ import { icon } from '../i18n/icons';
 import { objectSnapshot } from './object-snapshot';
 import { lengthText } from '../i18n/units';
 import { download, fileBase } from '../project/files';
+import * as appPlacing from '../session/app-placing';
 
 /** A new definition: one box, its width, depth and height, handles on them, one type. */
 export function blankDefinition(n: number): ObjectDefinition {
@@ -263,7 +264,7 @@ export function showObjects(app: App, first?: string): void {
       });
       card.addEventListener('dblclick', () => {
         close();
-        app.placeObject(d.id, typeOf.get(d.id) ?? d.types[0]?.id);
+        appPlacing.placeObject(app, d.id, typeOf.get(d.id) ?? d.types[0]?.id);
       });
       grid.append(card);
     }
@@ -298,7 +299,7 @@ export function showObjects(app: App, first?: string): void {
       place.dataset.focus = 'place';
       place.addEventListener('click', () => {
         close();
-        app.placeObject(def.id, typeId);
+        appPlacing.placeObject(app, def.id, typeId);
       });
       const textBtn = (label: string, focus: string, run: () => void) => {
         const b = el('button', { type: 'button', class: 'icon-btn text-btn' }, label);

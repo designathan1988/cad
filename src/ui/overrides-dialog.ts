@@ -10,6 +10,7 @@ import { el, select } from './controls';
 import { openProjectDialog } from './dialog';
 import { type MessageKey, name, t } from '../i18n/messages';
 import { icon } from '../i18n/icons';
+import * as appSettings from '../session/app-settings';
 
 export function showOverrides(app: App): void {
   openProjectDialog(app, (close) => {
@@ -76,7 +77,7 @@ export function showOverrides(app: App): void {
     const on = el('button', { type: 'button', class: 'icon-btn text-btn', 'aria-pressed': String(app.ui.overridesOn) }, t(app.ui.overridesOn ? 'ovr.shown' : 'ovr.hiddenNow'));
     on.dataset.focus = 'on';
     on.addEventListener('click', () => {
-      app.toggleOverrides();
+      appSettings.toggleOverrides(app);
       close();
       showOverrides(app);
     });

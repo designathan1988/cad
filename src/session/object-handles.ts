@@ -15,6 +15,7 @@ import { held } from '../elements/object/param-limits';
 import { deriveGeometry } from '../project/derive';
 import type { ObjectSolid } from '../elements/kinds/object';
 import type { App } from './app';
+import * as appView from './app-view';
 
 export interface ScreenHandle {
   readonly id: string;
@@ -45,8 +46,8 @@ export function objectHandles(app: App): ScreenHandle[] {
   if (app.geometry.openings.has(id)) return openingHandles(app, id);
   const s = app.geometry.kinds.get('objects')?.get(id) as ObjectSolid | undefined;
   if (!s || s.object.levelId !== ui.levelId) return [];
-  const lift = ui.view === '3d' ? app.lift(s.object.levelId) : 0;
-  const project = (p: Point2, z: number): Point2 | null => (ui.view === 'plan' ? app.plan.toScreen(p) : app.projectAt(p, s.floor + lift + z));
+  const lift = ui.view === '3d' ? appView.lift(app, s.object.levelId) : 0;
+  const project = (p: Point2, z: number): Point2 | null => (ui.view === 'plan' ? app.plan.toScreen(p) : appView.projectAt(app, p, s.floor + lift + z));
   return s.eval.handles.flatMap((h, index) => {
     const a = project({ x: h.at.x, y: h.at.y }, h.at.z);
     const b = project({ x: h.at.x + h.dir.x, y: h.at.y + h.dir.y }, h.at.z + h.dir.z);
@@ -68,11 +69,11 @@ function openingHandles(app: App, id: string): ScreenHandle[] {
   const f = o?.frame;
   const levelId = o ? app.store.get().walls.find((w) => w.id === o.opening.wallId)?.levelId : undefined;
   if (!o || !f || levelId !== ui.levelId) return [];
-  const lift = ui.view === '3d' ? app.lift(levelId) : 0;
+  const lift = ui.view === '3d' ? appView.lift(app, levelId) : 0;
   const mid = (f.faces[0] + f.faces[1]) / 2;
   const on = (p: Point2): Point2 => ({ x: p.x + f.normal.x * mid, y: p.y + f.normal.y * mid });
   const centre = on({ x: (f.start.x + f.end.x) / 2, y: (f.start.y + f.end.y) / 2 });
-  const project = (p: Point2, z: number): Point2 | null => (ui.view === 'plan' ? app.plan.toScreen(p) : app.projectAt(p, z + lift));
+  const project = (p: Point2, z: number): Point2 | null => (ui.view === 'plan' ? app.plan.toScreen(p) : appView.projectAt(app, p, z + lift));
   const half = (o.bottom + o.top) / 2;
   const make = (which: OpeningHandle, p: Point2, z: number, d: { x: number; y: number; z: number }): ScreenHandle[] => {
     const a = project(p, z);

@@ -239,6 +239,14 @@ aqui fica a decisão por arquivo.
 | (novo no passo 5) src/session/state.ts | manter | session/state.ts | a forma do UiState (só tipos), com seus imports próprios |
 | (novo no passo 5) src/ui/toast.ts | manter | ui/toast.ts | a pilha de avisos (3 no máximo), extraída do App |
 | (movido no passo 4) src/session/app.ts | dividir | session/app.ts (fachada fina) + session/state.ts | UiState vira máquinas: tool (WallToolState etc. já existem), overlay, lifecycle |
+| (novo no passo 6) src/session/app-placing.ts | manter | session/app-placing.ts | colocar portas, janelas e objetos (antes em app.ts) |
+| (novo no passo 6) src/session/app-settings.ts | manter | session/app-settings.ts | encaixes, idioma, tema, teclas, navegador, sobreposições, conjuntos de camadas, faixa, painel (antes em app.ts) |
+| (novo no passo 6) src/session/app-edit.ts | manter | session/app-edit.ts | desfazer/refazer, pavimento, organizar, modos de medida e marca, cotas automáticas (antes em app.ts) |
+| (novo no passo 6) src/session/app-view.ts | manter | session/app-view.ts | alças, pavimento de baixo, projeções na tela, ponto do ponteiro, alturas, caixa (antes em app.ts) |
+| (novo no passo 6) src/session/tool-events.ts | manter | session/tool-events.ts | eventos das ferramentas e setTool (fachada no App para elements/) (antes em app.ts) |
+| (novo no passo 6) src/session/model-view.ts | manter | session/model-view.ts | geometria visível, seleção, paredes de dois pontos, enquadrar, refresh (fachada no App) (antes em app.ts) |
+| (novo no passo 6) src/session/ui-initial.ts | manter | session/ui-initial.ts | o UiState inicial a partir das preferências (antes em app.ts) |
+| (novo no passo 6) src/session/app-store.ts | manter | session/app-store.ts | o store que mantém aberturas, cômodos e cotas travadas (antes em app.ts) |
 | (movido no passo 4) src/session/input.ts | dividir | session/input/pointer.ts, keys.ts, field.ts | pick/planHits → canvas/pick.ts; showHelp → ui/help.ts |
 | (novo no passo 6) src/session/pointer-aim.ts | manter | session/pointer-aim.ts | mira do ponteiro: ponto no mundo, encaixes, escolha (antes em input.ts) |
 | (novo no passo 6) src/session/pointer-state.ts | manter | session/pointer-state.ts | o estado do ponteiro com dono único, compartilhado com input-keys (antes lets + ponte get/set) |

@@ -9,6 +9,7 @@ import { el } from '../ui/controls';
 import { t } from '../i18n/messages';
 import { MAX_TRIANGLES, type MeshGroup, meshDefinition } from '../io/import-mesh';
 import { setView } from '../session/view-ui';
+import * as appPlacing from '../session/app-placing';
 
 /** The model's meshes as groups, in plan axes (three.js's y up is the plan's z; its z is the plan's −y). */
 function groupsOf(root: THREE.Object3D): MeshGroup[] {
@@ -67,7 +68,7 @@ export async function importModel(app: App, file: File): Promise<void> {
     const unit = made.unit === 1 ? 'm' : made.unit === 0.01 ? 'cm' : 'mm';
     app.toast(t('model.imported', { name, n: Math.round(made.triangles), unit }));
     if (app.ui.view !== 'plan') setView(app, 'plan');
-    app.placeObject(made.definition.id);
+    appPlacing.placeObject(app, made.definition.id);
   } catch (e) {
     app.toast(t('model.failed', { why: e instanceof Error ? e.message : String(e) }));
   }

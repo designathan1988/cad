@@ -21,6 +21,8 @@ import { setDimensionOffset } from '../elements/dimension/commands';
 import { ruleAt } from '../elements/opening/tool';
 import { aimAlong, aimAt } from '../elements/opening/aim';
 import { selectByMarquee } from './marquee';
+import * as appPlacing from './app-placing';
+import * as appView from './app-view';
 
 // The select tool's gestures. Click: select (Shift adds or removes). Drag a wall: move the selection,
 // with joins kept and a live preview (the rooms all of whose walls go, go too); with Alt the walls move
@@ -135,11 +137,11 @@ export function selectGestures(app: App): SelectGestures {
 
   return {
     down(screen, world, hit, shift) {
-      const handle = handleAt(app.handles(), screen, gripPx());
+      const handle = handleAt(appView.handles(app), screen, gripPx());
       // A door's flip control acts on the press, as a button: the door stays selected.
       if (handle?.kind === 'flip') {
         pending = null;
-        app.flipDoor(handle.which, handle.id);
+        appPlacing.flipDoor(app, handle.which, handle.id);
         return;
       }
       if (handle?.kind === 'square') pending = { kind: 'grip', id: handle.id, end: handle.end, screen };

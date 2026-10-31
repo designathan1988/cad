@@ -16,6 +16,9 @@ import { frameSelection } from './view-ui';
 import { clearSelection, copySelection, deleteSelection, hideTemporarily, paste, selectSimilar } from './selection';
 import { clearGuidesHere } from '../elements/guide/tool-ui';
 import { addLevelMarkHere, addNoteHere } from './kind-tools';
+import * as appPlacing from './app-placing';
+import * as appSettings from './app-settings';
+import * as appEdit from './app-edit';
 
 export interface ContextEntry {
   readonly id: ContextId;
@@ -97,7 +100,7 @@ function entriesFor(app: App, openCommands: () => void): (id: ContextId) => Cont
     flipWall: () => app.store.dispatch(flipWalls(ids)),
     editType: () => app.openWallTypes(app.store.get().walls.find((w) => w.id === one)?.wallTypeId),
     // Offered in 3D only, where it shows (shown below): it switched the plan to 3D on its own (M9).
-    toggleOpen: () => app.toggleOpen(ids),
+    toggleOpen: () => appPlacing.toggleOpen(app, ids),
     flipHinge: () => opening && app.store.dispatch(updateOpening(opening.id, { hinge: opening.hinge === 'start' ? 'end' : 'start' })),
     flipSwing: () => opening && app.store.dispatch(updateOpening(opening.id, { swing: opening.swing === 'left' ? 'right' : 'left' })),
     centerOpening: () => opening && app.store.dispatch(updateOpening(opening.id, { rule: { kind: 'centered' } })),
@@ -105,13 +108,13 @@ function entriesFor(app: App, openCommands: () => void): (id: ContextId) => Cont
     addCeiling: () => one && addCeilingToRoom(app, one),
     distribute: () => app.store.dispatch(distributeOpenings(newId(GROUP_PREFIX), ids, { kind: 'equal' })),
     frameSelection: () => frameSelection(app),
-    properties: () => app.showProperties(),
+    properties: () => appSettings.showProperties(app),
     clearSelection: () => clearSelection(app),
     delete: () => deleteSelection(app),
     drawWall: () => app.setTool('wall'),
     frameAll: () => app.frameAll(),
     clearGuides: () => clearGuidesHere(app),
-    section: () => app.sectionAtGuide(),
+    section: () => appEdit.sectionAtGuide(app),
     selectSimilar: () => selectSimilar(app),
     addNote: (() => {
       const at = app.contextPoint;

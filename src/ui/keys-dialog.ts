@@ -7,6 +7,7 @@ import { assignKey, comboOf, keyOf } from '../session/keymap';
 import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { t } from '../i18n/messages';
+import * as appSettings from '../session/app-settings';
 
 export function showKeys(app: App): void {
   let filter = '';
@@ -28,7 +29,7 @@ export function showKeys(app: App): void {
     }
     const acts = app.actionList();
     const { map, taken } = assignKey(app.keymap, acts, id, combo);
-    app.setKeymap(map);
+    appSettings.setKeymap(app, map);
     const label = acts.find((a) => a.id === id)?.label ?? id;
     said = taken.length ? t('keys.taken', { key: combo, action: label, from: taken.map((a) => a.label).join(', ') }) : t('keys.set', { key: combo, action: label });
     dialog.redraw();
@@ -61,7 +62,7 @@ export function showKeys(app: App): void {
       off.dataset.focus = `off:${a.id}`;
       off.toggleAttribute('disabled', now === undefined);
       off.addEventListener('click', () => {
-        app.setKeymap({ ...app.keymap, [a.id]: null });
+        appSettings.setKeymap(app, { ...app.keymap, [a.id]: null });
         said = t('keys.turnedOff', { action: a.label });
         dialog.redraw();
       });
@@ -70,7 +71,7 @@ export function showKeys(app: App): void {
       back.toggleAttribute('disabled', !changed);
       back.addEventListener('click', () => {
         const { [a.id]: _gone, ...rest } = app.keymap;
-        app.setKeymap(rest);
+        appSettings.setKeymap(app, rest);
         said = t('keys.back', { action: a.label, key: own ?? t('keys.none') });
         dialog.redraw();
       });
@@ -80,7 +81,7 @@ export function showKeys(app: App): void {
     reset.dataset.focus = 'resetAll';
     reset.toggleAttribute('disabled', Object.keys(app.keymap).length === 0);
     reset.addEventListener('click', () => {
-      app.setKeymap({});
+      appSettings.setKeymap(app, {});
       said = t('keys.allBack');
       dialog.redraw();
     });

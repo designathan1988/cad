@@ -13,6 +13,8 @@ import { objectName } from './ribbon';
 import { currentDims } from './temp-dims';
 import { measureHint } from './float-bar';
 import { guideOffset } from '../elements/guide/tool-ui';
+import * as appPlacing from '../session/app-placing';
+import * as appView from '../session/app-view';
 
 export function renderFooter(app: App): void {
   const { ui, shell } = app;
@@ -52,7 +54,7 @@ export function renderFooter(app: App): void {
           : 'hint.marqueeWindow'
         : ui.selection.size > 1
           ? // Of several kinds, the panel edits one of them (panel.ts): "edit them together" was not so.
-            app.selectionKinds() > 1
+            appView.selectionKinds(app) > 1
             ? 'hint.selectedMixed'
             : 'hint.selectedMany'
           : ui.selection.size === 1
@@ -65,7 +67,7 @@ export function renderFooter(app: App): void {
   const aiming = placing !== null && ui.opening.kind === 'aiming';
   const openingHint = placing
     ? ui.opening.kind === 'aiming'
-      ? app.previewProblem() ??
+      ? appPlacing.previewProblem(app) ??
         t(app.geometry.openings.get(OPENING_PREVIEW_ID)?.warnings.includes('openingSwingClash') ? 'hint.openingAimClash' : 'hint.openingAim', {
           rule: ruleText(ui.opening.rule, ruleBase(ui.opening.aim, ui.opening.rule)),
         })
@@ -154,7 +156,7 @@ export function renderFooter(app: App): void {
         snapKey,
         keyHint('Esc', t(mod.state.step === 'base' ? 'key.exit' : 'key.back')),
       ]
-    : placing && app.placesLeaf(placing)
+    : placing && appPlacing.placesLeaf(app, placing)
     ? [keyHint(t('key.spaceKey'), t('key.flipSwing')), keyHint('H', t('key.flipHinge')), keyHint('Esc', t('key.exit'))]
     : placing || ui.tool === 'room'
     ? [keyHint('Esc', t('key.exit'))]
@@ -224,7 +226,7 @@ export function renderFooter(app: App): void {
           keyHint('Shift', t('key.addRemove')),
           // Said before the drag, where it is decided: during it was too late to be found.
           ...(app.selectedWalls().length > 0 ? [keyHint('Alt', t('key.dragAlone'))] : []),
-          ...(app.selectedDoor() ? [keyHint(t('key.spaceKey'), t('key.flipSwing')), keyHint('H', t('key.flipHinge'))] : []),
+          ...(appPlacing.selectedDoor(app) ? [keyHint(t('key.spaceKey'), t('key.flipSwing')), keyHint('H', t('key.flipHinge'))] : []),
           keyHint('Del', t('key.delete')),
           keyHint('F', t('key.frame')),
           keyHint('Esc', t('key.clear')),

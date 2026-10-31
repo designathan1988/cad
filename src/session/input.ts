@@ -34,6 +34,8 @@ import { pointerAim } from './pointer-aim';
 import { showHelp } from '../ui/help-dialog';
 import { pointerState } from './pointer-state';
 import { pointerHandlers } from './pointer-handlers';
+import * as appPlacing from './app-placing';
+import * as appSettings from './app-settings';
 
 export function wireInput(app: App): void {
   const { shell, ui } = app;
@@ -66,7 +68,7 @@ export function wireInput(app: App): void {
   app.openUnits = () => showUnits(app);
   app.openObjects = () => showObjects(app);
   app.openOverrides = () => showOverrides(app);
-  shell.sidebar.addEventListener('click', () => app.toggleBrowser());
+  shell.sidebar.addEventListener('click', () => appSettings.toggleBrowser(app));
   /** The menu for what is under the pointer: it becomes the selection, unless it is already in it. */
   const contextMenu = (e: PointerEvent) => {
     if (ui.error !== null) shell.measure.value = '';
@@ -172,7 +174,7 @@ export function wireInput(app: App): void {
   shell.glCanvas.addEventListener('dblclick', () => {
     if (ui.tool !== 'select') return;
     const ids = [...ui.selection].filter((id) => app.store.get().openings.some((o) => o.id === id));
-    if (ids.length > 0) app.toggleOpen(ids);
+    if (ids.length > 0) appPlacing.toggleOpen(app, ids);
   });
   shell.planCanvas.addEventListener(
     'wheel',

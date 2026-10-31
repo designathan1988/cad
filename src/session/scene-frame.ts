@@ -9,6 +9,7 @@ import type { App } from './app';
 import * as sceneLook from '../render/scene-look';
 import * as sceneSync from '../render/scene-sync';
 import * as sceneCut from '../render/scene-cut';
+import * as appView from './app-view';
 
 export function syncScene(app: App, preview: ReadonlySet<WallId>, shown: DerivedGeometry): void {
   const { ui } = app;
@@ -22,7 +23,7 @@ export function syncScene(app: App, preview: ReadonlySet<WallId>, shown: Derived
   sceneLook.setLook(app.scene, ui.view3d.style, ui.view3d.quality);
   sceneLook.setLight(app.scene, ui.view3d.brightness, ui.view3d.sun);
   sceneCut.setSection(app.scene, ui.view3d.section);
-  sceneSync.sync(app.scene, shown, ui.selection, preview, (id) => app.lift(id));
+  sceneSync.sync(app.scene, shown, ui.selection, preview, (id) => appView.lift(app, id));
   // Cut at the level's cut height: where it goes through the level's walls, their plan pieces.
   const doc = app.store.get();
   const cut = cutAt(doc.levels, ui.levelId, ui.view3d);

@@ -20,6 +20,9 @@ import { railingFinish, roofFinish } from './kind-tools';
 import { toggleWallFlip, wallEvent } from '../elements/wall/tool-ui';
 import { floorFinish } from './room-tool';
 import type { PointerState } from './pointer-state';
+import * as appPlacing from './app-placing';
+import * as appSettings from './app-settings';
+import * as appEdit from './app-edit';
 
 /** What the keys share with the pointer (input.ts). */
 export interface KeyContext {
@@ -72,7 +75,7 @@ export function wireKeys(app: App, k: KeyContext): void {
     }
     if (ctrl && key === 'z') {
       e.preventDefault();
-      return e.shiftKey ? app.redo() : app.undo();
+      return e.shiftKey ? appEdit.redo(app) : appEdit.undo(app);
     }
     if (ctrl && key === 'o') {
       e.preventDefault();
@@ -84,7 +87,7 @@ export function wireKeys(app: App, k: KeyContext): void {
     }
     if (ctrl && key === 'y') {
       e.preventDefault();
-      return app.redo();
+      return appEdit.redo(app);
     }
     if (ctrl && key === 'c' && !e.shiftKey && ui.selection.size > 0) {
       e.preventDefault();
@@ -258,7 +261,7 @@ export function wireKeys(app: App, k: KeyContext): void {
     if (e.key === 'Enter' && ui.tool === 'floor') return floorFinish(app);
     // Measuring a chain: Enter ends it open; C switches between two points and a chain.
     if (e.key === 'Enter' && ui.tool === 'measure') return app.measureEvent({ kind: 'enter' });
-    if (key === 'c' && !ctrl && !e.shiftKey && ui.tool === 'measure') return app.toggleMeasureMode();
+    if (key === 'c' && !ctrl && !e.shiftKey && ui.tool === 'measure') return appEdit.toggleMeasureMode(app);
     // Enter ends what is being drawn by points: a roof's outline, a guardrail's path, a beam chain.
     if (e.key === 'Enter' && ui.tool === 'roof' && ui.roofDraft.length > 0) return roofFinish(app);
     if (e.key === 'Enter' && ui.tool === 'railing' && ui.railingDraft.length > 0) return railingFinish(app);
@@ -269,12 +272,12 @@ export function wireKeys(app: App, k: KeyContext): void {
     // Enter places the opening where it is aimed, as a click there does.
     if (e.key === 'Enter' && app.openingKind() && ui.opening.kind === 'aiming') return app.openingEvent({ kind: 'click' });
     // Backspace while drawing a chain takes its last wall back and goes on from its start (ArchiCAD).
-    if (e.key === 'Backspace' && app.undoChainStep()) return;
+    if (e.key === 'Backspace' && appEdit.undoChainStep(app)) return;
     // Delete only: Backspace, pressed to correct typing, deleted the selection (docs/revisao-interface.md, M8).
     if (e.key === 'Delete') return deleteSelection(app);
     if (e.key === 'Home') return app.frameAll();
     if (e.key === '?') return showHelp(app);
-    if (e.shiftKey && key === 'l') return app.setLanguage(app.otherLanguage());
+    if (e.shiftKey && key === 'l') return appSettings.setLanguage(app, appSettings.otherLanguage());
     if (e.shiftKey && key === 'w') return app.setTool('window');
     if (e.shiftKey && key === 'n') return stepSelectionHere(app, -1);
     // The Modify tools, on the selection (Revit's MV, CO, RO, SC, MM; SketchUp's M, Q, S).
@@ -306,15 +309,15 @@ export function wireKeys(app: App, k: KeyContext): void {
     // Space with the object tool: the next object a quarter turn on.
     if (e.key === ' ' && ui.tool === 'object') {
       e.preventDefault();
-      return app.turnObject();
+      return appPlacing.turnObject(app);
     }
     // A selected door, flipped from the keyboard: Space sends the leaf to the other side, as in Revit,
     // H the hinge to the other jamb.
-    if (e.key === ' ' && ui.tool === 'select' && app.flipDoor('swing')) return e.preventDefault();
+    if (e.key === ' ' && ui.tool === 'select' && appPlacing.flipDoor(app, 'swing')) return e.preventDefault();
     // And the door about to be placed, the same keys: chosen before the click, seen in its preview.
-    if (e.key === ' ' && app.flipPlacing('swing')) return e.preventDefault();
-    if (key === 'h' && app.flipPlacing('hinge')) return;
-    if (key === 'h' && ui.tool === 'select' && app.flipDoor('hinge')) return;
+    if (e.key === ' ' && appPlacing.flipPlacing(app, 'swing')) return e.preventDefault();
+    if (key === 'h' && appPlacing.flipPlacing(app, 'hinge')) return;
+    if (key === 'h' && ui.tool === 'select' && appPlacing.flipDoor(app, 'hinge')) return;
     if (key === 'd') return app.setTool('door');
     if (key === 'r') return app.setTool('room');
     if (key === 'l') return app.setTool('floor');
@@ -329,8 +332,8 @@ export function wireKeys(app: App, k: KeyContext): void {
     // Choosing and moving elements without a mouse: N / Shift+N go through the level's elements;
     // the arrows move the selection by 5 cm (the snap grid), 1 cm with Alt (tools/nudge.ts).
     if (key === 'n') return stepSelectionHere(app, e.shiftKey ? -1 : 1);
-    if (key === 's') return app.toggleSnaps();
-    if (key === 'k' && !ctrl && !e.shiftKey) return app.toggleCollisions();
+    if (key === 's') return appSettings.toggleSnaps(app);
+    if (key === 'k' && !ctrl && !e.shiftKey) return appSettings.toggleCollisions(app);
     if (key === '1') return setView(app, '3d');
     if (key === '2') return setView(app, 'plan');
   });

@@ -14,6 +14,7 @@ import type { PointerState } from './pointer-state';
 import type { SelectGestures } from './drag';
 import { pointerRelease } from './pointer-release';
 import * as sceneCamera from '../render/scene-camera';
+import * as appView from './app-view';
 
 
 /** What the handlers use of the input wired around them. */
@@ -56,7 +57,7 @@ export function pointerHandlers(app: App, d: PointerDeps) {
     app.pointer = { x: e.clientX, y: e.clientY };
     if (ptr.boxDrag) {
       const d = dragDistance({ x: e.clientX - ptr.boxDrag.from.x, y: e.clientY - ptr.boxDrag.from.y }, ptr.boxDrag.along);
-      return app.setBox(moveFace(ptr.boxDrag.box, ptr.boxDrag.face, d), false);
+      return appView.setBox(app, moveFace(ptr.boxDrag.box, ptr.boxDrag.face, d), false);
     }
     if (ui.view === '3d' && ui.view3d.box && (e.buttons & 1) === 0) {
       const hot = boxHandleAt(app, e.clientX, e.clientY);

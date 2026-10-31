@@ -8,6 +8,7 @@ import { newId } from '../core/id';
 import type { App } from './app';
 import { drawingOf } from '../project/doc';
 import { setView } from './view-ui';
+import * as appEdit from './app-edit';
 
 /**
  * The view as it is now, saved in the project under the next free name ("3D 1", "Térreo 1"): the 3D
@@ -36,7 +37,7 @@ export function saveCurrentView(app: App): void {
 export function goToView(app: App, id: string): void {
   const v = app.store.get().views.find((x) => x.id === id);
   if (!v) return;
-  if (v.levelId !== app.ui.levelId) app.setLevel(v.levelId);
+  if (v.levelId !== app.ui.levelId) appEdit.setLevel(app, v.levelId);
   // As it was saved showing: its categories, its overrides (a view saved before these shows all).
   if (v.hidden) app.ui.hidden = new Set(v.hidden);
   if (v.overrides !== undefined) app.ui.overridesOn = v.overrides;

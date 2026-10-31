@@ -5,7 +5,7 @@ import { t } from '../i18n/messages';
 import { setDrawing } from '../ui/drawing-dialog';
 import { drawingOf } from '../project/doc';
 import type { App } from './app';
-import { EDIT_LEVELS } from './app';
+import { EDIT_LEVELS } from './state';
 import { showLevels } from '../ui/levels-dialog';
 import { type MenuItem, showMenu } from '../ui/menu';
 import { FILE_MENU } from '../ui/ribbon-tabs';
@@ -15,11 +15,14 @@ import { showHelp } from '../ui/help-dialog';
 import { setView, setView3D, toggleBox, toggleExplode } from './view-ui';
 import { saveFile } from '../project/files';
 import { resetTemporary } from './selection';
+import * as appSettings from './app-settings';
+import * as appEdit from './app-edit';
+import * as appView from './app-view';
 
 export function wireButtons(app: App, palette: () => void): void {
   const { shell, ui } = app;
-  shell.undo.addEventListener('click', () => app.undo());
-  shell.redo.addEventListener('click', () => app.redo());
+  shell.undo.addEventListener('click', () => appEdit.undo(app));
+  shell.redo.addEventListener('click', () => appEdit.redo(app));
   shell.homeBtn.addEventListener('click', () => app.openProjects());
   shell.view3d.addEventListener('click', () => setView(app, '3d'));
   shell.viewPlan.addEventListener('click', () => setView(app, 'plan'));
@@ -28,19 +31,19 @@ export function wireButtons(app: App, palette: () => void): void {
       shell.level.value = ui.levelId;
       return showLevels(app);
     }
-    app.setLevel(shell.level.value);
+    appEdit.setLevel(app, shell.level.value);
   });
-  shell.lang.addEventListener('click', () => app.setLanguage(app.otherLanguage()));
-  shell.theme.addEventListener('click', () => app.toggleTheme());
+  shell.lang.addEventListener('click', () => appSettings.setLanguage(app, appSettings.otherLanguage()));
+  shell.theme.addEventListener('click', () => appSettings.toggleTheme(app));
   shell.save.addEventListener('click', () => saveFile(app));
   shell.open.addEventListener('click', () => shell.fileInput.click());
   shell.projectName.addEventListener('click', () => renameInPlace(app));
   shell.fileInput.addEventListener('change', () => {
     const file = shell.fileInput.files?.[0];
     shell.fileInput.value = '';
-    if (file) void app.openFile(file);
+    if (file) void appView.openFile(app, file);
   });
-  shell.panelToggle.addEventListener('click', () => app.togglePanel());
+  shell.panelToggle.addEventListener('click', () => appSettings.togglePanel(app));
   // The File menu, under its tab: the project's files, help and settings (app/ribbon-tabs.ts).
   shell.fileMenu.addEventListener('click', () => {
     const actions = new Map(app.actionList().map((a) => [a.id, a]));
@@ -69,10 +72,10 @@ export function wireButtons(app: App, palette: () => void): void {
     },
     { passive: false },
   );
-  shell.snapBtn.addEventListener('click', () => app.toggleSnaps());
-  shell.collideBtn.addEventListener('click', () => app.toggleCollisions());
+  shell.snapBtn.addEventListener('click', () => appSettings.toggleSnaps(app));
+  shell.collideBtn.addEventListener('click', () => appSettings.toggleCollisions(app));
   shell.toolDone.addEventListener('click', () => app.actionList().find((a) => a.id === 'tool.select')?.run());
-  shell.snapParts.addEventListener('change', () => app.setSnapParts(Number(shell.snapParts.value)));
+  shell.snapParts.addEventListener('change', () => appSettings.setSnapParts(app, Number(shell.snapParts.value)));
   for (const [mode, b] of Object.entries(shell.levelsShown)) b.addEventListener('click', () => setView3D(app, { levels: mode as LevelsShown }));
   shell.explode.addEventListener('click', () => toggleExplode(app));
   shell.cut.addEventListener('click', () => setView3D(app, { cut: !ui.view3d.cut }));

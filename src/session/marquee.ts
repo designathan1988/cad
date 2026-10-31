@@ -5,6 +5,7 @@ import type { App } from './app';
 import { hull } from '../model/hull';
 import { eachSolid } from '../elements/registry';
 import { insidePolygon } from '../project/derive';
+import * as appView from './app-view';
 
 /** Something selectable, by id, as its outlines on screen. */
 export interface Pickable {
@@ -34,7 +35,7 @@ export function marqueePick(items: readonly Pickable[], a: Point2, b: Point2): s
 export function selectByMarquee(app: App, a: Point2, b: Point2, additive: boolean): void {
   // Each at its level's height in the view (lifted when exploded).
   const screen = (poly: readonly Point2[], bottom: number, top: number, levelId: string) => {
-    const pts = app.outlineOnScreen(poly, bottom, top, app.lift(levelId));
+    const pts = appView.outlineOnScreen(app, poly, bottom, top, appView.lift(app, levelId));
     // In plan the outline keeps its order; in 3D the prism's corners become their hull.
     return app.ui.view === 'plan' ? pts : hull(pts);
   };

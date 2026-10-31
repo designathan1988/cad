@@ -9,6 +9,8 @@ import type { Category } from '../project/derived-filters';
 import { el } from './controls';
 import { t, type MessageKey } from '../i18n/messages';
 import { icon } from '../i18n/icons';
+import * as appPlacing from '../session/app-placing';
+import * as appSettings from '../session/app-settings';
 
 const CATEGORIES: readonly { id: Category; key: MessageKey }[] = [
   { id: 'walls', key: 'layer.walls' },
@@ -47,23 +49,23 @@ export function renderVisibility(app: App, box: HTMLElement): void {
   const setRows = sets.map((s) => {
     const same = s.hidden.length === ui.hidden.size && s.hidden.every((c) => ui.hidden.has(c));
     const apply = el('button', { type: 'button', class: 'vis-row', 'aria-current': String(same) }, el('span', { class: 'vis-label' }, s.name));
-    apply.addEventListener('click', () => app.applyLayerSet(s.id));
+    apply.addEventListener('click', () => appSettings.applyLayerSet(app, s.id));
     const del = el('button', { type: 'button', class: 'icon-btn', title: t('layers.delete', { name: s.name }), 'aria-label': t('layers.delete', { name: s.name }) });
     del.innerHTML = icon('close', 14);
-    del.addEventListener('click', () => app.deleteLayerSet(s.id));
+    del.addEventListener('click', () => appSettings.deleteLayerSet(app, s.id));
     return el('div', { class: 'vis-set' }, apply, del);
   });
   box.replaceChildren(
     el('div', { class: 'vis-head' }, t('vis.title')),
-    group(t('vis.elements'), ...CATEGORIES.map((c) => eyeRow(t(c.key), !ui.hidden.has(c.id), () => app.toggleCategory(c.id)))),
+    group(t('vis.elements'), ...CATEGORIES.map((c) => eyeRow(t(c.key), !ui.hidden.has(c.id), () => appSettings.toggleCategory(app, c.id)))),
     group(
       t('vis.plan'),
-      eyeRow(t('layer.refLines'), ui.refLines, () => app.toggleRefLines()),
-      eyeRow(t('layer.openingTags'), ui.openingTags, () => app.toggleOpeningTags()),
+      eyeRow(t('layer.refLines'), ui.refLines, () => appSettings.toggleRefLines(app)),
+      eyeRow(t('layer.openingTags'), ui.openingTags, () => appPlacing.toggleOpeningTags(app)),
     ),
     group(
       t('vis.overrides'),
-      ...(hasOverrides ? [eyeRow(t('vis.overrides'), ui.overridesOn, () => app.toggleOverrides())] : []),
+      ...(hasOverrides ? [eyeRow(t('vis.overrides'), ui.overridesOn, () => appSettings.toggleOverrides(app))] : []),
       action(
         t('vis.editOverrides'),
         () => {
@@ -73,6 +75,6 @@ export function renderVisibility(app: App, box: HTMLElement): void {
         'frame',
       ),
     ),
-    group(t('vis.sets'), ...setRows, action(t('layers.save'), () => app.saveLayerSet(), 'plus')),
+    group(t('vis.sets'), ...setRows, action(t('layers.save'), () => appSettings.saveLayerSet(app), 'plus')),
   );
 }

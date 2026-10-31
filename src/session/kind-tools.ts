@@ -30,6 +30,7 @@ import { signedArea } from '../elements/room/derive';
 import type { App } from './app';
 import { made, nextOf } from './next';
 import { setView } from './view-ui';
+import * as appSettings from './app-settings';
 
 /** A level mark where the menu was opened (or the middle of the view), selected: it says the level's height. */
 export function addLevelMarkHere(app: App, at?: Point2): void {
@@ -39,7 +40,7 @@ export function addLevelMarkHere(app: App, at?: Point2): void {
   if (app.ui.view !== 'plan') setView(app, 'plan');
   app.setTool('select');
   app.ui.selection = new Set([id]);
-  app.showProperties();
+  appSettings.showProperties(app);
   app.refresh();
   // Its adjustment ready to type: a step down or up from the level.
   const field = app.shell.panel.querySelector<HTMLInputElement>('input');
@@ -55,7 +56,7 @@ export function addNoteHere(app: App, at?: Point2, leader?: Point2): void {
   if (app.ui.view !== 'plan') setView(app, 'plan');
   app.setTool('select');
   app.ui.selection = new Set([id]);
-  app.showProperties();
+  appSettings.showProperties(app);
   app.refresh();
   // Its text selected in the panel: typing replaces the placeholder.
   const field = [...app.shell.panel.querySelectorAll<HTMLInputElement>('input[type="text"]')][0];

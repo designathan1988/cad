@@ -2,32 +2,22 @@ import type { HandleDrag } from './object-handles';
 import type { OpeningSize } from '../ui/panels/opening';
 import type { WallId } from '../elements/wall/schema';
 import type { GuideMode } from '../elements/guide/tool-ui';
-// The interface state of a session: view, tool, selection, drafts and every flag the tools keep. The
-// App builds and owns the live object; this file is its shape (the machines of ADR 0004 build on it).
-
-
-
-import type { Category } from '../project/derived-filters';
+import type { Category, TemporaryView } from '../project/derived-filters';
 import type { DimensionToolState } from '../tools/dimension-tool';
 import type { Drag } from './drag';
 import type { GuideDraft } from '../elements/guide/tool';
-import type { MarkMode } from './app';
-import type { MeasureMode } from '../elements/measure/tool';
-import type { MeasureState } from '../elements/measure/tool';
+import type { MeasureMode, MeasureState } from '../elements/measure/tool';
 import type { MessageKey } from '../i18n/messages';
-import type { ModifyKind } from './modify-tool';
-import type { ModifyState } from './modify-tool';
-import type { OffsetLine } from './modify-tool';
+import type { ModifyKind, ModifyState, OffsetLine } from './modify-tool';
 import type { OpeningKind } from '../elements/opening/schema';
 import type { OpeningToolState } from '../elements/opening/tool';
 import type { Point2 } from '../model/vector';
 import type { Snap } from './snap-types';
-import type { TemporaryView } from '../project/derived-filters';
-import type { ToolId } from '../ui/shell';
+import type { ToolId, ViewId } from '../ui/shell';
 import type { View3D } from '../project/view-prefs';
-import type { ViewId } from '../ui/shell';
 import type { WallDefaults } from '../project/doc';
 import type { WallToolState } from '../elements/wall/tool';
+
 
 export interface UiState {
   view: ViewId;
@@ -138,3 +128,10 @@ export interface UiState {
   /** The temporary dimension whose value is being typed. */
   dimEdit: string | null;
 }
+
+/** What the measure tool measures (elements/measure). */
+export type MarkMode = 'angle' | 'radius' | 'coord';
+
+/** A name as a file name: what one cannot hold (\ / : * ? " < > |) becomes "-". */
+/** The level list's last entry: opens the levels dialog. */
+export const EDIT_LEVELS = '__edit_levels__';

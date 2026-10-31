@@ -17,6 +17,7 @@ import { calibrateClick } from '../ui/reference-tool';
 import { PICK_PX } from './pointer-aim';
 import type { PointerDeps } from './pointer-handlers';
 import * as sceneCamera from '../render/scene-camera';
+import * as appView from './app-view';
 
 export function pointerRelease(app: App, d: PointerDeps) {
   const { ui } = app;
@@ -99,7 +100,7 @@ export function pointerRelease(app: App, d: PointerDeps) {
     if (ptr.boxDrag) {
       ptr.boxDrag = null;
       app.boxHot = null;
-      if (ui.view3d.box) app.setBox(ui.view3d.box, true);
+      if (ui.view3d.box) appView.setBox(app, ui.view3d.box, true);
       return;
     }
     if (ptr.panning) {
