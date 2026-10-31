@@ -18,7 +18,7 @@ export function renameProject(app: App, next: string): void {
 export function saveFile(app: App): void {
   const doc = app.store.get();
   // Named after the project, without what a file name cannot hold: every save was "project.json".
-  app.download(`${app.fileBase()}.json`, writeProject(doc), 'application/json');
+  download(app, `${fileBase(app)}.json`, writeProject(doc), 'application/json')
   app.toast(t('toast.saved'));
 }
 

@@ -11,14 +11,17 @@ import { type MenuItem, showMenu } from '../ui/menu';
 import { FILE_MENU } from '../ui/ribbon-tabs';
 import type { LevelsShown, RenderQuality, VisualStyle } from './view/view-3d';
 import { renameInPlace, showHelp } from './input';
+import { setView, setView3D, toggleBox, toggleExplode } from './view-ui';
+import { saveFile } from '../project/files';
+import { resetTemporary } from './selection';
 
 export function wireButtons(app: App, palette: () => void): void {
   const { shell, ui } = app;
   shell.undo.addEventListener('click', () => app.undo());
   shell.redo.addEventListener('click', () => app.redo());
   shell.homeBtn.addEventListener('click', () => app.openProjects());
-  shell.view3d.addEventListener('click', () => app.setView('3d'));
-  shell.viewPlan.addEventListener('click', () => app.setView('plan'));
+  shell.view3d.addEventListener('click', () => setView(app, '3d'));
+  shell.viewPlan.addEventListener('click', () => setView(app, 'plan'));
   shell.level.addEventListener('change', () => {
     if (shell.level.value === EDIT_LEVELS) {
       shell.level.value = ui.levelId;
@@ -28,7 +31,7 @@ export function wireButtons(app: App, palette: () => void): void {
   });
   shell.lang.addEventListener('click', () => app.setLanguage(app.otherLanguage()));
   shell.theme.addEventListener('click', () => app.toggleTheme());
-  shell.save.addEventListener('click', () => app.saveFile());
+  shell.save.addEventListener('click', () => saveFile(app));
   shell.open.addEventListener('click', () => shell.fileInput.click());
   shell.projectName.addEventListener('click', () => renameInPlace(app));
   shell.fileInput.addEventListener('change', () => {
@@ -69,20 +72,20 @@ export function wireButtons(app: App, palette: () => void): void {
   shell.collideBtn.addEventListener('click', () => app.toggleCollisions());
   shell.toolDone.addEventListener('click', () => app.actionList().find((a) => a.id === 'tool.select')?.run());
   shell.snapParts.addEventListener('change', () => app.setSnapParts(Number(shell.snapParts.value)));
-  for (const [mode, b] of Object.entries(shell.levelsShown)) b.addEventListener('click', () => app.setView3D({ levels: mode as LevelsShown }));
-  shell.explode.addEventListener('click', () => app.toggleExplode());
-  shell.cut.addEventListener('click', () => app.setView3D({ cut: !ui.view3d.cut }));
-  shell.xray.addEventListener('click', () => app.setView3D({ xray: !ui.view3d.xray }));
-  shell.box.addEventListener('click', () => app.toggleBox());
-  shell.ortho.addEventListener('click', () => app.setView3D({ ortho: !ui.view3d.ortho }));
+  for (const [mode, b] of Object.entries(shell.levelsShown)) b.addEventListener('click', () => setView3D(app, { levels: mode as LevelsShown }));
+  shell.explode.addEventListener('click', () => toggleExplode(app));
+  shell.cut.addEventListener('click', () => setView3D(app, { cut: !ui.view3d.cut }));
+  shell.xray.addEventListener('click', () => setView3D(app, { xray: !ui.view3d.xray }));
+  shell.box.addEventListener('click', () => toggleBox(app));
+  shell.ortho.addEventListener('click', () => setView3D(app, { ortho: !ui.view3d.ortho }));
   shell.look.style.select.addEventListener('change', () => {
     const style = shell.look.style.select.value as VisualStyle;
     // Said before it starts: the realistic view stays until the trace is clean, longer the first time on a
     // computer while the graphics card compiles the ray tracing (the browser keeps it after).
     if (style === 'photo') app.toast(t('view3d.photoFirst'));
-    app.setView3D({ style });
+    setView3D(app, { style });
   });
-  shell.look.quality.select.addEventListener('change', () => app.setView3D({ quality: shell.look.quality.select.value as RenderQuality }));
+  shell.look.quality.select.addEventListener('change', () => setView3D(app, { quality: shell.look.quality.select.value as RenderQuality }));
   shell.planScale.select.addEventListener('change', () => app.store.dispatch(setDrawing({ ...drawingOf(app.store.get()), scale: Number(shell.planScale.select.value) })));
   // Visibility opens its popover (ui/visibility-panel.ts): the categories, the plan's marks, the overrides
   // and the combinations; the overrides' editor is one of its rows.
@@ -113,9 +116,9 @@ export function wireButtons(app: App, palette: () => void): void {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closePopovers();
   });
-  shell.light.brightness.input.addEventListener('input', () => app.setView3D({ brightness: Number(shell.light.brightness.input.value) }));
-  shell.light.sun.input.addEventListener('input', () => app.setView3D({ sun: Number(shell.light.sun.input.value) }));
-  shell.tempReset.addEventListener('click', () => app.resetTemporary());
+  shell.light.brightness.input.addEventListener('input', () => setView3D(app, { brightness: Number(shell.light.brightness.input.value) }));
+  shell.light.sun.input.addEventListener('input', () => setView3D(app, { sun: Number(shell.light.sun.input.value) }));
+  shell.tempReset.addEventListener('click', () => resetTemporary(app));
   shell.shortcuts.addEventListener('click', () => showHelp(app));
   shell.commands.addEventListener('click', () => palette());
 }

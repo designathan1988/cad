@@ -7,6 +7,7 @@ import { readView3D } from './view/view-3d';
 import { newId } from '../core/id';
 import type { App } from './app';
 import { drawingOf } from '../project/doc';
+import { setView } from './view-ui';
 
 /**
  * The view as it is now, saved in the project under the next free name ("3D 1", "Térreo 1"): the 3D
@@ -43,7 +44,7 @@ export function goToView(app: App, id: string): void {
     // Read as stored views are: a file's view may hold anything.
     app.ui.view3d = readView3D(v.view3d);
     savePrefs({ view3d: app.ui.view3d });
-    app.setView('3d');
+    setView(app, '3d');
     app.framed['3d'] = true;
     app.scene.camera.position.set(...v.position);
     app.scene.controls.target.set(...v.target);
@@ -51,7 +52,7 @@ export function goToView(app: App, id: string): void {
     app.scene.controls.update();
     app.scene.invalidate();
   } else {
-    app.setView('plan');
+    setView(app, 'plan');
     app.framed.plan = true;
     app.plan.scale = v.scale;
     app.plan.center = { x: v.center.x, y: v.center.y };

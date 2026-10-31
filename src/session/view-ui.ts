@@ -16,15 +16,16 @@ import { BOX_HANDLE_HIT } from '../render/overlay-3d';
 import { shownLevels, type View3D } from './view/view-3d';
 import { ROTATE_OFFSET } from './handles';
 import type { App } from './app';
+import { currentDims } from '../ui/temp-dims';
 
 /** The section box on, around what the 3D shows, or off. */
 export function toggleBox(app: App): void {
-  if (app.ui.view3d.box) return app.setView3D({ box: null });
+  if (app.ui.view3d.box) return setView3D(app, { box: null });
   const doc = app.store.get();
   const bottom = Math.min(...doc.levels.map((l) => l.elevation));
   const top = Math.max(...doc.levels.map((l) => l.elevation + l.height));
-  app.setView('3d');
-  app.setView3D({ box: boxAround(boundsOf(app.visibleGeometry()), bottom, top) });
+  setView(app, '3d');
+  setView3D(app, { box: boxAround(boundsOf(app.visibleGeometry()), bottom, top) });
 }
 
 /** The box face whose handle is at a screen point (client coordinates), nearest first; null when none. */
@@ -69,17 +70,17 @@ export function setBox(app: App, box: SectionBox, keep: boolean): void {
 export function toggleExplode(app: App): void {
   const doc = app.store.get();
   if (shownLevels(doc.levels, app.ui.levelId, app.ui.view3d.levels).size < 2) {
-    if (app.ui.view !== '3d') app.setView('3d');
+    if (app.ui.view !== '3d') setView(app, '3d');
     app.ui.info = t(doc.levels.length < 2 ? 'hint.explodeOneLevel' : 'hint.explodeOneShown');
     return app.renderChrome();
   }
-  app.setView3D({ explode: !app.ui.view3d.explode });
+  setView3D(app, { explode: !app.ui.view3d.explode });
 }
 
 /** How the 3D view shows the levels; kept with the preferences, as the view is. */
 export function setView3D(app: App, patch: Partial<View3D>): void {
   // From the plan (the palette), the 3D view it is about is shown.
-  if (app.ui.view !== '3d') app.setView('3d');
+  if (app.ui.view !== '3d') setView(app, '3d');
   app.ui.view3d = { ...app.ui.view3d, ...patch };
   // A word on the view as it was (Explode with one level shown) no longer holds.
   app.ui.info = null;
@@ -99,7 +100,7 @@ export function setView(app: App, view: ViewId): void {
   app.ui.guide = null;
   savePrefs({ view });
   app.render();
-  if (!app.framed[view]) app.frameFirst();
+  if (!app.framed[view]) frameFirst(app);
 }
 
 /** A view's first show: the plan where it was left before a reload, else everything framed. */
@@ -129,14 +130,14 @@ export function keepPlanView(app: App): void {
  * phone, the drawer on a tablet), the plan slides just enough to show it beside the panel.
  */
 export function keepSelectionInView(app: App): boolean {
-  const covered = app.covered();
+  const cover = covered(app);
   const vp0 = app.shell.viewport.getBoundingClientRect();
   // Again when the selection changes, or the panel or a drawer (or the window) changes what is free.
   // The selection's own extent counts too: an arc given a larger radius can reach under the panel.
   const ids = JSON.stringify([...app.ui.selection]);
   const extent = boundsOf(app.geometry, app.ui.selection);
   const shape = JSON.stringify(extent && [extent.min, extent.max].map((p) => [Math.round(p.x * 100), Math.round(p.y * 100)]));
-  const key = JSON.stringify([ids, shape, covered, Math.round(vp0.width), Math.round(vp0.height)]);
+  const key = JSON.stringify([ids, shape, cover, Math.round(vp0.width), Math.round(vp0.height)]);
   if (key === app.seenSelection) return false;
   app.seenSelection = key;
   // A new selection moves the plan only from under what covers it: clicking a long wall that runs
@@ -151,7 +152,7 @@ export function keepSelectionInView(app: App): boolean {
   if (app.ui.selection.size === 0) return false;
   // Never under the pointer's hand: a drag that brought the panel in slid the drawing mid-gesture.
   if (app.ui.drag || app.ui.handleDrag) return false;
-  if (!resized && !reshaped && covered.right === 0 && covered.bottom === 0 && !covered.left) return false;
+  if (!resized && !reshaped && cover.right === 0 && cover.bottom === 0 && !cover.left) return false;
   const box = boundsOf(app.geometry, app.ui.selection);
   if (!box) return false;
   // On screen: the selection, its turn handle (handles.ts) and its temporary dimensions with their
@@ -167,7 +168,7 @@ export function keepSelectionInView(app: App): boolean {
     const TEXT = 12;
     // The dimensions count under a phone's sheet (the tester's P07); beside a drawer only the element
     // itself: its dimensions reaching under the drawer moved the drawing for something already seen.
-    if (covered.bottom > 0) for (const d of app.currentDims()) {
+    if (cover.bottom > 0) for (const d of currentDims(app)) {
       const line = app.plan.dimLine(d);
       for (const p of [line.a, line.b]) xs.push(p.x - TEXT, p.x + TEXT), ys.push(p.y - TEXT, p.y + TEXT);
     }
@@ -182,12 +183,12 @@ export function keepSelectionInView(app: App): boolean {
   // looking at part of it on purpose. A new selection of it moves nothing: at 880 px a click on the
   // terrain zoomed the plan out to the whole lot.
   if (!resized && !reshaped && (screen.right - screen.left > view.w || screen.bottom - screen.top > view.h)) return false;
-  const k = fitFactor(screen, view, covered, room);
+  const k = fitFactor(screen, view, cover, room);
   if (k < 1) {
     app.plan.zoomAt({ x: (screen.left + screen.right) / 2, y: (screen.top + screen.bottom) / 2 }, k);
     screen = onScreen();
   }
-  const { dx, dy } = keepInView(screen, view, covered, room);
+  const { dx, dy } = keepInView(screen, view, cover, room);
   if (dx === 0 && dy === 0 && k === 1) return false;
   app.plan.panBy(dx, dy);
   return true;
@@ -199,13 +200,13 @@ export function keepSelectionInView(app: App): boolean {
  * camera stays. Never while dragging, and not when nothing covers it.
  */
 export function keepSelectionInView3d(app: App): boolean {
-  const covered = app.covered();
+  const cover = covered(app);
   const ids = JSON.stringify([...app.ui.selection]);
-  const key = JSON.stringify([ids, covered]);
+  const key = JSON.stringify([ids, cover]);
   if (key === app.seenSelection3d) return false;
   app.seenSelection3d = key;
   if (app.ui.selection.size === 0 || app.ui.drag || app.ui.handleDrag) return false;
-  if (covered.right === 0 && covered.bottom === 0 && !covered.left) return false;
+  if (cover.right === 0 && cover.bottom === 0 && !cover.left) return false;
   const box = boundsOf(app.geometry, app.ui.selection);
   if (!box) return false;
   const level = levelOf(app.store.get(), app.ui.levelId);
@@ -215,7 +216,7 @@ export function keepSelectionInView3d(app: App): boolean {
   if (pts.length === 0) return false;
   const vp = app.shell.viewport.getBoundingClientRect();
   const screen = { left: Math.min(...pts.map((p) => p.x)), right: Math.max(...pts.map((p) => p.x)), top: Math.min(...pts.map((p) => p.y)), bottom: Math.max(...pts.map((p) => p.y)) };
-  const { dx, dy } = keepInView(screen, { w: vp.width, h: vp.height }, covered, { margin: 16, above: 48 });
+  const { dx, dy } = keepInView(screen, { w: vp.width, h: vp.height }, cover, { margin: 16, above: 48 });
   if (dx === 0 && dy === 0) return false;
   app.scene.panScreen(dx, dy);
   return true;
@@ -239,8 +240,8 @@ export function frameAll(app: App): void {
   if (r.width === 0 || r.height === 0) return;
   app.framed[app.ui.view] = true;
   const box = boundsOf(app.visibleGeometry());
-  app.scene.setCovered(app.covered());
-  if (app.ui.view === 'plan') app.plan.frame(box, app.covered());
+  app.scene.setCovered(covered(app));
+  if (app.ui.view === 'plan') app.plan.frame(box, covered(app));
   else app.scene.frame(box, app.height());
   app.render();
 }
@@ -250,11 +251,11 @@ export function frameAll(app: App): void {
  * North is up the plan (+y).
  */
 export function elevation(app: App, side: 'north' | 'south' | 'east' | 'west'): void {
-  app.setView('3d');
-  app.setView3D({ ortho: true });
+  setView(app, '3d');
+  setView3D(app, { ortho: true });
   app.scene.setOrtho(true);
   const dir = { north: new THREE.Vector3(0, 0, -1), south: new THREE.Vector3(0, 0, 1), east: new THREE.Vector3(1, 0, 0), west: new THREE.Vector3(-1, 0, 0) }[side];
-  app.scene.setCovered(app.covered());
+  app.scene.setCovered(covered(app));
   app.framed['3d'] = true;
   app.scene.frame(boundsOf(app.visibleGeometry()), app.height(), dir);
   app.render();
@@ -277,12 +278,12 @@ export function sectionAtGuide(app: App, flip = false): void {
   const side = doc.walls.reduce((s, w) => s + Math.sign((w.start.x + w.end.x) / 2 * left.x + ((w.start.y + w.end.y) / 2) * left.y - (g.point.x * left.x + g.point.y * left.y)), 0);
   const along = side >= 0 !== flip ? g.dir : { x: -g.dir.x, y: -g.dir.y };
   const section = { point: g.point, dir: along };
-  app.setView('3d');
-  app.setView3D({ section, ortho: true });
+  setView(app, '3d');
+  setView3D(app, { section, ortho: true });
   app.scene.setOrtho(true);
   app.scene.setSection(section);
   const n = sectionLooks(section);
-  app.scene.setCovered(app.covered());
+  app.scene.setCovered(covered(app));
   app.framed['3d'] = true;
   // From the cut side, looking across the line at what it keeps.
   app.scene.frame(boundsOf(app.visibleGeometry()), app.height(), new THREE.Vector3(-n.x, 0, n.y));
@@ -292,15 +293,15 @@ export function sectionAtGuide(app: App, flip = false): void {
 
 /** The vertical section off: the whole model again. */
 export function clearSection(app: App): void {
-  if (app.ui.view3d.section) app.setView3D({ section: null });
+  if (app.ui.view3d.section) setView3D(app, { section: null });
 }
 
 export function frameSelection(app: App): void {
   const box = boundsOf(app.geometry, app.ui.selection);
   // Nothing selected, or nothing with an extent (a guide has no ends): the whole drawing.
   if (box === null) return app.frameAll();
-  app.scene.setCovered(app.covered());
-  if (app.ui.view === 'plan') app.plan.frame(box, app.covered());
+  app.scene.setCovered(covered(app));
+  if (app.ui.view === 'plan') app.plan.frame(box, covered(app));
   else app.scene.frame(box, app.height());
   app.render();
 }
@@ -312,7 +313,7 @@ export function frameSelection(app: App): void {
 export function keyView(app: App, action: ViewKey): void {
   if (app.ui.view === 'plan') {
     const vp = app.shell.viewport.getBoundingClientRect();
-    const c = app.covered();
+    const c = covered(app);
     const middle = { x: ((c.left ?? 0) + vp.width - c.right) / 2, y: (vp.height - c.bottom) / 2 };
     if ('zoom' in action) app.plan.zoomAt(middle, action.zoom);
     else app.plan.panBy(action.pan.x, action.pan.y);

@@ -17,12 +17,13 @@ import { referenceLength } from '../opening/derive';
 import { newId } from '../../core/id';
 import type { App } from '../../session/app';
 import { PREVIEW_ID } from '../preview';
+import { guideClick, guideRadius } from '../guide/tool-ui';
 
 export function previewWall(app: App): DocWall[] {
   const w = app.ui.wall;
   if (app.ui.tool !== 'wall') return [];
   if (w.kind === 'rect') {
-    const sides = rectangle(w.start, app.rectCorner());
+    const sides = rectangle(w.start, rectCorner(app));
     return (sides ?? []).map((s, i) => app.oriented(s.start, s.end, `${PREVIEW_ID}${i}`));
   }
   if (w.kind === 'bend') {
@@ -30,7 +31,7 @@ export function previewWall(app: App): DocWall[] {
     return [app.oriented(w.last, w.end, PREVIEW_ID, b ?? 0)];
   }
   if (w.kind !== 'drawing') return [];
-  const end = app.drawingEnd();
+  const end = drawingEnd(app);
   if (distance(w.last, end) < MIN_WALL_LENGTH) return [];
   return [app.oriented(w.last, end, PREVIEW_ID)];
 }
@@ -158,7 +159,7 @@ export function wallEvent(app: App, event: WallToolEvent): void {
   else if (r.segments) app.store.dispatch(addWalls(r.segments.map((s) => app.oriented(s.start, s.end, newId('wall')))));
   else app.refresh();
   // A chain closed on its start: its walls are the last ones added, one per step.
-  if (r.segment && r.state.kind === 'idle' && (was.kind === 'drawing' || was.kind === 'bend')) app.checkLoop(was.count + 1);
+  if (r.segment && r.state.kind === 'idle' && (was.kind === 'drawing' || was.kind === 'bend')) checkLoop(app, was.count + 1);
 }
 
 /**
@@ -215,7 +216,7 @@ export function submitMeasure(app: App, text: string): boolean {
       return false;
     }
     app.ui.error = null;
-    app.wallEvent({ kind: 'typedRadius', radius: radius.value });
+    wallEvent(app, { kind: 'typedRadius', radius: radius.value });
     return true;
   }
   // A rectangle's sides, "width;depth", from its first corner toward the cursor.
@@ -227,7 +228,7 @@ export function submitMeasure(app: App, text: string): boolean {
       return false;
     }
     app.ui.error = null;
-    app.wallEvent({ kind: 'typedSides', width: Math.abs(sides.value.x), depth: Math.abs(sides.value.y) });
+    wallEvent(app, { kind: 'typedSides', width: Math.abs(sides.value.x), depth: Math.abs(sides.value.y) });
     return true;
   }
   // "x;y": a point, as a click there would be: the start or the next point of a wall, a floor's
@@ -242,8 +243,8 @@ export function submitMeasure(app: App, text: string): boolean {
       return false;
     }
     app.ui.error = null;
-    if (app.ui.tool === 'guide') app.guideClick(point.value);
-    else if (wall) app.wallEvent({ kind: 'click', point: point.value });
+    if (app.ui.tool === 'guide') guideClick(app, point.value);
+    else if (wall) wallEvent(app, { kind: 'click', point: point.value });
     else if (app.ui.tool === 'measure') app.measureEvent({ kind: 'click', point: point.value });
     else if (app.ui.tool === 'dimension') app.dimensionEvent({ kind: 'click', point: point.value });
     else if (app.ui.tool === 'floor') app.floorClick(point.value, 0, true);
@@ -253,7 +254,7 @@ export function submitMeasure(app: App, text: string): boolean {
   // A circle guide's radius.
   if (app.ui.tool === 'guide' && app.ui.guideMode === 'circle' && app.ui.guideFrom) {
     const radius = parseLength(text);
-    if (radius.ok && app.guideRadius(radius.value)) {
+    if (radius.ok && guideRadius(app, radius.value)) {
       app.ui.error = null;
       return true;
     }
@@ -266,7 +267,7 @@ export function submitMeasure(app: App, text: string): boolean {
   }
   app.ui.error = null;
   if (app.ui.tool === 'wall' && app.ui.wall.kind === 'drawing') {
-    app.wallEvent({ kind: 'typed', length: r.value.length, angle: r.value.angle });
+    wallEvent(app, { kind: 'typed', length: r.value.length, angle: r.value.angle });
     return true;
   }
   if (app.openingKind() && app.ui.opening.kind === 'aiming') {

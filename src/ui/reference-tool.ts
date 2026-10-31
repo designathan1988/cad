@@ -11,6 +11,7 @@ import { el, numberField } from './controls';
 import { openProjectDialog } from './dialog';
 import { t } from '../i18n/messages';
 import { lengthText } from '../i18n/units';
+import { setView } from '../session/view-ui';
 
 /** A PDF's page drawn at this resolution (dpi) to become a picture. */
 const PDF_DPI = 150;
@@ -77,7 +78,7 @@ export async function importReference(app: App, file: File): Promise<void> {
       app.store.dispatch(addReference(r));
       app.toast(t('ref.pictureMade'));
     }
-    if (app.ui.view !== 'plan') app.setView('plan');
+    if (app.ui.view !== 'plan') setView(app, 'plan');
     app.ui.selection = new Set([r.id]);
     app.refresh();
   } catch (e) {

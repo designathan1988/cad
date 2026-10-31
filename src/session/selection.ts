@@ -96,7 +96,7 @@ export function clearSelection(app: App): void {
 export function hideTemporarily(app: App, mode: 'hide' | 'isolate'): void {
   const ids = [...app.ui.selection].filter((id) => !isGuideId(id) && !isNoteId(id) && !isDimId(id) && !isGridId(id));
   if (ids.length === 0) {
-    if (app.ui.temp) app.resetTemporary();
+    if (app.ui.temp) resetTemporary(app);
     else {
       app.ui.info = t('hint.tempNothing');
       app.render();

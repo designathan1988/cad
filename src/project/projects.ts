@@ -10,6 +10,7 @@ import type { App } from '../session/app';
 import { PROJECT_PREFIX, readStored } from './boot';
 import { type Doc, newDocument, startLevel } from './doc';
 import { flushSave, savePrefs, saveTo } from './persist';
+import { renameProject } from './files';
 
 /** The open project becomes `doc`, kept under `id`: the one before is saved first, its history left behind. */
 function switchTo(app: App, db: IDBDatabase, id: string, doc: Doc): void {
@@ -74,7 +75,7 @@ export async function duplicateProject(app: App, db: IDBDatabase, id: string): P
 export async function renameStoredProject(app: App, db: IDBDatabase, id: string, name: string): Promise<void> {
   const clean = name.trim();
   if (id === app.projectId) {
-    app.renameProject(clean);
+    renameProject(app, clean);
     return;
   }
   const doc = await readStored(db, id);

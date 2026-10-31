@@ -72,11 +72,11 @@ export function floorClick(app: App, p: Point2, mpp: number, typed = false, corn
         return app.refresh();
       }
       app.ui.error = null;
-      return app.addFloorToRoom(room.room.id);
+      return addFloorToRoom(app, room.room.id);
     }
   }
   // Clicking the first corner again (within 10 px) closes the outline.
-  if (draft.length >= 3 && distance(corner, draft[0]!) <= 10 * mpp) return app.floorFinish();
+  if (draft.length >= 3 && distance(corner, draft[0]!) <= 10 * mpp) return floorFinish(app);
   // A corner (where the pointer snapped): the outline is what the footer is about now, not a room's
   // floor said before.
   app.ui.info = null;

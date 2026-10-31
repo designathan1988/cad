@@ -10,6 +10,12 @@ import { t, type MessageKey } from '../i18n/messages';
 import type { IconName } from '../i18n/icons';
 import type { App } from './app';
 import { type ContextId, contextIds, menuGroups } from './context-actions';
+import { mergeSelection, startModify } from './modify';
+import { addCeilingToRoom, addFloorToRoom } from './room-tool';
+import { frameSelection } from './view-ui';
+import { clearSelection, copySelection, deleteSelection, hideTemporarily, paste, selectSimilar } from './selection';
+import { clearGuidesHere } from '../elements/guide/tool-ui';
+import { addLevelMarkHere, addNoteHere } from './kind-tools';
 
 export interface ContextEntry {
   readonly id: ContextId;
@@ -82,12 +88,12 @@ function entriesFor(app: App, openCommands: () => void): (id: ContextId) => Cont
   const one = ids.length === 1 ? ids[0]! : null;
   const opening = one ? app.store.get().openings.find((o) => o.id === one) : undefined;
   const run: Record<ContextId, () => void> = {
-    move: () => app.startModify('move'),
-    copy: () => app.startModify('copy'),
-    rotate: () => app.startModify('rotate'),
-    mirror: () => app.startModify('mirror'),
-    scale: () => app.startModify('scale'),
-    merge: () => app.mergeSelection(),
+    move: () => startModify(app, 'move'),
+    copy: () => startModify(app, 'copy'),
+    rotate: () => startModify(app, 'rotate'),
+    mirror: () => startModify(app, 'mirror'),
+    scale: () => startModify(app, 'scale'),
+    merge: () => mergeSelection(app),
     flipWall: () => app.store.dispatch(flipWalls(ids)),
     editType: () => app.openWallTypes(app.store.get().walls.find((w) => w.id === one)?.wallTypeId),
     // Offered in 3D only, where it shows (shown below): it switched the plan to 3D on its own (M9).
@@ -95,30 +101,30 @@ function entriesFor(app: App, openCommands: () => void): (id: ContextId) => Cont
     flipHinge: () => opening && app.store.dispatch(updateOpening(opening.id, { hinge: opening.hinge === 'start' ? 'end' : 'start' })),
     flipSwing: () => opening && app.store.dispatch(updateOpening(opening.id, { swing: opening.swing === 'left' ? 'right' : 'left' })),
     centerOpening: () => opening && app.store.dispatch(updateOpening(opening.id, { rule: { kind: 'centered' } })),
-    addFloor: () => one && app.addFloorToRoom(one),
-    addCeiling: () => one && app.addCeilingToRoom(one),
+    addFloor: () => one && addFloorToRoom(app, one),
+    addCeiling: () => one && addCeilingToRoom(app, one),
     distribute: () => app.store.dispatch(distributeOpenings(newId(GROUP_PREFIX), ids, { kind: 'equal' })),
-    frameSelection: () => app.frameSelection(),
+    frameSelection: () => frameSelection(app),
     properties: () => app.showProperties(),
-    clearSelection: () => app.clearSelection(),
-    delete: () => app.deleteSelection(),
+    clearSelection: () => clearSelection(app),
+    delete: () => deleteSelection(app),
     drawWall: () => app.setTool('wall'),
     frameAll: () => app.frameAll(),
-    clearGuides: () => app.clearGuides(),
+    clearGuides: () => clearGuidesHere(app),
     section: () => app.sectionAtGuide(),
-    selectSimilar: () => app.selectSimilar(),
+    selectSimilar: () => selectSimilar(app),
     addNote: (() => {
       const at = app.contextPoint;
-      return () => app.addNoteHere(at ?? undefined);
+      return () => addNoteHere(app, at ?? undefined);
     })(),
     addLevelMark: (() => {
       const at = app.contextPoint;
-      return () => app.addLevelMarkHere(at ?? undefined);
+      return () => addLevelMarkHere(app, at ?? undefined);
     })(),
-    copyClip: () => app.copySelection(),
-    paste: () => app.paste(),
-    hide: () => app.hideTemporarily('hide'),
-    isolate: () => app.hideTemporarily('isolate'),
+    copyClip: () => copySelection(app),
+    paste: () => paste(app),
+    hide: () => hideTemporarily(app, 'hide'),
+    isolate: () => hideTemporarily(app, 'isolate'),
     commands: openCommands,
   };
   // The keys as they are now, the user's own included (keymap.ts through the action list).

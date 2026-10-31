@@ -29,13 +29,14 @@ import { newId } from '../core/id';
 import { signedArea } from '../elements/room/derive';
 import type { App } from './app';
 import { made, nextOf } from './next';
+import { setView } from './view-ui';
 
 /** A level mark where the menu was opened (or the middle of the view), selected: it says the level's height. */
 export function addLevelMarkHere(app: App, at?: Point2): void {
   const p = at ?? app.plan.center;
   const id = newId(NOTE_PREFIX);
   app.store.dispatch(addNote({ id, levelId: app.ui.levelId, at: { x: p.x, y: p.y }, text: '', height: LEVEL_MARK_HEIGHT, elevation: { offset: 0 } }));
-  if (app.ui.view !== 'plan') app.setView('plan');
+  if (app.ui.view !== 'plan') setView(app, 'plan');
   app.setTool('select');
   app.ui.selection = new Set([id]);
   app.showProperties();
@@ -51,7 +52,7 @@ export function addNoteHere(app: App, at?: Point2, leader?: Point2): void {
   const p = at ?? app.plan.center;
   const id = newId(NOTE_PREFIX);
   app.store.dispatch(addNote({ id, levelId: app.ui.levelId, at: { x: p.x, y: p.y }, text: t('note.default'), height: NOTE_HEIGHT, ...(leader ? { leader: { x: leader.x, y: leader.y } } : {}) }));
-  if (app.ui.view !== 'plan') app.setView('plan');
+  if (app.ui.view !== 'plan') setView(app, 'plan');
   app.setTool('select');
   app.ui.selection = new Set([id]);
   app.showProperties();
@@ -65,7 +66,7 @@ export function addNoteHere(app: App, at?: Point2, leader?: Point2): void {
 /** The guardrail tool: a click adds a point of its path; Enter, Esc or a click on the last point ends it. */
 export function railingClick(app: App, p: Point2, mpp: number): void {
   const draft = app.ui.railingDraft;
-  if (draft.length >= 2 && distance(p, draft.at(-1)!) <= 10 * mpp) return app.railingFinish();
+  if (draft.length >= 2 && distance(p, draft.at(-1)!) <= 10 * mpp) return railingFinish(app);
   if (draft.length > 0 && distance(p, draft.at(-1)!) < MIN_WALL_LENGTH) return;
   app.ui.railingDraft = [...draft, p];
   app.render();
@@ -107,7 +108,7 @@ export function stairClick(app: App, p: Point2): void {
  */
 export function roofClick(app: App, p: Point2, mpp: number): void {
   const draft = app.ui.roofDraft;
-  if (draft.length >= 3 && distance(p, draft[0]!) <= 10 * mpp) return app.roofFinish();
+  if (draft.length >= 3 && distance(p, draft[0]!) <= 10 * mpp) return roofFinish(app);
   app.ui.roofDraft = [...draft, p];
   app.render();
 }

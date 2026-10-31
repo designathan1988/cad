@@ -11,6 +11,7 @@ import { exploding, RENDER_QUALITIES, shownLevels, VISUAL_STYLES } from '../sess
 import { type App, EDIT_LEVELS } from '../session/app';
 import { renderRibbon } from './ribbon';
 import { renderFooter } from './footer';
+import { placeFloatBar } from './float-bar';
 
 /** The parts the snaps divide a segment into, as the palette's (actions.ts). */
 const SNAP_PARTS = [2, 3, 4, 5, 6, 8, 10];
@@ -145,5 +146,5 @@ export function renderChrome(app: App): void {
   shell.coords.textContent = ui.cursor ? `x ${lengthText(ui.cursor.x)}  y ${lengthText(ui.cursor.y)}` : '';
   shell.fitFoot();
   shell.fitViewBar();
-  app.placeFloatBar();
+  placeFloatBar(app);
 }

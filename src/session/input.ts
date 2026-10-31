@@ -41,6 +41,16 @@ import { distance, normalize, sub } from '../model/vector';
 import { outerSides } from '../elements/wall/geometry/seams';
 import { wireKeys } from './input-keys';
 import { wireButtons } from './input-buttons';
+import { cancelGuide, guideClick, guideShapes, levelGuides, moveGuide } from '../elements/guide/tool-ui';
+import { gridClick, gridEscape, markClick, shownGrids } from './annotation-tools';
+import { boxFaceOnScreen, boxHandleAt } from './view-ui';
+import { submitMeasure, wallEvent } from '../elements/wall/tool-ui';
+import { floorFinish, roomSpaceAt } from './room-tool';
+import { calloutClick, sectionClick, sectionEscape } from './section-tools';
+import { addLevelMarkHere, addNoteHere, beamClick, columnClick, curtainClick, objectClick, railingClick, railingFinish, roofClick, roofFinish, separatorClick, stairClick } from './kind-tools';
+import { cornerClick, splitAt } from './modify';
+import { calibrateClick } from '../ui/reference-tool';
+import { renameProject } from '../project/files';
 
 /** How near (screen pixels) the pointer must come to a wall, a door or a window to take it. */
 const PICK_PX = 6;
@@ -176,7 +186,7 @@ export function wireInput(app: App): void {
       chainStart: null,
       enabled: ui.snaps,
       orthogonal: false,
-      guides: app.levelGuides(),
+      guides: levelGuides(app),
       parts: ui.snapParts,
     });
   /**
@@ -313,7 +323,7 @@ export function wireInput(app: App): void {
     const onFace = ui.tool === 'wall' && ui.defaults.referenceLine !== 'centerline' && below !== null;
     const from = tape ?? modifyFrom ?? (draft ? (draft.at(-1) ?? null) : w.kind === 'drawing' ? w.last : null);
     // Point and circle guides: points to snap to, circles to snap onto.
-    const guideShape = app.guideShapes();
+    const guideShape = guideShapes(app);
     ui.drawFrom = from;
     // A lock holds while the point is drawn from where it was set; a new point lets it go.
     if (ui.lock && (!from || distance(ui.lock.at, from) > 1e-9)) ui.lock = null;
@@ -352,7 +362,7 @@ export function wireInput(app: App): void {
       parts: ui.snapParts,
       skip: ui.snapSkip,
       // The axes as lines to snap onto, as guides are, and where they cross.
-      guides: [...app.levelGuides(), ...app.shownGrids().flatMap((g) => (distance(g.start, g.end) > 0 ? [{ point: g.start, dir: normalize(sub(g.end, g.start)) }] : []))],
+      guides: [...levelGuides(app), ...shownGrids(app).flatMap((g) => (distance(g.start, g.end) > 0 ? [{ point: g.start, dir: normalize(sub(g.end, g.start)) }] : []))],
     });
   };
 
@@ -438,7 +448,7 @@ export function wireInput(app: App): void {
       return app.setBox(moveFace(boxDrag.box, boxDrag.face, d), false);
     }
     if (ui.view === '3d' && ui.view3d.box && (e.buttons & 1) === 0) {
-      const hot = app.boxHandleAt(e.clientX, e.clientY);
+      const hot = boxHandleAt(app, e.clientX, e.clientY);
       if (hot !== app.boxHot) {
         app.boxHot = hot;
         app.render();
@@ -457,13 +467,13 @@ export function wireInput(app: App): void {
     if (ui.tool !== 'select') ui.hover = null;
     if (ui.guide) {
       if (altAt && Math.hypot(e.clientX - altAt.x, e.clientY - altAt.y) > 4) altMoved = true;
-      if (at) app.moveGuide(at.p);
+      if (at) moveGuide(app, at.p);
       return;
     }
     if (ui.tool === 'wall') {
       const s = snapped(e);
       ui.snap = s;
-      if (s && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'move', point: s.point });
+      if (s && ui.wall.kind !== 'idle') return wallEvent(app, { kind: 'move', point: s.point });
       return app.render();
     }
     if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'mark' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
@@ -501,7 +511,7 @@ export function wireInput(app: App): void {
       const g = app.visibleGeometry();
       ui.hover = at && ui.view === 'plan' ? ([...g.rooms.values()].find((r) => r.enclosed && insideRing(r.outline, at.p))?.room.id ?? null) : null;
       // Over closed walls with no room yet, the room a click makes there, before the click.
-      ui.roomSpace = ui.tool === 'room' && at && ui.view === 'plan' && ui.hover === null ? app.roomSpaceAt(at.p) : null;
+      ui.roomSpace = ui.tool === 'room' && at && ui.view === 'plan' && ui.hover === null ? roomSpaceAt(app, at.p) : null;
       return app.render();
     }
     if (app.openingKind()) {
@@ -546,10 +556,10 @@ export function wireInput(app: App): void {
     if (e.button === 2) rightAt = { x: e.clientX, y: e.clientY };
     if (e.button !== 0) return;
     // A section box handle: its face goes with the pointer, along the face's axis on screen.
-    const face = app.boxHandleAt(e.clientX, e.clientY);
+    const face = boxHandleAt(app, e.clientX, e.clientY);
     if (face && ui.view3d.box) {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      boxDrag = { face, box: ui.view3d.box, from: { x: e.clientX, y: e.clientY }, along: app.boxFaceOnScreen(face) };
+      boxDrag = { face, box: ui.view3d.box, from: { x: e.clientX, y: e.clientY }, along: boxFaceOnScreen(app, face) };
       app.boxHot = face;
       return app.render();
     }
@@ -581,7 +591,7 @@ export function wireInput(app: App): void {
       return true;
     }
     if (ui.guide) {
-      app.cancelGuide();
+      cancelGuide(app);
       return true;
     }
     if (gestures.cancel()) {
@@ -590,11 +600,11 @@ export function wireInput(app: App): void {
       return true;
     }
     if (ui.tool === 'wall' && ui.wall.kind !== 'idle') {
-      app.wallEvent({ kind: 'enter' });
+      wallEvent(app, { kind: 'enter' });
       return true;
     }
     if (ui.tool === 'floor' && ui.floorDraft.length > 0) {
-      if (ui.floorDraft.length >= 3) app.floorFinish();
+      if (ui.floorDraft.length >= 3) floorFinish(app);
       else {
         ui.floorDraft = [];
         app.render();
@@ -606,11 +616,11 @@ export function wireInput(app: App): void {
       return true;
     }
     if (ui.tool === 'grid' && ui.gridFrom) {
-      app.gridEscape();
+      gridEscape(app);
       return true;
     }
     if (ui.tool === 'section' && ui.sectionFrom) {
-      app.sectionEscape();
+      sectionEscape(app);
       return true;
     }
     if (ui.tool === 'callout' && ui.calloutFrom) {
@@ -629,11 +639,11 @@ export function wireInput(app: App): void {
       return true;
     }
     if (ui.tool === 'roof' && ui.roofDraft.length > 0) {
-      app.roofFinish();
+      roofFinish(app);
       return true;
     }
     if (ui.tool === 'railing' && ui.railingDraft.length > 0) {
-      app.railingFinish();
+      railingFinish(app);
       return true;
     }
     if (ui.tool === 'measure' && ui.measure.kind !== 'idle') {
@@ -701,12 +711,12 @@ export function wireInput(app: App): void {
     if (ui.tool === 'split') {
       const s = splitSnap(e);
       const at = aimAt3d(e);
-      if (at) app.splitAt(s?.point ?? at.p, s?.wallId ?? (ui.view === 'plan' ? (wallAt(app.visibleGeometry(), at.p, undefined, PICK_PX / app.plan.scale) ?? undefined) : undefined));
+      if (at) splitAt(app, s?.point ?? at.p, s?.wallId ?? (ui.view === 'plan' ? (wallAt(app.visibleGeometry(), at.p, undefined, PICK_PX / app.plan.scale) ?? undefined) : undefined));
       return;
     }
     if (ui.tool === 'corner') {
       const at = worldAt(e);
-      if (at) app.cornerClick(ui.view === 'plan' ? wallAt(app.visibleGeometry(), at.p, undefined, PICK_PX / app.plan.scale) : app.scene.pick(e.clientX, e.clientY));
+      if (at) cornerClick(app, ui.view === 'plan' ? wallAt(app.visibleGeometry(), at.p, undefined, PICK_PX / app.plan.scale) : app.scene.pick(e.clientX, e.clientY));
       return;
     }
     if (ui.tool === 'measure') {
@@ -721,57 +731,57 @@ export function wireInput(app: App): void {
     }
     if (ui.tool === 'grid') {
       const at = worldAt(e);
-      if (at && ui.view === 'plan') app.gridClick(snapped(e)?.point ?? at.p);
+      if (at && ui.view === 'plan') gridClick(app, snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'section') {
       const at = worldAt(e);
-      if (at && ui.view === 'plan') app.sectionClick(snapped(e)?.point ?? at.p);
+      if (at && ui.view === 'plan') sectionClick(app, snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'column') {
       const at = aimAt3d(e);
-      if (at) app.columnClick(snapped(e)?.point ?? at.p);
+      if (at) columnClick(app, snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'guide') {
       const at = worldAt(e);
-      if (at && ui.view === 'plan') app.guideClick(snapped(e)?.point ?? at.p);
+      if (at && ui.view === 'plan') guideClick(app, snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'object') {
       const at = aimAt3d(e);
-      if (at) app.objectClick(snapped(e)?.point ?? at.p);
+      if (at) objectClick(app, snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'beam') {
       const at = aimAt3d(e);
-      if (at) app.beamClick(snapped(e)?.point ?? at.p);
+      if (at) beamClick(app, snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'separator') {
       const at = worldAt(e);
-      if (at) app.separatorClick(snapped(e)?.point ?? at.p);
+      if (at) separatorClick(app, snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'mark') {
       const at = worldAt(e);
-      if (at && ui.view === 'plan') app.markClick(ui.markMode === 'radius' ? at.p : (snapped(e)?.point ?? at.p));
+      if (at && ui.view === 'plan') markClick(app, ui.markMode === 'radius' ? at.p : (snapped(e)?.point ?? at.p));
       return;
     }
     if (ui.tool === 'curtain') {
       const at = worldAt(e);
-      if (at) app.curtainClick(snapped(e)?.point ?? at.p);
+      if (at) curtainClick(app, snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'callout') {
       const at = worldAt(e);
-      if (at && ui.view === 'plan') app.calloutClick(snapped(e)?.point ?? at.p);
+      if (at && ui.view === 'plan') calloutClick(app, snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'calibrate') {
       const at = worldAt(e);
-      if (at && ui.view === 'plan') app.calibrateClick(snapped(e)?.point ?? at.p);
+      if (at && ui.view === 'plan') calibrateClick(app, snapped(e)?.point ?? at.p);
       return;
     }
     // A text or a level mark where the click is; then selected, its text ready to type.
@@ -779,21 +789,21 @@ export function wireInput(app: App): void {
       const at = worldAt(e);
       if (!at) return;
       const p = snapped(e)?.point ?? at.p;
-      return ui.tool === 'note' ? app.addNoteHere(p) : app.addLevelMarkHere(p);
+      return ui.tool === 'note' ? addNoteHere(app, p) : addLevelMarkHere(app, p);
     }
     if (ui.tool === 'roof') {
       const at = worldAt(e);
-      if (at) app.roofClick(snapped(e)?.point ?? at.p, at.mpp);
+      if (at) roofClick(app, snapped(e)?.point ?? at.p, at.mpp);
       return;
     }
     if (ui.tool === 'stair') {
       const at = aimAt3d(e);
-      if (at) app.stairClick(snapped(e)?.point ?? at.p);
+      if (at) stairClick(app, snapped(e)?.point ?? at.p);
       return;
     }
     if (ui.tool === 'railing') {
       const at = aimAt3d(e);
-      if (at) app.railingClick(snapped(e)?.point ?? at.p, at.mpp);
+      if (at) railingClick(app, snapped(e)?.point ?? at.p, at.mpp);
       return;
     }
     if (ui.tool === 'room' || ui.tool === 'floor') {
@@ -804,7 +814,7 @@ export function wireInput(app: App): void {
         // the pointer does before a click, and a second tap in that space makes it. One tap made it
         // unseen.
         if (e.pointerType === 'touch' && ui.view === 'plan') {
-          const space = app.roomSpaceAt(at.p);
+          const space = roomSpaceAt(app, at.p);
           if (space && !(ui.tapToConfirm && ui.roomSpace && insideRing(ui.roomSpace, at.p))) {
             ui.roomSpace = space;
             ui.tapToConfirm = true;
@@ -818,7 +828,7 @@ export function wireInput(app: App): void {
       return app.floorClick(at.p, at.mpp, false, snapped(e)?.point ?? at.p);
     }
     const s = snapped(e);
-    if (s) app.wallEvent({ kind: 'click', point: s.point });
+    if (s) wallEvent(app, { kind: 'click', point: s.point });
   };
 
   for (const c of [shell.planCanvas, shell.glCanvas]) {
@@ -878,7 +888,7 @@ export function wireInput(app: App): void {
     }
     if (e.key === 'Enter') {
       const text = shell.measure.value;
-      if (app.submitMeasure(text)) {
+      if (submitMeasure(app, text)) {
         // Done with the field: the keys (A, Esc, W…) go back to the drawing.
         shell.measure.value = '';
         shell.measure.blur();
@@ -887,8 +897,8 @@ export function wireInput(app: App): void {
         // An empty Enter does what Enter does outside the field: end the wall chain, close the floor.
         shell.measure.blur();
         if (ui.guide) return app.placeGuide();
-        if (ui.tool === 'wall') app.wallEvent({ kind: 'enter' });
-        if (ui.tool === 'floor') app.floorFinish();
+        if (ui.tool === 'wall') wallEvent(app, { kind: 'enter' });
+        if (ui.tool === 'floor') floorFinish(app);
       }
     } else if (e.altKey && ui.guide && /^[\d.,]$/.test(e.key)) {
       // Alt still held: Windows types nothing with it, so the digit is put in by hand.
@@ -900,10 +910,10 @@ export function wireInput(app: App): void {
       shell.measure.value = '';
       ui.error = null;
       shell.measure.blur();
-      if (!had && ui.guide) return app.cancelGuide();
+      if (!had && ui.guide) return cancelGuide(app);
       if (!had && ui.tool === 'modify') return app.modifyEvent({ kind: 'escape' });
       // An empty field has nothing to cancel: Esc acts on the drawing, as it does outside the field.
-      if (!had && ui.tool === 'wall' && ui.wall.kind !== 'idle') return app.wallEvent({ kind: 'escape' });
+      if (!had && ui.tool === 'wall' && ui.wall.kind !== 'idle') return wallEvent(app, { kind: 'escape' });
       app.render();
     }
   });
@@ -1016,7 +1026,7 @@ export function renameInPlace(app: App): void {
     const name = input.value;
     input.remove();
     button.hidden = false;
-    if (keep) app.renameProject(name);
+    if (keep) renameProject(app, name);
     button.focus();
   };
   input.addEventListener('keydown', (e) => {

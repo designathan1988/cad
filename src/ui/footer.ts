@@ -10,6 +10,9 @@ import { wallNumber } from '../project/doc';
 import { signedArea } from '../elements/room/derive';
 import { type App } from '../session/app';
 import { objectName } from './ribbon';
+import { currentDims } from './temp-dims';
+import { measureHint } from './float-bar';
+import { guideOffset } from '../elements/guide/tool-ui';
 
 export function renderFooter(app: App): void {
   const { ui, shell } = app;
@@ -54,7 +57,7 @@ export function renderFooter(app: App): void {
             : 'hint.selectedMany'
           : ui.selection.size === 1
             ? // "click a dimension" only where there is one: a room or a floor has none.
-              ui.view === 'plan' && app.currentDims().length > 0
+              ui.view === 'plan' && currentDims(app).length > 0
               ? 'hint.selected'
               : 'hint.selected3d'
             : 'hint.select';
@@ -84,7 +87,7 @@ export function renderFooter(app: App): void {
             ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.ceilingPlace')
             : t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
         : ui.tool === 'measure'
-          ? app.measureHint()
+          ? measureHint(app)
           : ui.tool === 'dimension'
             ? t(ui.dimension.kind === 'idle' ? 'hint.dimensionStart' : ui.dimension.kind === 'from' ? 'hint.dimensionEnd' : 'hint.dimensionPlace')
             : ui.tool === 'grid'
@@ -122,7 +125,7 @@ export function renderFooter(app: App): void {
                         : null;
   const guideHint = ui.guide
     ? t('hint.guide', {
-        d: lengthText(app.guideOffset() ?? 0),
+        d: lengthText(guideOffset(app) ?? 0),
         base: ui.guide.base.wallId ? t('guide.fromWall', { n: wallNumber(app.store.get(), ui.guide.base.wallId) ?? '' }) : t('guide.fromGuide'),
       })
     : null;

@@ -17,15 +17,21 @@ import { snapLabel } from '../session/snap-types';
 import { drawingOf, levelOf, wallNumber } from '../project/doc';
 import { cutAt } from '../session/view/view-3d';
 import { type App, PREVIEW_ID, SNAP_OF } from '../session/app';
+import { bendMeasure, drawingEnd, previewWall, rectCorner, turnMeasure, wallTags } from '../elements/wall/tool-ui';
+import { guideOffset } from '../elements/guide/tool-ui';
+import { modifyMarks } from '../session/modify';
+import { dimensionDraft, gridDraft } from '../session/annotation-tools';
+import { sectionDraft } from '../session/section-tools';
+import { currentDims } from './temp-dims';
 
 export function drawPlanOverlay(app: App): void {
   const { ui } = app;
   const plan = ui.view === 'plan';
-  const preview = new Set([...app.previewWall(), ...app.previewOpening()].map((w) => w.id));
+  const preview = new Set([...previewWall(app), ...app.previewOpening()].map((w) => w.id));
   const guide = app.openingKind() ? ruleGuide(app.store.get(), app.geometry, OPENING_PREVIEW_ID) : null;
   const w = ui.wall;
   const drawing = ui.tool === 'wall' && w.kind === 'drawing';
-  const end = drawing ? app.drawingEnd() : null;
+  const end = drawing ? drawingEnd(app) : null;
   const len = end && w.kind === 'drawing' ? distance(w.last, end) : 0;
   const ang = end && w.kind === 'drawing' ? ((Math.atan2(end.y - w.last.y, end.x - w.last.x) * 180) / Math.PI + 360) % 360 : 0;
   const along = end && w.kind === 'drawing' && len > 0 ? { x: (end.x - w.last.x) / len, y: (end.y - w.last.y) / len } : null;
@@ -69,10 +75,10 @@ export function drawPlanOverlay(app: App): void {
   // Held to a direction: what it is held to.
   const lockLabel = ui.snap?.kind === 'locked' && ui.lock ? t(ui.lock.label, ui.lock.vars) : null;
   // The guide being placed, at the distance typed or pointed; its distance as a dimension.
-  const guideOff = app.guideOffset();
-  const marks = app.modifyMarks();
+  const guideOff = guideOffset(app);
+  const marks = modifyMarks(app);
   // A rectangle being drawn: its sides, at its middle.
-  const rc = ui.tool === 'wall' && w.kind === 'rect' ? app.rectCorner() : null;
+  const rc = ui.tool === 'wall' && w.kind === 'rect' ? rectCorner(app) : null;
   const rectMeasure =
     rc && w.kind === 'rect'
       ? { at: { x: (w.start.x + rc.x) / 2, y: (w.start.y + rc.y) / 2 }, text: `${lengthNum(Math.abs(rc.x - w.start.x))} × ${lengthText(Math.abs(rc.y - w.start.y))}`, clear: 0 }
@@ -88,9 +94,9 @@ export function drawPlanOverlay(app: App): void {
       hover: ui.hover,
       roomSpace: ui.tool === 'room' ? ui.roomSpace : m.kind === 'chainDone' && m.closed ? m.points : null,
       preview,
-      dimensionDraft: app.dimensionDraft(),
-      gridDraft: app.gridDraft(),
-      sectionDraft: app.sectionDraft(),
+      dimensionDraft: dimensionDraft(app),
+      gridDraft: gridDraft(app),
+      sectionDraft: sectionDraft(app),
       calloutDraft: app.calloutDraft(),
       calibrateDraft: calibrateDraft(app),
       guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
@@ -118,7 +124,7 @@ export function drawPlanOverlay(app: App): void {
                   normal: { x: -tape.dy / tape.length, y: tape.dx / tape.length },
                   clear: 0,
                 }
-              : (app.bendMeasure() ?? app.turnMeasure() ?? guide?.measure ?? null),
+              : (bendMeasure(app) ?? turnMeasure(app) ?? guide?.measure ?? null),
       axis:
         end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
           ? { start: w.last, end }
@@ -135,7 +141,7 @@ export function drawPlanOverlay(app: App): void {
       objectHandles: objectHandles(app),
       hotHandle: app.hotHandle,
       anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
-      wallTags: app.wallTags(),
+      wallTags: wallTags(app),
       roomLabels: [...app.visibleGeometry().rooms.values()].map((r) => {
         const said = roomTagText(r.room, r.area, levelOf(app.store.get(), r.room.levelId)?.height ?? 0, drawingOf(app.store.get()).roomTag);
         return {
@@ -184,7 +190,7 @@ export function drawPlanOverlay(app: App): void {
       // The opening being placed shows its distance as a dimension too (drawn only, not typed in: the
       // footer field takes the distance while placing).
       dims: [
-        ...app.currentDims().map((d) => ({ ...d, text: lengthNum(d.value) })),
+        ...currentDims(app).map((d) => ({ ...d, text: lengthNum(d.value) })),
         ...(guide ? [guide.dim] : []),
         ...(guideDim && guideOff! > 0 ? [{ ...guideDim, side: ui.guide!.base.dir, clear: 0 }] : []),
       ],
@@ -241,7 +247,7 @@ export function drawPlanOverlay(app: App): void {
             ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${lengthText(floorLen)} · ${angleNum(floorAng)}°` }
             : tape && tapeFrom && tapeTo
               ? { at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 }, text: `${lengthText(tape.length)} · ${angleNum(tape.angle)}°` }
-              : app.bendMeasure(),
+              : bendMeasure(app),
       anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
       // A floor's outline being drawn, or a beam from its first point to where the next click lands.
       draft:

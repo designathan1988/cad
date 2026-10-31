@@ -38,7 +38,7 @@ export function placeDims(app: App, dims: readonly TempDim[]): void {
     const key = `${d.id}|${editing ? 'edit' : 'show'}`;
     let node = [...box.children].find((c) => (c as HTMLElement).dataset.key === key) as HTMLElement | undefined;
     if (!node) {
-      node = editing ? app.dimField(d) : app.dimButton(d);
+      node = editing ? dimField(app, d) : dimButton(app, d);
       node.dataset.key = key;
       box.append(node);
       if (node instanceof HTMLInputElement) {
@@ -93,7 +93,7 @@ export function dimField(app: App, d: TempDim): HTMLInputElement {
     const text = input.value.trim();
     const v = parseLength(text);
     // The dimension as it is now: the one app field was made for may be stale.
-    const dim = app.currentDims().find((x) => x.id === d.id);
+    const dim = currentDims(app).find((x) => x.id === d.id);
     const cmd = v.ok && dim ? dim.apply(v.value) : null;
     if (!cmd) {
       app.ui.error = t(v.ok ? 'hint.dimRefused' : 'hint.badMeasure', { ...typingExamples(), text });

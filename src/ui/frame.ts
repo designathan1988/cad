@@ -1,6 +1,6 @@
 // One frame of the views: the plan's overlay (selection, previews, snaps, tags, temporary dimensions and their value fields) or the 3D's, and the panel. Functions over the app (app.ts delegates).
 
-import { keepSelectionInView3d } from '../session/view-ui';
+import { covered, keepSelectionInView3d, keepSelectionInView } from '../session/view-ui';
 import { distance } from '../model/vector';
 import { resetWallsToType, setWalls, updateWalls } from '../elements/wall/commands';
 import { alignHeads, alignOpenings, distributeOpenings, ruleKeepingPosition, setGroupSpacing, ungroupOpenings, updateOpening } from '../elements/opening/commands';
@@ -23,6 +23,11 @@ import { nextFields, type NextSlot } from '../session/next';
 import { lowerFirst } from './ribbon-tabs';
 import { words } from '../elements/object/fields';
 import { drawPlanOverlay } from './plan-overlay';
+import { currentDims, placeDims } from './temp-dims';
+import { renderBrowserDrawer } from './chrome';
+import { addInteriorElevations } from '../session/section-tools';
+import { startCalibration } from './reference-tool';
+import { startFloorHole } from '../session/room-tool';
 
 /** The panel's title over a placing tool's next element: its kind's name, an object's its own. */
 function nextTitle(app: App, slot: NextSlot): string {
@@ -52,16 +57,16 @@ export function renderFrame(app: App): void {
   shell.glCanvas.classList.toggle('hidden', plan);
   app.cube.root.hidden = plan;
   // The view's corner (the cube, the views' box) and the 3D view's centre stay in the part of the viewport the panel leaves free.
-  const covered = app.covered();
-  shell.viewCorner.style.right = `${20 + covered.right}px`;
-  app.scene.setCovered(covered);
+  const cover = covered(app);
+  shell.viewCorner.style.right = `${20 + cover.right}px`;
+  app.scene.setCovered(cover);
   drawPlanOverlay(app);
   app.overlay3d.canvas.classList.toggle('hidden', plan);
   shell.viewport.style.cursor = toolCursor(ui.tool);
   app.mark(plan ? 'plan' : '3d');
-  app.placeDims(plan ? app.currentDims() : []);
+  placeDims(app, plan ? currentDims(app) : [])
   app.mark('dims');
-  app.renderBrowserDrawer();
+  renderBrowserDrawer(app);
   app.mark('browser');
   app.renderChrome();
   app.mark('chrome');
@@ -73,7 +78,7 @@ export function renderFrame(app: App): void {
   const next = ui.selection.size === 0 ? nextFields(app) : null;
   const panelKey = [ui.tool, ui.levelId, [...ui.selection].sort().join(','), getLang(), JSON.stringify(ui.defaults), JSON.stringify(app.geometry.warnings), openingKey, next?.key ?? ''].join('|');
   const placing = app.openingKind();
-  if (doc === app.panelDoc && panelKey === app.panelKey) return app.afterPanel();
+  if (doc === app.panelDoc && panelKey === app.panelKey) return afterPanel(app);
   app.panelDoc = doc;
   app.panelKey = panelKey;
   renderPanel(
@@ -167,14 +172,14 @@ export function renderFrame(app: App): void {
       },
       close: () => app.togglePanel(false),
       openSection: (id) => app.openSections(id),
-      interiorElevations: (ids) => app.addInteriorElevations(ids),
-      calibrate: (id) => app.startCalibration(id),
+      interiorElevations: (ids) => addInteriorElevations(app, ids),
+      calibrate: (id) => startCalibration(app, id),
       geometry: app.geometry,
       room: {
         updateRoom: (id, patch) => app.store.dispatch(updateRoom(id, patch)),
         updateRooms: (ids, patch) => app.store.dispatch(updateRooms(ids, patch)),
         levelHeight: (levelId) => levelOf(app.store.get(), levelId)?.height ?? 0,
-        startFloorHole: (id) => app.startFloorHole(id),
+        startFloorHole: (id) => startFloorHole(app, id),
         clearFloorHoles: (ids) => app.store.dispatch(clearFloorHoles(ids)),
         materials: () => app.store.get().materials,
         setFloorLayers: (ids, layers) => app.store.dispatch(setFloorLayers(ids, layers)),
@@ -216,7 +221,7 @@ export function renderFrame(app: App): void {
       alignBelow: (step) => app.store.dispatch(setWalls(moveWalls(app.store.get(), [step.upperId], step.shift), 'cmd.alignBelow')),
     },
   );
-  app.afterPanel();
+  afterPanel(app);
 }
 
 /**
@@ -224,6 +229,6 @@ export function renderFrame(app: App): void {
  * plan) brings the plan into view, and the plan is drawn again where it now is.
  */
 export function afterPanel(app: App): void {
-  if (app.ui.view === 'plan' && app.keepSelectionInView()) app.render();
+  if (app.ui.view === 'plan' && keepSelectionInView(app)) app.render();
   else if (app.ui.view === '3d' && keepSelectionInView3d(app)) app.render();
 }

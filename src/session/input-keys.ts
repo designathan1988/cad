@@ -10,6 +10,16 @@ import { showHelp } from './input';
 import { selectGestures } from './drag';
 import { arrowStep } from '../tools/nudge';
 import { guideBaseAt } from '../elements/guide/tool';
+import { saveFile } from '../project/files';
+import { copySelection, deleteSelection, hideTemporarily, nudgeSelection, paste, selectAllShown, stepSelectionHere } from './selection';
+import { frameSelection, keyView, setView } from './view-ui';
+import { cancelGuide, startGuide } from '../elements/guide/tool-ui';
+import { mergeSelection, selectionCentre, seriesReady, startModify, toggleModifyCopy, toggleModifyDisjoin } from './modify';
+import { gridEscape } from './annotation-tools';
+import { sectionEscape } from './section-tools';
+import { railingFinish, roofFinish } from './kind-tools';
+import { toggleWallFlip, wallEvent } from '../elements/wall/tool-ui';
+import { floorFinish } from './room-tool';
 
 /** What the keys share with the pointer (input.ts). */
 export interface KeyContext {
@@ -73,7 +83,7 @@ export function wireKeys(app: App, k: KeyContext): void {
     }
     if (ctrl && key === 's') {
       e.preventDefault();
-      return app.saveFile();
+      return saveFile(app);
     }
     if (ctrl && key === 'y') {
       e.preventDefault();
@@ -81,15 +91,15 @@ export function wireKeys(app: App, k: KeyContext): void {
     }
     if (ctrl && key === 'c' && !e.shiftKey && ui.selection.size > 0) {
       e.preventDefault();
-      return app.copySelection();
+      return copySelection(app);
     }
     if (ctrl && key === 'v') {
       e.preventDefault();
-      return app.paste();
+      return paste(app);
     }
     if (ctrl && key === 'a') {
       e.preventDefault();
-      return app.selectAll();
+      return selectAllShown(app);
     }
     if (ctrl && key === 'k') {
       e.preventDefault();
@@ -100,7 +110,7 @@ export function wireKeys(app: App, k: KeyContext): void {
     const view = viewKey(e.key, { shift: e.shiftKey, ctrl, alt: e.altKey, typing: typingNow });
     if (view) {
       e.preventDefault();
-      return app.keyView(view);
+      return keyView(app, view);
     }
     // Alt is the drawing's (a guide, a wall dragged alone): the browser's menu must not take the keys
     // typed after it is let go.
@@ -118,7 +128,7 @@ export function wireKeys(app: App, k: KeyContext): void {
       }
       k.altAt = app.pointer;
       k.altMoved = false;
-      return app.startGuide(base, at);
+      return startGuide(app, base, at);
     }
     // A distance for the guide being set, Alt held or not.
     if (ui.guide && /^[\d.,]$/.test(e.key) && !ctrl) {
@@ -137,7 +147,7 @@ export function wireKeys(app: App, k: KeyContext): void {
     const step = !ctrl && !e.shiftKey && ui.selection.size > 0 && ui.view === 'plan' ? arrowStep(e.key, e.altKey) : null;
     if (step) {
       e.preventDefault();
-      return app.nudgeSelection(step);
+      return nudgeSelection(app, step);
     }
     // Esc cancels a drag whatever is held: with Alt (a wall dragged alone) it never got below, and
     // letting go of the button then kept the move.
@@ -157,7 +167,7 @@ export function wireKeys(app: App, k: KeyContext): void {
     // (the tester's K2: "1" turned to 3D).
     const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'modify' || (ui.tool === 'guide' && ui.guideFrom !== null) || app.openingKind() !== null;
     // Right after a copy, its series is typed there: "3x", "/3".
-    if (/^[\d/]$/.test(e.key) && ui.tool === 'select' && app.seriesReady()) {
+    if (/^[\d/]$/.test(e.key) && ui.tool === 'select' && seriesReady(app)) {
       e.preventDefault();
       shell.measure.focus();
       shell.measure.value = e.key;
@@ -178,7 +188,7 @@ export function wireKeys(app: App, k: KeyContext): void {
         ui.error = null;
         shell.measure.value = '';
       }
-      if (ui.guide) return app.cancelGuide();
+      if (ui.guide) return cancelGuide(app);
       if (ui.tool === 'modify') return app.modifyEvent({ kind: 'escape' });
       if (k.gestures.cancel()) {
         k.downAt = null;
@@ -192,8 +202,8 @@ export function wireKeys(app: App, k: KeyContext): void {
       if (ui.tool === 'room' || ui.tool === 'floor') return app.setTool('select');
       if (ui.tool === 'measure') return ui.measure.kind !== 'idle' ? app.measureEvent({ kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
-      if (ui.tool === 'grid') return app.gridEscape();
-      if (ui.tool === 'section') return app.sectionEscape();
+      if (ui.tool === 'grid') return gridEscape(app);
+      if (ui.tool === 'section') return sectionEscape(app);
       if (ui.tool === 'calibrate') {
         ui.calibrate = null;
         return app.setTool('select');
@@ -211,7 +221,7 @@ export function wireKeys(app: App, k: KeyContext): void {
       }
       if (ui.tool === 'railing') {
         if (ui.railingDraft.length === 0) return app.setTool('select');
-        return app.railingFinish();
+        return railingFinish(app);
       }
       if (ui.tool === 'stair') {
         if (!ui.stairFrom) return app.setTool('select');
@@ -233,7 +243,7 @@ export function wireKeys(app: App, k: KeyContext): void {
         ui.markDraft = ui.markDraft.slice(0, -1);
         return app.render();
       }
-      if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? app.wallEvent({ kind: 'escape' }) : app.setTool('select');
+      if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? wallEvent(app, { kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'split') return app.setTool('select');
       // The Corner tool lets go of its first wall first (below), then of itself.
       if (ui.tool === 'corner' && ui.selection.size === 0) return app.setTool('select');
@@ -243,18 +253,18 @@ export function wireKeys(app: App, k: KeyContext): void {
     if (e.key === 'Enter' && ui.guide) return app.placeGuide();
     // Enter before the first point of a turn, a scale or a mirror: the selection's centre.
     if (e.key === 'Enter' && ui.tool === 'modify' && ui.modify?.state.step === 'base' && ui.modify.kind !== 'offset') {
-      const c = app.selectionCentre();
+      const c = selectionCentre(app);
       if (c) return app.modifyEvent({ kind: 'click', point: c });
       return;
     }
-    if (e.key === 'Enter' && ui.tool === 'wall') return app.wallEvent({ kind: 'enter' });
-    if (e.key === 'Enter' && ui.tool === 'floor') return app.floorFinish();
+    if (e.key === 'Enter' && ui.tool === 'wall') return wallEvent(app, { kind: 'enter' });
+    if (e.key === 'Enter' && ui.tool === 'floor') return floorFinish(app);
     // Measuring a chain: Enter ends it open; C switches between two points and a chain.
     if (e.key === 'Enter' && ui.tool === 'measure') return app.measureEvent({ kind: 'enter' });
     if (key === 'c' && !ctrl && !e.shiftKey && ui.tool === 'measure') return app.toggleMeasureMode();
     // Enter ends what is being drawn by points: a roof's outline, a guardrail's path, a beam chain.
-    if (e.key === 'Enter' && ui.tool === 'roof' && ui.roofDraft.length > 0) return app.roofFinish();
-    if (e.key === 'Enter' && ui.tool === 'railing' && ui.railingDraft.length > 0) return app.railingFinish();
+    if (e.key === 'Enter' && ui.tool === 'roof' && ui.roofDraft.length > 0) return roofFinish(app);
+    if (e.key === 'Enter' && ui.tool === 'railing' && ui.railingDraft.length > 0) return railingFinish(app);
     if (e.key === 'Enter' && (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom) {
       ui.beamFrom = null;
       return app.render();
@@ -264,37 +274,37 @@ export function wireKeys(app: App, k: KeyContext): void {
     // Backspace while drawing a chain takes its last wall back and goes on from its start (ArchiCAD).
     if (e.key === 'Backspace' && app.undoChainStep()) return;
     // Delete only: Backspace, pressed to correct typing, deleted the selection (docs/revisao-interface.md, M8).
-    if (e.key === 'Delete') return app.deleteSelection();
+    if (e.key === 'Delete') return deleteSelection(app);
     if (e.key === 'Home') return app.frameAll();
     if (e.key === '?') return showHelp(app);
     if (e.shiftKey && key === 'l') return app.setLanguage(app.otherLanguage());
     if (e.shiftKey && key === 'w') return app.setTool('window');
-    if (e.shiftKey && key === 'n') return app.stepSelection(-1);
+    if (e.shiftKey && key === 'n') return stepSelectionHere(app, -1);
     // The Modify tools, on the selection (Revit's MV, CO, RO, SC, MM; SketchUp's M, Q, S).
-    if (e.shiftKey && key === 'm') return app.startModify('move');
-    if (e.shiftKey && key === 'c') return app.startModify('copy');
-    if (e.shiftKey && key === 'r') return app.startModify('rotate');
-    if (e.shiftKey && key === 'e') return app.startModify('scale');
-    if (e.shiftKey && key === 'x') return app.startModify('mirror');
-    if (e.shiftKey && key === 'o') return app.startModify('offset');
+    if (e.shiftKey && key === 'm') return startModify(app, 'move');
+    if (e.shiftKey && key === 'c') return startModify(app, 'copy');
+    if (e.shiftKey && key === 'r') return startModify(app, 'rotate');
+    if (e.shiftKey && key === 'e') return startModify(app, 'scale');
+    if (e.shiftKey && key === 'x') return startModify(app, 'mirror');
+    if (e.shiftKey && key === 'o') return startModify(app, 'offset');
     if (e.shiftKey && key === 's') return app.setTool('split');
     if (e.shiftKey && key === 't') return app.setTool('corner');
     if (e.shiftKey && key === 'd') return app.setTool('dimension');
     if (e.shiftKey && key === 'g') return app.setTool('grid');
-    if (e.shiftKey && key === 'j') return app.mergeSelection();
-    if (e.shiftKey && key === 'h') return app.hideTemporarily('hide');
-    if (e.shiftKey && key === 'i') return app.hideTemporarily('isolate');
+    if (e.shiftKey && key === 'j') return mergeSelection(app);
+    if (e.shiftKey && key === 'h') return hideTemporarily(app, 'hide');
+    if (e.shiftKey && key === 'i') return hideTemporarily(app, 'isolate');
     if (e.shiftKey) return;
-    if (key === 'c' && ui.tool === 'modify') return app.toggleModifyCopy();
-    if (key === 'u' && ui.tool === 'modify') return app.toggleModifyDisjoin();
+    if (key === 'c' && ui.tool === 'modify') return toggleModifyCopy(app);
+    if (key === 'u' && ui.tool === 'modify') return toggleModifyDisjoin(app);
     if (key === 'w') return app.setTool('wall');
-    if (key === 'a' && ui.tool === 'wall') return app.wallEvent({ kind: 'arc' });
+    if (key === 'a' && ui.tool === 'wall') return wallEvent(app, { kind: 'arc' });
     // Q: rectangles of four walls, two corners (Revit's and ArchiCAD's rectangle).
-    if (key === 'q' && ui.tool === 'wall') return app.wallEvent({ kind: 'rect' });
+    if (key === 'q' && ui.tool === 'wall') return wallEvent(app, { kind: 'rect' });
     // Space while drawing walls: the body to the other side of the line (Revit's flip).
     if (e.key === ' ' && ui.tool === 'wall') {
       e.preventDefault();
-      return app.toggleWallFlip();
+      return toggleWallFlip(app);
     }
     // Space with the object tool: the next object a quarter turn on.
     if (e.key === ' ' && ui.tool === 'object') {
@@ -318,13 +328,13 @@ export function wireKeys(app: App, k: KeyContext): void {
     if (key === 'e') return app.setTool('stair');
     if (key === 'g') return app.setTool('railing');
     if (key === 'v') return app.setTool('select');
-    if (key === 'f') return app.frameSelection();
+    if (key === 'f') return frameSelection(app);
     // Choosing and moving elements without a mouse: N / Shift+N go through the level's elements;
     // the arrows move the selection by 5 cm (the snap grid), 1 cm with Alt (tools/nudge.ts).
-    if (key === 'n') return app.stepSelection(e.shiftKey ? -1 : 1);
+    if (key === 'n') return stepSelectionHere(app, e.shiftKey ? -1 : 1);
     if (key === 's') return app.toggleSnaps();
     if (key === 'k' && !ctrl && !e.shiftKey) return app.toggleCollisions();
-    if (key === '1') return app.setView('3d');
-    if (key === '2') return app.setView('plan');
+    if (key === '1') return setView(app, '3d');
+    if (key === '2') return setView(app, 'plan');
   });
 }

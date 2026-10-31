@@ -7,6 +7,9 @@ import { el, section } from './controls';
 import { name, t } from '../i18n/messages';
 import { icon } from '../i18n/icons';
 import { layerSwatch } from '../elements/wall/swatch';
+import { setView } from '../session/view-ui';
+import { deleteSavedView, goToView, saveCurrentView } from '../session/views-ui';
+import { selectWallsOfType } from '../session/selection';
 
 /** A full-width button row in a browser section. */
 function item(label: string, onClick: () => void, extra: { pressed?: boolean; current?: boolean; disabled?: boolean; lead?: string; trail?: string } = {}): HTMLElement {
@@ -59,12 +62,12 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
     section(
       t('browser.views'),
       true,
-      item(t('view.3d'), () => app.setView('3d'), { current: ui.view === '3d', lead: icon('cube', 16), ...(ui.view === '3d' ? { trail: t('browser.current') } : {}) }),
-      item(t('view.plan'), () => app.setView('plan'), { current: ui.view === 'plan', lead: icon('map', 16), ...(ui.view === 'plan' ? { trail: t('browser.current') } : {}) }),
+      item(t('view.3d'), () => setView(app, '3d'), { current: ui.view === '3d', lead: icon('cube', 16), ...(ui.view === '3d' ? { trail: t('browser.current') } : {}) }),
+      item(t('view.plan'), () => setView(app, 'plan'), { current: ui.view === 'plan', lead: icon('map', 16), ...(ui.view === 'plan' ? { trail: t('browser.current') } : {}) }),
       // Saved views: a click goes back to one; × deletes it (one undo step).
       // A plan view with a scale of its own says it.
-      ...doc.views.map((v) => savedItem(name(v.name), v.kind, () => app.goToView(v.id), () => app.deleteSavedView(v.id), v.kind === 'plan' && v.den ? `1:${v.den}` : undefined)),
-      item(t('views.save'), () => app.saveCurrentView(), { lead: icon('plus', 16) }),
+      ...doc.views.map((v) => savedItem(name(v.name), v.kind, () => goToView(app, v.id), () => deleteSavedView(app, v.id), v.kind === 'plan' && v.den ? `1:${v.den}` : undefined)),
+      item(t('views.save'), () => saveCurrentView(app), { lead: icon('plus', 16) }),
       item(t('section.dialogOpen'), () => app.openSections(), { lead: icon('cut', 16) }),
     ),
     // What is shown (categories, overrides, combinations) is the Visibility popover's (ui/visibility-panel.ts).
@@ -72,7 +75,7 @@ export function renderBrowser(app: App, box: HTMLElement, openLevels: () => void
       t('browser.types'),
       true,
       ...doc.wallTypes.map((type) =>
-        item(name(type.name), () => app.selectWallsOfType(type.id), {
+        item(name(type.name), () => selectWallsOfType(app, type.id), {
           lead: layerSwatch(type.layers, doc.materials),
           trail: t('browser.typeCount', { n: usage.get(type.id) ?? 0 }),
           disabled: wallsHidden || (usage.get(type.id) ?? 0) === 0,

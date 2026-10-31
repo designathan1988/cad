@@ -2,17 +2,13 @@
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
 import { made, nextOf, type NextSlot } from './next';
-import { pickModel } from '../ui/import-model';
-import * as refs from '../ui/reference-tool';
 import { onReferenceLoaded } from '../elements/kinds/reference';
 import { autoDimensions } from '../elements/dimension/auto';
 import { addDimensions } from '../elements/dimension/commands';
 import { lengthText } from '../i18n/units';
 import { settleDimensions } from '../elements/dimension/constraints';
 import type { Dimension } from '../elements/dimension/schema';
-import type { SectionMark } from '../elements/section/schema';
 import { deleteLayerSet, nextName, saveLayerSet } from '../project/layer-sets';
-import type { GuideMode } from '../elements/guide/tool-ui';
 import { setVariables } from '../core/measure';
 import type { KeyMap } from './keymap';
 import { arrangeNeeds, arrangeSteps, type ArrangeHow, type Box as ArrangeBox, boxOf } from '../tools/arrange';
@@ -23,19 +19,13 @@ import type { ObjectInstance } from '../elements/object/schema';
 import type { Action } from './actions';
 import { lengthNum, setUnits } from '../i18n/units';
 import * as viewing from './view-ui';
-import * as selecting from './selection';
 import * as walls from '../elements/wall/tool-ui';
 import * as chrome from '../ui/chrome';
-import * as floatBar from '../ui/float-bar';
 import * as frame from '../ui/frame';
-import * as tempDims from '../ui/temp-dims';
 import * as modify from './modify';
 import * as roomsUi from './room-tool';
 import * as guides from '../elements/guide/tool-ui';
-import * as kindTools from './kind-tools';
-import * as sectionTools from './section-tools';
 import * as annotationTools from './annotation-tools';
-import * as views from './views-ui';
 import * as files from '../project/files';
 import * as THREE from 'three';
 import { createStore, type Store } from '../core/store';
@@ -48,24 +38,22 @@ import { isOpeningId, newOpening, OPENING_DEFAULTS, OPENING_PREFIX, type Opening
 
 
 
-import { type Guide } from '../elements/guide/schema';
 import { aimAlong, OPENING_PREVIEW_ID } from '../elements/opening/aim';
 
-import { type Insets, type PlanOverlay, PlanView } from '../render/plan-view';
+import { PlanView } from '../render/plan-view';
 import { Scene3D } from '../render/scene-3d';
 import { Overlay3D, type Overlay3DState } from '../render/overlay-3d';
 import { ViewCube } from '../render/view-cube';
 import { getLang, htmlLang, markPrefix, setLang, t, type Lang, type MessageKey } from '../i18n/messages';
-import { buildShell, type Shell, type ToolId, type ViewId } from '../ui/shell';
+import { buildShell, type Shell, type ToolId } from '../ui/shell';
 import type { UiState } from './state';
 import { OPENING_IDLE, openingTransition, type OpeningToolEvent } from '../elements/opening/tool';
 import { MEASURE_IDLE, type MeasureEvent, measureTransition } from '../elements/measure/tool';
-import { type GuideBase } from '../elements/guide/tool';
-import { IDLE, type WallToolEvent } from '../elements/wall/tool';
+import { IDLE } from '../elements/wall/tool';
 import { dragTransform } from './drag';
 import { DIMENSION_IDLE, type DimensionToolEvent } from '../tools/dimension-tool';
 import { type Doc, type DocWall, drawingOf, elementIds, levelOf, startLevel } from '../project/doc';
-import { type ModifyEvent, type ModifyKind, previewTransform } from './modify-tool';
+import { type ModifyEvent, previewTransform } from './modify-tool';
 
 export type { UiState } from './state';
 import { toast } from '../ui/toast';
@@ -73,7 +61,6 @@ import { toast } from '../ui/toast';
 
 
 import { filterKinds, hasSolid, kindLists, kindOfId, levelOfSolid, moveKinds, eachSolid } from '../elements/registry';
-import { type Grid } from '../elements/grid/schema';
 
 import { geometryOf, keepRooms, moveRooms } from '../project/carry';
 import { keepOpenings } from '../elements/opening/keep';
@@ -97,10 +84,8 @@ import { boundsOf } from '../project/derived-queries';
 import { markPoint, openingMarks } from '../elements/opening/marks';
 import { loadPrefs, savePrefs, scheduleSave, wireSaving } from '../project/persist';
 import type { Boot } from '../project/boot';
-import type { ViewKey } from './view-keys';
 import { type BoxFace, type SectionBox } from '../model/section-box';
-import { type TempDim } from './temp-dims';
-import { exploding, liftOf, readView3D, shownLevels, type View3D } from './view/view-3d';
+import { exploding, liftOf, readView3D, shownLevels } from './view/view-3d';
 
 import { transformSelection } from '../elements/transform';
 import { referenceLength } from '../elements/opening/derive';
@@ -114,6 +99,12 @@ export type MarkMode = 'angle' | 'radius' | 'coord';
 
 
 import { PREVIEW_ID } from '../elements/preview';
+import { placeFloatBar } from '../ui/float-bar';
+import { covered, frameFirst } from './view-ui';
+import { previewWall } from '../elements/wall/tool-ui';
+import { addFloorToRoom } from './room-tool';
+import { guideOffset } from '../elements/guide/tool-ui';
+import { currentDims } from '../ui/temp-dims';
 
 export { PREVIEW_ID };
 /** A message going after a colon in another ("Cannot place it here: overlaps…"): lower case first. */
@@ -270,7 +261,7 @@ export class App {
     this.shell.viewCorner.prepend(this.cube.root);
     this.scene.onChange = () => {
       this.cube.update(this.scene.camera);
-      this.placeFloatBar();
+      placeFloatBar(this);
       // The handles found again where the camera now shows them (screen points: kept, they stayed behind).
       if (this.ui.view === '3d' && this.overlayState) this.overlay3d.draw({ ...this.overlayState, objectHandles: objectHandles(this), handles: this.handles() });
     };
@@ -287,7 +278,7 @@ export class App {
     // The first framing waits until the viewport has a size: framing a 0 × 0 canvas sets a useless scale.
     new ResizeObserver(() => {
       const r = this.shell.viewport.getBoundingClientRect();
-      if (!this.framed[this.ui.view] && r.width > 0 && r.height > 0) this.frameFirst();
+      if (!this.framed[this.ui.view] && r.width > 0 && r.height > 0) frameFirst(this);
       else this.render();
     }).observe(this.shell.viewport);
     this.applyTheme();
@@ -308,37 +299,12 @@ export class App {
     return this.ui.view === '3d' ? liftOf(levels, levelId, exploding(levels, this.ui.levelId, this.ui.view3d)) : 0;
   }
 
-  /** The section box on, around what the 3D shows, or off. */
-  toggleBox(): void {
-    return viewing.toggleBox(this);
-  }
-
   /** The box face whose handle is under the pointer or being dragged: drawn larger and filled. */
   boxHot: BoxFace | null = null;
-
-  /** The box face whose handle is at a screen point (client coordinates), nearest first; null when none. */
-  boxHandleAt(clientX: number, clientY: number): BoxFace | null {
-    return viewing.boxHandleAt(this, clientX, clientY);
-  }
-
-  /** Pixels a face's handle moves on screen for 1 m out (its drag direction). */
-  boxFaceOnScreen(face: BoxFace): Point2 {
-    return viewing.boxFaceOnScreen(this, face);
-  }
 
   /** The box as dragged: drawn now, kept with the view when `keep` (the drag's end). */
   setBox(box: SectionBox, keep: boolean): void {
     return viewing.setBox(this, box, keep);
-  }
-
-  /** Explode on or off; with one level shown, said why it does nothing instead. */
-  toggleExplode(): void {
-    return viewing.toggleExplode(this);
-  }
-
-  /** How the 3D view shows the levels; kept with the preferences, as the view is. */
-  setView3D(patch: Partial<View3D>): void {
-    return viewing.setView3D(this, patch);
   }
 
   /** Recomputes the derived geometry (with the wall being drawn) and redraws. */
@@ -377,7 +343,7 @@ export class App {
               : doc;
     // Walls being dragged: doors and windows keep to their faces and a room they pass over keeps its
     // space, as they will when the walls are dropped.
-    const drawing = this.previewWall();
+    const drawing = previewWall(this);
     const placing = this.previewOpening();
     this.geometry =
       shown.walls !== doc.walls
@@ -489,11 +455,6 @@ export class App {
     return k ? t('hint.openingRefused', { reason: afterColon(t(`warn.${k}`)) }) : null;
   }
 
-  /** The smallest space the level's walls close in around p, when no room is in it: where the room tool would make one. */
-  roomSpaceAt(p: Point2): readonly Point2[] | null {
-    return roomsUi.roomSpaceAt(this, p);
-  }
-
   /** The room tool: a click inside closed walls makes a room there, unless one is there already. */
   roomClick(p: Point2): void {
     return roomsUi.roomClick(this, p);
@@ -507,21 +468,6 @@ export class App {
     return roomsUi.floorClick(this, p, mpp, typed, corner);
   }
 
-  /** Draws a hole in a floor: the floor tool, its outline then going through that floor. */
-  startFloorHole(floorId: string): void {
-    return roomsUi.startFloorHole(this, floorId);
-  }
-
-  /** A ceiling following a room's outline, at the room's ceiling height (its own, or its level's). */
-  addCeilingToRoom(roomId: string): void {
-    return roomsUi.addCeilingToRoom(this, roomId);
-  }
-
-  /** A floor following a room's outline; said and selected at once, so it is seen without another click. */
-  addFloorToRoom(roomId: string): void {
-    return roomsUi.addFloorToRoom(this, roomId);
-  }
-
   /** Opens the properties panel and puts the keyboard in it. */
   showProperties(): void {
     if (!this.ui.panelOpen) this.togglePanel(true);
@@ -530,45 +476,8 @@ export class App {
     (first ?? this.shell.panel).focus();
   }
 
-  floorFinish(): void {
-    return roomsUi.floorFinish(this);
-  }
-
-  startCeiling(): void {
-    return roomsUi.startCeiling(this);
-  }
-
   selectedOpenings(): OpeningSolid[] {
     return [...this.ui.selection].filter(isOpeningId).flatMap((id) => this.geometry.openings.get(id) ?? []);
-  }
-
-  previewWall(): DocWall[] {
-    return walls.previewWall(this);
-  }
-
-  /** The numbers of the walls selected (a few) or under the pointer, or snapped to while drawing. */
-  wallTags(): { at: Point2; text: string }[] {
-    return walls.wallTags(this);
-  }
-
-  /** While turning the selection: the angle, at the point it turns about. */
-  turnMeasure(): { at: Point2; text: string } | null {
-    return walls.turnMeasure(this);
-  }
-
-  /** While bending an arc: its radius, at the middle of the arc, set off outward. Null for a straight bend. */
-  bendMeasure(): { at: Point2; text: string; normal: Point2; clear: number } | null {
-    return walls.bendMeasure(this);
-  }
-
-  /** The rectangle's opposite corner: its typed sides ("w;d", toward the cursor) when typed, else the cursor. */
-  rectCorner(): Point2 {
-    return walls.rectCorner(this);
-  }
-
-  /** The end of the segment being drawn: the typed length (and angle) when there is one, else the cursor. */
-  drawingEnd(): Point2 {
-    return walls.drawingEnd(this);
   }
 
   /**
@@ -577,11 +486,6 @@ export class App {
    */
   oriented(start: Point2, end: Point2, id: string, bulge = 0): DocWall {
     return walls.oriented(this, start, end, id, bulge);
-  }
-
-  /** Space while drawing walls. */
-  toggleWallFlip(): void {
-    return walls.toggleWallFlip(this);
   }
 
   /** Doors' and windows' type marks in plan, on or off; kept with the preferences. */
@@ -693,7 +597,7 @@ export class App {
     if (tool !== 'select') this.ui.selection.clear();
     if (room) {
       const has = this.store.get().floors.find((f) => f.source.kind === 'room' && f.source.roomId === room.id);
-      if (!has) return this.addFloorToRoom(room.id);
+      if (!has) return addFloorToRoom(this, room.id);
       this.ui.selection = new Set([has.id]);
       this.ui.info = t('hint.floorExists');
     }
@@ -704,35 +608,9 @@ export class App {
     this.refresh();
   }
 
-  setView(view: ViewId): void {
-    return viewing.setView(this, view);
-  }
-
-  /** A view's first show: the plan where it was left before a reload, else everything framed. */
-  frameFirst(): void {
-    return viewing.frameFirst(this);
-  }
-
   /** The plan's zoom and position, kept for the next visit once they have been still for a moment. */
   private keepPlanView(): void {
     return viewing.keepPlanView(this);
-  }
-
-  /**
-   * The view as it is now, saved in the project under the next free name ("3D 1", "Térreo 1"): the 3D
-   * camera and what the 3D shows, or the plan's level, zoom and position.
-   */
-  saveCurrentView(): void {
-    return views.saveCurrentView(this);
-  }
-
-  /** Back to a saved view: its level, and its camera or its plan framing. Not an undo step. */
-  goToView(id: string): void {
-    return views.goToView(this, id);
-  }
-
-  deleteSavedView(id: string): void {
-    return views.deleteSavedView(this, id);
   }
 
   /** Where the right-click menu was opened (plan point), while its entries are made (input.ts). */
@@ -740,83 +618,13 @@ export class App {
   /** Opens the projects kept in the browser; set by the input layer. */
   openProjects: () => void = () => {};
 
-  /** The guides of the level shown, unless hidden, as a move being dragged takes them. Plan only: they
-   * are neither drawn nor snapped to in 3D. */
-  levelGuides(): Guide[] {
-    return guides.levelGuides(this);
-  }
-
-  guideShapes(): ReturnType<typeof guides.guideShapes> {
-    return guides.guideShapes(this);
-  }
-
-  setGuideTool(mode: GuideMode): void {
-    return guides.setGuideTool(this, mode);
-  }
-
-  guideClick(p: Point2): void {
-    return guides.guideClick(this, p);
-  }
-
-  guideRadius(radius: number): boolean {
-    return guides.guideRadius(this, radius);
-  }
-
-  /** A level mark where the menu was opened (or the middle of the view), selected: it says the level's height. */
-  addLevelMarkHere(at?: Point2): void {
-    return kindTools.addLevelMarkHere(this, at);
-  }
-
-  /** A text note where the menu was opened (or the middle of the view), selected, its text ready to type in the panel. */
-  addNoteHere(at?: Point2): void {
-    return kindTools.addNoteHere(this, at);
-  }
-
-  /** Starts a guide off a wall's face or a guide, at the distance the pointer at p sets (guide-tool.ts). */
-  startGuide(base: GuideBase, p: Point2): void {
-    return guides.startGuide(this, base, p);
-  }
-
-  moveGuide(p: Point2): void {
-    return guides.moveGuide(this, p);
-  }
-
-  /** The guide's distance: the one being typed, while it reads as one, else the pointer's. */
-  guideOffset(): number | null {
-    return guides.guideOffset(this);
-  }
-
   /** Places the guide being set, as one undo step; the drawing tool goes on as it was. */
-  placeGuide(offset = this.guideOffset()): void {
+  placeGuide(offset = guideOffset(this)): void {
     return guides.placeGuide(this, offset);
-  }
-
-  cancelGuide(): void {
-    return guides.cancelGuide(this);
-  }
-
-  /** Every guide of the level shown, as one undo step. */
-  clearGuides(): void {
-    return guides.clearGuidesHere(this);
   }
 
   /** The geometry before a Modify tool started: which rooms go with the walls (transform.ts). */
   modifyBefore: DerivedGeometry | null = null;
-
-  /** Starts Move, Copy, Rotate, Scale or Mirror on the selection; said why not when there is nothing they take. */
-  startModify(kind: ModifyKind): void {
-    return modify.startModify(this, kind);
-  }
-
-  /** C in a Modify tool: copy, or take the originals. */
-  toggleModifyCopy(): void {
-    return modify.toggleModifyCopy(this);
-  }
-
-  /** U in Move: the walls alone, leaving their joins (Revit's Disjoin), or with them. */
-  toggleModifyDisjoin(): void {
-    return modify.toggleModifyDisjoin(this);
-  }
 
   /** A click, a typed value or Esc in a Modify tool (modify-tool.ts); the transform, when done, is one undo step. */
   modifyEvent(event: ModifyEvent): void {
@@ -834,53 +642,12 @@ export class App {
   } | null = null;
 
   /**
-   * Whether "3x" or "/3" typed now would make a series of the last copy: nothing changed since, and the
-   * copy still the selection (another click gives the digits back to the view keys).
-   */
-  seriesReady(): boolean {
-    return modify.seriesReady(this);
-  }
-
-  /**
    * The last copy made a series, as SketchUp's Move-copy and Revit's Array: `n` copies one after
    * another at its step ("3x"), or, `divide`, `n` copies spread evenly from the original to where the
    * copy went ("/3"). It replaces the copy: one undo step, the last copy of the series selected.
    */
   copySeries(n: number, divide: boolean): boolean {
     return modify.copySeries(this, n, divide);
-  }
-
-  /** The Split tool: the wall under the point divided there (tools/split.ts), as one undo step. */
-  splitAt(point: Point2, wallId: string | undefined): void {
-    return modify.splitAt(this, point, wallId);
-  }
-
-  /** The Corner tool: the first wall clicked, then the second, met at the corner of their lines. */
-  cornerClick(wallId: string | null): void {
-    return modify.cornerClick(this, wallId);
-  }
-
-  /** Two walls in line, end to end, of one type, joined into one (tools/split.ts). */
-  mergeSelection(): void {
-    return modify.mergeSelection(this);
-  }
-
-  /** Whether the selection is two walls that can be joined into one. */
-  canMergeSelection(): boolean {
-    return modify.canMergeSelection(this);
-  }
-
-  /** The middle of the selection's extent: the centre a turn, a scale or a mirror takes on Enter. */
-  selectionCentre(): Point2 | null {
-    return modify.selectionCentre(this);
-  }
-
-  /**
-   * What a Modify tool shows: its base, the line to the pointer, the reference of an angle or a scale,
-   * a mirror's axis, and the value it would apply.
-   */
-  modifyMarks(): { base: Point2; to: Point2 | null; ref: Point2 | null; axis: { point: Point2; dir: Point2 } | null; text: string | null } | null {
-    return modify.modifyMarks(this);
   }
 
   /**
@@ -928,40 +695,6 @@ export class App {
     this.render();
   }
 
-  /** The guardrail tool: a click adds a point of its path; Enter, Esc or a click on the last point ends it. */
-  railingClick(p: Point2, mpp: number): void {
-    return kindTools.railingClick(this, p, mpp);
-  }
-
-  railingFinish(): void {
-    return kindTools.railingFinish(this);
-  }
-
-  /**
-   * The stair tool: a click on where its first step's front is (its middle), the next on the way it
-   * climbs. Straight, of the last stair's width and step; its kind and turn are in the panel.
-   */
-  stairClick(p: Point2): void {
-    return kindTools.stairClick(this, p);
-  }
-
-  /**
-   * The roof tool: a click adds a corner of its outline; on the first corner again (10 px), or Enter, the
-   * roof is made: four slopes on a convex outline, flat with a parapet otherwise.
-   */
-  roofClick(p: Point2, mpp: number): void {
-    return kindTools.roofClick(this, p, mpp);
-  }
-
-  roofFinish(): void {
-    return kindTools.roofFinish(this);
-  }
-
-  /** The beam tool: a click starts a beam, the next ends it (the section of the last one made); Esc drops it. */
-  beamClick(p: Point2): void {
-    return kindTools.beamClick(this, p);
-  }
-
   /** The doors and windows among `ids` opened, or closed when all of them are open. */
   toggleOpen(ids: readonly string[]): void {
     const doc = this.store.get();
@@ -974,14 +707,6 @@ export class App {
     this.ui.opened = next;
     this.ui.info = t(allOpen ? 'hint.closedOpenings' : 'hint.openedOpenings', { n: mine.length });
     this.refresh();
-  }
-
-  curtainClick(p: Point2): void {
-    return kindTools.curtainClick(this, p);
-  }
-
-  separatorClick(p: Point2): void {
-    return kindTools.separatorClick(this, p);
   }
 
   /** The drawing settings the plan is drawn with now: the project's, at a saved view's own scale while it is shown. */
@@ -997,84 +722,11 @@ export class App {
     this.render();
   }
 
-  markClick(p: Point2): void {
-    return annotationTools.markClick(this, p);
-  }
-
-  /** The column tool: a click stands a column there, the section of the last one made. */
-  columnClick(p: Point2): void {
-    return kindTools.columnClick(this, p);
-  }
-
-  /** The grid tool: a click starts an axis, the next ends it (named on from the last of its kind). */
-  gridClick(p: Point2): void {
-    return annotationTools.gridClick(this, p);
-  }
-
-  /** Esc in the grid tool: the axis begun is dropped; none begun, the tool is left. */
-  gridEscape(): void {
-    return annotationTools.gridEscape(this);
-  }
-
-  /** The axis being drawn with the grid tool, and the name it will get; plan only. */
-  gridDraft(): { name: string; start: Point2; end: Point2 } | null {
-    return annotationTools.gridDraft(this);
-  }
-
-  /** The section tool: a click starts its line, the next ends it (lettered on from the last). */
-  sectionClick(p: Point2): void {
-    return sectionTools.sectionClick(this, p);
-  }
-
-  /** Esc in the section tool: the line begun is dropped; none begun, the tool is left. */
-  sectionEscape(): void {
-    return sectionTools.sectionEscape(this);
-  }
-
-  /** A glTF or OBJ model brought in as a library object (model-import.ts). */
-  pickModel(): void {
-    return pickModel(this);
-  }
-
-  /** A picture, a PDF or a DXF put under the plan (reference-ui.ts). */
-  pickReference(): void {
-    return refs.pickReference(this);
-  }
-
-  /** Calibrating a reference: two points of it, then the distance between them. */
-  startCalibration(id: string): void {
-    return refs.startCalibration(this, id);
-  }
-
-  calibrateClick(p: Point2): void {
-    return refs.calibrateClick(this, p);
-  }
-
-  /** The callout tool: a click puts the arrow's point, the next the text, ready to type. */
-  calloutClick(p: Point2): void {
-    return sectionTools.calloutClick(this, p);
-  }
-
   /** The callout being placed: its arrow's point and the pointer; plan only. */
   calloutDraft(): { from: Point2; to: Point2 } | null {
     const from = this.ui.view === 'plan' && this.ui.tool === 'callout' ? this.ui.calloutFrom : null;
     const to = this.ui.snap?.point ?? this.ui.cursor;
     return from && to ? { from, to } : null;
-  }
-
-  /** The section being drawn with its tool; plan only. */
-  sectionDraft(): SectionMark | null {
-    return sectionTools.sectionDraft(this);
-  }
-
-  /** The four elevations round the building, those not made yet (elements/section). */
-  addElevations(): void {
-    return sectionTools.addElevations(this);
-  }
-
-  /** The rooms' four interior elevations each (kind-tools.ts). */
-  addInteriorElevations(roomIds: readonly string[]): void {
-    return sectionTools.addInteriorElevations(this, roomIds);
   }
 
   /**
@@ -1090,77 +742,9 @@ export class App {
     this.toast(t('dim.autoMade', { n: dims.length }));
   }
 
-  /** The axes as drawn now (a move being dragged or the Modify tool taking them): what snapping sees; plan only. */
-  shownGrids(): readonly Grid[] {
-    return annotationTools.shownGrids(this);
-  }
-
   /** The dimension tool: a click or Esc (dimension-tool.ts). The third click makes the dimension. */
   dimensionEvent(event: DimensionToolEvent): void {
     return annotationTools.dimensionEvent(this, event);
-  }
-
-  /** The dimension being made with the dimension tool, placed, with its value; plan only. */
-  dimensionDraft(): (NonNullable<PlanOverlay['dimensionDraft']>) | null {
-    return annotationTools.dimensionDraft(this);
-  }
-
-  wallEvent(event: WallToolEvent): void {
-    return walls.wallEvent(this, event);
-  }
-
-  /**
-   * An outline just closed turning clockwise has each wall's exterior face (the right of its
-   * direction) inside it: said, with the way back, since a house drawn that way showed its outer
-   * finish on the room side and nothing told why.
-   */
-  checkLoop(n: number): void {
-    return walls.checkLoop(this, n);
-  }
-
-  /** The footer field: a length (and angle) while drawing; a new length for one selected wall. */
-  submitMeasure(text: string): boolean {
-    return walls.submitMeasure(this, text);
-  }
-
-  /** Every wall of the current level, with the select tool. */
-  selectAllWalls(): void {
-    return selecting.selectAllWalls(this);
-  }
-
-  /** Ctrl+A: everything the level shown shows. */
-  selectAll(): void {
-    return selecting.selectAllShown(this);
-  }
-
-  /**
-   * The next (or previous) element of the level shown, as the selection: walls by number, then doors
-   * and windows, rooms, floors (ref/chat.txt:242). In plan the view slides to show it.
-   */
-  stepSelection(dir: 1 | -1): void {
-    return selecting.stepSelectionHere(this, dir);
-  }
-
-  /** Moves the selection by a step from the keyboard (tools/nudge.ts): one undo step. */
-  nudgeSelection(step: Point2): void {
-    return selecting.nudgeSelection(this, step);
-  }
-
-  clearSelection(): void {
-    return selecting.clearSelection(this);
-  }
-
-  /**
-   * Hides the selection for a while (Revit's HH), or isolates it (HI): the views leave out the rest.
-   * Hiding again adds to what is hidden; with nothing selected, everything shows again (HR).
-   */
-  hideTemporarily(mode: 'hide' | 'isolate'): void {
-    return selecting.hideTemporarily(this, mode);
-  }
-
-  /** Everything hidden or isolated for a while shows again. */
-  resetTemporary(): void {
-    return selecting.resetTemporary(this);
   }
 
   /** Division points cut segments into n parts (2 to 10): kept with the preferences. */
@@ -1210,23 +794,6 @@ export class App {
   /** What Ctrl+C took: the project as it was then, and the elements, for Ctrl+V on another level. */
   clipboard: { readonly doc: Doc; readonly geometry: DerivedGeometry; readonly ids: readonly string[]; readonly levelId: string } | null = null;
 
-  /** Ctrl+C: the selection kept for Ctrl+V, which pastes it on another level in the same place. */
-  copySelection(): void {
-    return selecting.copySelection(this);
-  }
-
-  /**
-   * Ctrl+V: what Ctrl+C took, on the level shown, in the same place (copyToLevel), as one undo step.
-   * On the level it came from it would lie over itself: said, with the Copy tool to put it beside.
-   */
-  paste(): void {
-    return selecting.paste(this);
-  }
-
-  deleteSelection(): void {
-    return selecting.deleteSelection(this);
-  }
-
   /**
    * Drawing a chain, the last step to undo is its last wall: undone, the chain goes on from where that
    * wall began (ArchiCAD's Backspace), instead of from the end of a wall that is gone. False otherwise.
@@ -1270,29 +837,8 @@ export class App {
   seenIds = '';
   seenShape = '';
 
-  /**
-   * When the selection changes and the panel lying over the drawing would hide it (the sheet on a
-   * phone, the drawer on a tablet), the plan slides just enough to show it beside the panel.
-   */
-  keepSelectionInView(): boolean {
-    return viewing.keepSelectionInView(this);
-  }
-
-  /** How much the panel covers of the viewport, at its right (drawer) or bottom (phone sheet). */
-  covered(): Insets {
-    return viewing.covered(this);
-  }
-
   frameAll(): void {
     return viewing.frameAll(this);
-  }
-
-  /**
-   * An elevation (Revit's North, South, East and West): the model seen square from that side, parallel.
-   * North is up the plan (+y).
-   */
-  elevation(side: 'north' | 'south' | 'east' | 'west'): void {
-    return viewing.elevation(this, side);
   }
 
   /**
@@ -1301,15 +847,6 @@ export class App {
    */
   sectionAtGuide(flip = false): void {
     return viewing.sectionAtGuide(this, flip);
-  }
-
-  /** The vertical section off: the whole model again. */
-  clearSection(): void {
-    return viewing.clearSection(this);
-  }
-
-  frameSelection(): void {
-    return viewing.frameSelection(this);
   }
 
   setLanguage(lang: Lang): void {
@@ -1334,43 +871,8 @@ export class App {
     this.scene.setTheme(this.ui.theme === 'dark', (name) => css.getPropertyValue(name).trim());
   }
 
-  /** The project's name, as one undo step; an empty name is "Untitled project" again. */
-  renameProject(next: string): void {
-    return files.renameProject(this, next);
-  }
-
-  saveFile(): void {
-    return files.saveFile(this);
-  }
-
-  /** A file given to the browser to save: the project. */
-  download(file: string, content: string | Blob, type: string): void {
-    return files.download(this, file, content, type);
-  }
-
   /** Opens the sections and elevations (ui/sections-dialog.ts), on one if given; set by the input layer. */
   openSections: (id?: string) => void = () => {};
-
-  /** The project's file name: its name without what a file name cannot hold. */
-  fileBase(): string {
-    return files.fileBase(this);
-  }
-
-  /**
-   * The view by keyboard (view-keys.ts): in plan, zoom about the middle of the free part and move by
-   * pixels; in 3D, zoom toward the target and turn about it (80 px a press is about 10°).
-   */
-  keyView(action: ViewKey): void {
-    return viewing.keyView(this, action);
-  }
-
-  /**
-   * A new, empty project in place of the current one, as one undo step: like opening a file, nothing is
-   * lost (Ctrl+Z gives the previous project back), so it asks nothing.
-   */
-  newProject(): void {
-    return files.newProject(this);
-  }
 
   /** Opens a project file in place of the current project, as one undo step. */
   async openFile(file: File): Promise<void> {
@@ -1451,39 +953,6 @@ export class App {
   }
 
   /**
-   * After the panel has its content: a new selection the panel would hide (sheet or drawer over the
-   * plan) brings the plan into view, and the plan is drawn again where it now is.
-   */
-  afterPanel(): void {
-    return frame.afterPanel(this);
-  }
-
-  /**
-   * Temporary dimensions of the one selected element, while selecting; while dragging only when they
-   * follow the drag: a door or a window slid, or one wall moved (its length and its gaps to the walls
-   * parallel to it, as they become).
-   */
-  currentDims(): TempDim[] {
-    return tempDims.currentDims(this);
-  }
-
-  /**
-   * The value of each temporary dimension, as a button at the middle of its line; the one being
-   * edited is a field. Elements are kept between renders so a field being typed in keeps its focus.
-   */
-  placeDims(dims: readonly TempDim[]): void {
-    return tempDims.placeDims(this, dims);
-  }
-
-  dimButton(d: TempDim): HTMLButtonElement {
-    return tempDims.dimButton(this, d);
-  }
-
-  dimField(d: TempDim): HTMLInputElement {
-    return tempDims.dimField(this, d);
-  }
-
-  /**
    * The handles of the selected walls (handles.ts), in plan and in 3D on the level's floor: while selecting,
    * and while one of them is dragged (then on the walls as they are being dragged). None during a move or a window.
    */
@@ -1498,7 +967,7 @@ export class App {
     const h = handlesFor(
       walls.filter((w) => this.ui.selection.has(w.id) && w.levelId === this.ui.levelId),
       toScreen,
-      this.ui.view === 'plan' ? this.plan.dimValueBoxes(this.currentDims().map((x) => ({ ...x, text: lengthNum(x.value) }))) : [],
+      this.ui.view === 'plan' ? this.plan.dimValueBoxes(currentDims(this).map((x) => ({ ...x, text: lengthNum(x.value) }))) : [],
     );
     // One door selected, standing still: its flip controls, on the side its leaf sweeps (the side
     // `swing` names is the one its temporary dimension keeps off, opening-ui.ts).
@@ -1577,11 +1046,11 @@ export class App {
   }
 
   toggleBrowser(open = !this.ui.browserOpen): void {
-    const before = this.covered().left ?? 0;
+    const before = covered(this).left ?? 0;
     this.ui.browserOpen = open;
     savePrefs({ browserOpen: open });
     this.shell.browser.hidden = !open;
-    const after = this.covered().left ?? 0;
+    const after = covered(this).left ?? 0;
     // The plan moves only when the drawer comes over the drawing, and only as far as it covers it:
     // sliding by half the drawer each time it opened or closed was a jump of the whole drawing.
     const box = boundsOf(this.geometry);
@@ -1638,19 +1107,6 @@ export class App {
     this.refresh();
   }
 
-  /** Every wall of a type on the current level, with the select tool. */
-  /**
-   * Everything on the level shown like what is selected (select-similar.ts), what shows only: a hidden
-   * category or an element hidden for now is not taken.
-   */
-  selectSimilar(): void {
-    return selecting.selectSimilar(this);
-  }
-
-  selectWallsOfType(typeId: string): void {
-    return selecting.selectWallsOfType(this, typeId);
-  }
-
   browserKey = '';
   /** Opens the levels dialog; set by the input layer, which owns the dialogs. */
   openLevels: () => void = () => {};
@@ -1668,9 +1124,6 @@ export class App {
     this.keymap = map;
     savePrefs({ keymap: { ...map } });
     this.render();
-  }
-  objectClick(p: Point2): void {
-    kindTools.objectClick(this, p);
   }
   /** Every action by name (app/actions.ts), set by the input layer: the ribbon and the File menu run them. */
   actionList: () => Action[] = () => [];
@@ -1695,10 +1148,6 @@ export class App {
     this.renderChrome();
   }
 
-  renderBrowserDrawer(): void {
-    return chrome.renderBrowserDrawer(this);
-  }
-
   /**
    * The button toggles what is on screen. On a narrow screen the panel waits hidden while it has
    * nothing to show: the button looked pressed then, and a click only switched a preference that
@@ -1715,17 +1164,8 @@ export class App {
     return chrome.renderChrome(this);
   }
 
-  /** The footer for the measure tool: what to click, or what the tape read. */
-  measureHint(): string {
-    return floatBar.measureHint(this);
-  }
-
   /** The selection's quick actions, above the selection and never over it. */
   /** Opens the command palette; set by the input layer, which owns the dialogs. */
   openCommands: () => void = () => {};
   floatKey = '';
-
-  placeFloatBar(): void {
-    return floatBar.placeFloatBar(this);
-  }
 }

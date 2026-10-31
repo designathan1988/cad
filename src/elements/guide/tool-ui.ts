@@ -98,7 +98,7 @@ export function guideOffset(app: App): number | null {
 }
 
 /** Places the guide being set, as one undo step; the drawing tool goes on as it was. */
-export function placeGuide(app: App, offset = app.guideOffset()): void {
+export function placeGuide(app: App, offset = guideOffset(app)): void {
   const g = app.ui.guide;
   if (!g || offset === null) return;
   app.ui.guide = null;

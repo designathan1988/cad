@@ -20,6 +20,7 @@ import { getLang, type MessageKey, t } from '../i18n/messages';
 import { icon } from '../i18n/icons';
 import { objectSnapshot } from './object-snapshot';
 import { lengthText } from '../i18n/units';
+import { download, fileBase } from '../project/files';
 
 /** A new definition: one box, its width, depth and height, handles on them, one type. */
 export function blankDefinition(n: number): ObjectDefinition {
@@ -203,7 +204,7 @@ export function showObjects(app: App, first?: string): void {
       // The file: every definition with the materials they use (io/library-file.ts).
       menuItem(t('objs.export'), 'export', () => {
         const text = JSON.stringify(libraryOf(app.store.get(), null), null, 2);
-        app.download(`${app.fileBase()}-objetos.json`, new Blob([text], { type: 'application/json' }), 'application/json');
+        download(app, `${fileBase(app)}-objetos.json`, new Blob([text], { type: 'application/json' }), 'application/json')
         dialog.redraw();
       }),
     );

@@ -13,6 +13,17 @@ import { words } from '../elements/object/fields';
 import { tBoth, name, t, type MessageKey } from '../i18n/messages';
 import type { App } from './app';
 import { canTransform } from '../elements/transform';
+import { wallEvent } from '../elements/wall/tool-ui';
+import { startCeiling } from './room-tool';
+import { clearGuidesHere, setGuideTool } from '../elements/guide/tool-ui';
+import { clearSection, elevation, frameSelection, setView, setView3D, toggleBox, toggleExplode } from './view-ui';
+import { clearSelection, copySelection, deleteSelection, hideTemporarily, paste, resetTemporary, selectAllShown, selectAllWalls, selectSimilar, stepSelectionHere } from './selection';
+import { canMergeSelection, mergeSelection, startModify } from './modify';
+import { newProject, saveFile } from '../project/files';
+import { goToView, saveCurrentView } from './views-ui';
+import { pickModel } from '../ui/import-model';
+import { pickReference } from '../ui/reference-tool';
+import { addElevations } from './section-tools';
 
 export interface Action {
   readonly id: string;
@@ -77,14 +88,14 @@ export function appActions(app: App, open: Openers): Action[] {
     // Q in the wall tool, as A is for the arc: the palette showed no key for it.
     make('tool.rectWall', 'pal.rectWall', tools, () => {
       app.setTool('wall');
-      app.wallEvent({ kind: 'rect' });
+      wallEvent(app, { kind: 'rect' });
     }, { keys: 'W, Q' }),
     make('tool.arcWall', 'pal.arcWall', tools, () => {
       app.setTool('wall');
-      app.wallEvent({ kind: 'arc' });
+      wallEvent(app, { kind: 'arc' });
     }, { keys: 'W, A' }),
     make('tool.floor', 'tool.floor', tools, () => app.setTool('floor'), { keys: 'L' }),
-    make('tool.ceiling', 'tool.ceiling', tools, () => app.startCeiling(), { keywords: 'forro ceiling teto gesso rebaixo' }),
+    make('tool.ceiling', 'tool.ceiling', tools, () => startCeiling(app), { keywords: 'forro ceiling teto gesso rebaixo' }),
     make('tool.door', 'tool.door', tools, () => app.setTool('door'), { keys: 'D' }),
     make('tool.window', 'tool.window', tools, () => app.setTool('window'), { keys: 'Shift+W' }),
     make('tool.room', 'tool.room', tools, () => app.setTool('room'), { keys: 'R' }),
@@ -95,9 +106,9 @@ export function appActions(app: App, open: Openers): Action[] {
     make('tool.beam', 'tool.beam', tools, () => app.setTool('beam'), { keys: 'B', keywords: 'viga vigas beam estrutura structure' }),
     make('tool.separator', 'tool.separator', tools, () => app.setTool('separator'), { keywords: 'separador separação cômodo ambiente room separation line' }),
     make('tool.curtain', 'tool.curtain', tools, () => app.setTool('curtain'), { keywords: 'parede-cortina pele de vidro fachada curtain wall glazing facade montante caixilho' }),
-    make('tool.guideLine', 'tool.guideLine', tools, () => app.setGuideTool('line'), { keywords: 'guia guide linha line dois pontos two points ângulo angle referência reference' }),
-    make('tool.guidePoint', 'tool.guidePoint', tools, () => app.setGuideTool('point'), { keywords: 'guia guide ponto point referência reference' }),
-    make('tool.guideCircle', 'tool.guideCircle', tools, () => app.setGuideTool('circle'), { keywords: 'guia guide círculo circle raio radius referência reference' }),
+    make('tool.guideLine', 'tool.guideLine', tools, () => setGuideTool(app, 'line'), { keywords: 'guia guide linha line dois pontos two points ângulo angle referência reference' }),
+    make('tool.guidePoint', 'tool.guidePoint', tools, () => setGuideTool(app, 'point'), { keywords: 'guia guide ponto point referência reference' }),
+    make('tool.guideCircle', 'tool.guideCircle', tools, () => setGuideTool(app, 'circle'), { keywords: 'guia guide círculo circle raio radius referência reference' }),
     make('tool.column', 'tool.column', tools, () => app.setTool('column'), { keys: 'P', keywords: 'pilar pilares coluna column estrutura structure' }),
     make('tool.grid', 'tool.grid', tools, () => app.setTool('grid'), { keys: 'Shift+G', keywords: 'eixo eixos grade grid axis axes estrutura' }),
     make('tool.dimension', 'tool.dimension', tools, () => app.setTool('dimension'), { keys: 'Shift+D', keywords: 'cota dimension medida permanente' }),
@@ -111,18 +122,18 @@ export function appActions(app: App, open: Openers): Action[] {
       enabled: true,
       run: () => app.placeObject(d.id),
     })),
-    make('view.3d', 'view.3d', views, () => app.setView('3d'), { keys: '1', enabled: ui.view !== '3d' }),
-    make('view.plan', 'view.plan', views, () => app.setView('plan'), { keys: '2', enabled: ui.view !== 'plan' }),
-    make('view.frameSelection', 'pal.frameSelection', views, () => app.frameSelection(), { keys: 'F', enabled: has }),
+    make('view.3d', 'view.3d', views, () => setView(app, '3d'), { keys: '1', enabled: ui.view !== '3d' }),
+    make('view.plan', 'view.plan', views, () => setView(app, 'plan'), { keys: '2', enabled: ui.view !== 'plan' }),
+    make('view.frameSelection', 'pal.frameSelection', views, () => frameSelection(app), { keys: 'F', enabled: has }),
     make('view.frameAll', 'pal.frameAll', views, () => app.frameAll(), { keys: 'Home' }),
-    make('view.levelsAll', 'pal.levelsAll', views, () => app.setView3D({ levels: 'all' }), { enabled: ui.view3d.levels !== 'all' }),
-    make('view.levelsBelow', 'pal.levelsBelow', views, () => app.setView3D({ levels: 'below' }), { enabled: ui.view3d.levels !== 'below' }),
-    make('view.levelsCurrent', 'pal.levelsCurrent', views, () => app.setView3D({ levels: 'current' }), { enabled: ui.view3d.levels !== 'current' }),
-    make('view.explode', 'pal.explode', views, () => app.toggleExplode()),
-    make('view.cut', 'pal.cut', views, () => app.setView3D({ cut: !ui.view3d.cut })),
-    make('view.xray', 'pal.xray', views, () => app.setView3D({ xray: !ui.view3d.xray })),
-    make('view.box', 'pal.box', views, () => app.toggleBox()),
-    make('view.ortho', 'pal.ortho', views, () => app.setView3D({ ortho: !ui.view3d.ortho })),
+    make('view.levelsAll', 'pal.levelsAll', views, () => setView3D(app, { levels: 'all' }), { enabled: ui.view3d.levels !== 'all' }),
+    make('view.levelsBelow', 'pal.levelsBelow', views, () => setView3D(app, { levels: 'below' }), { enabled: ui.view3d.levels !== 'below' }),
+    make('view.levelsCurrent', 'pal.levelsCurrent', views, () => setView3D(app, { levels: 'current' }), { enabled: ui.view3d.levels !== 'current' }),
+    make('view.explode', 'pal.explode', views, () => toggleExplode(app)),
+    make('view.cut', 'pal.cut', views, () => setView3D(app, { cut: !ui.view3d.cut })),
+    make('view.xray', 'pal.xray', views, () => setView3D(app, { xray: !ui.view3d.xray })),
+    make('view.box', 'pal.box', views, () => toggleBox(app)),
+    make('view.ortho', 'pal.ortho', views, () => setView3D(app, { ortho: !ui.view3d.ortho })),
     // The selected rooms as a zone, named and tinted by its category; selected, to name it in the panel.
     make(
       'zone.make',
@@ -142,36 +153,36 @@ export function appActions(app: App, open: Openers): Action[] {
     ),
     make('view.section', 'pal.section', views, () => app.sectionAtGuide(), { enabled: doc.guides.some((g) => ui.selection.has(g.id) && !g.shape) }),
     make('view.sectionFlip', 'pal.sectionFlip', views, () => app.sectionAtGuide(true), { enabled: doc.guides.some((g) => ui.selection.has(g.id) && !g.shape) }),
-    make('view.sectionOff', 'pal.sectionOff', views, () => app.clearSection(), { enabled: ui.view3d.section !== null }),
-    ...(['north', 'south', 'east', 'west'] as const).map((side) => make(`view.elevation.${side}`, `pal.elevation.${side}`, views, () => app.elevation(side))),
+    make('view.sectionOff', 'pal.sectionOff', views, () => clearSection(app), { enabled: ui.view3d.section !== null }),
+    ...(['north', 'south', 'east', 'west'] as const).map((side) => make(`view.elevation.${side}`, `pal.elevation.${side}`, views, () => elevation(app, side))),
     make('edit.undo', 'pal.undo', edit, () => app.undo(), { keys: 'Ctrl+Z', enabled: store.canUndo() }),
     make('edit.redo', 'pal.redo', edit, () => app.redo(), { keys: 'Ctrl+Shift+Z', enabled: store.canRedo() }),
-    make('edit.delete', 'pal.delete', edit, () => app.deleteSelection(), { keys: 'Del', enabled: has }),
-    make('edit.selectAll', 'pal.selectAll', edit, () => app.selectAll(), { keys: 'Ctrl+A' }),
-    make('edit.selectAllWalls', 'pal.selectAllWalls', edit, () => app.selectAllWalls(), { keywords: 'paredes walls todas all' }),
-    make('edit.selectSimilar', 'ctx.selectSimilar', edit, () => app.selectSimilar(), { enabled: has, keywords: 'select all instances semelhantes mesmo tipo same type' }),
-    make('edit.clearSelection', 'pal.clearSelection', edit, () => app.clearSelection(), { keys: 'Esc', enabled: has }),
+    make('edit.delete', 'pal.delete', edit, () => deleteSelection(app), { keys: 'Del', enabled: has }),
+    make('edit.selectAll', 'pal.selectAll', edit, () => selectAllShown(app), { keys: 'Ctrl+A' }),
+    make('edit.selectAllWalls', 'pal.selectAllWalls', edit, () => selectAllWalls(app), { keywords: 'paredes walls todas all' }),
+    make('edit.selectSimilar', 'ctx.selectSimilar', edit, () => selectSimilar(app), { enabled: has, keywords: 'select all instances semelhantes mesmo tipo same type' }),
+    make('edit.clearSelection', 'pal.clearSelection', edit, () => clearSelection(app), { keys: 'Esc', enabled: has }),
     ...(['move', 'copy', 'rotate', 'scale', 'mirror', 'offset'] as const).map((k) =>
-      make(`edit.${k}`, `pal.${k}`, edit, () => app.startModify(k), {
+      make(`edit.${k}`, `pal.${k}`, edit, () => startModify(app, k), {
         keys: { move: 'Shift+M', copy: 'Shift+C', rotate: 'Shift+R', scale: 'Shift+E', mirror: 'Shift+X', offset: 'Shift+O' }[k],
         enabled: canTransform(doc, [...ui.selection]),
       }),
     ),
-    make('edit.copyClip', 'pal.copyClip', edit, () => app.copySelection(), { keys: 'Ctrl+C', enabled: canTransform(doc, [...ui.selection]) }),
-    make('edit.paste', 'pal.paste', edit, () => app.paste(), { keys: 'Ctrl+V' }),
+    make('edit.copyClip', 'pal.copyClip', edit, () => copySelection(app), { keys: 'Ctrl+C', enabled: canTransform(doc, [...ui.selection]) }),
+    make('edit.paste', 'pal.paste', edit, () => paste(app), { keys: 'Ctrl+V' }),
     make('edit.split', 'pal.split', edit, () => app.setTool('split'), { keys: 'Shift+S' }),
     make('edit.corner', 'pal.corner', edit, () => app.setTool('corner'), { keys: 'Shift+T' }),
-    make('edit.merge', 'pal.merge', edit, () => app.mergeSelection(), { keys: 'Shift+J', enabled: app.canMergeSelection() }),
-    make('edit.clearGuides', 'pal.clearGuides', edit, () => app.clearGuides(), { enabled: doc.guides.some((g) => g.levelId === ui.levelId) }),
-    make('view.tempHide', 'pal.tempHide', views, () => app.hideTemporarily('hide'), { keys: 'Shift+H', enabled: has }),
-    make('view.tempIsolate', 'pal.tempIsolate', views, () => app.hideTemporarily('isolate'), { keys: 'Shift+I', enabled: has }),
-    make('view.tempReset', 'pal.tempReset', views, () => app.resetTemporary(), { enabled: ui.temp !== null }),
-    make('edit.next', 'pal.stepSelection', edit, () => app.stepSelection(1), { keys: 'N' }),
-    make('edit.previous', 'pal.stepBack', edit, () => app.stepSelection(-1), { keys: 'Shift+N' }),
+    make('edit.merge', 'pal.merge', edit, () => mergeSelection(app), { keys: 'Shift+J', enabled: canMergeSelection(app) }),
+    make('edit.clearGuides', 'pal.clearGuides', edit, () => clearGuidesHere(app), { enabled: doc.guides.some((g) => g.levelId === ui.levelId) }),
+    make('view.tempHide', 'pal.tempHide', views, () => hideTemporarily(app, 'hide'), { keys: 'Shift+H', enabled: has }),
+    make('view.tempIsolate', 'pal.tempIsolate', views, () => hideTemporarily(app, 'isolate'), { keys: 'Shift+I', enabled: has }),
+    make('view.tempReset', 'pal.tempReset', views, () => resetTemporary(app), { enabled: ui.temp !== null }),
+    make('edit.next', 'pal.stepSelection', edit, () => stepSelectionHere(app, 1), { keys: 'N' }),
+    make('edit.previous', 'pal.stepBack', edit, () => stepSelectionHere(app, -1), { keys: 'Shift+N' }),
     make('file.projects', 'pal.projects', file, open.projects, { keywords: 'projetos projects lista list abrir open biblioteca library' }),
-    make('file.new', 'pal.new', file, () => app.newProject()),
+    make('file.new', 'pal.new', file, () => newProject(app)),
     make('file.open', 'pal.open', file, open.openFile, { keys: 'Ctrl+O' }),
-    make('file.save', 'pal.save', file, () => app.saveFile(), { keys: 'Ctrl+S' }),
+    make('file.save', 'pal.save', file, () => saveFile(app), { keys: 'Ctrl+S' }),
     make('settings.snaps', 'pal.snaps', settings, () => app.toggleSnaps(), { keys: 'S' }),
     make('settings.collisions', 'pal.collisions', settings, () => app.toggleCollisions(), { keys: 'K', keywords: 'colisão collision atravessar through física physics' }),
     make('settings.theme', 'pal.theme', settings, () => app.toggleTheme()),
@@ -194,17 +205,17 @@ export function appActions(app: App, open: Openers): Action[] {
         enabled: l.id !== ui.levelId,
         run: () => app.setLevel(l.id),
       })),
-    make('view.save', 'views.save', views, () => app.saveCurrentView()),
+    make('view.save', 'views.save', views, () => saveCurrentView(app)),
     make('view.sections', 'section.dialogOpen', views, () => app.openSections(), { keywords: 'corte cortes section sections elevação elevações elevation fachada facade' }),
     make('tool.section', 'tool.section', tools, () => app.setTool('section'), { keywords: 'corte section linha de corte cut line' }),
-    make('model.import', 'model.import', file, () => app.pickModel(), { keywords: 'glTF GLB OBJ modelo model 3D importar import objeto object biblioteca library' }),
-    make('ref.import', 'ref.import', file, () => app.pickReference(), { keywords: 'referência reference imagem image foto PDF DXF calibrar calibrate fundo underlay planta escaneada scan' }),
+    make('model.import', 'model.import', file, () => pickModel(app), { keywords: 'glTF GLB OBJ modelo model 3D importar import objeto object biblioteca library' }),
+    make('ref.import', 'ref.import', file, () => pickReference(app), { keywords: 'referência reference imagem image foto PDF DXF calibrar calibrate fundo underlay planta escaneada scan' }),
     make('tool.callout', 'tool.callout', tools, () => app.setTool('callout'), { keywords: 'chamada callout seta leader texto com seta nota anotação' }),
     make('mark.angle', 'mark.angle', tools, () => app.setMarkMode('angle'), { keywords: 'cota angular ângulo angle angular dimension graus' }),
     make('mark.radius', 'mark.radius', tools, () => app.setMarkMode('radius'), { keywords: 'cota de raio diâmetro arco radius diameter arc length parede curva' }),
     make('mark.coord', 'mark.coord', tools, () => app.setMarkMode('coord'), { keywords: 'cota por coordenada coordenadas coordinate ponto x y' }),
     make('dim.auto', 'dim.auto', tools, () => app.autoDimension(), { keywords: 'cotagem automática auto dimension cotar paredes cotas fachada exterior' }),
-    make('section.elevations', 'section.makeElevations', views, () => app.addElevations(), { keywords: 'elevação elevações elevation fachadas facades norte sul leste oeste' }),
+    make('section.elevations', 'section.makeElevations', views, () => addElevations(app), { keywords: 'elevação elevações elevation fachadas facades norte sul leste oeste' }),
     // Tools: the text or the level mark goes where the next click is (it went in the middle of the view).
     make('edit.addNote', 'ctx.addNote', edit, () => app.setTool('note'), { keywords: 'texto text nota note anotação annotation' }),
     make('edit.addLevelMark', 'ctx.addLevelMark', edit, () => app.setTool('levelMark'), { keywords: 'cota de nível level mark elevation altura spot' }),
@@ -214,7 +225,7 @@ export function appActions(app: App, open: Openers): Action[] {
       group: t(views),
       keywords: `${tBoth('pal.goView', { name: v.name })} ${name(v.name)}`,
       enabled: true,
-      run: () => app.goToView(v.id),
+      run: () => goToView(app, v.id),
     })),
     make('level.edit', 'levels.edit', levels, open.levels),
     // The Library: the catalogs as tabs of one window (ui/library-tabs.ts), opened on the wall types.
