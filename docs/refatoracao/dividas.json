@@ -3,22 +3,16 @@
  "mutableLets": 0,
  "oversize": [
   "src/elements/object/library-before66.ts",
-  "src/elements/wall/geometry/footprint.ts",
   "src/render/plan-view.ts",
   "src/render/scene-3d.ts",
-  "src/session/app.ts",
-  "src/ui/definition-editor.ts"
+  "src/session/app.ts"
  ],
  "duplications": 3,
  "detail": {
   "direction": [],
   "mutableLets": [],
   "oversize": [
-   "src/ui/ribbon-tabs.ts",
-   "src/elements/object/evaluate.ts",
    "src/elements/object/library-before66.ts",
-   "src/elements/opening/fields.ts",
-   "src/elements/section/drawing.ts",
    "src/elements/wall/geometry/footprint.ts",
    "src/render/plan-view.ts",
    "src/render/scene-3d.ts",

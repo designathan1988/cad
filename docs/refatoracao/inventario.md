@@ -67,6 +67,8 @@ aqui fica a decisão por arquivo.
 | src/elements/wall/geometry/arc.ts | mover | wall/geometry/arc.ts |  |
 | src/elements/wall/geometry/shape.ts | mover | wall/geometry/shape.ts | shapeOf memoizado por derivação |
 | src/elements/wall/geometry/footprint.ts | dividir | wall/geometry/footprint.ts + spans.ts | ~18 linhas verbatim de spreadOverArc/spillOverArc fundem; região/corta helpers únicos |
+| (novo no passo 6) src/elements/wall/geometry/arc-joints.ts | manter | elements/wall/geometry/arc-joints.ts | parede reta contra cadeia de arcos (antes em footprint.ts) |
+| (novo no passo 6) src/elements/wall/geometry/pieces.ts | manter | elements/wall/geometry/pieces.ts | peças entre entalhes e avisos únicos (antes em footprint.ts) |
 | src/elements/wall/geometry/faces.ts | mover | wall/geometry/faces.ts | tolerâncias locais → model/tolerance |
 | src/elements/wall/geometry/edges.ts | mover | wall/geometry/edges.ts | idem; outline vs faces.subtract: uma implementação |
 | src/elements/wall/geometry/seams.ts | mover | wall/geometry/seams.ts | passa a usar rtree (hoje O(pieces²)) |
@@ -352,6 +354,9 @@ aqui fica a decisão por arquivo.
 | src/ui/drawing-dialog.ts | mover | ui/dialogs/drawing.ts |  |
 | src/ui/overrides-dialog.ts | mover | ui/dialogs/overrides.ts | 2 blocos de linha de override → helper |
 | src/ui/definition-editor.ts | dividir | library/editor/*.ts | 622 l; Preview usa meshSnapshot (fórmula de câmera duplicada) |
+| (novo no passo 6) src/ui/definition-preview.ts | manter | ui/definition-preview.ts | a prévia 3D do editor de objetos (antes classe interna) |
+| (novo no passo 6) src/ui/definition-kit.ts | manter | ui/definition-kit.ts | peças de formulário do editor (antes no fechamento) |
+| (novo no passo 6) src/ui/definition-tabs.ts | manter | ui/definition-tabs.ts | as abas do editor de objetos (antes no fechamento) |
 | src/ui/object-snapshot.ts | mover | library/snapshot.ts | palco WebGL compartilhado |
 | src/ui/dialog.ts | mover | ui/dialog.ts | o andaime |
 | (movido no passo 4) src/i18n/icons.ts | manter | i18n/icons.ts | nomes de ícone usados pelo contrato dos elementos |
