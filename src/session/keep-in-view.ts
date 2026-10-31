@@ -2,7 +2,7 @@
 // included, inside the part of the view no panel, sheet or drawer covers, with room above it for the
 // floating bar. The smallest move that does it; a box larger than that part keeps its top left in view.
 
-import type { Insets } from '../render/plan-view';
+import type { Insets } from '../render/plan-types';
 
 export interface ScreenBox {
   readonly left: number;

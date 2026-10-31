@@ -2,7 +2,7 @@
 
 import * as THREE from 'three';
 import { type Point2 } from '../model/vector';
-import { type Insets } from '../render/plan-view';
+import { type Insets } from '../render/plan-types';
 import { t } from '../i18n/messages';
 import { type ViewId } from '../ui/shell';
 import { hasSolid } from '../elements/registry';

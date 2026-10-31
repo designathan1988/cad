@@ -2,7 +2,7 @@
 // measured 2.95:1 for one drawn between two pixels, where the colours give 3.1).
 
 import { describe, expect, it } from 'vitest';
-import { byLayers, crisp } from '../../src/render/plan-view';
+import { byLayers, crisp } from '../../src/render/plan-walls';
 
 describe('crisp', () => {
   it('a vertical line between pixels moves onto the centre of one', () => {

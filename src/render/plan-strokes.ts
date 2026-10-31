@@ -1,4 +1,5 @@
-import type { PlanOverlay, PlanView } from './plan-view';
+import type { PlanView } from './plan-view';
+import type { PlanOverlay } from './plan-types';
 import { warnSign } from './plan-text';
 import type { Point2 } from '../model/vector';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';

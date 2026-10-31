@@ -13,7 +13,7 @@ import { DIMENSION_IDLE, type DimensionToolEvent, dimensionTransition } from '..
 import { DIM_PREFIX, type Dimension } from '../elements/dimension/schema';
 import { anchorAt, offsetThrough, placeDimension } from '../elements/dimension/anchor';
 import { addDimension } from '../elements/dimension/commands';
-import type { PlanOverlay } from '../render/plan-view';
+import type { PlanOverlay } from '../render/plan-types';
 import { lengthNum } from '../i18n/units';
 import { arcWallAt } from '../elements/measure/place';
 import { addMeasure } from '../elements/measure/commands';

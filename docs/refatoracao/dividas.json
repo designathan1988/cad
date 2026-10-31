@@ -2,7 +2,6 @@
  "direction": 0,
  "mutableLets": 0,
  "oversize": [
-  "src/render/plan-view.ts",
   "src/render/scene-3d.ts",
   "src/session/app.ts"
  ],
@@ -11,7 +10,6 @@
   "direction": [],
   "mutableLets": [],
   "oversize": [
-   "src/elements/object/library-before66.ts",
    "src/render/plan-view.ts",
    "src/render/scene-3d.ts",
    "src/session/app.ts"

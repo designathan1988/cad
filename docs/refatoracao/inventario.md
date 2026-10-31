@@ -283,6 +283,9 @@ aqui fica a decisão por arquivo.
 | Arquivo | Ação | Destino | Nota |
 | --- | --- | --- | --- |
 | src/render/plan-view.ts | dividir | canvas/plan/view.ts + fill.ts + tags.ts + marks.ts | draw() 397 l; fill O(n²) de cópia; getComputedStyle por quadro |
+| (novo no passo 6) src/render/plan-walls.ts | manter | render/plan-walls.ts | como a planta pinta paredes (contorno, peças, camadas, fases, juntas), antes em PlanView.draw |
+| (novo no passo 6) src/render/plan-types.ts | manter | render/plan-types.ts | o contrato da planta (PlanOverlay, DimMark, Insets, fitPlan), antes em plan-view.ts |
+| (novo no passo 6) src/render/plan-annotations.ts | manter | render/plan-annotations.ts | a última camada da planta: textos, etiquetas, cotas, avisos, encaixe, antes em PlanView.draw |
 | (novo no passo 6) src/render/plan-text.ts | manter | render/plan-text.ts | textos e marcas da planta (fontes, etiquetas, medida, encaixe, cotas, aviso, tracejado), antes métodos de PlanView |
 | (novo no passo 6) src/render/plan-strokes.ts | manter | render/plan-strokes.ts | traços da planta (grade, linhas de referência, guias, alças, aberturas), antes métodos de PlanView |
 | src/render/scene-3d.ts | dividir | canvas/scene/*.ts (sync, photo, style, pick, materials, box) | 1603 l; keys por JSON.stringify; hidden-style aloca por quadro |

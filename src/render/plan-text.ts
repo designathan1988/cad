@@ -1,4 +1,5 @@
-import type { Box, DimMark, PlanOverlay, PlanView } from './plan-view';
+import type { Box, PlanView } from './plan-view';
+import type { DimMark, PlanOverlay } from './plan-types';
 import { PEN_UNIT_MM, scaleFactor, TEXT_MM } from '../elements/drawing/schema';
 import type { Point2 } from '../model/vector';
 
