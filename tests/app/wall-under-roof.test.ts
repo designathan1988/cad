@@ -9,7 +9,7 @@ import { edgesFor, type Roof } from '../../src/elements/roof/schema';
 import { planeAt } from '../../src/elements/wall/geometry/under-roof';
 import { deleteLevel } from '../../src/elements/level/commands';
 import { readProject, writeProject } from '../../src/project/file';
-import { wid } from '../ids';
+import { lid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 // A 10 × 6 m outline, gable roof at 30 %: its two slopes rise from the long sides (y = 0 and y = 6),
@@ -20,14 +20,14 @@ const outline = [
   { x: 10, y: 6 },
   { x: 0, y: 6 },
 ];
-const roof: Roof = { id: 'roof_r', levelId: 'lvl_ground', outline, edges: edgesFor('gable', outline, 30, 0), kind: 'gable', thickness: 0.12, baseOffset: 0 };
+const roof: Roof = { id: 'roof_r', levelId: lid('lvl_ground'), outline, edges: edgesFor('gable', outline, 30, 0), kind: 'gable', thickness: 0.12, baseOffset: 0 };
 const wall = (id: WallId, a: [number, number], b: [number, number], top?: DocWall['top']): DocWall => ({
   id,
   wallTypeId: 'wt_masonry15',
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   ...(top ? { top } : {}),
 });
 const docOf = (walls: DocWall[], roofs: Roof[] = [roof]): Doc => ({ ...newDocument(), walls, roofs });
@@ -68,8 +68,8 @@ describe('a wall under the roof', () => {
 
 describe('a wall up to a level', () => {
   const base = newDocument();
-  const levels = [...base.levels, { id: 'lvl_up', name: 'Upper', elevation: 3, height: 2.8 }];
-  const up = wall(wid('wall_u'), [0, 0], [4, 0], { kind: 'toLevel', levelId: 'lvl_up', offset: 0.5 });
+  const levels = [...base.levels, { id: lid('lvl_up'), name: 'Upper', elevation: 3, height: 2.8 }];
+  const up = wall(wid('wall_u'), [0, 0], [4, 0], { kind: 'toLevel', levelId: lid('lvl_up'), offset: 0.5 });
   const doc: Doc = { ...base, levels, walls: [up] };
 
   it("reaches that level's floor plus its offset", () => {
@@ -77,7 +77,7 @@ describe('a wall up to a level', () => {
   });
 
   it('keeps its height, fixed, when that level is deleted', () => {
-    const after = deleteLevel('lvl_up').apply(doc);
+    const after = deleteLevel(lid('lvl_up')).apply(doc);
     expect(after.levels.map((l) => l.id)).toEqual(['lvl_ground']);
     expect(after.walls[0]!.top).toEqual({ kind: 'fixed', height: 3.5 });
   });

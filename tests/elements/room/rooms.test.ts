@@ -7,7 +7,7 @@ import { deriveGeometry } from '../../../src/project/derive';
 import { vec } from '../../../src/model/vector';
 import { deleteElements } from '../../../src/elements/opening/commands';
 import { moveWalls } from '../../../src/elements/wall/edit';
-import { fid, rid, wid } from '../../ids';
+import { fid, lid, rid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], type = 'wt_concrete20'): DocWall => ({
@@ -16,14 +16,14 @@ const wall = (id: WallId, a: [number, number], b: [number, number], type = 'wt_c
   start: vec(a[0], a[1]),
   end: vec(b[0], b[1]),
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level', offset: 0 },
 });
 
 // 8 × 6 on the axis, 20 cm concrete: the inside is x ∈ [0.1, 7.9], y ∈ [0.1, 5.9].
 const ring = [wall(wid('w0'), [0, 0], [8, 0]), wall(wid('w1'), [8, 0], [8, 6]), wall(wid('w2'), [8, 6], [0, 6]), wall(wid('w3'), [0, 6], [0, 0])];
-const room = (id: string, x: number, y: number) => ({ id: rid(id), levelId: 'lvl_ground', seed: vec(x, y), name: id, number: '1' });
+const room = (id: string, x: number, y: number) => ({ id: rid(id), levelId: lid('lvl_ground'), seed: vec(x, y), name: id, number: '1' });
 const doc = (extra: Partial<Doc> = {}): Doc => ({ ...newDocument(), walls: ring, ...extra });
 
 describe('rooms', () => {
@@ -81,8 +81,8 @@ describe('floors', () => {
       doc({
         rooms: [room('r', 4, 3)],
         floors: [
-          { id: fid('f1'), levelId: 'lvl_ground', source: { kind: 'room', roomId: rid('r') }, thickness: 0.15, offset: 0 },
-          { id: fid('f2'), levelId: 'lvl_ground', source: { kind: 'outline', points: [vec(10, 0), vec(13, 0), vec(13, 2), vec(10, 2)] }, thickness: 0.1, offset: 0 },
+          { id: fid('f1'), levelId: lid('lvl_ground'), source: { kind: 'room', roomId: rid('r') }, thickness: 0.15, offset: 0 },
+          { id: fid('f2'), levelId: lid('lvl_ground'), source: { kind: 'outline', points: [vec(10, 0), vec(13, 0), vec(13, 2), vec(10, 2)] }, thickness: 0.1, offset: 0 },
         ],
       }),
     );
@@ -95,7 +95,7 @@ describe('floors', () => {
   it('deleting a room keeps its floor where it was, as an outline', () => {
     const d = doc({
       rooms: [room('r', 4, 3)],
-      floors: [{ id: fid('f1'), levelId: 'lvl_ground', source: { kind: 'room', roomId: rid('r') }, thickness: 0.15, offset: 0 }],
+      floors: [{ id: fid('f1'), levelId: lid('lvl_ground'), source: { kind: 'room', roomId: rid('r') }, thickness: 0.15, offset: 0 }],
     });
     const after = deleteElements(['r']).apply(d);
     expect(after.rooms).toEqual([]);

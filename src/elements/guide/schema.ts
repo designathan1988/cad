@@ -6,12 +6,13 @@
 // its centre and where it crosses the lines.
 
 import type { Point2 } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
 
 export const GUIDE_PREFIX = 'guide';
 
 export interface Guide {
   readonly id: string;
-  readonly levelId: string;
+  readonly levelId: LevelId;
   /** A point of the line and its unit direction: the line has no ends. A point guide's or a circle's centre. */
   readonly point: Point2;
   readonly dir: Point2;

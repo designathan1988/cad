@@ -4,7 +4,7 @@ import { CURRENT_VERSION, readProject, writeProject } from '../../src/project/fi
 import { isLevel } from '../../src/project/file-guards';
 import { BEFORE_65 } from '../../src/elements/object/library-before65';
 import { BEFORE_66 } from '../../src/elements/object/library-before66';
-import { gid, oid, wid } from '../ids';
+import { gid, lid, oid, wid } from '../ids';
 
 const wall = (id: string, x: number) => ({
   id,
@@ -12,7 +12,7 @@ const wall = (id: string, x: number) => ({
   start: { x, y: 0 },
   end: { x: x + 1, y: 0 },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
 });
 
 describe('project files', () => {
@@ -78,7 +78,7 @@ describe('project files', () => {
   });
 
   it('a wall on a level that does not exist moves to the first level, and says so', () => {
-    const doc = { ...newDocument(), walls: [{ ...wall('wall_a', 0), levelId: 'nowhere' }] };
+    const doc = { ...newDocument(), walls: [{ ...wall('wall_a', 0), levelId: lid('nowhere') }] };
     const r = readProject(JSON.stringify(doc));
     expect(r.ok && r.doc.walls[0]!.levelId).toBe('lvl_ground');
     expect(r.ok && r.fixes).toEqual([{ kind: 'movedToFirstLevel', count: 1 }]);
@@ -99,7 +99,7 @@ describe('version 3', () => {
     const doc = {
       ...newDocument(),
       wallTypes: [...newDocument().wallTypes, { id: 'wt_p', name: 'Parapet', layers: [{ thickness: 0.15, function: 'structure', materialId: 'brick' }], top: { kind: 'fixed', height: 1.1 } }],
-      walls: [{ id: wid('wall_p'), wallTypeId: 'wt_p', start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground' }],
+      walls: [{ id: wid('wall_p'), wallTypeId: 'wt_p', start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, referenceLine: 'centerline', levelId: lid('lvl_ground') }],
     };
     const r = readProject(writeProject(doc as never));
     expect(r.ok && r.doc).toEqual({ ...doc, version: CURRENT_VERSION });
@@ -158,7 +158,7 @@ describe('walls from before version 3', () => {
 
 
 describe('version 5', () => {
-  const guide = { id: 'guide_1', levelId: 'lvl_ground', point: { x: 0, y: 1.2 }, dir: { x: 1, y: 0 } };
+  const guide = { id: 'guide_1', levelId: lid('lvl_ground'), point: { x: 0, y: 1.2 }, dir: { x: 1, y: 0 } };
   it('guides read back as they are; an older file has none', () => {
     expect(CURRENT_VERSION).toBeGreaterThanOrEqual(5);
     const back = readProject(writeProject({ ...newDocument(), guides: [guide] }));
@@ -169,7 +169,7 @@ describe('version 5', () => {
 
   it('a malformed guide, or one on a level that is gone, is dropped and reported', () => {
     const bad = [{ ...guide, id: 'guide_2', dir: { x: 2, y: 0 } }, { ...guide, id: 'guide_3', point: { x: 'a', y: 0 } }];
-    const r = readProject(JSON.stringify({ ...newDocument(), guides: [guide, ...bad, { ...guide, id: 'guide_4', levelId: 'gone' }] }));
+    const r = readProject(JSON.stringify({ ...newDocument(), guides: [guide, ...bad, { ...guide, id: 'guide_4', levelId: lid('gone') }] }));
     expect(r.ok && r.doc.guides.map((g) => g.id)).toEqual(['guide_1']);
     expect(r.ok && r.fixes).toEqual([
       { kind: 'droppedGuides', count: 2 },
@@ -272,7 +272,7 @@ describe('version 5', () => {
 describe('the areas taken out of the app (version 67)', () => {
   // Services, rules, sheets and the rest as an older file has them: carried as read, written back the same.
   const areas = {
-    mepPoints: [{ id: 'mpt_1', levelId: 'lvl_ground', at: { x: 1, y: 0 }, height: 0.3, kind: 'socket', systemId: 'sys_power' }],
+    mepPoints: [{ id: 'mpt_1', levelId: lid('lvl_ground'), at: { x: 1, y: 0 }, height: 0.3, kind: 'socket', systemId: 'sys_power' }],
     rules: [{ id: 'r1', subject: 'stairRiser', max: 0.18, on: true }],
     sheets: [{ id: 'sheet_1', number: 'A-01', name: 'Planta', paper: 'A3', landscape: true, viewports: [] }],
     site: { latitude: -23.55, longitude: -46.63, north: 0, date: '2026-06-21', time: '10:00', utcOffset: -3, shadows: true },

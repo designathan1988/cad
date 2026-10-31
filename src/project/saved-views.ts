@@ -9,6 +9,7 @@ import type { Command } from '../core/store';
 import type { Point2 } from '../model/vector';
 import type { Doc } from '../project/doc';
 import type { View3D } from './view-prefs';
+import type { LevelId } from './doc';
 
 /** What a view shows besides its camera (a view template): the categories hidden, the overrides on. */
 interface Shows {
@@ -22,7 +23,7 @@ export type SavedView = Shows &
       readonly id: string;
       readonly name: string;
       readonly kind: '3d';
-      readonly levelId: string;
+      readonly levelId: LevelId;
       /** What the tour said at this stop (the tour is out of the app for now: kept as read). */
       readonly caption?: string;
       /** Camera position and the point it looks at, in three.js coordinates (y up). */
@@ -34,7 +35,7 @@ export type SavedView = Shows &
       readonly id: string;
       readonly name: string;
       readonly kind: 'plan';
-      readonly levelId: string;
+      readonly levelId: LevelId;
       readonly caption?: string;
       /** Pixels per metre, and the plan point in the middle. */
       readonly scale: number;

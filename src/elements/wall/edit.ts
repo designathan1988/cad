@@ -10,6 +10,7 @@ import type { ReferenceLine, WallEnd, WallId } from './schema';
 import { exteriorOffset } from './geometry/shape';
 import { arcOf } from './geometry/arc';
 import { wallThickness } from '../../project/doc';
+import type { LevelId } from '../../project/doc';
 
 type Ends = { start: Point2; end: Point2 };
 
@@ -264,7 +265,7 @@ export function changeWallType(doc: Doc, ids: readonly WallId[], typeId: string,
  * each face, at a quarter, the middle and three quarters of its length. A room on one side: that
  * face; on both (a partition): its middle; on neither: null, its reference line.
  */
-export function roomFace(doc: Doc, w: DocWall, inRoom: (levelId: string, p: Point2) => boolean): KeptFace {
+export function roomFace(doc: Doc, w: DocWall, inRoom: (levelId: LevelId, p: Point2) => boolean): KeptFace {
   const t = wallThickness(doc, w);
   const e = exteriorOffset(w.referenceLine, t);
   const arc = arcOf({ start: w.start, end: w.end, bulge: w.bulge ?? 0 });

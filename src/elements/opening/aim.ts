@@ -15,6 +15,7 @@ import type { DerivedGeometry } from '../../project/derive';
 import { wallStops, wallStopsOf } from '../wall/stops';
 import type { WallId } from '../wall/schema';
 import type { OpeningId } from './schema';
+import type { LevelId } from '../../project/doc';
 
 /** Id of the opening being placed, in the derived geometry only. */
 export const OPENING_PREVIEW_ID = '__opening_preview__' as OpeningId;
@@ -26,7 +27,7 @@ const REACH_PX = 6;
  * The wall of the level under p: within its faces (plus a few pixels) and between its ends. Measured
  * on the wall's own shape, not on its cut pieces, so the preview's own hole never hides the wall.
  */
-export function aimAt(doc: Doc, g: DerivedGeometry, levelId: string, p: Point2, mpp: number, previewId: string): Aim | null {
+export function aimAt(doc: Doc, g: DerivedGeometry, levelId: LevelId, p: Point2, mpp: number, previewId: string): Aim | null {
   const types = new Map(doc.wallTypes.map((x) => [x.id, x]));
   let best: { aim: Aim; miss: number } | null = null;
   for (const wall of doc.walls) {

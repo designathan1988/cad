@@ -6,7 +6,7 @@ import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import { tempDims } from '../../src/session/temp-dims';
 import { newOpening } from '../../src/elements/opening/schema';
-import { oid, wid } from '../ids';
+import { lid, oid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
@@ -15,7 +15,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => 
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level', offset: 0 },
 });

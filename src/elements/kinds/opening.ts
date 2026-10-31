@@ -13,9 +13,10 @@ import { type Opening, OPENING_PREFIX } from '../opening/schema';
 import { symbolLines } from '../opening/symbol';
 import { insideRing } from '../room/derive';
 import { nearSegment } from './paint';
+import type { LevelId } from '../../project/doc';
 
 /** A door or window as placed, with its wall's level. */
-export type OpeningItem = OpeningSolid & { readonly levelId: string };
+export type OpeningItem = OpeningSolid & { readonly levelId: LevelId };
 
 /** Distance from p to a closed outline's sides, or to an open line's. */
 const toLines = (lines: readonly (readonly Point2[])[], p: Point2, closed: boolean): number => {

@@ -11,7 +11,7 @@ import { equalChains, settleDimensions } from '../../src/elements/dimension/cons
 import type { Dimension } from '../../src/elements/dimension/schema';
 import { newOpening } from '../../src/elements/opening/schema';
 import { moveWalls } from '../../src/elements/wall/edit';
-import { oid, rid, wid } from '../ids';
+import { lid, oid, rid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
@@ -20,7 +20,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => 
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
 });
 
 const box: Doc = {
@@ -31,7 +31,7 @@ const box: Doc = {
 /** West wall's axis to east wall's axis, at y = 1.5: 4 m. */
 const across: Dimension = {
   id: 'dim_x',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   a: { kind: 'wall', wallId: wid('w4'), end: 'start', along: 1.5, offset: 0 },
   b: { kind: 'wall', wallId: wid('w2'), end: 'start', along: 1.5, offset: 0 },
   offset: 0.5,
@@ -76,7 +76,7 @@ describe('locked dimensions', () => {
   });
 
   it("a wall's own length locked: moving its neighbour stretches it back from its other end", () => {
-    const len: Dimension = { id: 'dim_l', levelId: 'lvl_ground', a: { kind: 'wall', wallId: wid('w1'), end: 'start', along: 0, offset: 0 }, b: { kind: 'wall', wallId: wid('w1'), end: 'end', along: 0, offset: 0 }, offset: -0.5, locked: 4 };
+    const len: Dimension = { id: 'dim_l', levelId: lid('lvl_ground'), a: { kind: 'wall', wallId: wid('w1'), end: 'start', along: 0, offset: 0 }, b: { kind: 'wall', wallId: wid('w1'), end: 'end', along: 0, offset: 0 }, offset: -0.5, locked: 4 };
     const before = { ...box, dimensions: [len] };
     const r = settleDimensions(before, moved(before, wid('w2'), 1));
     expect(r.ok).toBe(true);
@@ -88,7 +88,7 @@ describe('locked dimensions', () => {
   it('a window held by a lock slides along its wall with the wall it is measured from', () => {
     const win = newOpening(oid('opening_w'), wid('w1'), 'window', { kind: 'fromStart', distance: 1 }, { width: 1, height: 1, sill: 1 });
     // From the window's far jamb (x = 2) to the south-east corner of the axes (4, 0): 2 m, locked.
-    const d: Dimension = { id: 'dim_w', levelId: 'lvl_ground', a: { kind: 'opening', openingId: oid('opening_w'), jamb: 'end', offset: 0 }, b: { kind: 'wall', wallId: wid('w2'), end: 'start', along: 0, offset: 0 }, offset: -0.6, locked: 2 };
+    const d: Dimension = { id: 'dim_w', levelId: lid('lvl_ground'), a: { kind: 'opening', openingId: oid('opening_w'), jamb: 'end', offset: 0 }, b: { kind: 'wall', wallId: wid('w2'), end: 'start', along: 0, offset: 0 }, offset: -0.6, locked: 2 };
     const before = { ...box, openings: [win], dimensions: [d] };
     expect(lengthOf(before, 'dim_w')).toBeCloseTo(2, 6);
     const r = settleDimensions(before, moved(before, wid('w2'), 0.5));
@@ -102,7 +102,7 @@ describe('locked dimensions', () => {
   it('a lock that cannot be kept is said, and nothing done', () => {
     // A window on the south wall held 1 m from a point to its north: the window cannot go north.
     const win = newOpening(oid('opening_w'), wid('w1'), 'window', { kind: 'fromStart', distance: 1 }, { width: 1, height: 1, sill: 1 });
-    const d: Dimension = { id: 'dim_n', levelId: 'lvl_ground', a: { kind: 'opening', openingId: oid('opening_w'), jamb: 'start', offset: 0 }, b: { kind: 'wall', wallId: wid('w3'), end: 'end', along: 1, offset: 0 }, offset: 0.4, locked: 3 };
+    const d: Dimension = { id: 'dim_n', levelId: lid('lvl_ground'), a: { kind: 'opening', openingId: oid('opening_w'), jamb: 'start', offset: 0 }, b: { kind: 'wall', wallId: wid('w3'), end: 'end', along: 1, offset: 0 }, offset: 0.4, locked: 3 };
     const before = { ...box, openings: [win], dimensions: [d] };
     const r = settleDimensions(before, moved(before, wid('w3'), 0));
     expect(r.ok).toBe(true);
@@ -118,8 +118,8 @@ describe('equal chains', () => {
   // A partition at x = 1 between the west and east walls; a chain west → partition → east.
   const withPartition: Doc = { ...box, walls: [...box.walls, wall(wid('w5'), [1, 0], [1, 3])] };
   const chain: Dimension[] = [
-    { id: 'dim_1', levelId: 'lvl_ground', a: { kind: 'wall', wallId: wid('w4'), end: 'start', along: 1.5, offset: 0 }, b: { kind: 'wall', wallId: wid('w5'), end: 'start', along: 1.5, offset: 0 }, offset: 0.5, chain: 'chain_a' },
-    { id: 'dim_2', levelId: 'lvl_ground', a: { kind: 'wall', wallId: wid('w5'), end: 'start', along: 1.5, offset: 0 }, b: { kind: 'wall', wallId: wid('w2'), end: 'start', along: 1.5, offset: 0 }, offset: 0.5, chain: 'chain_a' },
+    { id: 'dim_1', levelId: lid('lvl_ground'), a: { kind: 'wall', wallId: wid('w4'), end: 'start', along: 1.5, offset: 0 }, b: { kind: 'wall', wallId: wid('w5'), end: 'start', along: 1.5, offset: 0 }, offset: 0.5, chain: 'chain_a' },
+    { id: 'dim_2', levelId: lid('lvl_ground'), a: { kind: 'wall', wallId: wid('w5'), end: 'start', along: 1.5, offset: 0 }, b: { kind: 'wall', wallId: wid('w2'), end: 'start', along: 1.5, offset: 0 }, offset: 0.5, chain: 'chain_a' },
   ];
 
   it('EQ set on one member marks its whole chain, and moves the partition to the middle', () => {
@@ -150,7 +150,7 @@ describe('equal chains', () => {
 
 describe('automatic dimensioning', () => {
   const win = newOpening(oid('opening_w'), wid('w1'), 'window', { kind: 'fromStart', distance: 1 }, { width: 1.2, height: 1, sill: 1 });
-  const room = { id: rid('room_a'), levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Sala', number: '1' };
+  const room = { id: rid('room_a'), levelId: lid('lvl_ground'), seed: { x: 2, y: 1.5 }, name: 'Sala', number: '1' };
   const doc: Doc = { ...box, openings: [win], rooms: [room] };
   const ids = (() => {
     let n = 0;
@@ -159,7 +159,7 @@ describe('automatic dimensioning', () => {
 
   it('along the south wall: a chain corner → jambs → corner on its outer face, and the whole length past it', () => {
     const g = deriveGeometry(doc);
-    const dims = autoDimensions(doc, g, 'lvl_ground', ['w1'], ids);
+    const dims = autoDimensions(doc, g, lid('lvl_ground'), ['w1'], ids);
     const chain = dims.filter((d) => d.chain);
     const total = dims.filter((d) => !d.chain);
     expect(chain).toHaveLength(3);
@@ -178,22 +178,22 @@ describe('automatic dimensioning', () => {
 
   it('with no wall named, every wall with a face outside: four, each its own whole length', () => {
     const g = deriveGeometry(doc);
-    const dims = autoDimensions(doc, g, 'lvl_ground', null, ids);
+    const dims = autoDimensions(doc, g, lid('lvl_ground'), null, ids);
     // South: a chain of three and its total; the others a single dimension each.
     expect(dims).toHaveLength(7);
   });
 
   it('a wall already dimensioned on that side: the new chain stands past it', () => {
     const g = deriveGeometry(doc);
-    const old: Dimension = { id: 'dim_old', levelId: 'lvl_ground', a: { kind: 'wall', wallId: wid('w1'), end: 'start', along: 0, offset: 0 }, b: { kind: 'wall', wallId: wid('w1'), end: 'end', along: 0, offset: 0 }, offset: -0.7 };
-    const dims = autoDimensions({ ...doc, dimensions: [old] }, g, 'lvl_ground', ['w1'], ids);
+    const old: Dimension = { id: 'dim_old', levelId: lid('lvl_ground'), a: { kind: 'wall', wallId: wid('w1'), end: 'start', along: 0, offset: 0 }, b: { kind: 'wall', wallId: wid('w1'), end: 'end', along: 0, offset: 0 }, offset: -0.7 };
+    const dims = autoDimensions({ ...doc, dimensions: [old] }, g, lid('lvl_ground'), ['w1'], ids);
     expect(dims.filter((d) => d.chain).every((d) => d.offset === -(0.7 + CHAIN_OFF))).toBe(true);
     expect(dims.find((d) => !d.chain)!.offset).toBeCloseTo(-(0.7 + TOTAL_OFF), 9);
   });
 
   it('the chain follows the window when it moves', () => {
     const g = deriveGeometry(doc);
-    const dims = autoDimensions(doc, g, 'lvl_ground', ['w1'], ids);
+    const dims = autoDimensions(doc, g, lid('lvl_ground'), ['w1'], ids);
     const moved = { ...doc, openings: [{ ...win, rule: { kind: 'fromStart' as const, distance: 2 } }], dimensions: dims };
     const g2 = deriveGeometry(moved);
     const first = moved.dimensions.find((d) => d.chain)!;

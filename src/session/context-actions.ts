@@ -4,6 +4,7 @@
 import type { Doc } from '../project/doc';
 import { canTransform } from '../elements/transform';
 import { canMerge } from '../tools/split';
+import type { LevelId } from '../project/doc';
 
 export type ContextId =
   | 'move'
@@ -47,7 +48,7 @@ const OWN: ReadonlySet<ContextId> = new Set(['flipWall', 'editType', 'toggleOpen
  * what the view shows, the selection, delete and properties. The floating bar keeps contextIds' few; the
  * menu took the same six and had no Copy, Rotate or Hide (docs/revisao-interface.md, M1).
  */
-export function menuGroups(doc: Doc, selection: readonly string[], levelId?: string): ContextId[][] {
+export function menuGroups(doc: Doc, selection: readonly string[], levelId?: LevelId): ContextId[][] {
   const guides = levelId !== undefined && doc.guides.some((g) => g.levelId === levelId) ? (['clearGuides'] as const) : [];
   if (selection.length === 0) return [['drawWall', 'addNote', 'addLevelMark'], ['paste'], ['frameAll', ...guides], ['commands']];
   const own = contextIds(doc, selection, levelId).filter((id) => OWN.has(id));
@@ -64,7 +65,7 @@ export function menuGroups(doc: Doc, selection: readonly string[], levelId?: str
 }
 
 /** `levelId`: the level shown, whose guides can be deleted at once. */
-export function contextIds(doc: Doc, selection: readonly string[], levelId?: string): ContextId[] {
+export function contextIds(doc: Doc, selection: readonly string[], levelId?: LevelId): ContextId[] {
   const walls = selection.filter((id) => doc.walls.some((w) => w.id === id));
   const merge = selection.length === 2 && walls.length === 2 && canMerge(doc, walls[0]!, walls[1]!) ? (['merge'] as const) : [];
   const guides = levelId !== undefined && doc.guides.some((g) => g.levelId === levelId) ? (['clearGuides'] as const) : [];

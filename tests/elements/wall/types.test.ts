@@ -8,7 +8,7 @@ import { deriveGeometry } from '../../../src/project/derive';
 import { createStore } from '../../../src/core/store';
 import { addWallType, deleteWallType, duplicateWallType, typeDeleteBlocker, updateWallType } from '../../../src/elements/wall/types';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { wid } from '../../ids';
+import { lid, wid } from '../../ids';
 
 const wall = (id: WallId, typeId: string): DocWall => ({
   id,
@@ -16,7 +16,7 @@ const wall = (id: WallId, typeId: string): DocWall => ({
   start: { x: 0, y: 0 },
   end: { x: 4, y: 0 },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
 });
 const doc = (): Doc => ({ ...newDocument(), walls: [wall(wid('a'), 'wt_concrete20')] });
 const layer = (thickness: number) => ({ thickness, function: 'structure' as const, materialId: 'concrete' });

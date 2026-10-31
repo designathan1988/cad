@@ -4,6 +4,7 @@
 // point's coordinates in the plan. Kept with the project, on a level.
 
 import type { Point2 } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
 
 export const MEASURE_PREFIX = 'meas';
 
@@ -15,7 +16,7 @@ export const ARC_FACES: readonly ArcFace[] = ['exterior', 'reference', 'interior
 
 interface Base {
   readonly id: string;
-  readonly levelId: string;
+  readonly levelId: LevelId;
 }
 
 /** The angle from the vertex between the arms through `a` and `b` (the smaller, up to 180°), its arc at `radius` (m). */

@@ -11,7 +11,7 @@ import { deriveGeometry } from '../../src/project/derive';
 import { computeWallGeometry } from '../../src/elements/wall/geometry/footprint';
 import { area, overlapArea } from '../../src/elements/wall/geometry/convex';
 import { inside } from '../elements/wall/oracle';
-import { wid } from '../ids';
+import { lid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 type P = { x: number; y: number };
@@ -22,7 +22,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number], base = 0, to
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: base,
   top: { kind: 'fixed', height: top - base },
 });
@@ -226,8 +226,8 @@ describe('the plan: a section at the cut height', () => {
     const base = docOf([]);
     const doc: Doc = {
       ...base,
-      levels: [...base.levels, { id: 'lvl_up', name: 'Up', elevation: 2.8, height: 2.8 }],
-      walls: [{ ...wall(wid('u'), [0, 0], [4, 0], 0, 1), levelId: 'lvl_up' }],
+      levels: [...base.levels, { id: lid('lvl_up'), name: 'Up', elevation: 2.8, height: 2.8 }],
+      walls: [{ ...wall(wid('u'), [0, 0], [4, 0], 0, 1), levelId: lid('lvl_up') }],
     };
     expect(planOf(doc, wid('u')).plan).toBe('below');
   });

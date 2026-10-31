@@ -3,6 +3,7 @@
 // plan, as hidden lines are; solid in 3D. It goes with the grid axis it lies on (elements/grid/carry.ts).
 
 import { add, normalize, perp, type Point2, scale, sub } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
 
 export const BEAM_PREFIX = 'beam';
 /** A new beam's section (m): 15 cm wide, 40 cm deep. */
@@ -11,7 +12,7 @@ export const BEAM_DEPTH = 0.4;
 
 export interface Beam {
   readonly id: string;
-  readonly levelId: string;
+  readonly levelId: LevelId;
   /** Its axis, at its middle across. */
   readonly start: Point2;
   readonly end: Point2;

@@ -13,7 +13,7 @@ import { newOpening } from '../../src/elements/opening/schema';
 import { addWalls } from '../../src/elements/wall/commands';
 import { isOpening, isWall } from '../../src/project/file-guards';
 import { stretchEnd } from '../../src/elements/wall/edit';
-import { oid, wid } from '../ids';
+import { lid, oid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, x1: number, top: DocWall['top'] = { kind: 'level', offset: 0 }, baseOffset = 0): DocWall => ({
@@ -22,7 +22,7 @@ const wall = (id: WallId, x1: number, top: DocWall['top'] = { kind: 'level', off
   start: { x: 0, y: 0 },
   end: { x: x1, y: 0 },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset,
   top,
 });
@@ -79,7 +79,7 @@ describe('scaled down', () => {
   const factor = { map: (p: { x: number; y: number }) => ({ x: p.x * 1e-4, y: p.y * 1e-4 }), factor: 1e-4, mirror: false };
   const kind = (name: string) => KINDS.find((k) => k.key === name)!;
   it('a column, a beam and a stair keep the least their panels take', () => {
-    const column = kind('columns').mapped!({ id: 'c', levelId: 'lvl_ground', at: { x: 1, y: 1 }, angle: 0, width: 0.3, depth: 0.3 } as never, factor as never, 'c2') as { width: number; depth: number };
+    const column = kind('columns').mapped!({ id: 'c', levelId: lid('lvl_ground'), at: { x: 1, y: 1 }, angle: 0, width: 0.3, depth: 0.3 } as never, factor as never, 'c2') as { width: number; depth: number };
     expect(column.width).toBe(0.05);
     expect(column.depth).toBe(0.05);
     const beam = kind('beams').mapped!({ id: 'b', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, width: 0.2 } as never, factor as never, 'b2') as { width: number };
@@ -90,7 +90,7 @@ describe('scaled down', () => {
 });
 
 describe('floors from a file', () => {
-  const floor = (extra: object) => ({ id: 'f', levelId: 'lvl_ground', thickness: 0.15, offset: 0, source: { kind: 'outline', points: [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }] }, ...extra });
+  const floor = (extra: object) => ({ id: 'f', levelId: lid('lvl_ground'), thickness: 0.15, offset: 0, source: { kind: 'outline', points: [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }] }, ...extra });
   const valid = (f: unknown) => KINDS.find((k) => k.key === 'floors')!.valid(f);
   it('a layer of no thickness or a tile of no size is not taken', () => {
     expect(valid(floor({}))).toBe(true);

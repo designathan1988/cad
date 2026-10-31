@@ -6,7 +6,7 @@ import { moveRooms, roomsGoingWith, wallsAround } from '../../src/project/carry'
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import type { WallId } from '../../src/elements/wall/schema';
-import { rid, wid } from '../ids';
+import { lid, rid, wid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -14,7 +14,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => 
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level', offset: 0 },
 });
@@ -27,8 +27,8 @@ const doc: Doc = {
     wall(wid('t2'), [8, 3], [4, 3]), wall(wid('t1'), [4, 3], [0, 3]), wall(wid('l'), [0, 3], [0, 0]), wall(wid('m'), [4, 0], [4, 3]),
   ],
   rooms: [
-    { id: rid('L'), levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' },
-    { id: rid('R'), levelId: 'lvl_ground', seed: { x: 6, y: 1.5 }, name: 'Room 2', number: '2' },
+    { id: rid('L'), levelId: lid('lvl_ground'), seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' },
+    { id: rid('R'), levelId: lid('lvl_ground'), seed: { x: 6, y: 1.5 }, name: 'Room 2', number: '2' },
   ],
 };
 const shift = (p: { x: number; y: number }) => ({ x: p.x + 10, y: p.y });

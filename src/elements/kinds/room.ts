@@ -9,6 +9,7 @@ import { updateRooms } from '../room/commands';
 import { insideRing, type RoomSolid } from '../room/derive';
 import { roomFields } from '../room/fields';
 import { type Room, ROOM_USES } from '../room/schema';
+import type { LevelId } from '../../project/doc';
 
 export const ROOM_PREFIX = 'room';
 
@@ -16,7 +17,7 @@ export const ROOM_PREFIX = 'room';
 export type RoomItem = RoomSolid & { readonly elevation: number };
 
 /** The next number on a level, after those in `all`. */
-const nextNumber = (all: readonly Room[], levelId: string): string =>
+const nextNumber = (all: readonly Room[], levelId: LevelId): string =>
   String(all.filter((r) => r.levelId === levelId).reduce((n, r) => Math.max(n, Number.parseInt(r.number, 10) || 0), 0) + 1);
 
 export const roomKind: ElementKind<Room, RoomItem> = {

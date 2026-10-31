@@ -4,10 +4,10 @@ import { createStore } from '../../../src/core/store';
 import { vec } from '../../../src/model/vector';
 import { addFloor, addRoom, updateFloor, updateRoom, updateRooms } from '../../../src/elements/room/commands';
 import { readProject, writeProject } from '../../../src/project/file';
-import { fid, rid } from '../../ids';
+import { fid, lid, rid } from '../../ids';
 
-const room = { id: rid('r'), levelId: 'lvl_ground', seed: vec(4, 3), name: 'Room 1', number: '1' };
-const floor = { id: fid('f'), levelId: 'lvl_ground', source: { kind: 'room' as const, roomId: rid('r') }, thickness: 0.15, offset: 0 };
+const room = { id: rid('r'), levelId: lid('lvl_ground'), seed: vec(4, 3), name: 'Room 1', number: '1' };
+const floor = { id: fid('f'), levelId: lid('lvl_ground'), source: { kind: 'room' as const, roomId: rid('r') }, thickness: 0.15, offset: 0 };
 
 describe('room and floor commands', () => {
   it('add and edit a room, each one undo step', () => {

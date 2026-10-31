@@ -5,10 +5,11 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { stackedSteps } from '../../src/session/stacked';
 import { moveWalls } from '../../src/elements/wall/edit';
-import { wid } from '../ids';
+import { lid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import type { LevelId } from '../../src/project/doc';
 
-const wall = (id: WallId, levelId: string, type: string, a: [number, number], b: [number, number], referenceLine: DocWall['referenceLine'] = 'centerline'): DocWall => ({
+const wall = (id: WallId, levelId: LevelId, type: string, a: [number, number], b: [number, number], referenceLine: DocWall['referenceLine'] = 'centerline'): DocWall => ({
   id,
   wallTypeId: type,
   start: { x: a[0], y: a[1] },
@@ -17,14 +18,14 @@ const wall = (id: WallId, levelId: string, type: string, a: [number, number], b:
   levelId,
 });
 
-const levels = [...newDocument().levels, { id: 'lvl_up', name: 'Upper', elevation: 2.8, height: 2.8 }];
+const levels = [...newDocument().levels, { id: lid('lvl_up'), name: 'Upper', elevation: 2.8, height: 2.8 }];
 const doc = (walls: DocWall[]): Doc => ({ ...newDocument(), levels, walls });
 
 describe('a wall standing on another, off its face', () => {
   // Below: 20 cm along +x on its axis, its exterior face at y = −0.1. Above: 15 cm on the same axis,
   // its exterior face at y = −0.075, 2.5 cm in.
-  const below = wall(wid('b'), 'lvl_ground', 'wt_masonry20', [0, 0], [5, 0]);
-  const above = wall(wid('u'), 'lvl_up', 'wt_masonry15', [0, 0], [5, 0]);
+  const below = wall(wid('b'), lid('lvl_ground'), 'wt_masonry20', [0, 0], [5, 0]);
+  const above = wall(wid('u'), lid('lvl_up'), 'wt_masonry15', [0, 0], [5, 0]);
 
   it('the step is 2.5 cm, and the move that aligns it goes 2.5 cm out (−y)', () => {
     const [s] = stackedSteps(doc([below, above]));
@@ -35,7 +36,7 @@ describe('a wall standing on another, off its face', () => {
   });
 
   it('drawn the other way above, the same step on the same face', () => {
-    const [s] = stackedSteps(doc([below, wall(wid('u'), 'lvl_up', 'wt_masonry15', [5, 0], [0, 0])]));
+    const [s] = stackedSteps(doc([below, wall(wid('u'), lid('lvl_up'), 'wt_masonry15', [5, 0], [0, 0])]));
     expect(s!.size).toBeCloseTo(0.025, 12);
     expect(s!.shift.y).toBeCloseTo(-0.025, 12);
   });
@@ -49,12 +50,12 @@ describe('a wall standing on another, off its face', () => {
 
   it('drawn on its exterior face along the same line, it is flush already', () => {
     // On its exterior face at y = −0.1, the lower wall's.
-    expect(stackedSteps(doc([below, wall(wid('u'), 'lvl_up', 'wt_masonry15', [0, -0.1], [5, -0.1], 'exteriorFace')]))).toEqual([]);
+    expect(stackedSteps(doc([below, wall(wid('u'), lid('lvl_up'), 'wt_masonry15', [0, -0.1], [5, -0.1], 'exteriorFace')]))).toEqual([]);
   });
 
   it('a wall across it, beside it, or on the same level is not standing on it', () => {
-    expect(stackedSteps(doc([below, wall(wid('u'), 'lvl_up', 'wt_masonry15', [2, -2], [2, 2])]))).toEqual([]);
-    expect(stackedSteps(doc([below, wall(wid('u'), 'lvl_up', 'wt_masonry15', [0, 1], [5, 1])]))).toEqual([]);
-    expect(stackedSteps(doc([below, wall(wid('u'), 'lvl_ground', 'wt_masonry15', [0, 0.5], [5, 0.5])]))).toEqual([]);
+    expect(stackedSteps(doc([below, wall(wid('u'), lid('lvl_up'), 'wt_masonry15', [2, -2], [2, 2])]))).toEqual([]);
+    expect(stackedSteps(doc([below, wall(wid('u'), lid('lvl_up'), 'wt_masonry15', [0, 1], [5, 1])]))).toEqual([]);
+    expect(stackedSteps(doc([below, wall(wid('u'), lid('lvl_ground'), 'wt_masonry15', [0, 0.5], [5, 0.5])]))).toEqual([]);
   });
 });

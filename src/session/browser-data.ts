@@ -1,9 +1,10 @@
 // What the project browser lists about the document (pure).
 
 import type { Doc } from '../project/doc';
+import type { LevelId } from '../project/doc';
 
 /** Every wall type, with how many walls use it (0 for an unused one), on one level or on all. */
-export function typeUsage(doc: Doc, levelId?: string): Map<string, number> {
+export function typeUsage(doc: Doc, levelId?: LevelId): Map<string, number> {
   const usage = new Map(doc.wallTypes.map((t) => [t.id, 0]));
   for (const w of doc.walls) {
     if (levelId !== undefined && w.levelId !== levelId) continue;

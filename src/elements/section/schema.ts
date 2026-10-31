@@ -7,6 +7,7 @@ import { finite } from '../../core/guards';
 // put on a sheet at a scale (elements/sheet).
 
 import { type Point2, distance } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
 
 export const SECTION_PREFIX = 'sec';
 
@@ -22,7 +23,7 @@ export interface SectionMark {
   /** How far past its line it sees (m). */
   readonly depth: number;
   /** A room's interior elevation: only this level's height is drawn, and the mark only on its plan. Absent: every level. */
-  readonly levelId?: string;
+  readonly levelId?: LevelId;
 }
 
 /** The least and greatest depth (m). */

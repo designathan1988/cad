@@ -9,10 +9,11 @@ import { calibrated, isReference, type Reference, referenceCorners, referencePoi
 import { readDxfLines } from '../../src/io/import-dxf';
 import { readProject, writeProject } from '../../src/project/file';
 import { rotation } from '../../src/elements/transform';
+import { lid } from '../ids';
 
 const pic: Reference = {
   id: 'ref_1',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   name: 'planta.png',
   source: { kind: 'image', data: 'data:image/png;base64,AAAA', w: 1000, h: 500 },
   at: { x: 2, y: 1 },

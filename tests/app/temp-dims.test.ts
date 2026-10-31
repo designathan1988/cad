@@ -4,7 +4,7 @@ import { deriveGeometry } from '../../src/project/derive';
 import { tempDims } from '../../src/session/temp-dims';
 import { vec } from '../../src/model/vector';
 import { newOpening } from '../../src/elements/opening/schema';
-import { oid, wid } from '../ids';
+import { lid, oid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
@@ -13,7 +13,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => 
   start: vec(a[0], a[1]),
   end: vec(b[0], b[1]),
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level', offset: 0 },
 });
@@ -165,7 +165,7 @@ describe('temporary dimensions', () => {
 
   it('a parallel wall whose run does not overlap, or one on another level, gives no gap', () => {
     const d0 = doc();
-    const d: Doc = { ...d0, walls: [...d0.walls, wall(wid('p'), [7, 3], [9, 3]), { ...wall(wid('q'), [0, 2], [6, 2]), levelId: 'lvl_other' }] };
+    const d: Doc = { ...d0, walls: [...d0.walls, wall(wid('p'), [7, 3], [9, 3]), { ...wall(wid('q'), [0, 2], [6, 2]), levelId: lid('lvl_other') }] };
     expect(tempDims(d, deriveGeometry(d), new Set(['w0'])).map((x) => x.id)).toEqual(['w0:length']);
   });
 });

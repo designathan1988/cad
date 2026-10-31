@@ -6,7 +6,7 @@ import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { draftAt, guideBaseAt, guideLine, guideMeasure, newGuide } from '../../src/elements/guide/tool';
 import { vec } from '../../src/model/vector';
 import type { WallId } from '../../src/elements/wall/schema';
-import { wid } from '../ids';
+import { lid, wid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
   id,
@@ -14,7 +14,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number], bulge = 0): 
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   ...(bulge ? { bulge } : {}),
 });
 const doc: Doc = { ...newDocument(), walls: [wall(wid('w'), [0, 0], [6, 0]), wall(wid('arc'), [0, 5], [6, 5], 0.3)] };
@@ -23,27 +23,27 @@ const MPP = 0.01;
 
 describe('what a guide is set off from', () => {
   it('the straight wall whose body is under the pointer, or within 6 px of it', () => {
-    expect(guideBaseAt(doc, 'lvl_ground', vec(3, 0.05), MPP)).toMatchObject({ wallId: wid('w'), faces: [-0.1, 0.1] });
-    expect(guideBaseAt(doc, 'lvl_ground', vec(3, 0.15), MPP)?.wallId).toBe('w');
-    expect(guideBaseAt(doc, 'lvl_ground', vec(3, 0.2), MPP)).toBeNull();
+    expect(guideBaseAt(doc, lid('lvl_ground'), vec(3, 0.05), MPP)).toMatchObject({ wallId: wid('w'), faces: [-0.1, 0.1] });
+    expect(guideBaseAt(doc, lid('lvl_ground'), vec(3, 0.15), MPP)?.wallId).toBe('w');
+    expect(guideBaseAt(doc, lid('lvl_ground'), vec(3, 0.2), MPP)).toBeNull();
   });
 
   it('an arc has no face to keep parallel to; another level, or walls hidden, give nothing', () => {
-    expect(guideBaseAt(doc, 'lvl_ground', vec(3, 5.5), MPP)).toBeNull();
-    expect(guideBaseAt(doc, 'other', vec(3, 0), MPP)).toBeNull();
-    expect(guideBaseAt(doc, 'lvl_ground', vec(3, 0), MPP, { walls: false, guides: true })).toBeNull();
+    expect(guideBaseAt(doc, lid('lvl_ground'), vec(3, 5.5), MPP)).toBeNull();
+    expect(guideBaseAt(doc, lid('other'), vec(3, 0), MPP)).toBeNull();
+    expect(guideBaseAt(doc, lid('lvl_ground'), vec(3, 0), MPP, { walls: false, guides: true })).toBeNull();
   });
 
   it('a guide, off any wall: a line without a body', () => {
-    const g = { id: 'guide_a', levelId: 'lvl_ground', point: vec(0, 2), dir: vec(1, 0) };
+    const g = { id: 'guide_a', levelId: lid('lvl_ground'), point: vec(0, 2), dir: vec(1, 0) };
     const withGuide = { ...doc, guides: [g] };
-    expect(guideBaseAt(withGuide, 'lvl_ground', vec(40, 2.03), MPP)).toMatchObject({ guideId: 'guide_a', faces: [0, 0] });
-    expect(guideBaseAt(withGuide, 'lvl_ground', vec(40, 2.03), MPP, { walls: true, guides: false })).toBeNull();
+    expect(guideBaseAt(withGuide, lid('lvl_ground'), vec(40, 2.03), MPP)).toMatchObject({ guideId: 'guide_a', faces: [0, 0] });
+    expect(guideBaseAt(withGuide, lid('lvl_ground'), vec(40, 2.03), MPP, { walls: true, guides: false })).toBeNull();
   });
 });
 
 describe('the distance the pointer sets', () => {
-  const base = guideBaseAt(doc, 'lvl_ground', vec(3, 0.05), MPP)!;
+  const base = guideBaseAt(doc, lid('lvl_ground'), vec(3, 0.05), MPP)!;
 
   it('from the face on its side: 1.2 m above the top face is y = 1.3; on the 5 cm grid with snaps', () => {
     const d = draftAt(base, vec(2, 1.31), true);
@@ -70,6 +70,6 @@ describe('the distance the pointer sets', () => {
     expect(m.a.x).toBeCloseTo(2.5, 12);
     expect(m.a.y).toBeCloseTo(0.1, 12);
     expect(m.b.y).toBeCloseTo(1.3, 12);
-    expect(newGuide('guide_x', 'lvl_ground', d, 1.2)).toMatchObject({ id: 'guide_x', levelId: 'lvl_ground', dir: vec(1, 0) });
+    expect(newGuide('guide_x', lid('lvl_ground'), d, 1.2)).toMatchObject({ id: 'guide_x', levelId: lid('lvl_ground'), dir: vec(1, 0) });
   });
 });

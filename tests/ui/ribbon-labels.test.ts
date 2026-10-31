@@ -5,10 +5,11 @@ import { describe, expect, it } from 'vitest';
 import { ribbonTabs } from '../../src/ui/ribbon-tabs';
 import { setLang, t } from '../../src/i18n/messages';
 import { newDocument } from '../../src/project/doc';
+import { lid } from '../ids';
 
 describe('ribbon labels', () => {
   const app = {
-    ui: { tool: 'select', view: 'plan', view3d: { levels: 'all' }, levelId: 'lvl_ground', selection: new Set() },
+    ui: { tool: 'select', view: 'plan', view3d: { levels: 'all' }, levelId: lid('lvl_ground'), selection: new Set() },
     store: { get: () => newDocument() },
     shell: { panel: { hidden: false } },
   } as never;

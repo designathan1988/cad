@@ -10,16 +10,17 @@ import { layerMaterial } from './scene-materials';
 import { build, buildOpening, drop, facesOf, outline, syncBoxCaps, syncEdges } from './scene-build';
 import { placeGround } from './scene-light';
 import type { ElementId } from '../core/id';
+import type { LevelId } from '../project/doc';
 
 
 /**
  * Brings the meshes in line with the geometry: only walls whose shape or state changed are rebuilt.
  * `lift`: how far up each level is drawn (an exploded view), by level id.
  */
-export function sync(view: Scene3D, g: DerivedGeometry, selected: ReadonlySet<ElementId>, preview: ReadonlySet<ElementId>, lift: (levelId: string) => number = () => 0): void {
+export function sync(view: Scene3D, g: DerivedGeometry, selected: ReadonlySet<ElementId>, preview: ReadonlySet<ElementId>, lift: (levelId: LevelId | undefined) => number = () => 0): void {
   const seen = new Set<ElementId>();
   // Moved up or down as a whole, never rebuilt for it: the lift is not part of any key.
-  const place = (id: ElementId, levelId: string) => {
+  const place = (id: ElementId, levelId: LevelId | undefined) => {
     const w = view.walls.get(id);
     if (w) w.group.position.y = lift(levelId);
   };
@@ -32,7 +33,7 @@ export function sync(view: Scene3D, g: DerivedGeometry, selected: ReadonlySet<El
     if (shape === undefined) view.shapeKeys.set(o, (shape = JSON.stringify([o.frame, o.opening, o.bottom, o.top])));
     const key = state + (view.isOpen(id) ? 'o' : '') + shape;
     const old = view.walls.get(id);
-    const levelId = g.solids.get(o.opening.wallId)?.wall.levelId ?? '';
+    const levelId = g.solids.get(o.opening.wallId)?.wall.levelId;
     if (old?.key === key) {
       place(id, levelId);
       continue;

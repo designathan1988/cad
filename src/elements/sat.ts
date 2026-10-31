@@ -25,6 +25,7 @@ const FLAT = 0.03;
 const TOUCH = 0.002;
 
 import { hull } from '../model/hull';
+import type { LevelId } from '../project/doc';
 
 /** The convex hull of points (model/hull.ts), re-exported for the drag code. */
 export { hull };
@@ -77,7 +78,7 @@ export function movingShapes(g: DerivedGeometry, ids: ReadonlySet<string>): Shap
 }
 
 /** Everything on a level that stops them: wall blocks and the solid kinds, but those being moved. */
-export function obstacleShapes(g: DerivedGeometry, levelId: string, moving: ReadonlySet<string>): Shape[] {
+export function obstacleShapes(g: DerivedGeometry, levelId: LevelId, moving: ReadonlySet<string>): Shape[] {
   const out: Shape[] = [];
   for (const s of g.solids.values()) {
     if (s.wall.levelId !== levelId || moving.has(s.wall.id)) continue;

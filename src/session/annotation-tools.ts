@@ -18,6 +18,7 @@ import { lengthNum } from '../i18n/units';
 import { arcWallAt } from '../elements/measure/place';
 import { addMeasure } from '../elements/measure/commands';
 import { MEASURE_PREFIX } from '../elements/measure/schema';
+import { NO_LEVEL } from '../project/doc';
 
 /** The grid tool: a click starts an axis, the next ends it (named on from the last of its kind). */
 export function gridClick(app: App, p: Point2): void {
@@ -85,7 +86,7 @@ export function dimensionDraft(app: App): (NonNullable<PlanOverlay['dimensionDra
   const a = s.a;
   const b = s.kind === 'placing' ? s.b : at;
   const offset = s.kind === 'placing' ? offsetThrough(a, b, at) : 0;
-  const p = placeDimension(app.store.get(), app.geometry, { id: '', levelId: '', a: { kind: 'point', at: a }, b: { kind: 'point', at: b }, offset });
+  const p = placeDimension(app.store.get(), app.geometry, { id: '', levelId: NO_LEVEL, a: { kind: 'point', at: a }, b: { kind: 'point', at: b }, offset });
   return p ? { ...p, text: lengthNum(p.length) } : null;
 }
 

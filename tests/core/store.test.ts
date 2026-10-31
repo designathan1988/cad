@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
 import { createStore } from '../../src/core/store';
 import { addWalls, deleteWalls, updateWalls } from '../../src/elements/wall/commands';
-import { wid } from '../ids';
+import { lid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, x: number) => ({
@@ -12,7 +12,7 @@ const wall = (id: WallId, x: number) => ({
   start: { x, y: 0 },
   end: { x: x + 1, y: 0 },
   referenceLine: 'centerline' as const,
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level' as const, offset: 0 },
 });

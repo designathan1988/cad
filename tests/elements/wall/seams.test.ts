@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
 import { deriveGeometry } from '../../../src/project/derive';
 import { layerSeams } from '../../../src/elements/wall/geometry/seams';
-import { wid } from '../../ids';
+import { lid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 
 const sq = (x0: number, y0: number, x1: number, y1: number) => [
@@ -61,7 +61,7 @@ describe('seams of real walls', () => {
     start: { x: a[0], y: a[1] },
     end: { x: b[0], y: b[1] },
     referenceLine: 'centerline',
-    levelId: 'lvl_ground',
+    levelId: lid('lvl_ground'),
   });
 
   it('a 4 m wall of a three-layer type: two lines along it, each 4 m', () => {

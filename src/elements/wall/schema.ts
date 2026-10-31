@@ -2,6 +2,7 @@ import type { Point2 } from '../../model/vector';
 
 import type { Brand } from '../../core/id';
 import { newId } from '../../core/id';
+import type { LevelId } from '../../project/doc';
 
 /** A wall's id (wall_…). */
 export type WallId = Brand<'wall'>;
@@ -45,7 +46,7 @@ export interface WallLayer {
 export type HeightRule =
   | { readonly kind: 'level'; readonly offset: number }
   | { readonly kind: 'fixed'; readonly height: number }
-  | { readonly kind: 'toLevel'; readonly levelId: string; readonly offset: number }
+  | { readonly kind: 'toLevel'; readonly levelId: LevelId; readonly offset: number }
   | { readonly kind: 'roof' };
 
 /**

@@ -6,6 +6,7 @@ import { finite } from '../../core/guards';
 // Nothing is built from it; it is saved with the project.
 
 import type { Point2 } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
 
 export const REFERENCE_PREFIX = 'ref';
 
@@ -17,7 +18,7 @@ export type ReferenceSource =
 
 export interface Reference {
   readonly id: string;
-  readonly levelId: string;
+  readonly levelId: LevelId;
   /** Its file's name. */
   readonly name: string;
   readonly source: ReferenceSource;

@@ -31,6 +31,7 @@ import * as appSettings from '../session/app-settings';
 import * as appView from '../session/app-view';
 import { wallsIn } from '../elements/wall/schema';
 import { newGroupId } from '../elements/opening/schema';
+import type { LevelId } from '../project/doc';
 
 /** The panel's title over a placing tool's next element: its kind's name, an object's its own. */
 function nextTitle(app: App, slot: NextSlot): string {
@@ -124,7 +125,7 @@ export function renderFrame(app: App): void {
         const ids = app.selectedWalls().map((w) => w.id);
         // The rooms as they are now, before the walls move: the face each wall has against one stays.
         const rooms = [...app.geometry.rooms.values()].filter((r) => r.enclosed);
-        const inRoom = (levelId: string, p: { x: number; y: number }) => rooms.some((r) => r.room.levelId === levelId && insideRing(r.outline, p));
+        const inRoom = (levelId: LevelId, p: { x: number; y: number }) => rooms.some((r) => r.room.levelId === levelId && insideRing(r.outline, p));
         const keep = loadPrefs().keepClear !== false;
         app.store.dispatch(setWalls(changeWallType(doc, ids, typeId, (w) => (keep ? roomFace(doc, w, inRoom) : null)), 'cmd.wallType'));
       },

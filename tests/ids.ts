@@ -4,6 +4,7 @@
 import type { OpeningGroupId, OpeningId } from '../src/elements/opening/schema';
 import type { FloorId, RoomId } from '../src/elements/room/schema';
 import type { ObjectId } from '../src/elements/object/schema';
+import type { LevelId } from '../src/project/doc';
 import type { WallId } from '../src/elements/wall/schema';
 
 /** A wall's id written in a test. */
@@ -23,3 +24,6 @@ export const gid = (id: string): OpeningGroupId => id as OpeningGroupId;
 
 /** A placed object's id written in a test. */
 export const objid = (id: string): ObjectId => id as ObjectId;
+
+/** A level's id written in a test. */
+export const lid = (id: string): LevelId => id as LevelId;

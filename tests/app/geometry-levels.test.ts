@@ -7,8 +7,9 @@ import { deriveGeometry } from '../../src/project/derive';
 import { addLevel } from '../../src/elements/level/commands';
 import { wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import { lid } from '../ids';
 
-const wall = (id: WallId, a: [number, number], b: [number, number], levelId = 'lvl_ground'): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number], levelId = lid('lvl_ground')): DocWall => ({
   id,
   wallTypeId: 'wt_concrete20',
   start: { x: a[0], y: a[1] },
@@ -31,8 +32,8 @@ const ground = [
 describe('joins per level', () => {
   it('a wall upstairs over the bottom wall leaves the ground floor exactly as it was, and is whole', () => {
     const base: Doc = { ...newDocument(), walls: ground };
-    const two = addLevel('lvl_up', 'Upper').apply(base);
-    const withUp = { ...two, walls: [...ground, wall(wid('u'), [1, 0], [3, 0], 'lvl_up')] };
+    const two = addLevel(lid('lvl_up'), 'Upper').apply(base);
+    const withUp = { ...two, walls: [...ground, wall(wid('u'), [1, 0], [3, 0], lid('lvl_up'))] };
     const before = deriveGeometry(base);
     const after = deriveGeometry(withUp);
     for (const w of ground) expect(after.solids.get(w.id)!.pieces).toEqual(before.solids.get(w.id)!.pieces);

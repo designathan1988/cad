@@ -10,6 +10,7 @@ import { distance, dot, normalize, perp, type Point2, sub } from '../../model/ve
 import { insideRing } from '../room/derive';
 import { placeDimension } from './anchor';
 import { DIM_PREFIX, type DimAnchor, type Dimension } from './schema';
+import type { LevelId } from '../../project/doc';
 
 /** How far the chain and the overall dimension stand off the face (m). */
 export const CHAIN_OFF = 0.6;
@@ -19,7 +20,7 @@ export const TOTAL_OFF = 1.1;
  * The dimensions for the level's walls: those given, or (none given) every straight wall with a face
  * that has no room behind it. `id` makes the ids (the app's newId).
  */
-export function autoDimensions(doc: Doc, g: DerivedGeometry, levelId: string, wallIds: readonly string[] | null, id: (prefix: string) => string): Dimension[] {
+export function autoDimensions(doc: Doc, g: DerivedGeometry, levelId: LevelId, wallIds: readonly string[] | null, id: (prefix: string) => string): Dimension[] {
   const rooms = [...g.rooms.values()].filter((r) => r.room.levelId === levelId && r.enclosed);
   const inRoom = (p: Point2) => rooms.some((r) => insideRing(r.outline, p));
   const out: Dimension[] = [];

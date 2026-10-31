@@ -4,12 +4,12 @@
 import { lengthText } from '../i18n/units';
 import type { App } from '../session/app';
 import { cutHeightOf } from '../project/doc';
-import { newId } from '../core/id';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../elements/level/commands';
 import { el, numberField } from './controls';
 import { openProjectDialog } from './dialog';
 import { defaultName, name, t } from '../i18n/messages';
 import { icon } from '../i18n/icons';
+import { newLevelId } from '../project/doc';
 
 export function showLevels(app: App): void {
   const render = (close: () => void): HTMLElement => {
@@ -86,7 +86,7 @@ export function showLevels(app: App): void {
     const add = el('button', { type: 'button', class: 'icon-btn text-btn' }, `+ ${t('levels.add')}`);
     add.dataset.focus = 'add';
     add.addEventListener('click', () => {
-      const id = newId('lvl');
+      const id = newLevelId();
       app.store.dispatch(addLevel(id, defaultName.level(app.store.get().levels.length)));
       app.ui.levelId = id;
       app.refresh();

@@ -8,7 +8,7 @@ import { evaluateObject } from '../../src/elements/object/evaluate';
 import { LIBRARY } from '../../src/elements/object/library';
 import { isDefinition } from '../../src/elements/object/valid';
 import { pieceSpan } from '../../src/elements/object/piece-shape';
-import { objid } from '../ids';
+import { lid, objid } from '../ids';
 
 const context = { definitions: LIBRARY, materials: BUILT_IN_MATERIALS };
 
@@ -25,7 +25,7 @@ describe('the whole library', () => {
       expect(def.handles.filter((h) => !names.has(h.param)).map((h) => h.param)).toEqual([]);
       for (const type of def.types) {
         expect(Object.keys(type.values).filter((k) => !names.has(k)), `${type.id}: values of no parameter`).toEqual([]);
-        const ev = evaluateObject(def, { id: objid('o'), levelId: 'l', definitionId: def.id, typeId: type.id, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, context);
+        const ev = evaluateObject(def, { id: objid('o'), levelId: lid('l'), definitionId: def.id, typeId: type.id, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, context);
         expect(ev.problems, `${type.id}`).toEqual([]);
         expect(ev.pieces.length, `${type.id}: draws something`).toBeGreaterThan(0);
         const unknown = ev.pieces.filter((p) => !BUILT_IN_MATERIALS.some((m) => m.id === p.material.id)).map((p) => p.material.id);
@@ -41,7 +41,7 @@ describe('the whole library', () => {
       for (const p of def.params) {
         if (p.kind !== 'length' || p.formula !== undefined) continue;
         for (const type of def.types) {
-          const ev = evaluateObject(def, { id: objid('o'), levelId: 'l', definitionId: def.id, typeId: type.id, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: { [p.name]: 0.001 } }, context);
+          const ev = evaluateObject(def, { id: objid('o'), levelId: lid('l'), definitionId: def.id, typeId: type.id, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: { [p.name]: 0.001 } }, context);
           expect(ev.lost, `${type.id}, ${p.name} = 1 mm`).toBe(0);
           expect(ev.problems, `${type.id}, ${p.name} = 1 mm`).toEqual([]);
           const low = Math.min(...ev.pieces.filter((q) => !q.cut).map((q) => pieceSpan(q).bottom));

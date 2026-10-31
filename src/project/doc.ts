@@ -33,8 +33,22 @@ import type { HeightRule, ReferenceLine, Wall, WallType, WallTypeId } from '../e
 import { highestUnder, type RoofCover, roofCovers } from '../elements/wall/geometry/under-roof';
 import { roofSolid } from '../elements/roof/geometry';
 import { toCounterClockwise } from '../elements/wall/geometry/convex';
+import { type Brand, newId } from '../core/id';
 
-export type LevelId = string;
+/** A level's id (lvl_…). */
+export type LevelId = Brand<'level'>;
+
+/** A new level's id (lvl_…). */
+export const newLevelId = (): LevelId => newId('lvl') as LevelId;
+
+/** The ground level every new project starts with. */
+export const GROUND_LEVEL = 'lvl_ground' as LevelId;
+
+/** No level: the stand-in elements evaluated only for a picture (thumbnails, previews). */
+export const NO_LEVEL = '' as LevelId;
+
+/** The level whose id is `id` (a list's choice, a remembered preference), if the document has it. */
+export const levelIn = (levels: readonly { readonly id: LevelId }[], id: string | undefined): LevelId | undefined => levels.find((l) => l.id === id)?.id;
 
 export interface Level {
   readonly id: LevelId;
@@ -174,7 +188,7 @@ export function newDocument(): Doc {
     version: 67,
     name: '',
     units: DEFAULT_UNITS,
-    levels: [{ id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 }],
+    levels: [{ id: GROUND_LEVEL, name: 'Ground floor', elevation: 0, height: 2.8 }],
     materials: [...BUILT_IN_MATERIALS],
     wallTypes: [
       {
@@ -240,8 +254,9 @@ export const levelOf = (doc: Doc, id: LevelId): Level | undefined => doc.levels.
  * The level to show at the start: the one shown last when it still exists; otherwise the lowest that
  * has something on it, so a project never opens on an empty level when another has content.
  */
-export function startLevel(doc: Doc, shownLast?: string): string {
-  if (shownLast !== undefined && doc.levels.some((l) => l.id === shownLast)) return shownLast;
+export function startLevel(doc: Doc, shownLast?: string): LevelId {
+  const last = levelIn(doc.levels, shownLast);
+  if (last) return last;
   const used = new Set([...doc.walls, ...doc.rooms, ...doc.floors].map((x) => x.levelId));
   const byHeight = [...doc.levels].sort((a, b) => a.elevation - b.elevation);
   return (byHeight.find((l) => used.has(l.id)) ?? byHeight[0]!).id;

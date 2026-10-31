@@ -5,10 +5,10 @@ import { describe, expect, it } from 'vitest';
 import { type DocWall, newDocument } from '../../../src/project/doc';
 import { wallFields } from '../../../src/elements/wall/fields';
 import { fieldStates } from '../../../src/ui/fields';
-import { wid } from '../../ids';
+import { lid, wid } from '../../ids';
 
 // A half circle on a 2 m chord: radius 1.
-const arc: DocWall = { id: wid('a'), wallTypeId: 'wt_concrete20', start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, bulge: 1, referenceLine: 'centerline', levelId: 'lvl_ground' };
+const arc: DocWall = { id: wid('a'), wallTypeId: 'wt_concrete20', start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, bulge: 1, referenceLine: 'centerline', levelId: lid('lvl_ground') };
 
 describe('an arc in the panel', () => {
   it('its radius is a number, 1 m, with half the chord as its least value, and sets through updateRadius', () => {

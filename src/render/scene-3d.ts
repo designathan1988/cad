@@ -17,6 +17,7 @@ import { drop } from './scene-build';
 import { GROUND_MIN, groundFade } from './scene-light';
 import { render } from './scene-render';
 import type { ElementId } from '../core/id';
+import type { LevelId } from '../project/doc';
 
 /** Vertical field of view (degrees). */
 const VIEW_FOV = 40;
@@ -76,7 +77,7 @@ export class Scene3D {
   sectionLine: SectionLine | null = null;
   sectionPlane: THREE.Plane | null = null;
   boxCapsKey: unknown[] = [];
-  lastSync: { g: DerivedGeometry; lift: (levelId: string) => number } | null = null;
+  lastSync: { g: DerivedGeometry; lift: (levelId: LevelId) => number } | null = null;
   /** Where the cut goes through walls, filled as the plan fills them (not clipped itself). */
   readonly caps = new THREE.Group();
   readonly capMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
@@ -85,7 +86,7 @@ export class Scene3D {
    * of one colour read apart, and so does the step of a wall off the face of the wall below it.
    */
   readonly edgeMaterial = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.55 });
-  readonly edges = new Map<string, THREE.LineSegments>();
+  readonly edges = new Map<LevelId, THREE.LineSegments>();
   edgesOf: DerivedGeometry['solids'] | null = null;
   capsKey = '';
   readonly sky = new THREE.HemisphereLight(undefined, undefined, 2.7);

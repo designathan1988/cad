@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { newDocument, type DocWall } from '../../src/project/doc';
 import { vec } from '../../src/model/vector';
 import { moveWalls, rotateWalls, stretchAlong, stretchEnd } from '../../src/elements/wall/edit';
-import { wid } from '../ids';
+import { lid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
@@ -14,7 +14,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => 
   start: vec(a[0], a[1]),
   end: vec(b[0], b[1]),
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level', offset: 0 },
 });
@@ -130,10 +130,10 @@ describe('rotate and stretch along', () => {
 
 describe('walls of another level are not joined', () => {
   // The room's right wall on the ground floor, and one of the upper level standing on it: same ends.
-  const upper = { ...wall(wid('u'), [8, 0], [8, 6]), levelId: 'lvl_up' };
+  const upper = { ...wall(wid('u'), [8, 0], [8, 6]), levelId: lid('lvl_up') };
   const twoLevels = () => {
     const d = room();
-    return { ...d, levels: [...d.levels, { id: 'lvl_up', name: 'Upper', elevation: 2.8, height: 2.8 }], walls: [...d.walls, upper] };
+    return { ...d, levels: [...d.levels, { id: lid('lvl_up'), name: 'Upper', elevation: 2.8, height: 2.8 }], walls: [...d.walls, upper] };
   };
 
   it('moving the upper wall leaves the walls below where they are', () => {

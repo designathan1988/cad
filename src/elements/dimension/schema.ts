@@ -5,6 +5,7 @@
 
 import type { Point2 } from '../../model/vector';
 import type { OpeningId } from '../opening/schema';
+import type { LevelId } from '../../project/doc';
 
 export const DIM_PREFIX = 'dim';
 
@@ -21,7 +22,7 @@ export type DimAnchor =
 
 export interface Dimension {
   readonly id: string;
-  readonly levelId: string;
+  readonly levelId: LevelId;
   readonly a: DimAnchor;
   readonly b: DimAnchor;
   /** The dimension line's distance from the line a → b (m), to its left (negative: its right). */

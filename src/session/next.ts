@@ -15,6 +15,7 @@ import { edgesFor, ROOF_GRADE, ROOF_OVERHANG, ROOF_THICKNESS } from '../elements
 import { CEILING_THICKNESS, FLOOR_DEFAULTS } from '../elements/room/schema';
 import { CURTAIN_DEFAULTS } from '../elements/curtain/schema';
 import type { App } from './app';
+import type { LevelId } from '../project/doc';
 
 /** What a template holds: one per kind, the floor tool's two (floors and ceilings) apart. */
 export type NextSlot = 'columns' | 'beams' | 'stairs' | 'railings' | 'roofs' | 'floors' | 'ceilings' | 'curtains' | 'objects' | 'rooms';
@@ -51,7 +52,7 @@ export function slotOf(app: App): NextSlot | null {
   }
 }
 
-type Element = { readonly id: string; readonly levelId: string } & Record<string, unknown>;
+type Element = { readonly id: string; readonly levelId: LevelId } & Record<string, unknown>;
 
 const square = (s: number) => [
   { x: 0, y: 0 },

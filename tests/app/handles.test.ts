@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { doorFlips, handleAt, handlesFor } from '../../src/session/handles';
 import type { DocWall } from '../../src/project/doc';
 import type { WallId } from '../../src/elements/wall/schema';
-import { wid } from '../ids';
+import { lid, wid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
   id,
@@ -15,7 +15,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number], bulge = 0): 
   end: { x: b[0], y: b[1] },
   ...(bulge ? { bulge } : {}),
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level', offset: 0 },
 });

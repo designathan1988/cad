@@ -7,7 +7,7 @@ import { addOpening, deleteElements, ruleKeepingPosition, updateOpening } from '
 import { deriveOpenings, hostsOf } from '../../../src/elements/opening/derive';
 import { newOpening } from '../../../src/elements/opening/schema';
 import { addWalls } from '../../../src/elements/wall/commands';
-import { oid, wid } from '../../ids';
+import { lid, oid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 import type { OpeningId } from '../../../src/elements/opening/schema';
 
@@ -17,7 +17,7 @@ const wall = (id: WallId, x0: number, x1: number): DocWall => ({
   start: { x: x0, y: 0 },
   end: { x: x1, y: 0 },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level', offset: 0 },
 });

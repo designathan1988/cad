@@ -29,6 +29,7 @@ import { roofKind } from './kinds/roof';
 import { stairKind } from './kinds/stair';
 import { wallKind } from './kinds/wall';
 import type { IdMap } from '../core/id';
+import type { LevelId } from '../project/doc';
 
 /** Drawn in this order (later over earlier); the panel shows the first with a selected element. */
 export const KINDS: readonly AnyKind[] = [referenceKind, wallKind, openingKind, stairKind, railingKind, columnKind, roofKind, objectKind, floorKind, zoneKind, roomKind, separatorKind, curtainKind, gridKind, sectionKind, beamKind, guideKind, noteKind, dimensionKind, measureKind];
@@ -39,15 +40,15 @@ export const kindOfKey = (key: KindKey): AnyKind => KINDS.find((k) => k.key === 
 export const kindOfId = (id: string): AnyKind | null => KINDS.find((k) => id.startsWith(`${k.prefix}_`)) ?? null;
 
 /** A kind's list in the document (an axis has no level: it is on every one). */
-export const listOf = (doc: Doc, k: AnyKind): readonly { readonly id: string; readonly levelId: string }[] =>
-  doc[k.key] as readonly { readonly id: string; readonly levelId: string }[];
+export const listOf = (doc: Doc, k: AnyKind): readonly { readonly id: string; readonly levelId: LevelId }[] =>
+  doc[k.key] as readonly { readonly id: string; readonly levelId: LevelId }[];
 
 /** The level a derived element is on; null for one on every level (one of a kind on every level may keep to one: a room's elevation). */
-export const levelOfSolid = (k: AnyKind, s: unknown): string | null =>
-  k.everyLevel ? ((k.element(s) as { levelId?: string }).levelId ?? null) : k.levelOf ? k.levelOf(s) : (k.element(s) as { levelId: string }).levelId;
+export const levelOfSolid = (k: AnyKind, s: unknown): LevelId | null =>
+  k.everyLevel ? ((k.element(s) as { levelId?: LevelId }).levelId ?? null) : k.levelOf ? k.levelOf(s) : (k.element(s) as { levelId: LevelId }).levelId;
 
 /** The level of an element of the document (a door's, its wall's); null for one on every level. */
-export const levelOfElement = (k: AnyKind, e: { readonly levelId?: string }, doc: Doc): string | null => (k.everyLevel ? (e.levelId ?? null) : k.levelIn ? k.levelIn(e, doc) : (e.levelId ?? null));
+export const levelOfElement = (k: AnyKind, e: { readonly levelId?: LevelId }, doc: Doc): string | null => (k.everyLevel ? (e.levelId ?? null) : k.levelIn ? k.levelIn(e, doc) : (e.levelId ?? null));
 
 /** The document with a kind's list replaced. */
 export const withList = (doc: Doc, k: AnyKind, list: readonly unknown[]): Doc => ({ ...doc, [k.key]: list }) as Doc;
@@ -93,7 +94,7 @@ export function filterKinds(solids: KindSolids, keep: (k: AnyKind, s: unknown) =
 }
 
 /** Every derived element, with its kind. */
-export function* eachSolid(solids: KindSolids): Generator<{ kind: AnyKind; solid: unknown; id: string; levelId: string | null }> {
+export function* eachSolid(solids: KindSolids): Generator<{ kind: AnyKind; solid: unknown; id: string; levelId: LevelId | null }> {
   for (const k of KINDS)
     for (const [id, s] of solids.get(k.key) ?? new Map()) {
       yield { kind: k, solid: s, id, levelId: levelOfSolid(k, s) };
@@ -249,7 +250,7 @@ export function copyKinds(
 }
 
 /** The registry elements `after` has beyond `before` (appended at the ends of its lists), on the level `levelId`. */
-export function kindsOnLevel(after: Doc, before: Doc, levelId: string): Doc {
+export function kindsOnLevel(after: Doc, before: Doc, levelId: LevelId): Doc {
   let next = after;
   for (const k of KINDS) {
     if (k.everyLevel || k.walled) continue;
@@ -276,7 +277,7 @@ export const kindsOnLine = (doc: Doc, onLine: (p: Point2) => boolean): string[] 
   KINDS.flatMap((k) => (k.onGrid ? listOf(doc, k).filter((e) => k.onGrid!(e, onLine)).map((e) => e.id) : []));
 
 /** "Select similar" over the registry: the elements on `levelId` like a selected one of their kind. */
-export function similarKinds(doc: Doc, selected: ReadonlySet<string>, levelId: string): string[] {
+export function similarKinds(doc: Doc, selected: ReadonlySet<string>, levelId: LevelId): string[] {
   return KINDS.flatMap((k) => {
     if (!k.similar) return [];
     const list = listOf(doc, k);

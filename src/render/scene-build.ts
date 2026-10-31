@@ -11,6 +11,7 @@ import { eachSolid } from '../elements/registry';
 import { featureEdges, type SlopedTop, underSlopes } from '../elements/wall/geometry/edges';
 import { openingParts } from '../elements/opening/parts';
 import { boxCaps, sectionCaps, sectionLooks, type UprightPrism } from '../model/section-box';
+import type { LevelId } from '../project/doc';
 
 export function facesOf(view: Scene3D, g: DerivedGeometry): Map<WallId, PrismFaces[]> {
   if (view.facesCache?.solids === g.solids) return view.facesCache.faces;
@@ -69,7 +70,7 @@ export function drop(view: Scene3D, group: THREE.Group): void {
 }
 
 /** The lines over the walls, again only when the walls changed; lifted with their levels. */
-export function syncEdges(view: Scene3D, g: DerivedGeometry, lift: (levelId: string) => number): void {
+export function syncEdges(view: Scene3D, g: DerivedGeometry, lift: (levelId: LevelId) => number): void {
   if (view.edgesOf !== g.solids) {
     view.edgesOf = g.solids;
     for (const l of view.edges.values()) {
@@ -78,7 +79,7 @@ export function syncEdges(view: Scene3D, g: DerivedGeometry, lift: (levelId: str
     }
     view.edges.clear();
     const faces = facesOf(view, g);
-    const byLevel = new Map<string, { prisms: WallSolid['blocks'][number][]; faces: PrismFaces[]; sloped: SlopedTop[] }>();
+    const byLevel = new Map<LevelId, { prisms: WallSolid['blocks'][number][]; faces: PrismFaces[]; sloped: SlopedTop[] }>();
     for (const s of g.solids.values()) {
       const mine = faces.get(s.wall.id) ?? [];
       const level = byLevel.get(s.wall.levelId) ?? { prisms: [], faces: [], sloped: [] };

@@ -6,8 +6,9 @@ import { wallStops } from '../../src/elements/wall/stops';
 import { vec } from '../../src/model/vector';
 import { wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import { lid } from '../ids';
 
-const wall = (id: WallId, a: [number, number], b: [number, number], levelId = 'lvl_ground'): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number], levelId = lid('lvl_ground')): DocWall => ({
   id,
   wallTypeId: 'wt_concrete20',
   start: vec(a[0], a[1]),
@@ -41,7 +42,7 @@ describe('wall stops', () => {
       wall(wid('h'), [0, 0], [6, 0]),
       wall(wid('far'), [2, 1], [2, 3]),
       wall(wid('along'), [0, 0.5], [6, 0.5]),
-      wall(wid('up'), [3, 0], [3, 3], 'lvl_other'),
+      wall(wid('up'), [3, 0], [3, 3], lid('lvl_other')),
     );
     expect(wallStops(d, wid('h'))).toEqual([]);
   });

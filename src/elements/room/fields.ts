@@ -7,13 +7,14 @@ import type { Material } from '../material/schema';
 import type { RoomPatch } from './commands';
 import type { FloorSolid, RoomSolid } from './derive';
 import { type Floor, FLOOR_BUILDUPS, type FloorId, type FloorLayer, ROOM_USES, type RoomId, type RoomUse, TILE_PATTERNS, type TilePattern, type Tiling } from './schema';
+import type { LevelId } from '../../project/doc';
 
 export interface RoomFieldActions {
   readonly updateRoom: (id: RoomId, patch: RoomPatch) => void;
   /** The same change to all the selected rooms, one undo step. */
   readonly updateRooms: (ids: readonly RoomId[], patch: RoomPatch) => void;
   /** A level's height: a room's ceiling when it has none of its own. */
-  readonly levelHeight: (levelId: string) => number;
+  readonly levelHeight: (levelId: LevelId) => number;
   readonly updateFloor: (ids: readonly FloorId[], patch: Partial<Pick<Floor, 'thickness' | 'offset' | 'slope'>>) => void;
   /** Draws a hole in the one floor selected (the floor tool, for its outline). */
   readonly startFloorHole?: (id: FloorId) => void;

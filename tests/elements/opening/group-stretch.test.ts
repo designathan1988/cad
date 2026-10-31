@@ -10,7 +10,7 @@ import { deleteElements, distributeOpenings, setGroupSpacing } from '../../../sr
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { newOpening, type Opening, type PositionRule } from '../../../src/elements/opening/schema';
 import { CURRENT_VERSION, readProject } from '../../../src/project/file';
-import { gid, oid, wid } from '../../ids';
+import { gid, lid, oid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 import type { OpeningId } from '../../../src/elements/opening/schema';
 
@@ -20,7 +20,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => 
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level', offset: 0 },
 });

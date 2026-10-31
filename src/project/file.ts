@@ -28,6 +28,7 @@ import { deriveGeometry } from './derive';
 import { distributeOpenings } from '../elements/opening/commands';
 import { isDrawingSettings } from '../elements/drawing/schema';
 import { finite, isLevel, isMaterial, isObject, isOpening, isOpeningGroup, isWall, isWallType, withBuiltInPattern } from './file-guards';
+import type { LevelId } from './doc';
 
 /** The library's definitions that version 46 gave rounded edges, and one as it was before. */
 const ROUNDED = [SOFA, BED, TOILET, FRIDGE, COOKER];
@@ -300,11 +301,11 @@ export function repairProject(raw: unknown): ReadResult {
       // Walls and doors are read above, with their types, rules and groups.
       KINDS.filter((k) => !k.walled).map((k) => {
         const fix = kindFix(k);
-        const all = keep(raw[k.key], k.valid, fix) as { readonly levelId: string }[];
+        const all = keep(raw[k.key], k.valid, fix) as { readonly levelId: LevelId }[];
         // An axis is on every level: none is gone with one.
         // Held by a wall or an opening, or by another element of the file (a guardrail by its stair).
-        const held = (x: { readonly levelId: string }) => (k.holders?.(x) ?? []).every((h: string) => wallIds.has(h) || openingIds.has(h) || rawIds.has(h));
-        const there = (x: { readonly levelId: string }) => (k.everyLevel === true || levelIds.has(x.levelId)) && held(x);
+        const held = (x: { readonly levelId: LevelId }) => (k.holders?.(x) ?? []).every((h: string) => wallIds.has(h) || openingIds.has(h) || rawIds.has(h));
+        const there = (x: { readonly levelId: LevelId }) => (k.everyLevel === true || levelIds.has(x.levelId)) && held(x);
         const gone = all.filter((x) => !there(x)).length;
         if (gone > 0) fixes.push({ kind: fix, count: gone });
         return [k.key, all.filter(there)];

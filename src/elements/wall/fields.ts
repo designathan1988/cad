@@ -11,6 +11,8 @@ import { referenceLength } from '../opening/derive';
 import { arcOf } from './geometry/arc';
 import type { EndJoin, HeightRule, ReferenceLine } from './schema';
 import { canAlignWalls, canDistributeWalls } from './arrange';
+import type { LevelId } from '../../project/doc';
+import { levelIn } from '../../project/doc';
 
 export interface WallFieldActions {
   readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
@@ -99,7 +101,10 @@ export function wallFields(
         kind: 'select',
         options: doc.levels.map((l) => ({ value: l.id, label: name(l.name) })),
         get: (w) => w.levelId,
-        set: (v) => act.updateWalls({ levelId: v }),
+        set: (v) => {
+          const levelId = levelIn(doc.levels, v);
+          if (levelId) act.updateWalls({ levelId });
+        },
       },
       {
         id: 'baseOffset',
@@ -132,14 +137,17 @@ export function wallFields(
           const r = top(w);
           return r.kind === 'toLevel' ? r.levelId : '';
         },
-        set: (v) => act.updateWalls({ top: { kind: 'toLevel', levelId: v, offset: 0 } }),
+        set: (v) => {
+          const levelId = levelIn(doc.levels, v);
+          if (levelId) act.updateWalls({ top: { kind: 'toLevel', levelId, offset: 0 } });
+        },
       },
       {
         id: 'topLevelOffset',
         label: 'panel.offset',
         kind: 'number',
         sub: true,
-        when: (ws) => all('toLevel')(ws) && ws.every((w) => (top(w) as { levelId?: string }).levelId === (top(ws[0]!) as { levelId?: string }).levelId),
+        when: (ws) => all('toLevel')(ws) && ws.every((w) => (top(w) as { levelId?: LevelId }).levelId === (top(ws[0]!) as { levelId?: LevelId }).levelId),
         get: (w) => {
           const r = top(w);
           return r.kind === 'toLevel' ? r.offset : 0;
@@ -268,14 +276,14 @@ const topOptions = (doc: Doc) => [
 ];
 
 /** The level just above a level (by its floor), else the highest other one. */
-function levelAbove(doc: Doc, levelId: string | undefined): string | undefined {
+function levelAbove(doc: Doc, levelId: LevelId | undefined): LevelId | undefined {
   const own = doc.levels.find((l) => l.id === levelId);
   const others = [...doc.levels].filter((l) => l.id !== levelId).sort((a, b) => a.elevation - b.elevation);
   return (own ? others.find((l) => l.elevation > own.elevation) : undefined)?.id ?? others[others.length - 1]?.id;
 }
 
 /** A new top of the kind chosen; up to a level, the one given (the one above the walls'). */
-function topRule(kind: string, above: string | undefined): HeightRule {
+function topRule(kind: string, above: LevelId | undefined): HeightRule {
   if (kind === 'fixed') return { kind: 'fixed', height: 2.8 };
   if (kind === 'roof') return { kind: 'roof' };
   if (kind === 'toLevel' && above) return { kind: 'toLevel', levelId: above, offset: 0 };
@@ -319,7 +327,10 @@ export function nextWallFields(doc: Doc, update: (patch: Partial<WallDefaults>) 
       when: (ds) => ds[0]!.top.kind === 'toLevel',
       options: doc.levels.map((l) => ({ value: l.id, label: name(l.name) })),
       get: (d) => (d.top.kind === 'toLevel' ? d.top.levelId : ''),
-      set: (v) => update({ top: { kind: 'toLevel', levelId: v, offset: 0 } }),
+      set: (v) => {
+        const levelId = levelIn(doc.levels, v);
+        if (levelId) update({ top: { kind: 'toLevel', levelId, offset: 0 } });
+      },
     },
     {
       id: 'topOffset',

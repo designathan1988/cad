@@ -9,6 +9,7 @@ import { faceOffsets, wallDirection, wallLength, wallNormal } from '../elements/
 import { shapeOf, type WallShape } from '../elements/wall/geometry/shape';
 import type { WallId } from '../elements/wall/schema';
 import type { Doc } from '../project/doc';
+import type { LevelId } from '../project/doc';
 
 export interface StackedStep {
   /** The wall standing on the other, and the wall below it. */
@@ -27,7 +28,7 @@ const MIN_OVERLAP = 0.2;
 
 export function stackedSteps(doc: Doc): StackedStep[] {
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
-  const shapes = new Map<WallId, { shape: WallShape; levelId: string }>();
+  const shapes = new Map<WallId, { shape: WallShape; levelId: LevelId }>();
   for (const w of doc.walls) {
     if (w.bulge) continue;
     const s = shapeOf(w, types.get(w.wallTypeId));

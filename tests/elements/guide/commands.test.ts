@@ -7,9 +7,10 @@ import { deleteElements } from '../../../src/elements/opening/commands';
 import { addGuide, clearGuides } from '../../../src/elements/guide/commands';
 import { isGuideId } from '../../../src/elements/guide/schema';
 import { nudge } from '../../../src/tools/nudge';
+import { lid } from '../../ids';
 
-const g = (id: string, levelId = 'lvl_ground') => ({ id, levelId, point: { x: 0, y: 1 }, dir: { x: 1, y: 0 } });
-const doc: Doc = { ...newDocument(), levels: [...newDocument().levels, { id: 'up', name: 'Up', elevation: 3, height: 3 }], guides: [g('guide_a'), g('guide_b'), g('guide_c', 'up')] };
+const g = (id: string, levelId = 'lvl_ground') => ({ id, levelId: lid(levelId), point: { x: 0, y: 1 }, dir: { x: 1, y: 0 } });
+const doc: Doc = { ...newDocument(), levels: [...newDocument().levels, { id: lid('up'), name: 'Up', elevation: 3, height: 3 }], guides: [g('guide_a'), g('guide_b'), g('guide_c', 'up')] };
 
 describe('guides', () => {
   it('are elements: selectable by id, named by their prefix', () => {
@@ -25,9 +26,9 @@ describe('guides', () => {
 
   it('deleting the selection takes the selected ones; clearing a level takes all of its own and no other', () => {
     expect(deleteElements(['guide_a']).apply(doc).guides.map((x) => x.id)).toEqual(['guide_b', 'guide_c']);
-    expect(clearGuides('lvl_ground').apply(doc).guides.map((x) => x.id)).toEqual(['guide_c']);
+    expect(clearGuides(lid('lvl_ground')).apply(doc).guides.map((x) => x.id)).toEqual(['guide_c']);
     // Nothing to clear: the same document, so no undo step is made of it.
-    expect(clearGuides('none').apply(doc)).toBe(doc);
+    expect(clearGuides(lid('none')).apply(doc)).toBe(doc);
   });
 
   it('the arrows move a selected guide by the step', () => {

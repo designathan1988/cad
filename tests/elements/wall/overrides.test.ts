@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument, wallBase, wallHeights, wallOverrides, wallTop } from '../../../src/project/doc';
 import { resetWallsToType } from '../../../src/elements/wall/commands';
-import { wid } from '../../ids';
+import { lid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 
 const base: Doc = {
@@ -21,7 +21,7 @@ const wall = (id: WallId, typeId: string, own: Partial<DocWall> = {}): DocWall =
   start: { x: 0, y: 0 },
   end: { x: 4, y: 0 },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   ...own,
 });
 

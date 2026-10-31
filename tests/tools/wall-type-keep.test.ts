@@ -8,7 +8,7 @@ import { deriveGeometry } from '../../src/project/derive';
 import { insideRing } from '../../src/elements/room/derive';
 import type { ReferenceLine } from '../../src/elements/wall/schema';
 import { changeWallType, roomFace } from '../../src/elements/wall/edit';
-import { rid, wid } from '../ids';
+import { lid, rid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], type = 'wt_masonry15', referenceLine: ReferenceLine = 'centerline'): DocWall => ({
@@ -17,7 +17,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number], type = 'wt_m
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine,
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level', offset: 0 },
 });
@@ -25,7 +25,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number], type = 'wt_m
 const box: Doc = {
   ...newDocument(),
   walls: [wall(wid('s'), [0, 0], [6, 0]), wall(wid('e'), [6, 0], [6, 4]), wall(wid('n'), [6, 4], [0, 4]), wall(wid('w'), [0, 4], [0, 0])],
-  rooms: [{ id: rid('r'), levelId: 'lvl_ground', seed: { x: 3, y: 2 }, name: 'Room 1', number: '1' }],
+  rooms: [{ id: rid('r'), levelId: lid('lvl_ground'), seed: { x: 3, y: 2 }, name: 'Room 1', number: '1' }],
 };
 
 const inRoomOf = (doc: Doc) => {
@@ -75,8 +75,8 @@ describe('a wall type changed', () => {
         wall(wid('p'), [4, 0], [4, 4], 'wt_masonry20', 'exteriorFace'),
       ],
       rooms: [
-        { id: rid('a'), levelId: 'lvl_ground', seed: { x: 2, y: 2 }, name: 'A', number: '1' },
-        { id: rid('b'), levelId: 'lvl_ground', seed: { x: 6, y: 2 }, name: 'B', number: '2' },
+        { id: rid('a'), levelId: lid('lvl_ground'), seed: { x: 2, y: 2 }, name: 'A', number: '1' },
+        { id: rid('b'), levelId: lid('lvl_ground'), seed: { x: 6, y: 2 }, name: 'B', number: '2' },
       ],
     };
     const w = doc.walls.find((x) => x.id === 'p')!;
@@ -100,7 +100,7 @@ describe('a wall type changed', () => {
     const doc: Doc = {
       ...newDocument(),
       walls: [wall(wid('d'), [-3, 0], [3, 0]), { ...wall(wid('c'), [3, 0], [-3, 0]), bulge: 1 }],
-      rooms: [{ id: rid('r'), levelId: 'lvl_ground', seed: { x: 0, y: 1 }, name: 'R', number: '1' }],
+      rooms: [{ id: rid('r'), levelId: lid('lvl_ground'), seed: { x: 0, y: 1 }, name: 'R', number: '1' }],
     };
     const before = areas(doc)[0]!;
     expect(roomFace(doc, doc.walls[1]!, inRoomOf(doc))).not.toBeNull();

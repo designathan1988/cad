@@ -7,6 +7,7 @@ import { readProject, repairProject } from './file';
 import type { Doc } from './doc';
 import type { View3D } from './view-prefs';
 import { saveProject } from './db';
+import type { LevelId } from './doc';
 
 const DOC_KEY = 'cad2.document.v1';
 const PREFS_KEY = 'cad2.prefs.v1';
@@ -16,7 +17,7 @@ export interface Prefs {
   theme?: 'light' | 'dark';
   view?: '3d' | 'plan';
   /** The level last shown: interface state, kept by the browser and never in the project or its undo. */
-  levelId?: string;
+  levelId?: LevelId;
   panelOpen?: boolean;
   /** The project browser drawer is open. */
   browserOpen?: boolean;

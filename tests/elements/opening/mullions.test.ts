@@ -10,9 +10,9 @@ import { openingParts } from '../../../src/elements/opening/parts';
 import { newOpening, type OpeningStyle } from '../../../src/elements/opening/schema';
 import { fitStyle, isOpeningStyle, paneRows, paneSpans } from '../../../src/elements/opening/style';
 import { symbolLines } from '../../../src/elements/opening/symbol';
-import { oid, wid } from '../../ids';
+import { lid, oid, wid } from '../../ids';
 
-const wall: DocWall = { id: wid('w'), wallTypeId: 'wt_masonry15', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground', baseOffset: 0, top: { kind: 'level', offset: 0 } };
+const wall: DocWall = { id: wid('w'), wallTypeId: 'wt_masonry15', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline', levelId: lid('lvl_ground'), baseOffset: 0, top: { kind: 'level', offset: 0 } };
 const fixed: OpeningStyle = { operation: 'fixed', leaves: 1, frame: 0.05, casing: 0, transom: 0, threshold: false };
 const placed = (style: OpeningStyle) => {
   const doc: Doc = { ...newDocument(), walls: [wall], openings: [{ ...newOpening(oid('win'), wid('w'), 'window', { kind: 'centered' }, { width: 1.2, height: 1.2, style }), sill: 1 }] };

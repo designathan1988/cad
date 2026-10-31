@@ -7,9 +7,10 @@ import { guideKind } from '../../src/elements/kinds/guide';
 import type { Guide } from '../../src/elements/guide/schema';
 import { snap } from '../../src/session/snap';
 import { type SnapInput } from '../../src/session/snap-types';
+import { lid } from '../ids';
 
-const point: Guide = { id: 'guide_p', levelId: 'lvl_ground', point: vec(1, 1), dir: vec(1, 0), shape: 'point' };
-const circle: Guide = { id: 'guide_c', levelId: 'lvl_ground', point: vec(0, 0), dir: vec(1, 0), shape: 'circle', radius: 2 };
+const point: Guide = { id: 'guide_p', levelId: lid('lvl_ground'), point: vec(1, 1), dir: vec(1, 0), shape: 'point' };
+const circle: Guide = { id: 'guide_c', levelId: lid('lvl_ground'), point: vec(0, 0), dir: vec(1, 0), shape: 'circle', radius: 2 };
 const input = (cursor: [number, number], extra: Partial<SnapInput> = {}): SnapInput => ({
   cursor: vec(cursor[0], cursor[1]),
   mpp: 0.001,

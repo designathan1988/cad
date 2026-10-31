@@ -4,13 +4,14 @@
 // it climbs (`angle`); a spiral is centred a radius ahead of that point. geometry.ts lays the steps out.
 
 import type { Point2 } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
 
 export const STAIR_PREFIX = 'stair';
 export type StairKind = 'straight' | 'l' | 'u' | 'spiral' | 'ramp';
 
 export interface Stair {
   readonly id: string;
-  readonly levelId: string;
+  readonly levelId: LevelId;
   readonly kind: StairKind;
   /** The middle of the first step's front edge (a spiral's centre is its radius ahead of it). */
   readonly at: Point2;

@@ -7,7 +7,7 @@ import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import { newOpening } from '../../src/elements/opening/schema';
 import { canTransform, copiesInSeries, copyToLevel, reflection, rotation, scaling, transformSelection, translation } from '../../src/elements/transform';
-import { fid, oid, rid, wid } from '../ids';
+import { fid, lid, oid, rid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
@@ -16,14 +16,14 @@ const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => 
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
 });
 const doc: Doc = {
   ...newDocument(),
   walls: [wall(wid('b'), [0, 0], [4, 0]), wall(wid('r'), [4, 0], [4, 3]), wall(wid('t'), [4, 3], [0, 3]), wall(wid('l'), [0, 3], [0, 0]), wall(wid('x'), [4, 0], [6, 0])],
   openings: [newOpening(oid('opening_d'), wid('b'), 'door', { kind: 'fromStart', distance: 1 }, { hinge: 'start', swing: 'left' })],
-  rooms: [{ id: rid('room'), levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
-  floors: [{ id: fid('floor'), levelId: 'lvl_ground', source: { kind: 'room', roomId: rid('room') }, thickness: 0.15, offset: 0 }],
+  rooms: [{ id: rid('room'), levelId: lid('lvl_ground'), seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
+  floors: [{ id: fid('floor'), levelId: lid('lvl_ground'), source: { kind: 'room', roomId: rid('room') }, thickness: 0.15, offset: 0 }],
 };
 const g = deriveGeometry(doc);
 const box = ['b', 'r', 't', 'l'];
@@ -139,11 +139,11 @@ describe('a door selected without its wall', () => {
 });
 
 describe('copied to another level (Ctrl+C, Ctrl+V)', () => {
-  const twoLevels: Doc = { ...doc, levels: [...doc.levels, { id: 'lvl_up', name: 'Upper', elevation: 3, height: 2.8 }] };
+  const twoLevels: Doc = { ...doc, levels: [...doc.levels, { id: lid('lvl_up'), name: 'Upper', elevation: 3, height: 2.8 }] };
   const g2 = deriveGeometry(twoLevels);
 
   it('the box, its door and its room: copies on the upper level in the same place, the originals kept', () => {
-    const r = copyToLevel(twoLevels, g2, [...box, 'room'], 'lvl_up', newId);
+    const r = copyToLevel(twoLevels, g2, [...box, 'room'], lid('lvl_up'), newId);
     const added = r.doc.walls.slice(twoLevels.walls.length);
     expect(added).toHaveLength(4);
     expect(added.every((w) => w.levelId === 'lvl_up')).toBe(true);
@@ -153,12 +153,12 @@ describe('copied to another level (Ctrl+C, Ctrl+V)', () => {
     const door = r.doc.openings.at(-1)!;
     expect(door.wallId).toBe(added[0]!.id);
     const room = r.doc.rooms.at(-1)!;
-    expect(room).toMatchObject({ levelId: 'lvl_up', number: '1', seed: { x: 2, y: 1.5 } });
+    expect(room).toMatchObject({ levelId: lid('lvl_up'), number: '1', seed: { x: 2, y: 1.5 } });
     expect(deriveGeometry(r.doc).rooms.get(room.id)!.enclosed).toBe(true);
   });
 
   it('a door selected without its wall is left out (its wall is not on that level)', () => {
-    const r = copyToLevel(twoLevels, g2, ['opening_d'], 'lvl_up', newId);
+    const r = copyToLevel(twoLevels, g2, ['opening_d'], lid('lvl_up'), newId);
     expect(r.doc.openings).toHaveLength(twoLevels.openings.length);
   });
 });

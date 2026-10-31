@@ -10,9 +10,9 @@ import { dropLeaders } from '../../src/elements/note/commands';
 import { leaderStart, type Note } from '../../src/elements/note/schema';
 import { layoutRoomTags } from '../../src/render/room-tags';
 import { setLang } from '../../src/i18n/messages';
-import { rid } from '../ids';
+import { lid, rid } from '../ids';
 
-const callout: Note = { id: 'note_c', levelId: 'lvl_ground', at: { x: 0, y: 0 }, text: 'Ver detalhe', height: 0.25, leader: { x: 3, y: 1 } };
+const callout: Note = { id: 'note_c', levelId: lid('lvl_ground'), at: { x: 0, y: 0 }, text: 'Ver detalhe', height: 0.25, leader: { x: 3, y: 1 } };
 
 describe('callouts', () => {
   it("the leader leaves the text's box on the way to its point", () => {
@@ -49,7 +49,7 @@ describe('callouts', () => {
 });
 
 describe('room tags', () => {
-  const room = { id: rid('room_a'), levelId: 'lvl_ground', seed: { x: 1, y: 1 }, name: 'Sala', number: '3' };
+  const room = { id: rid('room_a'), levelId: lid('lvl_ground'), seed: { x: 1, y: 1 }, name: 'Sala', number: '3' };
   setLang('pt');
 
   it('say what the drawing sets: number and name by default, the name, the number, or with the ceiling height', () => {

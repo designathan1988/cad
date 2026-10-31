@@ -4,6 +4,7 @@
 // geometry.ts builds the faces.
 
 import type { Point2 } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
 
 export const ROOF_PREFIX = 'roof';
 export type RoofKind = 'flat' | 'shed' | 'gable' | 'hip';
@@ -16,7 +17,7 @@ export interface RoofEdge {
 
 export interface Roof {
   readonly id: string;
-  readonly levelId: string;
+  readonly levelId: LevelId;
   /** Counter-clockwise; side i runs from point i to point i + 1. */
   readonly outline: readonly Point2[];
   readonly edges: readonly RoofEdge[];

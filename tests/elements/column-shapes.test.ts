@@ -7,8 +7,9 @@ import { updateColumns } from '../../src/elements/column/commands';
 import { type Column, columnOutline } from '../../src/elements/column/schema';
 import type { ColumnSolid } from '../../src/elements/kinds/column';
 import { signedArea } from '../../src/elements/wall/geometry/convex';
+import { lid } from '../ids';
 
-const column = (extra: Partial<Column> = {}): Column => ({ id: 'column_c', levelId: 'lvl_ground', at: { x: 0, y: 0 }, width: 0.4, depth: 0.25, angle: 0, ...extra });
+const column = (extra: Partial<Column> = {}): Column => ({ id: 'column_c', levelId: lid('lvl_ground'), at: { x: 0, y: 0 }, width: 0.4, depth: 0.25, angle: 0, ...extra });
 
 describe('column sections', () => {
   it('each is counter-clockwise, with its area: rectangle, ellipse, I, H and L', () => {
@@ -23,7 +24,7 @@ describe('column sections', () => {
   });
 
   it('goes up to another level and its offset; back to its own level, the field goes', () => {
-    const doc = { ...newDocument(), levels: [...newDocument().levels, { id: 'lvl_up', name: 'Up', elevation: 3, height: 2.8 }], columns: [column({ topLevelId: 'lvl_up', topOffset: 1 })] };
+    const doc = { ...newDocument(), levels: [...newDocument().levels, { id: lid('lvl_up'), name: 'Up', elevation: 3, height: 2.8 }], columns: [column({ topLevelId: 'lvl_up', topOffset: 1 })] };
     const s = deriveGeometry(doc).kinds.get('columns')!.get('column_c') as ColumnSolid;
     expect(s.top).toBeCloseTo(4, 9);
     const back = updateColumns(['column_c'], { topLevelId: null }).apply(doc);

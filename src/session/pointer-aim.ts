@@ -11,6 +11,7 @@ import { guideShapes, levelGuides } from '../elements/guide/tool-ui';
 import { shownGrids } from './annotation-tools';
 import * as sceneCamera from '../render/scene-camera';
 import * as appView from './app-view';
+import type { LevelId } from '../project/doc';
 
 
 export function pointerAim(app: App, isShift: () => boolean) {
@@ -73,7 +74,7 @@ export function pointerAim(app: App, isShift: () => boolean) {
   // The walls' faces on the level, for the tape: the outline of their pieces, once per geometry. Every
   // piece's side was one before, and the line between a wall's plaster and its core caught the tape
   // first (a room of 4,35 m measured 4,38 m, core to core).
-  let faceCache: { geometry: typeof app.geometry; levelId: string; faces: { start: Point2; end: Point2; face: true }[] } | null = null;
+  let faceCache: { geometry: typeof app.geometry; levelId: LevelId; faces: { start: Point2; end: Point2; face: true }[] } | null = null;
   const levelFaces = () => {
     if (!faceCache || faceCache.geometry !== app.geometry || faceCache.levelId !== ui.levelId) {
       const polygons = [...app.geometry.solids.values()].filter((s) => s.wall.levelId === ui.levelId).flatMap((s) => s.pieces.map((p) => p.polygon));
@@ -83,8 +84,8 @@ export function pointerAim(app: App, isShift: () => boolean) {
   };
   // The faces of the level below's walls, for a wall drawn on its exterior or interior face: snapped
   // onto them, it stands flush on the wall below (a wall drawn on its axis has the axes below).
-  let belowCache: { geometry: unknown; levelId: string; faces: { start: Point2; end: Point2; face: true }[] } | null = null;
-  const belowFaces = (levelId: string) => {
+  let belowCache: { geometry: unknown; levelId: LevelId; faces: { start: Point2; end: Point2; face: true }[] } | null = null;
+  const belowFaces = (levelId: LevelId) => {
     if (!belowCache || belowCache.geometry !== app.geometry || belowCache.levelId !== levelId) {
       const polygons = [...app.geometry.solids.values()].filter((s) => s.wall.levelId === levelId).flatMap((s) => s.pieces.map((p) => p.polygon));
       belowCache = { geometry: app.geometry, levelId, faces: outerSides(polygons).map((s) => ({ start: s.a, end: s.b, face: true as const })) };
@@ -94,7 +95,7 @@ export function pointerAim(app: App, isShift: () => boolean) {
   // The elements' own points on the level, to snap to: a door's or a window's jambs and middle, an
   // object's or a column's corners and centre. Of the document as it is (not a preview: an object
   // being placed would catch its own centre), on the level shown. Once per document and level.
-  let pointCache: { doc: unknown; levelId: string; points: { point: Point2; kind: 'center' | 'node' }[] } | null = null;
+  let pointCache: { doc: unknown; levelId: LevelId; points: { point: Point2; kind: 'center' | 'node' }[] } | null = null;
   const elementPoints = () => {
     const doc = app.store.get();
     if (!pointCache || pointCache.doc !== doc || pointCache.levelId !== ui.levelId) {

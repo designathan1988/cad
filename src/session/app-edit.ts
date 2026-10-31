@@ -14,6 +14,7 @@ import { moveKinds } from '../elements/registry';
 import { deriveGeometry } from '../project/derive';
 import { savePrefs } from '../project/persist';
 import { newId } from '../core/id';
+import { levelIn } from '../project/doc';
 
 /** Backspace while drawing a chain: its last wall undone, the chain going on from its start. */
 export function undoChainStep(app: App): boolean {
@@ -33,8 +34,9 @@ export function redo(app: App): void {
 }
 
 /** Shows another level in plan; the selection, which belonged to the old one, is cleared. */
-export function setLevel(app: App, id: string): void {
-  if (!app.store.get().levels.some((l) => l.id === id)) return;
+export function setLevel(app: App, chosen: string): void {
+  const id = levelIn(app.store.get().levels, chosen);
+  if (!id) return;
   // A saved view's own scale was its level's: another level is drawn at the project's.
   if (id !== app.ui.levelId) app.ui.viewDen = null;
   app.ui.levelId = id;

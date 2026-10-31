@@ -4,11 +4,12 @@
 import { describe, expect, it } from 'vitest';
 import type { Level } from '../../src/project/doc';
 import { cutAt, EXPLODE_GAP, liftOf, readView3D, shownLevels, VIEW_3D_DEFAULT } from '../../src/session/view/view-3d';
+import { lid } from '../ids';
 
 const levels: Level[] = [
-  { id: 'second', name: 'Second', elevation: 5.6, height: 2.8 },
-  { id: 'ground', name: 'Ground', elevation: 0, height: 2.8 },
-  { id: 'first', name: 'First', elevation: 2.8, height: 2.8, cutHeight: 1.5 },
+  { id: lid('second'), name: 'Second', elevation: 5.6, height: 2.8 },
+  { id: lid('ground'), name: 'Ground', elevation: 0, height: 2.8 },
+  { id: lid('first'), name: 'First', elevation: 2.8, height: 2.8, cutHeight: 1.5 },
 ];
 
 describe('levels shown in 3D', () => {

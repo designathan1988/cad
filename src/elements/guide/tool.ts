@@ -10,6 +10,7 @@ import type { Guide } from './schema';
 import { faceOffsets, wallDirection, wallNormal } from '../wall/geometry/offset';
 import { shapeOf } from '../wall/geometry/shape';
 import { GRID_STEP } from '../../model/tolerance';
+import type { LevelId } from '../../project/doc';
 
 /** What a guide is set off from: a line, and the band its body takes across it (a wall's faces). */
 export interface GuideBase {
@@ -39,7 +40,7 @@ export const GUIDE_PX = 6;
  * The straight wall whose body is under the pointer (the nearest), or else the guide within reach of
  * it; null over neither (an arc has no face to keep parallel to). Hidden walls or guides are skipped.
  */
-export function guideBaseAt(doc: Doc, levelId: string, p: Point2, mpp: number, shown: { walls: boolean; guides: boolean } = { walls: true, guides: true }): GuideBase | null {
+export function guideBaseAt(doc: Doc, levelId: LevelId, p: Point2, mpp: number, shown: { walls: boolean; guides: boolean } = { walls: true, guides: true }): GuideBase | null {
   const r = GUIDE_PX * mpp;
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
   let wall: { base: GuideBase; off: number } | null = null;
@@ -91,6 +92,6 @@ export function guideMeasure(d: GuideDraft, offset = d.offset): { a: Point2; b: 
   return { a, b: add(a, scale(n, d.side * offset)) };
 }
 
-export function newGuide(id: string, levelId: string, d: GuideDraft, offset = d.offset): Guide {
+export function newGuide(id: string, levelId: LevelId, d: GuideDraft, offset = d.offset): Guide {
   return { id, levelId, ...guideLine(d, offset) };
 }

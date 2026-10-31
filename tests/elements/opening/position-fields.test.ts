@@ -8,7 +8,7 @@ import { deriveGeometry } from '../../../src/project/derive';
 import { leafFields, positionFields } from '../../../src/elements/opening/fields';
 import { newOpening } from '../../../src/elements/opening/schema';
 import { fieldStates } from '../../../src/ui/fields';
-import { oid, rid, wid } from '../../ids';
+import { lid, oid, rid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
@@ -17,7 +17,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => 
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level', offset: 0 },
 });
@@ -72,7 +72,7 @@ describe("a door's sides in the panel", () => {
       ...newDocument(),
       walls: [wall(wid('a'), [0, 0], [4, 0]), wall(wid('b'), [4, 0], [4, 3]), wall(wid('c'), [4, 3], [0, 3]), wall(wid('d'), [0, 3], [0, 0])],
       openings: [newOpening(oid('o'), wid('a'), 'door', { kind: 'centered' })],
-      rooms: [{ id: rid('r'), levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Kitchen', number: '1' }],
+      rooms: [{ id: rid('r'), levelId: lid('lvl_ground'), seed: { x: 2, y: 1.5 }, name: 'Kitchen', number: '1' }],
     };
     const g = deriveGeometry(box);
     const one = g.openings.get(oid('o'))!;
@@ -93,7 +93,7 @@ describe("a door's hinge in the panel", () => {
       ...newDocument(),
       walls: [wall(wid('a'), [0, 0], [4, 0]), wall(wid('b'), [4, 0], [4, 3]), wall(wid('c'), [4, 3], [0, 3]), wall(wid('d'), [0, 3], [0, 0])],
       openings: [{ ...newOpening(oid('o'), wid('a'), 'door', { kind: 'centered' }), swing: 'left' }],
-      rooms: [{ id: rid('r'), levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Kitchen', number: '1' }],
+      rooms: [{ id: rid('r'), levelId: lid('lvl_ground'), seed: { x: 2, y: 1.5 }, name: 'Kitchen', number: '1' }],
     };
     const g = deriveGeometry(box);
     const one = g.openings.get(oid('o'))!;

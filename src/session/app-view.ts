@@ -17,6 +17,7 @@ import { hull } from '../model/hull';
 import { currentDims } from '../ui/temp-dims';
 import * as sceneCamera from '../render/scene-camera';
 import { placedOf } from '../project/derived-queries';
+import type { LevelId } from '../project/doc';
 
 /**
  * The handles of the selected walls (handles.ts), in plan and in 3D on the level's floor: while selecting,
@@ -44,7 +45,7 @@ export function handles(app: App): Handles {
 }
 
 /** The level just below the one shown, if any: its plan is drawn faint under app one, and snapped to. */
-export function levelBelow(app: App): string | null {
+export function levelBelow(app: App): LevelId | null {
   const levels = app.store.get().levels;
   const here = levels.find((l) => l.id === app.ui.levelId);
   return (here ? levels.filter((l) => l.elevation < here.elevation).sort((a, b) => b.elevation - a.elevation)[0]?.id : undefined) ?? null;
@@ -109,9 +110,9 @@ export function pointerWorld(app: App): Point2 | null {
 }
 
 /** How far up a level is drawn in 3D: exploded, each level above the one below; else not at all. */
-export function lift(app: App, levelId: string): number {
+export function lift(app: App, levelId: LevelId | undefined): number {
   const levels = app.store.get().levels;
-  return app.ui.view === '3d' ? liftOf(levels, levelId, exploding(levels, app.ui.levelId, app.ui.view3d)) : 0;
+  return app.ui.view === '3d' && levelId !== undefined ? liftOf(levels, levelId, exploding(levels, app.ui.levelId, app.ui.view3d)) : 0;
 }
 
 export function height(app: App): number {

@@ -18,6 +18,7 @@ import type { WallDefaults } from '../project/doc';
 import type { WallToolState } from '../elements/wall/tool';
 import type { ElementId } from '../core/id';
 import type { FloorId } from '../elements/room/schema';
+import type { LevelId } from '../project/doc';
 
 
 export interface UiState {
@@ -29,7 +30,7 @@ export interface UiState {
   roomSpace: readonly Point2[] | null;
   /** That space was shown by a tap (a finger has no hover): a second tap in it makes the room. */
   tapToConfirm: boolean;
-  levelId: string;
+  levelId: LevelId;
   theme: 'light' | 'dark';
   panelOpen: boolean;
   /** On a narrow screen, the panel shown by its button while it would wait hidden (renderFrame). */

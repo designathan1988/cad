@@ -18,6 +18,7 @@ import type { MessageKey } from '../i18n/messages';
 import type { IconName } from '../i18n/icons';
 import type { IdMap } from '../core/id';
 import type { FloorId } from './room/schema';
+import type { LevelId } from '../project/doc';
 
 /** The document's lists the registry's kinds keep. */
 export type KindKey = 'measures' | 'references' | 'sections' | 'separators' | 'curtains' | 'zones' | 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'objects' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings' | 'walls';
@@ -117,7 +118,7 @@ export interface KeepOut {
   readonly lines: readonly { readonly a: Point2; readonly b: Point2 }[];
 }
 
-export interface ElementKind<E extends { readonly id: string; readonly levelId?: string }, S> {
+export interface ElementKind<E extends { readonly id: string; readonly levelId?: LevelId }, S> {
   readonly key: KindKey;
   /** Its ids start with this and an underscore. */
   readonly prefix: string;
@@ -129,7 +130,7 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
    * and groups): the registry's moving, copying and deleting leave it to the walls. */
   readonly walled?: true;
   /** Its level, for one whose element has none of its own (a door: its wall's). */
-  readonly levelOf?: (s: S) => string;
+  readonly levelOf?: (s: S) => LevelId;
   readonly levelIn?: (e: E, doc: Doc) => string | null;
   /** Drawn in plan under the walls (a floor), over the walls, the doors and the other kinds (a guide, a
    * text), or over the room tags too (`top`: a dimension, whose value under a room's name was lost). */

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
 import { validateDocument } from '../../src/project/persist';
 import { newOpening } from '../../src/elements/opening/schema';
-import { oid, wid } from '../ids';
+import { lid, oid, wid } from '../ids';
 
 const wall = {
   id: wid('wall_w'),
@@ -13,7 +13,7 @@ const wall = {
   start: { x: 0, y: 0 },
   end: { x: 4, y: 0 },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
 };
 
 describe('validateDocument', () => {

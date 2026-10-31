@@ -24,6 +24,7 @@ import { download, fileBase } from '../project/files';
 import * as appPlacing from '../session/app-placing';
 import { folderButton, iconButton, storeSearch, textButton } from './store-parts';
 import { standInObjectId } from '../elements/object/schema';
+import { NO_LEVEL } from '../project/doc';
 
 /** A new definition: one box, its width, depth and height, handles on them, one type. */
 export function blankDefinition(n: number): ObjectDefinition {
@@ -57,7 +58,7 @@ export const answers = (d: ObjectDefinition, query: string): boolean => {
 
 /** A definition's thumbnail: its pieces in plan at its first type, the highest drawn last, in their materials' colours. */
 export function thumbnailSvg(def: ObjectDefinition, doc: Doc): string | null {
-  const ev = evaluateObject(def, { id: standInObjectId('thumb'), levelId: '', definitionId: def.id, typeId: def.types[0]?.id ?? '', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
+  const ev = evaluateObject(def, { id: standInObjectId('thumb'), levelId: NO_LEVEL, definitionId: def.id, typeId: def.types[0]?.id ?? '', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
   const rings = [...ev.pieces].filter((p) => !p.cut).sort((a, b) => a.z + a.h - (b.z + b.h)).map((p) => ({ ring: pieceOutline(p), color: /^#[0-9a-f]{3,8}$/i.test(p.material.color) ? p.material.color : 'none' }));
   const all = rings.flatMap((r) => r.ring);
   if (all.length === 0) return null;
@@ -86,7 +87,7 @@ function pictureOf(doc: Doc, def: ObjectDefinition, typeId: string, make: boolea
 
 /** An object's size at a type, from its pieces: across, deep and high (m). */
 function sizeOf(def: ObjectDefinition, doc: Doc, typeId: string): { w: number; d: number; h: number } | null {
-  const ev = evaluateObject(def, { id: standInObjectId('size'), levelId: '', definitionId: def.id, typeId, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
+  const ev = evaluateObject(def, { id: standInObjectId('size'), levelId: NO_LEVEL, definitionId: def.id, typeId, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
   const solid = ev.pieces.filter((p) => !p.cut);
   if (solid.length === 0) return null;
   const pts = solid.flatMap((p) => pieceOutline(p));

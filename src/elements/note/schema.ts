@@ -7,6 +7,7 @@
 // level symbol. Held by its level: raising the level changes what it says.
 
 import type { Point2 } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
 
 export const NOTE_PREFIX = 'note';
 /** A new note's letters (m): read at 1:50 and 1:100 alike. */
@@ -16,7 +17,7 @@ export const LEVEL_MARK_HEIGHT = 0.2;
 
 export interface Note {
   readonly id: string;
-  readonly levelId: string;
+  readonly levelId: LevelId;
   /** The middle of its text. */
   readonly at: Point2;
   readonly text: string;

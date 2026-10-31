@@ -18,6 +18,7 @@ import { transformWalls } from '../elements/wall/edit';
 import { ruleAt } from './opening/tool';
 import type { WallId } from './wall/schema';
 import type { IdMap } from '../core/id';
+import type { LevelId } from '../project/doc';
 
 export interface Transform {
   /** Where a point goes. */
@@ -247,12 +248,12 @@ export function canTransform(doc: Doc, ids: readonly string[]): boolean {
  * floors and guides, each under a new id on that level (the rooms numbered on from that level's last).
  * Doors and windows selected without their wall are left out: their wall is not there.
  */
-export function copyToLevel(doc: Doc, g: DerivedGeometry, ids: readonly string[], levelId: string, newId: (prefix: string) => string): TransformResult {
+export function copyToLevel(doc: Doc, g: DerivedGeometry, ids: readonly string[], levelId: LevelId, newId: (prefix: string) => string): TransformResult {
   const walls = new Set(doc.walls.filter((w) => ids.includes(w.id)).map((w) => w.id));
   // An axis is on every level already: it is not copied onto one (nor counted, nor selected).
   const taken = ids.filter((id) => !doc.openings.some((o) => o.id === id && !walls.has(o.wallId)) && !kindOfId(id)?.everyLevel);
   const r = transformSelection(doc, g, taken, translation({ x: 0, y: 0 }), true, newId);
-  const onLevel = <T extends { readonly levelId: string }>(list: readonly T[], before: number): T[] => list.map((x, i) => (i >= before ? { ...x, levelId } : x));
+  const onLevel = <T extends { readonly levelId: LevelId }>(list: readonly T[], before: number): T[] => list.map((x, i) => (i >= before ? { ...x, levelId } : x));
   const placed = kindsOnLevel({ ...r.doc, walls: onLevel(r.doc.walls, doc.walls.length) }, doc, levelId);
   // The rooms numbered on from that level's last.
   let last = doc.rooms.filter((x) => x.levelId === levelId).reduce((n, x) => Math.max(n, Number.parseInt(x.number, 10) || 0), 0);

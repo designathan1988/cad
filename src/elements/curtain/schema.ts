@@ -4,6 +4,7 @@
 // edge; a panel in each cell, glass or opaque. Its frame and panels are built in geometry.ts. Pure.
 
 import type { Point2 } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
 
 export const CURTAIN_PREFIX = 'curtain';
 
@@ -16,7 +17,7 @@ export interface GridRule {
 
 export interface Curtain {
   readonly id: string;
-  readonly levelId: string;
+  readonly levelId: LevelId;
   readonly start: Point2;
   readonly end: Point2;
   /** Its foot above (+) or below (−) its level's floor (m). */

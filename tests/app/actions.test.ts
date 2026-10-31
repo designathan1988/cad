@@ -9,11 +9,12 @@ import { createStore } from '../../src/core/store';
 import { addLevel } from '../../src/elements/level/commands';
 import { setLang } from '../../src/i18n/messages';
 import { VIEW_3D_DEFAULT } from '../../src/session/view/view-3d';
+import { lid } from '../ids';
 
 // Only what appActions reads; the actions themselves are not run here.
 function fakeApp(selection: string[] = [], view: '3d' | 'plan' = 'plan') {
-  const store = createStore(addLevel('lvl_up', 'Upper').apply(newDocument()));
-  return { store, ui: { selection: new Set(selection), view, levelId: 'lvl_ground', hidden: new Set(), view3d: VIEW_3D_DEFAULT }, canMergeSelection: () => false, arrangeItems: () => [] } as unknown as App;
+  const store = createStore(addLevel(lid('lvl_up'), 'Upper').apply(newDocument()));
+  return { store, ui: { selection: new Set(selection), view, levelId: lid('lvl_ground'), hidden: new Set(), view3d: VIEW_3D_DEFAULT }, canMergeSelection: () => false, arrangeItems: () => [] } as unknown as App;
 }
 const openers = { help: () => {}, levels: () => {}, wallTypes: () => {}, materials: () => {}, units: () => {}, objects: () => {}, openings: () => {}, floors: () => {}, presets: () => {}, openFile: () => {}, projects: () => {}, drawing: () => {}, keys: () => {}, variables: () => {} };
 

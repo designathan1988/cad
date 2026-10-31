@@ -86,7 +86,7 @@ export function placeFloatBar(app: App): void {
       // Each at its level's height in the view (lifted when exploded).
       const opening = placedOf(app.geometry, id);
       if (opening) {
-        const up = appView.lift(app, app.geometry.solids.get(opening.opening.wallId)?.wall.levelId ?? '');
+        const up = appView.lift(app, app.geometry.solids.get(opening.opening.wallId)?.wall.levelId);
         for (const v of openingOutline(opening)) [opening.bottom, opening.top].forEach((z) => project(v, z + up));
       }
       // The registry's with a height (a room at its level's floor, a floor): their outlines at both faces.

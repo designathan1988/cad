@@ -21,6 +21,7 @@ import type { RoomId } from '../elements/room/schema';
 import { type Material, materialIn } from '../elements/material/schema';
 import { CUT_HEIGHT, cutHeightOf, type Doc, type DocWall, levelOf, roofCoversOf, wallHeights, wallTop } from './doc';
 import { blocksUnder } from '../elements/wall/geometry/under-roof';
+import type { LevelId } from './doc';
 
 /** How far past the host's faces another wall still counts as meeting it inside an opening (m). */
 const JOINT_REACH = 0.01;
@@ -66,7 +67,7 @@ export interface DerivedGeometry {
   readonly rooms: ReadonlyMap<RoomId, RoomSolid>;
   readonly roomWarnings: readonly RoomWarning[];
   /** A level's spaces, the ones its walls close in (room/derive.ts): where the room tool can put a room. Found when asked. */
-  readonly spaces: (levelId: string) => readonly (readonly P[])[];
+  readonly spaces: (levelId: LevelId) => readonly (readonly P[])[];
   /** Each level's wall pieces before doors and windows are cut: what the building covers (app/lot-areas.ts). */
   readonly levelPieces: ReadonlyMap<string, readonly (readonly P[])[]>;
   /** The registry's kinds (elements/registry.ts), derived: by kind, then id. */
@@ -185,7 +186,7 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
   for (const sep of doc.separators) roomPieces.set(sep.levelId, [...(roomPieces.get(sep.levelId) ?? []), separatorStrip(sep)]);
   const roomResult = deriveRooms(doc.rooms, roomPieces);
   const found = new Map<string, P[][]>();
-  const spaces = (levelId: string): P[][] => {
+  const spaces = (levelId: LevelId): P[][] => {
     if (!found.has(levelId)) found.set(levelId, spacesOf(roomPieces.get(levelId) ?? []));
     return found.get(levelId)!;
   };

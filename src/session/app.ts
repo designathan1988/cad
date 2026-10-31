@@ -43,6 +43,7 @@ import * as toolEvents from './tool-events';
 import * as modelView from './model-view';
 import { initialUi } from './ui-initial';
 import { keepingStore } from './app-store';
+import type { LevelId } from '../project/doc';
 
 export type { UiState } from './state';
 
@@ -289,7 +290,7 @@ export class App {
   }
 
   /** What Ctrl+C took: the project as it was then, and the elements, for Ctrl+V on another level. */
-  clipboard: { readonly doc: Doc; readonly geometry: DerivedGeometry; readonly ids: readonly string[]; readonly levelId: string } | null = null;
+  clipboard: { readonly doc: Doc; readonly geometry: DerivedGeometry; readonly ids: readonly string[]; readonly levelId: LevelId } | null = null;
 
   seenSelection = '';
   /** The 3D view's: the selection and what covered it when last brought into sight (view-ui.ts). */

@@ -3,6 +3,7 @@
 // with the grid axes it stands on (elements/grid/carry.ts). Drawn cut in plan, solid in 3D.
 
 import { add, type Point2, scale } from '../../model/vector';
+import type { LevelId } from '../../project/doc';
 
 export const COLUMN_PREFIX = 'column';
 /** A new column's section (m): 25 × 25 cm. */
@@ -10,7 +11,7 @@ export const COLUMN_SIZE = 0.25;
 
 export interface Column {
   readonly id: string;
-  readonly levelId: string;
+  readonly levelId: LevelId;
   /** Its centre. */
   readonly at: Point2;
   /** Along its own x (turned by `angle`) and its own y (m). */

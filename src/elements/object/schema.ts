@@ -6,6 +6,7 @@
 
 import type { MaterialId } from '../material/schema';
 import { type Brand, newId } from '../../core/id';
+import type { LevelId } from '../../project/doc';
 
 export const OBJECT_PREFIX = 'object';
 export const DEFINITION_PREFIX = 'def';
@@ -167,7 +168,7 @@ export interface LightDef {
 
 export interface ObjectInstance {
   readonly id: ObjectId;
-  readonly levelId: string;
+  readonly levelId: LevelId;
   readonly definitionId: DefinitionId;
   /** One of its definition's types: what its values start from. */
   readonly typeId: string;

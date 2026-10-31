@@ -6,7 +6,7 @@ import { type Doc, type DocWall, newDocument, wallNumber } from '../../src/proje
 import { deriveGeometry } from '../../src/project/derive';
 import { newOpening } from '../../src/elements/opening/schema';
 import { canMerge, cornerWalls, mergeWalls, splitWall } from '../../src/tools/split';
-import { oid, wid } from '../ids';
+import { lid, oid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
@@ -15,7 +15,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number], bulge = 0): 
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   ...(bulge ? { bulge } : {}),
 });
 const doc: Doc = { ...newDocument(), walls: [wall(wid('b'), [0, 0], [4, 0])], openings: [newOpening(oid('opening_d'), wid('b'), 'door', { kind: 'fromStart', distance: 2.5 })] };

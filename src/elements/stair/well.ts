@@ -5,6 +5,7 @@ import type { Doc } from '../../project/doc';
 import type { Point2 } from '../../model/vector';
 import { type StairSolid, stairSolid, stairWell } from './geometry';
 import { type Stair, WELL_REACH } from './schema';
+import type { LevelId } from '../../project/doc';
 
 /** The stair as built, from its level. */
 export function solidOfStair(doc: Doc, s: Stair) {
@@ -27,7 +28,7 @@ export function arrivalOf(s: StairSolid): [Point2, Point2] | null {
 }
 
 /** The level a stair arrives at: the one whose floor is nearest its top, within WELL_REACH. */
-export function levelReached(doc: Doc, s: Stair): string | null {
+export function levelReached(doc: Doc, s: Stair): LevelId | null {
   const solid = solidOfStair(doc, s);
   const top = solid.bottom + solid.height;
   const best = [...doc.levels].sort((a, b) => Math.abs(a.elevation - top) - Math.abs(b.elevation - top))[0];

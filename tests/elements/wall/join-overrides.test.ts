@@ -10,7 +10,7 @@ import type { Point2 } from '../../../src/model/vector';
 import { newDocument } from '../../../src/project/doc';
 import { readProject, writeProject } from '../../../src/project/file';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { wid } from '../../ids';
+import { lid, wid } from '../../ids';
 
 const solid: WallType = { id: 'solid', name: 'solid', layers: [{ thickness: 0.2, function: 'structure', materialId: 'concrete' }] };
 const layered: WallType = {
@@ -113,7 +113,7 @@ describe('join choices at a wall end', () => {
 
   it('every choice is read back from the file; an unknown one drops the wall and says so', () => {
     const joins: EndJoin[] = ['off', 'through', 'stop', 'miter', 'square'];
-    const walls = joins.map((j, k) => ({ ...L()[0]!, id: wid(`w${k}`), levelId: 'lvl_ground', joins: { start: j } }));
+    const walls = joins.map((j, k) => ({ ...L()[0]!, id: wid(`w${k}`), levelId: lid('lvl_ground'), joins: { start: j } }));
     const back = readProject(writeProject({ ...newDocument(), walls }));
     expect(back.ok && back.doc.walls.map((w) => w.joins?.start)).toEqual(joins);
     const bad = readProject(JSON.stringify({ ...newDocument(), walls: [{ ...walls[0]!, joins: { start: 'bevel' } }] }));

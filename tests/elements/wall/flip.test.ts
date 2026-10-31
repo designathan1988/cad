@@ -7,7 +7,7 @@ import { deriveOpenings, hostsOf } from '../../../src/elements/opening/derive';
 import { distributeOpenings } from '../../../src/elements/opening/commands';
 import { newOpening } from '../../../src/elements/opening/schema';
 import { flipWalls } from '../../../src/elements/wall/flip';
-import { oid, wid } from '../../ids';
+import { lid, oid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 import type { OpeningId } from '../../../src/elements/opening/schema';
 import { gid } from '../../ids';
@@ -18,7 +18,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number], extra: Parti
   start: { x: a[0], y: a[1] },
   end: { x: b[0], y: b[1] },
   referenceLine: 'centerline',
-  levelId: 'lvl_ground',
+  levelId: lid('lvl_ground'),
   baseOffset: 0,
   top: { kind: 'level', offset: 0 },
   ...extra,
