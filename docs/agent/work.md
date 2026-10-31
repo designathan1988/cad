@@ -122,6 +122,12 @@ Known, not caused here: object-snapshot.ts sets PCFSoftShadowMap (three warns); 
 byte-equal, headless check: WallId 5cf85fa, OpeningId 472cd5b, RoomId+FloorId 1f60e39, OpeningGroupId e114c59, ObjectId d2954ce, LevelId 71516f7,
 WallTypeId b60c270, MaterialId bf831b9 (declared once now), DefinitionId ae9f360, the 15 other kinds 930f07a. ITEM 4 DONE. Pattern: brand in schema + newXId; any string from a list/pref decoded by membership (levelIn etc.); stand-ins named. Found and fixed type lies: selection/hover held
 every kind (ElementId), Scene3D.walls held openings. Tools (.scratchpad): fix-test-ids.mjs BRAND ctor schema; tests/ids.ts wid/oid/rid/fid.
-Item 3: tool draft machine done 1791f1b (elements/tool-draft.ts; 13 loose fields -> ui.draft). Next: drag (ui.drag + ui.handleDrag +
-ptr.boxDrag -> one), view (view + view3d), lifecycle (boot/opening/saving). Then report (pt-BR, what was/was not done).
+Item 3 DONE. Tool draft machine 1791f1b (elements/tool-draft.ts; 13 loose fields -> ui.draft). Drag 463d415 (HandleDrag is a
+kind of Drag; ui.handleDrag gone; ptr.boxDrag kept in PointerState with panning: a camera gesture, one owner already). View db12ea7
+(putView3D the one writer of ui.view3d + prefs; setView already the one writer of ui.view). Lifecycle b0a4141 (persist.ts save.target
+the one owner of db + project id, app.db/app.projectId gone; showProject in files.ts the one "another project shown" transition).
+Each checked headless (door and table handles mid-drag/Esc/release/undo; X-ray + box + box face drag across reloads; saved 3D view;
+projects dialog new/open/delete; file opened as project). Gates 0, round trips byte-equal. Next: report (pt-BR).
+Found, not changed (behaviour): levels-dialog sets ui.levelId directly (add/delete), so a saved view's scale (viewDen) is not reset
+there as setLevel does; opening another project keeps viewDen too.
 Pre-existing, not caused here: headless drag of an unselected wall does not move it (same on 84cbe8f).
