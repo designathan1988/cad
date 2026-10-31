@@ -2,143 +2,32 @@
 // renders only when something changed. World (x, y, height) maps to three.js (x, height, −y).
 // Each convex piece is a prism; pieces are disjoint by construction, so no 3D boolean exists.
 
-import { creaseEdges } from '../elements/kinds/object';
 import * as THREE from 'three';
-import { patternTexture, patternUvAt } from '../elements/object/textures';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { DenoiseMaterial, GradientEquirectTexture, WebGLPathTracer } from 'three-gpu-pathtracer';
-import { clampedSamples, oneShadowRay } from './trace-shader';
-import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
-import { GenerateMeshBVHWorker } from 'three-mesh-bvh/worker';
+import { GradientEquirectTexture, WebGLPathTracer } from 'three-gpu-pathtracer';
 import type { RenderQuality, VisualStyle } from '../session/view/view-3d';
 import type { Point2 } from '../model/vector';
-import type { DerivedGeometry, OpeningSolid, WallSolid } from '../project/derive';
+import type { DerivedGeometry } from '../project/derive';
 import type { WallId } from '../elements/wall/schema';
-import { type Material, SEE_THROUGH } from '../elements/material/schema';
-import { blockPaint, type Paint, wallMeshKey } from './wall-paint';
-import { type PrismFaces, visibleFaces } from '../elements/wall/geometry/faces';
-import { prism, shownPrism, slopedPrism, toThree } from '../elements/prisms';
+import { wallMeshKey } from './wall-paint';
+import type { PrismFaces } from '../elements/wall/geometry/faces';
+import { toThree } from '../elements/prisms';
 import { eachSolid } from '../elements/registry';
 import type { KindSolid } from '../elements/contract';
-import { featureEdges, type SlopedTop, underSlopes } from '../elements/wall/geometry/edges';
-import { openingParts } from '../elements/opening/parts';
-import { boxCaps, type SectionBox, type SectionLine, sectionCaps, sectionLooks, type UprightPrism } from '../model/section-box';
+import { type SectionBox, type SectionLine, sectionLooks } from '../model/section-box';
+import { type Compiling, photoSky, trace, TRACE } from './scene-trace';
+import { applyEdges, setFaint, layerMaterial, lifelike, type PatternUniforms, prepare, XRAY_OPACITY } from './scene-materials';
+import { build, buildOpening, clipPlanes, drop, facesOf, outline, syncBoxCaps, syncEdges } from './scene-build';
+import { GROUND_MIN, groundFade, placeGround } from './scene-light';
+import { applyLights, applyShadows, effects, QUALITY } from './scene-light';
 
-/** The ground's size: this many times the model's extent, at least GROUND_MIN (m) across. */
-const GROUND_SPAN = 4;
-const GROUND_MIN = 60;
 /** Vertical field of view (degrees). */
 const VIEW_FOV = 40;
-/**
- * Each quality's settings: the resolution against the screen's (`ratio` times its pixel ratio, at most
- * `max`; over 1 drawn larger and shown smaller, which smooths the edges), the sun's shadow map (px a
- * side) and whether its edges are soft, and ambient occlusion with multisampling (a post-processing pass).
- */
-// Each a step that shows: low, coarse pixels and hard shadows; medium, soft shadows and a light ambient
-// occlusion; high, a full one; ultra, drawn at twice the pixels (edges supersampled), the occlusion finer.
-const QUALITY: Readonly<Record<RenderQuality, { readonly ratio: number; readonly max: number; readonly shadow: number; readonly soft: boolean; readonly ao: boolean; readonly aoSamples: number; readonly aoBlend: number }>> = {
-  low: { ratio: 0.75, max: 1, shadow: 1024, soft: false, ao: false, aoSamples: 0, aoBlend: 0 },
-  medium: { ratio: 1, max: 2, shadow: 2048, soft: true, ao: true, aoSamples: 8, aoBlend: 0.5 },
-  high: { ratio: 1, max: 2, shadow: 4096, soft: true, ao: true, aoSamples: 16, aoBlend: 0.8 },
-  ultra: { ratio: 2, max: 3, shadow: 4096, soft: true, ao: true, aoSamples: 24, aoBlend: 0.9 },
-};
-/** The tracer as it is: its JavaScript has isCompiling (WebGLPathTracer.js), its typings do not. */
-type Compiling = WebGLPathTracer & { readonly isCompiling: boolean };
-/** The photorealistic style by quality: the share of the screen's pixels traced, the samples it stops at. */
-// The saved picture's own count (picture): it is 3840 pixels wide, and the view's count there was the
-// GPU's minutes (1024 at high, 150 s); these come out clean at that size in a fraction of it.
-// The trace shown from its `shown` samples on, the realistic view drawn until then: its first samples are
-// grain (black specks, half-lit walls) that no denoise takes away without smearing the textures.
-const TRACE: Readonly<Record<RenderQuality, { readonly scale: number; readonly samples: number; readonly picture: number; readonly shown: number }>> = {
-  low: { scale: 0.5, samples: 64, picture: 64, shown: 24 },
-  medium: { scale: 0.75, samples: 256, picture: 128, shown: 48 },
-  high: { scale: 1, samples: 1024, picture: 256, shown: 64 },
-  ultra: { scale: 1, samples: 4096, picture: 512, shown: 96 },
-};
-/** The traced view's exposure (its tone mapping), against its light being far brighter than the raster view's. */
-const TRACE_EXPOSURE = 0.55;
-/** How much of a wall shows in x-ray. */
-const XRAY_OPACITY = 0.28;
-/** How much the project's glass hides what is behind it. */
-const GLASS_OPACITY = 0.45;
-interface PatternUniforms {
-  key: string;
-  readonly uPatMap: { value: THREE.Texture | null };
-  readonly uPatPeriod: { value: THREE.Vector2 };
-  readonly uPatAngle: { value: number };
-}
-
-/**
- * A material that can show a pattern (render/pattern-texture.ts) laid in the world's metres, whatever
- * the geometry's own coordinates: a face looking up or down takes it in plan, one looking sideways along
- * its length and up (box mapping by the face's normal). Walls, floors and objects alike, none of them
- * with texture coordinates of their own. Off until the material has a pattern (its PATTERN define).
- */
-function patterned(x: THREE.MeshStandardMaterial): void {
-  const u: PatternUniforms = { key: '', uPatMap: { value: null }, uPatPeriod: { value: new THREE.Vector2(1, 1) }, uPatAngle: { value: 0 } };
-  x.userData.pattern = u;
-  x.onBeforeCompile = (shader) => {
-    shader.uniforms.uPatMap = u.uPatMap;
-    shader.uniforms.uPatPeriod = u.uPatPeriod;
-    shader.uniforms.uPatAngle = u.uPatAngle;
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\n#ifdef PATTERN\nvarying vec3 vPatPos;\nvarying vec3 vPatNormal;\n#endif')
-      .replace(
-        '#include <project_vertex>',
-        '#include <project_vertex>\n#ifdef PATTERN\nvPatPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvPatNormal = normalize(mat3(modelMatrix) * objectNormal);\n#endif',
-      );
-    shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\n#ifdef PATTERN\nvarying vec3 vPatPos;\nvarying vec3 vPatNormal;\nuniform sampler2D uPatMap;\nuniform vec2 uPatPeriod;\nuniform float uPatAngle;\n#endif')
-      .replace(
-        '#include <map_fragment>',
-        [
-          '#include <map_fragment>',
-          '#ifdef PATTERN',
-          'vec3 patN = abs(normalize(vPatNormal));',
-          // Plan x and y are three.js x and −z; the height is y.
-          'vec2 patP = patN.y >= max(patN.x, patN.z) ? vec2(vPatPos.x, -vPatPos.z) : (patN.x >= patN.z ? vec2(-vPatPos.z, vPatPos.y) : vec2(vPatPos.x, vPatPos.y));',
-          'float patC = cos(uPatAngle);',
-          'float patS = sin(uPatAngle);',
-          'patP = vec2(patC * patP.x + patS * patP.y, -patS * patP.x + patC * patP.y);',
-          'diffuseColor.rgb *= texture2D(uPatMap, patP / uPatPeriod).rgb;',
-          '#endif',
-        ].join('\n'),
-      );
-  };
-}
-
-/**
- * Texture coordinates for a pattern on a geometry already in the world, as the patterned shader lays it
- * (patterned above): a face looking up or down in plan, one looking sideways along its length and up;
- * over the pattern's period, turned by its angle. Made flat (each triangle its own corners) so a face
- * takes its own direction.
- */
-function patternUv(g: THREE.BufferGeometry, u: PatternUniforms): THREE.BufferGeometry {
-  return patternUvAt(g, u.uPatPeriod.value, u.uPatAngle.value);
-}
 
 /** A luminaire's point light per lumen: 900 lm give the floor 1.75 m under it about 0.5, a third of the sun. */
 const LAMP_SCALE = (0.5 * 1.75 * 1.75) / 900;
-
-/** Opaque in its middle, fading to nothing at its edge: the ground runs off into the background. */
-function groundFade(): THREE.Texture {
-  const size = 256;
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext('2d')!;
-  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  g.addColorStop(0, '#fff');
-  g.addColorStop(0.4, '#fff');
-  g.addColorStop(1, '#000');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, size, size);
-  return new THREE.CanvasTexture(canvas);
-}
 
 export class Scene3D {
   readonly renderer: THREE.WebGLRenderer;
@@ -148,25 +37,25 @@ export class Scene3D {
    * true at any depth. `orthoHalf`: half the view's height in metres at zoom 1.
    */
   private readonly ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.05, 4000);
-  private orthoOn = false;
+  orthoOn = false;
   private orthoHalf = 5;
   /** The camera in use: the perspective one, or the orthographic one (setOrtho). */
   get camera(): THREE.PerspectiveCamera | THREE.OrthographicCamera {
     return this.orthoOn ? this.ortho : this.persp;
   }
   readonly controls: OrbitControls;
-  private readonly scene = new THREE.Scene();
-  private readonly walls = new Map<WallId, { group: THREE.Group; key: string }>();
+  readonly scene = new THREE.Scene();
+  readonly walls = new Map<WallId, { group: THREE.Group; key: string }>();
   // Colours come from the design tokens (styles.css, --3d-*), set in setTheme.
   /** Each solid's shape key (wallMeshKey without the state), kept while the solid lives. */
   private readonly shapeKeys = new WeakMap<object, string>();
   /** One three.js material per project material (elements/material), its colour and finish kept up to date. */
-  private readonly layerMaterials = new Map<string, THREE.MeshStandardMaterial>();
+  readonly layerMaterials = new Map<string, THREE.MeshStandardMaterial>();
   /** A renovation's walls by phase (app/layer-sets.ts: wallPhases), with the overrides on; each phase's material in its token's colour. */
   private phases: ReadonlyMap<string, 'new' | 'existing' | 'demolish'> = new Map();
-  private readonly phaseMaterials = new Map<string, THREE.MeshStandardMaterial>();
-  private xrayOn = false;
-  private readonly materials = {
+  readonly phaseMaterials = new Map<string, THREE.MeshStandardMaterial>();
+  xrayOn = false;
+  readonly materials = {
     side: new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide }),
     top: new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide }),
     floor: new THREE.MeshStandardMaterial({ roughness: 0.95, side: THREE.DoubleSide }),
@@ -180,21 +69,21 @@ export class Scene3D {
     invalid: new THREE.MeshStandardMaterial({ roughness: 0.6, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
   };
   /** The cut (view-3d.ts): everything above its plane is clipped away; shared by every material, so a cut is one change. */
-  private readonly clip: THREE.Plane[] = [];
+  readonly clip: THREE.Plane[] = [];
   /** The cut's plane and the section box's six, together in `clip`. */
-  private cutPlane: THREE.Plane | null = null;
-  private boxPlanes: THREE.Plane[] = [];
+  cutPlane: THREE.Plane | null = null;
+  boxPlanes: THREE.Plane[] = [];
   private boxKey = '';
   /** The cut's fill is clipped by the box only: its own plane would clip it away. */
-  private readonly capClip: THREE.Plane[] = [];
+  readonly capClip: THREE.Plane[] = [];
   /** Where the box's faces go through walls and floors, filled as a cut is (section-box.ts, boxCaps). */
-  private readonly boxCapGroup = new THREE.Group();
-  private readonly boxCapMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
-  private boxBox: SectionBox | null = null;
-  private sectionLine: SectionLine | null = null;
-  private sectionPlane: THREE.Plane | null = null;
-  private boxCapsKey: unknown[] = [];
-  private lastSync: { g: DerivedGeometry; lift: (levelId: string) => number } | null = null;
+  readonly boxCapGroup = new THREE.Group();
+  readonly boxCapMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  boxBox: SectionBox | null = null;
+  sectionLine: SectionLine | null = null;
+  sectionPlane: THREE.Plane | null = null;
+  boxCapsKey: unknown[] = [];
+  lastSync: { g: DerivedGeometry; lift: (levelId: string) => number } | null = null;
   /** Where the cut goes through walls, filled as the plan fills them (not clipped itself). */
   private readonly caps = new THREE.Group();
   private readonly capMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
@@ -202,32 +91,32 @@ export class Scene3D {
    * Thin lines where the surfaces turn (edges.ts), one set per level so each lifts with its level: walls
    * of one colour read apart, and so does the step of a wall off the face of the wall below it.
    */
-  private readonly edgeMaterial = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.55 });
-  private readonly edges = new Map<string, THREE.LineSegments>();
-  private edgesOf: DerivedGeometry['solids'] | null = null;
+  readonly edgeMaterial = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.55 });
+  readonly edges = new Map<string, THREE.LineSegments>();
+  edgesOf: DerivedGeometry['solids'] | null = null;
   private capsKey = '';
-  private readonly sky = new THREE.HemisphereLight(undefined, undefined, 2.7);
-  private readonly sun = new THREE.DirectionalLight(undefined, 1.5);
-  private readonly fill = new THREE.DirectionalLight(undefined, 0.6);
+  readonly sky = new THREE.HemisphereLight(undefined, undefined, 2.7);
+  readonly sun = new THREE.DirectionalLight(undefined, 1.5);
+  readonly fill = new THREE.DirectionalLight(undefined, 0.6);
   /** The only light of Consistent colours: each material's own colour, as it is. */
-  private readonly ambient = new THREE.AmbientLight(0xffffff, 0);
+  readonly ambient = new THREE.AmbientLight(0xffffff, 0);
   /** The sun's and the sky's strength, before the style's. */
-  private readonly sunBase = 1.5;
-  private readonly skyBase = 2.7;
+  readonly sunBase = 1.5;
+  readonly skyBase = 2.7;
   /** Shadows drawn now (Realistic's own). */
-  private shadows = false;
+  shadows = false;
   /** The visual style and the quality (view-3d.ts), and what they need: the post-processing, the sky's reflections. */
-  private style: VisualStyle = 'shaded';
+  style: VisualStyle = 'shaded';
   /** The view's brightness and the sun's strength against the sky (view-3d.ts), multiplying the style's lights. */
-  private brightness = 1;
-  private sunScale = 1;
-  private quality: RenderQuality = 'medium';
-  private composer: { readonly fx: EffectComposer; readonly key: string; readonly passes: { camera: THREE.Camera }[] } | null = null;
+  brightness = 1;
+  sunScale = 1;
+  quality: RenderQuality = 'medium';
+  composer: { readonly fx: EffectComposer; readonly key: string; readonly passes: { camera: THREE.Camera }[] } | null = null;
   private environment: THREE.Texture | null = null;
   /** Hidden lines: every surface white, unlit, behind its edges. */
   private readonly hiddenFace = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
   /** Shadows on the ground, where nothing else stands to take them. */
-  private readonly shadowGround = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.28 }));
+  readonly shadowGround = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.28 }));
   private covered = { right: 0, bottom: 0, left: 0 };
   /**
    * How far the view's centre is shifted (px), set when the view is framed from what the panels
@@ -236,34 +125,34 @@ export class Scene3D {
    */
   private shift = { x: 0, y: 0 };
   private offsetDirty = false;
-  private readonly grid: THREE.GridHelper;
+  readonly grid: THREE.GridHelper;
   /**
    * The ground under the model, at its lowest base: a room with no floor shows it. Before, it showed
    * the background, a black hole among the walls in the dark theme.
    */
-  private readonly ground = new THREE.Mesh(
+  readonly ground = new THREE.Mesh(
     new THREE.PlaneGeometry(1, 1),
     new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, alphaMap: groundFade() }),
   );
   private needsRender = true;
   private raf = 0;
   /** The photorealistic style's path tracer, made the first time it is chosen; what it was last given. */
-  private tracer: WebGLPathTracer | null = null;
+  tracer: WebGLPathTracer | null = null;
   /** The tracer's shader, for its firefly clamp (trace-shader.ts). */
-  private traceShader: THREE.ShaderMaterial | null = null;
+  traceShader: THREE.ShaderMaterial | null = null;
   /** Its sky, an equirectangular gradient (it cannot read the realistic style's PMREM): the light from
    * everywhere a hemisphere light gives the raster view. */
-  private traceSky: GradientEquirectTexture | null = null;
-  private traceScene: THREE.Scene | null = null;
+  traceSky: GradientEquirectTexture | null = null;
+  traceScene: THREE.Scene | null = null;
   /** The tracer's scene while it is being built (in a worker), until it is ready. */
-  private traceBuild: Promise<void> | null = null;
-  private readonly tracedPatterns = new WeakMap<THREE.Material, THREE.MeshStandardMaterial>();
+  traceBuild: Promise<void> | null = null;
+  readonly tracedPatterns = new WeakMap<THREE.Material, THREE.MeshStandardMaterial>();
   /** The traced view's glass: clear, transmitting, of window glass's index (1.5). */
-  private readonly tracedGlass = new THREE.MeshPhysicalMaterial({ color: 0xf2f8fa, roughness: 0.02, metalness: 0, transmission: 1, ior: 1.5, thickness: 0.006, side: THREE.DoubleSide });
+  readonly tracedGlass = new THREE.MeshPhysicalMaterial({ color: 0xf2f8fa, roughness: 0.02, metalness: 0, transmission: 1, ior: 1.5, thickness: 0.006, side: THREE.DoubleSide });
   /** Frosted glass, traced: light through it, scattered. */
   /** The traced view's ground (traceCopies): matte, a warm grey. */
-  private readonly tracedGround = new THREE.MeshStandardMaterial({ color: 0xb8b2a6, roughness: 1, metalness: 0 });
-  private readonly tracedFrosted = new THREE.MeshPhysicalMaterial({ color: 0xf4f8fa, roughness: 0.45, metalness: 0, transmission: 1, ior: 1.5, thickness: 0.006, side: THREE.DoubleSide });
+  readonly tracedGround = new THREE.MeshStandardMaterial({ color: 0xb8b2a6, roughness: 1, metalness: 0 });
+  readonly tracedFrosted = new THREE.MeshPhysicalMaterial({ color: 0xf4f8fa, roughness: 0.45, metalness: 0, transmission: 1, ior: 1.5, thickness: 0.006, side: THREE.DoubleSide });
   /**
    * The traced view's ground drawn in the raster view the photorealistic style shows while the trace
    * gathers its samples (after a move): with the trace's sky behind, the change to the traced picture is
@@ -271,16 +160,16 @@ export class Scene3D {
    */
   private readonly photoGround = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), this.tracedGround);
   /** The photorealistic view's ground level (placeGround): the walls' foot. */
-  private stand = 0;
-  private traced = { content: -1, camera: '', light: '' };
+  stand = 0;
+  traced = { content: -1, camera: '', light: '' };
   /** Bumped whenever an element's meshes are made or dropped: the tracer's scene is built again. */
-  private contentVersion = 0;
+  contentVersion = 0;
   onChange: () => void = () => {};
   /** Told when the photorealistic view starts or stops preparing (its scene built, its shader compiled). */
   onTracePreparing: (preparing: boolean) => void = () => {};
-  private preparing = false;
+  preparing = false;
   /** Whether the photorealistic view has shown a traced picture yet. */
-  private traceShown = false;
+  traceShown = false;
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -315,7 +204,7 @@ export class Scene3D {
     this.fill.position.set(10, 6, -8);
     this.scene.add(this.fill);
     this.scene.add(this.ambient);
-    this.prepare(this.hiddenFace);
+    prepare(this, this.hiddenFace);
     this.grid = new THREE.GridHelper(200, 200);
     this.grid.position.y = -0.001;
     this.scene.add(this.grid);
@@ -332,7 +221,7 @@ export class Scene3D {
     this.photoGround.visible = false;
     this.scene.add(this.photoGround);
     this.renderer.localClippingEnabled = true;
-    for (const m of Object.values(this.materials)) this.prepare(m);
+    for (const m of Object.values(this.materials)) prepare(this, m);
     this.edgeMaterial.clippingPlanes = this.clip;
     this.capMaterial.clippingPlanes = this.capClip;
     this.boxCapMaterial.clippingPlanes = this.clip;
@@ -349,7 +238,7 @@ export class Scene3D {
     if (key === this.capsKey) return;
     this.capsKey = key;
     this.cutPlane = z === null ? null : new THREE.Plane(new THREE.Vector3(0, -1, 0), z);
-    this.clipPlanes();
+    clipPlanes(this);
     for (const c of [...this.caps.children]) {
       this.caps.remove(c);
       if (c instanceof THREE.Mesh) c.geometry.dispose();
@@ -368,76 +257,6 @@ export class Scene3D {
     this.invalidate();
   }
 
-  /** A surface's material set up as every other: cut by the section planes, behind its edges' lines. */
-  private prepare(m: THREE.Material): void {
-    m.clippingPlanes = this.clip;
-    // The faces a little behind their depth, so the lines on their edges are not half hidden by them.
-    m.polygonOffset = true;
-    m.polygonOffsetFactor = 1;
-    m.polygonOffsetUnits = 1;
-  }
-
-  /** A wall layer's material: made the first time, then given the project material's colour and finish. */
-  private layerMaterial(m: Material): THREE.MeshStandardMaterial {
-    let x = this.layerMaterials.get(m.id);
-    if (!x) {
-      x = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide });
-      this.prepare(x);
-      // The services' pipes and points (elements/kinds/mep.ts: their materials "mep_…") stay whole in
-      // X-ray: seeing them through the walls is what it is for.
-      x.userData.kept = m.id.startsWith('mep_');
-      this.faint(x, this.xrayOn);
-      patterned(x);
-      this.layerMaterials.set(m.id, x);
-    }
-    // A pattern carries the colour itself (its pieces' tones): the material is white under it.
-    const colour = m.pattern ? '#ffffff' : m.color;
-    if (x.color.getHexString() !== colour.slice(1).toLowerCase()) x.color.set(colour);
-    this.setPattern(x, m);
-    x.roughness = m.roughness;
-    x.metalness = m.metalness;
-    // The project's glass is seen through (a curtain wall's panels, an object's glass part), and so are
-    // frosted glass and water, less (SEE_THROUGH).
-    const clear = SEE_THROUGH[m.id] !== undefined;
-    x.userData.opacity = SEE_THROUGH[m.id];
-    x.userData.frosted = m.id === 'frostedGlass';
-    if (x.userData.clear !== clear) {
-      x.userData.clear = clear;
-      this.faint(x, this.xrayOn);
-    }
-    return x;
-  }
-
-  /** A material's pattern painted again when it or the colour changed, or taken off. */
-  private setPattern(x: THREE.MeshStandardMaterial, m: Material): void {
-    const key = m.pattern ? JSON.stringify([m.pattern, m.color]) : '';
-    const u = x.userData.pattern as PatternUniforms;
-    if (u.key === key) return;
-    u.key = key;
-    (u.uPatMap.value as THREE.Texture | null)?.dispose();
-    u.uPatMap.value = null;
-    if (m.pattern) {
-      const { texture, period } = patternTexture(m.pattern, m.color, Math.min(8, this.renderer.capabilities.getMaxAnisotropy()));
-      u.uPatMap.value = texture;
-      u.uPatPeriod.value.copy(period);
-      u.uPatAngle.value = (m.pattern.angle * Math.PI) / 180;
-    }
-    const on = m.pattern !== undefined;
-    if ((x.defines?.PATTERN !== undefined) !== on) {
-      x.defines = on ? { ...x.defines, PATTERN: '' } : Object.fromEntries(Object.entries(x.defines ?? {}).filter(([k]) => k !== 'PATTERN'));
-      x.needsUpdate = true;
-    }
-  }
-
-  private faint(m: THREE.Material, faint: boolean): void {
-    const on = faint && m.userData.kept !== true;
-    const clear = m.userData.clear === true;
-    m.transparent = on || clear;
-    m.opacity = on ? XRAY_OPACITY : clear ? ((m.userData.opacity as number | undefined) ?? GLASS_OPACITY) : 1;
-    m.depthWrite = !on && !clear;
-    m.needsUpdate = true;
-  }
-
   /**
    * X-ray (view-3d.ts): the walls and floors faint, writing no depth, so what is behind them shows; the
    * lines stay solid, so the shapes still read. Glass and leaves keep their own look.
@@ -452,9 +271,9 @@ export class Scene3D {
       let m = this.phaseMaterials.get(p);
       if (!m) {
         m = new THREE.MeshStandardMaterial({ roughness: 0.85, side: THREE.DoubleSide });
-        this.prepare(m);
+        prepare(this, m);
         m.userData.clear = p === 'demolish';
-        this.faint(m, this.xrayOn);
+        setFaint(m, this.xrayOn);
         this.phaseMaterials.set(p, m);
       }
       const c = colour(p);
@@ -469,20 +288,9 @@ export class Scene3D {
     const faint = [this.materials.side, this.materials.top, this.materials.floor, this.materials.sideSel, this.materials.topSel, ...this.layerMaterials.values(), ...this.phaseMaterials.values()];
     if (faint[0]!.transparent === on && (on ? faint[0]!.opacity === XRAY_OPACITY : true)) return;
     this.xrayOn = on;
-    for (const m of faint) this.faint(m, on);
-    this.applyEdges();
+    for (const m of faint) setFaint(m, on);
+    applyEdges(this);
     this.invalidate();
-  }
-
-  /** Lit and finished as the real thing: the realistic style, and the photorealistic one traced over it. */
-  private lifelike(): boolean {
-    return this.style === 'realistic' || this.style === 'photo';
-  }
-
-  /** The edges' lines as the style draws them: full in hidden lines, none in realistic (but in x-ray). */
-  private applyEdges(): void {
-    this.edgeMaterial.visible = !this.lifelike() || this.xrayOn;
-    this.edgeMaterial.opacity = this.style === 'hidden' || this.xrayOn ? 0.9 : 0.55;
   }
 
   /**
@@ -510,7 +318,7 @@ export class Scene3D {
       shadow.map?.dispose();
       shadow.map = null;
     }
-    const realistic = this.lifelike();
+    const realistic = lifelike(this);
     this.renderer.toneMapping = realistic ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
     this.renderer.toneMappingExposure = 1;
     if (realistic && !this.environment) {
@@ -519,8 +327,8 @@ export class Scene3D {
       pmrem.dispose();
     }
     this.scene.environment = realistic ? this.environment : null;
-    this.applyEdges();
-    this.applyShadows(recompile);
+    applyEdges(this);
+    applyShadows(this, recompile);
     this.offsetDirty = true;
     this.invalidate();
   }
@@ -530,68 +338,8 @@ export class Scene3D {
     if (brightness === this.brightness && sun === this.sunScale) return;
     this.brightness = brightness;
     this.sunScale = sun;
-    this.applyLights();
+    applyLights(this);
     this.invalidate();
-  }
-
-  /** The lights as the style has them, from the strengths the sun set, times the view's brightness. */
-  private applyLights(): void {
-    const s = this.style;
-    const b = this.brightness;
-    // π: three.js's diffuse is the albedo over π times the light, so π gives each colour as it is.
-    this.ambient.intensity = s === 'consistent' ? Math.PI * b : 0;
-    this.sun.intensity = (s === 'consistent' ? 0 : this.lifelike() ? this.sunBase * 2.6 : this.sunBase) * b * this.sunScale;
-    this.sky.intensity = (s === 'consistent' ? 0 : this.lifelike() ? this.skyBase * 0.05 : this.skyBase) * b;
-    this.fill.intensity = (s === 'shaded' || s === 'hidden' ? 0.6 : 0) * b;
-    this.scene.environmentIntensity = 0.22 * b;
-  }
-
-  /** Shadows drawn: Realistic's own; materials compiled again for them. */
-  private applyShadows(recompile = false): void {
-    const on = this.lifelike();
-    const changed = on !== this.shadows;
-    this.shadows = on;
-    this.renderer.shadowMap.enabled = on;
-    this.sun.castShadow = on;
-    this.shadowGround.visible = on;
-    this.placeSun();
-    this.castShadows();
-    if (changed || recompile)
-      this.scene.traverse((o) => {
-        const m = (o as THREE.Mesh).material;
-        for (const x of Array.isArray(m) ? m : m ? [m] : []) x.needsUpdate = true;
-      });
-  }
-
-  /**
-   * The post-processing the look needs (ambient occlusion, multisampled), built when that changes; none
-   * when the quality asks none, in hidden lines and consistent colours, and while a cut or a box clips
-   * (the occlusion's own pass would see what is clipped away).
-   */
-  private effects(w: number, h: number): EffectComposer | null {
-    const ao = QUALITY[this.quality].ao && (this.style === 'shaded' || this.style === 'realistic') && this.clip.length === 0 && !this.xrayOn;
-    const key = ao ? `ao|${this.orthoOn}|${this.quality}` : '';
-    if (this.composer?.key !== key) {
-      this.composer?.fx.dispose();
-      this.composer = null;
-      if (ao) {
-        const target = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: 4 });
-        const fx = new EffectComposer(this.renderer, target);
-        fx.setPixelRatio(this.renderer.getPixelRatio());
-        fx.setSize(w, h);
-        const first = new RenderPass(this.scene, this.camera);
-        const gtao = new GTAOPass(this.scene, this.camera, w, h);
-        gtao.blendIntensity = QUALITY[this.quality].aoBlend;
-        gtao.updateGtaoMaterial({ samples: QUALITY[this.quality].aoSamples });
-        fx.addPass(first);
-        fx.addPass(gtao);
-        fx.addPass(new OutputPass());
-        this.composer = { fx, key, passes: [first, gtao] };
-      }
-    }
-    if (!this.composer) return null;
-    for (const p of this.composer.passes) p.camera = this.camera;
-    return this.composer.fx;
   }
 
   /** One frame as the look draws it: hidden lines with every surface white for the frame, then put back. */
@@ -609,7 +357,7 @@ export class Scene3D {
       this.preparing = false;
       this.onTracePreparing(false);
     }
-    if (this.style === 'photo' && !this.xrayOn && this.clip.length === 0 && this.trace()) {
+    if (this.style === 'photo' && !this.xrayOn && this.clip.length === 0 && trace(this)) {
       for (const [mesh, m] of swapped) mesh.material = m;
       return;
     }
@@ -623,7 +371,7 @@ export class Scene3D {
     const realGround = this.style === 'realistic';
     if (realGround) this.ground.visible = true;
     if (photo) {
-      this.scene.background = this.photoSky();
+      this.scene.background = photoSky(this);
       const size = Math.max(200, this.ground.scale.x * 6);
       this.photoGround.scale.set(size, 1, size);
       this.photoGround.position.set(this.ground.position.x, this.stand - 0.002, this.ground.position.z);
@@ -631,7 +379,7 @@ export class Scene3D {
       this.grid.visible = false;
       this.shadowGround.visible = false;
     }
-    const fx = this.effects(w, h);
+    const fx = effects(this, w, h);
     if (fx) {
       if (resized) {
         fx.setPixelRatio(this.renderer.getPixelRatio());
@@ -647,254 +395,6 @@ export class Scene3D {
       this.shadowGround.visible = shadowGround;
     }
     for (const [mesh, m] of swapped) mesh.material = m;
-  }
-
-  /**
-   * One sample more of the photorealistic view (three-gpu-pathtracer): the elements' meshes and the sun
-   * (not the grid, the guides or the ground's shadow catcher), bounced light, soft shadows and the
-   * sky's reflections. Given the scene again when an element changed, the camera when it moved, the
-   * lights when they did; it keeps drawing until it has the quality's samples. False when the
-   * browser cannot trace (the realistic raster view is drawn instead).
-   */
-  private trace(): boolean {
-    const drawn = this.traceStep();
-    if (drawn) this.traceShown = true;
-    // Said until its first picture: later, the realistic view between a move and the trace's clean samples
-    // is a moment, not a preparation (said each time, the word blinked on the bar as the view turned).
-    const preparing = !drawn && !this.traceShown;
-    if (preparing !== this.preparing) {
-      this.preparing = preparing;
-      this.onTracePreparing(preparing);
-    }
-    return drawn;
-  }
-
-  /** The traced view's sky, made the first time it is asked (the raster frames between traces show it too). */
-  private photoSky(): GradientEquirectTexture {
-    if (!this.traceSky) {
-      const sky = new GradientEquirectTexture(256);
-      sky.topColor.set(0x9fbfe6);
-      sky.bottomColor.set(0xe9e3d6);
-      sky.exponent = 0.6;
-      sky.update();
-      this.traceSky = sky;
-    }
-    return this.traceSky;
-  }
-
-  /** A traced sample's brightest: the sun's light on a white wall, a bright sky's at least (trace-shader.ts). */
-  private fireflyClamp(): number {
-    return Math.max(this.sun.intensity, 2 * this.brightness);
-  }
-
-  private traceStep(): boolean {
-    if (!this.tracer) {
-      const t = new WebGLPathTracer(this.renderer);
-      t.bounces = 5;
-      t.minSamples = 1;
-      t.renderDelay = 0;
-      t.fadeDuration = 300;
-      // No coarse preview of its own: it drew with the shader still compiling, which made the browser
-      // compile it at once (37 s with the page standing still, on Windows). Until the trace has its first
-      // samples the realistic view is drawn instead (trace returns false).
-      t.dynamicLowRes = false;
-      t.rasterizeScene = false;
-      // Fireflies (bright specks from glossy bounces) filtered as the samples add up.
-      t.filterGlossyFactor = 0.5;
-      // Shown through an edge-keeping denoise (glslSmartDeNoise): strong while there are few samples, faded
-      // out as they add up, so the first seconds are not grain and the finished picture is not blurred.
-      const denoiseMaterial = new DenoiseMaterial({ blending: THREE.NoBlending, premultipliedAlpha: true });
-      // Shown as the realistic view is: filmic tone mapping (no blown-out whites) and the screen's colour space
-      // (the tracer's own display gave its linear values straight: washed out and flat).
-      const denoise = new FullScreenQuad(denoiseMaterial);
-      t.renderToCanvasCallback = (target, renderer, quad) => {
-        const n = t.samples;
-        // A denoise easing from moderate to light as samples add up (1024), kept low enough to keep textures: strong, it smeared them (stones into
-        // blotches, bricks washed out). Fireflies are kept down by the glossy filter instead.
-        const strength = Math.max(0.15, 1 - n / 1024);
-        // Always drawn through it (strength 0: no smoothing), for its tone mapping and colour space.
-        void quad;
-        const m = denoise.material as DenoiseMaterial & { uniforms: Record<string, { value: unknown }> };
-        m.uniforms.map!.value = target.texture;
-        m.uniforms.sigma!.value = 1.2 + 1.8 * strength;
-        m.uniforms.kSigma!.value = 1;
-        m.uniforms.threshold!.value = 0.04 + 0.06 * strength;
-        m.uniforms.opacity!.value = 1;
-        const auto = renderer.autoClear;
-        const exposure = renderer.toneMappingExposure;
-        renderer.autoClear = false;
-        // The traced light (sun and the whole sky bounced) is several times the raster view's: exposed down
-        // so its whites keep their texture and its shadows their depth.
-        renderer.toneMappingExposure = TRACE_EXPOSURE;
-        denoise.render(renderer);
-        renderer.toneMappingExposure = exposure;
-        renderer.autoClear = auto;
-      };
-      // Its scene's bounding volumes built in a worker: built here, the page stood still for seconds.
-      t.setBVHWorker(new GenerateMeshBVHWorker());
-      // Its shader's switches as this view will have them, before the first compile: the library starts
-      // with depth of field and fog on and no background, sets them right on its first frame, and each
-      // change compiles the shader again (minutes on Windows the first time). Only the camera's type
-      // (perspective, parallel) changes later.
-      const shader = (t as unknown as { _pathTracer: { material: THREE.ShaderMaterial & { setDefine(name: string, value: number): void } } })._pathTracer.material;
-      shader.setDefine('FEATURE_DOF', 0);
-      shader.setDefine('FEATURE_BACKGROUND_MAP', 1);
-      shader.setDefine('FEATURE_FOG', 0);
-      // One shadow ray for the direct light instead of two: a scene traversal less to compile (trace-shader.ts).
-      // Compiled in the background for the target it draws into (a float texture, linear, no tone mapping):
-      // compiled for the canvas (tone mapped, sRGB) as the library does, it was another program, and the one
-      // drawn compiled at its first use with the page standing still (7 s measured, an RTX 3060 on Direct3D).
-      const tracing = (t as unknown as { _pathTracer: { compileMaterial(): Promise<unknown>; _primaryTarget: THREE.WebGLRenderTarget } })._pathTracer;
-      const compile = tracing.compileMaterial.bind(tracing);
-      tracing.compileMaterial = () => {
-        const was = this.renderer.getRenderTarget();
-        this.renderer.setRenderTarget(tracing._primaryTarget);
-        try {
-          return compile();
-        } finally {
-          this.renderer.setRenderTarget(was);
-        }
-      };
-      shader.fragmentShader = clampedSamples(oneShadowRay(shader.fragmentShader));
-      shader.uniforms['fireflyClamp'] = { value: this.fireflyClamp() };
-      shader.needsUpdate = true;
-      this.traceShader = shader;
-      // Shown smoothly enlarged: the library reads its targets nearest (a medium-quality trace, at three
-      // quarters of the screen's pixels, then had stair-stepped shadow edges). Linear needs float filtering.
-      if (this.renderer.extensions.has('OES_texture_float_linear')) {
-        const targets = t as unknown as { _pathTracer: { _primaryTarget: THREE.WebGLRenderTarget; _blendTargets: THREE.WebGLRenderTarget[] } };
-        for (const target of [targets._pathTracer._primaryTarget, ...targets._pathTracer._blendTargets]) {
-          target.texture.minFilter = THREE.LinearFilter;
-          target.texture.magFilter = THREE.LinearFilter;
-        }
-      }
-      this.tracer = t;
-    }
-    const t = this.tracer;
-    t.renderScale = TRACE[this.quality].scale;
-    // The scene given again when an element changed, built in the background: until it is, the
-    // realistic view is drawn (false), and the trace takes over when it is ready.
-    if (this.traceBuild) return false;
-    if (this.traced.content !== this.contentVersion) {
-      const version = this.contentVersion;
-      const old = this.traceScene;
-      const scene = Object.assign(new THREE.Scene(), { children: [this.traceCopies(), this.sun], environment: this.photoSky(), background: this.photoSky() });
-      scene.environmentIntensity = this.brightness;
-      this.traceBuild = t.setSceneAsync(scene, this.camera).then(() => {
-        old?.traverse((o) => (o as THREE.Mesh).isMesh && (o as THREE.Mesh).geometry.dispose());
-        this.traceScene = scene;
-        this.traced = { content: version, camera: '', light: '' };
-        this.traceBuild = null;
-        this.invalidate();
-      });
-      return false;
-    }
-    const camera = `${this.camera.matrixWorld.elements.join()}|${this.camera.projectionMatrix.elements.join()}`;
-    if (camera !== this.traced.camera) {
-      t.setCamera(this.camera);
-      this.traced.camera = camera;
-    }
-    const light = `${this.sun.position.toArray().join()}|${this.sun.intensity}|${this.brightness}`;
-    if (light !== this.traced.light && this.traceScene) {
-      this.traceScene.environmentIntensity = this.brightness;
-      if (this.traceShader) this.traceShader.uniforms['fireflyClamp']!.value = this.fireflyClamp();
-      t.updateLights();
-      t.updateEnvironment();
-      this.traced.light = light;
-    }
-    t.renderSample();
-    // Its shader compiles in the background the first time (KHR_parallel_shader_compile): looked at
-    // again shortly, the realistic view drawn meanwhile.
-    if ((t as Compiling).isCompiling) {
-      setTimeout(() => this.invalidate(), 250);
-      return false;
-    }
-    // Its first samples traced on, the realistic view kept until they are enough to show clean.
-    if (t.samples < TRACE[this.quality].shown) {
-      this.invalidate();
-      return false;
-    }
-    // Drawing on, a sample a frame, until the quality's count.
-    if (t.samples < TRACE[this.quality].samples) this.invalidate();
-    return true;
-  }
-
-  /**
-   * The elements' meshes for the path tracer, one material each where they stand. A mesh of several
-   * materials (a wall block's sides and top) is split by its groups: the tracer numbers one material per
-   * mesh while it lists a mesh's every material, so after the first such mesh every surface took its
-   * neighbour's colour (the terrain red, a roof green).
-   */
-  private traceCopies(): THREE.Group {
-    const out = new THREE.Group();
-    // Their positions as they are now: a level's elements just lifted to its height had them still from
-    // before (the raster view updates them as it draws), and the upper level's slab and stair were missing.
-    this.scene.updateMatrixWorld(true);
-    for (const { group } of this.walls.values())
-      group.traverseVisible((o) => {
-        const mesh = o as THREE.Mesh;
-        if (!mesh.isMesh) return;
-        const parts: [THREE.BufferGeometry, THREE.Material][] = [];
-        if (!Array.isArray(mesh.material)) parts.push([mesh.geometry.clone(), mesh.material]);
-        else {
-          const g = mesh.geometry;
-          const flat = g.index ? g.toNonIndexed() : g;
-          for (const grp of g.groups.length > 0 ? g.groups : [{ start: 0, count: flat.attributes.position!.count, materialIndex: 0 }]) {
-            const m = mesh.material[grp.materialIndex ?? 0];
-            if (!m || grp.count === 0) continue;
-            const part = new THREE.BufferGeometry();
-            for (const [name, attr] of Object.entries(flat.attributes)) {
-              const a = attr as THREE.BufferAttribute;
-              part.setAttribute(name, new THREE.BufferAttribute(a.array.slice(grp.start * a.itemSize, (grp.start + grp.count) * a.itemSize), a.itemSize, a.normalized));
-            }
-            parts.push([part, m]);
-          }
-          if (flat !== g) flat.dispose();
-        }
-        for (const [geometry, material] of parts) {
-          // Where it stands, in the world's metres: a pattern is laid in them.
-          geometry.applyMatrix4(mesh.matrixWorld);
-          const pattern = (material.userData.pattern as PatternUniforms | undefined)?.uPatMap.value ? (material.userData.pattern as PatternUniforms) : null;
-          // Glass as glass (light through it, bent and reflected), not as a see-through surface.
-          const glass = material === this.materials.glass || material.userData.clear === true;
-          out.add(new THREE.Mesh(pattern ? patternUv(geometry, pattern) : geometry, glass ? (material.userData.frosted === true ? this.tracedFrosted : this.tracedGlass) : pattern ? this.tracedPattern(material as THREE.MeshStandardMaterial) : material));
-        }
-      });
-    // A ground under everything, matte, a little below the lowest thing: what stands has somewhere to cast
-    // its shadow and to sit on (without it the model floated in the sky).
-    const box = new THREE.Box3().setFromObject(out);
-    if (!box.isEmpty()) {
-      const size = Math.max(200, box.getSize(new THREE.Vector3()).length() * 6);
-      const ground = new THREE.Mesh(new THREE.PlaneGeometry(size, size).rotateX(-Math.PI / 2), this.tracedGround);
-      ground.position.set((box.min.x + box.max.x) / 2, Math.max(box.min.y, this.stand) - 0.002, (box.min.z + box.max.z) / 2);
-      ground.updateMatrixWorld();
-      ground.geometry.applyMatrix4(ground.matrixWorld);
-      ground.position.set(0, 0, 0);
-      out.add(ground);
-    }
-    // The luminaires' lights, where they are.
-    for (const { group } of this.walls.values())
-      group.traverseVisible((o) => {
-        if (!(o as THREE.Light).isLight) return;
-        const light = o.clone();
-        light.matrixAutoUpdate = false;
-        light.matrix.copy(o.matrixWorld);
-        out.add(light);
-      });
-    return out;
-  }
-
-  /** A patterned material as the tracer can read it: its pattern a texture of its own (patternUv's
-   * coordinates), not a shader's; one per material, kept while it is. */
-  private tracedPattern(m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
-    const u = m.userData.pattern as PatternUniforms;
-    let x = this.tracedPatterns.get(m);
-    if (!x || x.map !== u.uPatMap.value) {
-      x?.dispose();
-      x = new THREE.MeshStandardMaterial({ color: m.color, map: u.uPatMap.value, roughness: m.roughness, metalness: m.metalness, side: m.side });
-      this.tracedPatterns.set(m, x);
-    }
-    return x;
   }
 
   /**
@@ -917,8 +417,8 @@ export class Scene3D {
           new THREE.Plane(new THREE.Vector3(0, 0, 1), box.max.y),
         ]
       : [];
-    this.clipPlanes();
-    this.syncBoxCaps();
+    clipPlanes(this);
+    syncBoxCaps(this);
     this.invalidate();
   }
 
@@ -931,71 +431,9 @@ export class Scene3D {
       // Kept: n · (p − point) ≥ 0, with plan (x, y) at three.js (x, −z).
       this.sectionPlane = new THREE.Plane(new THREE.Vector3(n.x, 0, -n.y), -(n.x * s.point.x + n.y * s.point.y));
     } else this.sectionPlane = null;
-    this.clipPlanes();
-    this.syncBoxCaps();
+    clipPlanes(this);
+    syncBoxCaps(this);
     this.invalidate();
-  }
-
-  /** The box's fills, again when the box, the walls or the lifts changed. */
-  private syncBoxCaps(): void {
-    const box = this.boxBox;
-    const src = this.lastSync;
-    const levels = src ? [...new Set([...src.g.solids.values()].map((s) => s.wall.levelId))] : [];
-    // The walls and floors by identity (a new derived geometry is a change), the box and lifts by value.
-    const key: unknown[] = [src?.g.solids, src?.g.kinds, JSON.stringify([box, this.sectionLine, levels.map((l) => src!.lift(l))])];
-    if (key.every((k, i) => k === this.boxCapsKey[i])) return;
-    this.boxCapsKey = key;
-    for (const c of [...this.boxCapGroup.children]) {
-      this.boxCapGroup.remove(c);
-      if (c instanceof THREE.Mesh) c.geometry.dispose();
-    }
-    if ((!box && !this.sectionLine) || !src) return;
-    const prisms: UprightPrism[] = [];
-    for (const s of src.g.solids.values()) {
-      const up = src.lift(s.wall.levelId);
-      for (const b of s.blocks) prisms.push({ polygon: b.polygon, bottom: b.bottom + up, top: b.top + up, ...(b.plane ? { plane: { ...b.plane, c: b.plane.c + up } } : {}) });
-    }
-    // The registry's kinds that a cut fills (a floor: contract.ts, caps).
-    for (const x of eachSolid(src.g.kinds)) {
-      if (!x.kind.caps || x.levelId === null) continue;
-      const up = src.lift(x.levelId);
-      for (const c of x.kind.caps(x.solid)) prisms.push({ polygon: c.polygon, bottom: c.bottom + up, top: c.top + up });
-    }
-    // A hair inside the box, so the face it lies on does not clip it away.
-    const e = 0.0005;
-    const inside = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo + e), hi - e);
-    if (this.sectionLine) {
-      // A hair on the kept side of the section's plane, for the same reason.
-      const n = sectionLooks(this.sectionLine);
-      for (const cap of sectionCaps(prisms, this.sectionLine)) {
-        const pts = cap.map((p) => toThree({ x: p.x + n.x * e, y: p.y + n.y * e }, p.z));
-        this.boxCapGroup.add(new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([pts[0]!, pts[1]!, pts[2]!, pts[0]!, pts[2]!, pts[3]!]), this.boxCapMaterial));
-      }
-    }
-    if (!box) return;
-    for (const cap of boxCaps(prisms, box)) {
-      const pts = cap.map((p) => toThree({ x: inside(p.x, box.min.x, box.max.x), y: inside(p.y, box.min.y, box.max.y) }, inside(p.z, box.min.z, box.max.z)));
-      let geo: THREE.BufferGeometry;
-      if (cap.every((p) => p.z === cap[0]!.z)) {
-        // A top or a bottom: the outline may be any polygon.
-        geo = new THREE.ShapeGeometry(new THREE.Shape(cap.map((p) => new THREE.Vector2(p.x, p.y))));
-        geo.rotateX(-Math.PI / 2);
-        geo.translate(0, pts[0]!.y, 0);
-      } else {
-        geo = new THREE.BufferGeometry().setFromPoints([pts[0]!, pts[1]!, pts[2]!, pts[0]!, pts[2]!, pts[3]!]);
-      }
-      this.boxCapGroup.add(new THREE.Mesh(geo, this.boxCapMaterial));
-    }
-  }
-
-  /** The cut and the box into the planes every material shares (changed in place). */
-  private clipPlanes(): void {
-    this.clip.length = 0;
-    if (this.cutPlane) this.clip.push(this.cutPlane);
-    this.clip.push(...this.boxPlanes);
-    if (this.sectionPlane) this.clip.push(this.sectionPlane);
-    this.capClip.length = 0;
-    this.capClip.push(...this.boxPlanes);
   }
 
   /**
@@ -1032,7 +470,7 @@ export class Scene3D {
   setOpened(opened: ReadonlySet<string>): void {
     this.opened = opened;
   }
-  private isOpen(id: string): boolean {
+  isOpen(id: string): boolean {
     return this.opened.has(id);
   }
 
@@ -1122,7 +560,7 @@ export class Scene3D {
     // Traced, the scene first built as it is now (in the background, as for the view).
     if (this.style === 'photo') {
       for (let n = 0; n < 5 && (this.traceBuild || this.traced.content !== this.contentVersion); n++) {
-        if (!this.traceBuild) this.trace();
+        if (!this.traceBuild) trace(this);
         await this.traceBuild;
       }
       // And its shader compiled (the first time, in the background): set going by a first sample, waited
@@ -1204,8 +642,8 @@ export class Scene3D {
         place(id, levelId);
         continue;
       }
-      if (old) this.drop(old.group);
-      const group = this.buildOpening(o, state);
+      if (old) drop(this, old.group);
+      const group = buildOpening(this, o, state);
       group.userData.wallId = id;
       this.scene.add(group);
       this.walls.set(id, { group, key });
@@ -1227,16 +665,16 @@ export class Scene3D {
         place(x.id, x.levelId);
         continue;
       }
-      if (old) this.drop(old.group);
+      if (old) drop(this, old.group);
       const made = x.kind.solid?.(x.solid);
       if (!made) continue;
       const group = new THREE.Group();
       // One solid, or several (an object's parts), each in a scene material or a project material.
       for (const part of Array.isArray(made) ? (made as readonly KindSolid[]) : [made as KindSolid]) {
-        const material = state === 's' ? this.materials.sideSel : typeof part.material === 'string' ? this.materials[part.material] : this.layerMaterial(part.material);
+        const material = state === 's' ? this.materials.sideSel : typeof part.material === 'string' ? this.materials[part.material] : layerMaterial(this, part.material);
         const mesh = new THREE.Mesh(part.geometry, material);
         mesh.position.y = part.y;
-        if (part.edges) mesh.add(this.outline(part.geometry));
+        if (part.edges) mesh.add(outline(this, part.geometry));
         group.add(mesh);
         // A luminaire's light in the view: a point light falling off as light does, its strength from
         // its lumens. The view is lit as by day (the sun's 1.5 is not lux): a lamp in candelas washed the
@@ -1254,11 +692,11 @@ export class Scene3D {
       this.contentVersion++;
       place(x.id, x.levelId);
     }
-    const faces = this.facesOf(g);
+    const faces = facesOf(this, g);
     for (const s of g.solids.values()) {
       seen.add(s.wall.id);
       // A material's colour or finish changed keeps the walls' meshes: their materials take it here.
-      for (const m of s.materials) this.layerMaterial(m);
+      for (const m of s.materials) layerMaterial(this, m);
       const state = preview.has(s.wall.id) ? 'p' : selected.has(s.wall.id) ? 's' : 'n';
       // The shape's part of the key, once per solid: solids are only replaced when the geometry is
       // computed again, and a switch of view (148 walls) stringified every block each time.
@@ -1274,8 +712,8 @@ export class Scene3D {
         place(s.wall.id, s.wall.levelId);
         continue;
       }
-      if (old) this.drop(old.group);
-      const group = this.build(s, state, mine, phase);
+      if (old) drop(this, old.group);
+      const group = build(this, s, state, mine, phase);
       group.userData.wallId = s.wall.id;
       this.scene.add(group);
       this.walls.set(s.wall.id, { group, key });
@@ -1284,108 +722,15 @@ export class Scene3D {
     }
     for (const [id, w] of this.walls) {
       if (!seen.has(id)) {
-        this.drop(w.group);
+        drop(this, w.group);
         this.walls.delete(id);
       }
     }
-    this.syncEdges(g, lift);
+    syncEdges(this, g, lift);
     this.lastSync = { g, lift };
-    this.syncBoxCaps();
-    this.placeGround(g);
+    syncBoxCaps(this);
+    placeGround(this, g);
     this.invalidate();
-  }
-
-  /** The lines over the walls, again only when the walls changed; lifted with their levels. */
-  private syncEdges(g: DerivedGeometry, lift: (levelId: string) => number): void {
-    if (this.edgesOf !== g.solids) {
-      this.edgesOf = g.solids;
-      for (const l of this.edges.values()) {
-        this.scene.remove(l);
-        l.geometry.dispose();
-      }
-      this.edges.clear();
-      const faces = this.facesOf(g);
-      const byLevel = new Map<string, { prisms: WallSolid['blocks'][number][]; faces: PrismFaces[]; sloped: SlopedTop[] }>();
-      for (const s of g.solids.values()) {
-        const mine = faces.get(s.wall.id) ?? [];
-        const level = byLevel.get(s.wall.levelId) ?? { prisms: [], faces: [], sloped: [] };
-        s.blocks.forEach((b, i) => {
-          if (!mine[i]) return;
-          level.prisms.push(b);
-          level.faces.push(mine[i]!);
-          // Under a roof: seen up to its highest point, then cut to its slope (edges.ts, underSlopes).
-          if (b.plane) level.sloped.push({ polygon: b.polygon, plane: b.plane, faces: mine[i] });
-        });
-        byLevel.set(s.wall.levelId, level);
-      }
-      for (const [levelId, { prisms, faces: shown, sloped }] of byLevel) {
-        const pos: number[] = [];
-        for (const e of underSlopes(featureEdges(prisms, shown), sloped)) pos.push(e.a.x, e.a.z, -e.a.y, e.b.x, e.b.z, -e.b.y);
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-        const lines = new THREE.LineSegments(geo, this.edgeMaterial);
-        // Never picked: a line's pick reaches a metre around it.
-        lines.raycast = () => {};
-        this.scene.add(lines);
-        this.edges.set(levelId, lines);
-      }
-    }
-    for (const [levelId, l] of this.edges) l.position.y = lift(levelId);
-  }
-
-  /** The view's fixed sun, far over the model's middle, its shadow camera round the model. */
-  private placeSun(): void {
-    const c = this.ground.position;
-    const reach = Math.max(10, this.ground.scale.x / GROUND_SPAN);
-    // Up and to the left, far enough over the model to cast its shadows.
-    const fixed = new THREE.Vector3(-8, 14, 10).normalize().multiplyScalar(reach * 2);
-    this.sun.position.set(c.x + fixed.x, c.y + fixed.y, c.z + fixed.z);
-    this.sun.target.position.copy(c);
-    this.applyLights();
-    const cam = this.sun.shadow.camera;
-    cam.left = -reach * 1.5;
-    cam.right = reach * 1.5;
-    cam.top = reach * 1.5;
-    cam.bottom = -reach * 1.5;
-    cam.near = 0.5;
-    cam.far = reach * 6;
-    cam.updateProjectionMatrix();
-    this.shadowGround.position.set(c.x, c.y + 0.001, c.z);
-    this.shadowGround.scale.set(this.ground.scale.x, this.ground.scale.y, 1);
-  }
-
-  /** Every solid casts and takes shadows while they are on. */
-  private castShadows(): void {
-    for (const { group } of this.walls.values())
-      group.traverse((o) => {
-        if ((o as THREE.Mesh).isMesh) {
-          o.castShadow = this.shadows;
-          o.receiveShadow = this.shadows;
-        }
-      });
-  }
-
-  /** The ground centred under the walls and floors shown, GROUND_SPAN times as wide, just under the lowest of them. */
-  private placeGround(g: DerivedGeometry): void {
-    const solids = [...g.solids.values()];
-    // And the registry's with a height (a floor: contract.ts, span).
-    const spanned = [...eachSolid(g.kinds)].flatMap((x) => (x.kind.span ? [{ outline: x.kind.outlines(x.solid).flat(), bottom: x.kind.span(x.solid).bottom }] : []));
-    const points = [...solids.flatMap((s) => [s.wall.start, s.wall.end]), ...spanned.flatMap((f) => f.outline)];
-    const xs = points.map((p) => p.x);
-    const ys = points.map((p) => p.y);
-    const [x0, x1, y0, y1] = points.length > 0 ? [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)] : [0, 0, 0, 0];
-    const size = Math.max(GROUND_MIN, GROUND_SPAN * Math.max(x1 - x0, y1 - y0));
-    const spannedBottoms = [...eachSolid(g.kinds)].flatMap((x) => (x.kind.span ? [x.kind.span(x.solid).bottom] : []));
-    const lowest = Math.min(0, ...solids.map((s) => s.bottom), ...spannedBottoms);
-    // The photorealistic view's ground at the walls' foot, floors' slabs sunk in it as built: at the slabs'
-    // bottom, under a room with no floor the sun came in under its walls (bright streaks in their shadow).
-    this.stand = solids.length === 0 ? lowest : Math.min(...solids.map((s) => s.bottom));
-    this.ground.scale.set(size, size, 1);
-    this.ground.position.set((x0 + x1) / 2, lowest - 0.002, -(y0 + y1) / 2);
-    // The grid at the ground's height, round the model's middle, a metre a cell.
-    this.grid.position.set(Math.round((x0 + x1) / 2), lowest - 0.001, Math.round(-(y0 + y1) / 2));
-    this.placeSun();
-    if (this.shadows) this.castShadows();
   }
 
   /**
@@ -1393,69 +738,7 @@ export class Scene3D {
    * faces between touching blocks, coplanar and facing, were drawn both and fought for the same pixels
    * (light specks on the walls). Blocks of every level and wall together, as joins span walls.
    */
-  private facesCache: { solids: DerivedGeometry['solids']; faces: Map<WallId, PrismFaces[]> } | null = null;
-  private facesOf(g: DerivedGeometry): Map<WallId, PrismFaces[]> {
-    if (this.facesCache?.solids === g.solids) return this.facesCache.faces;
-    const owners: WallId[] = [];
-    const prisms = [...g.solids.values()].flatMap((s) => s.blocks.map((b) => (owners.push(s.wall.id), b)));
-    const all = visibleFaces(prisms);
-    const faces = new Map<WallId, PrismFaces[]>();
-    all.forEach((f, i) => faces.set(owners[i]!, [...(faces.get(owners[i]!) ?? []), f]));
-    this.facesCache = { solids: g.solids, faces };
-    return faces;
-  }
-
-  private build(s: WallSolid, state: 'p' | 's' | 'n', faces: readonly PrismFaces[], phase?: 'new' | 'existing' | 'demolish'): THREE.Group {
-    const group = new THREE.Group();
-    // Each block in its layer's material, as in plan (wall-paint.ts); a wall with a phase all in its phase's.
-    const byPhase = phase && state === 'n' ? this.phaseMaterials.get(phase) : undefined;
-    const material = (paint: Paint): THREE.Material => byPhase ?? (typeof paint === 'string' ? this.materials[paint] : this.layerMaterial(paint));
-    s.blocks.forEach((b, i) => {
-      const { side, top } = blockPaint(s.materials, b.layerIndex, state);
-      const f = faces[i];
-      const geo = b.plane ? slopedPrism(b.polygon, b.bottom, b.plane, f) : f ? shownPrism(b.polygon, b.bottom, b.top, f) : prism(b.polygon, b.bottom, b.top);
-      group.add(new THREE.Mesh(geo, [material(side), material(top)]));
-    });
-    return group;
-  }
-
-  /** A door or window: its parts (opening/parts.ts), each in its role's material, or all in the state's. */
-  private buildOpening(o: OpeningSolid, state: 'p' | 's' | 'n' | 'i'): THREE.Group {
-    const group = new THREE.Group();
-    const m = this.materials;
-    const shown = state === 'p' ? m.preview : state === 's' ? m.topSel : state === 'i' ? m.invalid : null;
-    for (const part of openingParts(o, o.frame!, this.isOpen(o.opening.id))) {
-      // Its own materials where its style sets them (frosted glass seen through, as the materials' glass is).
-      const own = part.role === 'leaf' ? o.looks?.leaf : part.role === 'glass' ? o.looks?.glass : o.looks?.frame;
-      const mat = shown ?? (own ? this.layerMaterial(own) : part.role === 'leaf' ? m.leaf : part.role === 'glass' ? m.glass : m.frame);
-      const geo = prism(part.polygon, part.bottom, part.top);
-      if (part.turn) {
-        // Tilted about its level axis: three.js's (x, height, −y) for the plan's (x, y, height).
-        const { origin, axis, angle } = part.turn;
-        const o3 = new THREE.Vector3(origin.x, origin.z, -origin.y);
-        const r = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(axis.x, 0, -axis.y).normalize(), angle);
-        geo.applyMatrix4(new THREE.Matrix4().makeTranslation(-o3.x, -o3.y, -o3.z)).applyMatrix4(r).applyMatrix4(new THREE.Matrix4().makeTranslation(o3.x, o3.y, o3.z));
-      }
-      group.add(new THREE.Mesh(geo, [mat, mat]), this.outline(geo));
-    }
-    return group;
-  }
-
-  /** A floor's or an opening's edges, as the walls' lines (never picked). */
-  private outline(geo: THREE.BufferGeometry): THREE.LineSegments {
-    // A cut object's part (kinds/object.ts) by its creases only: its T-junctions are no edges.
-    const lines = new THREE.LineSegments(geo.userData.cut ? creaseEdges(geo, 20) : new THREE.EdgesGeometry(geo, 20), this.edgeMaterial);
-    lines.raycast = () => {};
-    return lines;
-  }
-
-  private drop(group: THREE.Group): void {
-    this.contentVersion++;
-    this.scene.remove(group);
-    group.traverse((o) => {
-      if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) o.geometry.dispose();
-    });
-  }
+  facesCache: { solids: DerivedGeometry['solids']; faces: Map<WallId, PrismFaces[]> } | null = null;
 
   /** The wall under a screen point, by ray cast. */
   pick(clientX: number, clientY: number): WallId | null {
@@ -1587,7 +870,7 @@ export class Scene3D {
   }
 
   dispose(): void {
-    for (const w of this.walls.values()) this.drop(w.group);
+    for (const w of this.walls.values()) drop(this, w.group);
     Object.values(this.materials).forEach((m) => m.dispose());
     this.layerMaterials.forEach((m) => {
       (m.userData.pattern as PatternUniforms | undefined)?.uPatMap.value?.dispose();
@@ -1599,4 +882,3 @@ export class Scene3D {
     this.renderer.dispose();
   }
 }
-

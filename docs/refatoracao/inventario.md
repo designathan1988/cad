@@ -270,6 +270,10 @@ aqui fica a decisão por arquivo.
 | (novo no passo 6) src/render/plan-text.ts | manter | render/plan-text.ts | textos e marcas da planta (fontes, etiquetas, medida, encaixe, cotas, aviso, tracejado), antes métodos de PlanView |
 | (novo no passo 6) src/render/plan-strokes.ts | manter | render/plan-strokes.ts | traços da planta (grade, linhas de referência, guias, alças, aberturas), antes métodos de PlanView |
 | src/render/scene-3d.ts | dividir | canvas/scene/*.ts (sync, photo, style, pick, materials, box) | 1603 l; keys por JSON.stringify; hidden-style aloca por quadro |
+| (novo no passo 6) src/render/scene-trace.ts | manter | render/scene-trace.ts | o traçado fotorrealista (passos, céu, fireflies, cópias traçadas), antes métodos de Scene3D |
+| (novo no passo 6) src/render/scene-materials.ts | manter | render/scene-materials.ts | os materiais 3D (camadas, padrões, faint, lifelike, arestas), antes métodos de Scene3D |
+| (novo no passo 6) src/render/scene-build.ts | manter | render/scene-build.ts | a construção da cena (prismas, aberturas, contornos, chão, tampas da caixa, planos de corte), antes métodos de Scene3D |
+| (novo no passo 6) src/render/scene-light.ts | manter | render/scene-light.ts | luzes, sombras e efeitos, antes métodos de Scene3D |
 | src/render/overlay-3d.ts | mover | canvas/overlay-3d.ts | tag duplicada do plan-view → canvas/labels |
 | src/render/view-cube.ts | mover | canvas/view-cube.ts |  |
 | (movido no passo 4) src/elements/prisms.ts | mover | canvas/prisms.ts | bloco de winding repetido 3× → helper |

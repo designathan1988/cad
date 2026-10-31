@@ -32,7 +32,7 @@
    "src/ui/definition-editor.ts"
   ],
   "duplications": [
-   "src/render/scene-3d.ts|src/ui/opening-snapshot.ts (12 grams)",
+   "src/render/scene-build.ts|src/ui/opening-snapshot.ts (12 grams)",
    "src/ui/openings-dialog.ts|src/ui/presets-dialog.ts (3 grams)",
    "src/ui/objects-dialog.ts|src/ui/types-dialog.ts (5 grams)"
   ]
