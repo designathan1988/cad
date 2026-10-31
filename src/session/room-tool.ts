@@ -6,10 +6,10 @@ import { levelOf } from '../project/doc';
 import { made, nextOf } from './next';
 import type { Floor, Room } from '../elements/room/schema';
 import { deriveGeometry } from '../project/derive';
-import { newId } from '../core/id';
 import { addFloor, addFloorHole, addRoom } from '../elements/room/commands';
 import { insideRing, signedArea } from '../elements/room/derive';
 import type { App } from './app';
+import { type FloorId, newFloorId, newRoomId } from '../elements/room/schema';
 
 /** The smallest space the level's walls close in around p, when no room is in it: where the room tool would make one. */
 export function roomSpaceAt(app: App, p: Point2): readonly Point2[] | null {
@@ -31,7 +31,7 @@ export function roomClick(app: App, p: Point2): void {
   }
   const n = doc.rooms.filter((r) => r.levelId === app.ui.levelId).length + 1;
   // Its use, height and finishes as the next room is set (next-element.ts); its name and number its own.
-  const room = made<Room>(app, 'rooms', { id: newId('room'), seed: p, name: defaultName.room(n), number: String(n) });
+  const room = made<Room>(app, 'rooms', { id: newRoomId(), seed: p, name: defaultName.room(n), number: String(n) });
   const probe = deriveGeometry({ ...doc, rooms: [room] }).rooms.get(room.id);
   if (!probe?.enclosed) {
     app.ui.error = t('hint.roomNotEnclosed');
@@ -85,7 +85,7 @@ export function floorClick(app: App, p: Point2, mpp: number, typed = false, corn
 }
 
 /** Draws a hole in a floor: the floor tool, its outline then going through that floor. */
-export function startFloorHole(app: App, floorId: string): void {
+export function startFloorHole(app: App, floorId: FloorId): void {
   app.setTool('floor');
   app.ui.holeFor = floorId;
   app.ui.info = t('hint.holeStart');
@@ -98,7 +98,7 @@ export function addCeilingToRoom(app: App, roomId: string): void {
   const room = doc.rooms.find((r) => r.id === roomId);
   if (!room || doc.floors.some((f) => f.kind === 'ceiling' && f.source.kind === 'room' && f.source.roomId === roomId)) return;
   const height = room.height ?? levelOf(doc, room.levelId)?.height ?? 2.8;
-  const id = newId('floor');
+  const id = newFloorId();
   // The next ceiling's thickness (next-element.ts), at the room's ceiling height.
   const thickness = (nextOf(app, 'ceilings') as unknown as Floor).thickness;
   app.store.dispatch(addFloor(made<Floor>(app, 'ceilings', { id, levelId: room.levelId, source: { kind: 'room', roomId }, thickness, offset: height + thickness, kind: 'ceiling' })));
@@ -111,7 +111,7 @@ export function addCeilingToRoom(app: App, roomId: string): void {
 export function addFloorToRoom(app: App, roomId: string): void {
   const room = app.store.get().rooms.find((r) => r.id === roomId);
   if (!room || app.store.get().floors.some((f) => f.kind !== 'ceiling' && f.source.kind === 'room' && f.source.roomId === roomId)) return;
-  const id = newId('floor');
+  const id = newFloorId();
   app.store.dispatch(addFloor(made<Floor>(app, 'floors', { id, levelId: room.levelId, source: { kind: 'room', roomId } })));
   app.ui.selection = new Set([id]);
   app.ui.info = t('hint.floorAdded', { room: name(room.name) });
@@ -134,7 +134,7 @@ export function floorFinish(app: App): void {
     app.ui.selection = new Set([hole]);
     return app.refresh();
   }
-  const id = newId('floor');
+  const id = newFloorId();
   // A ceiling by its outline: at its level's height, as a room's is with none of its own.
   if (app.ui.ceilingTool) {
     app.store.dispatch(addFloor(made<Floor>(app, 'ceilings', { id, source: { kind: 'outline', points }, kind: 'ceiling' })));

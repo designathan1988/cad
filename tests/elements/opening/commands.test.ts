@@ -7,9 +7,8 @@ import { addOpening, deleteElements, ruleKeepingPosition, updateOpening } from '
 import { deriveOpenings, hostsOf } from '../../../src/elements/opening/derive';
 import { newOpening } from '../../../src/elements/opening/schema';
 import { addWalls } from '../../../src/elements/wall/commands';
-import { wid } from '../../ids';
+import { oid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { oid } from '../../ids';
 import type { OpeningId } from '../../../src/elements/opening/schema';
 
 const wall = (id: WallId, x0: number, x1: number): DocWall => ({

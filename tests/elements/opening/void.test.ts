@@ -7,9 +7,8 @@ import { deriveGeometry } from '../../../src/project/derive';
 import { area } from '../../../src/elements/wall/geometry/convex';
 import { newOpening, type Opening } from '../../../src/elements/opening/schema';
 import { insidePolygon } from '../../../src/project/derive';
-import { wid } from '../../ids';
+import { oid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { oid } from '../../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], extra: Partial<DocWall> = {}): DocWall => ({
   id,

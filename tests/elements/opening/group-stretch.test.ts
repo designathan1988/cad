@@ -10,9 +10,8 @@ import { deleteElements, distributeOpenings, setGroupSpacing } from '../../../sr
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { newOpening, type Opening, type PositionRule } from '../../../src/elements/opening/schema';
 import { CURRENT_VERSION, readProject } from '../../../src/project/file';
-import { wid } from '../../ids';
+import { oid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { oid } from '../../ids';
 import type { OpeningId } from '../../../src/elements/opening/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({

@@ -3,8 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { type Aim, OPENING_IDLE, openingTransition, ruleAt } from '../../src/elements/opening/tool';
-import { wid } from '../ids';
-import { oid } from '../ids';
+import { oid, wid } from '../ids';
 
 const aim = (station: number, others: Aim['others'] = [], side: Aim['side'] = 'left'): Aim => ({
   wallId: wid('w'),

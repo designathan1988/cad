@@ -1,3 +1,4 @@
+import type { RoomId } from '../room/schema';
 // Zones (phase 6): rooms of a level taken together under a name, a category (social, private, service)
 // and a colour, as Revit's areas and ArchiCAD's zone categories. The plan tints its rooms; its area is
 // theirs. It holds the rooms by id: a room deleted leaves it.
@@ -21,5 +22,5 @@ export interface Zone {
   readonly name: string;
   readonly category: ZoneCategory;
   readonly color: string;
-  readonly rooms: readonly string[];
+  readonly rooms: readonly RoomId[];
 }

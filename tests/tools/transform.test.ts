@@ -7,9 +7,8 @@ import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import { newOpening } from '../../src/elements/opening/schema';
 import { canTransform, copiesInSeries, copyToLevel, reflection, rotation, scaling, transformSelection, translation } from '../../src/elements/transform';
-import { wid } from '../ids';
+import { fid, oid, rid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
-import { oid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -23,8 +22,8 @@ const doc: Doc = {
   ...newDocument(),
   walls: [wall(wid('b'), [0, 0], [4, 0]), wall(wid('r'), [4, 0], [4, 3]), wall(wid('t'), [4, 3], [0, 3]), wall(wid('l'), [0, 3], [0, 0]), wall(wid('x'), [4, 0], [6, 0])],
   openings: [newOpening(oid('opening_d'), wid('b'), 'door', { kind: 'fromStart', distance: 1 }, { hinge: 'start', swing: 'left' })],
-  rooms: [{ id: 'room', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
-  floors: [{ id: 'floor', levelId: 'lvl_ground', source: { kind: 'room', roomId: 'room' }, thickness: 0.15, offset: 0 }],
+  rooms: [{ id: rid('room'), levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
+  floors: [{ id: fid('floor'), levelId: 'lvl_ground', source: { kind: 'room', roomId: rid('room') }, thickness: 0.15, offset: 0 }],
 };
 const g = deriveGeometry(doc);
 const box = ['b', 'r', 't', 'l'];

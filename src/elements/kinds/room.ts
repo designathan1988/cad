@@ -66,7 +66,7 @@ export const roomKind: ElementKind<Room, RoomItem> = {
   moved: (r, d) => ({ ...r, seed: { x: r.seed.x + d.x, y: r.seed.y + d.y } }),
   mapped: (r, tr, id) => ({ ...r, id, seed: tr.map(r.seed) }),
   // Selected, or going with all its walls (carry.ts: roomsGoingWith): its point goes.
-  transformed: (r, c) => (c.selected || c.going(r.id) ? { ...r, id: c.id, seed: c.t.map(r.seed) } : null),
+  transformed: (r, c) => (c.selected || c.going(r.id) ? { ...r, id: c.to(r.id), seed: c.t.map(r.seed) } : null),
   // A copy numbered on from its level's last, as a new room is.
   copied: (all, r) => ({ ...r, number: nextNumber(all, r.levelId) }),
   similar: (a, b) => a.use === undefined || a.use === b.use,

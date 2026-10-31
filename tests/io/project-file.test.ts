@@ -4,8 +4,7 @@ import { CURRENT_VERSION, readProject, writeProject } from '../../src/project/fi
 import { isLevel } from '../../src/project/file-guards';
 import { BEFORE_65 } from '../../src/elements/object/library-before65';
 import { BEFORE_66 } from '../../src/elements/object/library-before66';
-import { wid } from '../ids';
-import { oid } from '../ids';
+import { oid, wid } from '../ids';
 
 const wall = (id: string, x: number) => ({
   id,

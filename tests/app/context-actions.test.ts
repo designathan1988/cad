@@ -5,9 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { contextIds } from '../../src/session/context-actions';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { newOpening } from '../../src/elements/opening/schema';
-import { wid } from '../ids';
+import { fid, oid, rid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
-import { oid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -28,8 +27,8 @@ const doc: Doc = {
     newOpening(oid('n'), wid('w'), 'window', { kind: 'fromEnd', distance: 1 }),
     newOpening(oid('m'), wid('v'), 'window', { kind: 'centered' }),
   ],
-  rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 3, y: 2 }, name: 'Room 1', number: '1' }],
-  floors: [{ id: 'f', levelId: 'lvl_ground', source: { kind: 'outline', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }] }, thickness: 0.1, offset: 0 }],
+  rooms: [{ id: rid('r'), levelId: 'lvl_ground', seed: { x: 3, y: 2 }, name: 'Room 1', number: '1' }],
+  floors: [{ id: fid('f'), levelId: 'lvl_ground', source: { kind: 'outline', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }] }, thickness: 0.1, offset: 0 }],
 };
 
 describe('actions for the selection', () => {
@@ -47,7 +46,7 @@ describe('actions for the selection', () => {
 
   it('a room without a floor offers one; with a floor, not', () => {
     expect(contextIds(doc, ['r'])).toEqual(['move', 'addFloor', 'addCeiling', 'properties', 'delete']);
-    const floored = { ...doc, floors: [{ ...doc.floors[0]!, source: { kind: 'room' as const, roomId: 'r' } }] };
+    const floored = { ...doc, floors: [{ ...doc.floors[0]!, source: { kind: 'room' as const, roomId: rid('r') } }] };
     expect(contextIds(floored, ['r'])).toEqual(['move', 'addCeiling', 'properties', 'delete']);
   });
 

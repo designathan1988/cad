@@ -11,6 +11,7 @@ import { addSections } from '../elements/section/commands';
 import { t } from '../i18n/messages';
 import { addNoteHere } from './kind-tools';
 import { deriveGeometry } from '../project/derive';
+import { roomOf } from '../project/derived-queries';
 
 /** How deep a new section sees: the far side of the model from its line, and a metre past it; 10 m with nothing. */
 export function depthFrom(app: App, start: Point2, end: Point2): number {
@@ -97,7 +98,7 @@ export function addInteriorElevations(app: App, roomIds: readonly string[]): voi
   const marks: SectionMark[] = [];
   let rooms = 0;
   for (const id of roomIds) {
-    const r = g.rooms.get(id);
+    const r = roomOf(g, id);
     if (!r?.enclosed || r.outline.length < 3) continue;
     rooms++;
     const xs = r.outline.map((p) => p.x);

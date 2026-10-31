@@ -6,9 +6,8 @@ import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import { boundsOf } from '../../src/project/derived-queries';
 import { newOpening } from '../../src/elements/opening/schema';
-import { wid } from '../ids';
+import { fid, oid, rid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
-import { oid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -24,8 +23,8 @@ const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => 
 const box: Doc = {
   ...newDocument(),
   walls: [wall(wid('b'), [0, 0], [4, 0]), wall(wid('r'), [4, 0], [4, 3]), wall(wid('t'), [4, 3], [0, 3]), wall(wid('l'), [0, 3], [0, 0])],
-  rooms: [{ id: 'room', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
-  floors: [{ id: 'fl', levelId: 'lvl_ground', source: { kind: 'outline', points: [{ x: 5, y: 0 }, { x: 7, y: 0 }, { x: 7, y: 2 }] }, thickness: 0.1, offset: 0 }],
+  rooms: [{ id: rid('room'), levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
+  floors: [{ id: fid('fl'), levelId: 'lvl_ground', source: { kind: 'outline', points: [{ x: 5, y: 0 }, { x: 7, y: 0 }, { x: 7, y: 2 }] }, thickness: 0.1, offset: 0 }],
 };
 
 describe('bounds of a selection', () => {

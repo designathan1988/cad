@@ -17,6 +17,7 @@ import type { View3D } from '../project/view-prefs';
 import type { WallDefaults } from '../project/doc';
 import type { WallToolState } from '../elements/wall/tool';
 import type { ElementId } from '../core/id';
+import type { FloorId } from '../elements/room/schema';
 
 
 export interface UiState {
@@ -97,7 +98,7 @@ export interface UiState {
   /** Doors and windows shown open in 3D (a double click, the selection's Open): the view's, not saved. */
   opened: ReadonlySet<string>;
   /** The floor the floor tool's outline goes through as a hole (startFloorHole), or null for a new floor. */
-  holeFor: string | null;
+  holeFor: FloorId | null;
   /** The floor tool making ceilings (a ceiling by a room or by an outline drawn), not floors. */
   ceilingTool: boolean;
   /** Corners of a roof's outline being drawn. */

@@ -7,8 +7,7 @@ import { hostsIn } from '../../../src/project/derived-queries';
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { detachedFrom, wallRule } from '../../../src/elements/opening/commands';
 import { newOpening } from '../../../src/elements/opening/schema';
-import { wid } from '../../ids';
-import { oid } from '../../ids';
+import { oid, wid } from '../../ids';
 import type { OpeningId } from '../../../src/elements/opening/schema';
 
 const wall: DocWall = { id: wid('w'), wallTypeId: 'wt_concrete20', start: { x: 0, y: 0 }, end: { x: 8, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground', baseOffset: 0, top: { kind: 'level', offset: 0 } };

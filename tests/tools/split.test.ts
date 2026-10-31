@@ -6,9 +6,8 @@ import { type Doc, type DocWall, newDocument, wallNumber } from '../../src/proje
 import { deriveGeometry } from '../../src/project/derive';
 import { newOpening } from '../../src/elements/opening/schema';
 import { canMerge, cornerWalls, mergeWalls, splitWall } from '../../src/tools/split';
-import { wid } from '../ids';
+import { oid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
-import { oid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
   id,

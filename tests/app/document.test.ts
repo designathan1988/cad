@@ -1,17 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { elementIds, newDocument, startLevel } from '../../src/project/doc';
 import { newOpening } from '../../src/elements/opening/schema';
-import { wid } from '../ids';
+import { fid, oid, rid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
-import { oid } from '../ids';
 
 describe('selectable elements', () => {
   it('walls, openings, rooms and floors all count, so editing a room keeps it selected', () => {
     const doc = {
       ...newDocument(),
       openings: [newOpening(oid('o'), wid('w'), 'door', { kind: 'centered' })],
-      rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 0, y: 0 }, name: 'Room 1', number: '1' }],
-      floors: [{ id: 'f', levelId: 'lvl_ground', source: { kind: 'room' as const, roomId: 'r' }, thickness: 0.1, offset: 0 }],
+      rooms: [{ id: rid('r'), levelId: 'lvl_ground', seed: { x: 0, y: 0 }, name: 'Room 1', number: '1' }],
+      floors: [{ id: fid('f'), levelId: 'lvl_ground', source: { kind: 'room' as const, roomId: rid('r') }, thickness: 0.1, offset: 0 }],
     };
     expect([...elementIds(doc)].sort()).toEqual(['f', 'o', 'r']);
   });
@@ -34,7 +33,7 @@ describe('the level shown at the start', () => {
       { id: 'lvl_ground', name: 'Ground floor', elevation: 0, height: 2.8 },
     ],
   };
-  const onUp = { ...two, rooms: [{ id: 'r', levelId: 'up', seed: { x: 0, y: 0 }, name: 'Room 1', number: '1' }] };
+  const onUp = { ...two, rooms: [{ id: rid('r'), levelId: 'up', seed: { x: 0, y: 0 }, name: 'Room 1', number: '1' }] };
 
   it('the one shown last, when it still exists', () => {
     expect(startLevel(onUp, 'lvl_ground')).toBe('lvl_ground');

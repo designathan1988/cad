@@ -8,9 +8,8 @@ import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import { deriveOpenings, hostsOf } from '../../src/elements/opening/derive';
 import { newOpening } from '../../src/elements/opening/schema';
-import { wid } from '../ids';
+import { fid, oid, rid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
-import { oid } from '../ids';
 import type { OpeningId } from '../../src/elements/opening/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
@@ -30,8 +29,8 @@ const doc: Doc = {
     newOpening(oid('w'), wid('t'), 'window', { kind: 'fromEnd', distance: 0.5 }),
     newOpening(oid('c'), wid('r'), 'window', { kind: 'centered' }),
   ],
-  rooms: [{ id: 'room', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
-  floors: [{ id: 'f', levelId: 'lvl_ground', source: { kind: 'outline', points: [{ x: 6, y: 0 }, { x: 7, y: 0 }, { x: 7, y: 1 }] }, thickness: 0.1, offset: 0 }],
+  rooms: [{ id: rid('room'), levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
+  floors: [{ id: fid('f'), levelId: 'lvl_ground', source: { kind: 'outline', points: [{ x: 6, y: 0 }, { x: 7, y: 0 }, { x: 7, y: 1 }] }, thickness: 0.1, offset: 0 }],
 };
 const start = (d: Doc, id: OpeningId) => deriveOpenings(d.openings, hostsOf(d), d.openingGroups).placed.get(id)!.start;
 const near = (a: number, b: number) => expect(a).toBeCloseTo(b, 9);

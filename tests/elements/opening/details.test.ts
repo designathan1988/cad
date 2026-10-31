@@ -6,8 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { openingParts } from '../../../src/elements/opening/parts';
 import { newOpening, type OpeningStyle } from '../../../src/elements/opening/schema';
 import { isOpeningStyle, OPENING_MODELS, type OpeningModel } from '../../../src/elements/opening/style';
-import { wid } from '../../ids';
-import { oid } from '../../ids';
+import { oid, wid } from '../../ids';
 
 const frame = (width: number) => ({ start: { x: 0, y: 0 }, end: { x: width, y: 0 }, dir: { x: 1, y: 0 }, normal: { x: 0, y: 1 }, faces: [-0.075, 0.075] as const, region: [] });
 const partsOf = (m: OpeningModel, style: Partial<OpeningStyle> = {}, forced = false) => {

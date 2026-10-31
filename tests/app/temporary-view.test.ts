@@ -7,9 +7,8 @@ import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import { applyTemporary } from '../../src/project/derived-filters';
 import { newOpening } from '../../src/elements/opening/schema';
-import { wid } from '../ids';
+import { fid, oid, rid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
-import { oid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -24,8 +23,8 @@ const doc: Doc = {
   ...newDocument(),
   walls: [wall(wid('a'), [0, 0], [4, 0]), wall(wid('b'), [4, 0], [4, 3]), wall(wid('c'), [4, 3], [0, 3]), wall(wid('d'), [0, 3], [0, 0])],
   openings: [newOpening(oid('o'), wid('a'), 'door', { kind: 'centered' })],
-  rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
-  floors: [{ id: 'f', levelId: 'lvl_ground', source: { kind: 'room', roomId: 'r' }, thickness: 0.1, offset: 0 }],
+  rooms: [{ id: rid('r'), levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
+  floors: [{ id: fid('f'), levelId: 'lvl_ground', source: { kind: 'room', roomId: rid('r') }, thickness: 0.1, offset: 0 }],
 };
 const g = deriveGeometry(doc);
 const ids = (m: ReadonlyMap<string, unknown>) => [...m.keys()].sort();

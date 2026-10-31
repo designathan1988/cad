@@ -4,9 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { markPoint, openingMarks } from '../../../src/elements/opening/marks';
 import type { OpeningFrame } from '../../../src/elements/opening/void';
 import { newOpening } from '../../../src/elements/opening/schema';
-import { wid } from '../../ids';
+import { oid, wid } from '../../ids';
 import type { OpeningId } from '../../../src/elements/opening/schema';
-import { oid } from '../../ids';
 
 const door = (id: OpeningId, width: number, height = 2.1) => newOpening(id, wid('w'), 'door', { kind: 'centered' }, { width, height });
 const window = (id: OpeningId, width: number, sill = 1) => newOpening(id, wid('w'), 'window', { kind: 'centered' }, { width, height: 1.2, sill });

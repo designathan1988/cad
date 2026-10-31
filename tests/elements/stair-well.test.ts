@@ -13,6 +13,7 @@ import { arrivalOf, levelReached, wellsReaching } from '../../src/elements/stair
 import { signedArea } from '../../src/elements/wall/geometry/convex';
 import { readProject, writeProject } from '../../src/project/file';
 import type { FloorSolid } from '../../src/elements/room/derive';
+import { fid } from '../ids';
 
 const upper = { id: 'lvl_up', name: 'Upper', elevation: 2.8, height: 2.8 };
 const stair = (kind: Stair['kind'], extra: Partial<Stair> = {}): Stair => ({
@@ -26,7 +27,7 @@ const stair = (kind: Stair['kind'], extra: Partial<Stair> = {}): Stair => ({
   turn: 'left',
   ...extra,
 });
-const slab: Floor = { id: 'floor_f', levelId: 'lvl_up', source: { kind: 'outline', points: [{ x: -4, y: -1 }, { x: 4, y: -1 }, { x: 4, y: 6 }, { x: -4, y: 6 }] }, thickness: 0.15, offset: 0 };
+const slab: Floor = { id: fid('floor_f'), levelId: 'lvl_up', source: { kind: 'outline', points: [{ x: -4, y: -1 }, { x: 4, y: -1 }, { x: 4, y: 6 }, { x: -4, y: 6 }] }, thickness: 0.15, offset: 0 };
 const docOf = (s: Stair, extra: Partial<Doc> = {}): Doc => ({ ...newDocument(), levels: [...newDocument().levels, upper], stairs: [s], floors: [slab], ...extra });
 
 describe('a stair well', () => {

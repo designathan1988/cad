@@ -4,9 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import { deriveOpenings, type HostInfo } from '../../../src/elements/opening/derive';
 import { newOpening, OPENING_DEFAULTS, type Opening, type PositionRule } from '../../../src/elements/opening/schema';
-import { wid } from '../../ids';
+import { oid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { oid } from '../../ids';
 import type { OpeningId } from '../../../src/elements/opening/schema';
 
 const hosts = (length = 5, height = 2.8): Map<WallId, HostInfo> => new Map([[wid('w'), { length, height }]]);

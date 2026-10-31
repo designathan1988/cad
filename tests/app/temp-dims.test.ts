@@ -4,9 +4,8 @@ import { deriveGeometry } from '../../src/project/derive';
 import { tempDims } from '../../src/session/temp-dims';
 import { vec } from '../../src/model/vector';
 import { newOpening } from '../../src/elements/opening/schema';
-import { wid } from '../ids';
+import { oid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
-import { oid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,

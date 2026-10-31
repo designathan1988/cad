@@ -7,8 +7,7 @@ import { deriveGeometry } from '../../../src/project/derive';
 import { openingParts } from '../../../src/elements/opening/parts';
 import { newOpening, type OpeningStyle } from '../../../src/elements/opening/schema';
 import { fitStyle, isOpeningStyle } from '../../../src/elements/opening/style';
-import { wid } from '../../ids';
-import { oid } from '../../ids';
+import { oid, wid } from '../../ids';
 
 const wall: DocWall = { id: wid('w'), wallTypeId: 'wt_masonry15', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground', baseOffset: 0, top: { kind: 'level', offset: 0 } };
 const sliding: OpeningStyle = { operation: 'sliding', leaves: 2, frame: 0.05, casing: 0, transom: 0, threshold: false };

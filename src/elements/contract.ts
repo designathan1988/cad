@@ -17,6 +17,7 @@ import type { Field } from './fields';
 import type { MessageKey } from '../i18n/messages';
 import type { IconName } from '../i18n/icons';
 import type { IdMap } from '../core/id';
+import type { FloorId } from './room/schema';
 
 /** The document's lists the registry's kinds keep. */
 export type KindKey = 'measures' | 'references' | 'sections' | 'separators' | 'curtains' | 'zones' | 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'objects' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings' | 'walls';
@@ -99,7 +100,7 @@ export interface KindFieldContext {
    *  elevation is not allowed below its floor while it is on. */
   readonly floorLocked: boolean;
   /** Draw a hole through a floor (the floor tool on it); not offered where there is no tool. */
-  readonly startFloorHole?: (id: string) => void;
+  readonly startFloorHole?: (id: FloorId) => void;
   /** Show a section's or an elevation's drawing (ui/sections-dialog.ts). */
   readonly openSection?: (id: string) => void;
   /** Make the rooms' four interior elevations (app/kind-tools.ts). */

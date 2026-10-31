@@ -4,9 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { similarTo } from '../../src/session/select-similar';
 import { newOpening } from '../../src/elements/opening/schema';
-import { wid } from '../ids';
+import { oid, rid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
-import { oid } from '../ids';
 
 const wall = (id: WallId, type: string, levelId = 'lvl_ground', y = 0): DocWall => ({
   id,
@@ -30,10 +29,10 @@ const doc: Doc = {
     newOpening(oid('opening_5'), wid('d'), 'door', { kind: 'centered' }, { width: 0.8 }),
   ],
   rooms: [
-    { id: 'room_1', levelId: 'lvl_ground', seed: { x: 1, y: 1 }, name: 'A', number: '1', use: 'bedroom' },
-    { id: 'room_2', levelId: 'lvl_ground', seed: { x: 1, y: 4 }, name: 'B', number: '2', use: 'bedroom' },
-    { id: 'room_3', levelId: 'lvl_ground', seed: { x: 1, y: 7 }, name: 'C', number: '3', use: 'kitchen' },
-    { id: 'room_4', levelId: 'lvl_ground', seed: { x: 1, y: 9 }, name: 'D', number: '4' },
+    { id: rid('room_1'), levelId: 'lvl_ground', seed: { x: 1, y: 1 }, name: 'A', number: '1', use: 'bedroom' },
+    { id: rid('room_2'), levelId: 'lvl_ground', seed: { x: 1, y: 4 }, name: 'B', number: '2', use: 'bedroom' },
+    { id: rid('room_3'), levelId: 'lvl_ground', seed: { x: 1, y: 7 }, name: 'C', number: '3', use: 'kitchen' },
+    { id: rid('room_4'), levelId: 'lvl_ground', seed: { x: 1, y: 9 }, name: 'D', number: '4' },
   ],
 };
 

@@ -4,9 +4,17 @@
 
 import type { LevelId } from '../../project/doc';
 import type { Point2 } from '../../model/vector';
+import { type Brand, newId } from '../../core/id';
 
-export type RoomId = string;
-export type FloorId = string;
+/** A room's id (room_…). */
+export type RoomId = Brand<'room'>;
+/** A floor's or slab's id (floor_…). */
+export type FloorId = Brand<'floor'>;
+
+/** A new room's id (room_…). */
+export const newRoomId = (): RoomId => newId('room') as RoomId;
+/** A new floor's id (floor_…). */
+export const newFloorId = (): FloorId => newId('floor') as FloorId;
 
 /** What a room is for (ref/chat.txt:94): one of these, or none said. */
 export const ROOM_USES = ['living', 'bedroom', 'kitchen', 'bathroom', 'service', 'office', 'circulation', 'garage', 'storage', 'other'] as const;

@@ -11,9 +11,8 @@ import { equalChains, settleDimensions } from '../../src/elements/dimension/cons
 import type { Dimension } from '../../src/elements/dimension/schema';
 import { newOpening } from '../../src/elements/opening/schema';
 import { moveWalls } from '../../src/elements/wall/edit';
-import { wid } from '../ids';
+import { oid, rid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
-import { oid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -151,7 +150,7 @@ describe('equal chains', () => {
 
 describe('automatic dimensioning', () => {
   const win = newOpening(oid('opening_w'), wid('w1'), 'window', { kind: 'fromStart', distance: 1 }, { width: 1.2, height: 1, sill: 1 });
-  const room = { id: 'room_a', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Sala', number: '1' };
+  const room = { id: rid('room_a'), levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Sala', number: '1' };
   const doc: Doc = { ...box, openings: [win], rooms: [room] };
   const ids = (() => {
     let n = 0;

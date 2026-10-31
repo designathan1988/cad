@@ -7,9 +7,8 @@ import { deriveOpenings, hostsOf } from '../../../src/elements/opening/derive';
 import { distributeOpenings } from '../../../src/elements/opening/commands';
 import { newOpening } from '../../../src/elements/opening/schema';
 import { flipWalls } from '../../../src/elements/wall/flip';
-import { wid } from '../../ids';
+import { oid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { oid } from '../../ids';
 import type { OpeningId } from '../../../src/elements/opening/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], extra: Partial<DocWall> = {}): DocWall => ({

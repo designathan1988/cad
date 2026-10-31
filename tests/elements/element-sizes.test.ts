@@ -13,9 +13,8 @@ import { newOpening } from '../../src/elements/opening/schema';
 import { addWalls } from '../../src/elements/wall/commands';
 import { isOpening, isWall } from '../../src/project/file-guards';
 import { stretchEnd } from '../../src/elements/wall/edit';
-import { wid } from '../ids';
+import { oid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
-import { oid } from '../ids';
 
 const wall = (id: WallId, x1: number, top: DocWall['top'] = { kind: 'level', offset: 0 }, baseOffset = 0): DocWall => ({
   id,

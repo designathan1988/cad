@@ -9,6 +9,7 @@ import { insideRing, middleOfRest, type RoomSolid } from '../elements/room/deriv
 import type { Room } from '../elements/room/schema';
 import type { Doc } from './doc';
 import { deriveGeometry, type DerivedGeometry } from './derive';
+import type { RoomId } from '../elements/room/schema';
 
 const NEAR = 1e-6;
 
@@ -69,7 +70,7 @@ export function keepRooms(from: Doc, to: Doc): { doc: Doc; geometry: DerivedGeom
   const after = geometryOf(to);
   const lost = to.rooms.filter((r) => alone(before.rooms.get(r.id)) && !alone(after.rooms.get(r.id)));
   if (lost.length === 0) return { doc: to, geometry: after };
-  const middle = new Map<string, Point2>();
+  const middle = new Map<RoomId, Point2>();
   for (const r of lost) {
     const was = before.rooms.get(r.id)!;
     const taken = [...after.rooms.values()].filter((s) => s.enclosed && s.room.levelId === r.levelId).map((s) => s.outline);

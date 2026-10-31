@@ -8,9 +8,8 @@ import { hostsIn } from '../../../src/project/derived-queries';
 import { distributeOpenings, updateOpening } from '../../../src/elements/opening/commands';
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { newOpening } from '../../../src/elements/opening/schema';
-import { wid } from '../../ids';
+import { oid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { oid } from '../../ids';
 import type { OpeningId } from '../../../src/elements/opening/schema';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({

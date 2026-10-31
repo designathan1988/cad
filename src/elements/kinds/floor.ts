@@ -88,10 +88,10 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
   transformed: (f, c) => {
     const map = (pts: readonly Point2[]) => pts.map(c.t.map);
     const holes = f.holes ? { holes: f.holes.map(map) } : {};
-    if (f.source.kind === 'outline') return c.selected ? { ...f, id: c.id, source: { kind: 'outline', points: map(f.source.points) }, ...holes } : null;
+    if (f.source.kind === 'outline') return c.selected ? { ...f, id: c.to(f.id), source: { kind: 'outline', points: map(f.source.points) }, ...holes } : null;
     const going = c.going(f.source.roomId);
     if (!c.copy) return going && f.holes ? { ...f, ...holes } : null;
-    return going ? { ...f, id: c.id, source: { kind: 'room', roomId: c.to(f.source.roomId) }, ...holes } : null;
+    return going ? { ...f, id: c.to(f.id), source: { kind: 'room', roomId: c.to(f.source.roomId) }, ...holes } : null;
   },
   similar: (a, b) => Math.abs(a.thickness - b.thickness) < 1e-6,
   // A floor's holes left out of it, crossed as voids are drawn. A ceiling is above the cut: only its

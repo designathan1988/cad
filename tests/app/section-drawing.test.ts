@@ -15,9 +15,8 @@ import { readProject, writeProject } from '../../src/project/file';
 import { newOpening } from '../../src/elements/opening/schema';
 import { levelOfSolid } from '../../src/elements/registry';
 import { sectionKind } from '../../src/elements/kinds/section';
-import { wid } from '../ids';
+import { oid, rid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
-import { oid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -123,7 +122,7 @@ describe('a section drawn from the model', () => {
     const doc: Doc = {
       ...box(),
       openings: [newOpening(oid('opening_w'), wid('w1'), 'window', { kind: 'fromStart', distance: 0.4 }), newOpening(oid('opening_d'), wid('w3'), 'door', { kind: 'fromEnd', distance: 0.5 })],
-      rooms: [{ id: 'room_1', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Sala', number: '1' }],
+      rooms: [{ id: rid('room_1'), levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Sala', number: '1' }],
     };
     const g = deriveGeometry(doc);
     const d = sectionDrawing(doc, modelSolids(doc, g), across, g.rooms);

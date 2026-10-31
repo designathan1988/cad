@@ -4,33 +4,34 @@ import { createStore } from '../../../src/core/store';
 import { vec } from '../../../src/model/vector';
 import { addFloor, addRoom, updateFloor, updateRoom, updateRooms } from '../../../src/elements/room/commands';
 import { readProject, writeProject } from '../../../src/project/file';
+import { fid, rid } from '../../ids';
 
-const room = { id: 'r', levelId: 'lvl_ground', seed: vec(4, 3), name: 'Room 1', number: '1' };
-const floor = { id: 'f', levelId: 'lvl_ground', source: { kind: 'room' as const, roomId: 'r' }, thickness: 0.15, offset: 0 };
+const room = { id: rid('r'), levelId: 'lvl_ground', seed: vec(4, 3), name: 'Room 1', number: '1' };
+const floor = { id: fid('f'), levelId: 'lvl_ground', source: { kind: 'room' as const, roomId: rid('r') }, thickness: 0.15, offset: 0 };
 
 describe('room and floor commands', () => {
   it('add and edit a room, each one undo step', () => {
     const s = createStore<Doc>(newDocument());
     s.dispatch(addRoom(room));
-    s.dispatch(updateRoom('r', { name: 'Kitchen', number: '101' }));
+    s.dispatch(updateRoom(rid('r'), { name: 'Kitchen', number: '101' }));
     expect(s.get().rooms[0]).toMatchObject({ name: 'Kitchen', number: '101' });
     s.undo();
     expect(s.get().rooms[0]!.name).toBe('Room 1');
   });
 
   it("use and own height, for several rooms in one step; null gives back none and the level's height", () => {
-    const other = { ...room, id: 'q', name: 'Room 2', number: '2' };
+    const other = { ...room, id: rid('q'), name: 'Room 2', number: '2' };
     const s = createStore<Doc>({ ...newDocument(), rooms: [room, other] });
-    s.dispatch(updateRooms(['r', 'q'], { use: 'bedroom', height: 2.6 }));
+    s.dispatch(updateRooms([rid('r'), rid('q')], { use: 'bedroom', height: 2.6 }));
     expect(s.get().rooms.map((r) => [r.use, r.height])).toEqual([
       ['bedroom', 2.6],
       ['bedroom', 2.6],
     ]);
-    s.dispatch(updateRoom('q', { use: null, height: null }));
+    s.dispatch(updateRoom(rid('q'), { use: null, height: null }));
     expect(s.get().rooms[1]).not.toHaveProperty('use');
     expect(s.get().rooms[1]).not.toHaveProperty('height');
     // A height not above zero changes nothing.
-    s.dispatch(updateRoom('r', { height: 0 }));
+    s.dispatch(updateRoom(rid('r'), { height: 0 }));
     expect(s.get().rooms[0]!.height).toBe(2.6);
     s.undo();
     s.undo();
@@ -50,16 +51,16 @@ describe('room and floor commands', () => {
 
   it('a blank room name is refused; no change, no step', () => {
     const s = createStore<Doc>({ ...newDocument(), rooms: [room] });
-    s.dispatch(updateRoom('r', { name: '  ' }));
+    s.dispatch(updateRoom(rid('r'), { name: '  ' }));
     expect(s.canUndo()).toBe(false);
   });
 
   it('a floor: add, thickness and offset; a thickness of zero is refused', () => {
     const s = createStore<Doc>({ ...newDocument(), rooms: [room] });
     s.dispatch(addFloor(floor));
-    s.dispatch(updateFloor('f', { thickness: 0.2, offset: -0.05 }));
+    s.dispatch(updateFloor(fid('f'), { thickness: 0.2, offset: -0.05 }));
     expect(s.get().floors[0]).toMatchObject({ thickness: 0.2, offset: -0.05 });
-    s.dispatch(updateFloor('f', { thickness: 0 }));
+    s.dispatch(updateFloor(fid('f'), { thickness: 0 }));
     expect(s.get().floors[0]!.thickness).toBe(0.2);
   });
 });

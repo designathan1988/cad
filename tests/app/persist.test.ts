@@ -5,8 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
 import { validateDocument } from '../../src/project/persist';
 import { newOpening } from '../../src/elements/opening/schema';
-import { wid } from '../ids';
-import { oid } from '../ids';
+import { oid, wid } from '../ids';
 
 const wall = {
   id: wid('wall_w'),
