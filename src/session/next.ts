@@ -142,6 +142,7 @@ export function nextFields(app: App): { readonly slot: NextSlot; readonly fields
   const fields = kind
     .fields([s], {
       doc: inDoc,
+      floorLocked: app.ui.collisions,
       // A field's change is a command on its element: run on that document, the template comes back changed.
       dispatch: (c) => {
         const out = c.apply(inDoc);

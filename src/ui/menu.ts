@@ -17,11 +17,11 @@ export interface MenuItem {
   readonly run: () => void;
 }
 
-let open: (() => void) | null = null;
+const shown = { close: null as (() => void) | null };
 
 /** Opens the menu with its top-left corner at the screen point, kept inside the window. */
 export function showMenu(items: readonly MenuItem[], at: { x: number; y: number }, label: string, start = 0): void {
-  open?.();
+  shown.close?.();
   if (items.length === 0) return;
   const back = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const menu = el('div', { class: 'menu', role: 'menu', 'aria-label': label });
@@ -68,7 +68,7 @@ export function showMenu(items: readonly MenuItem[], at: { x: number; y: number 
     window.removeEventListener('pointerdown', outside, true);
     window.removeEventListener('resize', close);
     menu.remove();
-    open = null;
+    shown.close = null;
     back?.focus();
   }
   document.body.append(menu);
@@ -78,7 +78,7 @@ export function showMenu(items: readonly MenuItem[], at: { x: number; y: number 
   menu.style.top = `${Math.max(4, Math.min(at.y, window.innerHeight - h - 4))}px`;
   window.addEventListener('pointerdown', outside, true);
   window.addEventListener('resize', close);
-  open = close;
+  shown.close = close;
   // The first item that can be chosen, from `start`: a greyed one never takes the focus first.
   const first = items.findIndex((x, i) => i >= start && !x.disabled);
   focus(first >= 0 ? first : Math.min(start, items.length - 1));

@@ -377,5 +377,5 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
     for (const ring of s.rings) out.polyline('A-FURN', ring, true);
     for (const ring of s.voids) out.polyline('A-FURN', ring, true);
   },
-  fields: (items, { dispatch, doc }) => objectFields(items, doc, dispatch),
+  fields: (items, { dispatch, doc, floorLocked }) => objectFields(items, doc, dispatch, floorLocked),
 };

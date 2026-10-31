@@ -23,6 +23,9 @@ import type { Command } from '../core/store';
 
 export interface PanelInput {
   readonly doc: Doc;
+  /** Whether collisions are on (the session's preference): an object's elevation is not allowed below
+   *  its floor while it is. */
+  readonly collisions: boolean;
   readonly selected: readonly DocWall[];
   readonly drawing: boolean;
   readonly defaults: WallDefaults;
@@ -158,7 +161,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     const title = kind.title ? kind.title(items) : { icon: kind.icon, text: n === 1 ? t(kind.one) : t(kind.many, { n }) };
     nodes.push(head(title.icon, title.text));
     part(n);
-    nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, { dispatch: act.dispatch, doc, ...(act.room.startFloorHole ? { startFloorHole: act.room.startFloorHole } : {}), ...(act.openSection ? { openSection: act.openSection } : {}), ...(act.interiorElevations ? { interiorElevations: act.interiorElevations } : {}), ...(act.calibrate ? { calibrate: act.calibrate } : {}), ...(act.geometry ? { geometry: act.geometry } : {}) }), items));
+    nodes.push(fieldsSection(t('panel.general'), true, kind.fields(items, { dispatch: act.dispatch, doc, floorLocked: input.collisions, ...(act.room.startFloorHole ? { startFloorHole: act.room.startFloorHole } : {}), ...(act.openSection ? { openSection: act.openSection } : {}), ...(act.interiorElevations ? { interiorElevations: act.interiorElevations } : {}), ...(act.calibrate ? { calibrate: act.calibrate } : {}), ...(act.geometry ? { geometry: act.geometry } : {}) }), items));
     if (kind.hint) nodes.push(el('div', { class: 'panel-hint' }, t(kind.hint)));
     const problem = kind.warning?.(items, doc) ?? null;
     if (problem) {

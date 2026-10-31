@@ -7,16 +7,17 @@ export type Parsed<T> = { ok: true; value: T } | { ok: false };
 
 const UNITS: Readonly<Record<string, number>> = { mm: 0.001, cm: 0.01, m: 1, ft: 0.3048, "'": 0.3048, in: 0.0254, '"': 0.0254 };
 
+/** The parser's one owner of the project's unit and named lengths: written only by the setters. */
+const project = { bare: 1, variables: {} as Readonly<Record<string, number>> };
+
 /** Metres per unit of a number typed without one: 1 for metres, 0.01 for centimetres, 0.001 for millimetres. */
-let bare = 1;
 export const setBareUnit = (metresPerUnit: number): void => {
-  bare = metresPerUnit;
+  project.bare = metresPerUnit;
 };
 
 /** The project's named lengths (metres), typed by name in a measure: "pd - 0,10" (phase 9). */
-let variables: Readonly<Record<string, number>> = {};
 export const setVariables = (v: Readonly<Record<string, number>>): void => {
-  variables = v;
+  project.variables = v;
 };
 
 /** A name a variable may have: a letter first, then letters, digits or _; not a unit's. */
@@ -127,9 +128,9 @@ class Parser {
     }
     // A variable of the project, by its name: a length in metres (a number in a plain number).
     const name = /^[A-Za-zÀ-ÿ_][A-Za-zÀ-ÿ0-9_]*/.exec(this.s.slice(this.i));
-    if (name && isVariableName(name[0]) && name[0] in variables) {
+    if (name && isVariableName(name[0]) && name[0] in project.variables) {
       this.i += name[0].length;
-      return variables[name[0]]!;
+      return project.variables[name[0]]!;
     }
     const m = /^\d+(?:[.,]\d*)?|^[.,]\d+/.exec(this.s.slice(this.i));
     if (!m) return null;
@@ -138,7 +139,7 @@ class Parser {
     if (!withUnit) return n;
     this.skip();
     const u = /^(?:(mm|cm|m|ft|in)(?![a-z])|(['"]))/i.exec(this.s.slice(this.i));
-    if (!u) return n * bare;
+    if (!u) return n * project.bare;
     this.i += u[0].length;
     const unit = (u[1] ?? u[2]!).toLowerCase();
     const value = n * UNITS[unit]!;

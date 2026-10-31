@@ -4099,11 +4099,13 @@ const ptNames: Readonly<Record<string, string>> = {
   'Boundary wall 15 cm': 'Muro de divisa 15 cm',
 };
 
-let lang: Lang = 'en';
 
-export const getLang = (): Lang => lang;
+/** The language's one owner: held in an object, written only by setLang. */
+const language = { current: 'en' as Lang };
+
+export const getLang = (): Lang => language.current;
 export const setLang = (l: Lang): void => {
-  lang = l;
+  language.current = l;
 };
 /** The page's lang attribute for the language (set by the app, which owns the page). */
 export const htmlLang = (l: Lang): string => (l === 'pt' ? 'pt-BR' : 'en');
@@ -4116,7 +4118,7 @@ export const tBoth = (key: MessageKey, vars: Readonly<Record<string, string | nu
 export const hasMessage = (key: string): key is MessageKey => key in en;
 
 export function t(key: MessageKey, vars: Readonly<Record<string, string | number>> = {}): string {
-  const text = lang === 'pt' ? pt[key] : en[key];
+  const text = language.current === 'pt' ? pt[key] : en[key];
   return text.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? ''));
 }
 
@@ -4136,7 +4138,7 @@ const ptPatterns: readonly [RegExp, string][] = [
 
 /** A user-facing name stored in the document: built-in names are translated, the user's are not. */
 export const name = (stored: string): string => {
-  if (lang !== 'pt') return stored;
+  if (language.current !== 'pt') return stored;
   const known = ptNames[stored];
   if (known) return known;
   const p = ptPatterns.find(([re]) => re.test(stored));
@@ -4160,7 +4162,7 @@ export const materialLabel = (m: { readonly id: string; readonly name: string })
 /** Numbers as the language writes them: 4,50 in Portuguese, 4.50 in English. */
 export const num = (value: number, digits = 2): string =>
   // A value that rounds to zero is written 0, never -0.
-  (Math.abs(value) < 0.5 * 10 ** -digits ? 0 : value).toLocaleString(lang === 'pt' ? 'pt-BR' : 'en-US', {
+  (Math.abs(value) < 0.5 * 10 ** -digits ? 0 : value).toLocaleString(language.current === 'pt' ? 'pt-BR' : 'en-US', {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
     useGrouping: false,

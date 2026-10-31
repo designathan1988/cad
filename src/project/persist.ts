@@ -61,33 +61,31 @@ export function saveDocument(doc: Doc): void {
   }
 }
 
-/** The version waiting to be saved, and whether a save is asked for. */
-let pending: Doc | null = null;
-let asked = false;
+/** The one owner of what waits to be saved, whether a save is asked for, and where it goes. */
+const save = { pending: null as Doc | null, asked: false, target: null as { readonly db: IDBDatabase; readonly id: string } | null };
 
 /** Where the project is saved: its record in the browser's database (io/project-db.ts), or, without
  * one, the single document of before. */
-let target: { readonly db: IDBDatabase; readonly id: string } | null = null;
 
 /** The project saved from now on, in the database. */
 export function saveTo(db: IDBDatabase, id: string): void {
-  target = { db, id };
+  save.target = { db, id };
 }
 
 /** The project being saved in the database, if any. */
-export const savedAs = (): { readonly db: IDBDatabase; readonly id: string } | null => target;
+export const savedAs = (): { readonly db: IDBDatabase; readonly id: string } | null => save.target;
 
 /** Saves what is waiting, now: when the page is hidden or closed, nothing is left behind. Resolved when written. */
 export function flushSave(): Promise<void> {
-  if (!pending) return Promise.resolve();
-  const doc = pending;
-  pending = null;
-  if (!target) {
+  if (!save.pending) return Promise.resolve();
+  const doc = save.pending;
+  save.pending = null;
+  if (!save.target) {
     saveDocument(doc);
     return Promise.resolve();
   }
   // Element by element (only what changed); a failure is said, and the document kept the old way too.
-  return saveProject(target.db, target.id, doc).catch((e: unknown) => {
+  return saveProject(save.target.db, save.target.id, doc).catch((e: unknown) => {
     console.warn('Could not save the project in the browser database; kept in local storage instead.', e);
     saveDocument(doc);
   });
@@ -99,11 +97,11 @@ export function flushSave(): Promise<void> {
  * without holding the drawing up). Hiding or closing the page saves at once (wireSaving).
  */
 export function scheduleSave(doc: Doc): void {
-  pending = doc;
-  if (asked) return;
-  asked = true;
+  save.pending = doc;
+  if (save.asked) return;
+  save.asked = true;
   const run = () => {
-    asked = false;
+    save.asked = false;
     void flushSave();
   };
   if ('requestIdleCallback' in window) window.requestIdleCallback(run, { timeout: 1000 });

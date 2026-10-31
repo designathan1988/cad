@@ -11,10 +11,10 @@ import { REFERENCE_PREFIX } from '../reference/schema';
 
 /** Pictures by their data, loaded once. */
 const pictures = new Map<string, HTMLImageElement>();
-/** Called when a picture has loaded, to draw the plan again (set by the app). */
-let loaded: () => void = () => {};
+/** Called when a picture has loaded, to draw the plan again (set by the app): the one owner. */
+const onLoad = { run: (): void => {} };
 export const onReferenceLoaded = (f: () => void): void => {
-  loaded = f;
+  onLoad.run = f;
 };
 
 function picture(data: string): HTMLImageElement | null {
@@ -22,7 +22,7 @@ function picture(data: string): HTMLImageElement | null {
   let img = pictures.get(data);
   if (!img) {
     img = new Image();
-    img.onload = () => loaded();
+    img.onload = () => onLoad.run();
     img.src = data;
     pictures.set(data, img);
   }

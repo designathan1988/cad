@@ -51,25 +51,25 @@ export const isUnits = (u: unknown): u is Units => {
   );
 };
 
-let current: Units = DEFAULT_UNITS;
+const shown = { units: DEFAULT_UNITS as Units };
 
 /** The units in use: the open project's, set whenever it changes (app/chrome.ts). */
 export function setUnits(u: Units): void {
-  if (u === current) return;
-  current = u;
+  if (u === shown.units) return;
+  shown.units = u;
   setBareUnit(SCALE[u.length]);
 }
 
-export const units = (): Units => current;
-export const lengthUnit = (): LengthUnit => current.length;
+export const units = (): Units => shown.units;
+export const lengthUnit = (): LengthUnit => shown.units.length;
 
 /**
  * Decimals for a length: the project's, or more when the caller needs a finer step in metres (a layer's
  * thickness to the millimetre: 3 decimals in metres is 1 in centimetres, 0 in millimetres).
  */
 function decimalsFor(metreDigits?: number): number {
-  const shift = Math.round(-Math.log10(SCALE[current.length]));
-  return Math.max(current.decimals, metreDigits === undefined ? 0 : Math.max(0, metreDigits - shift));
+  const shift = Math.round(-Math.log10(SCALE[shown.units.length]));
+  return Math.max(shown.units.decimals, metreDigits === undefined ? 0 : Math.max(0, metreDigits - shift));
 }
 
 /** Feet and inches: 12' 6", the inches to `decimals` places; a whole number of feet as 12' 0". */
@@ -88,22 +88,22 @@ export function feetInches(metres: number, decimals: number): string {
 
 /** A length (metres inside) as a number in the project's unit, without the unit: a dimension's text. */
 export const lengthNum = (metres: number, metreDigits?: number): string =>
-  current.length === 'ft' ? feetInches(metres, current.decimals) : num(metres / SCALE[current.length], decimalsFor(metreDigits));
+  shown.units.length === 'ft' ? feetInches(metres, shown.units.decimals) : num(metres / SCALE[shown.units.length], decimalsFor(metreDigits));
 
 /** A length with its unit: "3,45 m", "345 cm", "3450 mm", "12' 6\"" (feet and inches carry their own marks). */
-export const lengthText = (metres: number, metreDigits?: number): string => (current.length === 'ft' ? lengthNum(metres) : `${lengthNum(metres, metreDigits)} ${current.length}`);
+export const lengthText = (metres: number, metreDigits?: number): string => (shown.units.length === 'ft' ? lengthNum(metres) : `${lengthNum(metres, metreDigits)} ${shown.units.length}`);
 
 /** An area: m², or ft² in a project in feet. */
-export const areaText = (m2: number): string => (current.length === 'ft' ? `${num(m2 * FT2, 2)} ft²` : `${num(m2, 2)} m²`);
+export const areaText = (m2: number): string => (shown.units.length === 'ft' ? `${num(m2 * FT2, 2)} ft²` : `${num(m2, 2)} m²`);
 
 /** A volume: m³, or ft³ in a project in feet. */
-export const volumeText = (m3: number): string => (current.length === 'ft' ? `${num(m3 * FT3, 2)} ft³` : `${num(m3, 2)} m³`);
+export const volumeText = (m3: number): string => (shown.units.length === 'ft' ? `${num(m3 * FT3, 2)} ft³` : `${num(m3, 2)} m³`);
 
 /** An angle in degrees, to the project's decimals (without the °). */
-export const angleNum = (deg: number): string => num(deg, current.angleDecimals ?? 1);
+export const angleNum = (deg: number): string => num(deg, shown.units.angleDecimals ?? 1);
 
 /** How slopes are written in the project. */
-export const slopeFormat = (): SlopeFormat => current.slope ?? 'percent';
+export const slopeFormat = (): SlopeFormat => shown.units.slope ?? 'percent';
 
 /** A slope's unit after its value: %, ° or the "1:" before it. */
 export const slopeUnit = (): string => (slopeFormat() === 'degrees' ? '°' : slopeFormat() === 'ratio' ? '1:' : '%');
@@ -125,20 +125,20 @@ export function slopeTyped(v: number): number {
 }
 
 /** A length field's value (metres) in the unit it is shown in, and back. */
-export const toUnit = (metres: number): number => metres / SCALE[current.length];
+export const toUnit = (metres: number): number => metres / SCALE[shown.units.length];
 
 /** Metres in one of the project's length unit. */
-export const unitScale = (): number => SCALE[current.length];
+export const unitScale = (): number => SCALE[shown.units.length];
 
 /** A length as one types it in the project's unit: no trailing zeros ("4,5", "450", "4500", "14'9\""). */
 const typed = (metres: number): string =>
-  current.length === 'ft'
+  shown.units.length === 'ft'
     ? feetInches(metres, 0).replace(' ', '')
-    : (metres / SCALE[current.length]).toLocaleString(getLang() === 'pt' ? 'pt-BR' : 'en-US', { maximumFractionDigits: 3, useGrouping: false });
+    : (metres / SCALE[shown.units.length]).toLocaleString(getLang() === 'pt' ? 'pt-BR' : 'en-US', { maximumFractionDigits: 3, useGrouping: false });
 
 /** The other way to type it, with its unit written: "450cm" in a project in metres, else "4,5m". */
 const typedAlt = (metres: number): string =>
-  current.length === 'm' ? `${Math.round(metres * 100)}cm` : `${(metres).toLocaleString(getLang() === 'pt' ? 'pt-BR' : 'en-US', { maximumFractionDigits: 3, useGrouping: false })}m`;
+  shown.units.length === 'm' ? `${Math.round(metres * 100)}cm` : `${(metres).toLocaleString(getLang() === 'pt' ? 'pt-BR' : 'en-US', { maximumFractionDigits: 3, useGrouping: false })}m`;
 
 /** The examples the measure field and its error messages give, in the project's unit. */
 export const typingExamples = (): Record<string, string> => ({

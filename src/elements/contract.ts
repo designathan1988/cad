@@ -90,6 +90,9 @@ export interface TransformContext {
 export interface KindFieldContext {
   readonly dispatch: (c: Command<Doc>) => void;
   readonly doc: Doc;
+  /** Whether moved things are stopped by collisions (the session's preference, passed in): an object's
+   *  elevation is not allowed below its floor while it is on. */
+  readonly floorLocked: boolean;
   /** Draw a hole through a floor (the floor tool on it); not offered where there is no tool. */
   readonly startFloorHole?: (id: string) => void;
   /** Show a section's or an elevation's drawing (ui/sections-dialog.ts). */

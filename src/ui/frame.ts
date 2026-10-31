@@ -345,6 +345,7 @@ export function renderFrame(app: App): void {
     shell.panel,
     {
       doc,
+      collisions: ui.collisions,
       selected: app.selectedWalls(),
       drawing: ui.tool === 'wall',
       defaults: ui.defaults,

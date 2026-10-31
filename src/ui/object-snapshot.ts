@@ -12,13 +12,13 @@ import { evaluateObject } from '../elements/object/evaluate';
 import type { ObjectDefinition } from '../elements/object/schema';
 
 type Stage = { renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; group: THREE.Group; sun: THREE.DirectionalLight; ground: THREE.Mesh };
-let stage: Stage | null = null;
+const shared = { stage: null as Stage | null };
 /** Each picture drawn at this many times its size (see meshSnapshot). */
 const SUPERSAMPLE = 2;
 
 /** The stage, or null where the browser has no WebGL (the picture is then left out). */
 function stageOf(): Stage | null {
-  if (stage) return stage;
+  if (shared.stage) return shared.stage;
   const canvas = document.createElement('canvas');
   if (!canvas.getContext('webgl2')) return null;
   // Read back as an image right after drawing: the buffer kept until then.
@@ -49,8 +49,8 @@ function stageOf(): Stage | null {
   ground.receiveShadow = true;
   const group = new THREE.Group();
   scene.add(sun, sun.target, ground, group);
-  stage = { renderer, scene, camera: new THREE.PerspectiveCamera(35, 4 / 3, 0.01, 200), group, sun, ground };
-  return stage;
+  shared.stage = { renderer, scene, camera: new THREE.PerspectiveCamera(35, 4 / 3, 0.01, 200), group, sun, ground };
+  return shared.stage;
 }
 
 /** The picture as a data URL, w × h device pixels, at the given type (its first by default); null with nothing to draw or no WebGL. */

@@ -3,7 +3,6 @@
 // way back to the type's value. Calculated parameters are shown, not edited. Several objects of one
 // definition are edited together; of several definitions, only their place.
 
-import { collisionsOn } from '../../core/collisions';
 import { LENGTH_LIMITS, sizeParams } from './evaluate';
 import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
@@ -37,7 +36,7 @@ function verticalParams(def: ObjectDefinition): Set<string> {
   return new Set(def.params.filter((p) => !across.has(p.name) && new RegExp(`\\b${p.name}\\b`).test(text)).map((p) => p.name));
 }
 
-export function objectFields(items: readonly ObjectItem[], doc: Doc, dispatch: (c: Command<Doc>) => void): Field<ObjectItem>[] {
+export function objectFields(items: readonly ObjectItem[], doc: Doc, dispatch: (c: Command<Doc>) => void, floorLocked: boolean): Field<ObjectItem>[] {
   const ids = items.map((i) => i.object.id);
   const first = items[0];
   if (!first) return [];
@@ -129,8 +128,8 @@ export function objectFields(items: readonly ObjectItem[], doc: Doc, dispatch: (
     label: 'object.elevation',
     kind: 'number',
     icon: 'height',
-    // Not below its floor while collisions are on (app/collision.ts).
-    min: () => (collisionsOn() ? 0 : -Infinity),
+    // Not below its floor while collisions are on (the session passes the preference in).
+    min: floorLocked ? 0 : -Infinity,
     get: (x) => x.object.elevation,
     set: (v) => dispatch(setObjectValues(ids.map((id) => ({ id, values: {}, elevation: v })))),
   });

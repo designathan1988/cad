@@ -1,7 +1,6 @@
 // Application state and rendering. The project changes only through the store; selection, tool,
 // view, camera, language and theme are interface state, outside the document and outside undo.
 
-import { setCollisions } from '../core/collisions';
 import { made, nextOf, type NextSlot } from './next';
 import { pickModel } from '../ui/import-model';
 import * as refs from '../ui/reference-tool';
@@ -289,7 +288,7 @@ export class App {
       hidden: new Set(),
       temp: null,
       snaps: prefs.snaps !== false,
-      collisions: (setCollisions(prefs.collisions !== false), prefs.collisions !== false),
+      collisions: prefs.collisions !== false,
       snapParts: prefs.snapParts ?? 3,
       snapSkip: [],
       lock: null,
@@ -1265,7 +1264,6 @@ export class App {
 
   toggleCollisions(): void {
     this.ui.collisions = !this.ui.collisions;
-    setCollisions(this.ui.collisions);
     savePrefs({ collisions: this.ui.collisions });
     this.toast(t(this.ui.collisions ? 'toast.collisionsOn' : 'toast.collisionsOff'));
     this.render();
