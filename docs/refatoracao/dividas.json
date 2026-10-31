@@ -2,7 +2,6 @@
  "direction": 0,
  "mutableLets": 0,
  "oversize": [
-  "src/session/input.ts",
   "src/ui/ribbon-tabs.ts",
   "src/elements/object/evaluate.ts",
   "src/elements/object/library-before66.ts",

@@ -231,6 +231,12 @@ aqui fica a decisão por arquivo.
 | (novo no passo 5) src/ui/toast.ts | manter | ui/toast.ts | a pilha de avisos (3 no máximo), extraída do App |
 | (movido no passo 4) src/session/app.ts | dividir | session/app.ts (fachada fina) + session/state.ts | UiState vira máquinas: tool (WallToolState etc. já existem), overlay, lifecycle |
 | (movido no passo 4) src/session/input.ts | dividir | session/input/pointer.ts, keys.ts, field.ts | pick/planHits → canvas/pick.ts; showHelp → ui/help.ts |
+| (novo no passo 6) src/session/pointer-aim.ts | manter | session/pointer-aim.ts | mira do ponteiro: ponto no mundo, encaixes, escolha (antes em input.ts) |
+| (novo no passo 6) src/session/pointer-state.ts | manter | session/pointer-state.ts | o estado do ponteiro com dono único, compartilhado com input-keys (antes lets + ponte get/set) |
+| (novo no passo 6) src/session/pointer-handlers.ts | manter | session/pointer-handlers.ts | mover e apertar o ponteiro (antes em input.ts) |
+| (novo no passo 6) src/session/pointer-release.ts | manter | session/pointer-release.ts | soltar o ponteiro e o fim por clique direito (antes em input.ts) |
+| (novo no passo 6) src/ui/help-dialog.ts | manter | ui/help-dialog.ts | o diálogo de atalhos (antes em input.ts) |
+| (novo no passo 6) src/ui/rename-in-place.ts | manter | ui/rename-in-place.ts | renomear o projeto na barra (antes em input.ts) |
 | (movido no passo 4) src/session/input-keys.ts | juntar | session/input/keys.ts | letras de ferramenta codificadas → vêm das actions (defaultKeys) |
 | (movido no passo 4) src/session/input-buttons.ts | juntar | session/input/buttons.ts |  |
 | (movido no passo 4) src/session/keymap.ts | mover | session/keymap.ts |  |

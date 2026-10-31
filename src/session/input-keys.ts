@@ -2,11 +2,10 @@
 // a guide. What the pointer side shares with them comes in `k`.
 
 import { comboOf, resolveKey } from './keymap';
-import type { Point2 } from '../model/vector';
 import { t } from '../i18n/messages';
 import { viewKey } from './view-keys';
 import type { App } from './app';
-import { showHelp } from './input';
+import { showHelp } from '../ui/help-dialog';
 import { selectGestures } from './drag';
 import { arrowStep } from '../tools/nudge';
 import { guideBaseAt } from '../elements/guide/tool';
@@ -20,14 +19,12 @@ import { sectionEscape } from './section-tools';
 import { railingFinish, roofFinish } from './kind-tools';
 import { toggleWallFlip, wallEvent } from '../elements/wall/tool-ui';
 import { floorFinish } from './room-tool';
+import type { PointerState } from './pointer-state';
 
 /** What the keys share with the pointer (input.ts). */
 export interface KeyContext {
-  shift: boolean;
-  altAt: Point2 | null;
-  altMoved: boolean;
-  again: string | null;
-  downAt: { x: number; y: number } | null;
+  /** The pointer's state, shared with input.ts (pointer-state.ts). */
+  pointer: PointerState;
   readonly gestures: ReturnType<typeof selectGestures>;
   guideTools(): boolean;
   palette(): void;
@@ -55,7 +52,7 @@ export function wireKeys(app: App, k: KeyContext): void {
     const measureAlt = target === shell.measure && e.key === 'Alt';
     if (levelList) shell.level.blur();
     else if (!measureAlt && (target.closest('input, select, textarea') || target.closest('.dialog-back') || !shell.helpBack.hidden)) return;
-    k.shift = e.shiftKey;
+    k.pointer.shift = e.shiftKey;
     // Tab, drawing: what is under the pointer besides the snap offered (a wall's end under a door's).
     if (key === 'tab' && !ctrl && !e.altKey && !e.shiftKey && k.nextSnap()) {
       e.preventDefault();
@@ -126,8 +123,8 @@ export function wireKeys(app: App, k: KeyContext): void {
         ui.info = t('hint.guideNoBase');
         return app.render();
       }
-      k.altAt = app.pointer;
-      k.altMoved = false;
+      k.pointer.altAt = app.pointer;
+      k.pointer.altMoved = false;
       return startGuide(app, base, at);
     }
     // A distance for the guide being set, Alt held or not.
@@ -156,7 +153,7 @@ export function wireKeys(app: App, k: KeyContext): void {
       return app.refresh();
     }
     if (e.key === 'Escape' && k.gestures.cancel()) {
-      k.downAt = null;
+      k.pointer.downAt = null;
       return k.showMarquee();
     }
     if (ctrl || e.altKey) return;
@@ -191,7 +188,7 @@ export function wireKeys(app: App, k: KeyContext): void {
       if (ui.guide) return cancelGuide(app);
       if (ui.tool === 'modify') return app.modifyEvent({ kind: 'escape' });
       if (k.gestures.cancel()) {
-        k.downAt = null;
+        k.pointer.downAt = null;
         return k.showMarquee();
       }
       if (app.openingKind()) return app.setTool('select');
