@@ -1,8 +1,8 @@
 // The project as a file: saving, opening and a new one. Functions over the app (app.ts delegates).
 
 import { t } from '../i18n/messages';
-import { newDocument, startLevel } from './doc';
-import { savePrefs } from './persist';
+import { type Doc, newDocument, startLevel } from './doc';
+import { savedAs, savePrefs } from './persist';
 import { readProject, writeProject } from './file';
 import { importAsProject, newStoredProject } from './projects';
 import { safeFileName } from '../model/fs-name';
@@ -43,21 +43,30 @@ export function fileBase(app: App): string {
  */
 export function newProject(app: App): void {
   // Kept in the browser's database: another project, the open one staying in the list (projects.ts).
-  if (app.db) {
-    void newStoredProject(app, app.db);
+  const stored = savedAs();
+  if (stored) {
+    void newStoredProject(app, stored.db);
     return;
   }
+  const doc = newDocument();
+  showProject(app, doc, () => app.store.dispatch({ label: 'cmd.newProject', apply: () => doc }));
+  app.toast(t('toast.newUndo'));
+}
+
+/**
+ * Another project shown in place of the open one: the old one's message, selection, drag and level go,
+ * and it is framed whole. `put` puts the document in the store (one undo step, or a history of its own).
+ */
+export function showProject(app: App, doc: Doc, put: () => void): void {
   app.ui.error = null;
   app.ui.selection.clear();
   app.ui.drag = null;
-  const doc = newDocument();
   app.ui.levelId = startLevel(doc);
   savePrefs({ levelId: app.ui.levelId });
-  app.store.dispatch({ label: 'cmd.newProject', apply: () => doc });
+  put();
   app.framed.plan = false;
   app.framed['3d'] = false;
   app.frameAll();
-  app.toast(t('toast.newUndo'));
 }
 
 /** Opens a project file in place of the current project, as one undo step. */
@@ -67,25 +76,18 @@ export async function openFile(app: App, file: File): Promise<void> {
     app.ui.error = t(`open.${r.error}`);
     return app.renderChrome();
   }
-  app.ui.error = null;
-  app.ui.selection.clear();
-  app.ui.drag = null;
-  app.ui.levelId = startLevel(r.doc);
-  savePrefs({ levelId: app.ui.levelId });
   // A project saved without a name is called by its file's: "casa.json" opens as "casa".
   const opened = r.doc.name ? r.doc : { ...r.doc, name: file.name.replace(/\.json$/i, '') };
   // Elements left out; ids only given their kind's prefix (typed-ids.ts) were kept, and are not counted.
   const fixed = r.fixes.filter((f) => f.kind !== 'typedIds').reduce((s, f) => s + f.count, 0);
-  if (app.db) {
+  const stored = savedAs();
+  if (stored) {
     // A new project of the list: the open one stays there (projects.ts).
-    await importAsProject(app, app.db, opened);
+    await importAsProject(app, stored.db, opened);
     app.toast(fixed > 1 ? t('toast.importedFixed', { n: fixed }) : fixed === 1 ? t('toast.importedFixedOne') : t('toast.imported'));
     return;
   }
   // One undo step, like any other change: opening by mistake never loses the project that was open.
-  app.store.dispatch({ label: 'cmd.openProject', apply: () => opened });
-  app.framed.plan = false;
-  app.framed['3d'] = false;
-  app.frameAll();
+  showProject(app, opened, () => app.store.dispatch({ label: 'cmd.openProject', apply: () => opened }));
   app.toast(fixed > 1 ? t('toast.openedFixed', { n: fixed }) : fixed === 1 ? t('toast.openedFixedOne') : t('toast.openedUndo'));
 }

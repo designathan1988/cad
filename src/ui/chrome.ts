@@ -4,6 +4,7 @@ import { lengthText } from '../i18n/units';
 import { getLang, type MessageKey, name, t } from '../i18n/messages';
 import { icon } from '../i18n/icons';
 import { drawingOf, elementIds } from '../project/doc';
+import { savedAs } from '../project/persist';
 import { SCALES } from '../elements/drawing/schema';
 import { renderBrowser } from './browser';
 import { renderVisibility } from './visibility-panel';
@@ -41,7 +42,7 @@ export function renderChrome(app: App): void {
   const projectName = doc.name || t('app.untitled');
   if (shell.projectName.textContent !== projectName) shell.projectName.textContent = projectName;
   // Where the project is kept: in this browser's database, else in its local storage.
-  shell.savedNote.textContent = t(app.db ? 'top.savedHere' : 'top.savedLocal');
+  shell.savedNote.textContent = t(savedAs() ? 'top.savedHere' : 'top.savedLocal');
   document.title = `${projectName} · cad2`;
   shell.undo.disabled = !store.canUndo();
   shell.redo.disabled = !store.canRedo();

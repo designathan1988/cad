@@ -8,26 +8,20 @@ import { deleteProject, forgetSaved, listProjects, type ProjectInfo, saveProject
 import { t } from '../i18n/messages';
 import type { App } from '../session/app';
 import { PROJECT_PREFIX, readStored } from './boot';
-import { type Doc, newDocument, startLevel } from './doc';
-import { flushSave, savePrefs, saveTo } from './persist';
-import { renameProject } from './files';
+import { type Doc, newDocument } from './doc';
+import { flushSave, savedAs, savePrefs, saveTo } from './persist';
+import { renameProject, showProject } from './files';
 
 /** The open project becomes `doc`, kept under `id`: the one before is saved first, its history left behind. */
 function switchTo(app: App, db: IDBDatabase, id: string, doc: Doc): void {
   void flushSave();
   saveTo(db, id);
   savePrefs({ projectId: id });
-  app.projectId = id;
-  app.ui.error = null;
-  app.ui.selection.clear();
-  app.ui.drag = null;
-  app.ui.levelId = startLevel(doc);
-  savePrefs({ levelId: app.ui.levelId });
-  app.store.reset(doc);
-  app.framed.plan = false;
-  app.framed['3d'] = false;
-  app.frameAll();
+  showProject(app, doc, () => app.store.reset(doc));
 }
+
+/** The open project's id in the database (persist.ts owns it); null without one. */
+const openId = (): string | null => savedAs()?.id ?? null;
 
 /** A new empty project; the open one stays in the list. */
 export async function newStoredProject(app: App, db: IDBDatabase): Promise<void> {
@@ -40,7 +34,7 @@ export async function newStoredProject(app: App, db: IDBDatabase): Promise<void>
 
 /** A project of the list opened; false when it could not be read. */
 export async function openStoredProject(app: App, db: IDBDatabase, id: string): Promise<boolean> {
-  if (id === app.projectId) return true;
+  if (id === openId()) return true;
   const doc = await readStored(db, id);
   if (!doc) return false;
   // Read again: its next save writes it whole, so nothing stale stays in the database.
@@ -66,7 +60,7 @@ export async function projectsList(db: IDBDatabase): Promise<ProjectInfo[]> {
 /** A copy of a project under a new id, named "… (copy)". */
 export async function duplicateProject(app: App, db: IDBDatabase, id: string): Promise<void> {
   await flushSave();
-  const doc = id === app.projectId ? app.store.get() : await readStored(db, id);
+  const doc = id === openId() ? app.store.get() : await readStored(db, id);
   if (!doc) return;
   await saveProject(db, newId(PROJECT_PREFIX), { ...doc, name: t('projects.copyName', { name: doc.name || t('app.untitled') }) });
 }
@@ -74,7 +68,7 @@ export async function duplicateProject(app: App, db: IDBDatabase, id: string): P
 /** A project of the list renamed (the open one by a command, one undo step, as everywhere). */
 export async function renameStoredProject(app: App, db: IDBDatabase, id: string, name: string): Promise<void> {
   const clean = name.trim();
-  if (id === app.projectId) {
+  if (id === openId()) {
     renameProject(app, clean);
     return;
   }
@@ -86,7 +80,7 @@ export async function renameStoredProject(app: App, db: IDBDatabase, id: string,
 
 /** A project gone for good; the open one gives way to the next in the list, or a new one. */
 export async function deleteStoredProject(app: App, db: IDBDatabase, id: string): Promise<void> {
-  if (id === app.projectId) {
+  if (id === openId()) {
     const next = (await listProjects(db)).find((p) => p.id !== id);
     if (!next || !(await openStoredProject(app, db, next.id))) await newStoredProject(app, db);
   }

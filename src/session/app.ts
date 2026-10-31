@@ -73,13 +73,7 @@ export class App {
   panelDoc: Doc | null = null;
   panelKey = '';
 
-  /** The browser's database and the open project's id there (boot.ts); null without a database. */
-  db: IDBDatabase | null;
-  projectId: string | null;
-
   constructor(root: HTMLElement, boot: Boot) {
-    this.db = boot.db;
-    this.projectId = boot.projectId;
     const prefs = loadPrefs();
     setLang(prefs.lang ?? (navigator.language.toLowerCase().startsWith('pt') ? 'pt' : 'en'));
     document.documentElement.lang = htmlLang(getLang());

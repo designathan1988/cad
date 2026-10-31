@@ -73,7 +73,7 @@ export function saveTo(db: IDBDatabase, id: string): void {
   save.target = { db, id };
 }
 
-/** The project being saved in the database, if any. */
+/** The project being saved in the database, if any: the one owner of the database and the open project's id. */
 export const savedAs = (): { readonly db: IDBDatabase; readonly id: string } | null => save.target;
 
 /** Saves what is waiting, now: when the page is hidden or closed, nothing is left behind. Resolved when written. */

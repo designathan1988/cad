@@ -9,11 +9,9 @@ import { type ReadError, repairProject } from './file';
 import { type Doc, newDocument } from './doc';
 import { loadDocument, loadPrefs, savePrefs, saveTo } from './persist';
 
+/** The project the app opens with; where it is saved from now on is persist.ts's (saveTo, savedAs). */
 export interface Boot {
   readonly doc: Doc;
-  /** The database and the project's id there; null without a database. */
-  readonly db: IDBDatabase | null;
-  readonly projectId: string | null;
   /** The last project open, when it could not be read and another was opened instead: its name and why. */
   readonly notOpened?: { readonly name: string; readonly error: ReadError };
 }
@@ -36,13 +34,13 @@ export async function readStored(db: IDBDatabase, id: string, failed?: (error: R
 
 export async function boot(): Promise<Boot> {
   const opening = openDb();
-  if (!opening) return { doc: loadDocument() ?? newDocument(), db: null, projectId: null };
+  if (!opening) return { doc: loadDocument() ?? newDocument() };
   let db: IDBDatabase;
   try {
     db = await opening;
   } catch (e) {
     console.warn('The browser database could not be opened; the project is kept in local storage.', e);
-    return { doc: loadDocument() ?? newDocument(), db: null, projectId: null };
+    return { doc: loadDocument() ?? newDocument() };
   }
   // The last one open, or else the last one changed.
   const last = loadPrefs().projectId;
@@ -58,7 +56,7 @@ export async function boot(): Promise<Boot> {
     if (doc) {
       saveTo(db, id);
       savePrefs({ projectId: id });
-      return { doc, db, projectId: id, ...(notOpened ? { notOpened } : {}) };
+      return { doc, ...(notOpened ? { notOpened } : {}) };
     }
   }
   // None yet: the document of before (or a new one) is the first project.
@@ -67,5 +65,5 @@ export async function boot(): Promise<Boot> {
   await saveProject(db, id, doc);
   saveTo(db, id);
   savePrefs({ projectId: id });
-  return { doc, db, projectId: id, ...(notOpened ? { notOpened } : {}) };
+  return { doc, ...(notOpened ? { notOpened } : {}) };
 }

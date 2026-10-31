@@ -5,13 +5,14 @@
 import type { App } from '../session/app';
 import { deleteStoredProject, duplicateProject, newStoredProject, openStoredProject, projectsList, renameStoredProject } from '../project/projects';
 import type { ProjectInfo } from '../project/db';
+import { savedAs } from '../project/persist';
 import { el } from './controls';
 import { getLang, t } from '../i18n/messages';
 import { icon } from '../i18n/icons';
 
 export function showProjectsDialog(app: App): void {
   const back = app.shell.helpBack;
-  const db = app.db;
+  const db = savedAs()?.db ?? null;
   let list: ProjectInfo[] = [];
   let asking: ProjectInfo | null = null;
   const close = () => {
@@ -72,10 +73,10 @@ export function showProjectsDialog(app: App): void {
     else {
       const rows = el('div', { class: 'projects-rows' });
       // The open one first, then the last changed.
-      const sorted = [...list].sort((x, y) => Number(y.id === app.projectId) - Number(x.id === app.projectId));
+      const sorted = [...list].sort((x, y) => Number(y.id === savedAs()?.id) - Number(x.id === savedAs()?.id));
       for (const p of sorted) {
         const label = p.name || t('app.untitled');
-        const open = p.id === app.projectId;
+        const open = p.id === savedAs()?.id;
         const name = el('input', { type: 'text', class: 'text-field', 'aria-label': t('projects.name', { name: label }) });
         name.value = p.name;
         name.placeholder = t('app.untitled');
