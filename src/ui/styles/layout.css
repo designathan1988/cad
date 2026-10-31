@@ -79,6 +79,13 @@ button.project-name:hover {
   font-weight: 600;
   font-size: var(--fs-sm);
 }
+/* A button of words with an icon (Add layer): the icon beside its words, not over them (the icon button's
+   grid stacked them). */
+.icon-btn.text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
 .rows > .wide-btn,
 .rows > .panel-note {
   grid-column: 1 / -1;
