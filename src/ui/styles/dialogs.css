@@ -355,6 +355,11 @@
   font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
 }
+/* A layer out of the join order (layerOrderProblem): said under the layers, in the warning colour. */
+.layer-warn {
+  margin: var(--sp-2) 0 0;
+  color: var(--warn);
+}
 @media (max-width: 720px) {
   .types-body {
     grid-template-columns: minmax(0, 1fr);

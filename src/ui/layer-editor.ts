@@ -5,7 +5,7 @@
 
 import { lengthText } from '../i18n/units';
 import { addLayer, moveLayer, removeLayer, setLayer } from '../elements/layers/stack';
-import { coreLayersOf } from '../elements/wall/geometry/shape';
+import { coreLayersOf, layerOrderProblem } from '../elements/wall/geometry/shape';
 import { LAYER_PRIORITY, type LayerFunction } from '../elements/wall/schema';
 import { el, numberField, select } from './controls';
 import { type Material, materialIn } from '../elements/material/schema';
@@ -128,10 +128,14 @@ export function layerEditor<L extends EditableLayer>(layers: readonly L[], mater
   add.dataset.focus = 'addLayer';
   add.addEventListener('click', () => onChange(addLayer(layers, layers.length - 1)));
 
+  // A layer out of the order the T joins rely on: said, with the layer and the one it should be outside of.
+  const order = layerOrderProblem(layers);
+  const fnName = (i: number) => t(`fn.${layers[i]!.function}` as MessageKey);
   box.append(
     el('h3', {}, t('types.layers')),
     preview,
     grid,
+    ...(order ? [el('p', { class: 'panel-note layer-warn', role: 'status' }, t('types.orderProblem', { n: order.at + 1, what: fnName(order.at), m: order.inside + 1, inner: fnName(order.inside) }))] : []),
     el('div', { class: 'layer-foot' }, add, el('span', { class: 'layer-total', role: 'status' }, t('types.total', { t: lengthText(total, 3) }))),
   );
   return box;

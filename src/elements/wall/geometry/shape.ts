@@ -1,7 +1,7 @@
 // A wall once its type is applied. Derived on every computation, never stored.
 
 import type { Point2 } from '../../../model/vector';
-import type { ReferenceLine, Wall, WallId, WallLayer, WallType } from '../schema';
+import { LAYER_PRIORITY, type LayerFunction, type ReferenceLine, type Wall, type WallId, type WallLayer, type WallType } from '../schema';
 import { stackProblem } from '../../layers/stack';
 
 export interface WallShape {
@@ -42,6 +42,21 @@ export function coreLayersOf(layers: readonly { readonly function: string }[]): 
   const first = structural[0];
   const last = structural[structural.length - 1];
   return first === undefined || last === undefined ? [0, layers.length - 1] : [first, last];
+}
+
+/**
+ * A layer out of Revit's order (layer assignment rules: priorities "cannot ascend from the core boundary to
+ * the finish face"): walking from the core to either face, the first layer of higher priority than the one
+ * just inside it, with that one. The T joins (join/cut-t.ts) assume the order holds: a finish under a
+ * substrate, say, is cut through at a T. Null when the order holds.
+ */
+export function layerOrderProblem<L extends { readonly function: LayerFunction }>(layers: readonly L[]): { readonly at: number; readonly inside: number } | null {
+  const [core0, core1] = coreLayersOf(layers);
+  const walk = (from: number, step: number, end: number) => {
+    for (let i = from; i !== end; i += step) if (LAYER_PRIORITY[layers[i]!.function] < LAYER_PRIORITY[layers[i - step]!.function]) return { at: i, inside: i - step };
+    return null;
+  };
+  return walk(core0 - 1, -1, -1) ?? walk(core1 + 1, 1, layers.length);
 }
 
 export function shapeOf(wall: Wall, type: WallType | undefined): WallShape | ShapeProblem {

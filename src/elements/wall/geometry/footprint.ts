@@ -17,7 +17,7 @@ import type { ConvexPolygon, HalfPlane } from './convex';
 import { stationOf as stationAlong, wallLength } from './offset';
 import { shapeOf, type WallShape } from './shape';
 import { type Carried, carriedPieces, carryArcStem, fitsArc, overlapsWithArcs, spillOverArc, splitPieces, spreadOverArc, type StemSplit, wedge } from './arc-joints';
-import { dedupe, type Span, spanPieces } from './pieces';
+import { dedupe, overlapsUnjoined, type Span, spanPieces } from './pieces';
 
 export interface Piece {
   readonly layerIndex: number;
@@ -366,5 +366,6 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
     pieces.get(parentOf(shape.id))!.push(...(clips.has(shape.id) ? carriedPieces(raw, clips.get(shape.id)!) : raw));
   }
   warnings.push(...overlapsWithArcs(pieces, chains, warnings));
+  warnings.push(...overlapsUnjoined(pieces, walls, warnings));
   return { pieces, warnings: dedupe(warnings), choosable };
 }
