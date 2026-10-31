@@ -7,8 +7,10 @@ import { type Doc, type DocWall, newDocument } from '../../../src/project/doc';
 import { deriveGeometry } from '../../../src/project/derive';
 import { createStore } from '../../../src/core/store';
 import { addWallType, deleteWallType, duplicateWallType, typeDeleteBlocker, updateWallType } from '../../../src/elements/wall/types';
+import type { WallId } from '../../../src/elements/wall/schema';
+import { wid } from '../../ids';
 
-const wall = (id: string, typeId: string): DocWall => ({
+const wall = (id: WallId, typeId: string): DocWall => ({
   id,
   wallTypeId: typeId,
   start: { x: 0, y: 0 },
@@ -16,9 +18,9 @@ const wall = (id: string, typeId: string): DocWall => ({
   referenceLine: 'centerline',
   levelId: 'lvl_ground',
 });
-const doc = (): Doc => ({ ...newDocument(), walls: [wall('a', 'wt_concrete20')] });
+const doc = (): Doc => ({ ...newDocument(), walls: [wall(wid('a'), 'wt_concrete20')] });
 const layer = (thickness: number) => ({ thickness, function: 'structure' as const, materialId: 'concrete' });
-const widthOf = (d: Doc, id: string) => {
+const widthOf = (d: Doc, id: WallId) => {
   const ys = deriveGeometry(d).solids.get(id)!.pieces.flatMap((p) => p.polygon.map((v) => v.y));
   return Math.max(...ys) - Math.min(...ys);
 };
@@ -44,11 +46,11 @@ describe('wall types', () => {
 
   it('editing the layers changes every wall of the type: 20 cm becomes 30 cm, in one undo step', () => {
     const s = createStore(doc());
-    expect(widthOf(s.get(), 'a')).toBeCloseTo(0.2, 9);
+    expect(widthOf(s.get(), wid('a'))).toBeCloseTo(0.2, 9);
     s.dispatch(updateWallType('wt_concrete20', { layers: [layer(0.3)] }));
-    expect(widthOf(s.get(), 'a')).toBeCloseTo(0.3, 9);
+    expect(widthOf(s.get(), wid('a'))).toBeCloseTo(0.3, 9);
     s.undo();
-    expect(widthOf(s.get(), 'a')).toBeCloseTo(0.2, 9);
+    expect(widthOf(s.get(), wid('a'))).toBeCloseTo(0.2, 9);
   });
 
   it('a blank name, no layers or a bad thickness change nothing; the same values make no step', () => {

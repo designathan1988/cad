@@ -2,11 +2,11 @@
 // part of the viewport the panels cover, and fitting a box into what is left.
 
 import type { Point2 } from '../model/vector';
-import type { WallId } from '../elements/wall/schema';
 import type { Placed } from '../elements/kinds/dimension';
 import type { SectionMark } from '../elements/section/schema';
 import type { Handles } from '../session/handles';
 import type { ScreenHandle } from '../session/object-handles';
+import type { ElementId } from '../core/id';
 
 /** A temporary dimension: measured from a to b, drawn beside the element on `side`, clear of it. */
 export interface DimMark {
@@ -19,12 +19,12 @@ export interface DimMark {
 }
 
 export interface PlanOverlay {
-  readonly selected: ReadonlySet<WallId>;
-  readonly hover: WallId | null;
+  readonly selected: ReadonlySet<ElementId>;
+  readonly hover: ElementId | null;
   /** The space with no room under the pointer, with the room tool: the room a click makes there. */
   readonly roomSpace?: readonly Point2[] | null;
   /** Walls being drawn (ids present in the geometry), shown as a translucent preview. */
-  readonly preview: ReadonlySet<WallId>;
+  readonly preview: ReadonlySet<ElementId>;
   /** The level's text notes, as tall as their letters at the plan's scale. */
   /** The dimension being made (the dimension tool), placed, with its value. */
   readonly dimensionDraft?: (Placed & { readonly text: string }) | null;

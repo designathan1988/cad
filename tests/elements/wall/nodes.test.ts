@@ -6,6 +6,8 @@ import { vec } from '../../../src/model/vector';
 import { geometry, layer, testWall } from './fixtures';
 import { shoelace } from './oracle';
 import { overlapArea } from '../../../src/elements/wall/geometry/convex';
+import { wid } from '../../ids';
+import type { WallId } from '../../../src/elements/wall/schema';
 
 type XY = readonly [number, number];
 
@@ -26,32 +28,32 @@ const thin = [layer(0.01, 'finish1'), layer(0.1, 'structure'), layer(0.01, 'fini
 describe('node with 3 ends: two in line and one more', () => {
   // a comes in along +x to the node, b leaves along +x: the passage, one straight band with the same
   // faces. c leaves upward: finish 1 x ∈ [0.05, 0.06], core x ∈ [−0.05, 0.05], finish 2 x ∈ [−0.06, −0.05].
-  const a = testWall('a', vec(-4, 0), vec(0, 0), plastered);
-  const b = testWall('b', vec(0, 0), vec(4, 0), plastered);
-  const c = testWall('c', vec(0, 0), vec(0, 3), thin);
+  const a = testWall(wid('a'), vec(-4, 0), vec(0, 0), plastered);
+  const b = testWall(wid('b'), vec(0, 0), vec(4, 0), plastered);
+  const c = testWall(wid('c'), vec(0, 0), vec(0, 3), thin);
   const g = geometry([a, b, c]);
-  const of = (id: string, k: number) => g.pieces.get(id)!.filter((p) => p.layerIndex === k).map((p) => p.polygon);
+  const of = (id: WallId, k: number) => g.pieces.get(id)!.filter((p) => p.layerIndex === k).map((p) => p.polygon);
 
   it('joins without a warning', () => {
     expect(g.warnings).toEqual([]);
   });
 
   it('a and b meet on one cut through the node, x = 0', () => {
-    expectPolygon(of('a', 1)[0]!, [[-4, -0.08], [0, -0.08], [0, 0.07], [-4, 0.07]]);
-    expectPolygon(of('b', 1)[0]!, [[0, -0.08], [4, -0.08], [4, 0.07], [0, 0.07]]);
+    expectPolygon(of(wid('a'), 1)[0]!, [[-4, -0.08], [0, -0.08], [0, 0.07], [-4, 0.07]]);
+    expectPolygon(of(wid('b'), 1)[0]!, [[0, -0.08], [4, -0.08], [4, 0.07], [0, 0.07]]);
   });
 
   it('c abuts the passage as a T: core and finish 1 to the core face, finish 2 on the face', () => {
-    expectPolygon(of('c', 1)[0]!, [[-0.05, 0.07], [0.05, 0.07], [0.05, 3], [-0.05, 3]]);
-    expectPolygon(of('c', 0)[0]!, [[0.05, 0.07], [0.06, 0.07], [0.06, 3], [0.05, 3]]);
-    expectPolygon(of('c', 2)[0]!, [[-0.06, 0.1], [-0.05, 0.1], [-0.05, 3], [-0.06, 3]]);
+    expectPolygon(of(wid('c'), 1)[0]!, [[-0.05, 0.07], [0.05, 0.07], [0.05, 3], [-0.05, 3]]);
+    expectPolygon(of(wid('c'), 0)[0]!, [[0.05, 0.07], [0.06, 0.07], [0.06, 3], [0.05, 3]]);
+    expectPolygon(of(wid('c'), 2)[0]!, [[-0.06, 0.1], [-0.05, 0.1], [-0.05, 3], [-0.06, 3]]);
   });
 
   it('both passage walls are notched where c passes, x ∈ [−0.05, 0.06]', () => {
-    expect(of('a', 2)).toHaveLength(1);
-    expectPolygon(of('a', 2)[0]!, [[-4, 0.07], [-0.05, 0.07], [-0.05, 0.1], [-4, 0.1]]);
-    expect(of('b', 2)).toHaveLength(1);
-    expectPolygon(of('b', 2)[0]!, [[0.06, 0.07], [4, 0.07], [4, 0.1], [0.06, 0.1]]);
+    expect(of(wid('a'), 2)).toHaveLength(1);
+    expectPolygon(of(wid('a'), 2)[0]!, [[-4, 0.07], [-0.05, 0.07], [-0.05, 0.1], [-4, 0.1]]);
+    expect(of(wid('b'), 2)).toHaveLength(1);
+    expectPolygon(of(wid('b'), 2)[0]!, [[0.06, 0.07], [4, 0.07], [4, 0.1], [0.06, 0.1]]);
   });
 
   it('the area is the straight band plus c beyond its face: 8 · 0.2 + 0.12 · 2.9', () => {
@@ -65,23 +67,23 @@ describe('node with 4 ends: four walls meeting at one point', () => {
   // x ∈ [0.05, 0.06]. From below the passage shows finish 1 (4): d's finish 1 (4) and finish 2 (5)
   // stop on the face y = −0.1, its core on the core face y = −0.08.
   const walls = [
-    testWall('a', vec(-4, 0), vec(0, 0), plastered),
-    testWall('b', vec(0, 0), vec(4, 0), plastered),
-    testWall('c', vec(0, 0), vec(0, 3), thin),
-    testWall('d', vec(0, 0), vec(0, -3), thin),
+    testWall(wid('a'), vec(-4, 0), vec(0, 0), plastered),
+    testWall(wid('b'), vec(0, 0), vec(4, 0), plastered),
+    testWall(wid('c'), vec(0, 0), vec(0, 3), thin),
+    testWall(wid('d'), vec(0, 0), vec(0, -3), thin),
   ];
   const g = geometry(walls);
-  const of = (id: string, k: number) => g.pieces.get(id)!.filter((p) => p.layerIndex === k).map((p) => p.polygon);
+  const of = (id: WallId, k: number) => g.pieces.get(id)!.filter((p) => p.layerIndex === k).map((p) => p.polygon);
 
   it('joins without a warning; d abuts from below', () => {
     expect(g.warnings).toEqual([]);
-    expectPolygon(of('d', 1)[0]!, [[-0.05, -0.08], [0.05, -0.08], [0.05, -3], [-0.05, -3]]);
-    expectPolygon(of('d', 0)[0]!, [[-0.06, -0.1], [-0.05, -0.1], [-0.05, -3], [-0.06, -3]]);
+    expectPolygon(of(wid('d'), 1)[0]!, [[-0.05, -0.08], [0.05, -0.08], [0.05, -3], [-0.05, -3]]);
+    expectPolygon(of(wid('d'), 0)[0]!, [[-0.06, -0.1], [-0.05, -0.1], [-0.05, -3], [-0.06, -3]]);
   });
 
   it('the passage finish 1 is notched where the core of d passes, x ∈ [−0.05, 0.05]', () => {
-    expectPolygon(of('a', 0)[0]!, [[-4, -0.1], [-0.05, -0.1], [-0.05, -0.08], [-4, -0.08]]);
-    expectPolygon(of('b', 0)[0]!, [[0.05, -0.1], [4, -0.1], [4, -0.08], [0.05, -0.08]]);
+    expectPolygon(of(wid('a'), 0)[0]!, [[-4, -0.1], [-0.05, -0.1], [-0.05, -0.08], [-4, -0.08]]);
+    expectPolygon(of(wid('b'), 0)[0]!, [[0.05, -0.1], [4, -0.1], [4, -0.08], [0.05, -0.08]]);
   });
 
   it('the area is the band plus both stems beyond the faces', () => {
@@ -106,9 +108,9 @@ describe('node with 3 ends and no pair in line', () => {
   const sin = (deg: number) => Math.sin(deg * r);
   const cos = (deg: number) => Math.cos(deg * r);
   const walls = [
-    testWall('a', vec(0, 0), vec(4, 0), 0.3),
-    testWall('b', vec(0, 0), vec(4 * cos(160), 4 * sin(160)), 0.3),
-    testWall('c', vec(0, 0), vec(3 * cos(30), 3 * sin(30)), 0.1),
+    testWall(wid('a'), vec(0, 0), vec(4, 0), 0.3),
+    testWall(wid('b'), vec(0, 0), vec(4 * cos(160), 4 * sin(160)), 0.3),
+    testWall(wid('c'), vec(0, 0), vec(3 * cos(30), 3 * sin(30)), 0.1),
   ];
   const g = geometry(walls);
   const t = (0.15 + 0.05 * cos(30)) / sin(30);
@@ -123,11 +125,11 @@ describe('node with 3 ends and no pair in line', () => {
   });
 
   it('each wall is cut on the lines from the middle to its two corners', () => {
-    expectPolygon(g.pieces.get('a')![0]!.polygon, [[4, -0.15], [4, 0.15], ac, mid, ba]);
+    expectPolygon(g.pieces.get(wid('a'))![0]!.polygon, [[4, -0.15], [4, 0.15], ac, mid, ba]);
     const farB = (o: number): XY => [4 * cos(160) + o * sin(20), 4 * sin(160) + o * cos(20)];
-    expectPolygon(g.pieces.get('b')![0]!.polygon, [farB(0.15), cb, mid, ba, farB(-0.15)]);
+    expectPolygon(g.pieces.get(wid('b'))![0]!.polygon, [farB(0.15), cb, mid, ba, farB(-0.15)]);
     const farC = (o: number): XY => [3 * cos(30) - o * sin(30), 3 * sin(30) + o * cos(30)];
-    expectPolygon(g.pieces.get('c')![0]!.polygon, [ac, farC(-0.05), farC(0.05), cb, mid]);
+    expectPolygon(g.pieces.get(wid('c'))![0]!.polygon, [ac, farC(-0.05), farC(0.05), cb, mid]);
   });
 
   it('no two pieces overlap', () => {
@@ -145,7 +147,7 @@ describe('5 ends, and an end across a step', () => {
     // stayed square, overlapping.
     const r = Math.PI / 180;
     const walls = [0, 72, 144, 216, 288].map((deg, i) =>
-      testWall(`w${i}`, vec(0, 0), vec(3 * Math.cos(deg * r), 3 * Math.sin(deg * r)), 0.1),
+      testWall(wid(`w${i}`), vec(0, 0), vec(3 * Math.cos(deg * r), 3 * Math.sin(deg * r)), 0.1),
     );
     const g = geometry(walls);
     expect(g.warnings).toEqual([]);
@@ -169,15 +171,15 @@ describe('5 ends, and an end across a step', () => {
     // warned complexJoin and stayed square). Its sector (§7.6): c's faces meet a's face y = 0.1 at
     // (−0.05, 0.1) and b's face y = 0.15 at (0.05, 0.15); below, a and b in line split on x = 0.
     const walls = [
-      testWall('a', vec(-4, 0), vec(0, 0), 0.2),
-      testWall('b', vec(0, 0), vec(4, 0), 0.3),
-      testWall('c', vec(0, 0), vec(0, 3), 0.1),
+      testWall(wid('a'), vec(-4, 0), vec(0, 0), 0.2),
+      testWall(wid('b'), vec(0, 0), vec(4, 0), 0.3),
+      testWall(wid('c'), vec(0, 0), vec(0, 3), 0.1),
     ];
     const g = geometry(walls);
     expect(g.warnings).toEqual([]);
-    expectPolygon(g.pieces.get('c')![0]!.polygon, [[0, 0], [0.05, 0.15], [0.05, 3], [-0.05, 3], [-0.05, 0.1]]);
-    expectPolygon(g.pieces.get('a')![0]!.polygon, [[-4, -0.1], [0, -0.1], [0, 0], [-0.05, 0.1], [-4, 0.1]]);
-    expectPolygon(g.pieces.get('b')![0]!.polygon, [[0, -0.15], [4, -0.15], [4, 0.15], [0.05, 0.15], [0, 0]]);
+    expectPolygon(g.pieces.get(wid('c'))![0]!.polygon, [[0, 0], [0.05, 0.15], [0.05, 3], [-0.05, 3], [-0.05, 0.1]]);
+    expectPolygon(g.pieces.get(wid('a'))![0]!.polygon, [[-4, -0.1], [0, -0.1], [0, 0], [-0.05, 0.1], [-4, 0.1]]);
+    expectPolygon(g.pieces.get(wid('b'))![0]!.polygon, [[0, -0.15], [4, -0.15], [4, 0.15], [0.05, 0.15], [0, 0]]);
     // The union of the three bands: a 4 × 0.2, b 4 × 0.3, and c's 3 × 0.1 less what lies inside a
     // (0.05 × 0.1) and inside b (0.05 × 0.15). Nothing overlaps, nothing is left open.
     const total = [...g.pieces.values()].flat().reduce((s, p) => s + shoelace(p.polygon), 0);
@@ -192,11 +194,11 @@ describe('node: an arc from the outside of an L corner', () => {
   const ext = [layer(0.015, 'finish1'), layer(0.22, 'structure'), layer(0.015, 'thermal'), layer(0.015, 'finish2')];
   const m15 = [layer(0.015, 'finish1'), layer(0.12, 'structure'), layer(0.015, 'finish2')];
   const walls = [
-    testWall('w0', vec(0, 0), vec(10, 0), ext),
-    testWall('w1', vec(10, 0), vec(10, 8), ext),
-    testWall('w2', vec(10, 8), vec(0, 8), ext),
-    testWall('w3', vec(0, 8), vec(0, 0), ext),
-    { ...testWall('arc', vec(10, 8), vec(13.5396, 4.60589), m15), bulge: -0.6495 },
+    testWall(wid('w0'), vec(0, 0), vec(10, 0), ext),
+    testWall(wid('w1'), vec(10, 0), vec(10, 8), ext),
+    testWall(wid('w2'), vec(10, 8), vec(0, 8), ext),
+    testWall(wid('w3'), vec(0, 8), vec(0, 0), ext),
+    { ...testWall(wid('arc'), vec(10, 8), vec(13.5396, 4.60589), m15), bulge: -0.6495 },
   ];
   const g = geometry(walls);
 
@@ -205,8 +207,8 @@ describe('node: an arc from the outside of an L corner', () => {
   });
 
   it('no piece of the arc overlaps the corner walls, and it starts on their outer faces', () => {
-    const arc = g.pieces.get('arc')!;
-    for (const id of ['w1', 'w2']) {
+    const arc = g.pieces.get(wid('arc'))!;
+    for (const id of [wid('w1'), wid('w2')]) {
       for (const p of g.pieces.get(id)!) for (const a of arc) expect(overlapArea(a.polygon, p.polygon)).toBeLessThan(1e-9);
     }
     // Outer faces x = 10.1325 (w1) and y = 8.1325 (w2): nothing of the arc lies inside both.

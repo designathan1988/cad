@@ -7,6 +7,7 @@ import { type Arc, arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { arcMiddle } from '../elements/wall/arc-edit';
 import type { Snap, SnapInput, SnapKind } from './snap-types';
 import { arcFoot, circleCrossings, closest, lineCrossing, locked, MIN_SNAP_RUN, onGrid, orthogonal, perpOf, projectOnSegment, rayOnSegment } from './snap-geometry';
+import type { WallId } from '../elements/wall/schema';
 
 export { GRID_STEP };
 
@@ -35,7 +36,7 @@ export function snap(input: SnapInput): Snap {
   if (input.chainStart && from && distance(cursor, input.chainStart) <= r && fresh(input.chainStart)) return { point: input.chainStart, kind: 'start' };
   const ends = input.segments.flatMap((s) => [s.start, s.end]);
   // Which wall an end (index in `ends`) or a middle (index in `mids`) belongs to.
-  const of = (i: number): { wallId?: string } => {
+  const of = (i: number): { wallId?: WallId } => {
     const id = input.segments[i]?.id;
     return id === undefined ? {} : { wallId: id };
   };

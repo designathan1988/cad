@@ -25,7 +25,7 @@ export function typedIds(doc: Doc): { doc: Doc; renamed: number } {
   for (const k of KINDS) for (const e of listOf(doc, k)) typed(e.id, k.prefix);
   for (const g of doc.openingGroups) typed(g.id, GROUP_PREFIX);
   if (renames.size === 0) return { doc, renamed: 0 };
-  const to = (id: string) => renames.get(id) ?? id;
+  const to = <I extends string>(id: I): I => (renames.get(id) ?? id) as I;
   let next = doc;
   for (const k of KINDS) next = withList(next, k, listOf(next, k).map((e) => ({ ...e, id: to(e.id) })));
   // Then what refers to them: a door's wall, its rule's door or group; a group's wall, members and the

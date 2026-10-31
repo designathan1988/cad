@@ -65,7 +65,7 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
   const off = new Set([...choice].filter(([, v]) => v === 'off').map(([k]) => k));
   const graph = deriveJoins(shapes, off);
   const byId = new Map(shapes.map((w) => [w.id, w]));
-  const isArc = (id: string) => parentOf(id) !== id;
+  const isArc = (id: WallId) => parentOf(id) !== id;
   const endCuts = new Map<string, EndCut>();
   const notches: Notch[] = [];
   // Warnings are reported by wall, not by segment. A join the engine cannot make exact against an arc
@@ -296,7 +296,7 @@ export function computeWallGeometry(walls: readonly Wall[], types: ReadonlyMap<W
       const k = chain.segments.findIndex((x) => x.id === cutId);
       const seg = chain.segments[k]!;
       const s = stationAlong(seg, point);
-      const back = (id: string, end: 'start' | 'end') => wedge(chain, id).filter((_, i) => i === (end === 'end' ? 0 : 1));
+      const back = (id: WallId, end: 'start' | 'end') => wedge(chain, id).filter((_, i) => i === (end === 'end' ? 0 : 1));
       // On a joint the chain's corner there gives way: the segment before ends there, the next starts.
       const [left, right] =
         s <= POINT_TOLERANCE ? [chain.segments[k - 1], seg] : s >= stationAlong(seg, seg.end) - POINT_TOLERANCE ? [seg, chain.segments[k + 1]] : [null, null];

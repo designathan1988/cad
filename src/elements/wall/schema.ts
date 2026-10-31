@@ -1,6 +1,19 @@
 import type { Point2 } from '../../model/vector';
 
-export type WallId = string;
+import type { Brand } from '../../core/id';
+import { newId } from '../../core/id';
+
+/** A wall's id (wall_…). */
+export type WallId = Brand<'wall'>;
+
+/** A new wall's id (wall_…). */
+export const newWallId = (): WallId => newId('wall') as WallId;
+
+/** The ids among `ids` that are walls of `walls` (a selection holds every kind). */
+export const wallsIn = (walls: readonly { readonly id: WallId }[], ids: Iterable<string>): WallId[] => {
+  const mine = new Set<string>(walls.map((w) => w.id));
+  return [...ids].filter((id): id is WallId => mine.has(id));
+};
 export type WallTypeId = string;
 export type MaterialId = string;
 export type WallEnd = 'start' | 'end';

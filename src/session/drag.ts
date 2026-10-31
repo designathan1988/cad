@@ -23,6 +23,8 @@ import { aimAlong, aimAt } from '../elements/opening/aim';
 import { selectByMarquee } from './marquee';
 import * as appPlacing from './app-placing';
 import * as appView from './app-view';
+import { wallsIn } from '../elements/wall/schema';
+import type { ElementId } from '../core/id';
 
 // The select tool's gestures. Click: select (Shift adds or removes). Drag a wall: move the selection,
 // with joins kept and a live preview (the rooms all of whose walls go, go too); with Alt the walls move
@@ -40,7 +42,7 @@ export type Drag =
       readonly kind: 'move';
       readonly origin: Point2;
       readonly delta: Point2;
-      readonly ids: readonly string[];
+      readonly ids: readonly WallId[];
       readonly walls: readonly DocWall[];
       readonly rooms: ReadonlySet<string>;
       /** The registry's elements (elements/registry.ts) going: selected (texts, axes), or on a selected axis.
@@ -119,7 +121,7 @@ const STRAIGHT_PX = 8;
 const gripPx = (): number => (matchMedia('(pointer: coarse)').matches ? 22 : 8);
 
 export interface SelectGestures {
-  readonly down: (screen: Point2, world: Point2 | null, hit: WallId | null, shift: boolean) => void;
+  readonly down: (screen: Point2, world: Point2 | null, hit: ElementId | null, shift: boolean) => void;
   /** `alone` (Alt): a move takes the walls without their joins. */
   readonly move: (screen: Point2, world: Point2 | null, snapAt: (p: Point2, exclude: ReadonlySet<WallId>) => Snap | null, shift: boolean, alone: boolean) => void;
   /** True for a click on an element: pressed on it, let go without moving. */
@@ -192,7 +194,7 @@ export function selectGestures(app: App): SelectGestures {
           const openings = detachedFrom(free, sliding.id);
           ui.drag = { kind: 'slide', id: sliding.id, grab: dot(sub(pending.at, centre), f.dir), walls: doc.walls, openings, groups: free.openingGroups, still: openings.find((o) => o.id === sliding.id)! };
         } else if (pending.kind === 'wall' && moving.length + rooms.size + kinds.size > 0) {
-          ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: moving, walls: doc.walls, rooms, kinds };
+          ui.drag = { kind: 'move', origin: pending.at, delta: vec(0, 0), ids: wallsIn(doc.walls, moving), walls: doc.walls, rooms, kinds };
           smart = ui.view === 'plan' ? smartBoxes(app, ui.selection) : null;
         }
         else if (pending.kind === 'grip') ui.drag = { kind: 'grip', id: pending.id, end: pending.end, walls: doc.walls };
@@ -286,7 +288,7 @@ export function selectGestures(app: App): SelectGestures {
       } else if (d.kind === 'rotate' && world) {
         let angle = Math.atan2(world.y - d.pivot.y, world.x - d.pivot.x) - d.from;
         if (ui.snaps || shift) angle = Math.round(angle / ROTATE_STEP) * ROTATE_STEP;
-        const ids = [...ui.selection].filter((id) => doc.walls.some((w) => w.id === id));
+        const ids = wallsIn(doc.walls, ui.selection);
         ui.drag = { ...d, angle, walls: rotateWalls(doc, ids, d.pivot, angle) };
       }
       app.refresh();

@@ -7,8 +7,10 @@ import { deriveGeometry } from '../../../src/project/derive';
 import { vec } from '../../../src/model/vector';
 import { deleteElements } from '../../../src/elements/opening/commands';
 import { moveWalls } from '../../../src/elements/wall/edit';
+import { wid } from '../../ids';
+import type { WallId } from '../../../src/elements/wall/schema';
 
-const wall = (id: string, a: [number, number], b: [number, number], type = 'wt_concrete20'): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number], type = 'wt_concrete20'): DocWall => ({
   id,
   wallTypeId: type,
   start: vec(a[0], a[1]),
@@ -20,7 +22,7 @@ const wall = (id: string, a: [number, number], b: [number, number], type = 'wt_c
 });
 
 // 8 × 6 on the axis, 20 cm concrete: the inside is x ∈ [0.1, 7.9], y ∈ [0.1, 5.9].
-const ring = [wall('w0', [0, 0], [8, 0]), wall('w1', [8, 0], [8, 6]), wall('w2', [8, 6], [0, 6]), wall('w3', [0, 6], [0, 0])];
+const ring = [wall(wid('w0'), [0, 0], [8, 0]), wall(wid('w1'), [8, 0], [8, 6]), wall(wid('w2'), [8, 6], [0, 6]), wall(wid('w3'), [0, 6], [0, 0])];
 const room = (id: string, x: number, y: number) => ({ id, levelId: 'lvl_ground', seed: vec(x, y), name: id, number: '1' });
 const doc = (extra: Partial<Doc> = {}): Doc => ({ ...newDocument(), walls: ring, ...extra });
 
@@ -45,7 +47,7 @@ describe('rooms', () => {
 
   it('a divider splits it: the left room is 3.825 × 5.8 = 22.185 m²', () => {
     // Divider 15 cm masonry at x = 4: faces 3.925 and 4.075.
-    const walls = [...ring, wall('d', [4, 0], [4, 6], 'wt_masonry15')];
+    const walls = [...ring, wall(wid('d'), [4, 0], [4, 6], 'wt_masonry15')];
     const r = deriveGeometry(doc({ walls, rooms: [room('r', 2, 3)] })).rooms.get('r')!;
     expect(r.area).toBeCloseTo(3.825 * 5.8, 9);
   });
@@ -68,7 +70,7 @@ describe('rooms', () => {
 
   it('the room follows its walls: moving the right wall 2 m makes it 9.8 × 5.8', () => {
     const d = doc({ rooms: [room('r', 4, 3)] });
-    const moved = { ...d, walls: moveWalls(d, ['w1'], vec(2, 0)) };
+    const moved = { ...d, walls: moveWalls(d, [wid('w1')], vec(2, 0)) };
     expect(deriveGeometry(moved).rooms.get('r')!.area).toBeCloseTo(9.8 * 5.8, 9);
   });
 });

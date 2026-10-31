@@ -6,6 +6,7 @@
 import type { Doc, DocWall } from '../../project/doc';
 import { cross, dot, normalize, perp, type Point2, scale, sub } from '../../model/vector';
 import { moveWalls } from './edit';
+import type { WallId } from './schema';
 
 /** Directions closer than this (as the sine between them) count as parallel. */
 const PARALLEL = 1e-6;
@@ -19,7 +20,7 @@ function parallelWalls(doc: Doc, ids: readonly string[]): DocWall[] | null {
 }
 
 /** Each wall moved across by its own offset, one after another so every move keeps the joins as they stand then. */
-function moveAcross(doc: Doc, moves: readonly { id: string; by: Point2 }[]): DocWall[] {
+function moveAcross(doc: Doc, moves: readonly { id: WallId; by: Point2 }[]): DocWall[] {
   let walls: readonly DocWall[] = doc.walls;
   for (const m of moves) {
     if (Math.hypot(m.by.x, m.by.y) < 1e-12) continue;

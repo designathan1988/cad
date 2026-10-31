@@ -7,8 +7,10 @@ import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import { newOpening } from '../../src/elements/opening/schema';
 import { canTransform, copiesInSeries, copyToLevel, reflection, rotation, scaling, transformSelection, translation } from '../../src/elements/transform';
+import { wid } from '../ids';
+import type { WallId } from '../../src/elements/wall/schema';
 
-const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
   wallTypeId: 'wt_concrete20',
   start: { x: a[0], y: a[1] },
@@ -18,8 +20,8 @@ const wall = (id: string, a: [number, number], b: [number, number]): DocWall => 
 });
 const doc: Doc = {
   ...newDocument(),
-  walls: [wall('b', [0, 0], [4, 0]), wall('r', [4, 0], [4, 3]), wall('t', [4, 3], [0, 3]), wall('l', [0, 3], [0, 0]), wall('x', [4, 0], [6, 0])],
-  openings: [newOpening('opening_d', 'b', 'door', { kind: 'fromStart', distance: 1 }, { hinge: 'start', swing: 'left' })],
+  walls: [wall(wid('b'), [0, 0], [4, 0]), wall(wid('r'), [4, 0], [4, 3]), wall(wid('t'), [4, 3], [0, 3]), wall(wid('l'), [0, 3], [0, 0]), wall(wid('x'), [4, 0], [6, 0])],
+  openings: [newOpening('opening_d', wid('b'), 'door', { kind: 'fromStart', distance: 1 }, { hinge: 'start', swing: 'left' })],
   rooms: [{ id: 'room', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
   floors: [{ id: 'floor', levelId: 'lvl_ground', source: { kind: 'room', roomId: 'room' }, thickness: 0.15, offset: 0 }],
 };

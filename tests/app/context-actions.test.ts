@@ -5,8 +5,10 @@ import { describe, expect, it } from 'vitest';
 import { contextIds } from '../../src/session/context-actions';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { newOpening } from '../../src/elements/opening/schema';
+import { wid } from '../ids';
+import type { WallId } from '../../src/elements/wall/schema';
 
-const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
   wallTypeId: 'wt_concrete20',
   start: { x: a[0], y: a[1] },
@@ -19,11 +21,11 @@ const wall = (id: string, a: [number, number], b: [number, number]): DocWall => 
 
 const doc: Doc = {
   ...newDocument(),
-  walls: [wall('w', [0, 0], [6, 0]), wall('v', [6, 0], [6, 4])],
+  walls: [wall(wid('w'), [0, 0], [6, 0]), wall(wid('v'), [6, 0], [6, 4])],
   openings: [
-    newOpening('d', 'w', 'door', { kind: 'fromStart', distance: 1 }),
-    newOpening('n', 'w', 'window', { kind: 'fromEnd', distance: 1 }),
-    newOpening('m', 'v', 'window', { kind: 'centered' }),
+    newOpening('d', wid('w'), 'door', { kind: 'fromStart', distance: 1 }),
+    newOpening('n', wid('w'), 'window', { kind: 'fromEnd', distance: 1 }),
+    newOpening('m', wid('v'), 'window', { kind: 'centered' }),
   ],
   rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 3, y: 2 }, name: 'Room 1', number: '1' }],
   floors: [{ id: 'f', levelId: 'lvl_ground', source: { kind: 'outline', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }] }, thickness: 0.1, offset: 0 }],

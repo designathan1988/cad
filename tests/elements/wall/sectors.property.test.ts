@@ -14,6 +14,7 @@ import { vec } from '../../../src/model/vector';
 import { overlapArea } from '../../../src/elements/wall/geometry/convex';
 import { geometry, testWall, type TestWall } from './fixtures';
 import { checkAgainst, inside, type P, rectOf, type Region } from './oracle';
+import { wid } from '../../ids';
 
 const seed = Number(process.env.FUZZ_SEED ?? 20261026);
 const scale = Number(process.env.FUZZ_SCALE ?? 1);
@@ -40,7 +41,7 @@ const crossings = fc.integer({ min: 3, max: 4 }).chain((m) =>
   fc.tuple(spread(m, 180), fc.array(thickness, { minLength: m, maxLength: m })).map(([degs, ts]) =>
     degs.map((deg, i) => {
       const u = dirOf(deg);
-      return testWall(`c${i}`, vec(-3 * u.x, -3 * u.y), vec(3 * u.x, 3 * u.y), ts[i]!);
+      return testWall(wid(`c${i}`), vec(-3 * u.x, -3 * u.y), vec(3 * u.x, 3 * u.y), ts[i]!);
     }),
   ),
 );
@@ -49,7 +50,7 @@ const stars = fc.integer({ min: 3, max: 6 }).chain((k) =>
   fc.tuple(spread(k, 360), fc.array(thickness, { minLength: k, maxLength: k }), fc.array(fc.double({ min: 2, max: 4, noNaN: true }), { minLength: k, maxLength: k })).map(([degs, ts, ls]) =>
     degs.map((deg, i) => {
       const u = dirOf(deg);
-      return testWall(`s${i}`, vec(0, 0), vec(ls[i]! * u.x, ls[i]! * u.y), ts[i]!);
+      return testWall(wid(`s${i}`), vec(0, 0), vec(ls[i]! * u.x, ls[i]! * u.y), ts[i]!);
     }),
   ),
 );

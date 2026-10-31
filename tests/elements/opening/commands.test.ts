@@ -7,8 +7,10 @@ import { addOpening, deleteElements, ruleKeepingPosition, updateOpening } from '
 import { deriveOpenings, hostsOf } from '../../../src/elements/opening/derive';
 import { newOpening } from '../../../src/elements/opening/schema';
 import { addWalls } from '../../../src/elements/wall/commands';
+import { wid } from '../../ids';
+import type { WallId } from '../../../src/elements/wall/schema';
 
-const wall = (id: string, x0: number, x1: number): DocWall => ({
+const wall = (id: WallId, x0: number, x1: number): DocWall => ({
   id,
   wallTypeId: 'wt_concrete20',
   start: { x: x0, y: 0 },
@@ -22,11 +24,11 @@ const wall = (id: string, x0: number, x1: number): DocWall => ({
 // w is 5 m: a door [0.5, 1.4], b window [2.0, 3.2] measured from a, d door [3.6, 4.5]. v is 3 m: c.
 function setup() {
   const s = createStore<Doc>(newDocument());
-  s.dispatch(addWalls([wall('w', 0, 5), wall('v', 0, 3)]));
-  s.dispatch(addOpening(newOpening('a', 'w', 'door', { kind: 'fromStart', distance: 0.5 })));
-  s.dispatch(addOpening(newOpening('b', 'w', 'window', { kind: 'fromOpening', openingId: 'a', distance: 0.6, toward: 'end' })));
-  s.dispatch(addOpening(newOpening('c', 'v', 'window', { kind: 'centered' })));
-  s.dispatch(addOpening(newOpening('d', 'w', 'door', { kind: 'fromEnd', distance: 0.5 })));
+  s.dispatch(addWalls([wall(wid('w'), 0, 5), wall(wid('v'), 0, 3)]));
+  s.dispatch(addOpening(newOpening('a', wid('w'), 'door', { kind: 'fromStart', distance: 0.5 })));
+  s.dispatch(addOpening(newOpening('b', wid('w'), 'window', { kind: 'fromOpening', openingId: 'a', distance: 0.6, toward: 'end' })));
+  s.dispatch(addOpening(newOpening('c', wid('v'), 'window', { kind: 'centered' })));
+  s.dispatch(addOpening(newOpening('d', wid('w'), 'door', { kind: 'fromEnd', distance: 0.5 })));
   return s;
 }
 
@@ -58,8 +60,8 @@ describe('opening commands', () => {
 
   it('hosts: the wall length and its height from the level', () => {
     const h = hostsOf(setup().get());
-    expect(h.get('w')).toEqual({ length: 5, height: 2.8, line: { start: { x: 0, y: 0 }, end: { x: 5, y: 0 } } });
-    expect(h.get('v')).toEqual({ length: 3, height: 2.8, line: { start: { x: 0, y: 0 }, end: { x: 3, y: 0 } } });
+    expect(h.get(wid('w'))).toEqual({ length: 5, height: 2.8, line: { start: { x: 0, y: 0 }, end: { x: 5, y: 0 } } });
+    expect(h.get(wid('v'))).toEqual({ length: 3, height: 2.8, line: { start: { x: 0, y: 0 }, end: { x: 3, y: 0 } } });
   });
 
   it('deleting a wall deletes the openings it hosts, in one step', () => {

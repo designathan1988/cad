@@ -3,8 +3,10 @@ import { cutHeightOf, type Doc, type DocWall, newDocument, wallHeights } from '.
 import { createStore } from '../../../src/core/store';
 import { vec } from '../../../src/model/vector';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../../../src/elements/level/commands';
+import type { WallId } from '../../../src/elements/wall/schema';
+import { wid } from '../../ids';
 
-const wall = (id: string, levelId: string): DocWall => ({
+const wall = (id: WallId, levelId: string): DocWall => ({
   id,
   wallTypeId: 'wt_masonry15',
   start: vec(0, 0),
@@ -27,7 +29,7 @@ describe('levels', () => {
   });
 
   it('rename, elevation and height change; walls on it follow because their heights are derived', () => {
-    const s = createStore<Doc>({ ...newDocument(), walls: [wall('w', 'lvl_ground')] });
+    const s = createStore<Doc>({ ...newDocument(), walls: [wall(wid('w'), 'lvl_ground')] });
     s.dispatch(updateLevel('lvl_ground', { name: 'Térreo', elevation: 0.5, height: 3 }));
     const doc = s.get();
     expect(doc.levels[0]!.name).toBe('Térreo');
@@ -55,7 +57,7 @@ describe('levels', () => {
   });
 
   it('deleting: refused for the last level and for a level that still has walls', () => {
-    const s = createStore<Doc>({ ...newDocument(), walls: [wall('w', 'lvl_ground')] });
+    const s = createStore<Doc>({ ...newDocument(), walls: [wall(wid('w'), 'lvl_ground')] });
     s.dispatch(deleteLevel('lvl_ground'));
     expect(s.get().levels).toHaveLength(1);
     s.dispatch(addLevel('lvl_1', 'Level 1'));
@@ -80,7 +82,7 @@ describe('level checks', () => {
   it('why a level cannot be deleted: the last one, or walls on it', () => {
     const one = newDocument();
     expect(deleteBlocker(one, 'lvl_ground')).toBe('last');
-    const two = { ...addLevel('lvl_up', 'Upper').apply(one), walls: [wall('w', 'lvl_up')] };
+    const two = { ...addLevel('lvl_up', 'Upper').apply(one), walls: [wall(wid('w'), 'lvl_up')] };
     expect(deleteBlocker(two, 'lvl_up')).toBe('walls');
     expect(deleteBlocker(two, 'lvl_ground')).toBeNull();
   });

@@ -5,8 +5,10 @@
 import { describe, expect, it } from 'vitest';
 import { doorFlips, handleAt, handlesFor } from '../../src/session/handles';
 import type { DocWall } from '../../src/project/doc';
+import type { WallId } from '../../src/elements/wall/schema';
+import { wid } from '../ids';
 
-const wall = (id: string, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
   id,
   wallTypeId: 'wt_concrete20',
   start: { x: a[0], y: a[1] },
@@ -23,7 +25,7 @@ const toScreen = (p: { x: number; y: number }) => ({ x: p.x * 100, y: 500 - p.y 
 
 describe('handles', () => {
   it('one straight wall: squares on its ends, arrows 20 px beyond them, the turn handle 28 px under the selection', () => {
-    const h = handlesFor([wall('w', [1, 1], [4, 1])], toScreen);
+    const h = handlesFor([wall(wid('w'), [1, 1], [4, 1])], toScreen);
     expect(h.squares.map((s) => s.at)).toEqual([{ x: 100, y: 400 }, { x: 400, y: 400 }]);
     expect(h.arrows.map((a) => [a.end, a.at])).toEqual([
       ['start', { x: 80, y: 400 }],
@@ -33,14 +35,14 @@ describe('handles', () => {
   });
 
   it('an arc wall: squares, but no arrows (it has no single line to stretch along)', () => {
-    const h = handlesFor([wall('a', [0, 0], [2, 0], 0.4)], toScreen);
+    const h = handlesFor([wall(wid('a'), [0, 0], [2, 0], 0.4)], toScreen);
     expect(h.squares).toHaveLength(2);
     expect(h.arrows).toEqual([]);
   });
 
   it("an arc wall: a curvature handle at the middle of the arc, and the turn handle under the arc's middle", () => {
     // Bulge 0.4 on a 2 m chord: sagitta 0.4, right of the chord, so the middle is (1, -0.4): (100, 540).
-    const h = handlesFor([wall('a', [0, 0], [2, 0], 0.4)], toScreen);
+    const h = handlesFor([wall(wid('a'), [0, 0], [2, 0], 0.4)], toScreen);
     expect(h.bulge!.id).toBe('a');
     expect(h.bulge!.at.x).toBeCloseTo(100, 9);
     expect(h.bulge!.at.y).toBeCloseTo(540, 9);
@@ -51,7 +53,7 @@ describe('handles', () => {
   it('a major arc: the turn handle is centred under the whole arc, not under its chord', () => {
     // Bulge 2 on the chord (0, 0)-(2, 0): sweep 4·atan 2 = 253.7°, radius 1.25, centre (1, -0.75); the
     // arc spans x from -0.25 to 2.25 and goes down to y = -2: its middle x is 1, under y = -2: (100, 700).
-    const h = handlesFor([wall('a', [0, 0], [2, 0], 2)], toScreen);
+    const h = handlesFor([wall(wid('a'), [0, 0], [2, 0], 2)], toScreen);
     // It runs counter-clockwise from 143.1° at (0, 0) to 36.8° at (2, 0) the long way, through 180°,
     // 270° and 360°, below the chord: the top of its circle (90°) is not on it. Extent in y: -2 to 0,
     // centre -1 (the ends alone gave 0); in x: -0.25 to 2.25, centre 1.
@@ -63,7 +65,7 @@ describe('handles', () => {
   it('a wall upright on screen: the turn handle goes under the arrow of its lower end, which stays reachable', () => {
     // From (1, 1) up to (1, 4): the start's arrow is 20 px under its end, at (100, 420); 28 px under the
     // wall, the turn handle fell on it (8 px away) and took its clicks.
-    const h = handlesFor([wall('w', [1, 1], [1, 4])], toScreen);
+    const h = handlesFor([wall(wid('w'), [1, 1], [1, 4])], toScreen);
     expect(h.arrows.find((a) => a.end === 'start')!.at).toEqual({ x: 100, y: 420 });
     expect(h.rotate!.at).toEqual({ x: 100, y: 448 });
     expect(handleAt(h, { x: 100, y: 422 }, 8)).toEqual({ kind: 'arrow', id: 'w', end: 'start' });
@@ -71,11 +73,11 @@ describe('handles', () => {
   });
 
   it('a straight wall has no curvature handle', () => {
-    expect(handlesFor([wall('w', [1, 1], [4, 1])], toScreen).bulge).toBeNull();
+    expect(handlesFor([wall(wid('w'), [1, 1], [4, 1])], toScreen).bulge).toBeNull();
   });
 
   it('several walls: no end handles, only the turn handle, about the centre of them all', () => {
-    const h = handlesFor([wall('a', [0, 0], [2, 0]), wall('b', [2, 0], [2, 2])], toScreen);
+    const h = handlesFor([wall(wid('a'), [0, 0], [2, 0]), wall(wid('b'), [2, 0], [2, 2])], toScreen);
     expect(h.squares).toEqual([]);
     expect(h.arrows).toEqual([]);
     expect(h.rotate!.pivot).toEqual({ x: 1, y: 1 });
@@ -86,7 +88,7 @@ describe('handles', () => {
   });
 
   it('which handle is under the pointer: within the reach, the turn handle first, then arrows, then squares', () => {
-    const h = handlesFor([wall('w', [1, 1], [4, 1])], toScreen);
+    const h = handlesFor([wall(wid('w'), [1, 1], [4, 1])], toScreen);
     expect(handleAt(h, { x: 252, y: 432 }, 8)).toEqual({ kind: 'rotate', pivot: { x: 2.5, y: 1 } });
     expect(handleAt(h, { x: 425, y: 402 }, 8)).toEqual({ kind: 'arrow', id: 'w', end: 'end' });
     expect(handleAt(h, { x: 103, y: 404 }, 8)).toEqual({ kind: 'square', id: 'w', end: 'start' });
@@ -99,9 +101,9 @@ describe('the turn handle and the temporary dimensions', () => {
     // The handle of the 3 m wall above is at (250, 428), 13 px reach. A value 40 × 22 at (230, 420)
     // covers it: it goes to 442 + 13 + 2 = 457. A second value under that one, at (230, 450), sends it
     // to 472 + 15 = 487.
-    const one = handlesFor([wall('w', [1, 1], [4, 1])], toScreen, [{ x: 230, y: 420, w: 40, h: 22 }]);
+    const one = handlesFor([wall(wid('w'), [1, 1], [4, 1])], toScreen, [{ x: 230, y: 420, w: 40, h: 22 }]);
     expect(one.rotate!.at).toEqual({ x: 250, y: 457 });
-    const two = handlesFor([wall('w', [1, 1], [4, 1])], toScreen, [
+    const two = handlesFor([wall(wid('w'), [1, 1], [4, 1])], toScreen, [
       { x: 230, y: 420, w: 40, h: 22 },
       { x: 230, y: 450, w: 40, h: 22 },
     ]);
@@ -109,7 +111,7 @@ describe('the turn handle and the temporary dimensions', () => {
   });
 
   it('a value away from it leaves it where it was', () => {
-    const h = handlesFor([wall('w', [1, 1], [4, 1])], toScreen, [{ x: 300, y: 300, w: 40, h: 22 }]);
+    const h = handlesFor([wall(wid('w'), [1, 1], [4, 1])], toScreen, [{ x: 300, y: 300, w: 40, h: 22 }]);
     expect(h.rotate!.at).toEqual({ x: 250, y: 428 });
   });
 });

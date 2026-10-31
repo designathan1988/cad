@@ -11,6 +11,7 @@ import { deriveGeometry } from '../../project/derive';
 import { hostsIn } from '../../project/derived-queries';
 import { deriveOpenings, type HostInfo, type OpeningWarningKind, type PlacedOpening } from './derive';
 import type { AlignEdge, GroupSpacing, Opening, OpeningGroup, OpeningGroupId, OpeningId, PositionRule, RuleKind } from './schema';
+import type { WallId } from '../wall/schema';
 
 /** Why a new opening cannot go where it is aimed (it overlaps another, or does not fit), or null. */
 export function placementProblem(doc: Doc, opening: Opening): OpeningWarningKind | null {
@@ -182,7 +183,7 @@ export function referenceCandidates(doc: Doc, id: OpeningId): Opening[] {
 }
 
 /** Whether `id`, aligned with `refId` by `edge`, stays inside its own wall. */
-export function alignFits(doc: Doc, id: OpeningId, refId: OpeningId, edge: AlignEdge, hosts: ReadonlyMap<string, HostInfo> = hostsIn(doc)): boolean {
+export function alignFits(doc: Doc, id: OpeningId, refId: OpeningId, edge: AlignEdge, hosts: ReadonlyMap<WallId, HostInfo> = hostsIn(doc)): boolean {
   const openings = doc.openings.map((o) => (o.id === id ? { ...o, rule: { kind: 'aligned' as const, openingId: refId, edge } } : o));
   const placed = deriveOpenings(openings, hosts, doc.openingGroups).placed.get(id);
   return placed !== undefined && !placed.warnings.includes('openingOutside') && !placed.warnings.includes('openingBadReference');
@@ -285,7 +286,7 @@ export const distributeOpenings = (groupId: OpeningGroupId, ids: readonly Openin
     // middle, so one sitting on the joint (a group from a version 3 file) goes to the side it is most
     // on. One alone in its stretch stays where it is.
     const mid = (id: OpeningId) => (placed.get(id)!.start + placed.get(id)!.end) / 2;
-    const joints = [...(host?.joints ?? new Map<string, { lo: number; hi: number }>())];
+    const joints = [...(host?.joints ?? new Map<WallId, { lo: number; hi: number }>())];
     const runs: OpeningId[][] = [[members[0]!]];
     for (let i = 1; i < members.length; i++) {
       const [a, b] = [mid(members[i - 1]!), mid(members[i]!)];
@@ -317,10 +318,10 @@ export const distributeOpenings = (groupId: OpeningGroupId, ids: readonly Openin
  * The stretch a group keeps to, from where its openings are now: between the nearest joint wholly
  * before them and the nearest wholly after them (a T or an X), or nothing when there is neither.
  */
-function stretchAround(host: HostInfo | undefined, openings: readonly PlacedOpening[]): { between?: readonly [string | null, string | null] } {
+function stretchAround(host: HostInfo | undefined, openings: readonly PlacedOpening[]): { between?: readonly [WallId | null, WallId | null] } {
   const lo = Math.min(...openings.map((p) => p.start));
   const hi = Math.max(...openings.map((p) => p.end));
-  const joints = [...(host?.joints ?? new Map<string, { lo: number; hi: number }>())];
+  const joints = [...(host?.joints ?? new Map<WallId, { lo: number; hi: number }>())];
   const before = joints.filter(([, j]) => j.hi <= lo).sort((a, b) => b[1].hi - a[1].hi)[0]?.[0] ?? null;
   const after = joints.filter(([, j]) => j.lo >= hi).sort((a, b) => a[1].lo - b[1].lo)[0]?.[0] ?? null;
   return before !== null || after !== null ? { between: [before, after] } : {};

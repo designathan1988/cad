@@ -7,8 +7,10 @@ import { deriveGeometry } from '../../src/project/derive';
 import { openingAt, wallAt } from '../../src/project/derived-queries';
 import { newOpening } from '../../src/elements/opening/schema';
 import { symbolLines } from '../../src/elements/opening/symbol';
+import { wid } from '../ids';
+import type { WallId } from '../../src/elements/wall/schema';
 
-const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
   wallTypeId: 'wt_concrete20',
   start: { x: a[0], y: a[1] },
@@ -18,8 +20,8 @@ const wall = (id: string, a: [number, number], b: [number, number]): DocWall => 
 });
 const doc: Doc = {
   ...newDocument(),
-  walls: [wall('b', [0, 0], [4, 0]), wall('r', [4, 0], [4, 3]), wall('t', [4, 3], [0, 3]), wall('l', [0, 3], [0, 0])],
-  openings: [newOpening('d', 'b', 'door', { kind: 'fromStart', distance: 0.5 })],
+  walls: [wall(wid('b'), [0, 0], [4, 0]), wall(wid('r'), [4, 0], [4, 3]), wall(wid('t'), [4, 3], [0, 3]), wall(wid('l'), [0, 3], [0, 0])],
+  openings: [newOpening('d', wid('b'), 'door', { kind: 'fromStart', distance: 0.5 })],
 };
 const g = deriveGeometry(doc);
 // 6 px at 1 cm a pixel.

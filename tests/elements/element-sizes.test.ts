@@ -13,8 +13,10 @@ import { newOpening } from '../../src/elements/opening/schema';
 import { addWalls } from '../../src/elements/wall/commands';
 import { isOpening, isWall } from '../../src/project/file-guards';
 import { stretchEnd } from '../../src/elements/wall/edit';
+import { wid } from '../ids';
+import type { WallId } from '../../src/elements/wall/schema';
 
-const wall = (id: string, x1: number, top: DocWall['top'] = { kind: 'level', offset: 0 }, baseOffset = 0): DocWall => ({
+const wall = (id: WallId, x1: number, top: DocWall['top'] = { kind: 'level', offset: 0 }, baseOffset = 0): DocWall => ({
   id,
   wallTypeId: 'wt_concrete20',
   start: { x: 0, y: 0 },
@@ -27,35 +29,35 @@ const wall = (id: string, x1: number, top: DocWall['top'] = { kind: 'level', off
 
 describe('walls', () => {
   it('a top at its level offset down past the bottom keeps the least height', () => {
-    const doc = { ...newDocument(), walls: [wall('w', 4, { kind: 'level', offset: -10 })] };
+    const doc = { ...newDocument(), walls: [wall(wid('w'), 4, { kind: 'level', offset: -10 })] };
     const h = wallHeights(doc, doc.walls[0]!);
     expect(h.top - h.bottom).toBeCloseTo(MIN_ELEMENT_SIZE, 9);
   });
   it('a base raised over its level top keeps the least height', () => {
-    const doc = { ...newDocument(), walls: [wall('w', 4, { kind: 'level', offset: 0 }, 9)] };
+    const doc = { ...newDocument(), walls: [wall(wid('w'), 4, { kind: 'level', offset: 0 }, 9)] };
     const h = wallHeights(doc, doc.walls[0]!);
     expect(h.top - h.bottom).toBeCloseTo(MIN_ELEMENT_SIZE, 9);
   });
   it('a fixed height of nothing is the least', () => {
-    const doc = { ...newDocument(), walls: [wall('w', 4, { kind: 'fixed', height: 0 })] };
+    const doc = { ...newDocument(), walls: [wall(wid('w'), 4, { kind: 'fixed', height: 0 })] };
     const h = wallHeights(doc, doc.walls[0]!);
     expect(h.top - h.bottom).toBeCloseTo(MIN_ELEMENT_SIZE, 9);
   });
   it('an end dragged onto the other end is refused', () => {
-    const doc = { ...newDocument(), walls: [wall('w', 4)] };
-    expect(stretchEnd(doc, 'w', 'end', vec(0, 0))[0]!.end).toEqual({ x: 4, y: 0 });
+    const doc = { ...newDocument(), walls: [wall(wid('w'), 4)] };
+    expect(stretchEnd(doc, wid('w'), 'end', vec(0, 0))[0]!.end).toEqual({ x: 4, y: 0 });
   });
   it('a file wall of no length is not taken', () => {
-    expect(isWall(wall('w', 0))).toBe(false);
-    expect(isWall(wall('w', 4))).toBe(true);
+    expect(isWall(wall(wid('w'), 0))).toBe(false);
+    expect(isWall(wall(wid('w'), 4))).toBe(true);
   });
 });
 
 describe('doors and windows', () => {
   const setup = () => {
     const s = createStore<Doc>(newDocument());
-    s.dispatch(addWalls([wall('w', 5)]));
-    s.dispatch(addOpening(newOpening('d', 'w', 'door', { kind: 'centered' })));
+    s.dispatch(addWalls([wall(wid('w'), 5)]));
+    s.dispatch(addOpening(newOpening('d', wid('w'), 'door', { kind: 'centered' })));
     return s;
   };
   it('a width or height of nothing, or a sill under the floor, is refused', () => {
@@ -69,7 +71,7 @@ describe('doors and windows', () => {
     expect(s.get().openings[0]!.width).toBe(1.2);
   });
   it('a file opening with a negative sill is not taken', () => {
-    expect(isOpening({ ...newOpening('d', 'w', 'window', { kind: 'centered' }), sill: -0.5 })).toBe(false);
+    expect(isOpening({ ...newOpening('d', wid('w'), 'window', { kind: 'centered' }), sill: -0.5 })).toBe(false);
   });
 });
 

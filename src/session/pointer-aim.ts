@@ -119,7 +119,7 @@ export function pointerAim(app: App, isShift: () => boolean) {
     return pointCache.points;
   };
   /** Half a wall's thickness: its ends snap from anywhere on its body near them (snap.ts: reach). */
-  const halfOf = (id: string) => (app.geometry.solids.get(id)?.layers.reduce((t, l) => t + l.thickness, 0) ?? 0) / 2;
+  const halfOf = (id: WallId) => (app.geometry.solids.get(id)?.layers.reduce((t, l) => t + l.thickness, 0) ?? 0) / 2;
   const snapped = (e: PointerEvent | MouseEvent) => {
     const at = aimAt3d(e);
     if (!at) return null;

@@ -8,8 +8,10 @@ import { hostsIn } from '../../../src/project/derived-queries';
 import { distributeOpenings, updateOpening } from '../../../src/elements/opening/commands';
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { newOpening } from '../../../src/elements/opening/schema';
+import { wid } from '../../ids';
+import type { WallId } from '../../../src/elements/wall/schema';
 
-const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
   wallTypeId: 'wt_masonry15',
   start: { x: a[0], y: a[1] },
@@ -21,8 +23,8 @@ const wall = (id: string, a: [number, number], b: [number, number]): DocWall => 
 });
 
 // 9 × 4.6, a T wall at x = 4.6 between the rooms; the bottom wall runs (0,0) → (9,0).
-const walls = [wall('b', [0, 0], [9, 0]), wall('r', [9, 0], [9, 4.6]), wall('t', [9, 4.6], [0, 4.6]), wall('l', [0, 4.6], [0, 0]), wall('m', [4.6, 0], [4.6, 4.6])];
-const win = (id: string, at: number) => newOpening(id, 'b', 'window', { kind: 'fromStart', distance: at });
+const walls = [wall(wid('b'), [0, 0], [9, 0]), wall(wid('r'), [9, 0], [9, 4.6]), wall(wid('t'), [9, 4.6], [0, 4.6]), wall(wid('l'), [0, 4.6], [0, 0]), wall(wid('m'), [4.6, 0], [4.6, 4.6])];
+const win = (id: string, at: number) => newOpening(id, wid('b'), 'window', { kind: 'fromStart', distance: at });
 const house = (): Doc => ({ ...newDocument(), walls, openings: [win('x', 2), win('y', 5.5), win('z', 7.5)] });
 const placed = (d: Doc) => deriveOpenings(d.openings, hostsIn(d), d.openingGroups).placed;
 

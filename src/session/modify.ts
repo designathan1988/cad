@@ -12,6 +12,8 @@ import { canTransform, copiesInSeries, transformSelection } from '../elements/tr
 import { canMerge, cornerWalls, mergeWalls, splitWall } from '../tools/split';
 import { newId } from '../core/id';
 import type { App } from './app';
+import { newWallId } from '../elements/wall/schema';
+import type { WallId } from '../elements/wall/schema';
 
 /** Starts Move, Copy, Rotate, Scale or Mirror on the selection; said why not when there is nothing they take. */
 export function startModify(app: App, kind: ModifyKind): void {
@@ -141,13 +143,13 @@ export function copySeries(app: App, n: number, divide: boolean): boolean {
 }
 
 /** The Split tool: the wall under the point divided there (tools/split.ts), as one undo step. */
-export function splitAt(app: App, point: Point2, wallId: string | undefined): void {
+export function splitAt(app: App, point: Point2, wallId: WallId | undefined): void {
   const doc = app.store.get();
   if (!wallId || !doc.walls.some((w) => w.id === wallId)) {
     app.ui.info = t('hint.splitNoWall');
     return app.renderChrome();
   }
-  const id = newId('wall');
+  const id = newWallId();
   const r = splitWall(doc, wallId, point, id);
   if (typeof r === 'string') {
     app.ui.error = t(r === 'throughOpening' ? 'hint.splitThroughOpening' : 'hint.splitTooShort');
@@ -162,7 +164,7 @@ export function splitAt(app: App, point: Point2, wallId: string | undefined): vo
 }
 
 /** The Corner tool: the first wall clicked, then the second, met at the corner of their lines. */
-export function cornerClick(app: App, wallId: string | null): void {
+export function cornerClick(app: App, wallId: WallId | null): void {
   const doc = app.store.get();
   if (!wallId || !doc.walls.some((w) => w.id === wallId)) {
     app.ui.info = t('hint.cornerNoWall');

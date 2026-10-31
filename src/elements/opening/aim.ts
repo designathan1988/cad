@@ -13,6 +13,7 @@ import { t, type MessageKey } from '../../i18n/messages';
 import { type Doc, wallHeights } from '../../project/doc';
 import type { DerivedGeometry } from '../../project/derive';
 import { wallStops, wallStopsOf } from '../wall/stops';
+import type { WallId } from '../wall/schema';
 
 /** Id of the opening being placed, in the derived geometry only. */
 export const OPENING_PREVIEW_ID = '__opening_preview__';
@@ -64,7 +65,7 @@ export function aimAt(doc: Doc, g: DerivedGeometry, levelId: string, p: Point2, 
  * way to the door and window tools (a wall chosen with N, then D or Shift+W). Null when the wall is
  * not there to aim at.
  */
-export function aimAlong(doc: Doc, g: DerivedGeometry, wallId: string, station: number, mpp: number, previewId: string): Aim | null {
+export function aimAlong(doc: Doc, g: DerivedGeometry, wallId: WallId, station: number, mpp: number, previewId: string): Aim | null {
   const wall = doc.walls.find((w) => w.id === wallId);
   if (!wall) return null;
   const length = referenceLength(wall);
@@ -75,8 +76,8 @@ export function aimAlong(doc: Doc, g: DerivedGeometry, wallId: string, station: 
 }
 
 /** Where each wall meeting this one stands across it: from its first face to its second. */
-function occupiedOf(doc: Doc, wallId: string): [number, number][] {
-  const by = new Map<string, number[]>();
+function occupiedOf(doc: Doc, wallId: WallId): [number, number][] {
+  const by = new Map<WallId, number[]>();
   for (const s of wallStopsOf(doc, wallId)) by.set(s.wallId, [...(by.get(s.wallId) ?? []), s.at]);
   return [...by.values()].filter((xs) => xs.length >= 2).map((xs) => [Math.min(...xs), Math.max(...xs)]);
 }

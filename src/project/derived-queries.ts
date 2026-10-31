@@ -9,6 +9,8 @@ import type { OpeningId } from '../elements/opening/schema';
 import { symbolLines } from '../elements/opening/symbol';
 import type { WallId } from '../elements/wall/schema';
 import { eachSolid } from '../elements/registry';
+import type { ElementId } from '../core/id';
+import type { WallSolid } from './derive';
 
 /** Hosts for placing openings, with the joints inside each (which bound a distributed group's stretch). */
 export function hostsIn(doc: Doc, walls: readonly DocWall[] = doc.walls) {
@@ -52,7 +54,7 @@ export function openingAt(g: DerivedGeometry, p: Point2, reach = 0): OpeningId |
  * nearest p within `reach` (m): a wall 15 cm thick is a few pixels wide, and missing it by one took
  * the room beside it.
  */
-export function wallAt(g: DerivedGeometry, p: Point2, ids?: ReadonlySet<WallId>, reach = 0): WallId | null {
+export function wallAt(g: DerivedGeometry, p: Point2, ids?: ReadonlySet<ElementId>, reach = 0): WallId | null {
   const list = [...g.solids.values()].reverse().filter((s) => !ids || ids.has(s.wall.id));
   for (const s of list) if (s.pieces.some((piece) => insidePolygon(piece.polygon, p))) return s.wall.id;
   let best: WallId | null = null;
@@ -67,8 +69,11 @@ export function wallAt(g: DerivedGeometry, p: Point2, ids?: ReadonlySet<WallId>,
   return best;
 }
 
+/** A wall's solid by any element's id (a selection's): none when the id is not a wall's. */
+export const solidOf = (g: DerivedGeometry, id: ElementId): WallSolid | undefined => g.solids.get(id as WallId);
+
 /** Bounding box of the drawn pieces and openings, or null when there is nothing. */
-export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<WallId>): { min: Point2; max: Point2 } | null {
+export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<ElementId>): { min: Point2; max: Point2 } | null {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;

@@ -5,9 +5,10 @@
 
 import type { Point2 } from '../../../model/vector';
 import { SEAM_TOL } from '../../../model/tolerance';
+import type { WallId } from '../schema';
 
 export interface SeamPiece {
-  readonly wallId: string;
+  readonly wallId: WallId;
   readonly polygon: readonly Point2[];
   /** Pieces with the same key are the same layer: no line between them. */
   readonly key: string;
@@ -20,13 +21,13 @@ export interface Seam {
 
 
 /** The lines, each given to the wall of the first piece of its pair. */
-export function layerSeams(pieces: readonly SeamPiece[]): Map<string, Seam[]> {
+export function layerSeams(pieces: readonly SeamPiece[]): Map<WallId, Seam[]> {
   const boxes = pieces.map((p) => {
     const xs = p.polygon.map((v) => v.x);
     const ys = p.polygon.map((v) => v.y);
     return { x0: Math.min(...xs) - SEAM_TOL, y0: Math.min(...ys) - SEAM_TOL, x1: Math.max(...xs) + SEAM_TOL, y1: Math.max(...ys) + SEAM_TOL };
   });
-  const out = new Map<string, Seam[]>();
+  const out = new Map<WallId, Seam[]>();
   for (let i = 0; i < pieces.length; i++) {
     for (let j = i + 1; j < pieces.length; j++) {
       const [p, q] = [pieces[i]!, pieces[j]!];

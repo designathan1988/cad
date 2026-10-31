@@ -6,6 +6,7 @@ import type { WallEnd } from '../../../src/elements/wall/schema';
 import { geometry, layer, type TestWall as Wall } from './fixtures';
 import { cornerSpec, frameOf, inside, rectOf, SPEC_MITER_LIMIT, type P, type Region } from './oracle';
 import { expectedCorner } from './oracle-x';
+import { wid } from '../../ids';
 
 const SPEC_ARC_SAG = 5e-4;
 const pt = (x: number, y: number): P => ({ x, y });
@@ -105,7 +106,7 @@ export function segmentWall(arc: Wall, i: number): Wall {
   const d = c.sweep / n;
   const on = (j: number) => (j === 0 ? arc.start : j === n ? arc.end : pt(c.cx + c.r * Math.cos(c.a0 + d * j), c.cy + c.r * Math.sin(c.a0 + d * j)));
   const k = Math.cos(d / 2);
-  const seg: Wall = { ...arc, id: `${arc.id}#${i}`, start: on(i), end: on(i + 1), layers: arc.layers.map((l) => layer(l.thickness * k, l.function)), thickness: arc.thickness * k };
+  const seg: Wall = { ...arc, id: wid(`${arc.id}#${i}`), start: on(i), end: on(i + 1), layers: arc.layers.map((l) => layer(l.thickness * k, l.function)), thickness: arc.thickness * k };
   delete (seg as { bulge?: number }).bulge;
   return seg;
 }

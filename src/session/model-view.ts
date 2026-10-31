@@ -17,9 +17,10 @@ import { type DerivedGeometry, deriveGeometry, type OpeningSolid } from '../proj
 import { applyTemporary, hideCategories } from '../project/derived-filters';
 import { shownLevels } from './view/view-3d';
 import { transformSelection } from '../elements/transform';
-import { newId } from '../core/id';
 import { previewObject, previewOpening } from './app-placing';
 import type { App } from './app';
+import { newWallId } from '../elements/wall/schema';
+import type { WallId } from '../elements/wall/schema';
 
 /** Recomputes the derived geometry (with the wall being drawn) and redraws. */
 export function refresh(app: App): void {
@@ -111,11 +112,11 @@ export function selectedWalls(app: App): DocWall[] {
  * The wall drawn from `start` to `end`, turned round when Space flipped the side: the same line, the
  * body on its other side (its exterior is on the right of its direction, so the direction is what flips).
  */
-export function oriented(app: App, start: Point2, end: Point2, id: string, bulge = 0): DocWall {
+export function oriented(app: App, start: Point2, end: Point2, id: WallId, bulge = 0): DocWall {
   return walls.oriented(app, start, end, id, bulge);
 }
 
-export function makeWall(app: App, start: Point2, end: Point2, id = newId('wall'), bulge = 0): DocWall {
+export function makeWall(app: App, start: Point2, end: Point2, id = newWallId(), bulge = 0): DocWall {
   return walls.makeWall(app, start, end, id, bulge);
 }
 

@@ -16,6 +16,7 @@ import { type PatternUniforms, prepare } from './scene-materials';
 import { drop } from './scene-build';
 import { GROUND_MIN, groundFade } from './scene-light';
 import { render } from './scene-render';
+import type { ElementId } from '../core/id';
 
 /** Vertical field of view (degrees). */
 const VIEW_FOV = 40;
@@ -36,7 +37,8 @@ export class Scene3D {
   }
   readonly controls: OrbitControls;
   readonly scene = new THREE.Scene();
-  readonly walls = new Map<WallId, { group: THREE.Group; key: string }>();
+  /** The meshes drawn, walls and doors and windows alike, by their element's id. */
+  readonly walls = new Map<ElementId, { group: THREE.Group; key: string }>();
   // Colours come from the design tokens (styles.css, --3d-*), set in setTheme.
   /** Each solid's shape key (wallMeshKey without the state), kept while the solid lives. */
   readonly shapeKeys = new WeakMap<object, string>();

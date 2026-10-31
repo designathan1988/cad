@@ -14,17 +14,18 @@ import { bulgeThrough, rectangle, typedEnd, wallTransition, type WallToolEvent }
 import { type DocWall, wallNumber, wallOverrides } from '../../project/doc';
 import { stretchEnd } from './edit';
 import { referenceLength } from '../opening/derive';
-import { newId } from '../../core/id';
 import type { App } from '../../session/app';
 import { PREVIEW_ID } from '../preview';
 import { guideClick, guideRadius } from '../guide/tool-ui';
+import { newWallId } from './schema';
+import type { WallId } from './schema';
 
 export function previewWall(app: App): DocWall[] {
   const w = app.ui.wall;
   if (app.ui.tool !== 'wall') return [];
   if (w.kind === 'rect') {
     const sides = rectangle(w.start, rectCorner(app));
-    return (sides ?? []).map((s, i) => app.oriented(s.start, s.end, `${PREVIEW_ID}${i}`));
+    return (sides ?? []).map((s, i) => app.oriented(s.start, s.end, `${PREVIEW_ID}${i}` as WallId));
   }
   if (w.kind === 'bend') {
     const b = bulgeThrough(w.last, w.end, w.cursor);
@@ -115,7 +116,7 @@ export function drawingEnd(app: App): Point2 {
  * The wall drawn from `start` to `end`, turned round when Space flipped the side: the same line, the
  * body on its other side (its exterior is on the right of its direction, so the direction is what flips).
  */
-export function oriented(app: App, start: Point2, end: Point2, id: string, bulge = 0): DocWall {
+export function oriented(app: App, start: Point2, end: Point2, id: WallId, bulge = 0): DocWall {
   return app.ui.wallFlip ? app.makeWall(end, start, id, -bulge) : app.makeWall(start, end, id, bulge);
 }
 
@@ -125,7 +126,7 @@ export function toggleWallFlip(app: App): void {
   app.refresh();
 }
 
-export function makeWall(app: App, start: Point2, end: Point2, id = newId('wall'), bulge = 0): DocWall {
+export function makeWall(app: App, start: Point2, end: Point2, id = newWallId(), bulge = 0): DocWall {
   const d = app.ui.defaults;
   const wall: DocWall = {
     id,
@@ -154,9 +155,9 @@ export function wallEvent(app: App, event: WallToolEvent): void {
   const was = app.ui.wall;
   app.ui.wall = r.state;
   if (r.segment || r.segments) app.shell.measure.value = '';
-  if (r.segment) app.store.dispatch(addWalls([app.oriented(r.segment.start, r.segment.end, newId('wall'), r.segment.bulge ?? 0)]));
+  if (r.segment) app.store.dispatch(addWalls([app.oriented(r.segment.start, r.segment.end, newWallId(), r.segment.bulge ?? 0)]));
   // A rectangle's four walls, as one undo step.
-  else if (r.segments) app.store.dispatch(addWalls(r.segments.map((s) => app.oriented(s.start, s.end, newId('wall')))));
+  else if (r.segments) app.store.dispatch(addWalls(r.segments.map((s) => app.oriented(s.start, s.end, newWallId()))));
   else app.refresh();
   // A chain closed on its start: its walls are the last ones added, one per step.
   if (r.segment && r.state.kind === 'idle' && (was.kind === 'drawing' || was.kind === 'bend')) checkLoop(app, was.count + 1);

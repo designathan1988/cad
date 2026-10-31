@@ -49,7 +49,7 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
         side: quieterSide(doc, wall, dir),
         clear: half,
         value: len,
-        apply: (v) => (v >= MIN_WALL_LENGTH ? setWalls(stretchEnd(doc, id, 'end', add(wall.start, scale(dir, v)))) : null),
+        apply: (v) => (v >= MIN_WALL_LENGTH ? setWalls(stretchEnd(doc, wall.id, 'end', add(wall.start, scale(dir, v)))) : null),
       },
       ...gapDims(doc, wall),
     ];

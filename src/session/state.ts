@@ -1,6 +1,5 @@
 import type { HandleDrag } from './object-handles';
 import type { OpeningSize } from '../ui/panels/opening';
-import type { WallId } from '../elements/wall/schema';
 import type { GuideMode } from '../elements/guide/tool-ui';
 import type { Category, TemporaryView } from '../project/derived-filters';
 import type { DimensionToolState } from '../tools/dimension-tool';
@@ -17,13 +16,14 @@ import type { ToolId, ViewId } from '../ui/shell';
 import type { View3D } from '../project/view-prefs';
 import type { WallDefaults } from '../project/doc';
 import type { WallToolState } from '../elements/wall/tool';
+import type { ElementId } from '../core/id';
 
 
 export interface UiState {
   view: ViewId;
   tool: ToolId;
-  selection: Set<WallId>;
-  hover: WallId | null;
+  selection: Set<ElementId>;
+  hover: ElementId | null;
   /** With the room tool: the space with no room under the pointer, where a click makes one. */
   roomSpace: readonly Point2[] | null;
   /** That space was shown by a tap (a finger has no hover): a second tap in it makes the room. */

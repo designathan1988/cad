@@ -4,9 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { markPoint, openingMarks } from '../../../src/elements/opening/marks';
 import type { OpeningFrame } from '../../../src/elements/opening/void';
 import { newOpening } from '../../../src/elements/opening/schema';
+import { wid } from '../../ids';
 
-const door = (id: string, width: number, height = 2.1) => newOpening(id, 'w', 'door', { kind: 'centered' }, { width, height });
-const window = (id: string, width: number, sill = 1) => newOpening(id, 'w', 'window', { kind: 'centered' }, { width, height: 1.2, sill });
+const door = (id: string, width: number, height = 2.1) => newOpening(id, wid('w'), 'door', { kind: 'centered' }, { width, height });
+const window = (id: string, width: number, sill = 1) => newOpening(id, wid('w'), 'window', { kind: 'centered' }, { width, height: 1.2, sill });
 const prefix = { door: 'P', window: 'J' };
 
 describe('door and window marks', () => {

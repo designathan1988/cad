@@ -10,8 +10,10 @@ import { deleteElements, distributeOpenings, setGroupSpacing } from '../../../sr
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { newOpening, type Opening, type PositionRule } from '../../../src/elements/opening/schema';
 import { CURRENT_VERSION, readProject } from '../../../src/project/file';
+import { wid } from '../../ids';
+import type { WallId } from '../../../src/elements/wall/schema';
 
-const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
   wallTypeId: 'wt_concrete20',
   start: { x: a[0], y: a[1] },
@@ -22,11 +24,11 @@ const wall = (id: string, a: [number, number], b: [number, number]): DocWall => 
   top: { kind: 'level', offset: 0 },
 });
 // 0.60 wide windows on w, a 6 m wall along x on its centre line, 20 cm thick.
-const win = (id: string, rule: PositionRule): Opening => ({ ...newOpening(id, 'w', 'window', rule), width: 0.6 });
-const w = wall('w', [0, 0], [6, 0]);
+const win = (id: string, rule: PositionRule): Opening => ({ ...newOpening(id, wid('w'), 'window', rule), width: 0.6 });
+const w = wall(wid('w'), [0, 0], [6, 0]);
 // c crosses w at x = 3 (an X); t meets it there from above (a T). Either covers w from 2.90 to 3.10.
-const c = wall('c', [3, -2], [3, 2]);
-const t = wall('t', [3, 0], [3, 2]);
+const c = wall(wid('c'), [3, -2], [3, 2]);
+const t = wall(wid('t'), [3, 0], [3, 2]);
 const left = [win('x', { kind: 'fromStart', distance: 0.2 }), win('y', { kind: 'fromStart', distance: 0.9 }), win('z', { kind: 'fromStart', distance: 1.6 })];
 const right = [win('x', { kind: 'fromEnd', distance: 0.2 }), win('y', { kind: 'fromEnd', distance: 0.9 }), win('z', { kind: 'fromEnd', distance: 1.6 })];
 const docOf = (walls: DocWall[], openings: Opening[]): Doc => ({ ...newDocument(), walls, openings });
@@ -93,7 +95,7 @@ describe('a group distributed beside a joint', () => {
 
   it('the stretch follows the joint: c moved to x = 2.5 leaves 0 to 2.40, spaces of 0.15', () => {
     const d = distributeOpenings('g', ['x', 'y', 'z'], { kind: 'equal' }).apply(docOf([w, c], left));
-    const moved = { ...d, walls: [w, wall('c', [2.5, -2], [2.5, 2])] };
+    const moved = { ...d, walls: [w, wall(wid('c'), [2.5, -2], [2.5, 2])] };
     near(startOf(moved, 'x'), 0.15);
     near(startOf(moved, 'z'), 0.15 * 3 + 1.2);
   });
@@ -122,7 +124,7 @@ describe('a group distributed beside a joint', () => {
       version: 3,
       walls: [w, c],
       openings: left.map((o) => ({ ...o, rule: { kind: 'inGroup', groupId: 'g' } })),
-      openingGroups: [{ id: 'g', wallId: 'w', members: ['x', 'y', 'z'], spacing: { kind: 'fixed', gap: 0.1, anchor: 'start', distance: 0.2 } }],
+      openingGroups: [{ id: 'g', wallId: wid('w'), members: ['x', 'y', 'z'], spacing: { kind: 'fixed', gap: 0.1, anchor: 'start', distance: 0.2 } }],
     });
     const read = readProject(v3);
     if (!read.ok) throw new Error(read.error);
@@ -148,7 +150,7 @@ describe('a group distributed beside a joint', () => {
       version: 3,
       walls: [w, c],
       openings: left.map((o) => ({ ...o, rule: { kind: 'inGroup', groupId: 'g' } })),
-      openingGroups: [{ id: 'g', wallId: 'w', members: ['x', 'y', 'z'], spacing: { kind: 'equal' } }],
+      openingGroups: [{ id: 'g', wallId: wid('w'), members: ['x', 'y', 'z'], spacing: { kind: 'equal' } }],
     });
     const before = readProject(v3.replace('"version":3', '"version":4'));
     if (!before.ok) throw new Error(before.error);

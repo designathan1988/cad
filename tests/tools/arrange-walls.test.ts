@@ -3,8 +3,10 @@
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { alignWalls, canAlignWalls, canDistributeWalls, distributeWalls } from '../../src/elements/wall/arrange';
+import type { WallId } from '../../src/elements/wall/schema';
+import { wid } from '../ids';
 
-const wall = (id: string, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
   id,
   wallTypeId: 'wt_concrete20',
   start: { x: a[0], y: a[1] },
@@ -18,13 +20,13 @@ const wall = (id: string, a: [number, number], b: [number, number], bulge = 0): 
 const doc: Doc = {
   ...newDocument(),
   walls: [
-    wall('b', [0, 0], [9, 0]),
-    wall('r', [9, 0], [9, 3]),
-    wall('t', [9, 3], [0, 3]),
-    wall('l', [0, 3], [0, 0]),
-    wall('p2', [2, 0], [2, 3]),
-    wall('p3', [3, 3], [3, 0]),
-    wall('p7', [7, 0], [7, 3]),
+    wall(wid('b'), [0, 0], [9, 0]),
+    wall(wid('r'), [9, 0], [9, 3]),
+    wall(wid('t'), [9, 3], [0, 3]),
+    wall(wid('l'), [0, 3], [0, 0]),
+    wall(wid('p2'), [2, 0], [2, 3]),
+    wall(wid('p3'), [3, 3], [3, 0]),
+    wall(wid('p7'), [7, 0], [7, 3]),
   ],
 };
 const xOf = (walls: readonly DocWall[] | null, id: string) => walls!.find((w) => w.id === id)!.start.x;
@@ -59,7 +61,7 @@ describe('aligning parallel walls', () => {
   it('a wall that is not parallel, or an arc, and nothing is done', () => {
     expect(canAlignWalls(doc, ['p2', 'b'])).toBe(false);
     expect(alignWalls(doc, ['p2', 'b'])).toBeNull();
-    const arced = { ...doc, walls: [...doc.walls, wall('a', [5, 0], [5, 3], 0.3)] };
+    const arced = { ...doc, walls: [...doc.walls, wall(wid('a'), [5, 0], [5, 3], 0.3)] };
     expect(canAlignWalls(arced, ['p2', 'a'])).toBe(false);
   });
 });

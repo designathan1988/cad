@@ -2,7 +2,6 @@ import type { Scene3D } from './scene-3d';
 import { draw } from './scene-render';
 import * as THREE from 'three';
 import type { DerivedGeometry } from '../project/derive';
-import type { WallId } from '../elements/wall/schema';
 import { wallMeshKey } from './wall-paint';
 import { eachSolid } from '../elements/registry';
 import type { KindSolid } from '../elements/contract';
@@ -10,16 +9,17 @@ import { type Compiling, trace, TRACE } from './scene-trace';
 import { layerMaterial } from './scene-materials';
 import { build, buildOpening, drop, facesOf, outline, syncBoxCaps, syncEdges } from './scene-build';
 import { placeGround } from './scene-light';
+import type { ElementId } from '../core/id';
 
 
 /**
  * Brings the meshes in line with the geometry: only walls whose shape or state changed are rebuilt.
  * `lift`: how far up each level is drawn (an exploded view), by level id.
  */
-export function sync(view: Scene3D, g: DerivedGeometry, selected: ReadonlySet<WallId>, preview: ReadonlySet<WallId>, lift: (levelId: string) => number = () => 0): void {
-  const seen = new Set<WallId>();
+export function sync(view: Scene3D, g: DerivedGeometry, selected: ReadonlySet<ElementId>, preview: ReadonlySet<ElementId>, lift: (levelId: string) => number = () => 0): void {
+  const seen = new Set<ElementId>();
   // Moved up or down as a whole, never rebuilt for it: the lift is not part of any key.
-  const place = (id: WallId, levelId: string) => {
+  const place = (id: ElementId, levelId: string) => {
     const w = view.walls.get(id);
     if (w) w.group.position.y = lift(levelId);
   };

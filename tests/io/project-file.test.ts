@@ -4,6 +4,7 @@ import { CURRENT_VERSION, readProject, writeProject } from '../../src/project/fi
 import { isLevel } from '../../src/project/file-guards';
 import { BEFORE_65 } from '../../src/elements/object/library-before65';
 import { BEFORE_66 } from '../../src/elements/object/library-before66';
+import { wid } from '../ids';
 
 const wall = (id: string, x: number) => ({
   id,
@@ -53,13 +54,13 @@ describe('project files', () => {
   });
 
   it('opening groups and the new rules read back; a bad group is dropped and reported', () => {
-    const opening = (id: string, rule: unknown) => ({ id, wallId: 'wall_a', kind: 'window', width: 1, height: 1, sill: 1, hinge: 'start', swing: 'left', rule });
-    const group = { id: 'group_g', wallId: 'wall_a', members: ['opening_o1', 'opening_o2'], spacing: { kind: 'fixed', gap: 0.5, anchor: 'centered', distance: 0 } };
+    const opening = (id: string, rule: unknown) => ({ id, wallId: wid('wall_a'), kind: 'window', width: 1, height: 1, sill: 1, hinge: 'start', swing: 'left', rule });
+    const group = { id: 'group_g', wallId: wid('wall_a'), members: ['opening_o1', 'opening_o2'], spacing: { kind: 'fixed', gap: 0.5, anchor: 'centered', distance: 0 } };
     const doc = {
       ...newDocument(),
       walls: [wall('wall_a', 0)],
       openings: [opening('opening_o1', { kind: 'inGroup', groupId: 'group_g' }), opening('opening_o2', { kind: 'inGroup', groupId: 'group_g' }), opening('opening_o3', { kind: 'aligned', openingId: 'opening_o1', edge: 'center' })],
-      openingGroups: [group, { id: 'group_bad', wallId: 'wall_a', members: 'opening_o1', spacing: { kind: 'equal' } }],
+      openingGroups: [group, { id: 'group_bad', wallId: wid('wall_a'), members: 'opening_o1', spacing: { kind: 'equal' } }],
     };
     const r = readProject(JSON.stringify(doc));
     expect(r.ok && r.doc.openings.map((o) => o.id)).toEqual(['opening_o1', 'opening_o2', 'opening_o3']);
@@ -98,7 +99,7 @@ describe('version 3', () => {
     const doc = {
       ...newDocument(),
       wallTypes: [...newDocument().wallTypes, { id: 'wt_p', name: 'Parapet', layers: [{ thickness: 0.15, function: 'structure', materialId: 'brick' }], top: { kind: 'fixed', height: 1.1 } }],
-      walls: [{ id: 'wall_p', wallTypeId: 'wt_p', start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground' }],
+      walls: [{ id: wid('wall_p'), wallTypeId: 'wt_p', start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground' }],
     };
     const r = readProject(writeProject(doc as never));
     expect(r.ok && r.doc).toEqual({ ...doc, version: CURRENT_VERSION });
@@ -113,7 +114,7 @@ describe('version 3', () => {
 });
 
 describe('version 4', () => {
-  const group = { id: 'group_g', wallId: 'wall_a', members: ['x', 'y'], spacing: { kind: 'equal' } };
+  const group = { id: 'group_g', wallId: wid('wall_a'), members: ['x', 'y'], spacing: { kind: 'equal' } };
   it("a group's stretch reads back as it is; a version 3 group has none and keeps the whole wall", () => {
     expect(CURRENT_VERSION).toBeGreaterThanOrEqual(4);
     const doc = { ...newDocument(), openingGroups: [{ ...group, between: [null, 'c'] }] };

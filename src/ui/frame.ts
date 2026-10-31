@@ -31,6 +31,7 @@ import { startFloorHole } from '../session/room-tool';
 import * as appPlacing from '../session/app-placing';
 import * as appSettings from '../session/app-settings';
 import * as appView from '../session/app-view';
+import { wallsIn } from '../elements/wall/schema';
 
 /** The panel's title over a placing tool's next element: its kind's name, an object's its own. */
 function nextTitle(app: App, slot: NextSlot): string {
@@ -114,7 +115,7 @@ export function renderFrame(app: App): void {
       })(),
     },
     {
-      updateWalls: (patch) => app.store.dispatch(updateWalls([...ui.selection], patch)),
+      updateWalls: (patch) => app.store.dispatch(updateWalls(wallsIn(app.store.get().walls, ui.selection), patch)),
       setReferenceLine: (line) => {
         const ids = app.selectedWalls().map((w) => w.id);
         app.store.dispatch(setWalls(changeReferenceLine(app.store.get(), ids, line), 'cmd.referenceLine'));
@@ -133,7 +134,7 @@ export function renderFrame(app: App): void {
         savePrefs({ keepClear: on });
         app.render();
       },
-      resetToType: (fields) => app.store.dispatch(resetWallsToType([...ui.selection], fields)),
+      resetToType: (fields) => app.store.dispatch(resetWallsToType(wallsIn(app.store.get().walls, ui.selection), fields)),
       editType: () => app.openWallTypes(app.store.get().walls.find((w) => ui.selection.has(w.id))?.wallTypeId),
       updateRadius: (radius) => {
         const w = app.store.get().walls.find((x) => ui.selection.has(x.id));

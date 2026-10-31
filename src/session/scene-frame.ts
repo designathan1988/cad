@@ -3,15 +3,15 @@
 
 import { wallPhases } from '../project/layer-sets';
 import type { DerivedGeometry } from '../project/derive';
-import type { WallId } from '../elements/wall/schema';
 import { cutAt } from './view/view-3d';
 import type { App } from './app';
 import * as sceneLook from '../render/scene-look';
 import * as sceneSync from '../render/scene-sync';
 import * as sceneCut from '../render/scene-cut';
 import * as appView from './app-view';
+import type { ElementId } from '../core/id';
 
-export function syncScene(app: App, preview: ReadonlySet<WallId>, shown: DerivedGeometry): void {
+export function syncScene(app: App, preview: ReadonlySet<ElementId>, shown: DerivedGeometry): void {
   const { ui } = app;
   sceneLook.setXray(app.scene, ui.view3d.xray);
   // A renovation's walls by phase, as the plan draws them while the overrides are on.

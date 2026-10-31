@@ -16,6 +16,7 @@ import { GROUP_PREFIX, type GroupSpacing, type Opening, type OpeningGroup, OPENI
 import { aimAt } from './opening/aim';
 import { transformWalls } from '../elements/wall/edit';
 import { ruleAt } from './opening/tool';
+import type { WallId } from './wall/schema';
 
 export interface Transform {
   /** Where a point goes. */
@@ -62,7 +63,10 @@ export function reflection(a: Point2, b: Point2): Transform {
 const otherEnd = <T extends 'start' | 'end'>(e: T): 'start' | 'end' => (e === 'start' ? 'end' : 'start');
 
 /** An opening's rule on its wall as taken: distances scaled; mirrored, measured from the other end. */
-function mapRule(rule: PositionRule, t: Transform, ids: (id: string) => string): PositionRule {
+/** Maps an id to its copy's, of the same kind. */
+type IdMap = <I extends string>(id: I) => I;
+
+function mapRule(rule: PositionRule, t: Transform, ids: IdMap): PositionRule {
   const k = t.factor;
   switch (rule.kind) {
     case 'fromStart':
@@ -80,7 +84,7 @@ function mapRule(rule: PositionRule, t: Transform, ids: (id: string) => string):
   }
 }
 
-function mapOpening(o: Opening, t: Transform, ids: (id: string) => string): Opening {
+function mapOpening(o: Opening, t: Transform, ids: IdMap): Opening {
   return {
     ...o,
     id: ids(o.id),
@@ -122,11 +126,11 @@ function mapSpacing(s: GroupSpacing, t: Transform): GroupSpacing {
  * The group as taken. Its stretch keeps to the walls that bound it when those come along (or stay, in
  * place); a copy bounded by walls left behind takes its whole wall.
  */
-function mapGroup(g: OpeningGroup, t: Transform, ids: (id: string) => string, kept: (wallId: string) => boolean): OpeningGroup {
+function mapGroup(g: OpeningGroup, t: Transform, ids: IdMap, kept: (wallId: WallId) => boolean): OpeningGroup {
   const { between, ...rest } = g;
   const mapped: OpeningGroup = { ...rest, id: ids(g.id), wallId: ids(g.wallId), members: g.members.map(ids), spacing: mapSpacing(g.spacing, t) };
   if (!between || !between.every((w) => w === null || kept(w))) return mapped;
-  const ends = between.map((w) => (w === null ? null : ids(w))) as [string | null, string | null];
+  const ends = between.map((w) => (w === null ? null : ids(w))) as [WallId | null, WallId | null];
   return { ...mapped, between: t.mirror ? [ends[1], ends[0]] : ends };
 }
 
@@ -167,10 +171,10 @@ export function transformSelection(
   // What goes along, for what is held by it or follows it (registry.ts): a wall that goes, a door or
   // window on one (a dimension's ends), a room that goes (its floor).
   const hostOf = new Map(doc.openings.map((o) => [o.id, o.wallId]));
-  const going = (id: string) => walls.has(id) || walls.has(hostOf.get(id) ?? '') || rooms.has(id);
+  const going = (id: string) => walls.has(id as WallId) || (hostOf.has(id) && walls.has(hostOf.get(id)!)) || rooms.has(id);
 
   if (!copy) {
-    const same = (id: string) => id;
+    const same: IdMap = (id) => id;
     const alone = (w: DocWall): DocWall => {
       const start = t.map(w.start);
       const end = t.map(w.end);
@@ -202,7 +206,7 @@ export function transformSelection(
   const loneCopies = doc.openings.filter((o) => lone.has(o.id)).map((o) => ({ ...o, ...lone.get(o.id)!, id: fresh(o.id, OPENING_PREFIX) }));
   const groups = doc.openingGroups.filter((x) => walls.has(x.wallId));
   for (const x of groups) fresh(x.id, GROUP_PREFIX);
-  const to = (id: string) => ids2.get(id) ?? id;
+  const to: IdMap = (id) => (ids2.get(id) ?? id) as typeof id;
 
   const newWalls = doc.walls
     .filter((w) => walls.has(w.id))

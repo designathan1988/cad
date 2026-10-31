@@ -18,8 +18,10 @@ import {
 } from '../../../src/elements/opening/commands';
 import { deriveOpenings, hostsOf } from '../../../src/elements/opening/derive';
 import { newOpening, type PositionRule } from '../../../src/elements/opening/schema';
+import type { WallId } from '../../../src/elements/wall/schema';
+import { wid } from '../../ids';
 
-const wall = (id: string, a: [number, number], b: [number, number], extra: Partial<DocWall> = {}): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number], extra: Partial<DocWall> = {}): DocWall => ({
   id,
   wallTypeId: 'wt_concrete20',
   start: { x: a[0], y: a[1] },
@@ -31,8 +33,8 @@ const wall = (id: string, a: [number, number], b: [number, number], extra: Parti
   ...extra,
 });
 
-const win = (id: string, wallId: string, rule: PositionRule) => newOpening(id, wallId, 'window', rule);
-const door = (id: string, wallId: string, rule: PositionRule) => newOpening(id, wallId, 'door', rule);
+const win = (id: string, wallId: WallId, rule: PositionRule) => newOpening(id, wallId, 'window', rule);
+const door = (id: string, wallId: WallId, rule: PositionRule) => newOpening(id, wallId, 'door', rule);
 
 const docOf = (walls: DocWall[], openings: ReturnType<typeof win>[], extra: Partial<Doc> = {}): Doc => ({ ...newDocument(), walls, openings, ...extra });
 
@@ -41,54 +43,54 @@ const startOf = (doc: Doc, id: string) => placed(doc).get(id)!.start;
 const near = (a: number, b: number) => expect(a).toBeCloseTo(b, 9);
 
 // w runs (0,0)→(6,0); v is parallel 3 m away, (0,3)→(6,3); r is v reversed, (6,3)→(0,3).
-const w = wall('w', [0, 0], [6, 0]);
-const v = wall('v', [0, 3], [6, 3]);
-const r = wall('r', [6, 3], [0, 3]);
+const w = wall(wid('w'), [0, 0], [6, 0]);
+const v = wall(wid('v'), [0, 3], [6, 3]);
+const r = wall(wid('r'), [6, 3], [0, 3]);
 // The reference: a 1.20 window on w from 1.00 to 2.20, centre 1.60.
-const ref = win('a', 'w', { kind: 'fromStart', distance: 1 });
+const ref = win('a', wid('w'), { kind: 'fromStart', distance: 1 });
 
 describe('aligned with another opening', () => {
   it('centres across: a 0.90 door on the parallel wall goes from 1.15 to 2.05', () => {
-    const d = docOf([w, v], [ref, door('b', 'v', { kind: 'aligned', openingId: 'a', edge: 'center' })]);
+    const d = docOf([w, v], [ref, door('b', wid('v'), { kind: 'aligned', openingId: 'a', edge: 'center' })]);
     near(startOf(d, 'b'), 1.15);
     expect(placed(d).get('b')!.valid).toBe(true);
   });
 
   it('on a wall drawn the other way, stations count from its own start: centre 6 − 1.60 = 4.40', () => {
-    const d = docOf([w, r], [ref, door('b', 'r', { kind: 'aligned', openingId: 'a', edge: 'center' })]);
+    const d = docOf([w, r], [ref, door('b', wid('r'), { kind: 'aligned', openingId: 'a', edge: 'center' })]);
     near(startOf(d, 'b'), 4.4 - 0.45);
   });
 
   it('by edge: its start jamb lines up with the reference jamb nearer its own wall start', () => {
     // On r the reference jambs fall at stations 5.00 and 3.80: the lower one is 3.80.
-    const d = docOf([w, r], [ref, door('b', 'r', { kind: 'aligned', openingId: 'a', edge: 'start' })]);
+    const d = docOf([w, r], [ref, door('b', wid('r'), { kind: 'aligned', openingId: 'a', edge: 'start' })]);
     near(startOf(d, 'b'), 3.8);
-    const e = docOf([w, r], [ref, door('b', 'r', { kind: 'aligned', openingId: 'a', edge: 'end' })]);
+    const e = docOf([w, r], [ref, door('b', wid('r'), { kind: 'aligned', openingId: 'a', edge: 'end' })]);
     near(startOf(e, 'b'), 5 - 0.9);
   });
 
   it('follows the reference: moving it to 2.00 moves the aligned one too', () => {
-    const d = docOf([w, v], [ref, door('b', 'v', { kind: 'aligned', openingId: 'a', edge: 'center' })]);
+    const d = docOf([w, v], [ref, door('b', wid('v'), { kind: 'aligned', openingId: 'a', edge: 'center' })]);
     const moved = updateOpening('a', { rule: { kind: 'fromStart', distance: 2 } }).apply(d);
     near(startOf(moved, 'b'), 2.6 - 0.45);
   });
 
   it('a missing reference, a loop, or a curved host is a bad reference: centred, with the warning', () => {
-    const missing = docOf([w, v], [door('b', 'v', { kind: 'aligned', openingId: 'nope', edge: 'center' })]);
+    const missing = docOf([w, v], [door('b', wid('v'), { kind: 'aligned', openingId: 'nope', edge: 'center' })]);
     near(startOf(missing, 'b'), (6 - 0.9) / 2);
     expect(placed(missing).get('b')!.warnings).toContain('openingBadReference');
     const loop = docOf(
       [w, v],
-      [win('a', 'w', { kind: 'aligned', openingId: 'b', edge: 'center' }), door('b', 'v', { kind: 'aligned', openingId: 'a', edge: 'center' })],
+      [win('a', wid('w'), { kind: 'aligned', openingId: 'b', edge: 'center' }), door('b', wid('v'), { kind: 'aligned', openingId: 'a', edge: 'center' })],
     );
     expect(placed(loop).get('a')!.warnings).toContain('openingBadReference');
     expect(placed(loop).get('b')!.warnings).toContain('openingBadReference');
-    const arc = docOf([w, { ...v, bulge: 0.2 }], [ref, door('b', 'v', { kind: 'aligned', openingId: 'a', edge: 'center' })]);
+    const arc = docOf([w, { ...v, bulge: 0.2 }], [ref, door('b', wid('v'), { kind: 'aligned', openingId: 'a', edge: 'center' })]);
     expect(placed(arc).get('b')!.warnings).toContain('openingBadReference');
   });
 
   it('the align command aligns the others to the first, skips ones on its own wall, and refuses loops', () => {
-    const d = docOf([w, v], [ref, win('s', 'w', { kind: 'fromEnd', distance: 0.5 }), door('b', 'v', { kind: 'centered' })]);
+    const d = docOf([w, v], [ref, win('s', wid('w'), { kind: 'fromEnd', distance: 0.5 }), door('b', wid('v'), { kind: 'centered' })]);
     const next = alignOpenings('a', ['s', 'b'], 'center').apply(d);
     expect(next.openings.find((o) => o.id === 'b')!.rule).toEqual({ kind: 'aligned', openingId: 'a', edge: 'center' });
     expect(next.openings.find((o) => o.id === 's')!.rule).toEqual({ kind: 'fromEnd', distance: 0.5 });
@@ -97,7 +99,7 @@ describe('aligned with another opening', () => {
   });
 
   it('deleting the reference keeps the aligned opening where it was, from its wall start', () => {
-    const d = docOf([w, v], [ref, door('b', 'v', { kind: 'aligned', openingId: 'a', edge: 'center' })]);
+    const d = docOf([w, v], [ref, door('b', wid('v'), { kind: 'aligned', openingId: 'a', edge: 'center' })]);
     const next = deleteElements(['a']).apply(d);
     const rule = next.openings[0]!.rule;
     expect(rule.kind).toBe('fromStart');
@@ -108,12 +110,12 @@ describe('aligned with another opening', () => {
 describe('distributed groups', () => {
   // Three 1.20 windows on the 6 m wall, anywhere to begin with.
   const three = () =>
-    docOf([w], [win('x', 'w', { kind: 'fromEnd', distance: 0.1 }), win('y', 'w', { kind: 'fromStart', distance: 0 }), win('z', 'w', { kind: 'centered' })]);
+    docOf([w], [win('x', wid('w'), { kind: 'fromEnd', distance: 0.1 }), win('y', wid('w'), { kind: 'fromStart', distance: 0 }), win('z', wid('w'), { kind: 'centered' })]);
 
   it('equal spaces: (6 − 3 × 1.20) / 4 = 0.60 between the wall ends and each window, in wall order', () => {
     const d = distributeOpenings('g', ['x', 'y', 'z'], { kind: 'equal' }).apply(three());
     // y was first along the wall, then z, then x.
-    expect(d.openingGroups).toEqual([{ id: 'g', wallId: 'w', members: ['y', 'z', 'x'], spacing: { kind: 'equal' } }]);
+    expect(d.openingGroups).toEqual([{ id: 'g', wallId: wid('w'), members: ['y', 'z', 'x'], spacing: { kind: 'equal' } }]);
     near(startOf(d, 'y'), 0.6);
     near(startOf(d, 'z'), 2.4);
     near(startOf(d, 'x'), 4.2);
@@ -140,7 +142,7 @@ describe('distributed groups', () => {
   });
 
   it('needs two or more openings on one wall; otherwise nothing changes', () => {
-    const d = docOf([w, v], [win('x', 'w', { kind: 'centered' }), win('y', 'v', { kind: 'centered' })]);
+    const d = docOf([w, v], [win('x', wid('w'), { kind: 'centered' }), win('y', wid('v'), { kind: 'centered' })]);
     expect(distributeOpenings('g', ['x', 'y'], { kind: 'equal' }).apply(d)).toBe(d);
     expect(distributeOpenings('g', ['x'], { kind: 'equal' }).apply(d)).toBe(d);
   });
@@ -191,7 +193,7 @@ describe('distributed groups', () => {
   });
 
   it('a member with no group that lists it is a bad reference: centred, with the warning', () => {
-    const d = docOf([w], [win('x', 'w', { kind: 'inGroup', groupId: 'gone' })]);
+    const d = docOf([w], [win('x', wid('w'), { kind: 'inGroup', groupId: 'gone' })]);
     near(startOf(d, 'x'), 2.4);
     expect(placed(d).get('x')!.warnings).toContain('openingBadReference');
   });
@@ -200,7 +202,7 @@ describe('distributed groups', () => {
 describe('align heads', () => {
   it('windows take the top of the first selected; a door keeps its sill at 0 and changes height', () => {
     // a: sill 1.00 + 1.20 → top 2.20.
-    const d = docOf([w, v], [ref, { ...win('s', 'w', { kind: 'fromEnd', distance: 0.5 }), height: 0.6 }, door('b', 'v', { kind: 'centered' })]);
+    const d = docOf([w, v], [ref, { ...win('s', wid('w'), { kind: 'fromEnd', distance: 0.5 }), height: 0.6 }, door('b', wid('v'), { kind: 'centered' })]);
     const next = alignHeads('a', ['s', 'b']).apply(d);
     const s = next.openings.find((o) => o.id === 's')!;
     const b = next.openings.find((o) => o.id === 'b')!;
@@ -211,27 +213,27 @@ describe('align heads', () => {
 
   it('measured from each wall base: a wall raised 0.30 gets a sill 0.30 lower', () => {
     const raised = { ...v, baseOffset: 0.3 };
-    const d = docOf([w, raised], [ref, win('s', 'v', { kind: 'centered' })]);
+    const d = docOf([w, raised], [ref, win('s', wid('v'), { kind: 'centered' })]);
     near(alignHeads('a', ['s']).apply(d).openings.find((o) => o.id === 's')!.sill, 0.7);
   });
 });
 
 describe('placing and invalid openings', () => {
   it('an opening over another, or that does not fit, is refused with the reason', () => {
-    const d = docOf([w], [win('a', 'w', { kind: 'fromStart', distance: 1 })]);
-    expect(placementProblem(d, win('n', 'w', { kind: 'fromStart', distance: 1.5 }))).toBe('openingOverlap');
-    expect(placementProblem(d, { ...win('n', 'w', { kind: 'fromEnd', distance: 0 }), width: 7 })).toBe('openingOutside');
-    expect(placementProblem(d, win('n', 'w', { kind: 'fromEnd', distance: 0.5 }))).toBeNull();
+    const d = docOf([w], [win('a', wid('w'), { kind: 'fromStart', distance: 1 })]);
+    expect(placementProblem(d, win('n', wid('w'), { kind: 'fromStart', distance: 1.5 }))).toBe('openingOverlap');
+    expect(placementProblem(d, { ...win('n', wid('w'), { kind: 'fromEnd', distance: 0 }), width: 7 })).toBe('openingOutside');
+    expect(placementProblem(d, win('n', wid('w'), { kind: 'fromEnd', distance: 0.5 }))).toBeNull();
   });
 });
 
 describe('aligned: only to openings it can face', () => {
   // w runs (0,0)→(6,0). s runs (8,3)→(14,3), parallel, entirely beyond w's end; a door on s at 1.00.
-  const s = wall('s', [8, 3], [14, 3]);
-  const far = door('f', 's', { kind: 'fromStart', distance: 1 });
+  const s = wall(wid('s'), [8, 3], [14, 3]);
+  const far = door('f', wid('s'), { kind: 'fromStart', distance: 1 });
 
   it('a reference whose projection falls outside the wall is not offered, and the command refuses it', () => {
-    const d = docOf([w, s, v], [win('a', 'w', { kind: 'centered' }), far, door('b', 'v', { kind: 'fromStart', distance: 1 })]);
+    const d = docOf([w, s, v], [win('a', wid('w'), { kind: 'centered' }), far, door('b', wid('v'), { kind: 'fromStart', distance: 1 })]);
     const offered = alignCandidates(d, 'a').map((o) => o.id);
     expect(offered).toContain('b');
     expect(offered).not.toContain('f');

@@ -251,7 +251,7 @@ export function repairProject(raw: unknown): ReadResult {
   const since65 = fileVersion < 65 ? redrawn(sectors, BEFORE_65) : sectors;
   const definitions = fileVersion < 66 ? redrawn(since65, BEFORE_66) : since65;
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
-  const wallIds = new Set(walls.map((w) => w.id));
+  const wallIds = new Set<string>(walls.map((w) => w.id));
   const openingIds = new Set(openings.map((o) => o.id));
   // The registry's elements that are there and valid, by id: what one of them may be held by.
   const rawIds = new Set(

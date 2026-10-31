@@ -7,10 +7,11 @@ import { hostsIn } from '../../../src/project/derived-queries';
 import { deriveOpenings } from '../../../src/elements/opening/derive';
 import { detachedFrom, wallRule } from '../../../src/elements/opening/commands';
 import { newOpening } from '../../../src/elements/opening/schema';
+import { wid } from '../../ids';
 
-const wall: DocWall = { id: 'w', wallTypeId: 'wt_concrete20', start: { x: 0, y: 0 }, end: { x: 8, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground', baseOffset: 0, top: { kind: 'level', offset: 0 } };
-const door = newOpening('d', 'w', 'door', { kind: 'fromStart', distance: 2 });
-const window = newOpening('k', 'w', 'window', { kind: 'fromOpening', openingId: 'd', distance: 1, toward: 'end' });
+const wall: DocWall = { id: wid('w'), wallTypeId: 'wt_concrete20', start: { x: 0, y: 0 }, end: { x: 8, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground', baseOffset: 0, top: { kind: 'level', offset: 0 } };
+const door = newOpening('d', wid('w'), 'door', { kind: 'fromStart', distance: 2 });
+const window = newOpening('k', wid('w'), 'window', { kind: 'fromOpening', openingId: 'd', distance: 1, toward: 'end' });
 const doc: Doc = { ...newDocument(), walls: [wall], openings: [door, window] };
 const at = (d: Doc, id: string) => deriveOpenings(d.openings, hostsIn(d), d.openingGroups).placed.get(id)!.start;
 

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { elementIds, newDocument, startLevel } from '../../src/project/doc';
 import { newOpening } from '../../src/elements/opening/schema';
+import { wid } from '../ids';
+import type { WallId } from '../../src/elements/wall/schema';
 
 describe('selectable elements', () => {
   it('walls, openings, rooms and floors all count, so editing a room keeps it selected', () => {
     const doc = {
       ...newDocument(),
-      openings: [newOpening('o', 'w', 'door', { kind: 'centered' })],
+      openings: [newOpening('o', wid('w'), 'door', { kind: 'centered' })],
       rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 0, y: 0 }, name: 'Room 1', number: '1' }],
       floors: [{ id: 'f', levelId: 'lvl_ground', source: { kind: 'room' as const, roomId: 'r' }, thickness: 0.1, offset: 0 }],
     };
@@ -17,8 +19,8 @@ describe('selectable elements', () => {
 describe('wall numbers', () => {
   it('each wall is numbered on its level in the order drawn', async () => {
     const { wallNumber } = await import('../../src/project/doc');
-    const w = (id: string, levelId: string) => ({ id, wallTypeId: 'wt_concrete20', start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, referenceLine: 'centerline' as const, levelId });
-    const doc = { ...newDocument(), walls: [w('a', 'lvl_ground'), w('u', 'lvl_up'), w('b', 'lvl_ground')] };
+    const w = (id: WallId, levelId: string) => ({ id, wallTypeId: 'wt_concrete20', start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, referenceLine: 'centerline' as const, levelId });
+    const doc = { ...newDocument(), walls: [w(wid('a'), 'lvl_ground'), w(wid('u'), 'lvl_up'), w(wid('b'), 'lvl_ground')] };
     expect([wallNumber(doc, 'a'), wallNumber(doc, 'b'), wallNumber(doc, 'u'), wallNumber(doc, 'x')]).toEqual([1, 2, 1, null]);
   });
 });

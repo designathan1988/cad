@@ -7,6 +7,7 @@ import type {
   Wall,
   WallLayer,
   WallType,
+  WallId,
   WallTypeId,
 } from '../../../src/elements/wall/schema';
 
@@ -16,7 +17,7 @@ export interface XYPoint {
 }
 
 export interface TestWall {
-  readonly id: string;
+  readonly id: WallId;
   readonly start: XYPoint;
   readonly end: XYPoint;
   readonly referenceLine: ReferenceLine;
@@ -33,7 +34,7 @@ export const layer = (thickness: number, fn: LayerFunction = 'structure'): WallL
 });
 
 export function testWall(
-  id: string,
+  id: WallId,
   start: XYPoint,
   end: XYPoint,
   layers: number | readonly WallLayer[],

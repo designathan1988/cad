@@ -8,8 +8,10 @@ import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
 import { deriveOpenings, hostsOf } from '../../src/elements/opening/derive';
 import { newOpening } from '../../src/elements/opening/schema';
+import { wid } from '../ids';
+import type { WallId } from '../../src/elements/wall/schema';
 
-const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
   wallTypeId: 'wt_concrete20',
   start: { x: a[0], y: a[1] },
@@ -20,11 +22,11 @@ const wall = (id: string, a: [number, number], b: [number, number]): DocWall => 
 
 const doc: Doc = {
   ...newDocument(),
-  walls: [wall('b', [0, 0], [4, 0]), wall('r', [4, 0], [4, 3]), wall('t', [4, 3], [0, 3]), wall('l', [0, 3], [0, 0])],
+  walls: [wall(wid('b'), [0, 0], [4, 0]), wall(wid('r'), [4, 0], [4, 3]), wall(wid('t'), [4, 3], [0, 3]), wall(wid('l'), [0, 3], [0, 0])],
   openings: [
-    newOpening('d', 'b', 'door', { kind: 'fromStart', distance: 1 }),
-    newOpening('w', 't', 'window', { kind: 'fromEnd', distance: 0.5 }),
-    newOpening('c', 'r', 'window', { kind: 'centered' }),
+    newOpening('d', wid('b'), 'door', { kind: 'fromStart', distance: 1 }),
+    newOpening('w', wid('t'), 'window', { kind: 'fromEnd', distance: 0.5 }),
+    newOpening('c', wid('r'), 'window', { kind: 'centered' }),
   ],
   rooms: [{ id: 'room', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
   floors: [{ id: 'f', levelId: 'lvl_ground', source: { kind: 'outline', points: [{ x: 6, y: 0 }, { x: 7, y: 0 }, { x: 7, y: 1 }] }, thickness: 0.1, offset: 0 }],

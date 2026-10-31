@@ -9,6 +9,7 @@ import type { WallShape } from '../geometry/shape';
 import { parentOf, SEGMENT_MARK } from '../geometry/arc';
 import type { Corner, Crossing, JoinGraph, JoinWarning, JoinNode } from './types';
 import { gatherJunctions } from './junctions';
+import type { WallId } from '../schema';
 
 const ENDS: readonly WallEnd[] = ['start', 'end'];
 
@@ -96,7 +97,7 @@ export function deriveJoins(walls: readonly WallShape[], off: ReadonlySet<string
     }
   }
 
-  let abutments: { abutting: EndRef; hostId: string }[] = [];
+  let abutments: { abutting: EndRef; hostId: WallId }[] = [];
   for (const ref of free) {
     const wall = byId.get(ref.wallId)!;
     const p = at(ref);

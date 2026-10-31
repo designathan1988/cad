@@ -9,6 +9,7 @@ import { add, distance, dot, normalize, perp, type Point2, scale, sub } from '..
 /** How far p is from the segment a–b (model/vector's; kept as anchor's API for the kinds). */
 export { segmentDistance } from '../../model/vector';
 import type { DimAnchor, Dimension } from './schema';
+import type { WallId } from '../wall/schema';
 
 /** Points this near (m) are the same point: a jamb, a face. */
 const SAME = 1e-4;
@@ -23,7 +24,7 @@ const axes = (start: Point2, end: Point2) => {
 /** What holds a point put at p on the level: a jamb, a wall, or nothing. */
 export function anchorAt(doc: Doc, g: DerivedGeometry, levelId: string, p: Point2): DimAnchor {
   const walls = new Map(doc.walls.filter((w) => w.levelId === levelId).map((w) => [w.id, w]));
-  const thick = (id: string) => g.solids.get(id)?.layers.reduce((t, l) => t + l.thickness, 0) ?? 0;
+  const thick = (id: WallId) => g.solids.get(id)?.layers.reduce((t, l) => t + l.thickness, 0) ?? 0;
   // A jamb first: a point on it is the door's, so it follows the door along its wall.
   for (const o of g.openings.values()) {
     const w = walls.get(o.opening.wallId);

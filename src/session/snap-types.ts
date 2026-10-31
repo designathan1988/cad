@@ -1,5 +1,6 @@
 import type { Point2 } from '../model/vector';
 import type { MessageKey } from '../i18n/messages';
+import type { WallId } from '../elements/wall/schema';
 
 
 export type SnapKind =
@@ -32,7 +33,7 @@ export interface Snap {
   /** Dashed guide from another point to the snapped one (alignment). */
   readonly guideFrom?: Point2;
   /** The wall the snap comes from (its end, middle, body, or the end it aligns with), when it has an id. */
-  readonly wallId?: string;
+  readonly wallId?: WallId;
 }
 
 export interface SnapInput {
@@ -45,7 +46,8 @@ export interface SnapInput {
    * an edge of a wall's drawn body (the measure tool): its ends are corners, its points on the face.
    */
   readonly segments: readonly {
-    readonly id?: string;
+    /** The wall the segment is of, when it is a wall's. */
+    readonly id?: WallId;
     readonly start: Point2;
     readonly end: Point2;
     readonly reach?: number;

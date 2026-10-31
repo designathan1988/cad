@@ -5,8 +5,10 @@ import { describe, expect, it } from 'vitest';
 import { moveRooms, roomsGoingWith, wallsAround } from '../../src/project/carry';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
+import type { WallId } from '../../src/elements/wall/schema';
+import { wid } from '../ids';
 
-const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
   wallTypeId: 'wt_concrete20',
   start: { x: a[0], y: a[1] },
@@ -21,8 +23,8 @@ const wall = (id: string, a: [number, number], b: [number, number]): DocWall => 
 const doc: Doc = {
   ...newDocument(),
   walls: [
-    wall('b1', [0, 0], [4, 0]), wall('b2', [4, 0], [8, 0]), wall('r', [8, 0], [8, 3]),
-    wall('t2', [8, 3], [4, 3]), wall('t1', [4, 3], [0, 3]), wall('l', [0, 3], [0, 0]), wall('m', [4, 0], [4, 3]),
+    wall(wid('b1'), [0, 0], [4, 0]), wall(wid('b2'), [4, 0], [8, 0]), wall(wid('r'), [8, 0], [8, 3]),
+    wall(wid('t2'), [8, 3], [4, 3]), wall(wid('t1'), [4, 3], [0, 3]), wall(wid('l'), [0, 3], [0, 0]), wall(wid('m'), [4, 0], [4, 3]),
   ],
   rooms: [
     { id: 'L', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' },

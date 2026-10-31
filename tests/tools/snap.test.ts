@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { snap } from '../../src/session/snap';
 import { type SnapInput } from '../../src/session/snap-types';
 import { vec } from '../../src/model/vector';
+import { wid } from '../ids';
 
 const input = (cursor: [number, number], extra: Partial<SnapInput> = {}): SnapInput => ({
   cursor: vec(cursor[0], cursor[1]),
@@ -57,8 +58,8 @@ describe('snaps', () => {
 
 describe('which wall a snap is on', () => {
   const two = [
-    { id: 'a', start: vec(0, 0), end: vec(6, 0) },
-    { id: 'b', start: vec(0, 3), end: vec(6, 3) },
+    { id: wid('a'), start: vec(0, 0), end: vec(6, 0) },
+    { id: wid('b'), start: vec(0, 3), end: vec(6, 3) },
   ];
   it('end, middle, body and alignment name the wall they come from', () => {
     expect(snap(input([6.004, 3.002], { segments: two })).wallId).toBe('b');

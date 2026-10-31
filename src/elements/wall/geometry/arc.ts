@@ -10,6 +10,7 @@ import { ARC_SAG } from '../../../model/tolerance';
 import { add, distance, dot, normalize, perp, type Point2, scale, sub, vec } from '../../../model/vector';
 import { type HalfPlane, halfPlaneThrough } from './convex';
 import type { WallShape } from './shape';
+import type { WallId } from '../schema';
 
 const MAX_SEGMENTS = 2048;
 
@@ -70,9 +71,10 @@ export interface ArcChain {
 }
 
 export const SEGMENT_MARK = '#';
-export const parentOf = (id: string): string => {
+/** The wall an arc's segment (wall_x#k) belongs to; a wall's own id is its own parent. */
+export const parentOf = (id: WallId): WallId => {
   const k = id.lastIndexOf(SEGMENT_MARK);
-  return k === -1 ? id : id.slice(0, k);
+  return k === -1 ? id : (id.slice(0, k) as WallId);
 };
 
 /** The chain, or 'arcTooTight' when a face would have a radius of zero or less. */
@@ -88,7 +90,7 @@ export function expandArc(w: WallShape): ArcChain | 'arcTooTight' {
   for (let i = 0; i < n; i++) {
     segments.push({
       ...w,
-      id: `${w.id}${SEGMENT_MARK}${i}`,
+      id: `${w.id}${SEGMENT_MARK}${i}` as WallId,
       bulge: 0,
       // The chain's ends are the wall's own points, exactly: joins at them must meet other ends.
       start: i === 0 ? w.start : pointAt(a, angle(i)),

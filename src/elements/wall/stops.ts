@@ -8,6 +8,7 @@ import { referenceLength } from '../opening/derive';
 import { faceOffsets, wallDirection, wallNormal } from './geometry/offset';
 import { shapeOf } from './geometry/shape';
 import type { Doc } from '../../project/doc';
+import type { WallId } from './schema';
 
 /** Below this sine the walls are taken as parallel: they run alongside, they do not meet. */
 const MIN_SINE = 0.1;
@@ -17,17 +18,17 @@ const TOUCH = 0.01;
 /** A stop and whose face it is: the wall meeting the host, and which of its two faces (0, 1). */
 export interface Stop {
   readonly at: number;
-  readonly wallId: string;
+  readonly wallId: WallId;
   readonly face: number;
 }
 
 /** The stations (sorted, strictly inside the wall) where the faces of the walls meeting it cross its reference line. */
-export function wallStops(doc: Doc, wallId: string): number[] {
+export function wallStops(doc: Doc, wallId: WallId): number[] {
   return wallStopsOf(doc, wallId).map((s) => s.at);
 }
 
 /** The stops of a wall with the faces they are (sorted by station). */
-export function wallStopsOf(doc: Doc, wallId: string): Stop[] {
+export function wallStopsOf(doc: Doc, wallId: WallId): Stop[] {
   const host = doc.walls.find((w) => w.id === wallId);
   if (!host || host.bulge) return [];
   const types = new Map(doc.wallTypes.map((x) => [x.id, x]));

@@ -21,7 +21,7 @@ import { add, dot, intersectLines, type Point2, scale, sub } from '../../../mode
 export function fitsArc(
   result: AbutmentResult,
   abuttingId: string,
-  hostId: string,
+  hostId: WallId,
   byId: ReadonlyMap<string, WallShape>,
   chains: ReadonlyMap<WallId, ArcChain>,
 ): boolean {
@@ -281,7 +281,7 @@ export function overlapsWithArcs(
   already: readonly JoinWarning[],
 ): JoinWarning[] {
   const out: JoinWarning[] = [];
-  const reported = (a: string, b: string) => [...already, ...out].some((w) => w.walls.includes(a) && w.walls.includes(b));
+  const reported = (a: WallId, b: WallId) => [...already, ...out].some((w) => w.walls.includes(a) && w.walls.includes(b));
   for (const arcId of chains.keys()) {
     const mine = pieces.get(arcId)!;
     for (const [otherId, theirs] of pieces) {

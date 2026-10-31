@@ -15,8 +15,10 @@ import { readProject, writeProject } from '../../src/project/file';
 import { newOpening } from '../../src/elements/opening/schema';
 import { levelOfSolid } from '../../src/elements/registry';
 import { sectionKind } from '../../src/elements/kinds/section';
+import { wid } from '../ids';
+import type { WallId } from '../../src/elements/wall/schema';
 
-const wall = (id: string, a: [number, number], b: [number, number]): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
   wallTypeId: 'wt_masonry15',
   start: { x: a[0], y: a[1] },
@@ -27,7 +29,7 @@ const wall = (id: string, a: [number, number], b: [number, number]): DocWall => 
 
 const box = (southY = 0): Doc => ({
   ...newDocument(),
-  walls: [wall('w1', [0, southY], [4, southY]), wall('w2', [4, southY], [4, 3]), wall('w3', [4, 3], [0, 3]), wall('w4', [0, 3], [0, southY])],
+  walls: [wall(wid('w1'), [0, southY], [4, southY]), wall(wid('w2'), [4, southY], [4, 3]), wall(wid('w3'), [4, 3], [0, 3]), wall(wid('w4'), [0, 3], [0, southY])],
 });
 
 const across: SectionMark = { id: 'sec_a', name: 'A', kind: 'section', start: { x: 1, y: -1 }, end: { x: 1, y: 4 }, depth: 5 };
@@ -119,7 +121,7 @@ describe('a section drawn from the model', () => {
     // x 1.4 to 0.5 (2.1 high): the line at x = 1 cuts both. The room is the inside, faces 0.075 in.
     const doc: Doc = {
       ...box(),
-      openings: [newOpening('opening_w', 'w1', 'window', { kind: 'fromStart', distance: 0.4 }), newOpening('opening_d', 'w3', 'door', { kind: 'fromEnd', distance: 0.5 })],
+      openings: [newOpening('opening_w', wid('w1'), 'window', { kind: 'fromStart', distance: 0.4 }), newOpening('opening_d', wid('w3'), 'door', { kind: 'fromEnd', distance: 0.5 })],
       rooms: [{ id: 'room_1', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Sala', number: '1' }],
     };
     const g = deriveGeometry(doc);
@@ -142,7 +144,7 @@ describe('a section drawn from the model', () => {
 
   it("a room's interior elevation sees its wall from inside, its level's height alone", () => {
     // The box twice, the upper one on a level 2.8 up; the room inside the lower box, faces 0.075 in.
-    const upper = box().walls.map((w) => ({ ...w, id: `${w.id}u`, levelId: 'lvl_1' }));
+    const upper = box().walls.map((w) => ({ ...w, id: wid(`${w.id}u`), levelId: 'lvl_1' }));
     const doc: Doc = { ...box(), levels: [...box().levels, { id: 'lvl_1', name: 'Upper', elevation: 2.8, height: 2.8 }], walls: [...box().walls, ...upper] };
     const inner = { min: { x: 0.075, y: 0.075 }, max: { x: 3.925, y: 2.925 } };
     const views = elevationsInside(inner, 0.01, 0.3);

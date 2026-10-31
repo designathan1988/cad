@@ -24,6 +24,9 @@ export type KindKey = 'measures' | 'references' | 'sections' | 'separators' | 'c
 export type BaseGeometry = Omit<DerivedGeometry, 'kinds'>;
 
 /** What the plan view lends a kind to draw itself with. */
+/** The type of an element's id (WallId for a wall), string for a kind that has none of its own. */
+export type IdOf<E> = E extends { readonly id: infer I } ? I : string;
+
 export interface PlanPaint {
   readonly ctx: CanvasRenderingContext2D;
   readonly toScreen: (p: Point2) => Point2;
@@ -188,7 +191,7 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   /** Moved by d (arrows, a drag). */
   readonly moved: (e: E, d: Point2) => E;
   /** Taken by a Modify tool's transform, under `id` (its own, or its copy's). */
-  readonly mapped: (e: E, t: Transform, id: string) => E;
+  readonly mapped: (e: E, t: Transform, id: IdOf<E>) => E;
   /** A copy as added after `all` (an axis named on from the last). */
   readonly copied?: (all: readonly E[], e: E) => E;
   /** Lying on a grid axis's line, so it goes with the axis. */

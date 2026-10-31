@@ -4,10 +4,12 @@
 import { describe, expect, it } from 'vitest';
 import { deriveOpenings, type HostInfo } from '../../../src/elements/opening/derive';
 import { newOpening, OPENING_DEFAULTS, type Opening, type PositionRule } from '../../../src/elements/opening/schema';
+import { wid } from '../../ids';
+import type { WallId } from '../../../src/elements/wall/schema';
 
-const hosts = (length = 5, height = 2.8): Map<string, HostInfo> => new Map([['w', { length, height }]]);
-const door = (id: string, rule: PositionRule, wallId = 'w'): Opening => newOpening(id, wallId, 'door', rule);
-const win = (id: string, rule: PositionRule, wallId = 'w'): Opening => newOpening(id, wallId, 'window', rule);
+const hosts = (length = 5, height = 2.8): Map<WallId, HostInfo> => new Map([[wid('w'), { length, height }]]);
+const door = (id: string, rule: PositionRule, wallId = wid('w')): Opening => newOpening(id, wallId, 'door', rule);
+const win = (id: string, rule: PositionRule, wallId = wid('w')): Opening => newOpening(id, wallId, 'window', rule);
 
 function at(openings: Opening[], id: string, h = hosts()) {
   const d = deriveOpenings(openings, h).placed.get(id)!;
@@ -124,8 +126,8 @@ describe('invalid openings: warned, still placed', () => {
   });
 
   it('openings on different walls never overlap', () => {
-    const h = new Map([['w', { length: 5, height: 2.8 }], ['v', { length: 5, height: 2.8 }]]);
-    const list = [door('a', { kind: 'fromStart', distance: 0.5 }), door('b', { kind: 'fromStart', distance: 0.5 }, 'v')];
+    const h = new Map([[wid('w'), { length: 5, height: 2.8 }], [wid('v'), { length: 5, height: 2.8 }]]);
+    const list = [door('a', { kind: 'fromStart', distance: 0.5 }), door('b', { kind: 'fromStart', distance: 0.5 }, wid('v'))];
     expect(deriveOpenings(list, h).warnings).toEqual([]);
   });
 
@@ -136,17 +138,17 @@ describe('invalid openings: warned, still placed', () => {
   });
 
   it('a host that does not exist', () => {
-    const r = at([door('a', { kind: 'centered' }, 'gone')], 'a');
+    const r = at([door('a', { kind: 'centered' }, wid('gone'))], 'a');
     expect(r.valid).toBe(false);
     expect(r.warnings).toEqual(['openingNoHost']);
   });
 
   it('a reference that does not exist, is on another wall, or loops: warned and centred', () => {
-    const h = new Map([['w', { length: 5, height: 2.8 }], ['v', { length: 3, height: 2.8 }]]);
+    const h = new Map([[wid('w'), { length: 5, height: 2.8 }], [wid('v'), { length: 3, height: 2.8 }]]);
     const missing = at([door('a', { kind: 'fromOpening', openingId: 'zz', distance: 0.2, toward: 'end' })], 'a', h);
     expect(missing.warnings).toEqual(['openingBadReference']);
     expect(missing.start).toBeCloseTo(2.05, 12);
-    const other = at([door('o', { kind: 'fromStart', distance: 0.2 }, 'v'), door('a', { kind: 'fromOpening', openingId: 'o', distance: 0.2, toward: 'end' })], 'a', h);
+    const other = at([door('o', { kind: 'fromStart', distance: 0.2 }, wid('v')), door('a', { kind: 'fromOpening', openingId: 'o', distance: 0.2, toward: 'end' })], 'a', h);
     expect(other.warnings).toEqual(['openingBadReference']);
     const loop = [door('a', { kind: 'fromOpening', openingId: 'b', distance: 0.2, toward: 'end' }), door('b', { kind: 'fromOpening', openingId: 'a', distance: 0.2, toward: 'end' })];
     expect(at(loop, 'a', h).warnings).toContain('openingBadReference');

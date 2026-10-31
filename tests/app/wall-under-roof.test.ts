@@ -9,6 +9,8 @@ import { edgesFor, type Roof } from '../../src/elements/roof/schema';
 import { planeAt } from '../../src/elements/wall/geometry/under-roof';
 import { deleteLevel } from '../../src/elements/level/commands';
 import { readProject, writeProject } from '../../src/project/file';
+import { wid } from '../ids';
+import type { WallId } from '../../src/elements/wall/schema';
 
 // A 10 × 6 m outline, gable roof at 30 %: its two slopes rise from the long sides (y = 0 and y = 6),
 // the ridge at y = 3, 0.9 m over the eaves (2.8 m).
@@ -19,7 +21,7 @@ const outline = [
   { x: 0, y: 6 },
 ];
 const roof: Roof = { id: 'roof_r', levelId: 'lvl_ground', outline, edges: edgesFor('gable', outline, 30, 0), kind: 'gable', thickness: 0.12, baseOffset: 0 };
-const wall = (id: string, a: [number, number], b: [number, number], top?: DocWall['top']): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number], top?: DocWall['top']): DocWall => ({
   id,
   wallTypeId: 'wt_masonry15',
   start: { x: a[0], y: a[1] },
@@ -32,7 +34,7 @@ const docOf = (walls: DocWall[], roofs: Roof[] = [roof]): Doc => ({ ...newDocume
 
 describe('a wall under the roof', () => {
   // The gable end x = 0, across the slopes: its top rises to the ridge in the middle.
-  const gable = wall('wall_g', [0, 0], [0, 6], { kind: 'roof' });
+  const gable = wall(wid('wall_g'), [0, 0], [0, 6], { kind: 'roof' });
 
   it('reaches as high as the roof over it: the ridge, 2.8 + 3 × 0.3', () => {
     const h = wallHeights(docOf([gable]), gable);
@@ -42,7 +44,7 @@ describe('a wall under the roof', () => {
   });
 
   it('its blocks follow the slope: at the eaves 2.8 m, at the ridge 3.7 m, never above the roof', () => {
-    const s = deriveGeometry(docOf([gable])).solids.get('wall_g')!;
+    const s = deriveGeometry(docOf([gable])).solids.get(wid('wall_g'))!;
     const tops = (y: number) =>
       s.blocks.flatMap((b) => (b.polygon.some((p) => Math.abs(p.y - y) < 1e-6) ? [b.plane ? planeAt(b.plane, { x: 0, y }) : b.top] : []));
     expect(Math.max(...tops(3))).toBeCloseTo(3.7, 6);
@@ -60,14 +62,14 @@ describe('a wall under the roof', () => {
   it('with no roof over it, it keeps its level’s height', () => {
     const h = wallHeights(docOf([gable], []), gable);
     expect(h.top).toBeCloseTo(2.8, 9);
-    expect(deriveGeometry(docOf([gable], [])).solids.get('wall_g')!.blocks.every((b) => !b.plane)).toBe(true);
+    expect(deriveGeometry(docOf([gable], [])).solids.get(wid('wall_g'))!.blocks.every((b) => !b.plane)).toBe(true);
   });
 });
 
 describe('a wall up to a level', () => {
   const base = newDocument();
   const levels = [...base.levels, { id: 'lvl_up', name: 'Upper', elevation: 3, height: 2.8 }];
-  const up = wall('wall_u', [0, 0], [4, 0], { kind: 'toLevel', levelId: 'lvl_up', offset: 0.5 });
+  const up = wall(wid('wall_u'), [0, 0], [4, 0], { kind: 'toLevel', levelId: 'lvl_up', offset: 0.5 });
   const doc: Doc = { ...base, levels, walls: [up] };
 
   it("reaches that level's floor plus its offset", () => {
@@ -81,7 +83,7 @@ describe('a wall up to a level', () => {
   });
 
   it('reads back from a file, as does a wall under the roof', () => {
-    const both: Doc = { ...doc, walls: [up, wall('wall_r', [0, 1], [4, 1], { kind: 'roof' })] };
+    const both: Doc = { ...doc, walls: [up, wall(wid('wall_r'), [0, 1], [4, 1], { kind: 'roof' })] };
     const r = readProject(writeProject(both));
     expect(r.ok && r.doc.walls.map((w) => w.top)).toEqual([up.top, { kind: 'roof' }]);
     expect(r.ok && r.fixes).toEqual([]);

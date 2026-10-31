@@ -5,8 +5,10 @@ import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { draftAt, guideBaseAt, guideLine, guideMeasure, newGuide } from '../../src/elements/guide/tool';
 import { vec } from '../../src/model/vector';
+import type { WallId } from '../../src/elements/wall/schema';
+import { wid } from '../ids';
 
-const wall = (id: string, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
+const wall = (id: WallId, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
   id,
   wallTypeId: 'wt_concrete20',
   start: { x: a[0], y: a[1] },
@@ -15,13 +17,13 @@ const wall = (id: string, a: [number, number], b: [number, number], bulge = 0): 
   levelId: 'lvl_ground',
   ...(bulge ? { bulge } : {}),
 });
-const doc: Doc = { ...newDocument(), walls: [wall('w', [0, 0], [6, 0]), wall('arc', [0, 5], [6, 5], 0.3)] };
+const doc: Doc = { ...newDocument(), walls: [wall(wid('w'), [0, 0], [6, 0]), wall(wid('arc'), [0, 5], [6, 5], 0.3)] };
 // 1 cm per pixel: the 6 px reach is 6 cm.
 const MPP = 0.01;
 
 describe('what a guide is set off from', () => {
   it('the straight wall whose body is under the pointer, or within 6 px of it', () => {
-    expect(guideBaseAt(doc, 'lvl_ground', vec(3, 0.05), MPP)).toMatchObject({ wallId: 'w', faces: [-0.1, 0.1] });
+    expect(guideBaseAt(doc, 'lvl_ground', vec(3, 0.05), MPP)).toMatchObject({ wallId: wid('w'), faces: [-0.1, 0.1] });
     expect(guideBaseAt(doc, 'lvl_ground', vec(3, 0.15), MPP)?.wallId).toBe('w');
     expect(guideBaseAt(doc, 'lvl_ground', vec(3, 0.2), MPP)).toBeNull();
   });

@@ -3,9 +3,10 @@
 
 import { describe, expect, it } from 'vitest';
 import { type Aim, OPENING_IDLE, openingTransition, ruleAt } from '../../src/elements/opening/tool';
+import { wid } from '../ids';
 
 const aim = (station: number, others: Aim['others'] = [], side: Aim['side'] = 'left'): Aim => ({
-  wallId: 'w',
+  wallId: wid('w'),
   length: 5,
   station,
   side,
@@ -64,7 +65,7 @@ describe('opening tool table', () => {
   it('aiming + click places it with the rule and the side of the cursor; the tool stays', () => {
     const a = openingTransition(OPENING_IDLE, { kind: 'hover', aim: aim(4, [], 'right') }, 0.9).state;
     const r = openingTransition(a, { kind: 'click' }, 0.9);
-    expect(r.place).toEqual({ wallId: 'w', rule: { kind: 'fromEnd', distance: expect.closeTo(0.55, 12) }, swing: 'right' });
+    expect(r.place).toEqual({ wallId: wid('w'), rule: { kind: 'fromEnd', distance: expect.closeTo(0.55, 12) }, swing: 'right' });
     expect(r.state.kind).toBe('aiming');
   });
 

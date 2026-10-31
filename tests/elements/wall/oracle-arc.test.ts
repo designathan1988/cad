@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { layer, testWall, type TestWall as Wall } from './fixtures';
 import { cornerReach, distanceToSegments, segmentsOf, segmentWall, sharedArea, tBeyond, tFill, touchesArcElsewhere } from './oracle-arc';
+import { wid } from '../../ids';
 
 const sq = (x0: number, y0: number, x1: number, y1: number) => [
   { x: x0, y: y0 },
@@ -28,18 +29,18 @@ describe('sharedArea', () => {
 describe('touchesArcElsewhere', () => {
   // A half circle from (0, 0) to (2, 0), counter-clockwise: centre (1, 0), radius 1, through (1, -1).
   // Every segment but the ends lies strictly below y = 0.
-  const arc = { ...testWall('arc', { x: 0, y: 0 }, { x: 2, y: 0 }, [layer(0.1)]), bulge: 1 } as Wall;
+  const arc = { ...testWall(wid('arc'), { x: 0, y: 0 }, { x: 2, y: 0 }, [layer(0.1)]), bulge: 1 } as Wall;
   it('a wall from (2, -2) to the start runs through (1, -1), the middle of the arc: it touches', () => {
-    expect(touchesArcElsewhere(arc, 'start', testWall('s', { x: 2, y: -2 }, { x: 0, y: 0 }, [layer(0.1)]))).toBe(true);
+    expect(touchesArcElsewhere(arc, 'start', testWall(wid('s'), { x: 2, y: -2 }, { x: 0, y: 0 }, [layer(0.1)]))).toBe(true);
   });
   it('a wall from (0, 2) to the start stays at y >= 0, above every other segment: it does not', () => {
-    expect(touchesArcElsewhere(arc, 'start', testWall('s', { x: 0, y: 2 }, { x: 0, y: 0 }, [layer(0.1)]))).toBe(false);
+    expect(touchesArcElsewhere(arc, 'start', testWall(wid('s'), { x: 0, y: 2 }, { x: 0, y: 0 }, [layer(0.1)]))).toBe(false);
   });
 });
 
 describe('segmentWall and distanceToSegments', () => {
   // The same half circle: centre (1, 0), radius 1, 0.1 m thick on its centre line.
-  const arc = { ...testWall('arc', { x: 0, y: 0 }, { x: 2, y: 0 }, [layer(0.1)]), bulge: 1 } as Wall;
+  const arc = { ...testWall(wid('arc'), { x: 0, y: 0 }, { x: 2, y: 0 }, [layer(0.1)]), bulge: 1 } as Wall;
   it('the first segment starts at the arc start and ends on the circle, a little thinner', () => {
     const s = segmentWall(arc, 0);
     expect(s.start).toEqual({ x: 0, y: 0 });
@@ -68,13 +69,13 @@ describe('segmentWall and distanceToSegments', () => {
 
 describe('tFill: what a T against an arc fills past the wall end, up to the face', () => {
   // The arc from (0, 0) to (6, 0) with bulge -1: above y = 0, centre (3, 0), r = 3, 20 cm: band 2.9 to 3.1.
-  const ring = { ...testWall('arc', { x: 0, y: 0 }, { x: 6, y: 0 }, [layer(0.2)]), bulge: -1 } as Wall;
+  const ring = { ...testWall(wid('arc'), { x: 0, y: 0 }, { x: 6, y: 0 }, [layer(0.2)]), bulge: -1 } as Wall;
 
   it('a wall at 45° from the upper right ending at (3, 3.05): its square end leaves a gap at the face, filled', () => {
     // Into the body is (1, 1)/√2, so past the end is x + y < 6.05. (2.94, 3.10): x + y = 6.04; across
     // the wall (x − y + 0.05)/√2 = −0.078, inside its ±0.1; radius √(0.06² + 3.1²) = 3.1006, past the
     // outer face 3.1, so outside the arc: the gap between the square end and the curved face.
-    const wall = testWall('t', { x: 4, y: 4.05 }, { x: 3, y: 3.05 }, [layer(0.2)]);
+    const wall = testWall(wid('t'), { x: 4, y: 4.05 }, { x: 3, y: 3.05 }, [layer(0.2)]);
     const fill = tFill(ring, wall);
     expect(fill({ x: 2.94, y: 3.1 })).toBe(true);
     // (2.94, 3.0): radius 3.0006, inside the arc's band, so the arc's own, not filled.
@@ -90,16 +91,16 @@ describe('tFill: what a T against an arc fills past the wall end, up to the face
     // goes on across the ring and out at x = 5.70. (5.75, 1.525), radius 3.1445, is past the far face:
     // the stretch back to the end runs 1.525 from the centre, inside the ring.
     const end = { x: 3 + 3.05 * Math.cos((5 * Math.PI) / 6), y: 3.05 * Math.sin((5 * Math.PI) / 6) };
-    const wall = testWall('t', { x: -1, y: end.y }, end, [layer(0.2)]);
+    const wall = testWall(wid('t'), { x: -1, y: end.y }, end, [layer(0.2)]);
     expect(tFill(ring, wall)({ x: 5.75, y: end.y })).toBe(false);
   });
 });
 
 describe('tBeyond: what of the abutting wall lies past the arc, which a T does not keep', () => {
-  const ring = { ...testWall('arc', { x: 0, y: 0 }, { x: 6, y: 0 }, [layer(0.2)]), bulge: -1 } as Wall;
+  const ring = { ...testWall(wid('arc'), { x: 0, y: 0 }, { x: 6, y: 0 }, [layer(0.2)]), bulge: -1 } as Wall;
   // From inside the ring at 45°, ending at (3, 3.05): its square end's corner (2.9293, 3.1207) is at
   // radius 3.1215, past the outer face 3.1.
-  const wall = testWall('t', { x: 2, y: 2.05 }, { x: 3, y: 3.05 }, [layer(0.2)]);
+  const wall = testWall(wid('t'), { x: 2, y: 2.05 }, { x: 3, y: 3.05 }, [layer(0.2)]);
   const beyond = tBeyond(ring, wall);
 
   it("(2.935, 3.10): inside the wall's rectangle and at radius 3.1007, past the outer face: not kept", () => {
@@ -117,10 +118,10 @@ describe("cornerReach: how far along the wall an L's corner with the arc's end s
     // Arc (0, 0) to (6, 0), bulge −1, 20 cm: near the node its faces are x = ±0.1 + y·t, t = tan(Δ/2),
     // Δ = π/88. The wall from (−3, 0) has faces y = ±0.1. The four crossings, along (−1, 0) from the
     // node: ±(0.1 ± 0.1·t); the farthest, 0.1 + 0.1·t.
-    const ring = { ...testWall('arc', { x: 0, y: 0 }, { x: 6, y: 0 }, [layer(0.2)]), bulge: -1 } as Wall;
+    const ring = { ...testWall(wid('arc'), { x: 0, y: 0 }, { x: 6, y: 0 }, [layer(0.2)]), bulge: -1 } as Wall;
     expect(segmentsOf(ring)).toBe(88);
     const t = Math.tan(Math.PI / 88 / 2);
-    const wall = testWall('s', { x: -3, y: 0 }, { x: 0, y: 0 }, [layer(0.2)]);
+    const wall = testWall(wid('s'), { x: -3, y: 0 }, { x: 0, y: 0 }, [layer(0.2)]);
     expect(cornerReach(ring, 'start', wall)).toBeCloseTo(0.1 + 0.1 * t, 12);
   });
 });

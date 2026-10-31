@@ -19,6 +19,7 @@ import { addLevelMarkHere, addNoteHere } from './kind-tools';
 import * as appPlacing from './app-placing';
 import * as appSettings from './app-settings';
 import * as appEdit from './app-edit';
+import { wallsIn } from '../elements/wall/schema';
 
 export interface ContextEntry {
   readonly id: ContextId;
@@ -97,7 +98,7 @@ function entriesFor(app: App, openCommands: () => void): (id: ContextId) => Cont
     mirror: () => startModify(app, 'mirror'),
     scale: () => startModify(app, 'scale'),
     merge: () => mergeSelection(app),
-    flipWall: () => app.store.dispatch(flipWalls(ids)),
+    flipWall: () => app.store.dispatch(flipWalls(wallsIn(app.store.get().walls, ids))),
     editType: () => app.openWallTypes(app.store.get().walls.find((w) => w.id === one)?.wallTypeId),
     // Offered in 3D only, where it shows (shown below): it switched the plan to 3D on its own (M9).
     toggleOpen: () => appPlacing.toggleOpen(app, ids),
