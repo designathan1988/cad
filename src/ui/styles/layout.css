@@ -200,10 +200,3 @@ button.project-name:hover {
   opacity: 0.45;
   cursor: default;
 }
-/* The 3D bar's toggles are each on or off, not one of a set: on, they show it as the ribbon's pressed
-   tools do (the parallel view on read as the perspective's own look). */
-.view-toggles button[aria-pressed='true'],
-:root[data-theme='dark'] .view-toggles button[aria-pressed='true'] {
-  background: var(--accent-soft);
-  color: var(--accent-text);
-}

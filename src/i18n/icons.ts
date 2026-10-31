@@ -115,6 +115,8 @@ const paths = {
   library: 'M4 4h4v16H4zM10 4h4v16h-4zM16 5l3.5-1 2.5 15-3.5 1z',
   palette: 'M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.9 1.2-1.8-.5-1-.1-2.2 1.2-2.2H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10zM7.5 11h.01M9.5 7h.01M14.5 7h.01M16.5 11h.01',
   search: 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM20 20l-4.8-4.8',
+  // Done for you (the walls dimensioned at once): a wand and its sparks.
+  wand: 'M4 20 15 9M13 7l4 4M18 3v3M16.5 4.5h3M20 9v2M19 10h2M10 3v2M9 4h2',
 } as const;
 
 export type IconName = keyof typeof paths;

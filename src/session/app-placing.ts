@@ -102,7 +102,7 @@ export function previewObject(app: App, doc: Doc): Doc | null {
   return { ...doc, objects: [...doc.objects, preview] };
 }
 
-/** The object tool with a definition (the ribbon's and the palette's Place table, Place bookcase…). */
+/** The object tool with a definition (the objects' list's and the palette's Place table, Place bookcase…). */
 export function placeObject(app: App, definitionId: DefinitionId, typeId?: string): void {
   app.ui.objectDef = definitionId;
   // A type chosen to place (the objects' store): the next object is of it, with its own values.

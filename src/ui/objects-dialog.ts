@@ -262,7 +262,7 @@ export function showObjects(app: App, first?: string): void {
         }
         side.append(el('div', { class: 'objs-label' }, t('objs.typeToPlace')), types);
       }
-      // Placing it: the ribbon shows only some of the library (app/ribbon-tabs.ts), this places any, of the type chosen.
+      // Placing it: the objects' list shows only some of the library (ui/tool-rail.ts), this places any, of the type chosen.
       const place = el('button', { type: 'button', class: 'objs-place' }, t('objs.place'));
       place.dataset.focus = 'place';
       place.addEventListener('click', () => {

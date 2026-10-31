@@ -1,5 +1,5 @@
 // The next element a placing tool makes, as Revit's type and instance properties before the click: a
-// template of its kind, shown with the same fields as one selected (on the tool's ribbon tab and in the
+// template of its kind, shown with the same fields as one selected (in the
 // panel), and what the tool builds from, its place being the click's. Until it is changed it is the
 // last one of its kind (as the tools did), or the kind's own defaults.
 

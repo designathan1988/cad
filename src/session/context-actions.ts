@@ -1,4 +1,4 @@
-// What to offer for the selection, in the right-click menu and the floating bar (ref/chat.txt:206,
+// What to offer for the selection, in the right-click menu and the tool's panel (ref/chat.txt:206,
 // 222): the actions that fit that kind of element, most used first, 3 to 6 of them.
 
 import type { Doc } from '../project/doc';
@@ -45,7 +45,7 @@ const OWN: ReadonlySet<ContextId> = new Set(['flipWall', 'editType', 'toggleOpen
 /**
  * The right-click menu, whole and grouped (Microsoft's menu guide: up to 15 items in groups, the complete
  * clipboard set, Delete and Properties last): the element's own commands, the Modify tools, the clipboard,
- * what the view shows, the selection, delete and properties. The floating bar keeps contextIds' few; the
+ * what the view shows, the selection, delete and properties. contextIds keeps the few most used; the
  * menu took the same six and had no Copy, Rotate or Hide (docs/revisao-interface.md, M1).
  */
 export function menuGroups(doc: Doc, selection: readonly string[], levelId?: LevelId): ContextId[][] {
@@ -69,7 +69,7 @@ export function contextIds(doc: Doc, selection: readonly string[], levelId?: Lev
   const walls = selection.filter((id) => doc.walls.some((w) => w.id === id));
   const merge = selection.length === 2 && walls.length === 2 && canMerge(doc, walls[0]!, walls[1]!) ? (['merge'] as const) : [];
   const guides = levelId !== undefined && doc.guides.some((g) => g.levelId === levelId) ? (['clearGuides'] as const) : [];
-  // Six at most: a text where the menu was opened (the level mark is in the ribbon); the commands give
+  // Six at most: a text where the menu was opened (the level mark is on the rail, with the dimensions); the commands give
   // way to clearing the guides (Ctrl+K is in the footer).
   if (selection.length === 0) return ['drawWall', 'addNote', 'frameAll', ...(guides.length > 0 ? guides : (['commands'] as const))];
   // Move first, for what the Modify tools take (walls, doors and windows, rooms, outline floors, guides); the five of them

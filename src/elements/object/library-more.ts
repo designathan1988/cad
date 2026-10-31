@@ -460,5 +460,5 @@ export const POT_PLANT: ObjectDefinition = {
   types: [{ id: 'std', name: { pt: 'Médio', en: 'Medium' }, values: {} }],
 };
 
-/** Phase 8's definitions, in the order the ribbon and the library list them. */
+/** Phase 8's definitions, in the order the objects' list and the library show them. */
 export const LIBRARY_MORE: readonly ObjectDefinition[] = [SOFA, BED, KITCHEN, TOILET, WASHBASIN, SHOWER, FRIDGE, COOKER, PENDANT, TREE, POT_PLANT];

@@ -21,7 +21,7 @@ import { drawAnnotations } from './plan-annotations';
 export { GRID_BUBBLE_PX } from '../elements/kinds/grid';
 
 export class PlanView {
-  /** Room tags drawn last time, in canvas pixels: what the floating bar must not cover. */
+  /** Room tags drawn last time, in canvas pixels: what a dimension's value must not cover. */
   labelBoxes: { x: number; y: number; w: number; h: number }[] = [];
   /** Screen pixels per metre and the world point at the canvas centre. */
   scale = 60;

@@ -8,7 +8,7 @@ import type { App } from '../session/app';
 import { type MessageKey, t } from '../i18n/messages';
 import { words } from '../elements/object/fields';
 import { kindOfId } from '../elements/registry';
-import { contextEntries } from '../session/context-menu';
+import { menuEntries } from '../session/context-menu';
 import { ceilingOf } from '../elements/tool-draft';
 import { getLang } from '../i18n/messages';
 import { icon } from '../i18n/icons';
@@ -40,7 +40,7 @@ const ELEMENT_ACTIONS = new Set(['flipWall', 'editType', 'toggleOpen', 'flipHing
 export function actionsWithContext(app: App): Map<string, Action> {
   const actions = new Map(app.actionList().map((a) => [a.id, a]));
   if (app.ui.selection.size > 0)
-    for (const e of contextEntries(app, () => app.openCommands())) actions.set(`ctx.${e.id}`, { id: `ctx.${e.id}`, label: e.label, group: 'edit', keywords: '', ...(e.keys ? { keys: e.keys } : {}), enabled: true, run: e.run });
+    for (const e of menuEntries(app, () => app.openCommands()).flat()) actions.set(`ctx.${e.id}`, { id: `ctx.${e.id}`, label: e.label, group: 'edit', keywords: '', ...(e.keys ? { keys: e.keys } : {}), enabled: true, run: e.run });
   return actions;
 }
 
@@ -101,7 +101,7 @@ function toolItems(app: App): readonly BarEntry[] {
                   ],
                 },
                 '-',
-                { id: 'dim.auto', icon: 'dimension' },
+                { id: 'dim.auto', icon: 'wand' },
               ]
             : ui.tool === 'note' || ui.tool === 'callout'
               ? [tool('edit.addNote', 'text', 'note'), tool('tool.callout', 'tag', 'callout')]
@@ -123,7 +123,8 @@ function selectionItems(app: App): readonly BarEntry[] {
   const { ui } = app;
   const doc = app.store.get();
   const ids = [...ui.selection];
-  const own = contextEntries(app, () => app.openCommands())
+  const own = menuEntries(app, () => app.openCommands())
+    .flat()
     .filter((e) => ELEMENT_ACTIONS.has(e.id))
     .map((e): BarItem => ({ id: `ctx.${e.id}`, icon: e.icon }));
   const walls = ids.some((id) => doc.walls.some((w) => w.id === id));

@@ -78,7 +78,7 @@ export function styleFields(selected: readonly OpeningSolid[], update: OpeningPa
         id: key,
         label: `panel.${key}`,
         kind: 'text',
-        // Empty, the panes are equal: said in the field (the note under them is not in the ribbon).
+        // Empty, the panes are equal: said in the field (the note under them is not always shown).
         placeholder: t('panel.splitsEmpty'),
         when: () => kind === 'window' && selected.every((x) => PANED.includes(style(x).operation)),
         get: (x) => (style(x)[key] ?? []).map((m) => lengthNum(m)).join('; '),

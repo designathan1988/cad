@@ -59,7 +59,7 @@ export function wireInput(app: App): void {
   };
   app.openProjects = () => showProjectsDialog(app);
   const palette = () => showPalette(appActions(app, openers));
-  // The ribbon and the File menu run the same actions the palette lists.
+  // The bars and the Project menu run the same actions the palette lists.
   app.buildActions = () => appActions(app, openers);
   app.openCommands = palette;
   app.openLevels = () => showLevels(app);
@@ -80,7 +80,7 @@ export function wireInput(app: App): void {
     app.refresh();
     // Where the menu was opened, for "Add text": the pointer leaves the drawing for the menu.
     app.contextPoint = worldAt(e)?.p ?? null;
-    // Whole and grouped (context-actions.ts, menuGroups), a line between groups; the floating bar keeps its few.
+    // Whole and grouped (context-actions.ts, menuGroups), a line between groups.
     const groups = menuEntries(app, palette);
     app.contextPoint = null;
     showMenu(
@@ -205,7 +205,7 @@ export function wireInput(app: App): void {
     { passive: false },
   );
 
-  // Top bar, tools, floating bar, footer.
+  // Title bar, view header, view controls, footer.
   wireButtons(app, palette);
   // The preview follows what is typed, before Enter: the wall preview is geometry, so refresh it.
   shell.measure.addEventListener('input', () => {

@@ -46,7 +46,7 @@ export function renderBrowser(app: App, box: HTMLElement, openWallTypes: () => v
   // What has its own place is not here (the prototype's navigator): the projects and the units in the
   // Project menu, the levels and Plan or 3D over the view, the materials on the right edge's bar.
   box.replaceChildren(
-    el('div', { class: 'panel-head' }, el('span', { class: 'panel-title' }, t('browser.title')), close),
+    el('div', { class: 'panel-head' }, el('span', { class: 'title' }, t('browser.title')), close),
     section(
       t('browser.views'),
       true,

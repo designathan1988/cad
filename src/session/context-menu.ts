@@ -1,5 +1,5 @@
 // The actions contextIds picks for the selection, made runnable: label, icon, key and what they do.
-// The right-click menu and the floating bar both show these, so the same action has the same name,
+// The right-click menu and the tool's panel both show these, so the same action has the same name,
 // icon and key in both (ref/chat.txt:200).
 
 import { distributeOpenings, updateOpening } from '../elements/opening/commands';
@@ -7,7 +7,7 @@ import { flipWalls } from '../elements/wall/flip';
 import { t, type MessageKey } from '../i18n/messages';
 import type { IconName } from '../i18n/icons';
 import type { App } from './app';
-import { type ContextId, contextIds, menuGroups } from './context-actions';
+import { type ContextId, menuGroups } from './context-actions';
 import { mergeSelection, startModify } from './modify';
 import { addCeilingToRoom, addFloorToRoom } from './room-tool';
 import { frameSelection } from './view-ui';
@@ -69,12 +69,6 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; action?: string }>> = {
   addLevelMark: { icon: 'height', action: 'edit.addLevelMark' },
   commands: { icon: 'command', action: 'help.commands' },
 };
-
-/** The floating bar's few (contextIds): the selection's most used commands. */
-export function contextEntries(app: App, openCommands: () => void): ContextEntry[] {
-  const entry = entriesFor(app, openCommands);
-  return contextIds(app.store.get(), [...app.ui.selection], app.ui.levelId).filter(shownIn(app)).map(entry);
-}
 
 /** Open or close a door is seen in 3D only: in plan it is not offered. */
 const shownIn = (app: App) => (id: ContextId): boolean => id !== 'toggleOpen' || app.ui.view === '3d';

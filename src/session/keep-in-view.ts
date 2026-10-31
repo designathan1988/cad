@@ -1,6 +1,6 @@
 // How far the plan moves so the selection stays seen (pure): its screen box, dimensions and handles
-// included, inside the part of the view no panel, sheet or drawer covers, with room above it for the
-// floating bar. The smallest move that does it; a box larger than that part keeps its top left in view.
+// included, inside the part of the view no panel, sheet or drawer covers, with room above it.
+// The smallest move that does it; a box larger than that part keeps its top left in view.
 
 import type { Insets } from '../render/plan-types';
 

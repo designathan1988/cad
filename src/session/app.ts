@@ -359,7 +359,7 @@ export class App {
   /** The shortcuts the user remapped or turned off (app/keymap.ts), kept with the preferences. */
   keymap: KeyMap = loadPrefs().keymap ?? {};
 
-  /** Builds every action by name (actions.ts), set by the input layer: the ribbon and the File menu run them. */
+  /** Builds every action by name (actions.ts), set by the input layer: the bars and the Project menu run them. */
   buildActions: () => Action[] = () => [];
   /** The actions built for the frame being rendered, shared by its readers (action-list.ts); null outside a render. */
   readonly actionCache: { rendering: boolean; frame: Action[] | null } = { rendering: false, frame: null };

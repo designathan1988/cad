@@ -81,6 +81,6 @@ export function render(view: Scene3D): void {
   }
   draw(view, w, h, resized);
   // The projection changed (first frame, new size, panel): what is placed over the view by
-  // projecting through the camera (the floating bar, the cube) must be placed again.
+  // projecting through the camera (the handles, the cube) must be placed again.
   if (resized) view.onChange();
 }

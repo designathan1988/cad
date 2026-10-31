@@ -190,7 +190,7 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     nodes.push(head('wall', t('panel.nextWall')), el('div', { class: 'panel-hint' }, t('panel.nextWallHint')));
     nodes.push(fieldsSection(t('panel.general'), true, next.fields, [next.item]));
   } else if (input.next) {
-    // What the tool will make, as its ribbon tab shows it: changed here, the next one is made so.
+    // What the tool will make: changed here, the next one is made so.
     nodes.push(head(input.next.icon, input.next.title), el('div', { class: 'panel-hint' }, t('panel.nextHint')));
     nodes.push(fieldsSection(t('panel.general'), true, input.next.fields, input.next.items));
   } else if (input.level) {

@@ -182,9 +182,9 @@ export class Scene3D {
     this.controls.maxPolarAngle = Math.PI * 0.495;
     this.controls.addEventListener('change', () => {
       this.invalidate();
-      // What is placed by projecting through the camera (the floating bar) must use the camera as it
+      // What is placed by projecting through the camera (the handles, the dimensions' values) must use the camera as it
       // is now: its world matrices are otherwise updated only by the next frame's render, and a jump
-      // (the cube's Top, F, a turn by keyboard) left the bar where the selection was before it.
+      // (the cube's Top, F, a turn by keyboard) left them where the selection was before it.
       this.camera.updateMatrixWorld();
       this.onChange();
     });
