@@ -1,7 +1,7 @@
 // Test walls carry their layers inline; engineInput turns them into Walls plus a type map.
 
 import { computeWallGeometry } from '../../../src/elements/wall/geometry/footprint';
-import { tid } from '../../ids';
+import { mid, tid } from '../../ids';
 import type {
   LayerFunction,
   ReferenceLine,
@@ -31,7 +31,7 @@ export interface TestWall {
 export const layer = (thickness: number, fn: LayerFunction = 'structure'): WallLayer => ({
   thickness,
   function: fn,
-  materialId: fn,
+  materialId: mid(fn),
 });
 
 export function testWall(

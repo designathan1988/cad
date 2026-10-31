@@ -20,7 +20,8 @@ export type WallTypeId = Brand<'wallType'>;
 
 /** A new wall type's id (wt_…). */
 export const newWallTypeId = (): WallTypeId => newId('wt') as WallTypeId;
-export type MaterialId = string;
+export type { MaterialId } from '../material/schema';
+import type { MaterialId } from '../material/schema';
 export type WallEnd = 'start' | 'end';
 export type ReferenceLine = 'centerline' | 'interiorFace' | 'exteriorFace';
 

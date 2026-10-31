@@ -12,6 +12,7 @@ import type { Material } from '../elements/material/schema';
 import { DEFINITION_PREFIX, type ObjectDefinition, type Part } from '../elements/object/schema';
 import { isDefinition } from '../elements/object/valid';
 import { isMaterial } from '../project/file-guards';
+import { newMaterialId } from '../elements/material/schema';
 
 export const LIBRARY_VERSION = 2;
 
@@ -94,11 +95,11 @@ export function mergeLibrary(doc: Doc, raw: unknown): MergeResult {
   const same = (a: Material, b: Material) => JSON.stringify(a) === JSON.stringify(b);
   const matIds = new Map<string, string>();
   const addedMats: Material[] = [];
-  const takenMats = new Set(doc.materials.map((m) => m.id));
+  const takenMats = new Set<string>(doc.materials.map((m) => m.id));
   for (const m of goodMats) {
     const mine = doc.materials.find((x) => x.id === m.id);
     if (mine && same(mine, m)) continue;
-    const id = takenMats.has(m.id) ? newId('mat') : m.id;
+    const id = takenMats.has(m.id) ? newMaterialId() : m.id;
     takenMats.add(id);
     matIds.set(m.id, id);
     addedMats.push({ ...m, id });

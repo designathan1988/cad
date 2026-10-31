@@ -8,7 +8,7 @@ import { deriveGeometry } from '../../../src/project/derive';
 import { createStore } from '../../../src/core/store';
 import { addWallType, deleteWallType, duplicateWallType, typeDeleteBlocker, updateWallType } from '../../../src/elements/wall/types';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { lid, tid, wid } from '../../ids';
+import { lid, mid, tid, wid } from '../../ids';
 
 const wall = (id: WallId, typeId: string): DocWall => ({
   id,
@@ -19,7 +19,7 @@ const wall = (id: WallId, typeId: string): DocWall => ({
   levelId: lid('lvl_ground'),
 });
 const doc = (): Doc => ({ ...newDocument(), walls: [wall(wid('a'), 'wt_concrete20')] });
-const layer = (thickness: number) => ({ thickness, function: 'structure' as const, materialId: 'concrete' });
+const layer = (thickness: number) => ({ thickness, function: 'structure' as const, materialId: mid('concrete') });
 const widthOf = (d: Doc, id: WallId) => {
   const ys = deriveGeometry(d).solids.get(id)!.pieces.flatMap((p) => p.polygon.map((v) => v.y));
   return Math.max(...ys) - Math.min(...ys);

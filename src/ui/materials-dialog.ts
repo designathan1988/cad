@@ -7,7 +7,6 @@ import { withLibrary } from './library-tabs';
 import type { App } from '../session/app';
 import { copyLibraryLink } from '../library/link';
 import { libraryOf } from '../io/library-file';
-import { newId } from '../core/id';
 import { addMaterial, deleteMaterial, materialDeleteBlocker, materialUses, type MaterialPatch, updateMaterial } from '../elements/material/commands';
 import { CUT_PATTERNS, type CutPattern, type MaterialId } from '../elements/material/schema';
 import { JOINT_MAX, PATTERN_DEFAULTS, PATTERN_KINDS, PATTERN_LAYOUTS, PIECE_MAX, PIECE_MIN, type PatternKind, type PatternLayout, type SurfacePattern } from '../elements/material/pattern';
@@ -16,6 +15,7 @@ import { openProjectDialog } from './dialog';
 import { textField } from './fields';
 import { materialLabel, t, type MessageKey } from '../i18n/messages';
 import { icon } from '../i18n/icons';
+import { newMaterialId } from '../elements/material/schema';
 
 export function showMaterials(app: App, first?: MaterialId): void {
   let chosen = first ?? app.store.get().materials[0]?.id ?? '';
@@ -124,13 +124,13 @@ export function showMaterials(app: App, first?: MaterialId): void {
     };
     // The new one is the chosen one before the command runs: the dialog redraws on it at once.
     const add = btn(t('mats.new'), 'new', () => {
-      const id = newId('mat');
+      const id = newMaterialId();
       chosen = id;
       app.store.dispatch(addMaterial({ id, name: t('mats.newName', { n: doc.materials.length + 1 }), color: '#b4b0a8', roughness: 0.9, metalness: 0, cut: 'solid' }));
     });
     const dup = btn(t('mats.duplicate'), 'duplicate', () => {
       if (!mat) return;
-      const id = newId('mat');
+      const id = newMaterialId();
       chosen = id;
       app.store.dispatch(addMaterial({ ...mat, id, name: `${materialLabel(mat)} (2)` }));
     });

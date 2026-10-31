@@ -7,6 +7,7 @@
 
 import type { Material } from '../elements/material/schema';
 import type { DefinitionCategory, MeshData, ObjectDefinition, ParamDef, Part } from '../elements/object/schema';
+import type { MaterialId } from '../elements/material/schema';
 
 /** A mesh as the loader gives it, already in plan axes (x, y, z up), in the file's units. */
 export interface MeshGroup {
@@ -65,7 +66,7 @@ export function meshDefinition(name: string, groups: readonly MeshGroup[], categ
   // A flat model (a rug) still has a height to stretch.
   const dims = size.map((v) => Math.max(0.01, v * unit));
   const colours = [...new Set(groups.map((g) => g.color.toLowerCase()))];
-  const materials: Material[] = colours.map((c, i) => ({ id: id('mat'), name: `${name} ${i + 1}`, color: c, roughness: 0.7, metalness: 0, cut: 'solid' }));
+  const materials: Material[] = colours.map((c, i) => ({ id: id('mat') as MaterialId, name: `${name} ${i + 1}`, color: c, roughness: 0.7, metalness: 0, cut: 'solid' }));
   const meshes: MeshData[] = [];
   const parts: Part[] = [];
   colours.forEach((c, ci) => {

@@ -13,7 +13,7 @@ import { newOpening } from '../../src/elements/opening/schema';
 import { addWalls } from '../../src/elements/wall/commands';
 import { isOpening, isWall } from '../../src/project/file-guards';
 import { stretchEnd } from '../../src/elements/wall/edit';
-import { lid, oid, tid, wid } from '../ids';
+import { lid, mid, oid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
 
 const wall = (id: WallId, x1: number, top: DocWall['top'] = { kind: 'level', offset: 0 }, baseOffset = 0): DocWall => ({
@@ -94,7 +94,7 @@ describe('floors from a file', () => {
   const valid = (f: unknown) => KINDS.find((k) => k.key === 'floors')!.valid(f);
   it('a layer of no thickness or a tile of no size is not taken', () => {
     expect(valid(floor({}))).toBe(true);
-    expect(valid(floor({ layers: [{ materialId: 'concrete', thickness: 0 }] }))).toBe(false);
+    expect(valid(floor({ layers: [{ materialId: mid('concrete'), thickness: 0 }] }))).toBe(false);
     expect(valid(floor({ tiling: { width: 0, length: 0.6, joint: 0.003, pattern: 'grid', angle: 0 } }))).toBe(false);
     expect(valid(floor({ tiling: { width: 0.6, length: 0.6, joint: 0.003, pattern: 'grid', angle: 0 } }))).toBe(true);
   });

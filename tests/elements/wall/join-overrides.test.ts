@@ -10,16 +10,16 @@ import type { Point2 } from '../../../src/model/vector';
 import { newDocument } from '../../../src/project/doc';
 import { readProject, writeProject } from '../../../src/project/file';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { lid, tid, wid } from '../../ids';
+import { lid, mid, tid, wid } from '../../ids';
 
-const solid: WallType = { id: tid('solid'), name: 'solid', layers: [{ thickness: 0.2, function: 'structure', materialId: 'concrete' }] };
+const solid: WallType = { id: tid('solid'), name: 'solid', layers: [{ thickness: 0.2, function: 'structure', materialId: mid('concrete') }] };
 const layered: WallType = {
   id: tid('layered'),
   name: 'layered',
   layers: [
-    { thickness: 0.02, function: 'finish1', materialId: 'plaster' },
-    { thickness: 0.16, function: 'structure', materialId: 'brick' },
-    { thickness: 0.02, function: 'finish2', materialId: 'plaster' },
+    { thickness: 0.02, function: 'finish1', materialId: mid('plaster') },
+    { thickness: 0.16, function: 'structure', materialId: mid('brick') },
+    { thickness: 0.02, function: 'finish2', materialId: mid('plaster') },
   ],
 };
 const types = new Map([solid, layered].map((t) => [t.id, t]));

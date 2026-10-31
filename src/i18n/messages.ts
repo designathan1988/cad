@@ -114,7 +114,7 @@ export const name = (stored: string): string => {
 };
 
 // The built-in materials' ids, from their list: one list, so a material added there is named here too.
-const BUILT_IN_IDS = new Set(BUILT_IN_MATERIALS.map((m) => m.id));
+const BUILT_IN_IDS = new Set<string>(BUILT_IN_MATERIALS.map((m) => m.id));
 
 /** A layer's material: a built-in one in the language of the moment, the user's own as typed. */
 /** The type marks' prefixes (marks.ts): P and J in Portuguese, D and W in English. */

@@ -5,7 +5,7 @@
 import { type Material, materialIn } from '../material/schema';
 import type { WallLayer } from './schema';
 
-export function layerBands(layers: readonly WallLayer[], width: number, materials: readonly Material[]): { x: number; w: number; fill: string }[] {
+export function layerBands<L extends { readonly thickness: number; readonly materialId: string }>(layers: readonly L[], width: number, materials: readonly Material[]): { x: number; w: number; fill: string }[] {
   const total = layers.reduce((s, l) => s + l.thickness, 0) || 1;
   const widths = layers.map((l) => Math.max(1, Math.round((l.thickness / total) * width)));
   // The rounding goes to the widest band, so the bands fill the width exactly.

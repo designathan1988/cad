@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument, wallBase, wallHeights, wallOverrides, wallTop } from '../../../src/project/doc';
 import { resetWallsToType } from '../../../src/elements/wall/commands';
-import { lid, tid, wid } from '../../ids';
+import { lid, mid, tid, wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
 
 const base: Doc = {
@@ -12,7 +12,7 @@ const base: Doc = {
   wallTypes: [
     ...newDocument().wallTypes,
     // A parapet type: 1.10 m high from its base.
-    { id: tid('wt_parapet'), name: 'Parapet', layers: [{ thickness: 0.15, function: 'structure', materialId: 'brick' }], top: { kind: 'fixed', height: 1.1 }, baseOffset: 0 },
+    { id: tid('wt_parapet'), name: 'Parapet', layers: [{ thickness: 0.15, function: 'structure', materialId: mid('brick') }], top: { kind: 'fixed', height: 1.1 }, baseOffset: 0 },
   ],
 };
 const wall = (id: WallId, typeId: string, own: Partial<DocWall> = {}): DocWall => ({

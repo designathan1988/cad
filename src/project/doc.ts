@@ -29,7 +29,7 @@ import type { Dimension } from '../elements/dimension/schema';
 import type { Grid } from '../elements/grid/schema';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import type { Floor, Room } from '../elements/room/schema';
-import type { HeightRule, ReferenceLine, Wall, WallType, WallTypeId } from '../elements/wall/schema';
+import type { HeightRule, MaterialId, ReferenceLine, Wall, WallType, WallTypeId } from '../elements/wall/schema';
 import { highestUnder, type RoofCover, roofCovers } from '../elements/wall/geometry/under-roof';
 import { roofSolid } from '../elements/roof/geometry';
 import { toCounterClockwise } from '../elements/wall/geometry/convex';
@@ -195,28 +195,28 @@ export function newDocument(): Doc {
         id: 'wt_masonry15' as WallTypeId,
         name: 'Masonry 15 cm',
         layers: [
-          { thickness: 0.015, function: 'finish1', materialId: 'plaster' },
-          { thickness: 0.12, function: 'structure', materialId: 'brick' },
-          { thickness: 0.015, function: 'finish2', materialId: 'plaster' },
+          { thickness: 0.015, function: 'finish1', materialId: 'plaster' as MaterialId },
+          { thickness: 0.12, function: 'structure', materialId: 'brick' as MaterialId },
+          { thickness: 0.015, function: 'finish2', materialId: 'plaster' as MaterialId },
         ],
       },
       {
         id: 'wt_masonry20' as WallTypeId,
         name: 'Masonry 20 cm',
         layers: [
-          { thickness: 0.02, function: 'finish1', materialId: 'plaster' },
-          { thickness: 0.16, function: 'structure', materialId: 'brick' },
-          { thickness: 0.02, function: 'finish2', materialId: 'plaster' },
+          { thickness: 0.02, function: 'finish1', materialId: 'plaster' as MaterialId },
+          { thickness: 0.16, function: 'structure', materialId: 'brick' as MaterialId },
+          { thickness: 0.02, function: 'finish2', materialId: 'plaster' as MaterialId },
         ],
       },
-      { id: 'wt_concrete20' as WallTypeId, name: 'Concrete 20 cm', layers: [{ thickness: 0.2, function: 'structure', materialId: 'concrete' }] },
+      { id: 'wt_concrete20' as WallTypeId, name: 'Concrete 20 cm', layers: [{ thickness: 0.2, function: 'structure', materialId: 'concrete' as MaterialId }] },
       {
         id: 'wt_drywall10' as WallTypeId,
         name: 'Drywall 10 cm',
         layers: [
-          { thickness: 0.0125, function: 'finish1', materialId: 'gypsum' },
-          { thickness: 0.075, function: 'thermal', materialId: 'insulation' },
-          { thickness: 0.0125, function: 'finish2', materialId: 'gypsum' },
+          { thickness: 0.0125, function: 'finish1', materialId: 'gypsum' as MaterialId },
+          { thickness: 0.075, function: 'thermal', materialId: 'insulation' as MaterialId },
+          { thickness: 0.0125, function: 'finish2', materialId: 'gypsum' as MaterialId },
         ],
       },
       ...MORE_WALL_TYPES,

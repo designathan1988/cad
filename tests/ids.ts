@@ -5,7 +5,7 @@ import type { OpeningGroupId, OpeningId } from '../src/elements/opening/schema';
 import type { FloorId, RoomId } from '../src/elements/room/schema';
 import type { ObjectId } from '../src/elements/object/schema';
 import type { LevelId } from '../src/project/doc';
-import type { WallId, WallTypeId } from '../src/elements/wall/schema';
+import type { MaterialId, WallId, WallTypeId } from '../src/elements/wall/schema';
 
 /** A wall's id written in a test. */
 export const wid = (id: string): WallId => id as WallId;
@@ -30,3 +30,6 @@ export const lid = (id: string): LevelId => id as LevelId;
 
 /** A wall type's id written in a test. */
 export const tid = (id: string): WallTypeId => id as WallTypeId;
+
+/** A material's id written in a test. */
+export const mid = (id: string): MaterialId => id as MaterialId;

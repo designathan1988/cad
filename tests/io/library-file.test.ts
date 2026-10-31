@@ -7,9 +7,10 @@ import type { Material } from '../../src/elements/material/schema';
 import type { ObjectDefinition } from '../../src/elements/object/schema';
 import { isDefinition } from '../../src/elements/object/valid';
 import { libraryFromHash, libraryHash, libraryOf, materialsUsed, mergeLibrary } from '../../src/io/library-file';
+import { mid } from '../ids';
 
 const words = (s: string) => ({ pt: s, en: s });
-const gold: Material = { id: 'mat_gold', name: 'Ouro', color: '#d4a937', roughness: 0.3, metalness: 1, cut: 'solid' };
+const gold: Material = { id: mid('mat_gold'), name: 'Ouro', color: '#d4a937', roughness: 0.3, metalness: 1, cut: 'solid' };
 
 // A handle in a finish of its own, and a door that nests it in another material.
 const handle: ObjectDefinition = {
