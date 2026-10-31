@@ -143,7 +143,14 @@ if (update) {
     console.log('refusing --update: counts got worse');
     process.exit(1);
   }
-  fs.writeFileSync(SNAPSHOT, JSON.stringify({ ...now, oversize: oversize.map((s) => s.split(' ')[0]) , detail }, null, 1) + '\n');
+  // new allowlist: the union of what still exceeds the cap and the old allowlist, minus what now fits
+  const merged = [...new Set([...oversize.map((x) => x.split(' ')[0]), ...allowlist])].filter((f) => {
+    const lines2 = (texts.get(f) ?? '').split(String.fromCharCode(10)).length;
+    const cap = DATA.test(f) ? CAP_DATA : CAP_LOGIC;
+    if (f.endsWith('styles.css')) return cssLines > 600;
+    return lines2 > cap;
+  });
+  fs.writeFileSync(SNAPSHOT, JSON.stringify({ ...now, oversize: merged, detail }, null, 1) + String.fromCharCode(10));
   console.log('snapshot updated');
 } else {
   const detailLines = Object.entries(detail).filter(([, v]) => (Array.isArray(v) ? v.length : v) > 0);
