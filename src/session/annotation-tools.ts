@@ -19,27 +19,28 @@ import { addMeasure } from '../elements/measure/commands';
 import { newMeasureId } from '../elements/measure/schema';
 import { NO_LEVEL } from '../project/doc';
 import { DRAFT_DIMENSION_ID } from '../elements/dimension/schema';
+import { drawFrom, drawPoints, fromOf, pointsOf } from '../elements/tool-draft';
 
 /** The grid tool: a click starts an axis, the next ends it (named on from the last of its kind). */
 export function gridClick(app: App, p: Point2): void {
-  const from = app.ui.gridFrom;
+  const from = fromOf(app.ui.draft, 'grid');
   if (!from) {
-    app.ui.gridFrom = p;
+    app.ui.draft = drawFrom('grid', p);
     return app.render();
   }
   if (distance(from, p) < MIN_WALL_LENGTH) return;
   const doc = app.store.get();
   const name = nextGridName(doc.grids, from, p);
   app.store.dispatch(addGrid({ id: newGridId(), name, start: from, end: p }));
-  app.ui.gridFrom = null;
+  app.ui.draft = drawFrom('grid', null);
   app.ui.info = t('hint.gridMade', { name });
   app.render();
 }
 
 /** Esc in the grid tool: the axis begun is dropped; none begun, the tool is left. */
 export function gridEscape(app: App): void {
-  if (app.ui.gridFrom) {
-    app.ui.gridFrom = null;
+  if (fromOf(app.ui.draft, 'grid')) {
+    app.ui.draft = drawFrom('grid', null);
     return app.render();
   }
   app.setTool('select');
@@ -47,7 +48,7 @@ export function gridEscape(app: App): void {
 
 /** The axis being drawn with the grid tool, and the name it will get; plan only. */
 export function gridDraft(app: App): { name: string; start: Point2; end: Point2 } | null {
-  const from = app.ui.view === 'plan' && app.ui.tool === 'grid' ? app.ui.gridFrom : null;
+  const from = app.ui.view === 'plan' && app.ui.tool === 'grid' ? fromOf(app.ui.draft, 'grid') : null;
   const to = app.ui.snap?.point ?? app.ui.cursor;
   return from && to && distance(from, to) > 0 ? { name: nextGridName(app.store.get().grids, from, to), start: from, end: to } : null;
 }
@@ -98,7 +99,7 @@ export function dimensionDraft(app: App): (NonNullable<PlanOverlay['dimensionDra
 export function markClick(app: App, p: Point2): void {
   const ui = app.ui;
   const done = (key: 'hint.markMade') => {
-    ui.markDraft = [];
+    ui.draft = drawPoints(ui.draft, 'mark', []);
     ui.info = t(key);
     app.render();
   };
@@ -111,18 +112,18 @@ export function markClick(app: App, p: Point2): void {
     app.store.dispatch(addMeasure({ id: newMeasureId(), levelId: ui.levelId, type: 'radius', ...hit }));
     return done('hint.markMade');
   }
-  const draft = [...ui.markDraft, p];
+  const draft = [...pointsOf(ui.draft, 'mark'), p];
   if (draft.length >= 2 && distance(draft.at(-1)!, draft.at(-2)!) < MIN_WALL_LENGTH) return;
   if (ui.markMode === 'coord') {
     if (draft.length < 2) {
-      ui.markDraft = draft;
+      ui.draft = drawPoints(ui.draft, 'mark', draft);
       return app.render();
     }
     app.store.dispatch(addMeasure({ id: newMeasureId(), levelId: ui.levelId, type: 'coord', at: draft[0]!, label: draft[1]! }));
     return done('hint.markMade');
   }
   if (draft.length < 3) {
-    ui.markDraft = draft;
+    ui.draft = drawPoints(ui.draft, 'mark', draft);
     return app.render();
   }
   const [vertex, a, b] = draft as [Point2, Point2, Point2];

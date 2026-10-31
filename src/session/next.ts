@@ -16,6 +16,7 @@ import { CEILING_THICKNESS, FLOOR_DEFAULTS } from '../elements/room/schema';
 import { CURTAIN_DEFAULTS } from '../elements/curtain/schema';
 import type { App } from './app';
 import type { LevelId } from '../project/doc';
+import { ceilingOf, holeOf } from '../elements/tool-draft';
 
 /** What a template holds: one per kind, the floor tool's two (floors and ceilings) apart. */
 export type NextSlot = 'columns' | 'beams' | 'stairs' | 'railings' | 'roofs' | 'floors' | 'ceilings' | 'curtains' | 'objects' | 'rooms';
@@ -27,7 +28,8 @@ export const NEXT_ID = '__next__';
 
 /** The slot of the tool in use; null for a tool that makes nothing of a kind (or makes walls, doors, windows: WallDefaults, OpeningSize). */
 export function slotOf(app: App): NextSlot | null {
-  const { tool, ceilingTool } = app.ui;
+  const { tool } = app.ui;
+  const ceilingTool = ceilingOf(app.ui.draft);
   switch (tool) {
     case 'column':
       return 'columns';
@@ -40,7 +42,7 @@ export function slotOf(app: App): NextSlot | null {
     case 'roof':
       return 'roofs';
     case 'floor':
-      return app.ui.holeFor ? null : ceilingTool ? 'ceilings' : 'floors';
+      return holeOf(app.ui.draft) ? null : ceilingTool ? 'ceilings' : 'floors';
     case 'curtain':
       return 'curtains';
     case 'room':

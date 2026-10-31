@@ -9,6 +9,7 @@ import { words } from '../elements/object/fields';
 import type { ModifyKind } from '../session/modify-tool';
 import { kindOfId } from '../elements/registry';
 import { contextEntries } from '../session/context-menu';
+import { ceilingOf } from '../elements/tool-draft';
 
 /** The tools that place something, each with its own tab while in use; the Modify tools (modify, split, corner) keep theirs. */
 export const PLACING: Partial<Record<ToolId, RibbonItem['icon']>> = {
@@ -43,7 +44,7 @@ export const lowerFirst = (s: string): string => (s.length > 1 && s[1] === s[1]!
 /** The tab's name: "Colocar parede", the floor tool's "Colocar forro" when it makes ceilings, an object's by what it is. */
 export function placeName(app: App): string {
   const { ui } = app;
-  if (ui.tool === 'floor' && ui.ceilingTool) return t('rib.place.ceiling');
+  if (ui.tool === 'floor' && ceilingOf(ui.draft)) return t('rib.place.ceiling');
   if (ui.tool === 'object') {
     const def = app.store.get().definitions.find((d) => d.id === ui.objectDef);
     return t('rib.place.object', { what: def ? lowerFirst(words(def.name)) : '' });
@@ -89,7 +90,7 @@ export function placeTab(
           },
         ]
       : ui.tool === 'floor'
-        ? [{ title: 'rib.p.draw', items: [{ ...tool('floor', 'tool.floor', 'slab', 'L'), pressed: () => ui.tool === 'floor' && !ui.ceilingTool }, { id: 'tool.ceiling', icon: 'arrowUp', size: 'L', pressed: () => ui.tool === 'floor' && ui.ceilingTool }] }]
+        ? [{ title: 'rib.p.draw', items: [{ ...tool('floor', 'tool.floor', 'slab', 'L'), pressed: () => ui.tool === 'floor' && !ceilingOf(ui.draft) }, { id: 'tool.ceiling', icon: 'arrowUp', size: 'L', pressed: () => ui.tool === 'floor' && ceilingOf(ui.draft) }] }]
         : ui.tool === 'guide'
           ? [
               {

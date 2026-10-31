@@ -23,6 +23,7 @@ import type { PointerState } from './pointer-state';
 import * as appPlacing from './app-placing';
 import * as appSettings from './app-settings';
 import * as appEdit from './app-edit';
+import { drawFrom, drawPoints, fromOf, pointsOf } from '../elements/tool-draft';
 
 /** What the keys share with the pointer (input.ts). */
 export interface KeyContext {
@@ -165,7 +166,7 @@ export function wireKeys(app: App, k: KeyContext): void {
     // temporary dimensions or in the panel, so 1 and 2 keep switching the view.
     // In the door and window tools a digit is always a measure, aimed or not: it never switches the view
     // (the tester's K2: "1" turned to 3D).
-    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'modify' || (ui.tool === 'guide' && ui.guideFrom !== null) || app.openingKind() !== null;
+    const typing = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'modify' || (ui.tool === 'guide' && fromOf(ui.draft, 'guide') !== null) || app.openingKind() !== null;
     // Right after a copy, its series is typed there: "3x", "/3".
     if (/^[\d/]$/.test(e.key) && ui.tool === 'select' && seriesReady(app)) {
       e.preventDefault();
@@ -195,8 +196,8 @@ export function wireKeys(app: App, k: KeyContext): void {
         return k.showMarquee();
       }
       if (app.openingKind()) return app.setTool('select');
-      if (ui.tool === 'floor' && ui.floorDraft.length > 0) {
-        ui.floorDraft = [];
+      if (ui.tool === 'floor' && pointsOf(ui.draft, 'floor').length > 0) {
+        ui.draft = drawPoints(ui.draft, 'floor', []);
         return app.render();
       }
       if (ui.tool === 'room' || ui.tool === 'floor') return app.setTool('select');
@@ -209,38 +210,38 @@ export function wireKeys(app: App, k: KeyContext): void {
         return app.setTool('select');
       }
       if (ui.tool === 'callout') {
-        if (!ui.calloutFrom) return app.setTool('select');
-        ui.calloutFrom = null;
+        if (!fromOf(ui.draft, 'callout')) return app.setTool('select');
+        ui.draft = drawFrom('callout', null);
         return app.render();
       }
       if (ui.tool === 'column' || ui.tool === 'object' || ui.tool === 'note' || ui.tool === 'levelMark') return app.setTool('select');
       if (ui.tool === 'guide') {
-        if (!ui.guideFrom) return app.setTool('select');
-        ui.guideFrom = null;
+        if (!fromOf(ui.draft, 'guide')) return app.setTool('select');
+        ui.draft = drawFrom('guide', null);
         return app.render();
       }
       if (ui.tool === 'railing') {
-        if (ui.railingDraft.length === 0) return app.setTool('select');
+        if (pointsOf(ui.draft, 'railing').length === 0) return app.setTool('select');
         return railingFinish(app);
       }
       if (ui.tool === 'stair') {
-        if (!ui.stairFrom) return app.setTool('select');
-        ui.stairFrom = null;
+        if (!fromOf(ui.draft, 'stair')) return app.setTool('select');
+        ui.draft = drawFrom('stair', null);
         return app.render();
       }
       if (ui.tool === 'roof') {
-        if (ui.roofDraft.length === 0) return app.setTool('select');
-        ui.roofDraft = [];
+        if (pointsOf(ui.draft, 'roof').length === 0) return app.setTool('select');
+        ui.draft = drawPoints(ui.draft, 'roof', []);
         return app.render();
       }
       if (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') {
-        if (!ui.beamFrom) return app.setTool('select');
-        ui.beamFrom = null;
+        if (!fromOf(ui.draft, 'beam')) return app.setTool('select');
+        ui.draft = drawFrom('beam', null);
         return app.render();
       }
       if (ui.tool === 'mark') {
-        if (ui.markDraft.length === 0) return app.setTool('select');
-        ui.markDraft = ui.markDraft.slice(0, -1);
+        if (pointsOf(ui.draft, 'mark').length === 0) return app.setTool('select');
+        ui.draft = drawPoints(ui.draft, 'mark', pointsOf(ui.draft, 'mark').slice(0, -1));
         return app.render();
       }
       if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? wallEvent(app, { kind: 'escape' }) : app.setTool('select');
@@ -263,10 +264,10 @@ export function wireKeys(app: App, k: KeyContext): void {
     if (e.key === 'Enter' && ui.tool === 'measure') return app.measureEvent({ kind: 'enter' });
     if (key === 'c' && !ctrl && !e.shiftKey && ui.tool === 'measure') return appEdit.toggleMeasureMode(app);
     // Enter ends what is being drawn by points: a roof's outline, a guardrail's path, a beam chain.
-    if (e.key === 'Enter' && ui.tool === 'roof' && ui.roofDraft.length > 0) return roofFinish(app);
-    if (e.key === 'Enter' && ui.tool === 'railing' && ui.railingDraft.length > 0) return railingFinish(app);
-    if (e.key === 'Enter' && (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom) {
-      ui.beamFrom = null;
+    if (e.key === 'Enter' && ui.tool === 'roof' && pointsOf(ui.draft, 'roof').length > 0) return roofFinish(app);
+    if (e.key === 'Enter' && ui.tool === 'railing' && pointsOf(ui.draft, 'railing').length > 0) return railingFinish(app);
+    if (e.key === 'Enter' && (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && fromOf(ui.draft, 'beam')) {
+      ui.draft = drawFrom('beam', null);
       return app.render();
     }
     // Enter places the opening where it is aimed, as a click there does.

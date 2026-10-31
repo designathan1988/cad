@@ -15,6 +15,7 @@ import type { SelectGestures } from './drag';
 import { pointerRelease } from './pointer-release';
 import * as sceneCamera from '../render/scene-camera';
 import * as appView from './app-view';
+import { pointsOf } from '../elements/tool-draft';
 
 
 /** What the handlers use of the input wired around them. */
@@ -115,7 +116,7 @@ export function pointerHandlers(app: App, d: PointerDeps) {
     if (ui.tool === 'floor') {
       // The outline's next corner where a click would put it: snapped, shown with its label.
       ui.snap = snapped(e);
-      if (ui.floorDraft.length > 0) return app.render();
+      if (pointsOf(ui.draft, 'floor').length > 0) return app.render();
     }
     if (ui.tool === 'room' || ui.tool === 'floor') {
       // These tools act on rooms: only the room under the pointer is lit, never a wall (lit, it looked

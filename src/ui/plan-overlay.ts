@@ -26,9 +26,13 @@ import { currentDims } from './temp-dims';
 import { syncScene } from '../session/scene-frame';
 import * as appPlacing from '../session/app-placing';
 import * as appView from '../session/app-view';
+import { fromOf, pointsOf } from '../elements/tool-draft';
 
 export function drawPlanOverlay(app: App): void {
   const { ui } = app;
+  const beamFrom = fromOf(ui.draft, 'beam');
+  const guideFrom = fromOf(ui.draft, 'guide');
+  const stairFrom = fromOf(ui.draft, 'stair');
   const plan = ui.view === 'plan';
   const preview = new Set([...previewWall(app), ...appPlacing.previewOpening(app)].map((w) => w.id));
   const guide = app.openingKind() ? ruleGuide(app.store.get(), app.geometry, OPENING_PREVIEW_ID) : null;
@@ -39,7 +43,7 @@ export function drawPlanOverlay(app: App): void {
   const ang = end && w.kind === 'drawing' ? ((Math.atan2(end.y - w.last.y, end.x - w.last.x) * 180) / Math.PI + 360) % 360 : 0;
   const along = end && w.kind === 'drawing' && len > 0 ? { x: (end.x - w.last.x) / len, y: (end.y - w.last.y) / len } : null;
   // A floor outline's side being drawn: from its last corner to where the next would snap.
-  const floorFrom = ui.tool === 'floor' ? (ui.floorDraft.at(-1) ?? null) : null;
+  const floorFrom = ui.tool === 'floor' ? (pointsOf(ui.draft, 'floor').at(-1) ?? null) : null;
   const floorTo = floorFrom ? (ui.snap?.point ?? ui.cursor) : null;
   const floorLen = floorFrom && floorTo ? distance(floorFrom, floorTo) : 0;
   const floorAlong = floorFrom && floorTo && floorLen > 0 ? { x: (floorTo.x - floorFrom.x) / floorLen, y: (floorTo.y - floorFrom.y) / floorLen } : null;
@@ -171,24 +175,24 @@ export function drawPlanOverlay(app: App): void {
       draft:
         chainLine && chainLine.length >= 2
           ? chainLine
-          : ui.tool === 'guide' && ui.guideFrom && (ui.snap?.point ?? ui.cursor)
-            ? [ui.guideFrom, (ui.snap?.point ?? ui.cursor)!]
-          : ui.tool === 'floor' && ui.floorDraft.length > 0
-          ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
-          : ui.tool === 'mark' && ui.markDraft.length > 0 && (ui.snap?.point ?? ui.cursor)
-            ? ui.markDraft.length === 2 && ui.markMode === 'angle'
-              ? [ui.markDraft[1]!, ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
-              : [ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
-          : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
-            ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
-            : ui.tool === 'roof' && ui.roofDraft.length > 0
-              ? [...ui.roofDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
-              : ui.tool === 'stair' && ui.stairFrom && (ui.snap?.point ?? ui.cursor)
-                ? [ui.stairFrom, (ui.snap?.point ?? ui.cursor)!]
-                : ui.tool === 'railing' && ui.railingDraft.length > 0
-                  ? [...ui.railingDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
+          : ui.tool === 'guide' && guideFrom && (ui.snap?.point ?? ui.cursor)
+            ? [guideFrom, (ui.snap?.point ?? ui.cursor)!]
+          : ui.tool === 'floor' && pointsOf(ui.draft, 'floor').length > 0
+          ? [...pointsOf(ui.draft, 'floor'), ...(floorTo ? [floorTo] : [])]
+          : ui.tool === 'mark' && pointsOf(ui.draft, 'mark').length > 0 && (ui.snap?.point ?? ui.cursor)
+            ? pointsOf(ui.draft, 'mark').length === 2 && ui.markMode === 'angle'
+              ? [pointsOf(ui.draft, 'mark')[1]!, pointsOf(ui.draft, 'mark')[0]!, (ui.snap?.point ?? ui.cursor)!]
+              : [pointsOf(ui.draft, 'mark')[0]!, (ui.snap?.point ?? ui.cursor)!]
+          : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && beamFrom && (ui.snap?.point ?? ui.cursor)
+            ? [beamFrom, (ui.snap?.point ?? ui.cursor)!]
+            : ui.tool === 'roof' && pointsOf(ui.draft, 'roof').length > 0
+              ? [...pointsOf(ui.draft, 'roof'), ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
+              : ui.tool === 'stair' && stairFrom && (ui.snap?.point ?? ui.cursor)
+                ? [stairFrom, (ui.snap?.point ?? ui.cursor)!]
+                : ui.tool === 'railing' && pointsOf(ui.draft, 'railing').length > 0
+                  ? [...pointsOf(ui.draft, 'railing'), ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
                     : null,
-      draftCorners: ui.tool === 'floor' ? ui.floorDraft : [],
+      draftCorners: ui.tool === 'floor' ? pointsOf(ui.draft, 'floor') : [],
       openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
       // The opening being placed shows its distance as a dimension too (drawn only, not typed in: the
       // footer field takes the distance while placing).
@@ -200,8 +204,8 @@ export function drawPlanOverlay(app: App): void {
       underlay: appView.underlay(app),
       acquired: ui.acquired,
       circleDraft:
-        ui.tool === 'guide' && ui.guideMode === 'circle' && ui.guideFrom && (ui.snap?.point ?? ui.cursor)
-          ? { center: ui.guideFrom, radius: distance(ui.guideFrom, (ui.snap?.point ?? ui.cursor)!) }
+        ui.tool === 'guide' && ui.guideMode === 'circle' && guideFrom && (ui.snap?.point ?? ui.cursor)
+          ? { center: guideFrom, radius: distance(guideFrom, (ui.snap?.point ?? ui.cursor)!) }
           : null,
       smart: ui.smart && ui.drag?.kind === 'move' ? { lines: ui.smart.lines, gaps: ui.smart.gaps.map((g) => ({ ...g, text: lengthText(distance(g.a, g.b)) })) } : null,
     });
@@ -239,22 +243,22 @@ export function drawPlanOverlay(app: App): void {
       draft:
         chainLine && chainLine.length >= 2
           ? chainLine
-          : ui.tool === 'guide' && ui.guideFrom && (ui.snap?.point ?? ui.cursor)
-            ? [ui.guideFrom, (ui.snap?.point ?? ui.cursor)!]
-          : ui.tool === 'floor' && ui.floorDraft.length > 0
-          ? [...ui.floorDraft, ...(floorTo ? [floorTo] : [])]
-          : ui.tool === 'mark' && ui.markDraft.length > 0 && (ui.snap?.point ?? ui.cursor)
-            ? ui.markDraft.length === 2 && ui.markMode === 'angle'
-              ? [ui.markDraft[1]!, ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
-              : [ui.markDraft[0]!, (ui.snap?.point ?? ui.cursor)!]
-          : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom && (ui.snap?.point ?? ui.cursor)
-            ? [ui.beamFrom, (ui.snap?.point ?? ui.cursor)!]
-            : ui.tool === 'roof' && ui.roofDraft.length > 0
-              ? [...ui.roofDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
-              : ui.tool === 'stair' && ui.stairFrom && (ui.snap?.point ?? ui.cursor)
-                ? [ui.stairFrom, (ui.snap?.point ?? ui.cursor)!]
-                : ui.tool === 'railing' && ui.railingDraft.length > 0
-                  ? [...ui.railingDraft, ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
+          : ui.tool === 'guide' && guideFrom && (ui.snap?.point ?? ui.cursor)
+            ? [guideFrom, (ui.snap?.point ?? ui.cursor)!]
+          : ui.tool === 'floor' && pointsOf(ui.draft, 'floor').length > 0
+          ? [...pointsOf(ui.draft, 'floor'), ...(floorTo ? [floorTo] : [])]
+          : ui.tool === 'mark' && pointsOf(ui.draft, 'mark').length > 0 && (ui.snap?.point ?? ui.cursor)
+            ? pointsOf(ui.draft, 'mark').length === 2 && ui.markMode === 'angle'
+              ? [pointsOf(ui.draft, 'mark')[1]!, pointsOf(ui.draft, 'mark')[0]!, (ui.snap?.point ?? ui.cursor)!]
+              : [pointsOf(ui.draft, 'mark')[0]!, (ui.snap?.point ?? ui.cursor)!]
+          : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && beamFrom && (ui.snap?.point ?? ui.cursor)
+            ? [beamFrom, (ui.snap?.point ?? ui.cursor)!]
+            : ui.tool === 'roof' && pointsOf(ui.draft, 'roof').length > 0
+              ? [...pointsOf(ui.draft, 'roof'), ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
+              : ui.tool === 'stair' && stairFrom && (ui.snap?.point ?? ui.cursor)
+                ? [stairFrom, (ui.snap?.point ?? ui.cursor)!]
+                : ui.tool === 'railing' && pointsOf(ui.draft, 'railing').length > 0
+                  ? [...pointsOf(ui.draft, 'railing'), ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
                     : null,
       box: ui.view3d.box,
       boxHot: app.boxHot,

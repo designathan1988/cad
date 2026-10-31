@@ -19,6 +19,7 @@ import { PREVIEW_ID } from '../preview';
 import { guideClick, guideRadius } from '../guide/tool-ui';
 import { newWallId } from './schema';
 import type { WallId } from './schema';
+import { fromOf } from '../tool-draft';
 
 export function previewWall(app: App): DocWall[] {
   const w = app.ui.wall;
@@ -253,7 +254,7 @@ export function submitMeasure(app: App, text: string): boolean {
     return true;
   }
   // A circle guide's radius.
-  if (app.ui.tool === 'guide' && app.ui.guideMode === 'circle' && app.ui.guideFrom) {
+  if (app.ui.tool === 'guide' && app.ui.guideMode === 'circle' && fromOf(app.ui.draft, 'guide')) {
     const radius = parseLength(text);
     if (radius.ok && guideRadius(app, radius.value)) {
       app.ui.error = null;

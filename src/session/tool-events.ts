@@ -23,6 +23,7 @@ import { referenceLength } from '../elements/opening/derive';
 import { afterColon } from './app-placing';
 import type { App } from './app';
 import { newOpeningId } from '../elements/opening/schema';
+import { NO_DRAFT } from '../elements/tool-draft';
 
 export function setTool(app: App, tool: ToolId): void {
   // The floor tool with one room selected floors that room at once: the keyboard's way to it, as a
@@ -35,26 +36,16 @@ export function setTool(app: App, tool: ToolId): void {
   app.ui.wall = IDLE;
   // A lock and the points rested on belong to what was being drawn.
   app.ui.lock = null;
-  app.ui.guideFrom = null;
+  // What the last tool was drawing goes with it (tool-draft.ts).
+  app.ui.draft = NO_DRAFT;
   app.ui.acquired = [];
   app.ui.roomSpace = null;
   app.ui.tapToConfirm = false;
   // A side flipped for some walls is not left for later ones, drawn another time.
   app.ui.wallFlip = false;
   app.ui.opening = OPENING_IDLE;
-  app.ui.floorDraft = [];
   app.ui.measure = MEASURE_IDLE;
   app.ui.dimension = DIMENSION_IDLE;
-  app.ui.gridFrom = null;
-  app.ui.sectionFrom = null;
-  app.ui.calloutFrom = null;
-  app.ui.beamFrom = null;
-  app.ui.holeFor = null;
-  app.ui.ceilingTool = false;
-  app.ui.roofDraft = [];
-  app.ui.stairFrom = null;
-  app.ui.railingDraft = [];
-  app.ui.markDraft = [];
   app.ui.guide = null;
   app.ui.modify = null;
   app.modifyBefore = null;

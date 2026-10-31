@@ -9,6 +9,7 @@ import { isLineGuide, newGuideId, type Guide } from './schema';
 import { solidsOf } from '../registry';
 import { guideKind } from '../kinds/guide';
 import type { App } from '../../session/app';
+import { drawFrom, fromOf } from '../tool-draft';
 
 /** The guides of the level shown, unless hidden, as a move being dragged takes them. Plan only: they
  * are neither drawn nor snapped to in 3D. */
@@ -18,7 +19,7 @@ export type GuideMode = 'line' | 'point' | 'circle';
 export function setGuideTool(app: App, mode: GuideMode): void {
   app.setTool('guide');
   app.ui.guideMode = mode;
-  app.ui.guideFrom = null;
+  app.ui.draft = drawFrom('guide', null);
   app.render();
 }
 
@@ -27,14 +28,14 @@ export function guideClick(app: App, p: Point2): void {
   const ui = app.ui;
   const make = (g: Omit<Guide, 'id' | 'levelId'>) => {
     app.store.dispatch(addGuide({ id: newGuideId(), levelId: ui.levelId, ...g }));
-    ui.guideFrom = null;
+    ui.draft = drawFrom('guide', null);
     ui.info = t('hint.guideMade');
     app.render();
   };
   if (ui.guideMode === 'point') return make({ point: { x: p.x, y: p.y }, dir: { x: 1, y: 0 }, shape: 'point' });
-  const from = ui.guideFrom;
+  const from = fromOf(ui.draft, 'guide');
   if (!from) {
-    ui.guideFrom = p;
+    ui.draft = drawFrom('guide', p);
     ui.info = null;
     return app.render();
   }
@@ -45,10 +46,10 @@ export function guideClick(app: App, p: Point2): void {
 
 /** A circle guide's radius typed, from its centre. */
 export function guideRadius(app: App, radius: number): boolean {
-  const from = app.ui.guideFrom;
+  const from = fromOf(app.ui.draft, 'guide');
   if (app.ui.tool !== 'guide' || app.ui.guideMode !== 'circle' || !from || radius < MIN_GUIDE_RUN) return false;
   app.store.dispatch(addGuide({ id: newGuideId(), levelId: app.ui.levelId, point: from, dir: { x: 1, y: 0 }, shape: 'circle', radius }));
-  app.ui.guideFrom = null;
+  app.ui.draft = drawFrom('guide', null);
   app.ui.info = t('hint.guideMade');
   app.render();
   return true;

@@ -130,7 +130,6 @@ export function showFloors(app: App): void {
         if (selected.length > 0) app.store.dispatch(setFloorLayers(selected.map((f) => f.id), layers));
         else {
           // The floor tool's next floor of this build-up, its thickness theirs.
-          app.ui.ceilingTool = false;
           app.next = { ...app.next, floors: { ...nextOf(app, 'floors'), layers, thickness: total(chosen) } };
           app.setTool('floor');
         }

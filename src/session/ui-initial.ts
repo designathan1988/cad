@@ -11,11 +11,13 @@ import { DIMENSION_IDLE } from '../tools/dimension-tool';
 import { type Doc, startLevel } from '../project/doc';
 import { loadPrefs } from '../project/persist';
 import { readView3D } from './view/view-3d';
+import { NO_DRAFT } from '../elements/tool-draft';
 
 export function initialUi(doc: Doc, prefs: ReturnType<typeof loadPrefs>): UiState {
   return {
     view: prefs.view ?? 'plan',
     tool: 'select',
+    draft: NO_DRAFT,
     selection: new Set(),
     hover: null,
     roomSpace: null,
@@ -37,7 +39,6 @@ export function initialUi(doc: Doc, prefs: ReturnType<typeof loadPrefs>): UiStat
     smart: null,
     overridesOn: true,
     guideMode: 'line',
-    guideFrom: null,
     defaults: { wallTypeId: doc.wallTypes[0]!.id, referenceLine: 'centerline', baseOffset: 0, top: { kind: 'level', offset: 0 } },
     wall: IDLE,
     opening: OPENING_IDLE,
@@ -48,27 +49,16 @@ export function initialUi(doc: Doc, prefs: ReturnType<typeof loadPrefs>): UiStat
     error: null,
     info: null,
     drag: null,
-    floorDraft: [],
     measure: MEASURE_IDLE,
     measureMode: 'distance',
     dimension: DIMENSION_IDLE,
-    gridFrom: null,
-    sectionFrom: null,
-    calloutFrom: null,
     calibrate: null,
-    beamFrom: null,
     objectDef: 'def_table',
     objectAngle: 0,
     doorFlip: { swing: false, hinge: false },
     handleDrag: null,
     opened: new Set(),
-    holeFor: null,
-    ceilingTool: false,
-    roofDraft: [],
-    stairFrom: null,
-    railingDraft: [],
     markMode: 'angle',
-    markDraft: [],
     viewDen: null,
     guide: null,
     view3d: readView3D(prefs.view3d),

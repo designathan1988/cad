@@ -31,6 +31,7 @@ import { made, nextOf } from './next';
 import { setView } from './view-ui';
 import * as appSettings from './app-settings';
 import { newObjectId } from '../elements/object/schema';
+import { drawFrom, drawPoints, fromOf, pointsOf } from '../elements/tool-draft';
 
 /** A level mark where the menu was opened (or the middle of the view), selected: it says the level's height. */
 export function addLevelMarkHere(app: App, at?: Point2): void {
@@ -66,16 +67,16 @@ export function addNoteHere(app: App, at?: Point2, leader?: Point2): void {
 
 /** The guardrail tool: a click adds a point of its path; Enter, Esc or a click on the last point ends it. */
 export function railingClick(app: App, p: Point2, mpp: number): void {
-  const draft = app.ui.railingDraft;
+  const draft = pointsOf(app.ui.draft, 'railing');
   if (draft.length >= 2 && distance(p, draft.at(-1)!) <= 10 * mpp) return railingFinish(app);
   if (draft.length > 0 && distance(p, draft.at(-1)!) < MIN_WALL_LENGTH) return;
-  app.ui.railingDraft = [...draft, p];
+  app.ui.draft = drawPoints(app.ui.draft, 'railing', [...draft, p]);
   app.render();
 }
 
 export function railingFinish(app: App): void {
-  const points = app.ui.railingDraft;
-  app.ui.railingDraft = [];
+  const points = pointsOf(app.ui.draft, 'railing');
+  app.ui.draft = drawPoints(app.ui.draft, 'railing', []);
   if (points.length < 2) return app.render();
   const id = newRailingId();
   // As the next guardrail is set (next-element.ts): the last one made, else balusters, as the norm asks of an opening (railingGap).
@@ -89,9 +90,9 @@ export function railingFinish(app: App): void {
  * climbs. Straight, of the last stair's width and step; its kind and turn are in the panel.
  */
 export function stairClick(app: App, p: Point2): void {
-  const from = app.ui.stairFrom;
+  const from = fromOf(app.ui.draft, 'stair');
   if (!from) {
-    app.ui.stairFrom = p;
+    app.ui.draft = drawFrom('stair', p);
     return app.render();
   }
   if (distance(from, p) < 0.05) return;
@@ -108,15 +109,15 @@ export function stairClick(app: App, p: Point2): void {
  * roof is made: four slopes on a convex outline, flat with a parapet otherwise.
  */
 export function roofClick(app: App, p: Point2, mpp: number): void {
-  const draft = app.ui.roofDraft;
+  const draft = pointsOf(app.ui.draft, 'roof');
   if (draft.length >= 3 && distance(p, draft[0]!) <= 10 * mpp) return roofFinish(app);
-  app.ui.roofDraft = [...draft, p];
+  app.ui.draft = drawPoints(app.ui.draft, 'roof', [...draft, p]);
   app.render();
 }
 
 export function roofFinish(app: App): void {
-  const raw = app.ui.roofDraft;
-  app.ui.roofDraft = [];
+  const raw = pointsOf(app.ui.draft, 'roof');
+  app.ui.draft = drawPoints(app.ui.draft, 'roof', []);
   if (raw.length < 3) return app.render();
   // Counter-clockwise, so side i runs from corner i to corner i + 1 as roof/geometry.ts reads them.
   const outline = signedArea(raw) < 0 ? [...raw].reverse() : raw;
@@ -138,43 +139,43 @@ export function roofFinish(app: App): void {
 
 /** The beam tool: a click starts a beam, the next ends it (the section of the last one made); Esc drops it. */
 export function beamClick(app: App, p: Point2): void {
-  const from = app.ui.beamFrom;
+  const from = fromOf(app.ui.draft, 'beam');
   if (!from) {
-    app.ui.beamFrom = p;
+    app.ui.draft = drawFrom('beam', p);
     return app.render();
   }
   if (distance(from, p) < MIN_WALL_LENGTH) return;
   app.store.dispatch(addBeam(made<Beam>(app, 'beams', { id: newBeamId(), start: from, end: p })));
   // On from its end, as walls are drawn in a chain.
-  app.ui.beamFrom = p;
+  app.ui.draft = drawFrom('beam', p);
   app.ui.info = t('hint.beamMade');
   app.render();
 }
 
 /** The separator tool: a click starts a line bounding rooms, the next ends it and goes on from there. */
 export function separatorClick(app: App, p: Point2): void {
-  const from = app.ui.beamFrom;
+  const from = fromOf(app.ui.draft, 'beam');
   if (!from) {
-    app.ui.beamFrom = p;
+    app.ui.draft = drawFrom('beam', p);
     return app.render();
   }
   if (distance(from, p) < MIN_WALL_LENGTH) return;
   app.store.dispatch(addSeparator({ id: newSeparatorId(), levelId: app.ui.levelId, start: from, end: p }));
-  app.ui.beamFrom = p;
+  app.ui.draft = drawFrom('beam', p);
   app.ui.info = t('hint.separatorMade');
   app.render();
 }
 
 /** The curtain wall tool: a click starts it, the next ends it and goes on from there, as walls chain. */
 export function curtainClick(app: App, p: Point2): void {
-  const from = app.ui.beamFrom;
+  const from = fromOf(app.ui.draft, 'beam');
   if (!from) {
-    app.ui.beamFrom = p;
+    app.ui.draft = drawFrom('beam', p);
     return app.render();
   }
   if (distance(from, p) < MIN_WALL_LENGTH) return;
   app.store.dispatch(addCurtain(made<Curtain>(app, 'curtains', { id: newCurtainId(), start: from, end: p })));
-  app.ui.beamFrom = p;
+  app.ui.draft = drawFrom('beam', p);
   app.ui.info = t('hint.curtainMade');
   app.render();
 }

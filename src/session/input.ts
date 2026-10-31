@@ -36,6 +36,7 @@ import { pointerState } from './pointer-state';
 import { pointerHandlers } from './pointer-handlers';
 import * as appPlacing from './app-placing';
 import * as appSettings from './app-settings';
+import { fromOf, pointsOf } from '../elements/tool-draft';
 
 export function wireInput(app: App): void {
   const { shell, ui } = app;
@@ -92,16 +93,16 @@ export function wireInput(app: App): void {
   /** Something drawn by points is under way with the tool in use: what Finish ends. */
   const underWay = () =>
     (ui.tool === 'wall' && ui.wall.kind !== 'idle') ||
-    ui.floorDraft.length > 0 ||
-    ui.roofDraft.length > 0 ||
-    ui.railingDraft.length > 0 ||
-    ui.markDraft.length > 0 ||
+    pointsOf(ui.draft, 'floor').length > 0 ||
+    pointsOf(ui.draft, 'roof').length > 0 ||
+    pointsOf(ui.draft, 'railing').length > 0 ||
+    pointsOf(ui.draft, 'mark').length > 0 ||
     ui.measure.kind !== 'idle' ||
     ui.dimension.kind !== 'idle' ||
-    ui.gridFrom !== null ||
-    ui.sectionFrom !== null ||
-    ui.calloutFrom !== null ||
-    ui.beamFrom !== null;
+    fromOf(ui.draft, 'grid') !== null ||
+    fromOf(ui.draft, 'section') !== null ||
+    fromOf(ui.draft, 'callout') !== null ||
+    fromOf(ui.draft, 'beam') !== null;
   /**
    * A right click with a drawing tool: its menu, Finish (what a right click did unseen: a chain ended, an
    * outline closed, a start dropped, each tool its own) and the way out of the tool; it did one of them

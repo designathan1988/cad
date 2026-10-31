@@ -12,6 +12,7 @@ import { addNoteHere } from './kind-tools';
 import { deriveGeometry } from '../project/derive';
 import { roomOf } from '../project/derived-queries';
 import { DRAFT_SECTION_ID } from '../elements/section/schema';
+import { drawFrom, fromOf } from '../elements/tool-draft';
 
 /** How deep a new section sees: the far side of the model from its line, and a metre past it; 10 m with nothing. */
 export function depthFrom(app: App, start: Point2, end: Point2): number {
@@ -25,36 +26,36 @@ export function depthFrom(app: App, start: Point2, end: Point2): number {
 
 /** The section tool: a click starts its line, the next ends it; it looks to the line's left. */
 export function sectionClick(app: App, p: Point2): void {
-  const from = app.ui.sectionFrom;
+  const from = fromOf(app.ui.draft, 'section');
   if (!from) {
-    app.ui.sectionFrom = p;
+    app.ui.draft = drawFrom('section', p);
     return app.render();
   }
   if (distance(from, p) < MIN_WALL_LENGTH) return;
   const doc = app.store.get();
   const mark: SectionMark = { id: newSectionId(), name: nextSectionName(doc.sections), kind: 'section', start: from, end: p, depth: depthFrom(app, from, p) };
   app.store.dispatch(addSections([mark]));
-  app.ui.sectionFrom = null;
+  app.ui.draft = drawFrom('section', null);
   app.ui.info = t('hint.sectionMade', { name: mark.name });
   app.render();
 }
 
 /** The callout tool: a click puts the arrow's point; the next puts the text there, selected to type. */
 export function calloutClick(app: App, p: Point2): void {
-  const from = app.ui.calloutFrom;
+  const from = fromOf(app.ui.draft, 'callout');
   if (!from) {
-    app.ui.calloutFrom = p;
+    app.ui.draft = drawFrom('callout', p);
     return app.render();
   }
   if (distance(from, p) < MIN_WALL_LENGTH) return;
-  app.ui.calloutFrom = null;
+  app.ui.draft = drawFrom('callout', null);
   addNoteHere(app, p, from);
 }
 
 /** Esc in the section tool: the line begun is dropped; none begun, the tool is left. */
 export function sectionEscape(app: App): void {
-  if (app.ui.sectionFrom) {
-    app.ui.sectionFrom = null;
+  if (fromOf(app.ui.draft, 'section')) {
+    app.ui.draft = drawFrom('section', null);
     return app.render();
   }
   app.setTool('select');
@@ -62,7 +63,7 @@ export function sectionEscape(app: App): void {
 
 /** The section being drawn with its tool; plan only. */
 export function sectionDraft(app: App): SectionMark | null {
-  const from = app.ui.view === 'plan' && app.ui.tool === 'section' ? app.ui.sectionFrom : null;
+  const from = app.ui.view === 'plan' && app.ui.tool === 'section' ? fromOf(app.ui.draft, 'section') : null;
   const to = app.ui.snap?.point ?? app.ui.cursor;
   return from && to && distance(from, to) > 0 ? { id: DRAFT_SECTION_ID, name: nextSectionName(app.store.get().sections), kind: 'section', start: from, end: to, depth: 1 } : null;
 }

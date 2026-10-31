@@ -17,13 +17,15 @@ import type { View3D } from '../project/view-prefs';
 import type { WallDefaults } from '../project/doc';
 import type { WallToolState } from '../elements/wall/tool';
 import type { ElementId } from '../core/id';
-import type { FloorId } from '../elements/room/schema';
 import type { LevelId } from '../project/doc';
+import type { Draft } from '../elements/tool-draft';
 
 
 export interface UiState {
   view: ViewId;
   tool: ToolId;
+  /** What the active tool holds while it draws (tool-draft.ts): one state, started over with every tool. */
+  draft: Draft;
   selection: Set<ElementId>;
   hover: ElementId | null;
   /** With the room tool: the space with no room under the pointer, where a click makes one. */
@@ -57,7 +59,6 @@ export interface UiState {
   overridesOn: boolean;
   /** The guide tool's mode, and its first point (a line's, a circle's centre). */
   guideMode: GuideMode;
-  guideFrom: Point2 | null;
   /** A move's smart guides (tools/smart-guides.ts): alignments and equal gaps, while it is dragged. */
   smart: { readonly lines: readonly { a: Point2; b: Point2 }[]; readonly gaps: readonly { a: Point2; b: Point2 }[] } | null;
   defaults: WallDefaults;
@@ -71,24 +72,14 @@ export interface UiState {
   info: string | null;
   /** A move, stretch or window selection in progress: a preview until release. */
   drag: Drag | null;
-  /** Corners of a floor outline being drawn. */
-  floorDraft: Point2[];
   /** The measure tool's tape (measure-tool.ts). */
   measure: MeasureState;
   /** Two points, or a chain of stretches with its sum, angles and area (C switches). */
   measureMode: MeasureMode;
   /** The dimension tool's ends, before the dimension is made (dimension-tool.ts). */
   dimension: DimensionToolState;
-  /** The grid tool's first point, before the axis is made. */
-  gridFrom: Point2 | null;
-  /** The section tool's first point (kind-tools.ts: sectionClick). */
-  sectionFrom: Point2 | null;
-  /** The callout tool's arrow point (kind-tools.ts: calloutClick). */
-  calloutFrom: Point2 | null;
   /** A reference being calibrated: which, and its first point once clicked (reference-ui.ts). */
   calibrate: { readonly id: string; readonly a: Point2 | null } | null;
-  /** The beam tool's first point, before the beam is made. */
-  beamFrom: Point2 | null;
   /** The object tool's definition (elements/object), and the turn the next object is placed at (radians). */
   objectDef: string;
   objectAngle: number;
@@ -98,19 +89,8 @@ export interface UiState {
   handleDrag: HandleDrag | null;
   /** Doors and windows shown open in 3D (a double click, the selection's Open): the view's, not saved. */
   opened: ReadonlySet<string>;
-  /** The floor the floor tool's outline goes through as a hole (startFloorHole), or null for a new floor. */
-  holeFor: FloorId | null;
-  /** The floor tool making ceilings (a ceiling by a room or by an outline drawn), not floors. */
-  ceilingTool: boolean;
-  /** Corners of a roof's outline being drawn. */
-  roofDraft: Point2[];
-  /** The stair tool's first point (the first step's front), before its direction is clicked. */
-  stairFrom: Point2 | null;
-  /** Points of a guardrail's path being drawn. */
-  railingDraft: Point2[];
   /** The measure tool (kind-tools.ts: markClick): what it measures, and its points so far. */
   markMode: MarkMode;
-  markDraft: Point2[];
   /** The drawing scale of the saved plan view gone to (views-ui.ts), shown instead of the project's until another level or scale is chosen. */
   viewDen: number | null;
   /** A guide being placed (guide-tool.ts): Alt over a wall or a guide in a drawing tool. */

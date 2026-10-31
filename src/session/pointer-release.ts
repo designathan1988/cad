@@ -18,6 +18,7 @@ import { PICK_PX } from './pointer-aim';
 import type { PointerDeps } from './pointer-handlers';
 import * as sceneCamera from '../render/scene-camera';
 import * as appView from './app-view';
+import { drawFrom, drawPoints, fromOf, pointsOf } from '../elements/tool-draft';
 
 export function pointerRelease(app: App, d: PointerDeps) {
   const { ui } = app;
@@ -46,10 +47,10 @@ export function pointerRelease(app: App, d: PointerDeps) {
       wallEvent(app, { kind: 'enter' });
       return true;
     }
-    if (ui.tool === 'floor' && ui.floorDraft.length > 0) {
-      if (ui.floorDraft.length >= 3) floorFinish(app);
+    if (ui.tool === 'floor' && pointsOf(ui.draft, 'floor').length > 0) {
+      if (pointsOf(ui.draft, 'floor').length >= 3) floorFinish(app);
       else {
-        ui.floorDraft = [];
+        ui.draft = drawPoints(ui.draft, 'floor', []);
         app.render();
       }
       return true;
@@ -58,34 +59,34 @@ export function pointerRelease(app: App, d: PointerDeps) {
       app.dimensionEvent({ kind: 'escape' });
       return true;
     }
-    if (ui.tool === 'grid' && ui.gridFrom) {
+    if (ui.tool === 'grid' && fromOf(ui.draft, 'grid')) {
       gridEscape(app);
       return true;
     }
-    if (ui.tool === 'section' && ui.sectionFrom) {
+    if (ui.tool === 'section' && fromOf(ui.draft, 'section')) {
       sectionEscape(app);
       return true;
     }
-    if (ui.tool === 'callout' && ui.calloutFrom) {
-      ui.calloutFrom = null;
+    if (ui.tool === 'callout' && fromOf(ui.draft, 'callout')) {
+      ui.draft = drawFrom('callout', null);
       app.render();
       return true;
     }
-    if ((ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && ui.beamFrom) {
-      ui.beamFrom = null;
+    if ((ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && fromOf(ui.draft, 'beam')) {
+      ui.draft = drawFrom('beam', null);
       app.render();
       return true;
     }
-    if (ui.tool === 'mark' && ui.markDraft.length > 0) {
-      ui.markDraft = ui.markDraft.slice(0, -1);
+    if (ui.tool === 'mark' && pointsOf(ui.draft, 'mark').length > 0) {
+      ui.draft = drawPoints(ui.draft, 'mark', pointsOf(ui.draft, 'mark').slice(0, -1));
       app.render();
       return true;
     }
-    if (ui.tool === 'roof' && ui.roofDraft.length > 0) {
+    if (ui.tool === 'roof' && pointsOf(ui.draft, 'roof').length > 0) {
       roofFinish(app);
       return true;
     }
-    if (ui.tool === 'railing' && ui.railingDraft.length > 0) {
+    if (ui.tool === 'railing' && pointsOf(ui.draft, 'railing').length > 0) {
       railingFinish(app);
       return true;
     }

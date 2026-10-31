@@ -12,6 +12,7 @@ import { shownGrids } from './annotation-tools';
 import * as sceneCamera from '../render/scene-camera';
 import * as appView from './app-view';
 import type { LevelId } from '../project/doc';
+import { fromOf, pointsOf } from '../elements/tool-draft';
 
 
 export function pointerAim(app: App, isShift: () => boolean) {
@@ -127,7 +128,7 @@ export function pointerAim(app: App, isShift: () => boolean) {
     const w = ui.wall;
     // A floor's outline snaps as a wall chain does: from its last corner, closing on its first once
     // it has three (its corners were free points, off the walls and the grid).
-    const draft = ui.tool === 'floor' ? ui.floorDraft : null;
+    const draft = ui.tool === 'floor' ? pointsOf(ui.draft, 'floor') : null;
     // The tape snaps from its start, and onto the walls' faces and corners too: one measures a room
     // from wall to wall, not from axis to axis.
     const tape =
@@ -138,17 +139,17 @@ export function pointerAim(app: App, isShift: () => boolean) {
         : ui.tool === 'dimension' && ui.dimension.kind === 'from'
           ? ui.dimension.a
           : ui.tool === 'grid'
-            ? ui.gridFrom
+            ? fromOf(ui.draft, 'grid')
             : ui.tool === 'guide'
-              ? ui.guideFrom
+              ? fromOf(ui.draft, 'guide')
             : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain'
-              ? ui.beamFrom
+              ? fromOf(ui.draft, 'beam')
               : ui.tool === 'roof'
-                ? (ui.roofDraft.at(-1) ?? null)
+                ? (pointsOf(ui.draft, 'roof').at(-1) ?? null)
                 : ui.tool === 'stair'
-                  ? ui.stairFrom
+                  ? fromOf(ui.draft, 'stair')
                   : ui.tool === 'railing'
-                    ? (ui.railingDraft.at(-1) ?? null)
+                    ? (pointsOf(ui.draft, 'railing').at(-1) ?? null)
                     : null;
     const measuring = ui.tool === 'measure' || ui.tool === 'dimension';
     const modifyFrom = ui.tool === 'modify' && ui.modify && ui.modify.state.step !== 'base' ? ui.modify.state.base : null;

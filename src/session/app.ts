@@ -22,7 +22,7 @@ import { ViewCube } from '../render/view-cube';
 import { getLang, htmlLang, markPrefix, setLang, t } from '../i18n/messages';
 import { buildShell, type Shell } from '../ui/shell';
 import type { UiState } from './state';
-import { type Doc, elementIds } from '../project/doc';
+import { type Doc, elementIds, type LevelId } from '../project/doc';
 import { toast } from '../ui/toast';
 import { eachSolid } from '../elements/registry';
 import { type DerivedGeometry, deriveGeometry } from '../project/derive';
@@ -43,15 +43,13 @@ import * as toolEvents from './tool-events';
 import * as modelView from './model-view';
 import { initialUi } from './ui-initial';
 import { keepingStore } from './app-store';
-import type { LevelId } from '../project/doc';
 import type { WallTypeId } from '../elements/wall/schema';
+import { fromOf } from '../elements/tool-draft';
+import type { Tail } from '../model/tuple';
 
 export type { UiState } from './state';
 
 export { PREVIEW_ID };
-
-/** A tuple without its first element: a facade method's arguments, the function's less the app. */
-type Tail<T extends readonly unknown[]> = T extends readonly [unknown, ...infer R] ? R : never;
 
 export class App {
   readonly store: Store<Doc>;
@@ -280,7 +278,7 @@ export class App {
 
   /** The callout being placed: its arrow's point and the pointer; plan only. */
   calloutDraft(): { from: Point2; to: Point2 } | null {
-    const from = this.ui.view === 'plan' && this.ui.tool === 'callout' ? this.ui.calloutFrom : null;
+    const from = this.ui.view === 'plan' && this.ui.tool === 'callout' ? fromOf(this.ui.draft, 'callout') : null;
     const to = this.ui.snap?.point ?? this.ui.cursor;
     return from && to ? { from, to } : null;
   }

@@ -10,6 +10,7 @@ import { addFloor, addFloorHole, addRoom } from '../elements/room/commands';
 import { insideRing, signedArea } from '../elements/room/derive';
 import type { App } from './app';
 import { type FloorId, newFloorId, newRoomId } from '../elements/room/schema';
+import { ceilingOf, drawPoints, holeOf, pointsOf, withFloor } from '../elements/tool-draft';
 
 /** The smallest space the level's walls close in around p, when no room is in it: where the room tool would make one. */
 export function roomSpaceAt(app: App, p: Point2): readonly Point2[] | null {
@@ -50,11 +51,11 @@ export function roomClick(app: App, p: Point2): void {
  * point is always a corner, as the footer says: typing inside a room draws an outline there.
  */
 export function floorClick(app: App, p: Point2, mpp: number, typed = false, corner = p): void {
-  const draft = app.ui.floorDraft;
-  if (draft.length === 0 && !typed && !app.ui.holeFor) {
+  const draft = pointsOf(app.ui.draft, 'floor');
+  if (draft.length === 0 && !typed && !holeOf(app.ui.draft)) {
     const room = [...app.visibleGeometry().rooms.values()].find((r) => r.enclosed && insideRing(r.outline, p));
     // Making ceilings: the room's ceiling, or the one it has selected.
-    if (room && app.ui.ceilingTool) {
+    if (room && ceilingOf(app.ui.draft)) {
       const has = app.store.get().floors.find((f) => f.kind === 'ceiling' && f.source.kind === 'room' && f.source.roomId === room.room.id);
       if (has) {
         app.ui.selection = new Set([has.id]);
@@ -65,7 +66,7 @@ export function floorClick(app: App, p: Point2, mpp: number, typed = false, corn
     }
     if (room) {
       const has = app.store.get().floors.find((f) => f.kind !== 'ceiling' && f.source.kind === 'room' && f.source.roomId === room.room.id);
-      if (has && !app.ui.holeFor) {
+      if (has && !holeOf(app.ui.draft)) {
         app.ui.selection = new Set([has.id]);
         app.ui.error = null;
         app.ui.info = t('hint.floorExists');
@@ -80,14 +81,14 @@ export function floorClick(app: App, p: Point2, mpp: number, typed = false, corn
   // A corner (where the pointer snapped): the outline is what the footer is about now, not a room's
   // floor said before.
   app.ui.info = null;
-  app.ui.floorDraft = [...draft, corner];
+  app.ui.draft = drawPoints(app.ui.draft, 'floor', [...draft, corner]);
   app.render();
 }
 
 /** Draws a hole in a floor: the floor tool, its outline then going through that floor. */
 export function startFloorHole(app: App, floorId: FloorId): void {
   app.setTool('floor');
-  app.ui.holeFor = floorId;
+  app.ui.draft = withFloor(app.ui.draft, { hole: floorId });
   app.ui.info = t('hint.holeStart');
   app.render();
 }
@@ -119,14 +120,14 @@ export function addFloorToRoom(app: App, roomId: string): void {
 }
 
 export function floorFinish(app: App): void {
-  const points = app.ui.floorDraft;
-  app.ui.floorDraft = [];
+  const points = pointsOf(app.ui.draft, 'floor');
+  app.ui.draft = drawPoints(app.ui.draft, 'floor', []);
   app.ui.snap = null;
   if (points.length < 3) return app.render();
   // Drawing a hole: the outline goes through the floor it was started from, which stays selected.
-  const hole = app.ui.holeFor;
+  const hole = holeOf(app.ui.draft);
   if (hole) {
-    app.ui.holeFor = null;
+    app.ui.draft = withFloor(app.ui.draft, { hole: null });
     app.store.dispatch(addFloorHole(hole, points));
     app.ui.selection = new Set([hole]);
     app.ui.info = t('hint.holeAdded');
@@ -136,7 +137,7 @@ export function floorFinish(app: App): void {
   }
   const id = newFloorId();
   // A ceiling by its outline: at its level's height, as a room's is with none of its own.
-  if (app.ui.ceilingTool) {
+  if (ceilingOf(app.ui.draft)) {
     app.store.dispatch(addFloor(made<Floor>(app, 'ceilings', { id, source: { kind: 'outline', points }, kind: 'ceiling' })));
     app.ui.selection = new Set([id]);
     app.ui.info = t('hint.ceilingOutlineAdded', { n: points.length });
@@ -151,6 +152,6 @@ export function floorFinish(app: App): void {
 /** The floor tool making ceilings: a click in a room or an outline drawn. */
 export function startCeiling(app: App): void {
   app.setTool('floor');
-  app.ui.ceilingTool = true;
+  app.ui.draft = withFloor(app.ui.draft, { ceiling: true });
   app.render();
 }

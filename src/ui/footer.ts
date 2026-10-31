@@ -15,6 +15,7 @@ import { measureHint } from './float-bar';
 import { guideOffset } from '../elements/guide/tool-ui';
 import * as appPlacing from '../session/app-placing';
 import * as appView from '../session/app-view';
+import { ceilingOf, fromOf, holeOf, pointsOf } from '../elements/tool-draft';
 
 export function renderFooter(app: App): void {
   const { ui, shell } = app;
@@ -83,47 +84,47 @@ export function renderFooter(app: App): void {
         ? t(ui.tapToConfirm ? 'hint.roomTapAgain' : 'hint.roomHere', { area: num(Math.abs(signedArea(ui.roomSpace))) })
         : t('hint.roomPlace')
       : ui.tool === 'floor'
-        ? ui.holeFor
+        ? holeOf(ui.draft)
           ? t('hint.holeStart')
-          : ui.ceilingTool
-            ? t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.ceilingPlace')
-            : t(ui.floorDraft.length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
+          : ceilingOf(ui.draft)
+            ? t(pointsOf(ui.draft, 'floor').length > 0 ? 'hint.floorNext' : 'hint.ceilingPlace')
+            : t(pointsOf(ui.draft, 'floor').length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
         : ui.tool === 'measure'
           ? measureHint(app)
           : ui.tool === 'dimension'
             ? t(ui.dimension.kind === 'idle' ? 'hint.dimensionStart' : ui.dimension.kind === 'from' ? 'hint.dimensionEnd' : 'hint.dimensionPlace')
             : ui.tool === 'grid'
-              ? t(ui.gridFrom ? 'hint.gridEnd' : 'hint.gridStart')
+              ? t(fromOf(ui.draft, 'grid') ? 'hint.gridEnd' : 'hint.gridStart')
               : ui.tool === 'section'
-              ? t(ui.sectionFrom ? 'hint.sectionEnd' : 'hint.sectionStart')
+              ? t(fromOf(ui.draft, 'section') ? 'hint.sectionEnd' : 'hint.sectionStart')
               : ui.tool === 'callout'
-              ? t(ui.calloutFrom ? 'hint.calloutText' : 'hint.calloutPoint')
+              ? t(fromOf(ui.draft, 'callout') ? 'hint.calloutText' : 'hint.calloutPoint')
               : ui.tool === 'calibrate'
               ? t(ui.calibrate?.a ? 'hint.calibrateSecond' : 'hint.calibrateFirst')
               : ui.tool === 'guide'
-                ? t(ui.guideMode === 'point' ? 'hint.guidePoint' : ui.guideMode === 'circle' ? (ui.guideFrom ? 'hint.guideRadius' : 'hint.guideCentre') : ui.guideFrom ? 'hint.guideSecond' : 'hint.guideFirst')
+                ? t(ui.guideMode === 'point' ? 'hint.guidePoint' : ui.guideMode === 'circle' ? (fromOf(ui.draft, 'guide') ? 'hint.guideRadius' : 'hint.guideCentre') : fromOf(ui.draft, 'guide') ? 'hint.guideSecond' : 'hint.guideFirst')
               : ui.tool === 'column'
                 ? t('hint.columnPlace')
                 : ui.tool === 'object'
                   ? t('hint.object', { name: objectName(app) })
                 : ui.tool === 'beam'
-                  ? t(ui.beamFrom ? 'hint.beamEnd' : 'hint.beamStart')
+                  ? t(fromOf(ui.draft, 'beam') ? 'hint.beamEnd' : 'hint.beamStart')
                 : ui.tool === 'separator'
-                  ? t(ui.beamFrom ? 'hint.separatorEnd' : 'hint.separatorStart')
+                  ? t(fromOf(ui.draft, 'beam') ? 'hint.separatorEnd' : 'hint.separatorStart')
                 : ui.tool === 'mark'
-                  ? t(ui.markMode === 'radius' ? 'hint.markRadius' : ui.markMode === 'coord' ? (ui.markDraft.length === 0 ? 'hint.markCoordPoint' : 'hint.markCoordLabel') : ui.markDraft.length === 0 ? 'hint.markAngleVertex' : ui.markDraft.length === 1 ? 'hint.markAngleArm1' : 'hint.markAngleArm2')
+                  ? t(ui.markMode === 'radius' ? 'hint.markRadius' : ui.markMode === 'coord' ? (pointsOf(ui.draft, 'mark').length === 0 ? 'hint.markCoordPoint' : 'hint.markCoordLabel') : pointsOf(ui.draft, 'mark').length === 0 ? 'hint.markAngleVertex' : pointsOf(ui.draft, 'mark').length === 1 ? 'hint.markAngleArm1' : 'hint.markAngleArm2')
                 : ui.tool === 'curtain'
-                  ? t(ui.beamFrom ? 'hint.curtainEnd' : 'hint.curtainStart')
+                  ? t(fromOf(ui.draft, 'beam') ? 'hint.curtainEnd' : 'hint.curtainStart')
                 : ui.tool === 'note'
                   ? t('hint.notePlace')
                 : ui.tool === 'levelMark'
                   ? t('hint.levelMarkPlace')
                   : ui.tool === 'roof'
-                    ? t(ui.roofDraft.length > 0 ? 'hint.roofNext' : 'hint.roofStart')
+                    ? t(pointsOf(ui.draft, 'roof').length > 0 ? 'hint.roofNext' : 'hint.roofStart')
                     : ui.tool === 'stair'
-                      ? t(ui.stairFrom ? 'hint.stairDirection' : 'hint.stairStart')
+                      ? t(fromOf(ui.draft, 'stair') ? 'hint.stairDirection' : 'hint.stairStart')
                       : ui.tool === 'railing'
-                        ? t(ui.railingDraft.length > 0 ? 'hint.railingNext' : 'hint.railingStart')
+                        ? t(pointsOf(ui.draft, 'railing').length > 0 ? 'hint.railingNext' : 'hint.railingStart')
                         : null;
   const guideHint = ui.guide
     ? t('hint.guide', {
@@ -163,29 +164,29 @@ export function renderFooter(app: App): void {
     : ui.tool === 'dimension'
     ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.dimension.kind === 'idle' ? 'key.exit' : 'key.back'))]
     : ui.tool === 'grid'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.gridFrom ? 'key.back' : 'key.exit'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(fromOf(ui.draft, 'grid') ? 'key.back' : 'key.exit'))]
     : ui.tool === 'section'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.sectionFrom ? 'key.back' : 'key.exit'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(fromOf(ui.draft, 'section') ? 'key.back' : 'key.exit'))]
     : ui.tool === 'callout'
-    ? [snapKey, keyHint('Esc', t(ui.calloutFrom ? 'key.back' : 'key.exit'))]
+    ? [snapKey, keyHint('Esc', t(fromOf(ui.draft, 'callout') ? 'key.back' : 'key.exit'))]
     : ui.tool === 'calibrate'
     ? [snapKey, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'column'
     ? [snapKey, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'guide'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.guideFrom ? 'key.back' : 'key.exit'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(fromOf(ui.draft, 'guide') ? 'key.back' : 'key.exit'))]
     : ui.tool === 'object'
     ? [keyHint(t('key.spaceKey'), t('key.turn90')), snapKey, keyHint('Esc', t('key.exit'))]
     : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.beamFrom ? 'key.finish' : 'key.exit'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(fromOf(ui.draft, 'beam') ? 'key.finish' : 'key.exit'))]
     : ui.tool === 'mark'
-    ? [snapKey, keyHint('Esc', t(ui.markDraft.length > 0 ? 'key.back' : 'key.exit'))]
+    ? [snapKey, keyHint('Esc', t(pointsOf(ui.draft, 'mark').length > 0 ? 'key.back' : 'key.exit'))]
     : ui.tool === 'stair'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.stairFrom ? 'key.back' : 'key.exit'))]
+    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(fromOf(ui.draft, 'stair') ? 'key.back' : 'key.exit'))]
     : ui.tool === 'railing'
-    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.railingDraft.length > 0 ? 'key.finish' : 'key.exit'))]
+    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(pointsOf(ui.draft, 'railing').length > 0 ? 'key.finish' : 'key.exit'))]
     : ui.tool === 'roof'
-    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.roofDraft.length > 0 ? 'key.back' : 'key.exit'))]
+    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(pointsOf(ui.draft, 'roof').length > 0 ? 'key.back' : 'key.exit'))]
     : ui.tool === 'measure'
     ? [
         keyHint('C', t(ui.measureMode === 'chain' ? 'key.measureDistance' : 'key.measureChain')),

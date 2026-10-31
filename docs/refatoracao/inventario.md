@@ -237,6 +237,8 @@ aqui fica a decisão por arquivo.
 | Arquivo | Ação | Destino | Nota |
 | --- | --- | --- | --- |
 | (novo no passo 5) src/session/state.ts | manter | session/state.ts | a forma do UiState (só tipos), com seus imports próprios |
+| (novo no passo 6) src/elements/tool-draft.ts | manter | elements/tool-draft.ts | o rascunho da ferramenta ativa como um estado só (antes 13 campos soltos do UiState) |
+| (novo no passo 6) src/model/tuple.ts | manter | model/tuple.ts | tipo utilitário Tail (antes em session/app.ts) |
 | (novo no passo 5) src/ui/toast.ts | manter | ui/toast.ts | a pilha de avisos (3 no máximo), extraída do App |
 | (movido no passo 4) src/session/app.ts | dividir | session/app.ts (fachada fina) + session/state.ts | UiState vira máquinas: tool (WallToolState etc. já existem), overlay, lifecycle |
 | (novo no passo 6) src/session/app-placing.ts | manter | session/app-placing.ts | colocar portas, janelas e objetos (antes em app.ts) |

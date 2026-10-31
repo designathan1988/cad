@@ -11,6 +11,7 @@ import type { App } from '../session/app';
 import type { ModifyKind } from '../session/modify-tool';
 import type { ToolId } from './shell';
 import { contextTab, placeTab } from './ribbon-context-tabs';
+import { ceilingOf } from '../elements/tool-draft';
 
 /** Every button with its short name (rib.s.<action>): the palette's full name stays its tooltip. */
 export function ribbonTabs(app: App): readonly RibbonTab[] {
@@ -86,7 +87,7 @@ function tabsOf(app: App): readonly RibbonTab[] {
             tool('door', 'tool.door', 'door', 'L'),
             tool('window', 'tool.window', 'window', 'L'),
             objects,
-            { ...tool('floor', 'tool.floor', 'slab', 'S'), pressed: () => ui.tool === 'floor' && !ui.ceilingTool },
+            { ...tool('floor', 'tool.floor', 'slab', 'S'), pressed: () => ui.tool === 'floor' && !ceilingOf(ui.draft) },
             tool('roof', 'tool.roof', 'roof', 'S'),
             tool('stair', 'tool.stair', 'stair', 'S'),
             tool('room', 'tool.room', 'room', 'S'),
@@ -114,9 +115,9 @@ function tabsOf(app: App): readonly RibbonTab[] {
             tool('window', 'tool.window', 'window', 'L'),
             objects,
             tool('column', 'tool.column', 'column', 'S'),
-            { ...tool('floor', 'tool.floor', 'slab', 'S'), pressed: () => ui.tool === 'floor' && !ui.ceilingTool },
+            { ...tool('floor', 'tool.floor', 'slab', 'S'), pressed: () => ui.tool === 'floor' && !ceilingOf(ui.draft) },
             tool('roof', 'tool.roof', 'roof', 'S'),
-            { id: 'tool.ceiling', icon: 'arrowUp', size: 'S', pressed: () => ui.tool === 'floor' && ui.ceilingTool },
+            { id: 'tool.ceiling', icon: 'arrowUp', size: 'S', pressed: () => ui.tool === 'floor' && ceilingOf(ui.draft) },
             tool('curtain', 'tool.curtain', 'window', 'S'),
             { id: 'tool.rectWall', icon: 'wall', size: 'S' },
             { id: 'tool.arcWall', icon: 'radius', size: 'S' },
