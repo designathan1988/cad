@@ -62,6 +62,7 @@ export function showProject(app: App, doc: Doc, put: () => void): void {
   app.ui.selection.clear();
   app.ui.drag = null;
   app.ui.levelId = startLevel(doc);
+  app.ui.viewDen = null;
   savePrefs({ levelId: app.ui.levelId });
   put();
   app.framed.plan = false;

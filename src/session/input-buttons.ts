@@ -2,8 +2,6 @@
 // theme buttons. Each sends what it says to the app.
 
 import { t } from '../i18n/messages';
-import { setDrawing } from '../ui/drawing-dialog';
-import { drawingOf } from '../project/doc';
 import type { App } from './app';
 import { EDIT_LEVELS } from './state';
 import { showLevels } from '../ui/levels-dialog';
@@ -90,7 +88,7 @@ export function wireButtons(app: App, palette: () => void): void {
     setView3D(app, { style });
   });
   shell.look.quality.select.addEventListener('change', () => setView3D(app, { quality: shell.look.quality.select.value as RenderQuality }));
-  shell.planScale.select.addEventListener('change', () => app.store.dispatch(setDrawing({ ...drawingOf(app.store.get()), scale: Number(shell.planScale.select.value) })));
+  shell.planScale.select.addEventListener('change', () => appView.chooseScale(app, Number(shell.planScale.select.value)));
   // Visibility opens its popover (ui/visibility-panel.ts): the categories, the plan's marks, the overrides
   // and the combinations; the overrides' editor is one of its rows.
   shell.visBtn.addEventListener('click', () => {

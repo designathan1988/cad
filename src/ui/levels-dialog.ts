@@ -3,6 +3,7 @@
 
 import { lengthText } from '../i18n/units';
 import type { App } from '../session/app';
+import { setLevel } from '../session/app-edit';
 import { cutHeightOf } from '../project/doc';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../elements/level/commands';
 import { el, numberField } from './controls';
@@ -61,8 +62,6 @@ export function showLevels(app: App): void {
       del.addEventListener('click', () => {
         if (blocker !== null) return;
         app.store.dispatch(deleteLevel(l.id));
-        if (app.ui.levelId === l.id) app.ui.levelId = app.store.get().levels[0]!.id;
-        app.refresh();
       });
       const named = (field: HTMLElement, what: string) => {
         field.querySelector('input')!.setAttribute('aria-label', `${what}: ${label}`);
@@ -88,8 +87,7 @@ export function showLevels(app: App): void {
     add.addEventListener('click', () => {
       const id = newLevelId();
       app.store.dispatch(addLevel(id, defaultName.level(app.store.get().levels.length)));
-      app.ui.levelId = id;
-      app.refresh();
+      setLevel(app, id);
     });
     const closeBtn = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
     closeBtn.dataset.focus = 'close';

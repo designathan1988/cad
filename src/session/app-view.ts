@@ -10,6 +10,7 @@ import { type Point2 } from '../model/vector';
 import { drawingOf, levelOf } from '../project/doc';
 import { kindOfId } from '../elements/registry';
 import type { DrawingSettings } from '../elements/drawing/schema';
+import { setDrawing } from '../elements/drawing/commands';
 import { type SectionBox } from '../model/section-box';
 import { exploding, liftOf } from './view/view-3d';
 import { doorFlips, type Handles, handlesFor } from './handles';
@@ -68,6 +69,12 @@ export function selectionKinds(app: App): number {
 export function drawingNow(app: App): DrawingSettings {
   const d = drawingOf(app.store.get());
   return app.ui.viewDen === null ? d : { ...d, scale: app.ui.viewDen };
+}
+
+/** A scale chosen: the project's, for every view without its own; a saved view's own gives way to it. */
+export function chooseScale(app: App, scale: number): void {
+  app.ui.viewDen = null;
+  app.store.dispatch(setDrawing({ ...drawingOf(app.store.get()), scale }));
 }
 
 /** A world point on the current level, on the screen (viewport pixels); null when behind the camera. */

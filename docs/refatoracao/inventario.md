@@ -389,6 +389,7 @@ aqui fica a decisão por arquivo.
 | (novo no passo 6) src/ui/plan-overlay.ts | manter | ui/plan-overlay.ts | a planta a cada quadro: prévias, medidas, encaixe, guias, marcas (drawPlanOverlay), antes em frame.ts |
 | (novo no passo 6) src/session/scene-frame.ts | manter | session/scene-frame.ts | a cena 3D posta em dia com a sessão a cada quadro (antes em ui/plan-overlay.ts; ui não importa render) |
 | (novo no passo 6) src/ui/temp-dims.ts | manter | ui/temp-dims.ts | as cotas temporárias da seleção e seus campos, antes em frame.ts |
+| (novo no passo 6) src/elements/drawing/commands.ts | manter | elements/drawing/commands.ts | o comando setDrawing (escala e penas do desenho), antes em ui/drawing-dialog.ts |
 | src/app/section-view (ver acima) |  |  |  |
 
 ## apagar — mortos (verificados)

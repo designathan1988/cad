@@ -2,18 +2,13 @@
 // each change.
 
 import type { App } from '../session/app';
-import { type Doc, drawingOf } from '../project/doc';
-import type { Command } from '../core/store';
-import { type DrawingSettings, isDrawingSettings, PEN_MAX, PEN_MIN, PEN_ROLES, type PenRole, ROOM_TAGS, SCALES } from '../elements/drawing/schema';
+import { drawingOf } from '../project/doc';
+import { type DrawingSettings, PEN_MAX, PEN_MIN, PEN_ROLES, type PenRole, ROOM_TAGS, SCALES } from '../elements/drawing/schema';
 import { el, numberField, select } from './controls';
 import { openProjectDialog } from './dialog';
 import { type MessageKey, t } from '../i18n/messages';
 import * as appView from '../session/app-view';
-
-export const setDrawing = (drawing: DrawingSettings): Command<Doc> => ({
-  label: 'cmd.setDrawing',
-  apply: (doc) => (!isDrawingSettings(drawing) || JSON.stringify(drawingOf(doc)) === JSON.stringify(drawing) ? doc : { ...doc, drawing }),
-});
+import { setDrawing } from '../elements/drawing/commands';
 
 const row = (label: string, control: HTMLElement, focus: string) => {
   const target = control.querySelector('input, select') ?? control;
@@ -31,10 +26,7 @@ export function showDrawingSettings(app: App): void {
     const scale = select(
       SCALES.map((x) => ({ value: String(x), label: `1:${x}` })),
       String(appView.drawingNow(app).scale),
-      (v) => {
-        app.ui.viewDen = null;
-        change({ ...d, scale: Number(v) });
-      },
+      (v) => appView.chooseScale(app, Number(v)),
     );
     const tag = select(
       ROOM_TAGS.map((x) => ({ value: x, label: t(`draw.roomTag.${x}` as MessageKey) })),

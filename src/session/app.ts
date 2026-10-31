@@ -22,14 +22,14 @@ import { ViewCube } from '../render/view-cube';
 import { getLang, htmlLang, markPrefix, setLang, t } from '../i18n/messages';
 import { buildShell, type Shell } from '../ui/shell';
 import type { UiState } from './state';
-import { type Doc, elementIds, type LevelId } from '../project/doc';
+import { type Doc, elementIds, type LevelId, levelIn } from '../project/doc';
 import { toast } from '../ui/toast';
 import { eachSolid } from '../elements/registry';
 import { type DerivedGeometry, deriveGeometry } from '../project/derive';
 import type { TemporaryView } from '../project/derived-filters';
 import { boundsOf } from '../project/derived-queries';
 import { markPoint, openingMarks } from '../elements/opening/marks';
-import { loadPrefs, scheduleSave, wireSaving } from '../project/persist';
+import { loadPrefs, savePrefs, scheduleSave, wireSaving } from '../project/persist';
 import type { Boot } from '../project/boot';
 import type { BoxFace } from '../model/section-box';
 import { insideRing } from '../elements/room/derive';
@@ -119,6 +119,12 @@ export class App {
       // Only what no longer exists leaves the selection: editing a room or a floor keeps it selected.
       const live = elementIds(d);
       for (const id of [...this.ui.selection]) if (!live.has(id)) this.ui.selection.delete(id);
+      // The level shown gone (deleted, or its adding undone): the first one, at the project's scale.
+      if (!levelIn(d.levels, this.ui.levelId)) {
+        this.ui.levelId = d.levels[0]!.id;
+        this.ui.viewDen = null;
+        savePrefs({ levelId: this.ui.levelId });
+      }
       this.refresh();
     });
     // The first framing waits until the viewport has a size: framing a 0 × 0 canvas sets a useless scale.

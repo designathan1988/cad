@@ -3,8 +3,9 @@
 import { lengthText } from '../i18n/units';
 import { getLang, type MessageKey, name, t } from '../i18n/messages';
 import { icon } from '../i18n/icons';
-import { drawingOf, elementIds } from '../project/doc';
+import { elementIds } from '../project/doc';
 import { savedAs } from '../project/persist';
+import { drawingNow } from '../session/app-view';
 import { SCALES } from '../elements/drawing/schema';
 import { renderBrowser } from './browser';
 import { renderVisibility } from './visibility-panel';
@@ -80,7 +81,7 @@ export function renderChrome(app: App): void {
     shell.shownReset.querySelector('.label')!.textContent = t('vcb.showAll');
     shell.shownReset.title = t('temp.reset');
   }
-  shell.planScale.select.value = String(drawingOf(doc).scale);
+  shell.planScale.select.value = String(drawingNow(app).scale);
   // The Visibility popover, drawn again only when what it shows changes (not on every pointer move).
   shell.visBtn.setAttribute('aria-expanded', String(!shell.visPanel.hidden));
   if (!shell.visPanel.hidden) {
@@ -134,7 +135,6 @@ export function renderChrome(app: App): void {
     shell.level.replaceChildren(...sorted.map((l) => new Option(name(l.name), l.id)), new Option(t('levels.edit'), EDIT_LEVELS));
     shell.level.dataset.key = levelKey;
   }
-  if (!doc.levels.some((l) => l.id === ui.levelId)) ui.levelId = doc.levels[0]!.id;
   shell.level.value = ui.levelId;
   // Gone once the wall tool is on: "press W" no longer applies, and the footer says what to click.
   // Only on an empty project: a column, a roof or a note drawn first is under it otherwise.
