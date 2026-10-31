@@ -117,3 +117,11 @@ worse, headless gestures + screenshots (scratchpad pw/drive.cjs, port 5180; the 
 One owner per state done where a split needed it: PointerState (input.ts lets + get/set bridge), EditorState (object editor lets).
 NOT done (stop condition reached first): UiState flags as state machines (tool -> submode -> drag, view, lifecycle) and typed IDs per kind.
 Known, not caused here: object-snapshot.ts sets PCFSoftShadowMap (three warns); three-bvh-csg maxLeafSize warnings.
+
+2026-10-30 (cont., owner: "Sim, continuar" = do items 3 and 4 now). Typed ids, one kind per commit, each: tsc 0, gates 0, round-trip
+byte-equal, headless check: WallId 5cf85fa, OpeningId 472cd5b, RoomId+FloorId 1f60e39. Found and fixed type lies: selection/hover held
+every kind (ElementId), Scene3D.walls held openings. Tools (.scratchpad): fix-test-ids.mjs BRAND ctor schema; tests/ids.ts wid/oid/rid/fid.
+Next: OpeningGroupId, ObjectId+DefinitionId, LevelId, WallTypeId, MaterialId (declared twice: wall/schema and material/schema), then the
+16 kinds with no id type (column, beam, stair, roof, railing, curtain, separator, grid, guide, note, dimension, measure, section,
+reference, zone, object); then item 3: UiState flags -> machines (tool -> submode -> drag, view, lifecycle).
+Pre-existing, not caused here: headless drag of an unselected wall does not move it (same on 84cbe8f).
