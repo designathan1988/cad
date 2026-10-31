@@ -1,11 +1,11 @@
 // Contrast in both themes (ref/chat.txt:228), measured from the design tokens as styles.css defines
 // them, with the WCAG 2.2 formula: 4.5 for text, 3 for controls, outlines and large marks.
 
-import { readFileSync } from 'node:fs';
+import { stylesText } from './styles-source';
 import { describe, expect, it } from 'vitest';
 import { BUILT_IN_MATERIALS, cutFill } from '../../src/elements/material/schema';
 
-const css = readFileSync(new URL('../../src/ui/styles.css', import.meta.url), 'utf8');
+const css = stylesText();
 
 /** The custom properties of the first block whose selector is exactly `selector`. */
 function tokens(selector: string): Map<string, string> {

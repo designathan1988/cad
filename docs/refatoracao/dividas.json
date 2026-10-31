@@ -19,8 +19,7 @@
   "src/session/app.ts",
   "src/session/drag.ts",
   "src/session/snap.ts",
-  "src/ui/definition-editor.ts",
-  "src/ui/styles.css"
+  "src/ui/definition-editor.ts"
  ],
  "duplications": 3,
  "detail": {
@@ -37,7 +36,6 @@
    "src/elements/opening/fields.ts",
    "src/elements/section/drawing.ts",
    "src/elements/wall/geometry/footprint.ts",
-   "src/i18n/messages.ts",
    "src/project/derive.ts",
    "src/project/file.ts",
    "src/render/plan-view.ts",

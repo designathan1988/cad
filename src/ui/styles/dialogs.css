@@ -1,0 +1,443 @@
+/* The dialogs one by one: levels, wall types, materials, variables, keys, sections (one part of styles.css, read in its order). */
+
+/* Levels dialog */
+.dialog-wide {
+  width: min(var(--dialog-w-lg), calc(100vw - 2 * var(--sp-4)));
+}
+/* Quantity schedules: tabs, a table that scrolls inside (sideways on a phone), the totals kept in view. */
+.dialog-xl {
+  width: min(var(--dialog-w-xl), calc(100vw - 2 * var(--sp-4)));
+}
+/* Wall types: the list of types, and the chosen one's fields and layers beside it. */
+/* Wall types, materials, objects: only the body scrolls, the title and the buttons stay in sight (at
+   880 px the 16 objects pushed Place and Edit below the fold). */
+.types-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: min(var(--dialog-w-xl), calc(100vw - 2 * var(--sp-4)));
+}
+.types-body {
+  display: grid;
+  grid-template-columns: var(--types-list-w) minmax(0, 1fr);
+  gap: var(--sp-4);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-3) var(--sp-4);
+}
+.types-dialog .actions {
+  /* On a phone the seven buttons go on two lines: squeezed on one, "Colocar" read "Colo". */
+  flex-wrap: wrap;
+  row-gap: var(--sp-1);
+  padding-top: var(--sp-3);
+  border-top: var(--line) solid var(--border);
+}
+.types-dialog .actions > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.types-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.types-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: var(--sp-2);
+  align-items: center;
+  min-height: var(--control-h);
+  padding: var(--sp-1) var(--sp-2);
+  border: var(--line) solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.types-item .swatch {
+  grid-row: 1 / 3;
+}
+.types-item:hover {
+  background: var(--hover);
+}
+.types-item[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.types-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.types-count {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.types-detail {
+  min-width: 0;
+  /* In view while the list scrolls under it: a long list, its chosen one far down, had scrolled the
+     detail and the search out of sight when the dialog opened on it. */
+  position: sticky;
+  top: 0;
+  align-self: start;
+}
+.types-list > .keys-search {
+  position: sticky;
+  top: calc(-1 * var(--sp-3));
+  z-index: 1;
+  box-shadow: 0 0 0 var(--sp-2) var(--bg);
+}
+/* Materials (materials-dialog.ts): laid out as the wall types, each with its colour beside its name. */
+.mat-chip {
+  grid-row: 1 / 3;
+  width: var(--sp-5);
+  height: var(--sp-5);
+  border: var(--line) solid var(--border-strong);
+  border-radius: var(--radius);
+}
+.mat-detail h3 {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.mat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--control-h);
+  margin-bottom: var(--sp-1);
+}
+.mat-cap {
+  color: var(--text-2);
+}
+.mat-color {
+  width: 100%;
+  height: var(--control-h);
+  padding: 0;
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--field);
+  cursor: pointer;
+}
+.units-body {
+  padding: var(--sp-3) var(--sp-4);
+}
+/* The project's variables (variables-dialog.ts): a name, a length and its remove button a row. */
+.vars-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-1);
+}
+.vars-head {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+/* Its icon beside its word, not over it. */
+.vars-add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+/* Customising the shortcuts (keys-dialog.ts): the search and what was done, then the list, which alone
+   scrolls; each action with its key, Off and Default. */
+.keys-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.keys-top {
+  padding: var(--sp-3) var(--sp-4) 0;
+}
+.keys-search {
+  width: 100%;
+  height: var(--control-h);
+  padding: 0 var(--sp-2);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  color: var(--text);
+}
+.keys-list {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-2) var(--sp-4);
+}
+.keys-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--control-h);
+  border-bottom: var(--line) solid var(--border);
+}
+.keys-name {
+  display: flex;
+  flex-direction: column;
+}
+.keys-group {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+.keys-key {
+  min-width: var(--control-h);
+  cursor: pointer;
+}
+.keys-changed .keys-key {
+  border-color: var(--accent);
+}
+.keys-dialog .actions {
+  padding-top: var(--sp-3);
+  border-top: var(--line) solid var(--border);
+}
+.print-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-2);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+}
+.mat-note {
+  margin: var(--sp-3) 0 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+/* Sheets and sections (sheets-dialog.ts, sections-dialog.ts): the set listed on the left, the open one
+   beside it with its page; one above the other on a narrow window. The page's overlay lies exactly over
+   it, for the views to be picked and dragged. */
+.sheets-dialog {
+  /* As any dialog's: under its top (--dialog-top), not the window's; with 2 sp-4 it ran --dialog-top
+     past the bottom and its PDF and Close buttons were out of reach on a short window. */
+  max-height: calc(100vh - var(--dialog-top) - var(--sp-4));
+  display: flex;
+  flex-direction: column;
+}
+.sheet-body {
+  display: grid;
+  grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  overflow: auto;
+  min-height: 0;
+}
+.sheet-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.sheet-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-half);
+  padding: var(--sp-2);
+  border: var(--line) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.sheet-item span {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.sheet-item[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.section-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.section-preview {
+  max-width: 100%;
+  height: auto;
+  background: var(--paper);
+  box-shadow: 0 0 0 var(--line) var(--border);
+}
+@media (max-width: 720px) {
+  .sheet-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.layer-editor h3 {
+  margin: var(--sp-3) 0 var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.layer-preview svg {
+  display: block;
+  width: 100%;
+  border: var(--line) solid var(--wall-line);
+}
+.layer-ends {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.layer-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+.layer-row {
+  display: grid;
+  grid-template-columns: var(--sp-5) minmax(0, 1fr) var(--levels-col) var(--levels-col) var(--control-h) calc(3 * var(--control-h) + 2 * var(--sp-1));
+  grid-template-areas: 'n fn th mat core act';
+  gap: var(--sp-2);
+  align-items: center;
+}
+.layer-heads {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.layer-cell {
+  min-width: 0;
+}
+.layer-n {
+  grid-area: n;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.layer-fn {
+  grid-area: fn;
+}
+.layer-th {
+  grid-area: th;
+}
+.layer-mat {
+  grid-area: mat;
+}
+.layer-core {
+  grid-area: core;
+  color: var(--text);
+  text-align: center;
+}
+.layer-act {
+  grid-area: act;
+}
+.layer-cap {
+  display: none;
+}
+.layer-actions {
+  display: flex;
+  gap: var(--sp-1);
+}
+.layer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--sp-3);
+}
+.layer-total {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 720px) {
+  .types-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* One column: the detail follows the list, not over it. */
+  .types-detail {
+    position: static;
+  }
+  /* A layer in two lines: number, function and its buttons; then thickness, material and core, each
+     with its caption, since the column heads are gone. */
+  .layer-heads {
+    display: none;
+  }
+  .layer-row {
+    /* The material takes twice the thickness's share: a name is longer than "0,015". */
+    grid-template-columns: var(--sp-5) minmax(0, 1fr) minmax(0, 2fr) auto;
+    grid-template-areas:
+      'n fn fn act'
+      'th th mat core';
+    padding-bottom: var(--sp-2);
+    border-bottom: var(--line) solid var(--border);
+  }
+  .layer-cap {
+    display: block;
+    color: var(--text-2);
+    font-size: var(--fs-xs);
+  }
+  .layer-fn .layer-cap {
+    display: none;
+  }
+}
+.levels {
+  display: grid;
+  grid-template-columns: 1fr var(--levels-col) var(--levels-col) var(--levels-col) var(--control-h);
+  gap: var(--sp-2) var(--sp-2);
+  align-items: center;
+  padding: var(--sp-3) var(--sp-4);
+}
+/* Narrow: the name and the three measures share the width; the heads wrap. */
+@media (max-width: 720px) {
+  .levels {
+    grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)) var(--control-h);
+  }
+}
+.levels-head {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+/* The norms dialog (rules-dialog.ts): on, what, minimum, maximum, source; then what is outside them. */
+.rules {
+  display: grid;
+  /* On, what (and its uses), minimum, maximum, source, article, weight, delete. */
+  grid-template-columns: max-content minmax(0, 1.3fr) var(--levels-col) var(--levels-col) minmax(0, 1fr) minmax(0, 0.7fr) max-content max-content;
+  gap: var(--sp-2) var(--sp-2);
+  align-items: center;
+  padding: var(--sp-3) var(--sp-4);
+}
+@media (max-width: 720px) {
+  .rules {
+    grid-template-columns: max-content minmax(0, 1.2fr) repeat(2, minmax(0, 1fr)) minmax(0, 1fr) minmax(0, 0.7fr) max-content max-content;
+  }
+}
+.rules input[type='checkbox'] {
+  justify-self: center;
+  width: var(--sp-4);
+  height: var(--sp-4);
+  accent-color: var(--accent);
+}
+.text-field {
+  height: var(--field-h);
+  padding: 0 var(--sp-2);
+  border: var(--line) solid transparent;
+  border-radius: var(--radius);
+  background: var(--field);
+  min-width: 0;
+}
+textarea.text-field {
+  height: auto;
+  padding: var(--sp-1) var(--sp-2);
+  resize: vertical;
+}
+.text-field:focus {
+  border-color: var(--accent);
+  background: var(--bg);
+  outline: none;
+}
+.dialog .actions .spacer {
+  flex: 1;
+}

@@ -1,0 +1,287 @@
+/* The properties panel and the footer (one part of styles.css, read in its order). */
+
+/* Panel */
+.panel {
+  width: var(--panel-w);
+  border-left: var(--line) solid var(--border);
+  background: var(--bg);
+  overflow-y: auto;
+  min-height: 0;
+}
+.panel[hidden] {
+  display: none;
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: var(--head-h);
+  padding: 0 var(--sp-2) 0 var(--sp-3);
+  border-bottom: var(--line) solid var(--border);
+  font-weight: 600;
+}
+.panel-head .title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.panel-hint {
+  padding: var(--sp-3) var(--sp-3) 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.section {
+  border-bottom: var(--line) solid var(--border);
+}
+.section > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: var(--summary-h);
+  padding: 0 var(--sp-3);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  list-style: none;
+}
+.section > summary::-webkit-details-marker {
+  display: none;
+}
+.section > summary .icon {
+  transition: transform var(--ease);
+  color: var(--text-2);
+}
+.section[open] > summary .icon {
+  transform: rotate(90deg);
+}
+.rows {
+  display: grid;
+  grid-template-columns: var(--label-w) minmax(0, 1fr);
+  gap: var(--sp-2) var(--sp-2);
+  align-items: center;
+  padding: var(--sp-half) var(--sp-3) var(--sp-3);
+}
+/* Every control fits its column: shrinks (and its text gives way) rather than overflowing the panel. */
+.rows > * {
+  min-width: 0;
+}
+.rows > .select,
+.rows > .segmented,
+.rows > .overridden {
+  width: 100%;
+}
+.rows > .segmented button {
+  flex: 1;
+  min-width: 0;
+}
+.rows label {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+/* A control too wide for its column (a segmented one with words): its label over it, both across the row. */
+.rows > label.wide,
+.rows > .wide-control {
+  grid-column: 1 / -1;
+}
+.rows > label.wide {
+  margin-bottom: calc(-1 * var(--sp-1));
+}
+.rows label.sub {
+  padding-left: var(--sp-3);
+}
+/* A field's icon before its words: the eye finds the field by it. */
+.rows label .field-icon {
+  flex: none;
+  margin-right: var(--sp-1);
+  color: var(--text-3);
+}
+.rows label .field-label {
+  /* A long name takes a second line, then gives way: cut to one line, "Espessura do …" said nothing. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+  line-height: 1.2;
+}
+.rows label.scrub {
+  cursor: ew-resize;
+  user-select: none;
+}
+.num-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+/* Under the field, over what follows, while the value is refused. */
+.field-error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1;
+  padding: var(--sp-half) var(--sp-1);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--error);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.num-field input {
+  width: 100%;
+  height: var(--field-h);
+  padding: 0 var(--sp-7) 0 var(--sp-2);
+  border: var(--line) solid transparent;
+  border-radius: var(--radius);
+  background: var(--field);
+}
+.num-field input:hover {
+  border-color: var(--border);
+}
+.num-field input:focus {
+  border-color: var(--accent);
+  background: var(--bg);
+  outline: none;
+}
+.num-field input.invalid {
+  border-color: var(--error);
+}
+.num-field .unit {
+  position: absolute;
+  right: var(--sp-2);
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  pointer-events: none;
+}
+/* A value read, not typed: a field's height for one line, taller when it wraps (a tag's text, its words). */
+.readout {
+  min-height: var(--field-h);
+  display: flex;
+  align-items: center;
+  padding: var(--sp-half) var(--sp-2);
+  color: var(--text-2);
+}
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-7) var(--sp-5);
+  text-align: center;
+  color: var(--text-2);
+}
+.empty-state strong {
+  color: var(--text);
+}
+.warn-list {
+  margin: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius);
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: var(--fs-sm);
+  display: flex;
+  gap: var(--sp-2);
+}
+
+/* Footer */
+.foot {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-2) 0 var(--sp-3);
+  border-top: var(--line) solid var(--border);
+  background: var(--bg);
+  font-size: var(--fs-sm);
+  min-width: 0;
+}
+.foot .instr {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.foot .instr.error {
+  color: var(--error);
+}
+.foot .keys {
+  display: flex;
+  gap: var(--sp-3);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.kbd {
+  display: inline-block;
+  padding: 0 var(--sp-1);
+  margin-right: var(--sp-1);
+  border: var(--line) solid var(--kbd-border);
+  border-bottom-width: var(--line-2);
+  border-radius: var(--radius-sm);
+  background: var(--kbd-bg);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  line-height: var(--sp-4);
+}
+.measure {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  white-space: nowrap;
+  font-weight: 500;
+}
+.measure input {
+  width: var(--measure-w);
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-2);
+  border: var(--line) solid transparent;
+  border-radius: var(--radius);
+  background: var(--field);
+}
+.measure input:focus {
+  border-color: var(--accent);
+  outline: none;
+  background: var(--bg);
+}
+/* The snaps' toggle and the parts they divide into, together. */
+.snap-box {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+/* The snaps' division, a list like the others (.select): the field's fill, its own chevron drawn in. */
+.snap-parts {
+  -webkit-appearance: none;
+  appearance: none;
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-5) 0 var(--sp-2);
+  font: inherit;
+  color: var(--text);
+  border: var(--line) solid transparent;
+  border-radius: var(--radius);
+  background: var(--field) no-repeat right var(--sp-1) center / var(--sp-4)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  cursor: pointer;
+}
+.snap-parts:hover {
+  border-color: var(--border);
+}
+.snap-parts:disabled {
+  color: var(--text-3);
+}
+.coords {
+  color: var(--text-3);
+  white-space: nowrap;
+  min-width: var(--coords-w);
+  text-align: right;
+}

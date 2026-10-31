@@ -21,7 +21,8 @@ function walk(dir, out = []) {
 const files = walk(SRC).filter((f) => f.endsWith('.ts'));
 const rel = (f) => path.relative(ROOT, f).replaceAll('\\', '/');
 const texts = new Map(files.map((f) => [rel(f), fs.readFileSync(f, 'utf8')]));
-const cssText = fs.readFileSync(path.join(SRC, 'ui/styles.css'), 'utf8');
+// Every style sheet: styles.css and the parts it imports (ui/styles/*.css).
+const cssTexts = new Map(walk(SRC).filter((f) => f.endsWith('.css')).map((f) => [rel(f), fs.readFileSync(f, 'utf8')]));
 
 // ---- 1. import direction (layers): elements must not know the app; core knows nothing above it.
 // Allowed directions (adjacency): app->{core,elements,io,render,tools,ui}, tools->{core,elements,app},
@@ -86,8 +87,10 @@ for (const [f, t] of texts) {
   const cap = DATA.test(f) ? CAP_DATA : CAP_LOGIC;
   if (lines > cap && !allowlist.includes(f)) oversize.push(`${f} ${lines}>${cap}`);
 }
-const cssLines = cssText.split('\n').length;
-if (cssLines > 600 && !allowlist.includes('src/ui/styles.css')) oversize.push(`src/ui/styles.css ${cssLines}>600`);
+for (const [f, t] of cssTexts) {
+  const lines = t.split('\n').length;
+  if (lines > CAP_DATA && !allowlist.includes(f)) oversize.push(`${f} ${lines}>${CAP_DATA}`);
+}
 
 // ---- 4. internal duplication: k-gram fingerprints repeated across different files (winnowing-ish).
 function tokenize(text) {
@@ -148,7 +151,7 @@ if (update) {
   const merged = [...new Set([...oversize.map((x) => x.split(' ')[0]), ...allowlist])].filter((f) => {
     const lines2 = (texts.get(f) ?? '').split(String.fromCharCode(10)).length;
     const cap = DATA.test(f) ? CAP_DATA : CAP_LOGIC;
-    if (f.endsWith('styles.css')) return cssLines > 600;
+    if (cssTexts.has(f)) return cssTexts.get(f).split(String.fromCharCode(10)).length > CAP_DATA;
     return lines2 > cap;
   });
   fs.writeFileSync(SNAPSHOT, JSON.stringify({ ...now, oversize: merged, detail }, null, 1) + String.fromCharCode(10));

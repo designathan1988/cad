@@ -1,0 +1,362 @@
+/* Selection box, typed measure, command palette, menus, searchable select, project browser, tooltip (one part of styles.css, read in its order). */
+
+/* Selection box: solid for a window (wholly inside), dashed for a crossing (touching). */
+.marquee {
+  position: absolute;
+  border: var(--line) solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  pointer-events: none;
+  z-index: 3;
+}
+.marquee.crossing {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+.marquee[hidden] {
+  display: none;
+}
+/* The measure being typed, beside the pointer (input.ts, tracker). */
+.tracker {
+  position: absolute;
+  z-index: 4;
+  padding: var(--sp-half) var(--sp-2);
+  border: var(--line) solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: 600 var(--fs-sm) / 1.4 var(--font);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.tracker.invalid {
+  border-color: var(--warn);
+}
+.tracker[hidden] {
+  display: none;
+}
+
+/* Command palette (Ctrl+K) */
+.palette-back {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  justify-items: center;
+  align-items: start;
+  padding-top: 12vh;
+  background: var(--scrim);
+}
+.palette {
+  width: min(var(--dialog-w-lg), calc(100vw - 2 * var(--sp-4)));
+  border: var(--line) solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.palette-input {
+  width: 100%;
+  height: var(--head-h);
+  padding: 0 var(--sp-4);
+  border: 0;
+  border-bottom: var(--line) solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-lg);
+  outline: none;
+}
+.palette-list {
+  margin: 0;
+  padding: var(--sp-1);
+  list-style: none;
+  max-height: min(var(--palette-max-h), 50vh);
+  overflow-y: auto;
+}
+.palette-option {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--sp-2);
+  align-items: center;
+  min-height: var(--control-h);
+  padding: 0 var(--sp-2);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.palette-option[aria-selected='true'] {
+  background: var(--accent-soft);
+}
+.palette-option[aria-disabled='true'] {
+  color: var(--text-3);
+  cursor: default;
+}
+.palette-group {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.palette-status {
+  padding: var(--sp-1) var(--sp-3) var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+/* Right-click menu */
+.menu {
+  position: fixed;
+  z-index: 30;
+  min-width: var(--menu-min-w);
+  padding: var(--sp-1);
+  border: var(--line) solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+.menu-item {
+  display: flex;
+  width: 100%;
+  gap: var(--sp-4);
+  align-items: center;
+  min-height: var(--control-h);
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.menu-item.separated {
+  margin-top: var(--sp-1);
+  box-shadow: 0 calc(-1 * var(--line)) 0 var(--border);
+}
+.menu-item:focus,
+.menu-item:focus-visible {
+  outline: none;
+  background: var(--accent-soft);
+}
+.menu-item[aria-disabled='true'] {
+  color: var(--text-3);
+  cursor: default;
+}
+.menu-label {
+  flex: 1;
+}
+/* With icons (the folded tools): the icon near its name, the key still apart. */
+.menu-item:has(> .icon) {
+  gap: var(--sp-2);
+}
+.menu-item:has(> .icon) .menu-keys {
+  margin-left: var(--sp-4);
+}
+.menu-item > .icon {
+  color: var(--text-2);
+}
+.menu-keys {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.text-btn.primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* Searchable select with thumbnails (wall types) */
+.search-select {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-width: 0;
+  height: var(--field-h);
+  padding: 0 var(--sp-2);
+  border: var(--line) solid transparent;
+  border-radius: var(--radius);
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.search-select:hover {
+  border-color: var(--border);
+}
+.search-select .icon {
+  /* In the flow, after the name (not over it, as .select .icon places a native select's). */
+  position: static;
+  flex: none;
+  color: var(--text-2);
+}
+.search-select .swatch {
+  width: var(--swatch-w);
+}
+.search-select-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.swatch {
+  flex: none;
+  border-radius: var(--radius-sm);
+  outline: var(--line) solid var(--border);
+}
+.search-pop {
+  position: fixed;
+  z-index: 30;
+  border: var(--line) solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.search-pop-input {
+  width: 100%;
+  height: var(--control-h);
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-bottom: var(--line) solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+.search-pop-list {
+  margin: 0;
+  padding: var(--sp-1);
+  list-style: none;
+  max-height: var(--list-max-h);
+  overflow-y: auto;
+}
+.search-pop-option {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  min-height: var(--control-h);
+  padding: 0 var(--sp-2);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.search-pop-option[aria-selected='true'] {
+  background: var(--accent-soft);
+}
+.search-pop-option.current {
+  font-weight: 600;
+}
+
+/* Project browser: a drawer at the left edge of the viewport */
+.browser {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 7;
+  width: min(var(--browser-w), 80vw);
+  overflow-y: auto;
+  border-right: var(--line) solid var(--border);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+.browser[hidden] {
+  display: none;
+}
+/* A saved view: its name goes to it, the button beside deletes it. */
+.browser-row {
+  display: flex;
+  align-items: center;
+  grid-column: 1 / -1;
+}
+.browser-row .browser-item {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.browser-item {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: var(--control-h);
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.browser-item:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+.browser-item:disabled {
+  color: var(--text-3);
+  cursor: default;
+}
+.browser-item[aria-current='true'] {
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+.browser-item[aria-pressed='true'] {
+  font-weight: 600;
+}
+.browser-item[aria-pressed='false'] .browser-label {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+.browser-label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.browser-trail {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+/* Read by screen readers, not shown (and out of any grid flow). */
+.sr-only {
+  position: absolute;
+  width: var(--line);
+  height: var(--line);
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* A value set on the element, overriding its type: the field and the way back. */
+.overridden {
+  display: flex;
+  gap: var(--sp-1);
+  align-items: center;
+  min-width: 0;
+}
+.overridden > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.overridden .num-field input,
+.overridden .select select {
+  box-shadow: inset var(--own-bar) 0 0 var(--accent);
+}
+
+/* Tooltip (tooltip.ts) */
+.tooltip {
+  position: fixed;
+  z-index: 40;
+  /* As wide as its text up to the limit, wherever it is: never squeezed by a window edge. */
+  width: max-content;
+  max-width: min(var(--tooltip-w), calc(100vw - var(--sp-2)));
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--radius-sm);
+  background: var(--text);
+  color: var(--bg);
+  font-size: var(--fs-sm);
+  line-height: 1.3;
+  pointer-events: none;
+  box-shadow: var(--shadow);
+}
+.tooltip[hidden] {
+  display: none;
+}

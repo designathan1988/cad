@@ -285,6 +285,16 @@ aqui fica a decisão por arquivo.
 | (novo no passo 6) src/i18n/messages/elements.ts | manter | i18n/messages/elements.ts | textos en/pt: os elementos de construção |
 | (novo no passo 6) src/i18n/messages/views.ts | manter | i18n/messages/views.ts | textos en/pt: vistas, referências, pavimentos, desenho, projetos, unidades |
 | src/ui/styles.css | dividir | ui/styles/*.css por componente (tokens.css, shell.css…) | 3583 l; importa por ordem no styles.css raiz |
+| (novo no passo 6) src/ui/styles/tokens.css | manter | ui/styles/tokens.css | parte de styles.css, na ordem da cascata |
+| (novo no passo 6) src/ui/styles/layout.css | manter | ui/styles/layout.css | parte de styles.css, na ordem da cascata |
+| (novo no passo 6) src/ui/styles/viewport.css | manter | ui/styles/viewport.css | parte de styles.css, na ordem da cascata |
+| (novo no passo 6) src/ui/styles/panel.css | manter | ui/styles/panel.css | parte de styles.css, na ordem da cascata |
+| (novo no passo 6) src/ui/styles/dialog.css | manter | ui/styles/dialog.css | parte de styles.css, na ordem da cascata |
+| (novo no passo 6) src/ui/styles/popups.css | manter | ui/styles/popups.css | parte de styles.css, na ordem da cascata |
+| (novo no passo 6) src/ui/styles/dialogs.css | manter | ui/styles/dialogs.css | parte de styles.css, na ordem da cascata |
+| (novo no passo 6) src/ui/styles/ribbon.css | manter | ui/styles/ribbon.css | parte de styles.css, na ordem da cascata |
+| (novo no passo 6) src/ui/styles/editor.css | manter | ui/styles/editor.css | parte de styles.css, na ordem da cascata |
+| (novo no passo 6) src/ui/styles/store.css | manter | ui/styles/store.css | parte de styles.css, na ordem da cascata |
 | src/ui/shell.ts | mover | ui/shell.ts |  |
 | src/ui/controls.ts | mover | ui/controls.ts | searchSelect ≡ palette combobox → um |
 | src/ui/fields.ts | dividir | elements/fields.ts (tipos) + ui/fields.ts (render) | fieldStates JSON.stringify por campo por render → barato, mantém; tipos no contrato dos elementos |

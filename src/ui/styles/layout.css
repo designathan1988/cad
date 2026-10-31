@@ -1,0 +1,254 @@
+/* Layout: the app grid, the title bar, the 3D bar (one part of styles.css, read in its order). */
+
+/* Layout */
+#app {
+  display: grid;
+  /* minmax(0, 1fr): the middle row never grows past the window, so the footer stays visible. */
+  grid-template-rows: var(--top-h) var(--tabs-h) var(--ribbon-h) minmax(0, 1fr) var(--vcb-h) var(--foot-h);
+  grid-template-columns: minmax(0, 1fr) auto;
+  height: 100%;
+}
+.top {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-2);
+  border-bottom: var(--line) solid var(--border);
+  background: var(--bg);
+  min-width: 0;
+}
+.top .left,
+.top .right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-half);
+  flex: 1 1 0;
+  min-width: 0;
+}
+.top .right {
+  justify-content: flex-end;
+}
+.top .center {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-width: 0;
+  flex: 0 1 auto;
+}
+/* The views keep their whole name: shared out equally, "Caminhar" (the longest) was cut at its end. */
+.top .segmented button {
+  min-width: max-content;
+}
+.project-name {
+  font-weight: 600;
+  font-size: var(--fs-md);
+  padding: 0 var(--sp-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: var(--name-w);
+}
+/* The name is a button that renames the project in place: text until pointed at. */
+button.project-name {
+  height: var(--control-h-sm);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  cursor: text;
+}
+button.project-name:hover {
+  background: var(--hover);
+}
+.project-name-input {
+  width: var(--name-w);
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-2);
+  border: var(--line) solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+.project-name-input:focus {
+  outline: none;
+}
+.sep {
+  width: var(--line);
+  height: var(--sep-h);
+  background: var(--border);
+  margin: 0 var(--sp-2);
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  min-width: var(--control-h);
+  height: var(--control-h);
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background var(--ease), color var(--ease);
+}
+.icon-btn:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+.icon-btn:disabled,
+.levels .icon-btn[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
+.levels .icon-btn[aria-disabled='true']:hover {
+  background: transparent;
+  color: var(--text-2);
+}
+.icon-btn[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.levels-warn {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  color: var(--warn);
+  font-size: var(--fs-sm);
+}
+.text-btn {
+  font-weight: 600;
+  font-size: var(--fs-sm);
+}
+.rows > .wide-btn,
+.rows > .panel-note {
+  grid-column: 1 / -1;
+}
+.wide-btn {
+  justify-content: flex-start;
+  width: 100%;
+  height: var(--wide-btn-h);
+  padding: 0 var(--sp-2);
+  border: var(--line) solid var(--border);
+}
+.panel-note {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.select select {
+  appearance: none;
+  height: var(--field-h);
+  padding: 0 var(--sp-7) 0 var(--sp-2);
+  border: var(--line) solid transparent;
+  border-radius: var(--radius);
+  background: var(--field);
+  cursor: pointer;
+  min-width: 0;
+  width: 100%;
+}
+.select select:hover {
+  border-color: var(--border);
+}
+.select .icon {
+  position: absolute;
+  right: var(--sp-2);
+  pointer-events: none;
+  color: var(--text-2);
+}
+/* The 3D view's style and quality (shell.ts): its icon and caption, then the list. */
+.look-select {
+  gap: var(--sp-1);
+  padding-left: var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.look-select > .icon:first-child {
+  position: static;
+}
+.look-select select {
+  width: auto;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.segmented {
+  display: inline-flex;
+  padding: var(--sp-half);
+  gap: var(--sp-half);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+.segmented button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* Words only: a long label (a room's name on a door's side) takes a second line, then gives way with
+   an ellipsis; the title holds it whole. Buttons with an icon keep one line, as before. */
+.segmented button:not(.has-icon) {
+  height: auto;
+  min-height: var(--control-h-sm);
+  padding: 0 var(--sp-1);
+  white-space: normal;
+  line-height: 1.2;
+  text-align: center;
+  overflow: hidden;
+}
+.segmented button:not(.has-icon) .label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  /* A word breaks where the language hyphenates it, not at any letter ("Esquerd / a"). */
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+.segmented button:hover:not(:disabled) {
+  color: var(--text);
+}
+.segmented button[aria-pressed='true'] {
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+:root[data-theme='dark'] .segmented button[aria-pressed='true'] {
+  background: var(--hover);
+}
+.segmented button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+/* The 3D bar's toggles are each on or off, not one of a set: on, they show it as the ribbon's pressed
+   tools do (the parallel view on read as the perspective's own look). */
+.view-toggles button[aria-pressed='true'],
+:root[data-theme='dark'] .view-toggles button[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
