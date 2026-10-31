@@ -38,8 +38,8 @@ tricks for speed, UI rules (one place per command, compact density, no raw px, s
   no warning added. F-0138 (627f8b9): a passage nearly straight of unlike walls refused its point; fixed, measured on
   10,000 scenes (suite's generators, scratch script, no suite run), the suite asks 100 %. F-0023 (6cb3daa, 4a5dda3):
   session/event-tools.ts, one descriptor per remaining tool; checked in the app tool by tool. The wrong roof drawn in the
-  3D view of a test project deleted. Not done: the ledger .whole-review/FINDINGS.md still shows these six as open: the
-  owner's order forbids touching .whole-review/ and the permission guard refused the edit.
+  3D view of a test project deleted. Ledger .whole-review/FINDINGS.md updated once the owner allowed it ("Sim, pode
+  editar", 2026-10-31): the six marked fixed with their Fix lines; 138 fixed, 2 rejected, none open.
 - Console in photorealistic mode: THREE.Clock, WebGLPathTracer deprecation, X4000 shader notes (library-level, latest versions).
 
 ## Known traps (from memoria + repo)
