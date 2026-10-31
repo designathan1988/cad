@@ -15,7 +15,6 @@
   "src/render/plan-view.ts",
   "src/render/scene-3d.ts",
   "src/session/app.ts",
-  "src/session/drag.ts",
   "src/ui/definition-editor.ts"
  ],
  "duplications": 3,
@@ -37,7 +36,6 @@
    "src/render/scene-3d.ts",
    "src/session/app.ts",
    "src/session/drag.ts",
-   "src/session/snap.ts",
    "src/ui/definition-editor.ts"
   ],
   "duplications": [

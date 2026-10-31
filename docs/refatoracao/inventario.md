@@ -236,6 +236,7 @@ aqui fica a decisão por arquivo.
 | (movido no passo 4) src/session/view-keys.ts | juntar | session/input/keys.ts |  |
 | (movido no passo 4) (movido no passo 4) src/model/section-box.ts | manter | session/section-box.ts | a caixa de corte, estado da vista (de app/, via model/) |
 | (movido no passo 4) src/session/drag.ts | mover | session/drag.ts | hull (cópia) sai; estado de arrasto vira máquina |
+| (novo no passo 6) src/session/marquee.ts | manter | session/marquee.ts | a seleção por janela e cruzamento (marqueePick, selectByMarquee), antes em drag.ts |
 | (movido no passo 4) src/session/selection.ts | mover | session/selection.ts |  |
 | (movido no passo 4) src/session/select-similar.ts | juntar | session/selection.ts | 8 linhas de delegação |
 | (movido no passo 4) src/session/keyboard-select.ts | juntar | session/selection.ts | 11 linhas |
