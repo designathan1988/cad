@@ -44,9 +44,9 @@ export function refresh(app: App): void {
     d?.kind === 'move' || d?.kind === 'rotate'
       ? {
           ...doc,
+          ...(d.kind === 'move' ? kindLists(moveKinds(doc, d.kinds, d.delta)) : {}),
           walls: d.walls,
           rooms: moveRooms(doc.rooms, d.rooms, dragTransform(d)),
-              ...(d.kind === 'move' ? kindLists(moveKinds(doc, d.kinds, d.delta)) : {}),
         }
       : d?.kind === 'slide'
         ? { ...doc, openings: d.openings, openingGroups: d.groups }
