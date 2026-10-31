@@ -112,73 +112,7 @@
 }
 /* Phones: the title bar keeps the Project menu, undo and redo and the search; the panel is a sheet over the
    lower part of the drawing, not a column over it. */
-@media (max-width: 600px) {
-  /* The views show their icons, the level a name. */
-  .view-tab .label {
-    display: none;
-  }
-  .saved-dot,
-  .saved-note,
-  .search-label,
-  .search-btn .kbd {
-    display: none;
-  }
-  .search-btn {
-    width: auto;
-  }
-  .project-name {
-    max-width: calc(var(--name-w) * 0.5);
-  }
-  .panel {
-    top: auto;
-    left: 0;
-    width: auto;
-    max-height: 45%;
-    border-left: 0;
-    border-top: var(--line) solid var(--border);
-  }
-  .foot .measure label {
-    display: none;
-  }
-  /* What to do now in up to three lines, not cut after a few words ("Clique para selecionar, a…"):
-     the measure field, narrower here, leaves the line little room on a phone. */
-  :root {
-    --foot-h: 60px;
-    --measure-w: 132px;
-  }
-  .foot .instr {
-    white-space: normal;
-    line-height: 1.2;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-  }
-}
 /* Touch: every target at least 44 × 44 px (WCAG 2.5.5). */
-@media (pointer: coarse) {
-  :root {
-    --control-h: 44px;
-    --control-h-sm: 44px;
-    --field-h: 44px;
-    --wide-btn-h: 44px;
-    --top-h: 48px;
-    --foot-h: 52px;
-  }
-  .menu-item,
-  .palette-option {
-    min-height: var(--touch);
-  }
-}
-@media (pointer: coarse) and (max-width: 600px) {
-  :root {
-    /* The footer's three lines, as on any phone (the touch sizes above came later and won). */
-    --foot-h: 60px;
-  }
-  /* The Project menu, undo, redo and the search at 44 px fill the row: the name gives way. */
-  .project-name {
-    display: none;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

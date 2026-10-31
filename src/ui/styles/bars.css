@@ -277,12 +277,10 @@
   background: var(--cmd-bg);
 }
 
-/* The drawing and what floats over it, placed by its own width (a container: the panel beside it or over it
-   changes how much of the window it has). */
+/* The drawing and what floats over it. */
 .viewport {
   grid-row: 3;
   grid-column: 1;
-  container: drawing / inline-size;
 }
 /* The tools' rail, down the left edge, in groups. */
 .rail {
@@ -362,14 +360,6 @@
   transform: translateX(-50%);
 }
 /* A narrow drawing: under the view's header, from its start, rather than over it in the middle. */
-@container drawing (max-width: 900px) {
-  .tool-strip {
-    left: var(--view-head-x);
-    top: calc(2 * var(--float-gap) + var(--bar-h));
-    max-width: calc(100% - var(--view-head-x) - var(--float-gap));
-    transform: none;
-  }
-}
 .tool-strip-body {
   display: flex;
   align-items: center;
