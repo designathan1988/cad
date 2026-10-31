@@ -19,6 +19,7 @@ import type { PointerDeps } from './pointer-handlers';
 import * as sceneCamera from '../render/scene-camera';
 import * as appView from './app-view';
 import { drawFrom, drawPoints, fromOf, pointsOf } from '../elements/tool-draft';
+import { dropPress } from './pointer-state';
 
 export function pointerRelease(app: App, d: PointerDeps) {
   const { ui } = app;
@@ -39,7 +40,7 @@ export function pointerRelease(app: App, d: PointerDeps) {
       return true;
     }
     if (gestures.cancel()) {
-      ptr.downAt = null;
+      dropPress(ptr);
       showMarquee();
       return true;
     }
@@ -98,8 +99,8 @@ export function pointerRelease(app: App, d: PointerDeps) {
   };
 
   const onUp = (e: PointerEvent) => {
-    if (ptr.boxDrag) {
-      ptr.boxDrag = null;
+    if (ptr.left?.kind === 'box') {
+      ptr.left = null;
       app.boxHot = null;
       if (ui.view3d.box) appView.setBox(app, ui.view3d.box, true);
       return;
@@ -125,9 +126,9 @@ export function pointerRelease(app: App, d: PointerDeps) {
       endHandleDrag(app, d);
       return app.refresh();
     }
-    if (e.button !== 0 || !ptr.downAt) return;
-    const moved = Math.hypot(e.clientX - ptr.downAt.x, e.clientY - ptr.downAt.y) > 4;
-    ptr.downAt = null;
+    if (e.button !== 0 || ptr.left?.kind !== 'press') return;
+    const moved = Math.hypot(e.clientX - ptr.left.x, e.clientY - ptr.left.y) > 4;
+    ptr.left = null;
     // A click places the guide being set; it is no point of the drawing.
     if (ui.guide) return app.placeGuide();
     if (ui.tool === 'select') {

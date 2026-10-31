@@ -19,7 +19,7 @@ import { sectionEscape } from './section-tools';
 import { railingFinish, roofFinish } from './kind-tools';
 import { toggleWallFlip, wallEvent } from '../elements/wall/tool-ui';
 import { floorFinish } from './room-tool';
-import type { PointerState } from './pointer-state';
+import { dropPress, type PointerState } from './pointer-state';
 import * as appPlacing from './app-placing';
 import * as appSettings from './app-settings';
 import * as appEdit from './app-edit';
@@ -157,7 +157,7 @@ export function wireKeys(app: App, k: KeyContext): void {
       return app.refresh();
     }
     if (e.key === 'Escape' && k.gestures.cancel()) {
-      k.pointer.downAt = null;
+      dropPress(k.pointer);
       return k.showMarquee();
     }
     if (ctrl || e.altKey) return;
@@ -192,7 +192,7 @@ export function wireKeys(app: App, k: KeyContext): void {
       if (ui.guide) return cancelGuide(app);
       if (ui.tool === 'modify') return app.modifyEvent({ kind: 'escape' });
       if (k.gestures.cancel()) {
-        k.pointer.downAt = null;
+        dropPress(k.pointer);
         return k.showMarquee();
       }
       if (app.openingKind()) return app.setTool('select');

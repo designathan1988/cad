@@ -56,9 +56,10 @@ export function pointerHandlers(app: App, d: PointerDeps) {
     // during a drag it cancels it, as a right click does.
     if (e.button === 2 && (e.buttons & 1) === 1 && endWithRightClick()) return;
     app.pointer = { x: e.clientX, y: e.clientY };
-    if (ptr.boxDrag) {
-      const d = dragDistance({ x: e.clientX - ptr.boxDrag.from.x, y: e.clientY - ptr.boxDrag.from.y }, ptr.boxDrag.along);
-      return appView.setBox(app, moveFace(ptr.boxDrag.box, ptr.boxDrag.face, d), false);
+    if (ptr.left?.kind === 'box') {
+      const b = ptr.left;
+      const d = dragDistance({ x: e.clientX - b.from.x, y: e.clientY - b.from.y }, b.along);
+      return appView.setBox(app, moveFace(b.box, b.face, d), false);
     }
     if (ui.view === '3d' && ui.view3d.box && (e.buttons & 1) === 0) {
       const hot = boxHandleAt(app, e.clientX, e.clientY);
@@ -137,7 +138,7 @@ export function pointerHandlers(app: App, d: PointerDeps) {
       ui.drag = moveHandleDrag(app, ui.drag, local(e));
       return app.refresh();
     }
-    if (ui.tool === 'select' && !ptr.downAt) {
+    if (ui.tool === 'select' && !ptr.left) {
       // The handle under the pointer, lit, so it is seen to be taken.
       const hot = objectHandleAt(app, local(e));
       if (hot?.param !== app.hotHandle?.param || hot?.id !== app.hotHandle?.id) {
@@ -145,7 +146,7 @@ export function pointerHandlers(app: App, d: PointerDeps) {
         app.render();
       }
     }
-    if (ptr.downAt && ui.tool === 'select') {
+    if (ptr.left?.kind === 'press' && ui.tool === 'select') {
       gestures.move(local(e), at?.p ?? null, snapAt, e.shiftKey, e.altKey);
       showMarquee();
       return;
@@ -172,7 +173,7 @@ export function pointerHandlers(app: App, d: PointerDeps) {
     const face = boxHandleAt(app, e.clientX, e.clientY);
     if (face && ui.view3d.box) {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      ptr.boxDrag = { face, box: ui.view3d.box, from: { x: e.clientX, y: e.clientY }, along: boxFaceOnScreen(app, face) };
+      ptr.left = { kind: 'box', face, box: ui.view3d.box, from: { x: e.clientX, y: e.clientY }, along: boxFaceOnScreen(app, face) };
       app.boxHot = face;
       return app.render();
     }
@@ -183,7 +184,7 @@ export function pointerHandlers(app: App, d: PointerDeps) {
       ui.drag = startHandleDrag(app, handle, local(e));
       return app.refresh();
     }
-    ptr.downAt = { x: e.clientX, y: e.clientY };
+    ptr.left = { kind: 'press', x: e.clientX, y: e.clientY };
     if (ui.tool === 'select') {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       const at = worldAt(e);
