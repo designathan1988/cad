@@ -17,7 +17,7 @@ aqui fica a decisão por arquivo.
 | src/core/guards.ts | manter+mover | project/guards.ts | os `finite`/`isPoint`/`isColor` locais (5 arquivos) passam a importar daqui |
 | src/model/rtree.ts | manter | model/rtree.ts | passa a ser usado pela descoberta de juntas e seams (hoje bruto O(n²)) |
 | src/core/measure.ts | manter+mover | model/measure/parse.ts | o parser de expressões; separado do leitor de fita (tools) |
-| src/core/collisions.ts | juntar | session/prefs + app/collision | flag de preferência morrendo em core/; o motor SAT vai para model/sat.ts |
+| (apagado no passo 5) src/core/collisions.ts | apagado | — | a flag virou estado da sessão, passado por KindFieldContext.floorLocked e PanelInput.collisions |
 | src/core/store.ts | mover | project/store.ts | sem mudança (ADR §5) |
 | (movido no passo 4) (movido no passo 4) src/elements/sat.ts | mover | model/sat.ts | hull (1 das 4 cópias) vira model/hull.ts único |
 | (movido no passo 4) src/project/carry.ts | dividir | project/derive/cache.ts | geometryOf + keepRooms; apaga carriedRooms (morto) e toSegment (cópia) |
@@ -222,7 +222,9 @@ aqui fica a decisão por arquivo.
 
 | Arquivo | Ação | Destino | Nota |
 | --- | --- | --- | --- |
-| (movido no passo 4) src/session/app.ts | dividir | session/app.ts (fachada fina) + session/state.ts (máquinas) + project hooks | UiState vira máquinas: tool (WallToolState etc. já existem), overlay, lifecycle |
+| (novo no passo 5) src/session/state.ts | manter | session/state.ts | a forma do UiState (só tipos), com seus imports próprios |
+| (novo no passo 5) src/ui/toast.ts | manter | ui/toast.ts | a pilha de avisos (3 no máximo), extraída do App |
+| (movido no passo 4) src/session/app.ts | dividir | session/app.ts (fachada fina) + session/state.ts | UiState vira máquinas: tool (WallToolState etc. já existem), overlay, lifecycle |
 | (movido no passo 4) src/session/input.ts | dividir | session/input/pointer.ts, keys.ts, field.ts | pick/planHits → canvas/pick.ts; showHelp → ui/help.ts |
 | (movido no passo 4) src/session/input-keys.ts | juntar | session/input/keys.ts | letras de ferramenta codificadas → vêm das actions (defaultKeys) |
 | (movido no passo 4) src/session/input-buttons.ts | juntar | session/input/buttons.ts |  |
