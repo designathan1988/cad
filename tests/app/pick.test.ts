@@ -9,6 +9,7 @@ import { newOpening } from '../../src/elements/opening/schema';
 import { symbolLines } from '../../src/elements/opening/symbol';
 import { wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import { oid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -21,7 +22,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => 
 const doc: Doc = {
   ...newDocument(),
   walls: [wall(wid('b'), [0, 0], [4, 0]), wall(wid('r'), [4, 0], [4, 3]), wall(wid('t'), [4, 3], [0, 3]), wall(wid('l'), [0, 3], [0, 0])],
-  openings: [newOpening('d', wid('b'), 'door', { kind: 'fromStart', distance: 0.5 })],
+  openings: [newOpening(oid('d'), wid('b'), 'door', { kind: 'fromStart', distance: 0.5 })],
 };
 const g = deriveGeometry(doc);
 // 6 px at 1 cm a pixel.
@@ -43,7 +44,7 @@ describe('taking a wall', () => {
 
 describe('taking a door by what the plan draws of it', () => {
   it('a point 2 cm off its leaf or swing, well inside the room, takes the door', () => {
-    const o = g.openings.get('d')!;
+    const o = g.openings.get(oid('d'))!;
     // The symbol's farthest point from the wall: the leaf's free end or the swing's.
     const far = symbolLines(o, o.frame)
       .flat()

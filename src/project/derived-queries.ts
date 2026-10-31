@@ -11,6 +11,7 @@ import type { WallId } from '../elements/wall/schema';
 import { eachSolid } from '../elements/registry';
 import type { ElementId } from '../core/id';
 import type { WallSolid } from './derive';
+import { isOpeningId } from '../elements/opening/schema';
 
 /** Hosts for placing openings, with the joints inside each (which bound a distributed group's stretch). */
 export function hostsIn(doc: Doc, walls: readonly DocWall[] = doc.walls) {
@@ -71,6 +72,9 @@ export function wallAt(g: DerivedGeometry, p: Point2, ids?: ReadonlySet<ElementI
 
 /** A wall's solid by any element's id (a selection's): none when the id is not a wall's. */
 export const solidOf = (g: DerivedGeometry, id: ElementId): WallSolid | undefined => g.solids.get(id as WallId);
+
+/** A door's or window's placement by any element's id (a selection's): none when the id is not an opening's. */
+export const placedOf = (g: DerivedGeometry, id: ElementId): OpeningSolid | undefined => (isOpeningId(id) ? g.openings.get(id) : undefined);
 
 /** Bounding box of the drawn pieces and openings, or null when there is nothing. */
 export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<ElementId>): { min: Point2; max: Point2 } | null {

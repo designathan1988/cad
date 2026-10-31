@@ -20,6 +20,7 @@ import * as appPlacing from './app-placing';
 import * as appSettings from './app-settings';
 import * as appEdit from './app-edit';
 import { wallsIn } from '../elements/wall/schema';
+import { isOpeningId } from '../elements/opening/schema';
 
 export interface ContextEntry {
   readonly id: ContextId;
@@ -107,7 +108,7 @@ function entriesFor(app: App, openCommands: () => void): (id: ContextId) => Cont
     centerOpening: () => opening && app.store.dispatch(updateOpening(opening.id, { rule: { kind: 'centered' } })),
     addFloor: () => one && addFloorToRoom(app, one),
     addCeiling: () => one && addCeilingToRoom(app, one),
-    distribute: () => app.store.dispatch(distributeOpenings(newId(GROUP_PREFIX), ids, { kind: 'equal' })),
+    distribute: () => app.store.dispatch(distributeOpenings(newId(GROUP_PREFIX), ids.filter(isOpeningId), { kind: 'equal' })),
     frameSelection: () => frameSelection(app),
     properties: () => appSettings.showProperties(app),
     clearSelection: () => clearSelection(app),

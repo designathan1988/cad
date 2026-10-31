@@ -8,6 +8,7 @@ import { newOpening } from '../../src/elements/opening/schema';
 import { canMerge, cornerWalls, mergeWalls, splitWall } from '../../src/tools/split';
 import { wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import { oid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number], bulge = 0): DocWall => ({
   id,
@@ -18,7 +19,7 @@ const wall = (id: WallId, a: [number, number], b: [number, number], bulge = 0): 
   levelId: 'lvl_ground',
   ...(bulge ? { bulge } : {}),
 });
-const doc: Doc = { ...newDocument(), walls: [wall(wid('b'), [0, 0], [4, 0])], openings: [newOpening('opening_d', wid('b'), 'door', { kind: 'fromStart', distance: 2.5 })] };
+const doc: Doc = { ...newDocument(), walls: [wall(wid('b'), [0, 0], [4, 0])], openings: [newOpening(oid('opening_d'), wid('b'), 'door', { kind: 'fromStart', distance: 2.5 })] };
 const area = (d: Doc) =>
   [...deriveGeometry(d).solids.values()].flatMap((s) => s.pieces).reduce((sum, p) => sum + Math.abs(p.polygon.reduce((a, v, i, ps) => a + v.x * ps[(i + 1) % ps.length]!.y - ps[(i + 1) % ps.length]!.x * v.y, 0)) / 2, 0);
 
@@ -34,7 +35,7 @@ describe('dividing a wall', () => {
 
   it('the door goes to the part it is on and stays where it was: 1 m from that part’s start', () => {
     expect(split.openings[0]).toMatchObject({ wallId: wid('wall_2'), rule: { kind: 'fromStart', distance: 1 } });
-    const o = deriveGeometry(split).openings.get('opening_d')!;
+    const o = deriveGeometry(split).openings.get(oid('opening_d'))!;
     expect(o.start).toBeCloseTo(1, 9);
   });
 

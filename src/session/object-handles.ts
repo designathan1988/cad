@@ -16,6 +16,8 @@ import { deriveGeometry } from '../project/derive';
 import type { ObjectSolid } from '../elements/kinds/object';
 import type { App } from './app';
 import * as appView from './app-view';
+import { placedOf } from '../project/derived-queries';
+import { isOpeningId, type OpeningId } from '../elements/opening/schema';
 
 export interface ScreenHandle {
   readonly id: string;
@@ -43,7 +45,7 @@ export function objectHandles(app: App): ScreenHandle[] {
   const { ui } = app;
   if (ui.tool !== 'select' || ui.selection.size !== 1 || ui.drag) return [];
   const id = [...ui.selection][0]!;
-  if (app.geometry.openings.has(id)) return openingHandles(app, id);
+  if (isOpeningId(id) && app.geometry.openings.has(id)) return openingHandles(app, id);
   const s = app.geometry.kinds.get('objects')?.get(id) as ObjectSolid | undefined;
   if (!s || s.object.levelId !== ui.levelId) return [];
   const lift = ui.view === '3d' ? appView.lift(app, s.object.levelId) : 0;
@@ -63,7 +65,7 @@ export function objectHandles(app: App): ScreenHandle[] {
  * A door's or window's handles: at each jamb and at the head, in the middle of the wall's thickness;
  * a window's sill too. The axis is the wall's (a jamb) or up and down (head, sill).
  */
-function openingHandles(app: App, id: string): ScreenHandle[] {
+function openingHandles(app: App, id: OpeningId): ScreenHandle[] {
   const { ui } = app;
   const o = app.geometry.openings.get(id);
   const f = o?.frame;
@@ -181,7 +183,7 @@ function jambRate(app: App, o: Opening, which: 'start' | 'end'): number {
 
 export function startHandleDrag(app: App, handle: ScreenHandle, from: Point2): HandleDrag | null {
   if (handle.opening) {
-    const placed = app.geometry.openings.get(handle.id);
+    const placed = placedOf(app.geometry, handle.id);
     const o = placed?.opening;
     if (!o || !placed) return null;
     const wallTop = app.geometry.solids.get(o.wallId)?.top;
@@ -235,7 +237,7 @@ export function moveHandleDrag(app: App, d: HandleDrag, p: Point2): HandleDrag {
 export function endHandleDrag(app: App, d: HandleDrag): void {
   if (Math.abs(d.value - d.start) < 1e-9) return;
   if (d.handle.opening) {
-    if (d.patch) app.store.dispatch(updateOpening(d.handle.id, d.patch));
+    if (d.patch && isOpeningId(d.handle.id)) app.store.dispatch(updateOpening(d.handle.id, d.patch));
     return;
   }
   app.store.dispatch(setObjectValues([{ id: d.handle.id, values: { [d.handle.param]: d.value }, at: d.at }]));

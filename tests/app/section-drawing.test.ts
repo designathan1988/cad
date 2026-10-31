@@ -17,6 +17,7 @@ import { levelOfSolid } from '../../src/elements/registry';
 import { sectionKind } from '../../src/elements/kinds/section';
 import { wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import { oid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -121,7 +122,7 @@ describe('a section drawn from the model', () => {
     // x 1.4 to 0.5 (2.1 high): the line at x = 1 cuts both. The room is the inside, faces 0.075 in.
     const doc: Doc = {
       ...box(),
-      openings: [newOpening('opening_w', wid('w1'), 'window', { kind: 'fromStart', distance: 0.4 }), newOpening('opening_d', wid('w3'), 'door', { kind: 'fromEnd', distance: 0.5 })],
+      openings: [newOpening(oid('opening_w'), wid('w1'), 'window', { kind: 'fromStart', distance: 0.4 }), newOpening(oid('opening_d'), wid('w3'), 'door', { kind: 'fromEnd', distance: 0.5 })],
       rooms: [{ id: 'room_1', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Sala', number: '1' }],
     };
     const g = deriveGeometry(doc);

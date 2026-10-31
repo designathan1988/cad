@@ -14,9 +14,10 @@ import { type Doc, wallHeights } from '../../project/doc';
 import type { DerivedGeometry } from '../../project/derive';
 import { wallStops, wallStopsOf } from '../wall/stops';
 import type { WallId } from '../wall/schema';
+import type { OpeningId } from './schema';
 
 /** Id of the opening being placed, in the derived geometry only. */
-export const OPENING_PREVIEW_ID = '__opening_preview__';
+export const OPENING_PREVIEW_ID = '__opening_preview__' as OpeningId;
 
 /** Extra reach beyond the wall's faces, in screen pixels, so thin walls are easy to point at. */
 const REACH_PX = 6;
@@ -99,7 +100,7 @@ export const ruleText = (rule: PositionRule, base = 0): string =>
 export function ruleGuide(
   doc: Doc,
   g: DerivedGeometry,
-  previewId: string,
+  previewId: OpeningId,
 ): { dim: { a: Point2; b: Point2; side: Point2; clear: number; text: string }; measure: { at: Point2; text: string; normal: Point2; clear: number } } | null {
   const o = g.openings.get(previewId);
   const f = o?.frame;

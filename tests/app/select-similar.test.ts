@@ -6,6 +6,7 @@ import { similarTo } from '../../src/session/select-similar';
 import { newOpening } from '../../src/elements/opening/schema';
 import { wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import { oid } from '../ids';
 
 const wall = (id: WallId, type: string, levelId = 'lvl_ground', y = 0): DocWall => ({
   id,
@@ -22,11 +23,11 @@ const doc: Doc = {
   levels: [...base.levels, { id: 'lvl_up', name: 'Up', elevation: 2.8, height: 2.8 }],
   walls: [wall(wid('a'), 'wt_masonry15'), wall(wid('b'), 'wt_masonry15', 'lvl_ground', 3), wall(wid('c'), 'wt_concrete20', 'lvl_ground', 6), wall(wid('d'), 'wt_masonry15', 'lvl_up')],
   openings: [
-    newOpening('opening_1', wid('a'), 'door', { kind: 'centered' }, { width: 0.8 }),
-    newOpening('opening_2', wid('b'), 'door', { kind: 'centered' }, { width: 0.8 }),
-    newOpening('opening_3', wid('c'), 'door', { kind: 'centered' }, { width: 0.9 }),
-    newOpening('opening_4', wid('c'), 'window', { kind: 'fromStart', distance: 0.5 }, { width: 0.8 }),
-    newOpening('opening_5', wid('d'), 'door', { kind: 'centered' }, { width: 0.8 }),
+    newOpening(oid('opening_1'), wid('a'), 'door', { kind: 'centered' }, { width: 0.8 }),
+    newOpening(oid('opening_2'), wid('b'), 'door', { kind: 'centered' }, { width: 0.8 }),
+    newOpening(oid('opening_3'), wid('c'), 'door', { kind: 'centered' }, { width: 0.9 }),
+    newOpening(oid('opening_4'), wid('c'), 'window', { kind: 'fromStart', distance: 0.5 }, { width: 0.8 }),
+    newOpening(oid('opening_5'), wid('d'), 'door', { kind: 'centered' }, { width: 0.8 }),
   ],
   rooms: [
     { id: 'room_1', levelId: 'lvl_ground', seed: { x: 1, y: 1 }, name: 'A', number: '1', use: 'bedroom' },

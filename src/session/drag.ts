@@ -25,6 +25,7 @@ import * as appPlacing from './app-placing';
 import * as appView from './app-view';
 import { wallsIn } from '../elements/wall/schema';
 import type { ElementId } from '../core/id';
+import type { OpeningId } from '../elements/opening/schema';
 
 // The select tool's gestures. Click: select (Shift adds or removes). Drag a wall: move the selection,
 // with joins kept and a live preview (the rooms all of whose walls go, go too); with Alt the walls move
@@ -68,7 +69,7 @@ export type Drag =
    */
   | {
       readonly kind: 'slide';
-      readonly id: string;
+      readonly id: OpeningId;
       readonly grab: number;
       readonly walls: readonly DocWall[];
       readonly openings: readonly Opening[];

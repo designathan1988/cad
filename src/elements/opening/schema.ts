@@ -2,8 +2,10 @@
 // the wall is always derived from the rule and the wall as it is now (derive.ts), never stored.
 
 import type { WallId } from '../wall/schema';
+import { type Brand, newId } from '../../core/id';
 
-export type OpeningId = string;
+/** A door's or window's id (opening_…). */
+export type OpeningId = Brand<'opening'>;
 export type OpeningKind = 'door' | 'window';
 
 /**
@@ -132,5 +134,9 @@ export function newOpening(
 
 /** The ids every opening id starts with, so a selection can tell openings from walls. */
 export const OPENING_PREFIX = 'opening';
-export const isOpeningId = (id: string): boolean => id.startsWith(`${OPENING_PREFIX}_`);
+/** Whether an id (a selection's, of any kind) is a door's or window's: every one read or made starts opening_. */
+export const isOpeningId = (id: string): id is OpeningId => id.startsWith(`${OPENING_PREFIX}_`);
+
+/** A new door's or window's id (opening_…). */
+export const newOpeningId = (): OpeningId => newId(OPENING_PREFIX) as OpeningId;
 export const GROUP_PREFIX = 'group';

@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { kindOfId, levelOfSolid } from '../elements/registry';
 import { placeBarY } from './bar-place';
 import * as appView from '../session/app-view';
-import { solidOf } from '../project/derived-queries';
+import { placedOf, solidOf } from '../project/derived-queries';
 
 /** The footer for the measure tool: what to click, or what the tape read. */
 export function measureHint(app: App): string {
@@ -84,7 +84,7 @@ export function placeFloatBar(app: App): void {
     };
     for (const id of app.ui.selection) {
       // Each at its level's height in the view (lifted when exploded).
-      const opening = app.geometry.openings.get(id);
+      const opening = placedOf(app.geometry, id);
       if (opening) {
         const up = appView.lift(app, app.geometry.solids.get(opening.opening.wallId)?.wall.levelId ?? '');
         for (const v of openingOutline(opening)) [opening.bottom, opening.top].forEach((z) => project(v, z + up));

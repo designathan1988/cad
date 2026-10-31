@@ -13,6 +13,7 @@ import { newOpening } from '../../src/elements/opening/schema';
 import { moveWalls } from '../../src/elements/wall/edit';
 import { wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import { oid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -86,9 +87,9 @@ describe('locked dimensions', () => {
   });
 
   it('a window held by a lock slides along its wall with the wall it is measured from', () => {
-    const win = newOpening('opening_w', wid('w1'), 'window', { kind: 'fromStart', distance: 1 }, { width: 1, height: 1, sill: 1 });
+    const win = newOpening(oid('opening_w'), wid('w1'), 'window', { kind: 'fromStart', distance: 1 }, { width: 1, height: 1, sill: 1 });
     // From the window's far jamb (x = 2) to the south-east corner of the axes (4, 0): 2 m, locked.
-    const d: Dimension = { id: 'dim_w', levelId: 'lvl_ground', a: { kind: 'opening', openingId: 'opening_w', jamb: 'end', offset: 0 }, b: { kind: 'wall', wallId: wid('w2'), end: 'start', along: 0, offset: 0 }, offset: -0.6, locked: 2 };
+    const d: Dimension = { id: 'dim_w', levelId: 'lvl_ground', a: { kind: 'opening', openingId: oid('opening_w'), jamb: 'end', offset: 0 }, b: { kind: 'wall', wallId: wid('w2'), end: 'start', along: 0, offset: 0 }, offset: -0.6, locked: 2 };
     const before = { ...box, openings: [win], dimensions: [d] };
     expect(lengthOf(before, 'dim_w')).toBeCloseTo(2, 6);
     const r = settleDimensions(before, moved(before, wid('w2'), 0.5));
@@ -101,8 +102,8 @@ describe('locked dimensions', () => {
 
   it('a lock that cannot be kept is said, and nothing done', () => {
     // A window on the south wall held 1 m from a point to its north: the window cannot go north.
-    const win = newOpening('opening_w', wid('w1'), 'window', { kind: 'fromStart', distance: 1 }, { width: 1, height: 1, sill: 1 });
-    const d: Dimension = { id: 'dim_n', levelId: 'lvl_ground', a: { kind: 'opening', openingId: 'opening_w', jamb: 'start', offset: 0 }, b: { kind: 'wall', wallId: wid('w3'), end: 'end', along: 1, offset: 0 }, offset: 0.4, locked: 3 };
+    const win = newOpening(oid('opening_w'), wid('w1'), 'window', { kind: 'fromStart', distance: 1 }, { width: 1, height: 1, sill: 1 });
+    const d: Dimension = { id: 'dim_n', levelId: 'lvl_ground', a: { kind: 'opening', openingId: oid('opening_w'), jamb: 'start', offset: 0 }, b: { kind: 'wall', wallId: wid('w3'), end: 'end', along: 1, offset: 0 }, offset: 0.4, locked: 3 };
     const before = { ...box, openings: [win], dimensions: [d] };
     const r = settleDimensions(before, moved(before, wid('w3'), 0));
     expect(r.ok).toBe(true);
@@ -149,7 +150,7 @@ describe('equal chains', () => {
 });
 
 describe('automatic dimensioning', () => {
-  const win = newOpening('opening_w', wid('w1'), 'window', { kind: 'fromStart', distance: 1 }, { width: 1.2, height: 1, sill: 1 });
+  const win = newOpening(oid('opening_w'), wid('w1'), 'window', { kind: 'fromStart', distance: 1 }, { width: 1.2, height: 1, sill: 1 });
   const room = { id: 'room_a', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Sala', number: '1' };
   const doc: Doc = { ...box, openings: [win], rooms: [room] };
   const ids = (() => {

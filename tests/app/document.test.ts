@@ -3,12 +3,13 @@ import { elementIds, newDocument, startLevel } from '../../src/project/doc';
 import { newOpening } from '../../src/elements/opening/schema';
 import { wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import { oid } from '../ids';
 
 describe('selectable elements', () => {
   it('walls, openings, rooms and floors all count, so editing a room keeps it selected', () => {
     const doc = {
       ...newDocument(),
-      openings: [newOpening('o', wid('w'), 'door', { kind: 'centered' })],
+      openings: [newOpening(oid('o'), wid('w'), 'door', { kind: 'centered' })],
       rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 0, y: 0 }, name: 'Room 1', number: '1' }],
       floors: [{ id: 'f', levelId: 'lvl_ground', source: { kind: 'room' as const, roomId: 'r' }, thickness: 0.1, offset: 0 }],
     };

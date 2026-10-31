@@ -18,6 +18,7 @@ import { wallTypeThickness } from '../project/doc';
 
 import type { DerivedGeometry } from '../project/derive';
 import { stopAfter, stopBefore, wallStops } from '../elements/wall/stops';
+import { placedOf } from '../project/derived-queries';
 
 export interface TempDim {
   readonly id: string;
@@ -54,7 +55,7 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
       ...gapDims(doc, wall),
     ];
   }
-  const o = g.openings.get(id);
+  const o = placedOf(g, id);
   if (!o) return [];
   const host = doc.walls.find((w) => w.id === o.opening.wallId);
   if (!host || host.bulge) return [];
@@ -75,7 +76,7 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
       side,
       clear: half,
       value: o.start - before,
-      apply: (v) => (v >= 0 ? updateOpening(id, { rule: { kind: 'fromStart', distance: before + v } }) : null),
+      apply: (v) => (v >= 0 ? updateOpening(o.opening.id, { rule: { kind: 'fromStart', distance: before + v } }) : null),
     },
     {
       id: `${id}:fromEnd`,
@@ -84,7 +85,7 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
       side,
       clear: half,
       value: after - o.end,
-      apply: (v) => (v >= 0 ? updateOpening(id, { rule: { kind: 'fromEnd', distance: len - after + v } }) : null),
+      apply: (v) => (v >= 0 ? updateOpening(o.opening.id, { rule: { kind: 'fromEnd', distance: len - after + v } }) : null),
     },
   ];
   // Measured from another opening: on that side, the gap to it, and a typed value keeps the rule.
@@ -99,7 +100,7 @@ export function tempDims(doc: Doc, g: DerivedGeometry, selection: ReadonlySet<st
       side,
       clear: half,
       value: after ? o.start - ref.end : ref.start - o.end,
-      apply: (v) => (v >= 0 ? updateOpening(id, { rule: { ...rule, distance: v } }) : null),
+      apply: (v) => (v >= 0 ? updateOpening(o.opening.id, { rule: { ...rule, distance: v } }) : null),
     };
   }
   return dims.filter((x) => x.value >= 0);

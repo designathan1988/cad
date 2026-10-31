@@ -6,5 +6,8 @@ export const newId = (prefix: string): string => `${prefix}_${crypto.randomUUID(
  * type (erased when compiled): the id in the file and in memory is the same string. */
 export type Brand<B extends string> = string & { readonly __brand: B };
 
+/** Maps an id to its copy's, of the same kind (a copy's id has its original's prefix). */
+export type IdMap = <I extends string>(id: I) => I;
+
 /** Any element's id, of whatever kind: what a selection, a hover or a set of elements to draw lit holds. */
 export type ElementId = string;

@@ -6,6 +6,7 @@ import { vec } from '../../src/model/vector';
 import { newOpening } from '../../src/elements/opening/schema';
 import { wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import { oid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -23,7 +24,7 @@ const doc = (): Doc => ({
   walls: [wall(wid('w0'), [0, 0], [6, 0]), wall(wid('w1'), [6, 0], [6, 4])],
   // A 0.90 m door 1.00 m from w0's start: jambs at 1.00 and 1.90, 4.10 m to the end, 4.00 m to the
   // inner face of w1 (20 cm, its face at 5.90), which is what the end side measures to.
-  openings: [newOpening('o', wid('w0'), 'door', { kind: 'fromStart', distance: 1 })],
+  openings: [newOpening(oid('o'), wid('w0'), 'door', { kind: 'fromStart', distance: 1 })],
 });
 
 describe('temporary dimensions', () => {
@@ -76,7 +77,7 @@ describe('temporary dimensions', () => {
   // A 0.90 m window w measured 0.50 m from the door's end jamb (1.90): it runs from 2.40 to 3.30.
   const fromDoor = (toward: 'start' | 'end'): Doc => {
     const d = doc();
-    return { ...d, openings: [...d.openings, { ...newOpening('w', wid('w0'), 'window', { kind: 'fromOpening', openingId: 'o', distance: 0.5, toward }), width: 0.9 }] };
+    return { ...d, openings: [...d.openings, { ...newOpening(oid('w'), wid('w0'), 'window', { kind: 'fromOpening', openingId: oid('o'), distance: 0.5, toward }), width: 0.9 }] };
   };
 
   it('measured from another opening: the dimension on that side is the gap to it, and typing keeps the rule', () => {
@@ -86,7 +87,7 @@ describe('temporary dimensions', () => {
     expect(dims.map((x) => Math.round(x.value * 1e9) / 1e9)).toEqual([0.5, 2.6]);
     expect(dims[0]!.a).toEqual(vec(1.9, 0));
     const next = dims[0]!.apply(0.8)!.apply(d);
-    expect(next.openings.find((o) => o.id === 'w')!.rule).toEqual({ kind: 'fromOpening', openingId: 'o', distance: 0.8, toward: 'end' });
+    expect(next.openings.find((o) => o.id === 'w')!.rule).toEqual({ kind: 'fromOpening', openingId: oid('o'), distance: 0.8, toward: 'end' });
   });
 
   it('measured toward an opening after it: the gap is on its end side', () => {
@@ -95,8 +96,8 @@ describe('temporary dimensions', () => {
     const d: Doc = {
       ...d0,
       openings: [
-        newOpening('o', wid('w0'), 'door', { kind: 'fromStart', distance: 4 }),
-        { ...newOpening('w', wid('w0'), 'window', { kind: 'fromOpening', openingId: 'o', distance: 0.5, toward: 'start' }), width: 0.9 },
+        newOpening(oid('o'), wid('w0'), 'door', { kind: 'fromStart', distance: 4 }),
+        { ...newOpening(oid('w'), wid('w0'), 'window', { kind: 'fromOpening', openingId: oid('o'), distance: 0.5, toward: 'start' }), width: 0.9 },
       ],
     };
     const dims = tempDims(d, deriveGeometry(d), new Set(['w']));

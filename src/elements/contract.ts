@@ -16,6 +16,7 @@ import type { Transform } from './transform';
 import type { Field } from './fields';
 import type { MessageKey } from '../i18n/messages';
 import type { IconName } from '../i18n/icons';
+import type { IdMap } from '../core/id';
 
 /** The document's lists the registry's kinds keep. */
 export type KindKey = 'measures' | 'references' | 'sections' | 'separators' | 'curtains' | 'zones' | 'columns' | 'beams' | 'roofs' | 'stairs' | 'railings' | 'objects' | 'notes' | 'grids' | 'guides' | 'dimensions' | 'floors' | 'rooms' | 'openings' | 'walls';
@@ -84,7 +85,7 @@ export interface TransformContext {
   /** Whether a wall, or a door or window, goes along. */
   readonly going: (id: string) => boolean;
   /** The id a copied element got (its own when not copied). */
-  readonly to: (id: string) => string;
+  readonly to: IdMap;
   /** The document and its geometry before the tool. */
   readonly doc: Doc;
   readonly geometry: DerivedGeometry;

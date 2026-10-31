@@ -9,6 +9,8 @@ import { newOpening } from '../../../src/elements/opening/schema';
 import { addWalls } from '../../../src/elements/wall/commands';
 import { wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
+import { oid } from '../../ids';
+import type { OpeningId } from '../../../src/elements/opening/schema';
 
 const wall = (id: WallId, x0: number, x1: number): DocWall => ({
   id,
@@ -25,14 +27,14 @@ const wall = (id: WallId, x0: number, x1: number): DocWall => ({
 function setup() {
   const s = createStore<Doc>(newDocument());
   s.dispatch(addWalls([wall(wid('w'), 0, 5), wall(wid('v'), 0, 3)]));
-  s.dispatch(addOpening(newOpening('a', wid('w'), 'door', { kind: 'fromStart', distance: 0.5 })));
-  s.dispatch(addOpening(newOpening('b', wid('w'), 'window', { kind: 'fromOpening', openingId: 'a', distance: 0.6, toward: 'end' })));
-  s.dispatch(addOpening(newOpening('c', wid('v'), 'window', { kind: 'centered' })));
-  s.dispatch(addOpening(newOpening('d', wid('w'), 'door', { kind: 'fromEnd', distance: 0.5 })));
+  s.dispatch(addOpening(newOpening(oid('a'), wid('w'), 'door', { kind: 'fromStart', distance: 0.5 })));
+  s.dispatch(addOpening(newOpening(oid('b'), wid('w'), 'window', { kind: 'fromOpening', openingId: oid('a'), distance: 0.6, toward: 'end' })));
+  s.dispatch(addOpening(newOpening(oid('c'), wid('v'), 'window', { kind: 'centered' })));
+  s.dispatch(addOpening(newOpening(oid('d'), wid('w'), 'door', { kind: 'fromEnd', distance: 0.5 })));
   return s;
 }
 
-const position = (doc: Doc, id: string) => {
+const position = (doc: Doc, id: OpeningId) => {
   const d = deriveOpenings(doc.openings, hostsOf(doc)).placed.get(id)!;
   return [d.start, d.end];
 };
@@ -42,7 +44,7 @@ describe('opening commands', () => {
     expect(newDocument().openings).toEqual([]);
     const s = setup();
     expect(s.get().openings).toHaveLength(4);
-    s.dispatch(updateOpening('a', { width: 1 }));
+    s.dispatch(updateOpening(oid('a'), { width: 1 }));
     expect(s.get().openings.find((o) => o.id === 'a')!.width).toBe(1);
     s.undo();
     expect(s.get().openings.find((o) => o.id === 'a')!.width).toBe(0.9);
@@ -53,8 +55,8 @@ describe('opening commands', () => {
   it('an edit that changes nothing is no undo step', () => {
     const s = setup();
     const before = s.get();
-    s.dispatch(updateOpening('a', { width: 0.9 }));
-    s.dispatch(updateOpening('zz', { width: 2 }));
+    s.dispatch(updateOpening(oid('a'), { width: 0.9 }));
+    s.dispatch(updateOpening(oid('zz'), { width: 2 }));
     expect(s.get()).toBe(before);
   });
 
@@ -76,32 +78,32 @@ describe('opening commands', () => {
 
   it('deleting a referenced opening leaves the others where they were', () => {
     const s = setup();
-    const [b0, b1] = position(s.get(), 'b');
+    const [b0, b1] = position(s.get(), oid('b'));
     s.dispatch(deleteElements(['a']));
     expect(s.get().openings.map((o) => o.id)).toEqual(['b', 'c', 'd']);
     // b was [2.0, 3.2]; its rule now measures from the wall start.
     expect(s.get().openings.find((o) => o.id === 'b')!.rule).toEqual({ kind: 'fromStart', distance: expect.closeTo(2, 12) });
-    const [n0, n1] = position(s.get(), 'b');
+    const [n0, n1] = position(s.get(), oid('b'));
     expect(n0).toBeCloseTo(b0!, 12);
     expect(n1).toBeCloseTo(b1!, 12);
   });
 
   it('changing the rule kind keeps the position', () => {
     const doc = setup().get();
-    expect(ruleKeepingPosition(doc, 'a', 'fromEnd')).toEqual({ kind: 'fromEnd', distance: expect.closeTo(3.6, 12) });
-    expect(ruleKeepingPosition(doc, 'b', 'fromStart')).toEqual({ kind: 'fromStart', distance: expect.closeTo(2, 12) });
-    expect(ruleKeepingPosition(doc, 'd', 'fromStart')).toEqual({ kind: 'fromStart', distance: expect.closeTo(3.6, 12) });
+    expect(ruleKeepingPosition(doc, oid('a'), 'fromEnd')).toEqual({ kind: 'fromEnd', distance: expect.closeTo(3.6, 12) });
+    expect(ruleKeepingPosition(doc, oid('b'), 'fromStart')).toEqual({ kind: 'fromStart', distance: expect.closeTo(2, 12) });
+    expect(ruleKeepingPosition(doc, oid('d'), 'fromStart')).toEqual({ kind: 'fromStart', distance: expect.closeTo(3.6, 12) });
     // d [3.6, 4.5] from b [2.0, 3.2]: toward the end, 0.4 apart. a from d: toward the start, 2.2 apart.
-    expect(ruleKeepingPosition(doc, 'd', 'fromOpening', 'b')).toEqual({ kind: 'fromOpening', openingId: 'b', distance: expect.closeTo(0.4, 12), toward: 'end' });
-    expect(ruleKeepingPosition(doc, 'a', 'fromOpening', 'd')).toEqual({ kind: 'fromOpening', openingId: 'd', distance: expect.closeTo(2.2, 12), toward: 'start' });
+    expect(ruleKeepingPosition(doc, oid('d'), 'fromOpening', oid('b'))).toEqual({ kind: 'fromOpening', openingId: oid('b'), distance: expect.closeTo(0.4, 12), toward: 'end' });
+    expect(ruleKeepingPosition(doc, oid('a'), 'fromOpening', oid('d'))).toEqual({ kind: 'fromOpening', openingId: oid('d'), distance: expect.closeTo(2.2, 12), toward: 'start' });
   });
 
   it('no reference on another wall, to itself, or making a loop', () => {
     const doc = setup().get();
-    expect(ruleKeepingPosition(doc, 'a', 'fromOpening', 'c')).toBeNull();
-    expect(ruleKeepingPosition(doc, 'a', 'fromOpening', 'a')).toBeNull();
+    expect(ruleKeepingPosition(doc, oid('a'), 'fromOpening', oid('c'))).toBeNull();
+    expect(ruleKeepingPosition(doc, oid('a'), 'fromOpening', oid('a'))).toBeNull();
     // b already measures from a.
-    expect(ruleKeepingPosition(doc, 'a', 'fromOpening', 'b')).toBeNull();
-    expect(ruleKeepingPosition(doc, 'a', 'fromOpening')).toBeNull();
+    expect(ruleKeepingPosition(doc, oid('a'), 'fromOpening', oid('b'))).toBeNull();
+    expect(ruleKeepingPosition(doc, oid('a'), 'fromOpening')).toBeNull();
   });
 });

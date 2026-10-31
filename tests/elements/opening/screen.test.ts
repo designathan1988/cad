@@ -8,12 +8,13 @@ import { openingParts } from '../../../src/elements/opening/parts';
 import { newOpening, type OpeningStyle } from '../../../src/elements/opening/schema';
 import { fitStyle, isOpeningStyle } from '../../../src/elements/opening/style';
 import { wid } from '../../ids';
+import { oid } from '../../ids';
 
 const wall: DocWall = { id: wid('w'), wallTypeId: 'wt_masonry15', start: { x: 0, y: 0 }, end: { x: 4, y: 0 }, referenceLine: 'centerline', levelId: 'lvl_ground', baseOffset: 0, top: { kind: 'level', offset: 0 } };
 const sliding: OpeningStyle = { operation: 'sliding', leaves: 2, frame: 0.05, casing: 0, transom: 0, threshold: false };
 const parts = (style: OpeningStyle, open = false) => {
-  const doc: Doc = { ...newDocument(), walls: [wall], openings: [{ ...newOpening('win', wid('w'), 'window', { kind: 'centered' }, { width: 1.2, height: 1.2, style }), sill: 1 }] };
-  const o = deriveGeometry(doc).openings.get('win')!;
+  const doc: Doc = { ...newDocument(), walls: [wall], openings: [{ ...newOpening(oid('win'), wid('w'), 'window', { kind: 'centered' }, { width: 1.2, height: 1.2, style }), sill: 1 }] };
+  const o = deriveGeometry(doc).openings.get(oid('win'))!;
   return openingParts(o, o.frame!, open);
 };
 

@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { type Aim, OPENING_IDLE, openingTransition, ruleAt } from '../../src/elements/opening/tool';
 import { wid } from '../ids';
+import { oid } from '../ids';
 
 const aim = (station: number, others: Aim['others'] = [], side: Aim['side'] = 'left'): Aim => ({
   wallId: wid('w'),
@@ -33,11 +34,11 @@ describe('rule under the cursor', () => {
 
   it('nearest to another opening: the gap from its jamb', () => {
     // Other [1.0, 1.9]; centre at 2.75 → jambs 2.3 and 3.2: gap 0.40, end 1.80, start 2.30.
-    expect(ruleAt(aim(2.75, [{ id: 'x', start: 1, end: 1.9 }]), 0.9)).toEqual({ kind: 'fromOpening', openingId: 'x', distance: expect.closeTo(0.4, 12), toward: 'end' });
+    expect(ruleAt(aim(2.75, [{ id: oid('x'), start: 1, end: 1.9 }]), 0.9)).toEqual({ kind: 'fromOpening', openingId: oid('x'), distance: expect.closeTo(0.4, 12), toward: 'end' });
     // Other [3.5, 4.4]; centre at 1.0 → jambs 0.55 and 1.45: gap 2.05, start 0.55 → from the start.
-    expect(ruleAt(aim(1, [{ id: 'x', start: 3.5, end: 4.4 }]), 0.9)).toEqual({ kind: 'fromStart', distance: expect.closeTo(0.55, 12) });
+    expect(ruleAt(aim(1, [{ id: oid('x'), start: 3.5, end: 4.4 }]), 0.9)).toEqual({ kind: 'fromStart', distance: expect.closeTo(0.55, 12) });
     // Other [3.5, 4.4]; centre at 2.9 → far jamb 3.35: gap 0.15 toward the start of x.
-    expect(ruleAt(aim(2.9, [{ id: 'x', start: 3.5, end: 4.4 }]), 0.9)).toEqual({ kind: 'fromOpening', openingId: 'x', distance: expect.closeTo(0.15, 12), toward: 'start' });
+    expect(ruleAt(aim(2.9, [{ id: oid('x'), start: 3.5, end: 4.4 }]), 0.9)).toEqual({ kind: 'fromOpening', openingId: oid('x'), distance: expect.closeTo(0.15, 12), toward: 'start' });
   });
 });
 
@@ -45,7 +46,7 @@ describe('rule under the cursor, over another opening', () => {
   it('a reference it would overlap loses to one it clears', () => {
     // Other [2.5, 3.7]; centre at 4.0 → jambs 3.55 and 4.45, overlapping it: the gap −0.15 from x is
     // nearest by size, but the wall end is 0.55 away and clear.
-    expect(ruleAt(aim(4, [{ id: 'x', start: 2.5, end: 3.7 }]), 0.9)).toEqual({ kind: 'fromEnd', distance: expect.closeTo(0.55, 12) });
+    expect(ruleAt(aim(4, [{ id: oid('x'), start: 2.5, end: 3.7 }]), 0.9)).toEqual({ kind: 'fromEnd', distance: expect.closeTo(0.55, 12) });
   });
 });
 
@@ -78,8 +79,8 @@ describe('opening tool table', () => {
   it('aiming + typed distance places it at that distance from the same reference', () => {
     const a = openingTransition(OPENING_IDLE, { kind: 'hover', aim: aim(4) }, 0.9).state;
     expect(openingTransition(a, { kind: 'typed', distance: 1.2 }, 0.9).place?.rule).toEqual({ kind: 'fromEnd', distance: 1.2 });
-    const b = openingTransition(OPENING_IDLE, { kind: 'hover', aim: aim(2.75, [{ id: 'x', start: 1, end: 1.9 }]) }, 0.9).state;
-    expect(openingTransition(b, { kind: 'typed', distance: 0.3 }, 0.9).place?.rule).toEqual({ kind: 'fromOpening', openingId: 'x', distance: 0.3, toward: 'end' });
+    const b = openingTransition(OPENING_IDLE, { kind: 'hover', aim: aim(2.75, [{ id: oid('x'), start: 1, end: 1.9 }]) }, 0.9).state;
+    expect(openingTransition(b, { kind: 'typed', distance: 0.3 }, 0.9).place?.rule).toEqual({ kind: 'fromOpening', openingId: oid('x'), distance: 0.3, toward: 'end' });
   });
 
   it('typed while centred: from the nearer end of the cursor', () => {

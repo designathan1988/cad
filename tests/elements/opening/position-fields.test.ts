@@ -10,6 +10,7 @@ import { newOpening } from '../../../src/elements/opening/schema';
 import { fieldStates } from '../../../src/ui/fields';
 import { wid } from '../../ids';
 import type { WallId } from '../../../src/elements/wall/schema';
+import { oid } from '../../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -26,12 +27,12 @@ const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => 
 const doc = (): Doc => ({
   ...newDocument(),
   walls: [wall(wid('h'), [0, 0], [6, 0]), wall(wid('p'), [3, 0], [3, 3])],
-  openings: [newOpening('o', wid('h'), 'door', { kind: 'fromStart', distance: 3.6 })],
+  openings: [newOpening(oid('o'), wid('h'), 'door', { kind: 'fromStart', distance: 3.6 })],
 });
 
 const fieldsOf = (d: Doc, update: (patch: unknown) => void = () => {}) => {
   const g = deriveGeometry(d);
-  const one = g.openings.get('o')!;
+  const one = g.openings.get(oid('o'))!;
   const act = { update: (_: unknown, patch: unknown) => update(patch), setRule: () => {}, align: () => {}, alignHeads: () => {}, distribute: () => {}, setSpacing: () => {}, ungroup: () => {} };
   return fieldStates(positionFields(d, one, g.openings, act), [one]);
 };
@@ -71,11 +72,11 @@ describe("a door's sides in the panel", () => {
     const box: Doc = {
       ...newDocument(),
       walls: [wall(wid('a'), [0, 0], [4, 0]), wall(wid('b'), [4, 0], [4, 3]), wall(wid('c'), [4, 3], [0, 3]), wall(wid('d'), [0, 3], [0, 0])],
-      openings: [newOpening('o', wid('a'), 'door', { kind: 'centered' })],
+      openings: [newOpening(oid('o'), wid('a'), 'door', { kind: 'centered' })],
       rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Kitchen', number: '1' }],
     };
     const g = deriveGeometry(box);
-    const one = g.openings.get('o')!;
+    const one = g.openings.get(oid('o'))!;
     const labels = (rooms: Parameters<typeof leafFields>[2]) => {
       const swing = fieldStates(leafFields(one, () => {}, rooms), [one]).find((s) => s.field.id === 'swing')!;
       return (swing.field as Extract<typeof swing.field, { options: unknown }>).options.map((x) => x.label);
@@ -92,11 +93,11 @@ describe("a door's hinge in the panel", () => {
     const box: Doc = {
       ...newDocument(),
       walls: [wall(wid('a'), [0, 0], [4, 0]), wall(wid('b'), [4, 0], [4, 3]), wall(wid('c'), [4, 3], [0, 3]), wall(wid('d'), [0, 3], [0, 0])],
-      openings: [{ ...newOpening('o', wid('a'), 'door', { kind: 'centered' }), swing: 'left' }],
+      openings: [{ ...newOpening(oid('o'), wid('a'), 'door', { kind: 'centered' }), swing: 'left' }],
       rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Kitchen', number: '1' }],
     };
     const g = deriveGeometry(box);
-    const one = g.openings.get('o')!;
+    const one = g.openings.get(oid('o'))!;
     const states = fieldStates(leafFields(one, () => {}, [...g.rooms.values()]), [one]);
     const hinge = states.find((s) => s.field.id === 'hinge')!;
     expect((hinge.field as Extract<typeof hinge.field, { options: unknown }>).options).toEqual([

@@ -12,6 +12,7 @@ import { hostsIn } from '../../project/derived-queries';
 import { deriveOpenings, type HostInfo, type OpeningWarningKind, type PlacedOpening } from './derive';
 import type { AlignEdge, GroupSpacing, Opening, OpeningGroup, OpeningGroupId, OpeningId, PositionRule, RuleKind } from './schema';
 import type { WallId } from '../wall/schema';
+import type { ElementId } from '../../core/id';
 
 /** Why a new opening cannot go where it is aimed (it overlaps another, or does not fit), or null. */
 export function placementProblem(doc: Doc, opening: Opening): OpeningWarningKind | null {
@@ -129,7 +130,7 @@ export function wallRule(doc: Doc, o: Opening): PositionRule {
 }
 
 /** The openings placed from `id` (by distance or alignment) held where they are by their walls instead: `id` moves alone. */
-export function detachedFrom(doc: Doc, id: OpeningId): readonly Opening[] {
+export function detachedFrom(doc: Doc, id: ElementId): readonly Opening[] {
   if (!doc.openings.some((o) => (o.rule.kind === 'fromOpening' || o.rule.kind === 'aligned') && o.rule.openingId === id)) return doc.openings;
   return doc.openings.map((o) => (o.rule.kind === 'fromOpening' || o.rule.kind === 'aligned') && o.rule.openingId === id ? { ...o, rule: wallRule(doc, o) } : o);
 }

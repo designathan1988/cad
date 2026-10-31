@@ -12,6 +12,7 @@ import { meshSnapshot } from './object-snapshot';
 import { materialIn, SEE_THROUGH } from '../elements/material/schema';
 import { previewMesh } from '../elements/object/textures';
 import type { WallId } from '../elements/wall/schema';
+import type { OpeningId } from '../elements/opening/schema';
 
 /** The wall around it: this much beyond each jamb, over the head and its thickness (m). */
 const MARGIN = 0.5;
@@ -27,7 +28,7 @@ export function openingSnapshot(m: OpeningModel, w: number, h: number): string |
   const top = m.sill + m.height;
   const face = THICK / 2;
   const frame = { start: { x: 0, y: 0 }, end: { x: width, y: 0 }, dir: { x: 1, y: 0 }, normal: { x: 0, y: 1 }, faces: [-face, face] as const, region: [] };
-  const opening = newOpening('snapshot', 'wall' as WallId, m.kind, { kind: 'fromStart', distance: 0 }, { width, height: m.height, sill: m.sill, swing: 'right', style: { ...m.style, open: m.style.open ?? 0.35 } });
+  const opening = newOpening('snapshot' as OpeningId, 'wall' as WallId, m.kind, { kind: 'fromStart', distance: 0 }, { width, height: m.height, sill: m.sill, swing: 'right', style: { ...m.style, open: m.style.open ?? 0.35 } });
   const meshes: THREE.Mesh[] = [];
   const wallTop = top + MARGIN;
   // The wall: a block each side, one over the head, one under a window's sill.

@@ -4,6 +4,7 @@
 // jamb, or nothing (a point in the plan). Moving, stretching or thickening the wall moves the point.
 
 import type { Point2 } from '../../model/vector';
+import type { OpeningId } from '../opening/schema';
 
 export const DIM_PREFIX = 'dim';
 
@@ -15,7 +16,7 @@ export const DIM_PREFIX = 'dim';
  */
 export type DimAnchor =
   | { readonly kind: 'wall'; readonly wallId: string; readonly end: 'start' | 'end'; readonly along: number; readonly offset: number }
-  | { readonly kind: 'opening'; readonly openingId: string; readonly jamb: 'start' | 'end'; readonly offset: number }
+  | { readonly kind: 'opening'; readonly openingId: OpeningId; readonly jamb: 'start' | 'end'; readonly offset: number }
   | { readonly kind: 'point'; readonly at: Point2 };
 
 export interface Dimension {

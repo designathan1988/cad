@@ -16,6 +16,7 @@ import { doorFlips, type Handles, handlesFor } from './handles';
 import { hull } from '../model/hull';
 import { currentDims } from '../ui/temp-dims';
 import * as sceneCamera from '../render/scene-camera';
+import { placedOf } from '../project/derived-queries';
 
 /**
  * The handles of the selected walls (handles.ts), in plan and in 3D on the level's floor: while selecting,
@@ -37,7 +38,7 @@ export function handles(app: App): Handles {
   // One door selected, standing still: its flip controls, on the side its leaf sweeps (the side
   // `swing` names is the one its temporary dimension keeps off, opening-ui.ts).
   const one = app.ui.selection.size === 1 && !d ? [...app.ui.selection][0]! : null;
-  const door = one ? app.geometry.openings.get(one) : undefined;
+  const door = one ? placedOf(app.geometry, one) : undefined;
   if (!door || door.opening.kind !== 'door' || !door.frame) return h;
   return { ...h, flips: doorFlips(door.opening.id, door.frame, door.opening.swing === 'right' ? -1 : 1, toScreen) };
 }

@@ -9,6 +9,7 @@ import { typeUsage } from '../../src/session/browser-data';
 import { newOpening } from '../../src/elements/opening/schema';
 import { wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import { oid } from '../ids';
 
 const wall = (id: WallId, type: string, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -24,7 +25,7 @@ const wall = (id: WallId, type: string, a: [number, number], b: [number, number]
 const doc: Doc = {
   ...newDocument(),
   walls: [wall(wid('a'), 'wt_concrete20', [0, 0], [4, 0]), wall(wid('b'), 'wt_concrete20', [4, 0], [4, 3]), wall(wid('c'), 'wt_masonry15', [4, 3], [0, 3]), wall(wid('d'), 'wt_masonry15', [0, 3], [0, 0])],
-  openings: [newOpening('o', wid('a'), 'door', { kind: 'centered' })],
+  openings: [newOpening(oid('o'), wid('a'), 'door', { kind: 'centered' })],
   rooms: [{ id: 'r', levelId: 'lvl_ground', seed: { x: 2, y: 1.5 }, name: 'Room 1', number: '1' }],
   floors: [{ id: 'f', levelId: 'lvl_ground', source: { kind: 'room', roomId: 'r' }, thickness: 0.1, offset: 0 }],
 };

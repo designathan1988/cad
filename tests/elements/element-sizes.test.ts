@@ -15,6 +15,7 @@ import { isOpening, isWall } from '../../src/project/file-guards';
 import { stretchEnd } from '../../src/elements/wall/edit';
 import { wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import { oid } from '../ids';
 
 const wall = (id: WallId, x1: number, top: DocWall['top'] = { kind: 'level', offset: 0 }, baseOffset = 0): DocWall => ({
   id,
@@ -57,21 +58,21 @@ describe('doors and windows', () => {
   const setup = () => {
     const s = createStore<Doc>(newDocument());
     s.dispatch(addWalls([wall(wid('w'), 5)]));
-    s.dispatch(addOpening(newOpening('d', wid('w'), 'door', { kind: 'centered' })));
+    s.dispatch(addOpening(newOpening(oid('d'), wid('w'), 'door', { kind: 'centered' })));
     return s;
   };
   it('a width or height of nothing, or a sill under the floor, is refused', () => {
     const s = setup();
     const before = s.get().openings[0]!;
     for (const patch of [{ width: 0 }, { width: -1 }, { height: 0 }, { sill: -0.1 }, { width: Number.NaN }]) {
-      s.dispatch(updateOpening('d', patch));
+      s.dispatch(updateOpening(oid('d'), patch));
       expect(s.get().openings[0]).toEqual(before);
     }
-    s.dispatch(updateOpening('d', { width: 1.2 }));
+    s.dispatch(updateOpening(oid('d'), { width: 1.2 }));
     expect(s.get().openings[0]!.width).toBe(1.2);
   });
   it('a file opening with a negative sill is not taken', () => {
-    expect(isOpening({ ...newOpening('d', wid('w'), 'window', { kind: 'centered' }), sill: -0.5 })).toBe(false);
+    expect(isOpening({ ...newOpening(oid('d'), wid('w'), 'window', { kind: 'centered' }), sill: -0.5 })).toBe(false);
   });
 });
 

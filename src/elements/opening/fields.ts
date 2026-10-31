@@ -132,7 +132,10 @@ export function positionFields(doc: Doc, one: OpeningSolid, placed: ReadonlyMap<
       when: () => rule.kind === 'fromOpening',
       options: refs.map((r) => ({ value: r.id, label: label(r) })),
       get: (x) => (x.opening.rule.kind === 'fromOpening' ? x.opening.rule.openingId : ''),
-      set: (id) => act.setRule(o.id, 'fromOpening', id),
+      set: (id) => {
+        const ref = refs.find((r) => r.id === id);
+        if (ref) act.setRule(o.id, 'fromOpening', ref.id);
+      },
     },
     {
       id: 'alignWith',
@@ -141,7 +144,10 @@ export function positionFields(doc: Doc, one: OpeningSolid, placed: ReadonlyMap<
       when: () => rule.kind === 'aligned',
       options: aligns.map((r) => ({ value: r.id, label: alignLabel(r) })),
       get: (x) => (x.opening.rule.kind === 'aligned' ? x.opening.rule.openingId : ''),
-      set: (id) => rule.kind === 'aligned' && act.update([o.id], { rule: { ...rule, openingId: id } }),
+      set: (id) => {
+        const ref = aligns.find((r) => r.id === id);
+        if (ref && rule.kind === 'aligned') act.update([o.id], { rule: { ...rule, openingId: ref.id } });
+      },
     },
     {
       id: 'alignBy',

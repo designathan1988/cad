@@ -8,6 +8,7 @@ import { boundsOf } from '../../src/project/derived-queries';
 import { newOpening } from '../../src/elements/opening/schema';
 import { wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import { oid } from '../ids';
 
 const wall = (id: WallId, a: [number, number], b: [number, number]): DocWall => ({
   id,
@@ -44,14 +45,14 @@ describe('an opening over a joint', () => {
   const tee: Doc = { ...box, walls: [...box.walls, wall(wid('t2'), [2, -3], [2, 0])] };
 
   it('centred on the bottom wall, its 1.20 m span covers the T at x = 2: flagged', () => {
-    const g = deriveGeometry({ ...tee, openings: [newOpening('o', wid('b'), 'window', { kind: 'centered' })] });
-    expect(g.openings.get('o')!.warnings).toContain('openingAtJoint');
+    const g = deriveGeometry({ ...tee, openings: [newOpening(oid('o'), wid('b'), 'window', { kind: 'centered' })] });
+    expect(g.openings.get(oid('o'))!.warnings).toContain('openingAtJoint');
     expect(g.openingWarnings).toContainEqual({ kind: 'openingAtJoint', openings: ['o'] });
   });
 
   it('beside the T: not flagged; at the wall corner it is joined to: not flagged either', () => {
-    const g = deriveGeometry({ ...tee, openings: [newOpening('o', wid('b'), 'window', { kind: 'fromEnd', distance: 0.5 })] });
-    expect(g.openings.get('o')!.warnings).toEqual([]);
+    const g = deriveGeometry({ ...tee, openings: [newOpening(oid('o'), wid('b'), 'window', { kind: 'fromEnd', distance: 0.5 })] });
+    expect(g.openings.get(oid('o'))!.warnings).toEqual([]);
   });
 });
 
@@ -62,22 +63,22 @@ describe('two doors whose leaves sweep the same floor', () => {
   const near = (swing: 'left' | 'right') => ({
     ...box,
     openings: [
-      newOpening('a', wid('b'), 'door', { kind: 'fromStart', distance: 0.2 }, { hinge: 'start', swing: 'left' }),
-      newOpening('c', wid('l'), 'door', { kind: 'fromEnd', distance: 0.2 }, { hinge: 'end', swing }),
+      newOpening(oid('a'), wid('b'), 'door', { kind: 'fromStart', distance: 0.2 }, { hinge: 'start', swing: 'left' }),
+      newOpening(oid('c'), wid('l'), 'door', { kind: 'fromEnd', distance: 0.2 }, { hinge: 'end', swing }),
     ],
   });
 
   it('both are flagged, and the warning names the two', () => {
     const g = deriveGeometry(near('left'));
-    expect(g.openings.get('a')!.warnings).toContain('openingSwingClash');
-    expect(g.openings.get('c')!.warnings).toContain('openingSwingClash');
-    expect(g.openings.get('a')!.valid).toBe(false);
+    expect(g.openings.get(oid('a'))!.warnings).toContain('openingSwingClash');
+    expect(g.openings.get(oid('c'))!.warnings).toContain('openingSwingClash');
+    expect(g.openings.get(oid('a'))!.valid).toBe(false);
     expect(g.openingWarnings).toContainEqual({ kind: 'openingSwingClash', openings: ['a', 'c'] });
   });
 
   it('the left one opening outward sweeps outside the room: neither is flagged', () => {
     const g = deriveGeometry(near('right'));
-    expect(g.openings.get('a')!.warnings).toEqual([]);
-    expect(g.openings.get('c')!.warnings).toEqual([]);
+    expect(g.openings.get(oid('a'))!.warnings).toEqual([]);
+    expect(g.openings.get(oid('c'))!.warnings).toEqual([]);
   });
 });

@@ -10,7 +10,7 @@ import { guideOffset } from '../elements/guide/tool-ui';
 import * as annotationTools from './annotation-tools';
 import type { Point2 } from '../model/vector';
 import { addOpening, placementProblem, wallRule } from '../elements/opening/commands';
-import { newOpening, OPENING_PREFIX } from '../elements/opening/schema';
+import { newOpening } from '../elements/opening/schema';
 import { aimAlong, OPENING_PREVIEW_ID } from '../elements/opening/aim';
 import { t } from '../i18n/messages';
 import { type ToolId } from '../ui/shell';
@@ -20,9 +20,9 @@ import { IDLE } from '../elements/wall/tool';
 import { DIMENSION_IDLE, type DimensionToolEvent } from '../tools/dimension-tool';
 import { type ModifyEvent } from './modify-tool';
 import { referenceLength } from '../elements/opening/derive';
-import { newId } from '../core/id';
 import { afterColon } from './app-placing';
 import type { App } from './app';
+import { newOpeningId } from '../elements/opening/schema';
 
 export function setTool(app: App, tool: ToolId): void {
   // The floor tool with one room selected floors that room at once: the keyboard's way to it, as a
@@ -84,7 +84,7 @@ export function openingEvent(app: App, event: OpeningToolEvent): void {
   app.ui.opening = r.state;
   if (r.place) {
     const size = app.ui.openingDefaults[kind];
-    const made = newOpening(newId(OPENING_PREFIX), r.place.wallId, kind, r.place.rule, { ...size, ...app.placedSides(kind, r.place.swing) });
+    const made = newOpening(newOpeningId(), r.place.wallId, kind, r.place.rule, { ...size, ...app.placedSides(kind, r.place.swing) });
     // Where it was aimed, held by its wall: measured from a neighbour, it moved whenever that one did.
     const opening = { ...made, rule: wallRule(app.store.get(), made) };
     const problem = placementProblem(app.store.get(), opening);

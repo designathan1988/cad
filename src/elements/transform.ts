@@ -17,6 +17,7 @@ import { aimAt } from './opening/aim';
 import { transformWalls } from '../elements/wall/edit';
 import { ruleAt } from './opening/tool';
 import type { WallId } from './wall/schema';
+import type { IdMap } from '../core/id';
 
 export interface Transform {
   /** Where a point goes. */
@@ -63,9 +64,6 @@ export function reflection(a: Point2, b: Point2): Transform {
 const otherEnd = <T extends 'start' | 'end'>(e: T): 'start' | 'end' => (e === 'start' ? 'end' : 'start');
 
 /** An opening's rule on its wall as taken: distances scaled; mirrored, measured from the other end. */
-/** Maps an id to its copy's, of the same kind. */
-type IdMap = <I extends string>(id: I) => I;
-
 function mapRule(rule: PositionRule, t: Transform, ids: IdMap): PositionRule {
   const k = t.factor;
   switch (rule.kind) {
@@ -170,7 +168,7 @@ export function transformSelection(
   const rooms = new Set([...roomsGoingWith(doc, g, walls), ...doc.rooms.filter((r) => set.has(r.id)).map((r) => r.id)]);
   // What goes along, for what is held by it or follows it (registry.ts): a wall that goes, a door or
   // window on one (a dimension's ends), a room that goes (its floor).
-  const hostOf = new Map(doc.openings.map((o) => [o.id, o.wallId]));
+  const hostOf = new Map<string, WallId>(doc.openings.map((o) => [o.id, o.wallId]));
   const going = (id: string) => walls.has(id as WallId) || (hostOf.has(id) && walls.has(hostOf.get(id)!)) || rooms.has(id);
 
   if (!copy) {
@@ -194,8 +192,8 @@ export function transformSelection(
 
   // Copies: every copied element under a new id; references between copied elements follow them.
   const ids2 = new Map<string, string>();
-  const fresh = (id: string, prefix: string) => {
-    const n = newId(prefix);
+  const fresh = <I extends string>(id: I, prefix: string): I => {
+    const n = newId(prefix) as I;
     ids2.set(id, n);
     return n;
   };

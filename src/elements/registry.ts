@@ -28,6 +28,7 @@ import { referenceKind } from './kinds/reference';
 import { roofKind } from './kinds/roof';
 import { stairKind } from './kinds/stair';
 import { wallKind } from './kinds/wall';
+import type { IdMap } from '../core/id';
 
 /** Drawn in this order (later over earlier); the panel shows the first with a selected element. */
 export const KINDS: readonly AnyKind[] = [referenceKind, wallKind, openingKind, stairKind, railingKind, columnKind, roofKind, objectKind, floorKind, zoneKind, roomKind, separatorKind, curtainKind, gridKind, sectionKind, beamKind, guideKind, noteKind, dimensionKind, measureKind];
@@ -213,7 +214,7 @@ export function copyKinds(
   ids: ReadonlySet<string>,
   t: Transform,
   fresh: (id: string, prefix: string) => string,
-  c: KindTransform & { readonly to: (id: string) => string },
+  c: KindTransform & { readonly to: IdMap },
 ): { doc: Doc; added: string[] } {
   // What each kind copies: the selected, those going along (a room with all its walls), and those
   // following what is copied (a room's floor its room).
@@ -227,7 +228,7 @@ export function copyKinds(
   });
   // Every copy's id first, so one copy can refer to another's (a floor to its room's copy).
   const fresher = new Map(taken.flatMap((list, i) => list.map((e) => [e.id, fresh(e.id, KINDS[i]!.prefix)] as const)));
-  const to = (id: string) => fresher.get(id) ?? c.to(id);
+  const to: IdMap = (id) => (fresher.get(id) as typeof id | undefined) ?? c.to(id);
   let next = doc;
   const added: string[] = [];
   KINDS.forEach((k, i) => {
