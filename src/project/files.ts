@@ -49,8 +49,8 @@ export function newProject(app: App): void {
     return;
   }
   const doc = newDocument();
-  showProject(app, doc, () => app.store.dispatch({ label: 'cmd.newProject', apply: () => doc }));
-  app.toast(t('toast.newUndo'));
+  showProject(app, doc, () => app.store.dispatch({ label: 'cmd.newProject', apply: () => doc, replaces: true }));
+  app.toast(t('toast.newUndo', { key: app.keyName('edit.undo') }));
 }
 
 /**
@@ -70,8 +70,21 @@ export function showProject(app: App, doc: Doc, put: () => void): void {
   app.frameAll();
 }
 
-/** Opens a project file in place of the current project, as one undo step. */
+/**
+ * Opens a project file in place of the current project, as one undo step. A file the browser cannot
+ * read, or a project list that cannot take it, is said in the footer: it only reached the console.
+ */
 export async function openFile(app: App, file: File): Promise<void> {
+  try {
+    await openRead(app, file);
+  } catch (e) {
+    console.error('Opening the file failed:', e);
+    app.ui.error = t('open.failed', { name: file.name });
+    app.renderChrome();
+  }
+}
+
+async function openRead(app: App, file: File): Promise<void> {
   const r = readProject(await file.text());
   if (!r.ok) {
     app.ui.error = t(`open.${r.error}`);
@@ -79,16 +92,31 @@ export async function openFile(app: App, file: File): Promise<void> {
   }
   // A project saved without a name is called by its file's: "casa.json" opens as "casa".
   const opened = r.doc.name ? r.doc : { ...r.doc, name: file.name.replace(/\.json$/i, '') };
-  // Elements left out; ids only given their kind's prefix (typed-ids.ts) were kept, and are not counted.
-  const fixed = r.fixes.filter((f) => f.kind !== 'typedIds').reduce((s, f) => s + f.count, 0);
+  // Elements left out; those kept without a bad value said apart (project-file.ts: repairedFields);
+  // ids only given their kind's prefix (typed-ids.ts) were kept, and are not counted.
+  const fixed = r.fixes.filter((f) => f.kind !== 'typedIds' && f.kind !== 'repairedFields').reduce((s, f) => s + f.count, 0);
+  const repaired = r.fixes.find((f) => f.kind === 'repairedFields')?.count ?? 0;
   const stored = savedAs();
   if (stored) {
     // A new project of the list: the open one stays there (projects.ts).
     await importAsProject(app, stored.db, opened);
-    app.toast(fixed > 1 ? t('toast.importedFixed', { n: fixed }) : fixed === 1 ? t('toast.importedFixedOne') : t('toast.imported'));
+    app.toast(
+      fixed > 1 ? t('toast.importedFixed', { n: fixed })
+      : fixed === 1 ? t('toast.importedFixedOne')
+      : repaired > 1 ? t('toast.importedRepaired', { n: repaired })
+      : repaired === 1 ? t('toast.importedRepairedOne')
+      : t('toast.imported'),
+    );
     return;
   }
   // One undo step, like any other change: opening by mistake never loses the project that was open.
-  showProject(app, opened, () => app.store.dispatch({ label: 'cmd.openProject', apply: () => opened }));
-  app.toast(fixed > 1 ? t('toast.openedFixed', { n: fixed }) : fixed === 1 ? t('toast.openedFixedOne') : t('toast.openedUndo'));
+  showProject(app, opened, () => app.store.dispatch({ label: 'cmd.openProject', apply: () => opened, replaces: true }));
+  const key = app.keyName('edit.undo');
+  app.toast(
+    fixed > 1 ? t('toast.openedFixed', { n: fixed, key })
+    : fixed === 1 ? t('toast.openedFixedOne', { key })
+    : repaired > 1 ? t('toast.openedRepaired', { n: repaired, key })
+    : repaired === 1 ? t('toast.openedRepairedOne', { key })
+    : t('toast.openedUndo', { key }),
+  );
 }

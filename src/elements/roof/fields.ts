@@ -4,7 +4,7 @@ import { slopeFormat, slopeShown, slopeTyped, slopeUnit } from '../../i18n/units
 import type { Field } from '../fields';
 import { t } from '../../i18n/messages';
 import type { RoofPatch } from './commands';
-import { ROOF_COVERING, type RoofKind } from './schema';
+import { ROOF_COVERING, ROOF_GRADE_MAX, type RoofKind } from './schema';
 import type { RoofSolid } from './geometry';
 
 export interface RoofFieldActions {
@@ -33,7 +33,8 @@ export function roofFields(roofs: readonly RoofSolid[], act: RoofFieldActions): 
       kind: 'number',
       // As the project writes slopes (ui/units.ts): percent, degrees or 1:n.
       unit: slopeUnit(),
-      min: 0,
+      min: slopeFormat() === 'ratio' ? slopeShown(ROOF_GRADE_MAX) : 0,
+      ...(slopeFormat() === 'ratio' ? {} : { max: slopeShown(ROOF_GRADE_MAX) }),
       decimals: slopeFormat() === 'percent' ? 2 : 1,
       when: (rs) => rs.every((r) => r.roof.kind !== 'flat'),
       get: (r) => slopeShown(r.roof.edges.find((e) => e.grade !== null)?.grade ?? 0),
@@ -42,7 +43,8 @@ export function roofFields(roofs: readonly RoofSolid[], act: RoofFieldActions): 
     { id: 'overhang', label: 'roof.overhang', icon: 'width', kind: 'number', min: 0, get: (r) => r.roof.edges[0]?.overhang ?? 0, set: (v) => act.updateRoofs(ids, { overhang: v }) },
     { id: 'thickness', label: 'roof.thickness', kind: 'number', min: 0.01, get: (r) => r.roof.thickness, set: (v) => act.updateRoofs(ids, { thickness: v }) },
     { id: 'baseOffset', label: 'roof.baseOffset', kind: 'number', get: (r) => r.roof.baseOffset, set: (v) => act.updateRoofs(ids, { baseOffset: v }) },
-    // What it is covered with (its thermal check, Simulations › Thermal): a tile, a slab, a metal sheet.
+    // What it is covered with: the material the 3D draws it in (a tile, a slab, a metal sheet). The
+    // covering's thickness is kept in the data but not shown: only the thermal check read it.
     {
       id: 'covering',
       label: 'roof.covering',
@@ -52,7 +54,6 @@ export function roofFields(roofs: readonly RoofSolid[], act: RoofFieldActions): 
       set: (v) => act.updateRoofs(ids, { covering: { materialId: v } }),
       options: act.materials.map((m) => ({ value: m.id, label: m.label })),
     },
-    { id: 'coveringThickness', label: 'roof.coveringThickness', kind: 'number', min: 0.001, sub: true, get: (r) => (r.roof.covering ?? ROOF_COVERING).thickness, set: (v) => act.updateRoofs(ids, { covering: { thickness: v } }) },
     {
       id: 'parapet',
       label: 'roof.parapet',
@@ -75,7 +76,8 @@ export function roofFields(roofs: readonly RoofSolid[], act: RoofFieldActions): 
               icon: 'raise',
               kind: 'number',
               unit: slopeUnit(),
-              min: 0,
+              min: slopeFormat() === 'ratio' ? slopeShown(ROOF_GRADE_MAX) : 0,
+              ...(slopeFormat() === 'ratio' ? {} : { max: slopeShown(ROOF_GRADE_MAX) }),
               decimals: slopeFormat() === 'percent' ? 2 : 1,
               sub: true,
               get: () => slopeShown(e.grade ?? 0),

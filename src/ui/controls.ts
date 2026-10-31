@@ -27,6 +27,23 @@ export function el<K extends keyof HTMLElementTagNameMap>(
  */
 const sectionOpen = new Map<string, boolean>();
 
+/**
+ * A button that cannot act now, and says why: dimmed (aria-disabled), not disabled, since a disabled button
+ * takes no pointer and no focus, so its reason never showed on hover nor reached the keyboard or a screen
+ * reader. Named by what it does; the reason after it in the tooltip, and as its description (the node
+ * returned, to put in the dialog). A click does nothing while it is blocked. No reason: it acts.
+ */
+export function blockedBy(b: HTMLButtonElement, action: string, why: string | null, whyId: string): HTMLElement | null {
+  b.setAttribute('aria-label', action);
+  b.setAttribute('aria-disabled', String(why !== null));
+  b.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;
+  if (why === null) return null;
+  b.setAttribute('aria-describedby', whyId);
+  // Before the button's own click (a capturing listener runs first at its target).
+  b.addEventListener('click', (e) => e.stopImmediatePropagation(), { capture: true });
+  return el('span', { id: whyId, class: 'sr-only' }, why);
+}
+
 export function section(title: string, open: boolean, ...rows: HTMLElement[]): HTMLDetailsElement {
   const d = el('details', { class: 'section' });
   d.open = sectionOpen.get(title) ?? open;
@@ -55,7 +72,7 @@ export function row(label: string | { text: string; icon: IconName }, control: H
     l.append(el('span', { class: 'field-label' }, label.text));
   }
   if (opts.mark) l.append(el('span', { class: 'own-mark', 'aria-hidden': 'true' }, ' •'));
-  const focusable = control.querySelector('input, select, button') ?? control;
+  const focusable = control.querySelector('input, textarea, select, button') ?? control;
   focusable.id = id;
   const wrap = el('div');
   wrap.append(l, control);
@@ -158,13 +175,26 @@ export function scrub(label: HTMLElement, get: () => number | null, onCommit: (v
       v = Math.max(min, Math.round((start + (ev.clientX - x0) * 0.01) * 100) / 100);
       if (input) input.value = unit === 'm' ? lengthNum(v) : num(v);
     };
-    const up = () => {
+    // Ended once, by release (the value kept) or by the browser taking the pointer (a touch turned into a
+    // scroll, the capture lost: the field put back). Ended on release only, a cancel left the listeners on
+    // and the field showing a value never applied.
+    let done = false;
+    const end = (keep: boolean) => {
+      if (done) return;
+      done = true;
       label.removeEventListener('pointermove', move);
       label.removeEventListener('pointerup', up);
-      if (v !== start) onCommit(v);
+      label.removeEventListener('pointercancel', cancel);
+      label.removeEventListener('lostpointercapture', cancel);
+      if (keep && v !== start) onCommit(v);
+      else if (input) input.value = unit === 'm' ? lengthNum(start) : num(start);
     };
+    const up = () => end(true);
+    const cancel = () => end(false);
     label.addEventListener('pointermove', move);
     label.addEventListener('pointerup', up);
+    label.addEventListener('pointercancel', cancel);
+    label.addEventListener('lostpointercapture', cancel);
   });
 }
 
@@ -174,9 +204,25 @@ export function segmented<T extends string>(
   onChange: (v: T) => void,
   labelled = false,
 ): HTMLElement {
-  const box = el('div', { class: 'segmented', role: 'group' });
-  for (const o of options) {
-    const b = el('button', { type: 'button', title: o.label, 'aria-label': o.label, 'aria-pressed': String(o.value === value) });
+  // One of n: a radio group (one checked, one Tab stop, the arrows move and choose). As toggle buttons each
+  // was heard on its own, and pressing one did not say it released the others.
+  const box = el('div', { class: 'segmented', role: 'radiogroup' });
+  const chosen = Math.max(0, options.findIndex((o) => o.value === value));
+  const buttons: HTMLButtonElement[] = [];
+  box.addEventListener('keydown', (e) => {
+    const i = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    if (i < 0) return;
+    const n = buttons.length;
+    const to = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? (i + 1) % n : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? (i - 1 + n) % n : e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : -1;
+    if (to < 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    buttons[to]!.focus();
+    if (!buttons[to]!.disabled) onChange(options[to]!.value);
+  });
+  for (const [k, o] of options.entries()) {
+    const b = el('button', { type: 'button', role: 'radio', title: o.label, 'aria-label': o.label, 'aria-checked': String(o.value === value), tabindex: k === chosen ? '0' : '-1' });
+    buttons.push(b);
     b.innerHTML = o.icon ? icon(o.icon, 16) : '';
     // Narrow screens keep only the icon of a button that has one; one without keeps its words.
     if (o.icon) b.classList.add('has-icon');
@@ -328,11 +374,18 @@ export function searchSelect<T extends string>(
     const w = Math.max(r.width, 180);
     pop.style.width = `${w}px`;
     pop.style.left = `${Math.min(r.left, window.innerWidth - w - 8)}px`;
-    // Under the button, or above it when there is no room below.
-    const below = window.innerHeight - r.bottom;
-    pop.style.top = below > 260 ? `${r.bottom + 4}px` : `${Math.max(8, r.top - 4 - Math.min(260, pop.offsetHeight || 260))}px`;
-    window.addEventListener('pointerdown', outside, true);
+    // Filled, then placed: under the button, or above it when there is no room below, by its own height.
+    // Measured empty (only its search field), it was placed just above and grew down over the button.
     update();
+    const below = window.innerHeight - r.bottom;
+    if (below <= 260) {
+      // Above, it never covers its button: the list shortened to the room there is (it scrolls).
+      const room = r.top - 12;
+      const over = pop.offsetHeight - room;
+      if (over > 0) list.style.maxHeight = `${Math.max(list.clientHeight - over, 48)}px`;
+    }
+    pop.style.top = below > 260 ? `${r.bottom + 4}px` : `${Math.max(8, r.top - 4 - pop.offsetHeight)}px`;
+    window.addEventListener('pointerdown', outside, true);
     input.focus();
   }
 

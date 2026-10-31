@@ -28,10 +28,15 @@ export const updateColumns = (ids: readonly string[], patch: ColumnPatch): Comma
     if ([patch.angle, patch.topOffset].some((v) => v !== undefined && !Number.isFinite(v))) return doc;
     if (patch.plate !== undefined && !(patch.plate > 0)) return doc;
     let changed = false;
+    const elevation = (id: string) => doc.levels.find((l) => l.id === id)?.elevation;
     const columns = doc.columns.map((c) => {
       if (!ids.includes(c.id)) return c;
-      // Its own level's top again: the field goes, rather than standing as null.
-      const { topLevelId, ...rest } = patch;
+      // Its own level's top again: the field goes, rather than standing as null. Up to a level only above
+      // its own: one at or below it is not taken for this column.
+      const { topLevelId: asked, ...rest } = patch;
+      const to = asked ? elevation(asked) : undefined;
+      const own = elevation(c.levelId);
+      const topLevelId = asked && to !== undefined && own !== undefined && to > own ? asked : asked ? undefined : asked;
       const { topLevelId: _old, ...base } = c;
       const next = { ...(topLevelId === null ? base : c), ...rest, ...(topLevelId ? { topLevelId } : {}) };
       if (JSON.stringify(next) === JSON.stringify(c)) return c;

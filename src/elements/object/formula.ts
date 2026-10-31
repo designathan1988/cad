@@ -169,7 +169,7 @@ class Parser {
   }
   private peekMinus(): boolean {
     this.skip();
-    return this.s[this.i] === '-';
+    return this.s[this.i] === '-' || this.s[this.i] === '−';
   }
   private product(): Node {
     let a = this.unary();
@@ -181,7 +181,7 @@ class Parser {
     }
   }
   private unary(): Node {
-    if (this.eat('-')) return { k: 'u', op: '-', a: this.unary() };
+    if (this.eat('-') || this.eat('−')) return { k: 'u', op: '-', a: this.unary() };
     if (this.eat('!') || this.eatWord('not')) return { k: 'u', op: '!', a: this.unary() };
     return this.atom();
   }
@@ -214,7 +214,8 @@ class Parser {
       }
       return { k: 'n', v };
     }
-    const id = /^[A-Za-z_À-ÿ][\wÀ-ÿ]*/.exec(this.s.slice(this.i));
+    // Letters with accents, not × and ÷ among them: "largura×2" was read as one name.
+    const id = /^[A-Za-z_À-ÖØ-öø-ÿ][\wÀ-ÖØ-öø-ÿ]*/.exec(this.s.slice(this.i));
     if (!id) throw new Error(this.done() ? 'the formula ends too soon' : `unexpected "${this.rest()}"`);
     this.i += id[0].length;
     const name = id[0];

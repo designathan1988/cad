@@ -27,6 +27,7 @@ import * as appSettings from './app-settings';
 import * as appEdit from './app-edit';
 import { isOpeningId } from '../elements/opening/schema';
 import { newGroupId } from '../elements/opening/schema';
+import { CATEGORIES } from '../project/derived-filters';
 
 export interface Action {
   readonly id: string;
@@ -42,6 +43,9 @@ export interface Action {
   readonly enabled: boolean;
   readonly run: () => void;
 }
+
+/** A button's tip for an action: its name, and its key as the user has it when it has one ("Undo (Ctrl+Z)"). */
+export const tipOf = (a: Pick<Action, 'label' | 'keys'>): string => (a.keys ? `${a.label} (${a.keys})` : a.label);
 
 /** What only the input layer can open (dialogs, the file picker). */
 export interface Openers {
@@ -180,6 +184,8 @@ export function appActions(app: App, open: Openers): Action[] {
     make('view.tempHide', 'pal.tempHide', views, () => hideTemporarily(app, 'hide'), { keys: 'Shift+H', enabled: has }),
     make('view.tempIsolate', 'pal.tempIsolate', views, () => hideTemporarily(app, 'isolate'), { keys: 'Shift+I', enabled: has }),
     make('view.tempReset', 'pal.tempReset', views, () => resetTemporary(app), { enabled: ui.temp !== null }),
+    // A selected door's hinge to the other jamb (Space sends its leaf to the other side, as in Revit).
+    make('edit.flipHinge', 'ctx.flipHinge', edit, () => appPlacing.flipDoor(app, 'hinge'), { keys: 'H', enabled: appPlacing.selectedDoor(app) }),
     make('edit.next', 'pal.stepSelection', edit, () => stepSelectionHere(app, 1), { keys: 'N' }),
     make('edit.previous', 'pal.stepBack', edit, () => stepSelectionHere(app, -1), { keys: 'Shift+N' }),
     make('file.projects', 'pal.projects', file, open.projects, { keywords: 'projetos projects lista list abrir open biblioteca library' }),
@@ -194,7 +200,7 @@ export function appActions(app: App, open: Openers): Action[] {
     make('settings.browser', 'pal.browser', settings, () => appSettings.toggleBrowser(app)),
     make('settings.refLines', 'pal.refLines', settings, () => appSettings.toggleRefLines(app)),
     make('settings.openingTags', 'pal.openingTags', settings, () => appPlacing.toggleOpeningTags(app), { keywords: 'etiquetas tags marks tipo type portas janelas doors windows' }),
-    ...(['walls', 'openings', 'rooms', 'floors', 'objects', 'guides'] as const).map((c) =>
+    ...CATEGORIES.map((c) =>
       make(`layer.${c}`, ui.hidden.has(c) ? (`pal.show.${c}` as const) : (`pal.hide.${c}` as const), settings, () => appSettings.toggleCategory(app, c)),
     ),
     ...[...doc.levels]
@@ -241,8 +247,8 @@ export function appActions(app: App, open: Openers): Action[] {
     make('openings.store', 'opstore.open', edit, open.openings, { keywords: `${tBoth('opstore.title')} catálogo catalog modelo model porta door janela window` }),
     make('units.edit', 'units.edit', edit, open.units, { keywords: `${tBoth('units.title')} ${tBoth('units.cm')} ${tBoth('units.mm')}` }),
     ...[2, 3, 4, 5, 6, 8, 10].map((n) =>
-      make(`snap.parts.${n}`, 'pal.snapParts', settings, () => appSettings.setSnapParts(app, n), { enabled: ui.snapParts !== n, keywords: `${n} encaixe snap divisão division terços thirds partes parts` }),
-    ).map((a, i) => ({ ...a, label: t('pal.snapParts', { n: [2, 3, 4, 5, 6, 8, 10][i]! }) })),
+      make(`snap.parts.${n}`, 'pal.snapParts', settings, () => appSettings.setSnapParts(app, n), { enabled: ui.snapParts !== n, vars: { n }, keywords: `${n} encaixe snap divisão division terços thirds partes parts` }),
+    ),
     // Align and distribute the selection (tools/arrange.ts): enabled when enough of it can.
     ...(() => {
       const n = app.arrangeItems().length;
@@ -265,5 +271,6 @@ export function appActions(app: App, open: Openers): Action[] {
     make('settings.keys', 'keys.open', settings, open.keys, { keywords: 'atalhos shortcuts teclado keyboard teclas keys remapear remap desligar' }),
     make('drawing.edit', 'draw.open', edit, open.drawing, { keywords: `${tBoth('draw.title')} 1:50 1:100 pena pen espessura lineweight` }),
     make('help.shortcuts', 'pal.shortcuts', help, open.help, { keys: '?' }),
+    make('help.commands', 'pal.commands', help, () => app.openCommands(), { keys: 'Ctrl+K' }),
   ];
 }

@@ -2,6 +2,7 @@
 
 import type { Point2 } from '../../../model/vector';
 import type { ReferenceLine, Wall, WallId, WallLayer, WallType } from '../schema';
+import { stackProblem } from '../../layers/stack';
 
 export interface WallShape {
   readonly id: WallId;
@@ -46,9 +47,7 @@ export function coreLayersOf(layers: readonly { readonly function: string }[]): 
 export function shapeOf(wall: Wall, type: WallType | undefined): WallShape | ShapeProblem {
   if (type === undefined) return 'missingWallType';
   const { layers } = type;
-  if (layers.length === 0 || layers.some((l) => !(Number.isFinite(l.thickness) && l.thickness > 0))) {
-    return 'invalidWallType';
-  }
+  if (stackProblem(layers) !== null) return 'invalidWallType';
   const thickness = layers.reduce((s, l) => s + l.thickness, 0);
   const layerOffsets = [exteriorOffset(wall.referenceLine, thickness)];
   for (const layer of layers) layerOffsets.push(layerOffsets[layerOffsets.length - 1]! + layer.thickness);

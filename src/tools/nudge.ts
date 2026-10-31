@@ -2,7 +2,6 @@
 // joins (and the rooms they surround), doors and windows slide along their wall by the part of the
 // step along it, a room's point, an outline floor and a guide move. One document out, for one undo step.
 
-import { wallsOnGrids } from '../elements/grid/carry';
 import { moveRooms, roomsGoingWith } from '../project/carry';
 import type { Doc } from '../project/doc';
 import { type DerivedGeometry } from '../project/derive';
@@ -27,8 +26,8 @@ export function nudge(doc0: Doc, g: DerivedGeometry, ids: readonly string[], ste
     const openings = detachedFrom(d, id);
     return openings === d.openings ? d : { ...d, openings };
   }, doc0);
-  // The walls on a selected axis go with it.
-  const set = new Set([...ids, ...wallsOnGrids(doc, ids)]);
+  // An axis moves alone: the walls on its line are not tied to it.
+  const set = new Set(ids);
   const wallIds = doc.walls.filter((w) => set.has(w.id)).map((w) => w.id);
   const movedWalls = new Set(wallIds);
   const moved = (p: Point2) => ({ x: p.x + step.x, y: p.y + step.y });
@@ -52,7 +51,7 @@ export function nudge(doc0: Doc, g: DerivedGeometry, ids: readonly string[], ste
   // The registry's elements (rooms, columns, beams, roofs, stairs, guardrails, texts, axes, guides,
   // outline floors, a dimension's free ends) by their own move; a room gone with its walls not again.
   const own = new Set([...set].filter((id) => !carried.has(id)));
-  return moveKinds(changed ? { ...next, openings } : doc, own, step);
+  return moveKinds(changed ? { ...next, openings } : doc, own, step, g);
 }
 
 /** The rule moved `along` metres toward the wall's end; one without a distance is measured from the start. */

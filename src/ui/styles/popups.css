@@ -105,6 +105,9 @@
   position: fixed;
   z-index: 30;
   min-width: var(--menu-min-w);
+  /* Taller than the window (a phone on its side): it scrolls, its last items in reach. */
+  max-height: calc(100dvh - 2 * var(--sp-1));
+  overflow-y: auto;
   padding: var(--sp-1);
   border: var(--line) solid var(--border-strong);
   border-radius: var(--radius-lg);
@@ -354,7 +357,7 @@
   color: var(--bg);
   font-size: var(--fs-sm);
   line-height: 1.3;
-  pointer-events: none;
+  /* Hoverable: the pointer may rest on it to read it (tooltip.ts). */
   box-shadow: var(--shadow);
 }
 .tooltip[hidden] {

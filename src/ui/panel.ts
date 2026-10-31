@@ -10,7 +10,7 @@ import { nextOpeningPanel, openingPanel, openingTitle, type OpeningPanelActions,
 import type { OpeningId, OpeningKind } from '../elements/opening/schema';
 import type { RoomSolid } from '../elements/room/derive';
 import type { RoomFieldActions as RoomPanelActions } from '../elements/room/fields';
-import { nextWallFields, wallFields } from '../elements/wall/fields';
+import { wallFields } from '../elements/wall/fields';
 import type { JoinWarning } from '../elements/wall/join/types';
 import type { StackedStep } from '../session/stacked';
 import type { ReferenceLine } from '../elements/wall/schema';
@@ -21,6 +21,9 @@ import { icon, type IconName } from '../i18n/icons';
 import type { AnyKind } from '../elements/contract';
 import type { Command } from '../core/store';
 import type { WallTypeId } from '../elements/wall/schema';
+import type { WallPatch } from '../elements/wall/commands';
+import { nextWall } from '../elements/wall/fields';
+import type { LevelId } from '../project/doc';
 
 export interface PanelInput {
   readonly doc: Doc;
@@ -30,6 +33,8 @@ export interface PanelInput {
   readonly selected: readonly DocWall[];
   readonly drawing: boolean;
   readonly defaults: WallDefaults;
+  /** The level shown: the next wall's (a top up to a level takes the one above it). */
+  readonly levelId: LevelId;
   readonly warnings: readonly JoinWarning[];
   /** Selected doors and windows; shown when no wall is selected. */
   readonly openings: readonly OpeningSolid[];
@@ -52,7 +57,7 @@ export interface PanelInput {
 }
 
 export interface PanelActions {
-  readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
+  readonly updateWalls: (patch: WallPatch) => void;
   readonly setReferenceLine: (line: ReferenceLine) => void;
   readonly setWallType: (typeId: WallTypeId) => void;
   readonly keepClear: boolean;
@@ -64,6 +69,8 @@ export interface PanelActions {
   readonly setEndJoin: (end: 'start' | 'end', join: EndJoin | 'auto') => void;
   readonly arrangeWalls: (how: 'align' | 'distribute') => void;
   readonly firstWall?: string;
+  readonly endSides?: readonly ['top' | 'bottom' | 'left' | 'right', 'top' | 'bottom' | 'left' | 'right'];
+  readonly endChoosable?: readonly [boolean, boolean];
   readonly updateDefaults: (patch: Partial<WallDefaults>) => void;
   readonly close: () => void;
   /** A section's drawing shown (its panel's button). */
@@ -178,10 +185,10 @@ export function renderPanel(root: HTMLElement, input: PanelInput, act: PanelActi
     // Its leaf's side and hinge (a door, a casement), as Space and H.
     if (sides.length > 0) nodes.push(fieldsSection(t('panel.door.leaf'), true, sides, [size]));
   } else if (input.drawing) {
-    const d = input.defaults;
+    // The next wall as a wall: a selected wall's fields on the tool's settings (wall/fields.ts).
+    const next = nextWall(doc, input.defaults, input.levelId, act.updateDefaults);
     nodes.push(head('wall', t('panel.nextWall')), el('div', { class: 'panel-hint' }, t('panel.nextWallHint')));
-    const s = fieldsSection(t('panel.general'), true, nextWallFields(doc, act.updateDefaults), [d]);
-    nodes.push(s);
+    nodes.push(fieldsSection(t('panel.general'), true, next.fields, [next.item]));
   } else if (input.next) {
     // What the tool will make, as its ribbon tab shows it: changed here, the next one is made so.
     nodes.push(head(input.next.icon, input.next.title), el('div', { class: 'panel-hint' }, t('panel.nextHint')));

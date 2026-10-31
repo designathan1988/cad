@@ -30,10 +30,10 @@ export interface ContextEntry {
 }
 
 /**
- * Each entry's icon and the action whose key it shows (app/actions.ts, so a key the user remapped shows
- * as remapped: these were literal strings); `keys` only where no action has one (the door's H).
+ * Each entry's icon and the action of the action list it is (actions.ts): its key comes from there, so a key
+ * the user remapped shows as remapped (these were literal strings).
  */
-const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string; action?: string }>> = {
+const LOOK: Readonly<Record<ContextId, { icon: IconName; action?: string }>> = {
   move: { icon: 'move', action: 'edit.move' },
   copy: { icon: 'copy', action: 'edit.copy' },
   rotate: { icon: 'rotate', action: 'edit.rotate' },
@@ -45,8 +45,8 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string; action?:
   hide: { icon: 'eyeOff', action: 'view.tempHide' },
   isolate: { icon: 'eye', action: 'view.tempIsolate' },
   flipWall: { icon: 'flip' },
-  editType: { icon: 'wall' },
-  flipHinge: { icon: 'door', keys: 'H' },
+  editType: { icon: 'wall', action: 'type.edit' },
+  flipHinge: { icon: 'door', action: 'edit.flipHinge' },
   // Each its own icon: open or close is a door standing ajar; the side it opens to, the swing's arc; the
   // hinge's jamb, a door with its hinge side marked. Two of them shared the arc and could not be told apart.
   toggleOpen: { icon: 'doorOpen' },
@@ -62,12 +62,12 @@ const LOOK: Readonly<Record<ContextId, { icon: IconName; keys?: string; action?:
   drawWall: { icon: 'wall', action: 'tool.wall' },
   // The same icon as the Home button in the top bar, which does the same.
   frameAll: { icon: 'home', action: 'view.frameAll' },
-  clearGuides: { icon: 'guide' },
-  section: { icon: 'cut' },
-  selectSimilar: { icon: 'pointer' },
-  addNote: { icon: 'text' },
-  addLevelMark: { icon: 'height' },
-  commands: { icon: 'command', keys: 'Ctrl+K' },
+  clearGuides: { icon: 'guide', action: 'edit.clearGuides' },
+  section: { icon: 'cut', action: 'view.section' },
+  selectSimilar: { icon: 'pointer', action: 'edit.selectSimilar' },
+  addNote: { icon: 'text', action: 'edit.addNote' },
+  addLevelMark: { icon: 'height', action: 'edit.addLevelMark' },
+  commands: { icon: 'command', action: 'help.commands' },
 };
 
 /** The floating bar's few (contextIds): the selection's most used commands. */
@@ -135,7 +135,7 @@ function entriesFor(app: App, openCommands: () => void): (id: ContextId) => Cont
   const actions = new Map(app.actionList().map((a) => [a.id, a]));
   return (id) => {
     const look = LOOK[id];
-    const keys = look.action ? actions.get(look.action)?.keys : look.keys;
+    const keys = look.action ? actions.get(look.action)?.keys : undefined;
     return { id, label: t(`ctx.${id}` as MessageKey), icon: look.icon, ...(keys ? { keys } : {}), run: run[id] };
   };
 }

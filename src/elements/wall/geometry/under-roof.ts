@@ -7,6 +7,7 @@ import type { Point2 } from '../../../model/vector';
 import type { RoofSolid } from '../../roof/geometry';
 import type { Block } from '../../opening/void';
 import { area, clipHalfPlane, clipOut, type ConvexPolygon, halfPlaneThrough, type HalfPlane, signedArea, toCounterClockwise } from './convex';
+import { isConvex } from '../../roof/geometry';
 
 /** A sloped top: z = a·x + b·y + c (m). */
 export interface TopPlane {
@@ -63,12 +64,13 @@ function triangles(poly: readonly Point2[]): ConvexPolygon[] {
   return out;
 }
 
-/** The roofs' undersides: each face (convex) under its plane; a flat roof, its outline in triangles. */
+/** The roofs' undersides: each face under its plane, in triangles when it is not convex (a flat roof's
+ * outline, a face of an L-shaped roof round its valley). */
 export function roofCovers(roofs: readonly RoofSolid[]): RoofCover[] {
   return roofs.map((r) => ({
     pieces: r.faces.flatMap((f) => {
       const plane = planeOf(f.z);
-      const polys = r.faces.length === 1 && f.grade === 0 ? triangles(f.polygon) : [toCounterClockwise(f.polygon)];
+      const polys = isConvex(f.polygon) ? [toCounterClockwise(f.polygon)] : triangles(f.polygon);
       return polys.filter((p) => p.length >= 3 && area(p) > 1e-9).map((polygon) => ({ polygon, plane }));
     }),
   }));

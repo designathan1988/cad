@@ -14,7 +14,8 @@ export function noteFields(notes: readonly Note[], act: NoteFieldActions): Field
   const texts = notes.every((n) => !n.elevation);
   return [
     // A level mark's text is the height it says; its adjustment is what one sets.
-    ...(texts ? [{ id: 'text', label: 'note.text', kind: 'text', get: (n: Note) => n.text, set: (v: string) => act.updateNotes(ids, { text: v }) } as const] : []),
+    // Of several lines: the plan draws a note line by line (kinds/note.ts).
+    ...(texts ? [{ id: 'text', label: 'note.text', kind: 'text', lines: true, get: (n: Note) => n.text, set: (v: string) => act.updateNotes(ids, { text: v }) } as const] : []),
     ...(marks
       ? [
           { id: 'elevation', label: 'note.says', kind: 'readout', text: (items: readonly Note[]) => (items.every((x) => x.text === items[0]!.text) ? items[0]!.text : '—') } as const,

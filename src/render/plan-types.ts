@@ -64,8 +64,8 @@ export interface PlanOverlay {
   readonly hotHandle?: ScreenHandle | null;
   /** The point a wall chain goes on from: marked even before the pointer moves. */
   readonly anchor?: Point2 | null;
-  /** Wall numbers at the middle of the walls selected or under the pointer, as snap labels name them. */
-  readonly wallTags?: readonly { readonly at: Point2; readonly text: string }[];
+  /** Selected walls' numbers: at a point on the wall, set off along its normal past its face (clear, in metres). */
+  readonly wallTags?: readonly { readonly at: Point2; readonly text: string; readonly normal?: Point2; readonly clear?: number }[];
   /** Doors' and windows' type marks beside them (opening/marks.ts); `width` is the opening's (m). */
   readonly openingTags?: readonly { readonly at: Point2; readonly text: string; readonly width: number }[];
   /**

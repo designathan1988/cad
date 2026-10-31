@@ -173,10 +173,34 @@ export async function libraryHash(file: LibraryFile): Promise<string> {
   return `#${LINK_KEY}${toBase64Url(bytes)}`;
 }
 
-/** The library a link's hash carries, as read (to be checked by mergeLibrary); null when it carries none. */
+/** The most a link's library may inflate to (bytes): a deflated stream grows about a thousandfold, so a
+ * link of a few hundred kB could fill the tab's memory and freeze it. 20 MB is far past any library. */
+export const LINK_INFLATED_MAX = 20_000_000;
+
+/** The library a link's hash carries, as read (to be checked by mergeLibrary); null when it carries none.
+ * Throws when it inflates past LINK_INFLATED_MAX, read no further. */
 export async function libraryFromHash(hash: string): Promise<unknown> {
   const at = hash.indexOf(LINK_KEY);
   if (at < 0) return null;
-  const bytes = await through(fromBase64Url(hash.slice(at + LINK_KEY.length)), new DecompressionStream('deflate-raw'));
+  const packed = fromBase64Url(hash.slice(at + LINK_KEY.length));
+  const reader = new Blob([packed as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > LINK_INFLATED_MAX) {
+      await reader.cancel();
+      throw new Error(`The library link inflates past ${LINK_INFLATED_MAX} bytes`);
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const c of chunks) {
+    bytes.set(c, offset);
+    offset += c.length;
+  }
   return JSON.parse(new TextDecoder().decode(bytes));
 }

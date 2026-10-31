@@ -57,12 +57,7 @@ export class Preview {
   update(def: ObjectDefinition, values: Record<string, number>): void {
     const doc = this.app.store.get();
     const ev = evaluateObject(def, { ...this.instance(), values }, { definitions: [...doc.definitions.filter((d) => d.id !== def.id), def], materials: doc.materials });
-    for (const c of [...this.group.children]) {
-      const m = c as THREE.Mesh;
-      m.geometry.dispose();
-      (m.material as THREE.Material).dispose();
-      this.group.remove(c);
-    }
+    this.clear();
     const box = new THREE.Box3();
     // The solid parts with the voids taken out, and each void a faint ghost to place it by.
     const drawn = [...cutGeometries(ev.pieces), ...ev.pieces.filter((p) => p.cut).map((piece) => ({ piece, geometry: pieceGeometry(piece) }))];
@@ -92,12 +87,22 @@ export class Preview {
     this.camera.updateProjectionMatrix();
     this.renderer.render(this.scene, this.camera);
   }
-  dispose(): void {
-    for (const c of this.group.children) {
-      const m = c as THREE.Mesh;
+  /**
+   * Every part let go of, its edge lines too (a child of each part, with their own geometry and
+   * material): only the parts were, and a slider dragged a few seconds left hundreds of edge sets
+   * on the GPU.
+   */
+  private clear(): void {
+    this.group.traverse((o) => {
+      const m = o as THREE.Mesh | THREE.LineSegments;
+      if (!m.geometry) return;
       m.geometry.dispose();
-      (m.material as THREE.Material).dispose();
-    }
+      for (const mat of Array.isArray(m.material) ? m.material : [m.material]) mat.dispose();
+    });
+    this.group.clear();
+  }
+  dispose(): void {
+    this.clear();
     this.renderer.dispose();
     // Given back to the browser now, not when it is collected: the next editor gets a context.
     this.renderer.forceContextLoss();

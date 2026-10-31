@@ -10,7 +10,7 @@ import type { Material } from '../elements/material/schema';
 import { wallTypeFields } from '../elements/wall/type-fields';
 import { addWallType, deleteWallType, duplicateWallType, typeDeleteBlocker, updateWallType } from '../elements/wall/types';
 import type { WallLayer, WallTypeId } from '../elements/wall/schema';
-import { el } from './controls';
+import { blockedBy, el } from './controls';
 import { openProjectDialog } from './dialog';
 import { fieldsSection } from './fields';
 import { defaultName, name, t } from '../i18n/messages';
@@ -19,6 +19,9 @@ import { lengthText } from '../i18n/units';
 import { wallSnapshot } from './wall-snapshot';
 import { folderButton, iconButton, storeSearch, textButton } from './store-parts';
 import { newWallTypeId } from '../elements/wall/schema';
+import { nextCopy } from '../i18n/messages';
+import { pictureQueue } from './store-pictures';
+import { fold } from './search';
 
 /** Pictures by layers and materials: a type's picture is made again only when they change. */
 const pictures = new WeakMap<readonly Material[], WeakMap<readonly WallLayer[], Map<string, string | null>>>();
@@ -42,33 +45,11 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
   let scrolled: number | null = null;
   // The side's scroll, kept as a layer is edited (each change draws the dialog again).
   let sideScrolled = 0;
-  let pending: { id: string; layers: readonly WallLayer[] }[] = [];
-  let working = false;
-  const work = () => {
-    if (working) return;
-    working = true;
-    const step = () => {
-      const next = pending.shift();
-      const host = app.shell.helpBack;
-      if (!next || !host.querySelector('.objs-store')) {
-        working = false;
-        return;
-      }
-      const src = pictureOf(next.layers, app.store.get().materials, true);
-      const img = host.querySelector<HTMLImageElement>(`img[data-picture="${CSS.escape(next.id)}"]`);
-      if (img && src) {
-        img.src = src;
-        img.classList.remove('is-loading');
-      }
-      setTimeout(step, 0);
-    };
-    setTimeout(step, 0);
-  };
+  const queue = pictureQueue<{ id: string; layers: readonly WallLayer[] }>(() => app.shell.helpBack, (x) => x.id, (x) => pictureOf(x.layers, app.store.get().materials, true));
 
   const render = (close: () => void): HTMLElement => {
     const doc = app.store.get();
     const used = (id: WallTypeId) => doc.walls.filter((w) => w.wallTypeId === id).length;
-    const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     const found = doc.wallTypes.filter((x) => query.trim() === '' || fold(name(x.name)).includes(fold(query.trim())));
     const inProject = found.filter((x) => used(x.id) > 0);
     const shown = folder === USED ? inProject : found;
@@ -108,7 +89,7 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
       });
     nav.append(navItem(ALL, t('types.all'), found.length), navItem(USED, t('objs.inProject'), inProject.length));
 
-    pending = [];
+    queue.clear();
     const grid = el('div', { class: 'objs-grid', role: 'group', 'aria-label': t('types.list') });
     grid.addEventListener('scroll', () => (scrolled = grid.scrollTop));
     if (scrolled !== null) {
@@ -121,7 +102,7 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
       const src = pictureOf(x.layers, doc.materials, false);
       const img = el('img', { class: `objs-card-img${src ? '' : ' is-loading'}`, alt: '', 'data-picture': x.id });
       if (src) img.src = src;
-      else if (src === undefined) pending.push({ id: x.id, layers: x.layers });
+      else if (src === undefined) queue.add({ id: x.id, layers: x.layers });
       const n = used(x.id);
       card.append(
         el('span', { class: 'objs-card-pic' }, img, ...(n > 0 ? [el('span', { class: 'objs-badge' }, n === 1 ? t('types.usedByOne') : t('types.usedBy', { n }))] : [])),
@@ -160,24 +141,20 @@ export function showWallTypes(app: App, first?: WallTypeId): void {
     const dup = textButton(t('types.duplicate'), 'duplicate', () => {
       const id = newWallTypeId();
       chosen = id;
-      const copies = doc.wallTypes.filter((x) => x.name.startsWith(`${type.name} (`)).length;
-      app.store.dispatch(duplicateWallType(type.id, id, defaultName.copy(type.name, copies + 2)));
+      const { base, n } = nextCopy(type.name, doc.wallTypes.map((x) => x.name));
+      app.store.dispatch(duplicateWallType(type.id, id, defaultName.copy(base, n)));
     });
     const blocker = typeDeleteBlocker(doc, type.id);
     const action = t('types.deleteNamed', { name: name(type.name) });
     const why = blocker === 'inUse' ? t('types.cantDeleteInUse') : blocker === 'last' ? t('types.cantDeleteLast') : null;
     const del = iconButton('trash', action, 'delete', () => app.store.dispatch(deleteWallType(type.id)));
-    del.disabled = why !== null;
-    // What it does, then why it cannot.
-    del.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;
-    const whyNode = why ? el('span', { id: 'types-why', class: 'sr-only' }, why) : null;
-    if (whyNode) del.setAttribute('aria-describedby', 'types-why');
+    const whyNode = blockedBy(del, action, why, 'types-why');
     side.append(
       el('div', { class: 'objs-side-actions' }, dup, el('span', { class: 'spacer' }), del, ...(whyNode ? [whyNode] : [])),
-      fieldsSection(t('types.general'), true, wallTypeFields({ update }), [type]),
+      fieldsSection(t('types.general'), true, wallTypeFields({ update, top: type.top }), [type]),
       layerEditor(type.layers, doc.materials, (next) => update({ layers: next })),
     );
-    work();
+    queue.work();
     return withLibrary(app, 'types', close, el('div', { class: 'dialog objs-store types-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('types.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side)));
   };
 

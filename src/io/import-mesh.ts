@@ -1,9 +1,9 @@
 // A 3D model as a parametric object (phase 11: "importação de glTF/OBJ como objeto da biblioteca, com
 // parâmetros de escala e material"): its meshes, one a material, put in a unit box (mesh parts,
 // elements/object/schema.ts) that its width, depth and height stretch, each dragged by a handle as the
-// library's objects are; a material parameter for each of its colours, its own colour by default. The
-// file's unit is guessed from its size: a model over 20 m across is in centimetres (over 2 km, in
-// millimetres). Pure: the loaders (three.js's glTF and OBJ) are the app's.
+// library's objects are; a material parameter for each of its colours, its own colour by default. A
+// glTF is in metres; an OBJ's unit is guessed from its size: a model over 20 m across is in centimetres
+// (over 2 km, in millimetres). Pure: the loaders (three.js's glTF and OBJ) are the app's.
 
 import type { Material } from '../elements/material/schema';
 import type { DefinitionCategory, MeshData, ObjectDefinition, ParamDef, Part } from '../elements/object/schema';
@@ -49,8 +49,13 @@ export interface MeshDefinition {
   readonly triangles: number;
 }
 
-/** A definition of the model; `id` makes the ids (the app's newId). Null when it has no triangles or too many. */
-export function meshDefinition(name: string, groups: readonly MeshGroup[], category: DefinitionCategory, id: (prefix: string) => string): MeshDefinition | null {
+/**
+ * A definition of the model; `id` makes the ids (the app's newId). Null when it has no triangles or too
+ * many. `metres`: its unit is known to be the metre, as every glTF's is (the glTF 2.0 specification:
+ * "the units for all linear distances are meters"); only an OBJ, which says none, is guessed by its size
+ * (a 25 m glTF building was shrunk a hundredfold).
+ */
+export function meshDefinition(name: string, groups: readonly MeshGroup[], category: DefinitionCategory, id: (prefix: string) => string, metres = false): MeshDefinition | null {
   const tris = groups.reduce((n, g) => n + (g.indices ? g.indices.length : g.positions.length / 3) / 3, 0);
   if (tris === 0 || tris > MAX_TRIANGLES) return null;
   let min = [Infinity, Infinity, Infinity];
@@ -63,7 +68,7 @@ export function meshDefinition(name: string, groups: readonly MeshGroup[], categ
       }
   const size = [0, 1, 2].map((k) => Math.max(1e-9, max[k]! - min[k]!));
   const across = Math.max(...size);
-  const unit = across > 2000 ? 0.001 : across > 20 ? 0.01 : 1;
+  const unit = metres ? 1 : across > 2000 ? 0.001 : across > 20 ? 0.01 : 1;
   // A flat model (a rug) still has a height to stretch.
   const dims = size.map((v) => Math.max(0.01, v * unit));
   const colours = [...new Set(groups.map((g) => g.color.toLowerCase()))];

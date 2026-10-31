@@ -1,7 +1,7 @@
 // The temporary dimensions of the selection: where they go in the view, and their editable fields.
 
 import type { App } from '../session/app';
-import { type TempDim, tempDims } from '../session/temp-dims';
+import { type TempDim, tempDims } from '../project/temp-dims';
 import { shownFor } from '../project/derived-filters';
 import { lengthNum, lengthText, typingExamples } from '../i18n/units';
 import { t } from '../i18n/messages';

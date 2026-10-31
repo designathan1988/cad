@@ -63,14 +63,14 @@ export interface OpeningSolid extends PlacedOpening {
 export interface DerivedGeometry {
   readonly solids: ReadonlyMap<WallId, WallSolid>;
   readonly warnings: readonly JoinWarning[];
+  /** The wall ends a chosen miter, through, stop or square acts on (footprint.ts WallGeometry.choosable). */
+  readonly choosable: ReadonlySet<string>;
   readonly openings: ReadonlyMap<OpeningId, OpeningSolid>;
   readonly openingWarnings: readonly OpeningWarning[];
   readonly rooms: ReadonlyMap<RoomId, RoomSolid>;
   readonly roomWarnings: readonly RoomWarning[];
   /** A level's spaces, the ones its walls close in (room/derive.ts): where the room tool can put a room. Found when asked. */
   readonly spaces: (levelId: LevelId) => readonly (readonly P[])[];
-  /** Each level's wall pieces before doors and windows are cut: what the building covers (app/lot-areas.ts). */
-  readonly levelPieces: ReadonlyMap<string, readonly (readonly P[])[]>;
   /** The registry's kinds (elements/registry.ts), derived: by kind, then id. */
   readonly kinds: KindSolids;
 }
@@ -82,8 +82,9 @@ export interface DerivedGeometry {
 export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOpenings: readonly Opening[] = []): DerivedGeometry {
   const walls = [...doc.walls, ...extra];
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
-  const { pieces, plan, slices, warnings } = wallPieces(walls, types, (w) => wallHeights(doc, w), (w) => planCutHeight(doc, w));
-  const placed = deriveOpenings([...doc.openings, ...extraOpenings], hostsOf(doc, walls, jointsIn(walls, types, pieces), endsIn(walls, types, pieces)), doc.openingGroups);
+  const { pieces, plan, slices, warnings, choosable } = wallPieces(walls, types, (w) => wallHeights(doc, w), (w) => planCutHeight(doc, w));
+  const { joints, ends } = jointsAndEnds(walls, types, pieces);
+  const placed = deriveOpenings([...doc.openings, ...extraOpenings], hostsOf(doc, walls, joints, ends), doc.openingGroups);
   const byId = new Map(walls.map((w) => [w.id, w]));
   const openings = new Map<OpeningId, OpeningSolid>();
   const cuts = new Map<WallId, OpeningCut[]>();
@@ -191,7 +192,7 @@ export function deriveGeometry(doc: Doc, extra: readonly DocWall[] = [], extraOp
     if (!found.has(levelId)) found.set(levelId, spacesOf(roomPieces.get(levelId) ?? []));
     return found.get(levelId)!;
   };
-  const base = { solids, warnings, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, spaces, levelPieces: piecesByLevel };
+  const base = { solids, warnings, choosable, openings, openingWarnings: [...placed.warnings, ...jointWarnings], rooms: roomResult.solids, roomWarnings: roomResult.warnings, spaces };
   // The registry's kinds last: a dimension is placed from the walls and doors.
   return { ...base, kinds: deriveKinds(doc, base) };
 }
@@ -217,11 +218,13 @@ export function wallPieces(
   types: ReadonlyMap<WallTypeId, WallType>,
   heightOf: (w: DocWall) => { bottom: number; top: number },
   cutOf: (w: DocWall) => number,
-): { pieces: Map<WallId, readonly Piece[]>; plan: Map<WallId, PlanCut>; slices: Map<WallId, WallSlice[]>; warnings: JoinWarning[] } {
+): { pieces: Map<WallId, readonly Piece[]>; plan: Map<WallId, PlanCut>; slices: Map<WallId, WallSlice[]>; warnings: JoinWarning[]; choosable: Set<string> } {
   const byLevel = new Map<string, DocWall[]>();
   for (const w of walls) byLevel.set(w.levelId, [...(byLevel.get(w.levelId) ?? []), w]);
   const slices = new Map<WallId, WallSlice[]>();
   const warnings = new Map<string, JoinWarning>();
+  // An end whose chosen join acts at any height.
+  const choosable = new Set<string>();
   for (const list of byLevel.values()) {
     const range = new Map(list.map((w) => [w.id, heightOf(w)]));
     const zs: number[] = [];
@@ -236,6 +239,7 @@ export function wallPieces(
       const g = computeWallGeometry(present, types);
       // The same problem at several heights is one warning.
       for (const w of g.warnings) warnings.set(JSON.stringify(w), w);
+      for (const end of g.choosable) choosable.add(end);
       for (const w of present) {
         const pieces = g.pieces.get(w.id) ?? [];
         const own = slices.get(w.id) ?? [];
@@ -259,20 +263,25 @@ export function wallPieces(
     pieces.set(w.id, shown ? shown.pieces : (computeWallGeometry([w], types).pieces.get(w.id) ?? []));
     plan.set(w.id, kind);
   }
-  return { pieces, plan, slices, warnings: [...warnings.values()] };
+  return { pieces, plan, slices, warnings: [...warnings.values()], choosable };
 }
 
 /**
- * Where other walls meet each straight wall inside its length (a T or an X): the stations along its
- * reference line that their pieces cover within its faces (a hair beyond, as for an opening over a
- * joint). Corners at the wall's ends are not inside it.
+ * What other walls cover of each straight wall, measured once for both uses below: the stations along its
+ * reference line that their pieces cover within its faces (a hair beyond, as for an opening over a joint).
+ * The two uses repeated this clipping each, every pair of walls clipped twice per derivation.
+ * - joints: where they meet it inside its length (a T or an X); corners at its ends are not inside it.
+ * - ends: its length clear of the walls met at its ends (a corner, an end against another wall), from the
+ *   inner face of the one at its start to that of the one at its end. A distributed group's spaces at the
+ *   wall's ends are measured to these faces.
  */
-export function jointsIn(
+export function jointsAndEnds(
   walls: readonly DocWall[],
   types: ReadonlyMap<WallTypeId, WallType>,
   pieces: ReadonlyMap<WallId, readonly Piece[]>,
-): Map<WallId, Map<WallId, { lo: number; hi: number }>> {
-  const out = new Map<WallId, Map<WallId, { lo: number; hi: number }>>();
+): { joints: Map<WallId, Map<WallId, { lo: number; hi: number }>>; ends: Map<WallId, { from: number; to: number }> } {
+  const joints = new Map<WallId, Map<WallId, { lo: number; hi: number }>>();
+  const ends = new Map<WallId, { from: number; to: number }>();
   for (const host of walls) {
     if (host.bulge) continue;
     const shape = shapeOf(host, types.get(host.wallTypeId));
@@ -285,68 +294,37 @@ export function jointsIn(
     ];
     const length = wallLength(shape);
     const mine = new Map<WallId, { lo: number; hi: number }>();
+    let from = 0;
+    let to = length;
     for (const other of walls) {
       if (other.id === host.id || other.levelId !== host.levelId) continue;
-      const stations = (pieces.get(other.id) ?? [])
-        .map((p) => band.reduce<ConvexPolygon>((poly, h) => (poly.length > 0 ? clipHalfPlane(poly, h) : poly), p.polygon))
-        .filter((poly) => poly.length > 0 && area(poly) > AREA_EPSILON)
-        .flatMap((poly) => poly.map((v) => stationOf(shape, v)));
-      if (stations.length === 0) continue;
-      const lo = Math.min(...stations);
-      const hi = Math.max(...stations);
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (const p of pieces.get(other.id) ?? []) {
+        const poly = band.reduce<ConvexPolygon>((q, h) => (q.length > 0 ? clipHalfPlane(q, h) : q), p.polygon);
+        if (poly.length === 0 || area(poly) <= AREA_EPSILON) continue;
+        for (const v of poly) {
+          const st = stationOf(shape, v);
+          lo = Math.min(lo, st);
+          hi = Math.max(hi, st);
+        }
+      }
+      if (lo > hi) continue;
       if (lo > POINT_TOLERANCE && hi < length - POINT_TOLERANCE) mine.set(other.id, { lo, hi });
+      // Over the start or the end, not inside (those are joints): what it covers of the host's length.
+      else if (lo <= POINT_TOLERANCE && hi < length / 2) from = Math.max(from, hi);
+      else if (hi >= length - POINT_TOLERANCE && lo > length / 2) to = Math.min(to, lo);
     }
-    if (mine.size > 0) out.set(host.id, mine);
+    if (mine.size > 0) joints.set(host.id, mine);
+    if (from > 0 || to < length) ends.set(host.id, { from, to });
   }
-  return out;
+  return { joints, ends };
 }
 
 /** The absolute height where the plan of the wall's level cuts it. */
 export function planCutHeight(doc: Doc, wall: DocWall): number {
   const level = levelOf(doc, wall.levelId);
   return (level?.elevation ?? 0) + (level ? cutHeightOf(level) : CUT_HEIGHT);
-}
-
-/**
- * Each straight wall's length clear of the walls met at its ends (a corner, an end against another
- * wall): from the inner face of the one at its start to that of the one at its end, along its
- * reference line. A distributed group's spaces at the wall's ends are measured to these faces.
- */
-export function endsIn(
-  walls: readonly DocWall[],
-  types: ReadonlyMap<WallTypeId, WallType>,
-  pieces: ReadonlyMap<WallId, readonly Piece[]>,
-): Map<WallId, { from: number; to: number }> {
-  const out = new Map<WallId, { from: number; to: number }>();
-  for (const host of walls) {
-    if (host.bulge) continue;
-    const shape = shapeOf(host, types.get(host.wallTypeId));
-    if (typeof shape === 'string') continue;
-    const n = wallNormal(shape);
-    const [f0, f1] = faceOffsets(shape);
-    const band = [
-      halfPlaneThrough(add(shape.start, scale(n, f0 - JOINT_REACH)), n),
-      halfPlaneThrough(add(shape.start, scale(n, f1 + JOINT_REACH)), scale(n, -1)),
-    ];
-    const length = wallLength(shape);
-    let from = 0;
-    let to = length;
-    for (const other of walls) {
-      if (other.id === host.id || other.levelId !== host.levelId) continue;
-      const stations = (pieces.get(other.id) ?? [])
-        .map((p) => band.reduce<ConvexPolygon>((poly, h) => (poly.length > 0 ? clipHalfPlane(poly, h) : poly), p.polygon))
-        .filter((poly) => poly.length > 0 && area(poly) > AREA_EPSILON)
-        .flatMap((poly) => poly.map((v) => stationOf(shape, v)));
-      if (stations.length === 0) continue;
-      const lo = Math.min(...stations);
-      const hi = Math.max(...stations);
-      // Over the start or the end, not inside (those are joints): what it covers of the host's length.
-      if (lo <= POINT_TOLERANCE && hi < length / 2) from = Math.max(from, hi);
-      else if (hi >= length - POINT_TOLERANCE && lo > length / 2) to = Math.min(to, lo);
-    }
-    if (from > 0 || to < length) out.set(host.id, { from, to });
-  }
-  return out;
 }
 
 // model/vector is the one copy of these; re-exported for the render and tools layers.

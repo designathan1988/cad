@@ -49,6 +49,8 @@ describe('palette actions', () => {
       'edit.undo': 'Ctrl+Z', 'edit.redo': 'Ctrl+Shift+Z', 'edit.delete': 'Del', 'edit.selectAll': 'Ctrl+A',
       'edit.split': 'Shift+S', 'edit.corner': 'Shift+T', 'edit.merge': 'Shift+J',
       'file.open': 'Ctrl+O', 'file.save': 'Ctrl+S', 'settings.snaps': 'S', 'settings.language': 'Shift+L', 'help.shortcuts': '?',
+      // The right-click menu's and the floating bar's keys are these (context-menu.ts), so they are actions too.
+      'edit.flipHinge': 'H', 'help.commands': 'Ctrl+K',
     });
   });
 

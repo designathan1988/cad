@@ -58,16 +58,25 @@ export const isGridRule = (r: unknown): r is GridRule => {
   return (x.mode === 'spacing' || x.mode === 'count' || x.mode === 'max') && typeof x.value === 'number' && Number.isFinite(x.value) && x.value > 0;
 };
 
+/** The narrowest panel (m), as the spacing field's minimum: a count or spacing finer than this (typed,
+ * or read from a file) built a box per cell by the million and froze the page. */
+export const CURTAIN_MIN_CELL = 0.1;
+
+/** The most panels `total` metres take: none narrower than CURTAIN_MIN_CELL, and at least one. */
+export const panelsThatFit = (total: number): number => Math.max(1, Math.floor(total / CURTAIN_MIN_CELL + 1e-9));
+
 /** Where a rule's lines are along `total` metres: from 0 to `total`, both ends included. */
 export function gridLines(rule: GridRule, total: number): number[] {
   if (!(total > 0)) return [0];
   if (rule.mode === 'spacing') {
+    const step = Math.max(rule.value, CURTAIN_MIN_CELL);
     const out = [0];
     // A last piece under 1 cm is no panel: the line before it goes.
-    for (let x = rule.value; x < total - 0.01; x += rule.value) out.push(x);
+    for (let x = step; x < total - 0.01; x += step) out.push(x);
     out.push(total);
     return out;
   }
-  const n = rule.mode === 'count' ? Math.max(1, Math.round(rule.value)) : Math.max(1, Math.ceil(total / rule.value - 1e-9));
+  const wanted = rule.mode === 'count' ? Math.max(1, Math.round(rule.value)) : Math.max(1, Math.ceil(total / Math.max(rule.value, CURTAIN_MIN_CELL) - 1e-9));
+  const n = Math.min(wanted, panelsThatFit(total));
   return Array.from({ length: n + 1 }, (_, i) => (total * i) / n);
 }

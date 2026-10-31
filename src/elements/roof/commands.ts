@@ -2,7 +2,7 @@
 
 import type { Doc } from '../../project/doc';
 import type { Command } from '../../core/store';
-import { edgesFor, type Roof, ROOF_GRADE, ROOF_OVERHANG, ROOF_PARAPET, type RoofKind, ROOF_COVERING } from './schema';
+import { edgesFor, type Roof, ROOF_GRADE, ROOF_GRADE_MAX, ROOF_OVERHANG, ROOF_PARAPET, type RoofKind, ROOF_COVERING } from './schema';
 
 export const addRoof = (roof: Roof): Command<Doc> => ({
   label: 'cmd.addRoof',
@@ -32,6 +32,8 @@ export const updateRoofs = (ids: readonly string[], patch: RoofPatch): Command<D
     const nums = [patch.grade, patch.overhang, patch.thickness, patch.baseOffset, patch.parapet, patch.side?.grade];
     if (nums.some((v) => v !== undefined && !Number.isFinite(v))) return doc;
     if ((patch.thickness !== undefined && !(patch.thickness > 0)) || (patch.grade !== undefined && patch.grade < 0) || (patch.overhang !== undefined && patch.overhang < 0)) return doc;
+    // A slope past the steepest, or a side's below zero (0 is a gable; a minus made one unasked): refused.
+    if ((patch.grade !== undefined && patch.grade > ROOF_GRADE_MAX) || (patch.side && (patch.side.grade < 0 || patch.side.grade > ROOF_GRADE_MAX))) return doc;
     let changed = false;
     const roofs = doc.roofs.map((r) => {
       if (!ids.includes(r.id)) return r;

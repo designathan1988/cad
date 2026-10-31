@@ -10,13 +10,20 @@ import type { OpeningFrame } from './void';
 /** Sizes within this are one size (m). */
 const SAME = 1e-6;
 
+/**
+ * What makes an opening of one type, in a fixed order: how it opens and is built, not how far it stands
+ * open (`open`) nor the order its keys were written in. The whole style, stringified, made a door drawn
+ * half open, or one whose screen was taken off and put back, a type of its own.
+ */
+const MAKE_KEYS = ['operation', 'leaves', 'frame', 'casing', 'transom', 'threshold', 'screen', 'mullions', 'transoms', 'design', 'handle', 'leafMaterial', 'frameMaterial', 'glazing', 'muntins'] as const;
+const makeOf = (o: Opening): string => (o.style ? JSON.stringify(MAKE_KEYS.map((k) => o.style![k] ?? null)) : '');
+
 /** Each opening's mark: the kind's prefix (P for doors, J for windows) and its size's number. */
 export function openingMarks(openings: readonly Opening[], prefix: Readonly<Record<OpeningKind, string>>): Map<OpeningId, string> {
   const marks = new Map<OpeningId, string>();
   for (const kind of ['door', 'window'] as const) {
     // A type is a size and a make (style.ts): a sliding door and a hinged one of one size are two types.
     const sizes: { width: number; height: number; sill: number; make: string }[] = [];
-    const makeOf = (o: Opening) => (o.style ? JSON.stringify(o.style) : '');
     const same = (a: { width: number; height: number; sill: number; make: string }, b: typeof a) =>
       Math.abs(a.width - b.width) <= SAME && Math.abs(a.height - b.height) <= SAME && (kind === 'door' || Math.abs(a.sill - b.sill) <= SAME) && a.make === b.make;
     const ofKind = openings.filter((o) => o.kind === kind).map((o) => ({ o, key: { width: o.width, height: o.height, sill: o.sill, make: makeOf(o) } }));

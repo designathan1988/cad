@@ -34,7 +34,7 @@ export function showVariables(app: App): void {
       const nameField = textField(name, (v) => {
         const n = v.trim();
         if (n === name) return;
-        if (!isVariableName(n) || n in vars) {
+        if (!isVariableName(n) || Object.hasOwn(vars, n)) {
           said = t('vars.badName', { name: n });
           return dialog.redraw();
         }

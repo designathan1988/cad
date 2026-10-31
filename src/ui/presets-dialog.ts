@@ -17,6 +17,8 @@ import { openProjectDialog } from './dialog';
 import { getLang, type MessageKey, t } from '../i18n/messages';
 import { meshSnapshot } from './object-snapshot';
 import { folderButton, iconButton, storeSearch } from './store-parts';
+import { pictureQueue } from './store-pictures';
+import { fold } from './search';
 
 const words = (x: Words) => (getLang() === 'pt' ? x.pt : x.en);
 /** The scene's own materials, as the 3D view's (scene-3d.ts) in the light style. */
@@ -50,11 +52,16 @@ function snapshot(app: App, p: Preset, w: number, h: number): string | null {
   return meshes.length > 0 ? meshSnapshot(meshes, w, h, 0.65, pitch) : null;
 }
 
-const pictures = new Map<string, string | null>();
+/** By the document (its materials and types) and what the preset makes now (the tool's next element with its
+ * patch): by the preset alone, a picture kept the width and material of the moment it was first drawn. */
+const pictures = new WeakMap<object, Map<string, string | null>>();
 function pictureOf(app: App, p: Preset, make: boolean, w = 360, h = 270): string | null | undefined {
-  const key = `${p.id}@${w}x${h}`;
-  if (!pictures.has(key) && make) pictures.set(key, snapshot(app, p, w, h));
-  return pictures.get(key);
+  const doc = app.store.get();
+  let mine = pictures.get(doc.materials);
+  if (!mine) pictures.set(doc.materials, (mine = new Map()));
+  const key = `${p.id}@${w}x${h}|${JSON.stringify(templateOf(app, p))}`;
+  if (!mine.has(key) && make) mine.set(key, snapshot(app, p, w, h));
+  return mine.get(key);
 }
 
 const FOLDERS: readonly PresetSlot[] = ['columns', 'beams', 'stairs', 'railings', 'roofs', 'curtains'];
@@ -66,30 +73,8 @@ export function showPresets(app: App, slot?: PresetSlot): void {
   let folder: PresetSlot | 'all' = slot ?? 'all';
   let chosen = PRESETS.find((p) => p.slot === (slot ?? 'columns'))!.id;
   let query = '';
-  let pending: Preset[] = [];
-  let working = false;
-  const work = () => {
-    if (working) return;
-    working = true;
-    const step = () => {
-      const p = pending.shift();
-      const host = app.shell.helpBack;
-      if (!p || !host.querySelector('.objs-store')) {
-        working = false;
-        return;
-      }
-      const src = pictureOf(app, p, true);
-      const img = host.querySelector<HTMLImageElement>(`img[data-picture="${CSS.escape(p.id)}"]`);
-      if (img && src) {
-        img.src = src;
-        img.classList.remove('is-loading');
-      }
-      setTimeout(step, 0);
-    };
-    setTimeout(step, 0);
-  };
+  const queue = pictureQueue<Preset>(() => app.shell.helpBack, (p) => p.id, (p) => pictureOf(app, p, true));
   const render = (close: () => void): HTMLElement => {
-    const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     const folderName = (f: PresetSlot) => t(`prstore.${f}` as MessageKey);
     const found = PRESETS.filter((p) => query.trim() === '' || fold(`${words(p.name)} ${folderName(p.slot)}`).includes(fold(query.trim())));
     const shown = folder === 'all' ? found : found.filter((p) => p.slot === folder);
@@ -117,7 +102,7 @@ export function showPresets(app: App, slot?: PresetSlot): void {
       app.next = { ...app.next, [p.slot]: templateOf(app, p) };
       app.setTool(PRESET_TOOL[p.slot]);
     };
-    pending = [];
+    queue.clear();
     const grid = el('div', { class: 'objs-grid', role: 'group', 'aria-label': t('prstore.title') });
     for (const p of shown) {
       const card = el('button', { type: 'button', class: 'objs-card', 'aria-pressed': String(p.id === chosen) });
@@ -125,13 +110,15 @@ export function showPresets(app: App, slot?: PresetSlot): void {
       const src = pictureOf(app, p, false);
       const img = el('img', { class: `objs-card-img${src ? '' : ' is-loading'}`, alt: '', 'data-picture': p.id });
       if (src) img.src = src;
-      else if (src === undefined) pending.push(p);
+      else if (src === undefined) queue.add(p);
       card.append(el('span', { class: 'objs-card-pic' }, img), el('span', { class: 'objs-card-name' }, words(p.name)), el('span', { class: 'objs-card-meta' }, folderName(p.slot)));
-      card.addEventListener('click', () => {
+      // The second click of a double click (detail 2) places: the first rebuilt the grid, so the browser's
+      // dblclick, which needs both clicks on one element, never came.
+      card.addEventListener('click', (e) => {
+        if (e.detail >= 2) return place(p);
         chosen = p.id;
         dialog.redraw();
       });
-      card.addEventListener('dblclick', () => place(p));
       grid.append(card);
     }
     if (shown.length === 0) grid.append(el('p', { class: 'objs-empty' }, t('opstore.noMatch')));
@@ -146,7 +133,7 @@ export function showPresets(app: App, slot?: PresetSlot): void {
       go.addEventListener('click', () => place(preset));
       side.append(go, el('p', { class: 'objs-in-project' }, t('prstore.after')));
     }
-    work();
+    queue.work();
     return withLibrary(app, 'presets', close, el('div', { class: 'dialog objs-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('prstore.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side)));
   };
   const dialog = openProjectDialog(app, render, () => `preset:${chosen}`);

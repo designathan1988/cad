@@ -14,7 +14,7 @@
 // | done     | escape  | idle     | the measurement is cleared                  |
 // | idle     | escape  | idle     | (the app leaves the tool)                   |
 
-import { distance, signedTwiceArea, type Point2 } from '../../model/vector';
+import { distance, type Point2 } from '../../model/vector';
 
 export type MeasureState =
   | { readonly kind: 'idle' }
@@ -50,8 +50,35 @@ export function chainLength(points: readonly Point2[], closed: boolean): number 
   return closed && points.length >= 3 ? run + distance(points.at(-1)!, points[0]!) : run;
 }
 
-/** The area inside a closed chain (m²), whatever way round it goes. */
-export const chainArea = (points: readonly Point2[]): number => Math.abs(signedTwiceArea(points)) / 2;
+/** Whether two stretches cross at a point inside both (touching at an end is not crossing). */
+function crosses(a: Point2, b: Point2, c: Point2, d: Point2): boolean {
+  const side = (p: Point2, q: Point2, r: Point2) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+  const d1 = side(c, d, a);
+  const d2 = side(c, d, b);
+  const d3 = side(a, b, c);
+  const d4 = side(a, b, d);
+  return d1 * d2 < 0 && d3 * d4 < 0;
+}
+
+/**
+ * The area inside a closed chain (m²), whatever way round it goes; null when its stretches cross (a figure
+ * eight): its two loops went opposite ways and cancelled, and a wrong area read as a right one.
+ */
+export function chainArea(points: readonly Point2[]): number | null {
+  const n = points.length;
+  for (let i = 0; i < n; i++)
+    for (let j = i + 2; j < n; j++) {
+      if (i === 0 && j === n - 1) continue;
+      if (crosses(points[i]!, points[(i + 1) % n]!, points[j]!, points[(j + 1) % n]!)) return null;
+    }
+  let twice = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i]!;
+    const b = points[(i + 1) % points.length]!;
+    twice += a.x * b.y - b.x * a.y;
+  }
+  return Math.abs(twice) / 2;
+}
 
 /** The angle at b between the stretches to a and to c (0–180°); null when one has no length. */
 export function angleAt(a: Point2, b: Point2, c: Point2): number | null {

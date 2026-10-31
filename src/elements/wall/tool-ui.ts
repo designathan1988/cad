@@ -20,6 +20,8 @@ import { guideClick, guideRadius } from '../guide/tool-ui';
 import { newWallId } from './schema';
 import type { WallId } from './schema';
 import { fromOf } from '../tool-draft';
+import { tempDims } from '../../project/temp-dims';
+import { withLiveType } from './types';
 
 export function previewWall(app: App): DocWall[] {
   const w = app.ui.wall;
@@ -39,22 +41,29 @@ export function previewWall(app: App): DocWall[] {
 }
 
 /** The numbers of the walls selected (a few) or under the pointer, or snapped to while drawing. */
-export function wallTags(app: App): { at: Point2; text: string }[] {
+export function wallTags(app: App): { at: Point2; text: string; normal: Point2; clear: number }[] {
   const doc = app.store.get();
   const ids = new Set([...app.ui.selection].slice(0, 12));
   if (app.ui.hover) ids.add(app.ui.hover);
   if (app.ui.snap?.wallId) ids.add(app.ui.snap.wallId);
   // As shown: a wall being dragged, moved or turned by a Modify tool carries its number along.
   return [...app.geometry.solids.values()]
-    .map((s) => s.wall)
-    .filter((w) => ids.has(w.id) && w.levelId === app.ui.levelId)
+    .filter((s) => ids.has(s.wall.id) && s.wall.levelId === app.ui.levelId)
     // A third of the way along: the middle is where the temporary dimension shows its value. Along an
     // arc, on the arc: on its chord the tag sat inside the curve, across the chord and radius dimensions.
     // At 70 % of its sweep, clear of the radius dimension (30 %, temp-dims.ts) and the bend handle (50 %).
-    .map((w) => {
+    // Beside the wall, off its left face (start to end; an arc's outer one): over its middle, a short wall
+    // was hidden under its own tag. Clear: how far that face is from the point (the plan adds the tag's size).
+    .map((s) => {
+      const w = s.wall;
       const arc = arcOf({ start: w.start, end: w.end, bulge: w.bulge ?? 0 });
       const at = arc ? pointAt(arc, arc.startAngle + arc.sweep * 0.7) : { x: w.start.x + (w.end.x - w.start.x) / 3, y: w.start.y + (w.end.y - w.start.y) / 3 };
-      return { at, text: t('wall.tag', { n: wallNumber(doc, w.id) ?? '' }) };
+      const len = Math.hypot(w.end.x - w.start.x, w.end.y - w.start.y) || 1;
+      const away = arc ? { x: at.x - arc.center.x, y: at.y - arc.center.y } : { x: -(w.end.y - w.start.y) / len, y: (w.end.x - w.start.x) / len };
+      const k = Math.hypot(away.x, away.y) || 1;
+      const normal = { x: away.x / k, y: away.y / k };
+      const clear = Math.max(0, ...s.pieces.flatMap((p) => p.polygon.map((v) => (v.x - at.x) * normal.x + (v.y - at.y) * normal.y)));
+      return { at, text: t('wall.tag', { n: wallNumber(doc, w.id) ?? '' }), normal, clear };
     });
 }
 
@@ -128,7 +137,8 @@ export function toggleWallFlip(app: App): void {
 }
 
 export function makeWall(app: App, start: Point2, end: Point2, id = newWallId(), bulge = 0): DocWall {
-  const d = app.ui.defaults;
+  // A type the project has (wall/types.ts: withLiveType), kept as the next walls' too.
+  const d = (app.ui.defaults = withLiveType(app.store.get(), app.ui.defaults));
   const wall: DocWall = {
     id,
     wallTypeId: d.wallTypeId,
@@ -278,14 +288,25 @@ export function submitMeasure(app: App, text: string): boolean {
   }
   if (app.openingKind()) {
     // A measure with nothing to measure along: say how to choose a wall without the pointer.
-    app.ui.error = t('hint.openingNoWall');
+    app.ui.error = t('hint.openingNoWall', { next: app.keyName('edit.next'), door: app.keyName('tool.door'), window: app.keyName('tool.window') });
     app.renderChrome();
     return false;
   }
-  // One opening selected: the typed value is its rule's new distance.
+  // One opening selected: the typed value is the gap its temporary dimension shows on the side its rule
+  // is measured from (the face of the wall beside it, or the opening it is measured from), and does what
+  // typing it there does: the footer and the dimension mean the same.
   const openings = app.selectedOpenings();
   if (openings.length === 1 && app.ui.selection.size === 1) {
     const o = openings[0]!.opening;
+    const side = o.rule.kind === 'fromEnd' || o.rule.kind === 'fromOpening' ? o.rule.kind : 'fromStart';
+    const dims = tempDims(app.store.get(), app.geometry, app.ui.selection);
+    const dim = dims.find((d) => d.id === `${o.id}:${side}`) ?? dims.find((d) => d.id === `${o.id}:fromStart`);
+    if (dim) {
+      const command = dim.apply(r.value.length);
+      if (command) app.store.dispatch(command);
+      return true;
+    }
+    // On an arc no dimension is shown: the distance along it from its reference end.
     const rule = hasDistance(o.rule) ? o.rule : ruleKeepingPosition(app.store.get(), o.id, 'fromStart');
     if (rule && hasDistance(rule)) app.store.dispatch(updateOpening(o.id, { rule: { ...rule, distance: r.value.length } }));
     return true;

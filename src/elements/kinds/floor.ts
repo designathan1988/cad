@@ -18,6 +18,7 @@ import { tilingDrawing } from '../room/tiling';
 import { addRailing } from '../railing/commands';
 import { RAILING_HEIGHT, newRailingId } from '../railing/schema';
 import { materialIn } from '../material/schema';
+import { layerThicknessOk } from '../layers/stack';
 
 export const FLOOR_PREFIX = 'floor';
 
@@ -37,8 +38,8 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
     return { icon: 'slab', text: ceilings ? (n === 1 ? t('ceiling.title') : t('ceiling.titleMany', { n })) : n === 1 ? t('floor.title') : t('floor.titleMany', { n }) };
   },
   dropped: 'fix.droppedFloors',
-  exportName: 'export.floor',
-  exportColour: 'floor',
+
+
   valid: (f): f is Floor =>
     isObject(f) &&
     typeof f.id === 'string' &&
@@ -52,7 +53,7 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
     (f.holes === undefined || (Array.isArray(f.holes) && f.holes.every((h) => Array.isArray(h) && h.length >= 3 && h.every(isPoint)))) &&
     (f.slope === undefined || (isObject(f.slope) && finite(f.slope.grade) && finite(f.slope.dir))) &&
     // Its build-up's layers each of some thickness, its tiles of some size (a slab of nothing is not drawn).
-    (f.layers === undefined || (Array.isArray(f.layers) && f.layers.every((l: unknown) => isObject(l) && typeof l.materialId === 'string' && finite(l.thickness) && l.thickness > 0))) &&
+    (f.layers === undefined || (Array.isArray(f.layers) && f.layers.every((l: unknown) => isObject(l) && typeof l.materialId === 'string' && layerThicknessOk(l.thickness)))) &&
     (f.tiling === undefined || (isObject(f.tiling) && finite(f.tiling.width) && f.tiling.width > 0 && finite(f.tiling.length) && f.tiling.length > 0 && finite(f.tiling.joint) && f.tiling.joint >= 0)) &&
     (f.kind === undefined || f.kind === 'ceiling'),
   derive: (doc, f, g) => {
@@ -200,7 +201,10 @@ export const floorKind: ElementKind<Floor, FloorSolid> = {
       },
       {
         updateFloor: (ids, patch) => {
-          const next = ids.reduce((d, id) => updateFloor(id, patch).apply(d), c.doc);
+          const next = ids.reduce((d, id) => {
+            const f = d.floors.find((x) => x.id === id);
+            return f ? updateFloor(id, typeof patch === 'function' ? patch(f) : patch).apply(d) : d;
+          }, c.doc);
           if (next !== c.doc) c.dispatch({ label: 'cmd.updateFloor', apply: () => next });
         },
         ...(c.startFloorHole ? { startFloorHole: c.startFloorHole } : {}),

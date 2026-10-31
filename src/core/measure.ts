@@ -20,8 +20,11 @@ export const setVariables = (v: Readonly<Record<string, number>>): void => {
   project.variables = v;
 };
 
-/** A name a variable may have: a letter first, then letters, digits or _; not a unit's. */
-export const isVariableName = (name: string): boolean => /^[A-Za-zÀ-ÿ_][A-Za-zÀ-ÿ0-9_]*$/.test(name) && !/^(mm|cm|m|ft|in|x)$/i.test(name);
+/**
+ * A name a variable may have: a letter first, then letters, digits or _; not a unit's. Latin letters with
+ * accents (À-ÿ) but not × and ÷, which sit among them: "pd×2" was read as one name.
+ */
+export const isVariableName = (name: string): boolean => /^[A-Za-zÀ-ÖØ-öø-ÿ_][A-Za-zÀ-ÖØ-öø-ÿ0-9_]*$/.test(name) && !/^(mm|cm|m|ft|in|x)$/i.test(name);
 
 /** A length in metres, or { ok: false } when the text is not a valid expression. */
 export function parseLength(text: string): Parsed<number> {
@@ -89,7 +92,8 @@ class Parser {
     let left = this.term();
     while (left !== null) {
       const op = this.peek();
-      if (op !== '+' && op !== '-') return left;
+      // The minus sign (−) as the hyphen: the app writes negatives with it.
+      if (op !== '+' && op !== '-' && op !== '−') return left;
       this.i++;
       const right = this.term();
       if (right === null) return null;
@@ -102,19 +106,19 @@ class Parser {
     let left = this.factor();
     while (left !== null) {
       const op = this.peek();
-      if (op !== '*' && op !== '/' && op !== 'x' && op !== '×') return left;
+      if (op !== '*' && op !== '/' && op !== '÷' && op !== 'x' && op !== '×') return left;
       // "x" is multiplication only between numbers, never a unit.
       this.i++;
       const right = this.factor(false);
       if (right === null) return null;
-      left = op === '/' ? left / right : left * right;
+      left = op === '/' || op === '÷' ? left / right : left * right;
     }
     return null;
   }
 
   private factor(withUnit = this.units): number | null {
     const c = this.peek();
-    if (c === '-') {
+    if (c === '-' || c === '−') {
       this.i++;
       const v = this.factor(withUnit);
       return v === null ? null : -v;
@@ -127,8 +131,9 @@ class Parser {
       return v;
     }
     // A variable of the project, by its name: a length in metres (a number in a plain number).
-    const name = /^[A-Za-zÀ-ÿ_][A-Za-zÀ-ÿ0-9_]*/.exec(this.s.slice(this.i));
-    if (name && isVariableName(name[0]) && name[0] in project.variables) {
+    const name = /^[A-Za-zÀ-ÖØ-öø-ÿ_][A-Za-zÀ-ÖØ-öø-ÿ0-9_]*/.exec(this.s.slice(this.i));
+    // Its own, not one every object inherits (toString, valueOf): `in` found those too.
+    if (name && isVariableName(name[0]) && Object.hasOwn(project.variables, name[0])) {
       this.i += name[0].length;
       return project.variables[name[0]]!;
     }

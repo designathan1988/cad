@@ -23,7 +23,8 @@ export const updateZones = (ids: readonly string[], patch: ZonePatch): Command<D
     let changed = false;
     const zones = doc.zones.map((z) => {
       if (!ids.includes(z.id)) return z;
-      const next = { ...z, ...patch };
+      // Its name as shown: without the spaces typed round it.
+      const next = { ...z, ...patch, ...(patch.name !== undefined ? { name: patch.name.trim() } : {}) };
       if (JSON.stringify(next) === JSON.stringify(z)) return z;
       changed = true;
       return next;

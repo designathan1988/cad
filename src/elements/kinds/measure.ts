@@ -1,7 +1,7 @@
 // Measures in the registry (contract.ts): elements/measure holds the element. In plan, as dimensions are
 // drawn: an angle's arc between its arms with a tick at each end and its degrees; an arc wall's radius
 // (a leader from the centre, "R"), diameter (through the centre, "Ø") or length (an arc beside the wall's,
-// "⌒"); a point's coordinates by a leader. On the DXF as lines and texts on the dimensions' layer.
+// "⌒"); a point's coordinates by a leader.
 
 import { finite, isObject, isPoint } from '../../core/guards';
 import type { Point2 } from '../../model/vector';
@@ -20,8 +20,6 @@ export interface MeasureSolid {
 
 /** The arc of an arc wall's length stands this far outside the wall's line (m), its text beyond. */
 const ARC_OUT = 0.4;
-/** Text height in the DXF (m). */
-const DXF_H = 0.12;
 
 /** What a measure says. */
 export function measureText(at: Placed): string {
@@ -30,20 +28,9 @@ export function measureText(at: Placed): string {
   return `${at.type === 'radius' ? 'R' : at.type === 'diameter' ? 'Ø' : '⌒'} ${lengthNum(at.value)}`;
 }
 
-/**
- * What a measure says in the DXF, in what an R12 reader shows in its code page (1252): AutoCAD's control
- * codes for the degree and the diameter (%%d, %%c), and the arc's length said in words (⌒ has no byte).
- */
-export function measureDxfText(at: Placed): string {
-  if (at.type === 'angle') return `${num(at.value, 1)}%%d`;
-  if (at.type === 'diameter') return `%%c ${lengthNum(at.value)}`;
-  if (at.type === 'arc') return `${t('meas.arcDxf')} ${lengthNum(at.value)}`;
-  return measureText(at);
-}
-
 const polar = (c: Point2, r: number, a: number): Point2 => ({ x: c.x + r * Math.cos(a), y: c.y + r * Math.sin(a) });
 
-/** An arc as points (plan), for outlines, hits and the DXF. */
+/** An arc as points (plan), for outlines and hits. */
 function arcPoints(c: Point2, r: number, start: number, sweep: number): Point2[] {
   const n = Math.max(2, Math.ceil(Math.abs(sweep) / (Math.PI / 36)) + 1);
   return Array.from({ length: n }, (_, k) => polar(c, r, start + (sweep * k) / (n - 1)));
@@ -87,8 +74,6 @@ export const measureKind: ElementKind<Measure, MeasureSolid> = {
   many: 'meas.titleMany',
   title: (items) => ({ icon: 'dimension', text: items.length === 1 ? t(`meas.type.${items[0]!.m.type}` as MessageKey) : t('meas.titleMany') }),
   dropped: 'fix.droppedMeasures',
-  exportName: 'meas.title',
-  exportColour: 'structure',
   valid: (m): m is Measure =>
     isObject(m) &&
     typeof m.id === 'string' &&
@@ -132,16 +117,6 @@ export const measureKind: ElementKind<Measure, MeasureSolid> = {
   similar: (a, b) => a.type === b.type,
   plan: (p, s, lit) => {
     if (s.at) drawMeasure(p, s.at, lit ? p.color('--wall-sel') : p.color('--text-2'));
-  },
-  dxf: (s, out) => {
-    if (!s.at) return;
-    for (const line of linesOf(s.at)) out.polyline('A-ANNO-DIMS', line, false);
-    if (s.at.type === 'coord') out.line('A-ANNO-DIMS', { x: s.at.at.x - 0.08, y: s.at.at.y - 0.08 }, { x: s.at.at.x + 0.08, y: s.at.at.y + 0.08 });
-    const { p, along } = textPlace(s.at);
-    let deg = (along * 180) / Math.PI;
-    while (deg > 90) deg -= 180;
-    while (deg <= -90) deg += 180;
-    out.text('A-ANNO-DIMS', p, DXF_H, measureDxfText(s.at), deg);
   },
   fields: (items, { dispatch }) => {
     const ids = items.map((s) => s.m.id);

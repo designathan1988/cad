@@ -2,9 +2,10 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { newDocument } from '../../src/project/doc';
 import { createStore } from '../../src/core/store';
-import { addWalls, deleteWalls, updateWalls } from '../../src/elements/wall/commands';
+import { addWalls, updateWalls } from '../../src/elements/wall/commands';
 import { lid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';
+import { deleteElements } from '../../src/elements/opening/commands';
 
 const wall = (id: WallId, x: number) => ({
   id,
@@ -33,7 +34,7 @@ describe('store', () => {
 
   it('a command that changes nothing adds no undo step', () => {
     const s = createStore(newDocument());
-    s.dispatch(deleteWalls([wid('missing')]));
+    s.dispatch(deleteElements([wid('missing')]));
     s.dispatch(updateWalls([], { baseOffset: 1 }));
     expect(s.canUndo()).toBe(false);
   });
@@ -49,7 +50,7 @@ describe('store', () => {
   it('any sequence of commands, undone, gives back the original document', () => {
     const cmd = fc.oneof(
       fc.nat(9).map((i) => addWalls([wall(wid(`w${i}`), i)])),
-      fc.nat(9).map((i) => deleteWalls([wid(`w${i}`)])),
+      fc.nat(9).map((i) => deleteElements([wid(`w${i}`)])),
       fc.tuple(fc.nat(9), fc.double({ min: -1, max: 1, noNaN: true })).map(([i, o]) => updateWalls([wid(`w${i}`)], { baseOffset: o })),
     );
     fc.assert(
@@ -67,11 +68,11 @@ describe('store', () => {
     const s = createStore(newDocument());
     expect(s.undoLabel()).toBeNull();
     s.dispatch(addWalls([wall(wid('a'), 0)]));
-    s.dispatch(deleteWalls([wid('a')]));
-    expect(s.undoLabel()).toBe('cmd.deleteWalls');
+    s.dispatch(deleteElements([wid('a')]));
+    expect(s.undoLabel()).toBe('cmd.deleteElements');
     s.undo();
-    expect([s.undoLabel(), s.redoLabel()]).toEqual(['cmd.addWalls', 'cmd.deleteWalls']);
+    expect([s.undoLabel(), s.redoLabel()]).toEqual(['cmd.addWalls', 'cmd.deleteElements']);
     s.redo();
-    expect([s.undoLabel(), s.redoLabel()]).toEqual(['cmd.deleteWalls', null]);
+    expect([s.undoLabel(), s.redoLabel()]).toEqual(['cmd.deleteElements', null]);
   });
 });

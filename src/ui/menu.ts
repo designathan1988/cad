@@ -20,7 +20,8 @@ export interface MenuItem {
 const shown = { close: null as (() => void) | null };
 
 /** Opens the menu with its top-left corner at the screen point, kept inside the window. */
-export function showMenu(items: readonly MenuItem[], at: { x: number; y: number }, label: string, start = 0): void {
+/** `closed`: told when it closes, however (an item, Esc, a click elsewhere): a menu button's aria-expanded goes back. */
+export function showMenu(items: readonly MenuItem[], at: { x: number; y: number }, label: string, start = 0, closed?: () => void): void {
   shown.close?.();
   if (items.length === 0) return;
   const back = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -70,6 +71,7 @@ export function showMenu(items: readonly MenuItem[], at: { x: number; y: number 
     menu.remove();
     shown.close = null;
     back?.focus();
+    closed?.();
   }
   document.body.append(menu);
   const w = menu.offsetWidth;

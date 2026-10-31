@@ -15,6 +15,7 @@ import { deriveGeometry } from '../project/derive';
 import { savePrefs } from '../project/persist';
 import { newId } from '../core/id';
 import { levelIn } from '../project/doc';
+import { geometryOf } from '../project/carry';
 
 /** Backspace while drawing a chain: its last wall undone, the chain going on from its start. */
 export function undoChainStep(app: App): boolean {
@@ -58,7 +59,7 @@ export function arrange(app: App, how: ArrangeHow): void {
     how,
   );
   const before = app.store.get();
-  const next = items.reduce((d, it, i) => moveKinds(d, new Set([it.id]), steps[i]!), before);
+  const next = items.reduce((d, it, i) => moveKinds(d, new Set([it.id]), steps[i]!, geometryOf(before)), before);
   if (next !== before) app.store.dispatch({ label: 'cmd.arrange', apply: () => next });
 }
 

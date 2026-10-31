@@ -5,6 +5,8 @@
 import { union } from 'polyclip-ts';
 import { add, type Point2, scale } from '../../model/vector';
 import { RAIL_HEIGHT, RAMP_GRADE, RAMP_LANDING, RAMP_RISE, type Stair, STAIR_RISER } from './schema';
+import { RAIL_EXTENSION } from './schema';
+import { LOW_RAIL_HEIGHT } from './schema';
 
 export interface StairPart {
   /** In plan, counter-clockwise. */
@@ -21,8 +23,10 @@ export interface StairSolid {
   readonly parts: readonly StairPart[];
   /** The walking line, bottom to top, for the plan's arrow. */
   readonly walk: readonly Point2[];
-  /** Handrails: polylines (x, y, z), z above the stair's bottom. */
+  /** Handrails: polylines (x, y, z), z above the stair's bottom; each stands on posts at its ends. */
   readonly rails: readonly (readonly { x: number; y: number; z: number }[])[];
+  /** A ramp's lower handrails, held by the posts of the upper ones. */
+  readonly low: readonly (readonly { x: number; y: number; z: number }[])[];
   /** The same lines whether it has handrails or not: where a guardrail along a side goes. */
   readonly sides: readonly (readonly { x: number; y: number; z: number }[])[];
   readonly bottom: number;
@@ -128,8 +132,28 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
       }
     }
     walk.push(stair.at, o);
-    for (const s of [-1, 1]) rails.push(railPts.map(([p, zz]) => ({ ...add(p, scale(across, (s * w) / 2)), z: zz + RAIL_HEIGHT })));
-    return { stair, parts, walk, rails: stair.railing === false ? [] : rails, sides: rails, bottom, height, risers: runs, riser: rise };
+    const line = (s: number, h: number) => railPts.map(([p, zz]) => ({ ...add(p, scale(across, (s * w) / 2)), z: zz + h }));
+    // Two handrails a side, carried level past the foot and the head (NBR 9050): one at 0.90 ending at the
+    // first and last points read as compliant to anyone trusting the "accessible ramp" preset.
+    const carried = (pts: { x: number; y: number; z: number }[]) => {
+      const a = pts[0]!;
+      const b = pts[pts.length - 1]!;
+      return [{ ...add(a, scale(u, -RAIL_EXTENSION)), z: a.z }, ...pts, { ...add(b, scale(u, RAIL_EXTENSION)), z: b.z }];
+    };
+    const sides = [-1, 1].map((s) => line(s, RAIL_HEIGHT));
+    const railed = stair.railing !== false;
+    return {
+      stair,
+      parts,
+      walk,
+      rails: railed ? sides.map(carried) : [],
+      low: railed ? [-1, 1].map((s) => carried(line(s, LOW_RAIL_HEIGHT))) : [],
+      sides,
+      bottom,
+      height,
+      risers: runs,
+      riser: rise,
+    };
   }
   // Three steps fanned about the inner corner of a square of side w, its near edge centred at `near`,
   // climbed along `dir` and turning to `turn`: 30° each, the first by the flight that arrives, the
@@ -150,8 +174,10 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
       { ...c, z: (step0 + 3) * riser + RAIL_HEIGHT },
     ]);
   };
+  // The last flight has a tread fewer than its risers: its last riser lands on the floor above, which is
+  // its top step (a stair laid one tread long was drawn 28 cm longer than built, its well with it).
   if (stair.kind === 'straight') {
-    flight(stair.at, u, risers, 0, 0);
+    flight(stair.at, u, risers - 1, 0, 0);
   } else if (stair.kind === 'l' && stair.winders) {
     // The first flight, three winders in the corner, the second flight to the turn's side.
     const k = firstFlight(stair, risers);
@@ -159,7 +185,7 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
     const end = add(stair.at, scale(u, k * t));
     winders(end, u, side, k);
     const o2 = add(add(end, scale(u, w / 2)), scale(side, w / 2));
-    flight(o2, side, risers - k - 3, 0, k + 3);
+    flight(o2, side, risers - k - 4, 0, k + 3);
   } else if (stair.kind === 'u' && stair.winders) {
     // Up, six winders round the inner corner (two squares turning a half turn), back beside the first.
     const k = firstFlight(stair, risers);
@@ -168,7 +194,7 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
     winders(end, u, side, k);
     winders(add(add(end, scale(u, w / 2)), scale(side, w / 2)), side, scale(u, -1), k + 3);
     const o2 = add(end, scale(side, w));
-    flight(o2, scale(u, -1), risers - k - 6, 0, k + 6);
+    flight(o2, scale(u, -1), risers - k - 7, 0, k + 6);
   } else if (stair.kind === 'l') {
     // The first flight, a square landing, the second flight to the turn's side.
     const k = firstFlight(stair, risers);
@@ -176,7 +202,7 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
     const end = add(stair.at, scale(u, k * t));
     parts.push({ polygon: rect(end, u, { x: -u.y, y: u.x }, w, w), top: (k + 1) * riser, landing: true });
     const o2 = add(add(end, scale(u, w / 2)), scale(side, w / 2));
-    flight(o2, side, risers - k - 1, 0, k + 1);
+    flight(o2, side, risers - k - 2, 0, k + 1);
   } else if (stair.kind === 'u') {
     // Up, a landing as wide as both flights, back down the other way beside the first.
     const k = firstFlight(stair, risers);
@@ -186,7 +212,7 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
     parts.push({ polygon: rect(add(mid, scale(side, 0)), u, side, w, 2 * w), top: (k + 1) * riser, landing: true });
     const back = scale(u, -1);
     const o2 = add(end, scale(side, w));
-    flight(o2, back, risers - k - 1, 0, k + 1);
+    flight(o2, back, risers - k - 2, 0, k + 1);
   } else {
     // A spiral round its centre: each step a wedge, its depth `tread` on the walking line (2/3 out).
     const r = w;
@@ -199,14 +225,15 @@ export function stairSolid(stair: Stair, levelHeight: number, bottom: number): S
     const centre = add(stair.at, scale(u, r));
     const start = stair.angle + Math.PI;
     const at = (radius: number, a: number) => ({ x: centre.x + radius * Math.cos(a), y: centre.y + radius * Math.sin(a) });
-    for (let i = 0; i < risers; i++) {
+    // A wedge fewer than its risers too: the last riser lands on the floor above.
+    for (let i = 0; i < risers - 1; i++) {
       const a0 = start + i * da;
       const a1 = a0 + da;
       const arc = [0, 1, 2, 3].map((k) => at(r, a0 + (da * k) / 3));
       parts.push({ polygon: ccw([at(post, a0), ...arc, at(post, a1)]), top: (i + 1) * riser, landing: false });
       walk.push(at(walkR, a0 + da / 2));
     }
-    rails.push(Array.from({ length: risers + 1 }, (_, i) => ({ ...at(r, start + i * da), z: Math.min(i + 1, risers) * riser + RAIL_HEIGHT })));
+    rails.push(Array.from({ length: risers }, (_, i) => ({ ...at(r, start + i * da), z: Math.min(i + 1, risers) * riser + RAIL_HEIGHT })));
   }
-  return { stair, parts, walk, rails: stair.railing === false ? [] : rails, sides: rails, bottom, height, risers, riser };
+  return { stair, parts, walk, rails: stair.railing === false ? [] : rails, low: [], sides: rails, bottom, height, risers, riser };
 }

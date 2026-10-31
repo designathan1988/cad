@@ -6,7 +6,8 @@ import type { App } from '../session/app';
 import { setLevel } from '../session/app-edit';
 import { cutHeightOf } from '../project/doc';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../elements/level/commands';
-import { el, numberField } from './controls';
+import { elementsOnLevel } from '../elements/registry';
+import { blockedBy, el, numberField } from './controls';
 import { openProjectDialog } from './dialog';
 import { defaultName, name, t } from '../i18n/messages';
 import { icon } from '../i18n/icons';
@@ -28,8 +29,13 @@ export function showLevels(app: App): void {
       const label = name(l.name);
       const input = el('input', { type: 'text', class: 'text-field', 'aria-label': `${t('levels.name')}: ${label}` });
       input.value = name(l.name);
+      // An empty name is refused (updateLevel keeps the old one): put back and said, or the field stayed
+      // blank while the level kept its name.
       const commitName = () => {
-        if (input.value.trim() !== name(l.name)) app.store.dispatch(updateLevel(l.id, { name: input.value }));
+        if (input.value.trim() === '') {
+          input.value = name(l.name);
+          app.toast(t('field.nameNeeded'));
+        } else if (input.value.trim() !== name(l.name)) app.store.dispatch(updateLevel(l.id, { name: input.value }));
         else input.value = name(l.name);
       };
       input.addEventListener('keydown', (e) => {
@@ -44,20 +50,15 @@ export function showLevels(app: App): void {
       const del = el('button', { type: 'button', class: 'icon-btn' });
       del.innerHTML = icon('trash', 16);
       const blocker = deleteBlocker(doc, l.id);
-      // Dimmed but not disabled: a disabled button takes no pointer, so its tooltip, which says why it
-      // cannot delete, never showed on hover.
-      del.setAttribute('aria-disabled', String(blocker !== null));
-      // Named by what it does; when it cannot, the reason is its description (and its tooltip).
-      del.setAttribute('aria-label', t('levels.deleteNamed', { name: label }));
-      const why = blocker === 'last' ? t('levels.cantDeleteLast') : blocker === 'walls' ? t('levels.cantDeleteWalls') : null;
-      // What it does, then why it cannot.
-      const action = t('levels.deleteNamed', { name: label });
-      del.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;
-      if (why) {
-        const id = `why-${l.id}`;
-        rows.append(el('span', { id, class: 'sr-only' }, why));
-        del.setAttribute('aria-describedby', id);
-      }
+      const on = blocker === 'elements' ? elementsOnLevel(doc, l.id) : 0;
+      const why =
+        blocker === 'last' ? t('levels.cantDeleteLast')
+        : blocker === 'walls' ? t('levels.cantDeleteWalls')
+        : blocker === 'elements' ? (on === 1 ? t('levels.cantDeleteElementsOne') : t('levels.cantDeleteElements', { n: on }))
+        : null;
+      // Dimmed, not disabled, with its reason (controls.ts: blockedBy).
+      const whyNode = blockedBy(del, t('levels.deleteNamed', { name: label }), why, `why-${l.id}`);
+      if (whyNode) rows.append(whyNode);
       del.dataset.focus = `del:${l.id}`;
       del.addEventListener('click', () => {
         if (blocker !== null) return;

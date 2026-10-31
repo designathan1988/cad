@@ -13,8 +13,6 @@ import { nearSegment } from './paint';
 /** A bubble's radius on screen (px). */
 export const GRID_BUBBLE_PX = 12;
 
-/** A bubble's radius in the DXF (m). */
-const BUBBLE_R = 0.35;
 
 export const gridKind: ElementKind<Grid, Grid> = {
   key: 'grids',
@@ -27,8 +25,8 @@ export const gridKind: ElementKind<Grid, Grid> = {
   title: (items) => ({ icon: 'hash', text: items.length === 1 ? t('grid.title', { name: items[0]!.name }) : t('grid.titleMany', { n: items.length }) }),
   hint: 'grid.held',
   dropped: 'fix.droppedGrids',
-  exportName: 'grid.title',
-  exportColour: 'structure',
+
+
   valid: (g): g is Grid =>
     isObject(g) && typeof g.id === 'string' && typeof g.name === 'string' && g.name.trim() !== '' && isPoint(g.start) && isPoint(g.end) && JSON.stringify(g.start) !== JSON.stringify(g.end),
   memo: 'element',
@@ -51,21 +49,7 @@ export const gridKind: ElementKind<Grid, Grid> = {
   copied: (all, g) => ({ ...g, name: nextGridName(all, g.start, g.end) }),
   plan: (p, g, lit) => drawAxis(p, g.start, g.end, g.name, lit ? p.color('--wall-sel') : p.color('--text-2')),
   // The line, and past each end a bubble (a 16-sided circle) with the name.
-  dxf: (g, out) => {
-    const len = distance(g.start, g.end);
-    if (len === 0) return;
-    const ux = (g.end.x - g.start.x) / len;
-    const uy = (g.end.y - g.start.y) / len;
-    out.line('S-GRID', g.start, g.end);
-    for (const [q, s] of [
-      [g.start, -1],
-      [g.end, 1],
-    ] as const) {
-      const c = { x: q.x + ux * BUBBLE_R * s, y: q.y + uy * BUBBLE_R * s };
-      out.polyline('S-GRID', Array.from({ length: 16 }, (_, i) => ({ x: c.x + BUBBLE_R * Math.cos((i * Math.PI) / 8), y: c.y + BUBBLE_R * Math.sin((i * Math.PI) / 8) })), true);
-      out.text('S-GRID', c, BUBBLE_R, g.name);
-    }
-  },
+
   fields: (items, { dispatch }) => gridFields(items, { renameGrid: (id, name) => dispatch(renameGrid(id, name)) }),
 };
 

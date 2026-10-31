@@ -107,7 +107,7 @@ export function hideTemporarily(app: App, mode: 'hide' | 'isolate'): void {
   app.ui.temp = mode === 'hide' && was?.mode === 'hide' ? { mode, ids: new Set([...was.ids, ...ids]) } : { mode, ids: new Set(ids) };
   // What went from view leaves the selection, as with a hidden category.
   if (mode === 'hide') for (const id of ids) app.ui.selection.delete(id);
-  app.toast(t(mode === 'hide' ? 'toast.tempHidden' : 'toast.tempIsolated'));
+  app.toast(t(mode === 'hide' ? 'toast.tempHidden' : 'toast.tempIsolated', { key: app.keyName(mode === 'hide' ? 'view.tempHide' : 'view.tempIsolate') }));
   app.refresh();
 }
 
@@ -127,7 +127,7 @@ export function copySelection(app: App): void {
     return app.renderChrome();
   }
   app.clipboard = { doc: app.store.get(), geometry: app.geometry, ids, levelId: app.ui.levelId };
-  app.toast(t(ids.length === 1 ? 'toast.copiedOne' : 'toast.copied', { n: ids.length }));
+  app.toast(t(ids.length === 1 ? 'toast.copiedOne' : 'toast.copied', { n: ids.length, key: app.keyName('edit.paste') }));
 }
 
 /**
@@ -137,11 +137,11 @@ export function copySelection(app: App): void {
 export function paste(app: App): void {
   const c = app.clipboard;
   if (!c) {
-    app.ui.info = t('hint.pasteNothing');
+    app.ui.info = t('hint.pasteNothing', { key: app.keyName('edit.copyClip') });
     return app.renderChrome();
   }
   if (c.levelId === app.ui.levelId) {
-    app.ui.info = t('hint.pasteSameLevel');
+    app.ui.info = t('hint.pasteSameLevel', { key: app.keyName('edit.copy') });
     return app.renderChrome();
   }
   const r = copyToLevel(c.doc, c.geometry, c.ids, app.ui.levelId, newId);
@@ -181,11 +181,10 @@ export function deleteSelection(app: App): void {
   if (n === 0) return;
   app.store.dispatch(deleteElements([...app.ui.selection]));
   // Said, with the way back: the elements went without a word, and a window selection can take more than was seen.
-  app.ui.info = t(n === 1 ? 'hint.deletedOne' : 'hint.deleted', { n });
+  app.ui.info = t(n === 1 ? 'hint.deletedOne' : 'hint.deleted', { n, key: app.keyName('edit.undo') });
   app.renderChrome();
 }
 
-/** Every wall of a type on the current level, with the select tool. */
 /**
  * Everything on the level shown like what is selected (select-similar.ts), what shows only: a hidden
  * category or an element hidden for now is not taken.
@@ -208,6 +207,7 @@ export function selectSimilar(app: App): void {
   app.refresh();
 }
 
+/** Every wall of a type on the current level, with the select tool. */
 export function selectWallsOfType(app: App, typeId: string): void {
   app.setTool('select');
   if (!app.ui.hidden.has('walls')) {

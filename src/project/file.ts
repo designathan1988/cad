@@ -19,16 +19,17 @@ import { isDefinition } from '../elements/object/valid';
 import { objectKind } from '../elements/kinds/object';
 import { DEFAULT_UNITS, isUnits } from '../i18n/units';
 import { BUILT_IN_MATERIALS, materialFor } from '../elements/material/schema';
-import { type Doc, KEPT_FIELDS, ownValuesOnly } from './doc';
+import { type Doc, KEPT_FIELDS, type LevelId, ownValuesOnly } from './doc';
 import type { AnyKind, KindKey } from '../elements/contract';
 import { KINDS } from '../elements/registry';
 import { typedIds } from './typed-ids';
 import { isSavedView } from './saved-views';
 import { deriveGeometry } from './derive';
-import { distributeOpenings } from '../elements/opening/commands';
+import { distributeOpenings, wallRule } from '../elements/opening/commands';
 import { isDrawingSettings } from '../elements/drawing/schema';
-import { finite, isLevel, isMaterial, isObject, isOpening, isOpeningGroup, isWall, isWallType, withBuiltInPattern } from './file-guards';
-import type { LevelId } from './doc';
+import { finite, isLevel, isMaterial, isObject, isOpening, isOpeningGroup, isWall, isWallType, withBuiltInPattern, withoutBadFields } from './file-guards';
+import { BEFORE_70 } from '../elements/object/library-before70';
+import { BEFORE_69 } from '../elements/object/library-before69';
 
 /** The library's definitions that version 46 gave rounded edges, and one as it was before. */
 const ROUNDED = [SOFA, BED, TOILET, FRIDGE, COOKER];
@@ -46,25 +47,6 @@ const before49 = (d: ObjectDefinition): ObjectDefinition => ({ ...d, params: d.p
 /** The library's tree and potted plant as they were before version 45 (cones), by their parts. */
 const isOldTree = (d: ObjectDefinition) => d.parts.length === 3 && d.parts.every((p) => p.kind === 'cylinder');
 const isOldPotPlant = (d: ObjectDefinition) => d.parts.length === 2 && d.parts.every((p) => p.kind === 'cylinder');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /**
  * Version 1: walls, openings, rooms and floors, each list optional when empty in older saves.
@@ -125,8 +107,16 @@ const isOldPotPlant = (d: ObjectDefinition) => d.parts.length === 2 && d.parts.e
  *   terrain, sheets, points, tags, clouds: KEPT_FIELDS) are carried in `kept` as the file had them, never
  *   read into, and written back the same, at the top of the file where they were. A layer set no longer
  *   hides the services (a category gone with them).
+ * Version 68: a door or window is never placed by another one unless the user says so. An older file's
+ *   openings measured from another opening or aligned with one (made so by the tool, unasked) are held
+ *   by their wall where they are: moving or resizing one no longer moves the others.
+ * Version 69: the library's bookcase as an older file stored it, unchanged, is the one now (its books
+ *   in parts that each repeat only their quarter, so its largest sizes fill every shelf).
+ * Version 70: the same for the meeting table (its long type named by the 8 chairs it makes), the barbecue
+ *   (the kettle without the brick one's sizes and handle), the fire pit (at least 15 cm high) and the
+ *   reception desk (its NBR 9050 rule's words).
  */
-export const CURRENT_VERSION = 67;
+export const CURRENT_VERSION = 70;
 
 /** The file's fields of the areas taken out of the app, as they are in it (Doc.kept). */
 function keptOf(raw: Record<string, unknown>): Readonly<Record<string, unknown>> | null {
@@ -143,12 +133,14 @@ export type Fix =
   | { readonly kind: Dropped; readonly count: number }
   | { readonly kind: 'movedToFirstLevel'; readonly count: number }
   /** Ids without their kind's prefix, renamed with every reference (typed-ids.ts). */
-  | { readonly kind: 'typedIds'; readonly count: number };
+  | { readonly kind: 'typedIds'; readonly count: number }
+  /** Elements kept with the one or two fields their kind refused left out (a room's unknown use). */
+  | { readonly kind: 'repairedFields'; readonly count: number };
 
 /** The fix for a registry kind's dropped elements: droppedColumns, droppedBeams and so on. */
 type KindFix = `dropped${Capitalize<KindKey>}`;
 /** What reading left out or put right, counted. */
-type Dropped = 'droppedWalls' | 'droppedOpenings' | 'droppedGroups' | 'droppedMaterials' | 'resetUnits' | 'droppedDefinitions' | 'droppedViews' | KindFix;
+type Dropped = 'droppedWalls' | 'droppedWallTypes' | 'droppedOpenings' | 'droppedGroups' | 'droppedMaterials' | 'resetUnits' | 'droppedDefinitions' | 'droppedViews' | KindFix;
 const kindFix = (k: AnyKind): KindFix => `dropped${k.key[0]!.toUpperCase()}${k.key.slice(1)}` as KindFix;
 
 export type ReadResult = { readonly ok: true; readonly doc: Doc; readonly fixes: readonly Fix[] } | { readonly ok: false; readonly error: ReadError };
@@ -180,11 +172,22 @@ export function repairProject(raw: unknown): ReadResult {
   if (levels.length === 0) return { ok: false, error: 'noLevels' };
   if (wallTypes.length === 0) return { ok: false, error: 'noWallTypes' };
   const fixes: Fix[] = [];
+  // A type it refuses (a layer of no known function or no material) is left out, and said.
+  if (Array.isArray(raw.wallTypes) && fileTypes.length < raw.wallTypes.length) fixes.push({ kind: 'droppedWallTypes', count: raw.wallTypes.length - fileTypes.length });
+  let repaired = 0;
   const keep = <T>(list: unknown, ok: (x: unknown) => x is T, kind: Dropped): T[] => {
     // Lists missing from older versions are empty, not errors.
     if (list === undefined) return [];
     const all = Array.isArray(list) ? list : [];
-    const good = all.filter(ok);
+    // One its kind refuses is kept without the field or two that made it so; dropped only when no such
+    // cut will do (a required field is bad): a room's unknown use lost the whole room.
+    const good = all.flatMap((x): T[] => {
+      if (ok(x)) return [x];
+      const fixed = withoutBadFields(x, ok);
+      if (fixed === null) return [];
+      repaired++;
+      return [fixed];
+    });
     if (good.length < all.length || !Array.isArray(list)) fixes.push({ kind, count: all.length - good.length || 1 });
     return good;
   };
@@ -199,7 +202,17 @@ export function repairProject(raw: unknown): ReadResult {
   // A wall keeps a top or base offset only when it differs from its type's (before version 3 every
   // wall carried both, chosen or not): the rest follow the type.
   const migrated = walls.map((w) => ownValuesOnly(w, wallTypes));
-  const openings = keep(raw.openings, isOpening, 'droppedOpenings');
+  // A door or window on a wall that is not there was kept, never drawn, and came back with any wall of that id:
+  // dropped, as a dimension held by a missing wall is, and said.
+  const hosts = new Set(walls.map((w) => w.id));
+  const valid = keep(raw.openings, isOpening, 'droppedOpenings');
+  const openings = valid.filter((o) => hosts.has(o.wallId));
+  if (openings.length < valid.length) {
+    const said = fixes.find((f) => f.kind === 'droppedOpenings');
+    const lost = valid.length - openings.length;
+    if (said) fixes[fixes.indexOf(said)] = { kind: 'droppedOpenings', count: said.count + lost };
+    else fixes.push({ kind: 'droppedOpenings', count: lost });
+  }
   // Every layer's material is there: the file's, else a built-in one, else a plain one of that name.
   const read = keep(raw.materials, isMaterial, 'droppedMaterials');
   // Before version 30 no material had a pattern: the built-in ones that have one now get it.
@@ -250,7 +263,11 @@ export function repairProject(raw: unknown): ReadResult {
       return was && JSON.stringify(was) === JSON.stringify(d) ? (LIBRARY_NOW.find((l) => l.id === d.id) ?? d) : d;
     });
   const since65 = fileVersion < 65 ? redrawn(sectors, BEFORE_65) : sectors;
-  const definitions = fileVersion < 66 ? redrawn(since65, BEFORE_66) : since65;
+  const since66 = fileVersion < 66 ? redrawn(since65, BEFORE_66) : since65;
+  // Version 69 the bookcase's books, each part repeating only its quarter (library-before69.ts).
+  const since69 = fileVersion < 69 ? redrawn(since66, BEFORE_69) : since66;
+  // Version 70 the meeting table, the barbecue, the fire pit and the reception desk (library-before70.ts).
+  const definitions = fileVersion < 70 ? redrawn(since69, BEFORE_70) : since69;
   for (const id of definitionMaterials(definitions)) if (!materials.some((m) => m.id === id)) materials.push(materialFor(id));
   const wallIds = new Set<string>(walls.map((w) => w.id));
   const openingIds = new Set<string>(openings.map((o) => o.id));
@@ -321,7 +338,18 @@ export function repairProject(raw: unknown): ReadResult {
   // Every id says its kind (typed-ids.ts): one written without it is renamed, and said.
   const typed = typedIds(doc);
   if (typed.renamed > 0) fixes.push({ kind: 'typedIds', count: typed.renamed });
-  return { ok: true, doc: regroupOffJoints(typed.doc, raw.version), fixes };
+  if (repaired > 0) fixes.push({ kind: 'repairedFields', count: repaired });
+  return { ok: true, doc: heldByWalls(regroupOffJoints(typed.doc, raw.version), raw.version), fixes };
+}
+
+/**
+ * Before version 68 the door and window tools measured an opening from its neighbour, and moving or
+ * resizing that one moved it: each such opening (from another, or aligned with one) is held by its wall
+ * where it is (wallRule, worked out on the file as read, so none moves). Groups stay: distributing is asked for.
+ */
+function heldByWalls(doc: Doc, version: number): Doc {
+  if (version >= 68 || !doc.openings.some((o) => o.rule.kind === 'fromOpening' || o.rule.kind === 'aligned')) return doc;
+  return { ...doc, openings: doc.openings.map((o) => ({ ...o, rule: wallRule(doc, o) })) };
 }
 
 /**

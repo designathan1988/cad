@@ -1,16 +1,12 @@
 import type { Box, PlanView } from './plan-view';
 import type { DimMark, PlanOverlay } from './plan-types';
-import { PEN_UNIT_MM, scaleFactor, TEXT_MM } from '../elements/drawing/schema';
 import type { Point2 } from '../model/vector';
 
 
 /** A grid axis: a dash-dot line between its bubbles, each a circle with its name, past its ends. */
-export function planFont(view: PlanView, weight: string, size: string): string {
+export function planFont(weight: string, size: string): string {
   const css = getComputedStyle(document.documentElement);
-  // On paper a text keeps its size in millimetres whatever the scale (drawing/schema.ts, TEXT_MM).
-  const p = view.printing;
-  const px = p ? `${(TEXT_MM[size] ?? 2.5) / (PEN_UNIT_MM * scaleFactor(p.den))}px` : css.getPropertyValue(size).trim();
-  return `${weight} ${px} ${css.getPropertyValue('--font').trim()}`;
+  return `${weight} ${css.getPropertyValue(size).trim()} ${css.getPropertyValue('--font').trim()}`;
 }
 
 export function textWidth(view: PlanView, text: string, font: string): number {
@@ -60,7 +56,7 @@ export function label(view: PlanView, at: Point2, text: string, colour: string, 
 
 /** The live measure, off the segment along its normal, and moved further out while it would cover the snap label. */
 export function drawMeasure(view: PlanView, m: NonNullable<PlanOverlay['measure']>, avoid: Box | null, colour: string, bg: string): void {
-  const font = planFont(view, '700', '--fs-sm');
+  const font = planFont('700', '--fs-sm');
   if (!m.normal) {
     label(view, m.at, m.text, colour, bg, font);
     return;
@@ -86,7 +82,7 @@ export function drawSnap(view: PlanView, s: NonNullable<PlanOverlay['snap']>, co
   ctx.stroke();
   if (!s.label) return null;
   // Beyond the end of the segment, never back over it: to the left when it arrives going left.
-  const font = planFont(view, '600', '--fs-xs');
+  const font = planFont('600', '--fs-xs');
   const left = s.away !== undefined && s.away.x < 0;
   const offset = left ? { x: -14 - textWidth(view, s.label, font), y: -12 } : { x: 14, y: -12 };
   return label(view, { x: s.point.x, y: s.point.y }, s.label, colour, bg, font, offset);
@@ -144,7 +140,7 @@ export function warnSign(view: PlanView, p: Point2, colour: string, bg: string):
   ctx.lineWidth = 1.5;
   ctx.stroke();
   ctx.fillStyle = colour;
-  ctx.font = planFont(view, '700', '--fs-xs');
+  ctx.font = planFont('700', '--fs-xs');
   ctx.textAlign = 'center';
   ctx.fillText('!', p.x, p.y + 4.5);
   ctx.restore();
@@ -156,7 +152,7 @@ export function warnSign(view: PlanView, p: Point2, colour: string, bg: string):
  */
 export function drawOpeningTags(view: PlanView, tags: NonNullable<PlanOverlay['openingTags']>, color: (name: string) => string): void {
   const { ctx } = view;
-  const font = planFont(view, '600', '--fs-xs');
+  const font = planFont('600', '--fs-xs');
   ctx.save();
   ctx.font = font;
   ctx.textAlign = 'center';

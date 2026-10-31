@@ -16,6 +16,9 @@ import { textField } from './fields';
 import { materialLabel, t, type MessageKey } from '../i18n/messages';
 import { icon } from '../i18n/icons';
 import { newMaterialId } from '../elements/material/schema';
+import { nextCopy } from '../i18n/messages';
+import { blockedBy } from './controls';
+import { defaultName } from '../i18n/messages';
 
 export function showMaterials(app: App, first?: MaterialId): void {
   let chosen = first ?? app.store.get().materials[0]?.id ?? '';
@@ -52,7 +55,14 @@ export function showMaterials(app: App, first?: MaterialId): void {
     const detail = el('div', { class: 'types-detail mat-detail' });
     if (mat) {
       // A built-in material shows its name in the interface's language until it is given one.
-      const name = textField(materialLabel(mat), (v) => v.trim() !== '' && v.trim() !== materialLabel(mat) && update({ name: v }));
+      // An empty name is refused: put back and said, or the field stayed blank with the old name kept.
+      const name = textField(materialLabel(mat), (v) => {
+        if (v.trim() === '') {
+          const input = name.querySelector('input');
+          if (input) input.value = materialLabel(mat);
+          app.toast(t('field.nameNeeded'));
+        } else if (v.trim() !== materialLabel(mat)) update({ name: v });
+      });
       // The colour picker reports while it is dragged: one command when it is closed (change), not one per step.
       const color = el('input', { type: 'color', class: 'mat-color' });
       color.value = mat.color;
@@ -132,7 +142,8 @@ export function showMaterials(app: App, first?: MaterialId): void {
       if (!mat) return;
       const id = newMaterialId();
       chosen = id;
-      app.store.dispatch(addMaterial({ ...mat, id, name: `${materialLabel(mat)} (2)` }));
+      const { base, n } = nextCopy(materialLabel(mat), app.store.get().materials.map(materialLabel));
+      app.store.dispatch(addMaterial({ ...mat, id, name: defaultName.copy(base, n) }));
     });
     dup.disabled = !mat;
     const del = el('button', { type: 'button', class: 'icon-btn' });
@@ -141,12 +152,7 @@ export function showMaterials(app: App, first?: MaterialId): void {
     const blocker = mat ? materialDeleteBlocker(doc, mat.id) : 'missing';
     const action = t('mats.deleteNamed', { name: mat ? materialLabel(mat) : '' });
     const why = blocker === 'inUse' ? t('mats.cantDeleteInUse') : blocker === 'last' ? t('mats.cantDeleteLast') : null;
-    del.disabled = blocker !== null;
-    del.setAttribute('aria-label', action);
-    // What it does, then why it cannot.
-    del.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;
-    const whyNode = why ? el('span', { id: 'mats-why', class: 'sr-only' }, why) : null;
-    if (whyNode) del.setAttribute('aria-describedby', 'mats-why');
+    const whyNode = blockedBy(del, action, blocker === 'missing' ? action : why, 'mats-why');
     del.addEventListener('click', () => mat && app.store.dispatch(deleteMaterial(mat.id)));
     // The chosen one by link (io/library-file.ts), to bring into another project.
     const link = btn(t('lib.copyLink'), 'link', () => mat && void copyLibraryLink(app, libraryOf(app.store.get(), [], [mat.id])));

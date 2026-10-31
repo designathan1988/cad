@@ -6,13 +6,14 @@ import { materialLabel } from '../../i18n/messages';
 import { lengthNum, lengthText } from '../../i18n/units';
 import type { Doc } from '../../project/doc';
 import type { OpeningSolid } from '../../project/derive';
+import { hostsIn } from '../../project/derived-queries';
 import { el } from '../controls';
 import { fieldsSection } from '../fields';
 import { markPrefix, t, type MessageKey } from '../../i18n/messages';
 import { icon } from '../../i18n/icons';
-import type { OpeningWarning } from '../../elements/opening/derive';
+import { groupStretch, type OpeningWarning } from '../../elements/opening/derive';
 import type { RoomSolid } from '../../elements/room/derive';
-import { arrangeFields, groupFields, kindName, leafFields, nextOpeningFields, openingFields, type OpeningPanelActions, type OpeningSize, positionFields } from '../../elements/opening/fields';
+import { arrangeFields, groupFields, kindName, leafFields, nextOpening, openingFields, type OpeningPanelActions, type OpeningSize, positionFields } from '../../elements/opening/fields';
 import { styleFields } from '../../elements/opening/style-fields';
 import type { OpeningId, OpeningKind } from '../../elements/opening/schema';
 import { openingMarks } from '../../elements/opening/marks';
@@ -37,7 +38,7 @@ export function openingPanel(
   // The group the selection is in: one member, or every selected opening in the same group.
   const groupIds = new Set(list.map((o) => (o.rule.kind === 'inGroup' ? o.rule.groupId : null)));
   const group = groupIds.size === 1 ? doc.openingGroups.find((g) => groupIds.has(g.id)) : undefined;
-  if (group) nodes.push(fieldsSection(t('panel.group'), true, groupFields(group, placed, act), [group]));
+  if (group) nodes.push(fieldsSection(t('panel.group'), true, groupFields(group, placed, act, groupStretch(group, hostsIn(doc).get(group.wallId))), [group]));
   if (list.length >= 2) nodes.push(fieldsSection(t('panel.arrange'), true, arrangeFields(doc, list, placed, act), list));
   // How they are made, when every one has a make and all are of one kind.
   if (list.every((o) => o.style) && list.every((o) => o.kind === list[0]!.kind)) nodes.push(fieldsSection(t('panel.make'), true, styleFields(selected, act.update, doc.materials.map((m) => ({ id: m.id, label: materialLabel(m) }))), selected));
@@ -62,5 +63,6 @@ export function openingTitle(selected: readonly OpeningSolid[]): string {
 
 export function nextOpeningPanel(kind: OpeningKind, size: OpeningSize, set: (patch: Partial<OpeningSize>) => void): HTMLElement[] {
   // Each tool keeps its own sizes: a door's do not change the next window.
-  return [el('div', { class: 'panel-hint' }, t(kind === 'door' ? 'panel.nextDoorHint' : 'panel.nextWindowHint')), fieldsSection(t('panel.general'), true, nextOpeningFields(kind, set, size), [size])];
+  const next = nextOpening(kind, size, set);
+  return [el('div', { class: 'panel-hint' }, t(kind === 'door' ? 'panel.nextDoorHint' : 'panel.nextWindowHint')), fieldsSection(t('panel.general'), true, next.fields, [next.item])];
 }

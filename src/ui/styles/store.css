@@ -93,38 +93,6 @@
 .objs-menu-wrap {
   position: relative;
 }
-.objs-menu {
-  position: absolute;
-  top: calc(100% + var(--sp-1));
-  right: 0;
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  min-width: var(--menu-min-w);
-  padding: var(--sp-1);
-  border: var(--line) solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--bg);
-  box-shadow: var(--shadow);
-}
-.objs-menu[hidden] {
-  display: none;
-}
-.objs-menu-item {
-  height: var(--control-h);
-  padding: 0 var(--sp-3);
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.objs-menu-item:hover {
-  background: var(--hover);
-}
 .objs-main {
   display: grid;
   flex: 1;

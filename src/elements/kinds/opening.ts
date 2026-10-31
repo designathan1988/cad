@@ -1,8 +1,8 @@
 // Doors and windows in the registry (contract.ts): elements/opening holds the element, its rules and
 // groups. They are placed with their walls (geometry.ts: the wall system cuts them in), and moved,
 // copied and deleted with them (contract.ts: walled); the kind reads where they are and takes them in
-// the selection, the views' filters, picking, framing and select similar. The plan, the 3D, the GLB,
-// the DXF and the panel draw them with their walls.
+// the selection, the views' filters, picking, framing and select similar. The plan, the 3D
+// and the panel draw them with their walls.
 
 import { type OpeningSolid } from '../../project/derive';
 import { openingOutline } from '../../project/derived-queries';
@@ -43,8 +43,8 @@ export const openingKind: ElementKind<Opening, OpeningItem> = {
   one: 'panel.door',
   many: 'panel.door',
   dropped: 'fix.droppedOpenings',
-  exportName: 'panel.door',
-  exportColour: 'structure',
+
+
   // Checked in full by the file reader with its rules and groups (io/project-file.ts: isOpening).
   valid: (o): o is Opening => isObject(o) && typeof o.id === 'string' && typeof o.wallId === 'string',
   derive: (doc, o, g) => {

@@ -27,12 +27,12 @@ import { syncScene } from '../session/scene-frame';
 import * as appPlacing from '../session/app-placing';
 import * as appView from '../session/app-view';
 import { fromOf, pointsOf } from '../elements/tool-draft';
+import { pointDraft, pointTool } from '../session/point-tools';
+import { NO_LEVEL } from '../project/doc';
 
 export function drawPlanOverlay(app: App): void {
   const { ui } = app;
-  const beamFrom = fromOf(ui.draft, 'beam');
   const guideFrom = fromOf(ui.draft, 'guide');
-  const stairFrom = fromOf(ui.draft, 'stair');
   const plan = ui.view === 'plan';
   const preview = new Set([...previewWall(app), ...appPlacing.previewOpening(app)].map((w) => w.id));
   const guide = app.openingKind() ? ruleGuide(app.store.get(), app.geometry, OPENING_PREVIEW_ID) : null;
@@ -57,7 +57,7 @@ export function drawPlanOverlay(app: App): void {
   const chainLast = chainLine && chainLine.length >= 2 ? { a: chainLine.at(-2)!, b: chainLine.at(-1)! } : null;
   const chainMeasure =
     m.kind === 'chainDone' && m.closed
-      ? { at: { x: m.points.reduce((t, p) => t + p.x, 0) / m.points.length, y: m.points.reduce((t, p) => t + p.y, 0) / m.points.length }, text: areaText(chainArea(m.points)), clear: 0 }
+      ? { at: { x: m.points.reduce((t, p) => t + p.x, 0) / m.points.length, y: m.points.reduce((t, p) => t + p.y, 0) / m.points.length }, text: ((a) => (a === null ? t('meas.crosses') : areaText(a)))(chainArea(m.points)), clear: 0 }
       : chainLine && chainLast && distance(chainLast.a, chainLast.b) > 0
         ? {
             at: { x: (chainLast.a.x + chainLast.b.x) / 2, y: (chainLast.a.y + chainLast.b.y) / 2 },
@@ -91,28 +91,13 @@ export function drawPlanOverlay(app: App): void {
       ? { at: { x: (w.start.x + rc.x) / 2, y: (w.start.y + rc.y) / 2 }, text: `${lengthNum(Math.abs(rc.x - w.start.x))} × ${lengthText(Math.abs(rc.y - w.start.y))}`, clear: 0 }
       : null;
   const guideDim = ui.guide && guideOff !== null ? guideMeasure(ui.guide, guideOff) : null;
-  if (plan) {
-    app.plan.drawing = appView.drawingNow(app);
-    app.plan.overrides = ui.overridesOn ? overrideColours(app.store.get()) : new Map();
-    app.plan.phases = ui.overridesOn ? wallPhases(app.store.get()) : new Map();
-    app.plan.roomOverrides = ui.overridesOn ? roomOverrideColours(app.store.get()) : new Map();
-    app.plan.draw(app.visibleGeometry(), {
-      selected: ui.selection,
-      hover: ui.hover,
-      roomSpace: ui.tool === 'room' ? ui.roomSpace : m.kind === 'chainDone' && m.closed ? m.points : null,
-      preview,
-      dimensionDraft: dimensionDraft(app),
-      gridDraft: gridDraft(app),
-      sectionDraft: sectionDraft(app),
-      calloutDraft: app.calloutDraft(),
-      calibrateDraft: calibrateDraft(app),
-      guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
-      snap:
-        // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
-        (ui.tool === 'wall' || ui.tool === 'guide' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'mark' || ui.tool === 'curtain' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
+  // Where the tool snaps, its measure, the line being drawn and its draft: the same over the plan and the 3D.
+  const snap =
+    // Drawing, measuring, modifying, dividing, or dragging a wall's end: where it snaps, said as it is.
+        (pointTool(app) || ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'modify' || ui.tool === 'split' || ui.drag?.kind === 'grip') && ui.snap
           ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null), ...(ui.snap.guideFrom ? { guideFrom: ui.snap.guideFrom } : {}), ...((along ?? floorAlong) ? { away: (along ?? floorAlong)! } : {}) }
-          : null,
-      measure: guideDim
+          : null;
+  const measure = guideDim
         ? { at: { x: (guideDim.a.x + guideDim.b.x) / 2, y: (guideDim.a.y + guideDim.b.y) / 2 }, text: `${lengthText(guideOff!)}`, normal: ui.guide!.base.dir, clear: 0 }
         : rectMeasure
           ? rectMeasure
@@ -131,15 +116,38 @@ export function drawPlanOverlay(app: App): void {
                   normal: { x: -tape.dy / tape.length, y: tape.dx / tape.length },
                   clear: 0,
                 }
-              : (bendMeasure(app) ?? turnMeasure(app) ?? guide?.measure ?? null),
-      axis:
-        end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
+              : (bendMeasure(app) ?? turnMeasure(app) ?? guide?.measure ?? null);
+  const axis =
+    end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
           ? { start: w.last, end }
           : tape && tapeFrom && tapeTo
             ? { start: tapeFrom, end: tapeTo }
             : marks?.to && !marks.axis
               ? { start: marks.base, end: marks.to }
-              : null,
+              : null;
+  const anchor = ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null);
+  // A floor's outline being drawn, or a beam from its first point to where the next click lands.
+  const draft =
+    chainLine && chainLine.length >= 2 ? chainLine : ui.tool === 'floor' && pointsOf(ui.draft, 'floor').length > 0 ? [...pointsOf(ui.draft, 'floor'), ...(floorTo ? [floorTo] : [])] : pointDraft(app);
+  if (plan) {
+    app.plan.drawing = appView.drawingNow(app);
+    app.plan.overrides = ui.overridesOn ? overrideColours(app.store.get()) : new Map();
+    app.plan.phases = ui.overridesOn ? wallPhases(app.store.get()) : new Map();
+    app.plan.roomOverrides = ui.overridesOn ? roomOverrideColours(app.store.get()) : new Map();
+    app.plan.draw(app.visibleGeometry(), {
+      selected: ui.selection,
+      hover: ui.hover,
+      roomSpace: ui.tool === 'room' ? ui.roomSpace : m.kind === 'chainDone' && m.closed ? m.points : null,
+      preview,
+      dimensionDraft: dimensionDraft(app),
+      gridDraft: gridDraft(app),
+      sectionDraft: sectionDraft(app),
+      calloutDraft: app.calloutDraft(),
+      calibrateDraft: calibrateDraft(app),
+      guideDraft: ui.guide && guideOff !== null ? guideLine(ui.guide, guideOff) : null,
+      snap,
+      measure,
+      axis,
       axisLine: marks?.axis ?? null,
       refLines: app.refLines(),
       openingTags: app.openingTags(),
@@ -147,7 +155,7 @@ export function drawPlanOverlay(app: App): void {
       handles: appView.handles(app),
       objectHandles: objectHandles(app),
       hotHandle: app.hotHandle,
-      anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
+      anchor,
       wallTags: wallTags(app),
       roomLabels: [...app.visibleGeometry().rooms.values()].map((r) => {
         const said = roomTagText(r.room, r.area, levelOf(app.store.get(), r.room.levelId)?.height ?? 0, drawingOf(app.store.get()).roomTag);
@@ -171,27 +179,7 @@ export function drawPlanOverlay(app: App): void {
           outline: r.outline,
         };
       }),
-      // A floor's outline being drawn, or a beam from its first point to where the next click lands.
-      draft:
-        chainLine && chainLine.length >= 2
-          ? chainLine
-          : ui.tool === 'guide' && guideFrom && (ui.snap?.point ?? ui.cursor)
-            ? [guideFrom, (ui.snap?.point ?? ui.cursor)!]
-          : ui.tool === 'floor' && pointsOf(ui.draft, 'floor').length > 0
-          ? [...pointsOf(ui.draft, 'floor'), ...(floorTo ? [floorTo] : [])]
-          : ui.tool === 'mark' && pointsOf(ui.draft, 'mark').length > 0 && (ui.snap?.point ?? ui.cursor)
-            ? pointsOf(ui.draft, 'mark').length === 2 && ui.markMode === 'angle'
-              ? [pointsOf(ui.draft, 'mark')[1]!, pointsOf(ui.draft, 'mark')[0]!, (ui.snap?.point ?? ui.cursor)!]
-              : [pointsOf(ui.draft, 'mark')[0]!, (ui.snap?.point ?? ui.cursor)!]
-          : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && beamFrom && (ui.snap?.point ?? ui.cursor)
-            ? [beamFrom, (ui.snap?.point ?? ui.cursor)!]
-            : ui.tool === 'roof' && pointsOf(ui.draft, 'roof').length > 0
-              ? [...pointsOf(ui.draft, 'roof'), ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
-              : ui.tool === 'stair' && stairFrom && (ui.snap?.point ?? ui.cursor)
-                ? [stairFrom, (ui.snap?.point ?? ui.cursor)!]
-                : ui.tool === 'railing' && pointsOf(ui.draft, 'railing').length > 0
-                  ? [...pointsOf(ui.draft, 'railing'), ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
-                    : null,
+      draft,
       draftCorners: ui.tool === 'floor' ? pointsOf(ui.draft, 'floor') : [],
       openingPreview: preview.has(OPENING_PREVIEW_ID) ? OPENING_PREVIEW_ID : null,
       // The opening being placed shows its distance as a dimension too (drawn only, not typed in: the
@@ -214,52 +202,19 @@ export function drawPlanOverlay(app: App): void {
     syncScene(app, preview, shown);
     app.cube.update(app.scene.camera);
     // Where the tool snaps and what it draws, over the 3D view as in plan.
-    const level = levelOf(app.store.get(), ui.levelId);
-    const active = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'measure' || ui.tool === 'modify';
+    const level = levelOf(app.store.get(), ui.levelId) ?? NO_LEVEL;
     app.overlayState = {
       project: (p, z) => appView.projectAt(app, p, z),
-      floor: (level?.elevation ?? 0) + appView.lift(app, ui.levelId),
-      height: level?.height ?? 2.8,
-      snap: active && ui.snap ? { point: ui.snap.point, kind: ui.snap.kind, label: lockLabel ?? (labelKey ? t(labelKey, { n: snapWall ?? '' }) : null) } : null,
-      axis:
-        end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
-          ? { start: w.last, end }
-          : tape && tapeFrom && tapeTo
-            ? { start: tapeFrom, end: tapeTo }
-            : marks?.to
-              ? { start: marks.base, end: marks.to }
-              : null,
-      measure: marks?.to && marks.text
-        ? { at: { x: (marks.base.x + marks.to.x) / 2, y: (marks.base.y + marks.to.y) / 2 }, text: marks.text }
-        : end && len >= MIN_WALL_LENGTH && w.kind === 'drawing'
-          ? { at: { x: (w.last.x + end.x) / 2, y: (w.last.y + end.y) / 2 }, text: `${lengthText(len)} · ${angleNum(ang)}°` }
-          : floorFrom && floorTo && floorLen >= MIN_WALL_LENGTH
-            ? { at: { x: (floorFrom.x + floorTo.x) / 2, y: (floorFrom.y + floorTo.y) / 2 }, text: `${lengthText(floorLen)} · ${angleNum(floorAng)}°` }
-            : tape && tapeFrom && tapeTo
-              ? { at: { x: (tapeFrom.x + tapeTo.x) / 2, y: (tapeFrom.y + tapeTo.y) / 2 }, text: `${lengthText(tape.length)} · ${angleNum(tape.angle)}°` }
-              : bendMeasure(app),
-      anchor: ui.tool === 'wall' && (w.kind === 'drawing' || w.kind === 'bend') ? w.last : (tapeFrom ?? marks?.base ?? null),
-      // A floor's outline being drawn, or a beam from its first point to where the next click lands.
-      draft:
-        chainLine && chainLine.length >= 2
-          ? chainLine
-          : ui.tool === 'guide' && guideFrom && (ui.snap?.point ?? ui.cursor)
-            ? [guideFrom, (ui.snap?.point ?? ui.cursor)!]
-          : ui.tool === 'floor' && pointsOf(ui.draft, 'floor').length > 0
-          ? [...pointsOf(ui.draft, 'floor'), ...(floorTo ? [floorTo] : [])]
-          : ui.tool === 'mark' && pointsOf(ui.draft, 'mark').length > 0 && (ui.snap?.point ?? ui.cursor)
-            ? pointsOf(ui.draft, 'mark').length === 2 && ui.markMode === 'angle'
-              ? [pointsOf(ui.draft, 'mark')[1]!, pointsOf(ui.draft, 'mark')[0]!, (ui.snap?.point ?? ui.cursor)!]
-              : [pointsOf(ui.draft, 'mark')[0]!, (ui.snap?.point ?? ui.cursor)!]
-          : (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && beamFrom && (ui.snap?.point ?? ui.cursor)
-            ? [beamFrom, (ui.snap?.point ?? ui.cursor)!]
-            : ui.tool === 'roof' && pointsOf(ui.draft, 'roof').length > 0
-              ? [...pointsOf(ui.draft, 'roof'), ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
-              : ui.tool === 'stair' && stairFrom && (ui.snap?.point ?? ui.cursor)
-                ? [stairFrom, (ui.snap?.point ?? ui.cursor)!]
-                : ui.tool === 'railing' && pointsOf(ui.draft, 'railing').length > 0
-                  ? [...pointsOf(ui.draft, 'railing'), ...((ui.snap?.point ?? ui.cursor) ? [(ui.snap?.point ?? ui.cursor)!] : [])]
-                    : null,
+      floor: level.elevation + appView.lift(app, ui.levelId),
+      height: level.height,
+      // The same as the plan's: one snap, measure, line and draft for both views. Kept twice, the 3D showed
+      // the snap for four tools, no rectangle size and no guide or chain measure.
+      snap,
+      // A modify mark's line along an axis is drawn as its line in plan (axisLine); the 3D has only the one line.
+      axis: axis ?? (marks?.to ? { start: marks.base, end: marks.to } : null),
+      measure,
+      anchor,
+      draft,
       box: ui.view3d.box,
       boxHot: app.boxHot,
       objectHandles: objectHandles(app),

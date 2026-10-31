@@ -9,6 +9,20 @@ const isWords = (w: unknown): w is Words => isObject(w) && typeof w.pt === 'stri
 const isExpr = (e: unknown): boolean => (typeof e === 'number' && Number.isFinite(e)) || typeof e === 'string';
 const PARAM_KINDS = ['length', 'number', 'integer', 'bool', 'choice', 'material'];
 
+/**
+ * A handle: its parameter, axis and point, a shift between 0 and 1 and a sign of ±1. A shift of "x" made a drag
+ * NaN for the object's position, and the instance was then refused when the file was opened again.
+ */
+const isHandle = (h: unknown): boolean =>
+  isObject(h) &&
+  typeof h.param === 'string' &&
+  ['x', 'y', 'z'].includes(h.axis as string) &&
+  Array.isArray(h.at) &&
+  h.at.length === 3 &&
+  h.at.every(isExpr) &&
+  (h.shift === undefined || (finite(h.shift) && h.shift >= 0 && h.shift <= 1)) &&
+  (h.sign === undefined || h.sign === 1 || h.sign === -1);
+
 function isPart(p: unknown): p is Part {
   if (!isObject(p) || !isExpr(p.x) || !isExpr(p.y) || !isExpr(p.z)) return false;
   if (p.when !== undefined && typeof p.when !== 'string') return false;
@@ -47,11 +61,11 @@ export function isDefinition(d: unknown): d is ObjectDefinition {
     typeof d.category === 'string' &&
     (d.folder === undefined || typeof d.folder === 'string') &&
     Array.isArray(d.params) &&
-    d.params.every((p) => isObject(p) && typeof p.name === 'string' && /^[A-Za-z_À-ÿ][\wÀ-ÿ]*$/.test(p.name) && isWords(p.label) && PARAM_KINDS.includes(p.kind as string) && (typeof p.default === 'number' || typeof p.default === 'string')) &&
+    d.params.every((p) => isObject(p) && typeof p.name === 'string' && /^[A-Za-z_À-ÖØ-öø-ÿ][\wÀ-ÖØ-öø-ÿ]*$/.test(p.name) && isWords(p.label) && PARAM_KINDS.includes(p.kind as string) && (typeof p.default === 'number' || typeof p.default === 'string')) &&
     Array.isArray(d.parts) &&
     d.parts.every(isPart) &&
     Array.isArray(d.handles) &&
-    d.handles.every((h) => isObject(h) && typeof h.param === 'string' && ['x', 'y', 'z'].includes(h.axis as string) && Array.isArray(h.at) && h.at.length === 3 && h.at.every(isExpr)) &&
+    d.handles.every(isHandle) &&
     Array.isArray(d.types) &&
     d.types.length > 0 &&
     d.types.every((t) => isObject(t) && typeof t.id === 'string' && isWords(t.name) && isObject(t.values)) &&

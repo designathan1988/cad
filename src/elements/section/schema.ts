@@ -3,8 +3,8 @@ import { finite } from '../../core/guards';
 // documentados"): a line in plan, the same on every level, looking to its left (start → end) as far as
 // its depth. A section's line goes through the building and fills what it cuts; an elevation's stands
 // outside it and only sees; a room's interior elevation sees one wall of it from inside, on its level
-// alone. Drawn from the model each time (app/section-drawing.ts), so it follows it;
-// put on a sheet at a scale (elements/sheet).
+// alone. Drawn from the model each time (app/section-drawing.ts), so it follows it, and shown in the
+// sections dialog at the drawing's scale (app/section-view.ts).
 
 import { type Point2, distance } from '../../model/vector';
 import type { LevelId } from '../../project/doc';
@@ -66,13 +66,15 @@ export const isSectionMark = (m: unknown): m is SectionMark => {
   );
 };
 
-/** The next section's letter: A, B… after the last; Z then AA. */
+/** The next section's letters, as spreadsheet columns: A… Z, then AA… ZZ, then AAA. Past ZZ it gave "[A". */
 export function nextSectionName(marks: readonly SectionMark[]): string {
   const taken = new Set(marks.filter((m) => m.kind === 'section').map((m) => m.name));
-  for (let i = 0; ; i++) {
-    const n = i < 26 ? String.fromCharCode(65 + i) : String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
-    if (!taken.has(n)) return n;
-  }
+  const letters = (i: number): string => {
+    let s = '';
+    for (let n = i + 1; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s;
+    return s;
+  };
+  for (let i = 0; ; i++) if (!taken.has(letters(i))) return letters(i);
 }
 
 /**

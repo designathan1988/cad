@@ -35,11 +35,12 @@ export function buildShell(root: HTMLElement) {
   const savedNote = el('span', { class: 'saved-note' });
   center.append(projectName, savedNote);
   const right = el('div', { class: 'right' });
-  // The command search, as wide as a field, with its key: what the palette (Ctrl+K) finds.
+  // The command search, as wide as a field, with its key cap: what the palette finds. The key is the one the
+  // user set (app/chrome.ts writes it from the action list).
   const commands = el('button', { type: 'button', class: 'search-btn' });
   commands.innerHTML = icon('command', 16);
   const commandsLabel = el('span', { class: 'search-label' });
-  commands.append(commandsLabel, el('span', { class: 'kbd' }, 'Ctrl K'));
+  commands.append(commandsLabel, el('span', { class: 'kbd' }));
   const shortcuts = iconButton('keyboard', 'icon-btn needs-keyboard');
   const lang = el('button', { type: 'button', class: 'icon-btn text-btn' });
   const theme = iconButton('moon');
@@ -52,7 +53,7 @@ export function buildShell(root: HTMLElement) {
   const tabs = el('nav', { class: 'rb-tabs', role: 'tablist' });
   const fileMenu = el('button', { type: 'button', class: 'rb-tab rb-file' });
   fileMenu.setAttribute('aria-haspopup', 'menu');
-  const ribbon = el('div', { class: 'ribbon', role: 'toolbar' });
+  const ribbon = el('div', { class: 'ribbon', id: 'ribbon-panel', role: 'tabpanel' });
   // The level, Plan and 3D, and the project browser: in a small box under the view cube (a strip
   // of their own over the drawing, and an options bar under the ribbon, were two rows for little).
   const levelBox = el('div', { class: 'select level-select' });
@@ -246,15 +247,10 @@ export function buildShell(root: HTMLElement) {
     };
     tip(homeBtn, 'pal.projects');
     projectName.title = t('top.rename');
-    tip(undo, 'top.undo');
-    tip(redo, 'top.redo');
-    tip(commands, 'top.commands');
+    // Undo, redo, the command search, the shortcuts, the language, save, open, the snaps and the views: their
+    // tips carry the key the user set, so app/chrome.ts writes them from the action list at every render.
     commandsLabel.textContent = t('top.search');
-    tip(shortcuts, 'top.shortcuts');
-    tip(lang, 'top.language');
     tip(theme, 'top.theme');
-    tip(save, 'top.export');
-    tip(open, 'top.open');
     tip(panelToggle, 'top.panel');
     tip(sidebar, 'tool.sidebar');
     tip(level, 'top.level');
@@ -266,8 +262,6 @@ export function buildShell(root: HTMLElement) {
     browser.setAttribute('aria-label', t('browser.title'));
     view3d.querySelector('.label')!.textContent = t('view.3d');
     viewPlan.querySelector('.label')!.textContent = t('view.plan');
-    view3d.title = `${t('view.3d')} (1)`;
-    viewPlan.title = `${t('view.plan')} (2)`;
     floatBar.setAttribute('aria-label', t('ctx.label'));
     viewBar.setAttribute('aria-label', t('view3d.bar'));
     levelsBox.setAttribute('aria-label', t('view3d.levels'));
@@ -284,9 +278,7 @@ export function buildShell(root: HTMLElement) {
     labelled(xray, 'view3d.xray', 'view3d.xrayTip');
     labelled(box, 'view3d.box', 'view3d.boxTip');
     labelled(ortho, 'view3d.ortho', 'view3d.orthoTip');
-    tip(snapBtn, 'foot.snap');
     tip(collideBtn, 'foot.collisions');
-    emptyHint.textContent = t('empty.hint');
     tempReset.textContent = t('temp.reset');
     planCanvas.setAttribute('aria-label', t('view.plan'));
     glCanvas.setAttribute('aria-label', t('view.3d'));

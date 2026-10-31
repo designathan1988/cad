@@ -22,14 +22,14 @@ import { ViewCube } from '../render/view-cube';
 import { getLang, htmlLang, markPrefix, setLang, t } from '../i18n/messages';
 import { buildShell, type Shell } from '../ui/shell';
 import type { UiState } from './state';
-import { type Doc, elementIds, type LevelId, levelIn } from '../project/doc';
+import { type Doc, type LevelId } from '../project/doc';
 import { toast } from '../ui/toast';
 import { eachSolid } from '../elements/registry';
 import { type DerivedGeometry, deriveGeometry } from '../project/derive';
 import type { TemporaryView } from '../project/derived-filters';
 import { boundsOf } from '../project/derived-queries';
 import { markPoint, openingMarks } from '../elements/opening/marks';
-import { loadPrefs, savePrefs, scheduleSave, wireSaving } from '../project/persist';
+import { loadPrefs, wireSaving } from '../project/persist';
 import type { Boot } from '../project/boot';
 import type { BoxFace } from '../model/section-box';
 import { insideRing } from '../elements/room/derive';
@@ -46,6 +46,9 @@ import { keepingStore } from './app-store';
 import type { WallTypeId } from '../elements/wall/schema';
 import { fromOf } from '../elements/tool-draft';
 import type { Tail } from '../model/tuple';
+import { actionsNow, keyName, renderSharing } from './action-list';
+import { afterChange } from './app-store';
+import { wireTraceNotes } from './scene-frame';
 
 export type { UiState } from './state';
 
@@ -91,14 +94,7 @@ export class App {
     this.shell = buildShell(root);
     this.plan = new PlanView(this.shell.planCanvas);
     this.scene = new Scene3D(this.shell.glCanvas);
-    // The photorealistic view's first minutes (its shader compiled in the background): said beside the style.
-    this.scene.onTracePreparing = (on) => {
-      this.shell.look.preparing.hidden = !on;
-      this.shell.look.preparing.textContent = t('view3d.preparing');
-      this.shell.look.preparing.title = t('view3d.preparingTip');
-      // It takes room on the view's bar: what is there gives way if it no longer fits.
-      this.shell.fitViewBar(true);
-    };
+    wireTraceNotes(this);
     this.overlay3d = new Overlay3D(this.shell.overlay3d);
     this.cube = new ViewCube(
       (dir) => sceneCamera.frame(this.scene, boundsOf(this.geometry), height(this), dir),
@@ -113,20 +109,7 @@ export class App {
     };
     this.geometry = deriveGeometry(doc);
     wireSaving();
-    this.store.subscribe((d) => {
-      scheduleSave(d);
-      this.ui.info = null;
-      // Only what no longer exists leaves the selection: editing a room or a floor keeps it selected.
-      const live = elementIds(d);
-      for (const id of [...this.ui.selection]) if (!live.has(id)) this.ui.selection.delete(id);
-      // The level shown gone (deleted, or its adding undone): the first one, at the project's scale.
-      if (!levelIn(d.levels, this.ui.levelId)) {
-        this.ui.levelId = d.levels[0]!.id;
-        this.ui.viewDen = null;
-        savePrefs({ levelId: this.ui.levelId });
-      }
-      this.refresh();
-    });
+    this.store.subscribe((d) => afterChange(this, d));
     // The first framing waits until the viewport has a size: framing a 0 × 0 canvas sets a useless scale.
     new ResizeObserver(() => {
       const r = this.shell.viewport.getBoundingClientRect();
@@ -138,7 +121,11 @@ export class App {
     this.cube.relabel();
     // The last project open could not be read: said, with why, before anything is done in this one.
     if (boot.notOpened) this.ui.error = t('boot.notOpened', { name: boot.notOpened.name || t('app.untitled'), why: t(`open.${boot.notOpened.error}`) });
+    // The browser's database failed while starting: this project is not kept until it is saved.
+    else if (boot.failed) this.ui.error = t('boot.failed');
     this.refresh();
+    // Elements of it that reading repaired or left out: said, as opening a file says it.
+    if (boot.repaired) this.toast(boot.repaired === 1 ? t('boot.repairedOne') : t('boot.repaired', { n: boot.repaired }));
   }
 
   /** The box face whose handle is under the pointer or being dragged: drawn larger and filled. */
@@ -335,7 +322,7 @@ export class App {
     setVariables(this.store.get().variables ?? {});
     toolEvents.keepPlanView(this);
     this.marks = [['start', performance.now()]];
-    this.renderFrame();
+    renderSharing(this, () => this.renderFrame());
     this.mark('end');
     const steps = this.marks.slice(1).map(([name, at], i): [string, number] => [name, at - this.marks[i]![1]]);
     this.lastFrame = { total: this.marks.at(-1)![1] - this.marks[0]![1], steps };
@@ -374,8 +361,16 @@ export class App {
   /** The shortcuts the user remapped or turned off (app/keymap.ts), kept with the preferences. */
   keymap: KeyMap = loadPrefs().keymap ?? {};
 
-  /** Every action by name (app/actions.ts), set by the input layer: the ribbon and the File menu run them. */
-  actionList: () => Action[] = () => [];
+  /** Builds every action by name (actions.ts), set by the input layer: the ribbon and the File menu run them. */
+  buildActions: () => Action[] = () => [];
+  /** The actions built for the frame being rendered, shared by its readers (action-list.ts); null outside a render. */
+  readonly actionCache: { rendering: boolean; frame: Action[] | null } = { rendering: false, frame: null };
+  actionList(): Action[] {
+    return actionsNow(this);
+  }
+  keyName(id: string): string {
+    return keyName(this, id);
+  }
   /** The ribbon's tab shown, kept between visits, and what it was last drawn from (chrome.ts). */
   ribbonTab = loadPrefs().ribbonTab ?? 'home';
   ribbonKey = '';

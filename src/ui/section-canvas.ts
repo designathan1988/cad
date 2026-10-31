@@ -15,18 +15,25 @@ import type { Point2 } from '../model/vector';
 /** The text of a drawing's cells and labels (mm). */
 const TEXT = 2;
 
-/** The model's solids as triangles and its rooms shown, once a document (a section drawn again is drawn from them). */
+/**
+ * The model's solids as triangles and its rooms shown, once a document and set of hidden categories (a
+ * section drawn again is drawn from them). Keyed by the document alone, hiding a category and opening the
+ * sections again still drew what was hidden: the hidden set is not in the document.
+ */
 type Model = { readonly solids: Solid3[]; readonly rooms: DerivedGeometry['rooms'] };
-const modelCache = new WeakMap<Doc, Model>();
+const modelCache = new WeakMap<Doc, Map<string, Model>>();
 const drawingCache = new WeakMap<Model, Map<string, SectionDrawing>>();
 
 /** A section's or an elevation's drawing as the model is now. */
 export function sectionOf(app: App, m: SectionMark): SectionDrawing {
   const doc = app.store.get();
-  let model = modelCache.get(doc);
+  let models = modelCache.get(doc);
+  if (!models) modelCache.set(doc, (models = new Map()));
+  const hidden = [...app.ui.hidden].sort().join('|');
+  let model = models.get(hidden);
   if (!model) {
     const g = deriveGeometry(doc);
-    modelCache.set(doc, (model = { solids: modelSolids(doc, g, app.ui.hidden), rooms: app.ui.hidden.has('rooms') ? new Map() : g.rooms }));
+    models.set(hidden, (model = { solids: modelSolids(doc, g, app.ui.hidden), rooms: app.ui.hidden.has('rooms') ? new Map() : g.rooms }));
   }
   let drawings = drawingCache.get(model);
   if (!drawings) drawingCache.set(model, (drawings = new Map()));

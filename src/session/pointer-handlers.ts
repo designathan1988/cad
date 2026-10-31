@@ -16,6 +16,7 @@ import { pointerRelease } from './pointer-release';
 import * as sceneCamera from '../render/scene-camera';
 import * as appView from './app-view';
 import { pointsOf } from '../elements/tool-draft';
+import { pointTool } from './point-tools';
 
 
 /** What the handlers use of the input wired around them. */
@@ -90,7 +91,7 @@ export function pointerHandlers(app: App, d: PointerDeps) {
       if (s && ui.wall.kind !== 'idle') return wallEvent(app, { kind: 'move', point: s.point });
       return app.render();
     }
-    if (ui.tool === 'guide' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'section' || ui.tool === 'callout' || ui.tool === 'calibrate' || ui.tool === 'column' || ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'mark' || ui.tool === 'curtain' || ui.tool === 'note' || ui.tool === 'levelMark' || ui.tool === 'roof' || ui.tool === 'stair' || ui.tool === 'railing') {
+    if (pointTool(app) || ui.tool === 'measure') {
       ui.snap = snapped(e);
       return app.render();
     }
@@ -130,7 +131,7 @@ export function pointerHandlers(app: App, d: PointerDeps) {
     }
     if (app.openingKind()) {
       // In 3D, on the wall itself (its own hole does not let the aim through): opening-ui.ts, wallUnderRay.
-      const onWall = ui.view === 'plan' ? null : wallUnderRay(app.store.get(), new Set([ui.levelId]), app.scene.rayAt(e.clientX, e.clientY));
+      const onWall = ui.view === 'plan' ? null : wallUnderRay(app.store.get(), new Set([ui.levelId]), app.scene.rayAt(e.clientX, e.clientY), (id) => appView.lift(app, id));
       const seen = onWall ? { p: onWall.p, mpp: sceneCamera.metresPerPixel(app.scene, onWall.p, onWall.height) } : aimAt3d(e);
       return app.openingEvent({ kind: 'hover', aim: seen ? aimAt(app.store.get(), app.geometry, ui.levelId, seen.p, seen.mpp, OPENING_PREVIEW_ID) : null });
     }

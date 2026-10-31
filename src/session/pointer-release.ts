@@ -6,20 +6,18 @@ import { endHandleDrag } from './object-handles';
 import { wallAt } from '../project/derived-queries';
 import type { App } from './app';
 import { insideRing } from '../elements/room/derive';
-import { cancelGuide, guideClick } from '../elements/guide/tool-ui';
-import { gridClick, gridEscape, markClick } from './annotation-tools';
+import { cancelGuide } from '../elements/guide/tool-ui';
 import { wallEvent } from '../elements/wall/tool-ui';
 import { floorFinish, roomSpaceAt } from './room-tool';
-import { calloutClick, sectionClick, sectionEscape } from './section-tools';
-import { addLevelMarkHere, addNoteHere, beamClick, columnClick, curtainClick, objectClick, railingClick, railingFinish, roofClick, roofFinish, separatorClick, stairClick } from './kind-tools';
+import { objectClick } from './kind-tools';
 import { cornerClick, splitAt } from './modify';
-import { calibrateClick } from '../ui/reference-tool';
 import { PICK_PX } from './pointer-aim';
 import type { PointerDeps } from './pointer-handlers';
 import * as sceneCamera from '../render/scene-camera';
 import * as appView from './app-view';
-import { drawFrom, drawPoints, fromOf, pointsOf } from '../elements/tool-draft';
+import { drawPoints, pointsOf } from '../elements/tool-draft';
 import { dropPress } from './pointer-state';
+import { pointBusy, pointTool } from './point-tools';
 
 export function pointerRelease(app: App, d: PointerDeps) {
   const { ui } = app;
@@ -56,39 +54,9 @@ export function pointerRelease(app: App, d: PointerDeps) {
       }
       return true;
     }
-    if (ui.tool === 'dimension' && ui.dimension.kind !== 'idle') {
-      app.dimensionEvent({ kind: 'escape' });
-      return true;
-    }
-    if (ui.tool === 'grid' && fromOf(ui.draft, 'grid')) {
-      gridEscape(app);
-      return true;
-    }
-    if (ui.tool === 'section' && fromOf(ui.draft, 'section')) {
-      sectionEscape(app);
-      return true;
-    }
-    if (ui.tool === 'callout' && fromOf(ui.draft, 'callout')) {
-      ui.draft = drawFrom('callout', null);
-      app.render();
-      return true;
-    }
-    if ((ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && fromOf(ui.draft, 'beam')) {
-      ui.draft = drawFrom('beam', null);
-      app.render();
-      return true;
-    }
-    if (ui.tool === 'mark' && pointsOf(ui.draft, 'mark').length > 0) {
-      ui.draft = drawPoints(ui.draft, 'mark', pointsOf(ui.draft, 'mark').slice(0, -1));
-      app.render();
-      return true;
-    }
-    if (ui.tool === 'roof' && pointsOf(ui.draft, 'roof').length > 0) {
-      roofFinish(app);
-      return true;
-    }
-    if (ui.tool === 'railing' && pointsOf(ui.draft, 'railing').length > 0) {
-      railingFinish(app);
+    const drawing = pointTool(app);
+    if (drawing?.rightClick && pointBusy(app, drawing)) {
+      drawing.rightClick(app);
       return true;
     }
     if (ui.tool === 'measure' && ui.measure.kind !== 'idle') {
@@ -169,86 +137,16 @@ export function pointerRelease(app: App, d: PointerDeps) {
       if (at) app.measureEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
       return;
     }
-    if (ui.tool === 'dimension') {
-      const at = worldAt(e);
-      if (at) app.dimensionEvent({ kind: 'click', point: snapped(e)?.point ?? at.p });
-      return;
-    }
-    if (ui.tool === 'grid') {
-      const at = worldAt(e);
-      if (at && ui.view === 'plan') gridClick(app, snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'section') {
-      const at = worldAt(e);
-      if (at && ui.view === 'plan') sectionClick(app, snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'column') {
-      const at = aimAt3d(e);
-      if (at) columnClick(app, snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'guide') {
-      const at = worldAt(e);
-      if (at && ui.view === 'plan') guideClick(app, snapped(e)?.point ?? at.p);
-      return;
-    }
     if (ui.tool === 'object') {
       const at = aimAt3d(e);
       if (at) objectClick(app, snapped(e)?.point ?? at.p);
       return;
     }
-    if (ui.tool === 'beam') {
-      const at = aimAt3d(e);
-      if (at) beamClick(app, snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'separator') {
-      const at = worldAt(e);
-      if (at) separatorClick(app, snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'mark') {
-      const at = worldAt(e);
-      if (at && ui.view === 'plan') markClick(app, ui.markMode === 'radius' ? at.p : (snapped(e)?.point ?? at.p));
-      return;
-    }
-    if (ui.tool === 'curtain') {
-      const at = worldAt(e);
-      if (at) curtainClick(app, snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'callout') {
-      const at = worldAt(e);
-      if (at && ui.view === 'plan') calloutClick(app, snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'calibrate') {
-      const at = worldAt(e);
-      if (at && ui.view === 'plan') calibrateClick(app, snapped(e)?.point ?? at.p);
-      return;
-    }
-    // A text or a level mark where the click is; then selected, its text ready to type.
-    if (ui.tool === 'note' || ui.tool === 'levelMark') {
-      const at = worldAt(e);
-      if (!at) return;
-      const p = snapped(e)?.point ?? at.p;
-      return ui.tool === 'note' ? addNoteHere(app, p) : addLevelMarkHere(app, p);
-    }
-    if (ui.tool === 'roof') {
-      const at = worldAt(e);
-      if (at) roofClick(app, snapped(e)?.point ?? at.p, at.mpp);
-      return;
-    }
-    if (ui.tool === 'stair') {
-      const at = aimAt3d(e);
-      if (at) stairClick(app, snapped(e)?.point ?? at.p);
-      return;
-    }
-    if (ui.tool === 'railing') {
-      const at = aimAt3d(e);
-      if (at) railingClick(app, snapped(e)?.point ?? at.p, at.mpp);
+    // The tools drawn by points (a beam, a roof, an axis, a guide…): their steps are point-tools.ts's.
+    const drawing = pointTool(app);
+    if (drawing) {
+      const at = drawing.aim === '3d' ? aimAt3d(e) : worldAt(e);
+      if (at && (drawing.aim !== 'planView' || ui.view === 'plan')) drawing.click(app, snapped(e)?.point ?? at.p, at.mpp, at.p);
       return;
     }
     if (ui.tool === 'room' || ui.tool === 'floor') {

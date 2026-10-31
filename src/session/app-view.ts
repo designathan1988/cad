@@ -19,6 +19,7 @@ import { currentDims } from '../ui/temp-dims';
 import * as sceneCamera from '../render/scene-camera';
 import { placedOf } from '../project/derived-queries';
 import type { LevelId } from '../project/doc';
+import { LEVEL_HEIGHT } from '../project/doc';
 
 /**
  * The handles of the selected walls (handles.ts), in plan and in 3D on the level's floor: while selecting,
@@ -123,7 +124,7 @@ export function lift(app: App, levelId: LevelId | undefined): number {
 }
 
 export function height(app: App): number {
-  return Math.max(2.8, ...[...app.geometry.solids.values()].map((s) => s.top + lift(app, s.wall.levelId)));
+  return Math.max(LEVEL_HEIGHT, ...[...app.geometry.solids.values()].map((s) => s.top + lift(app, s.wall.levelId)));
 }
 
 /** The box as dragged: drawn now, kept with the view when `keep` (the drag's end). */

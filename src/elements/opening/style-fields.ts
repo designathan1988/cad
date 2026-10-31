@@ -1,35 +1,14 @@
 // A door's or window's make in the panel: its model and the fields of its style (opening, frame,
 // trim, transom, leaves, glazing).
 
-import { DOOR_HANDLES, type DoorHandle, LEAF_DESIGNS, type LeafDesign, type Opening, type OpeningKind, type OpeningStyle, type Operation, WINDOW_SCREENS, type WindowScreen } from './schema';
-import type { OpeningPanelActions, OpeningSize } from './fields';
+import { DOOR_HANDLES, type DoorHandle, LEAF_DESIGNS, type LeafDesign, type Opening, type OpeningStyle, type Operation, WINDOW_SCREENS, type WindowScreen } from './schema';
+import type { OpeningPanelActions } from './fields';
 import type { Field } from '../fields';
 import type { OpeningSolid } from '../../project/derive';
 import { type MessageKey, t } from '../../i18n/messages';
 import { fitStyle, leafRange, modelOf, OPENING_MODELS, operationsOf, PANED } from './style';
 import { lengthNum } from '../../i18n/units';
 import { parseLength } from '../../core/measure';
-
-/**
- * The next opening's make (its operation, leaves, frame, casing, transom, screen, threshold), as a placed
- * one's (styleFields), read from and set on the tool's size: one of a model only (a plain one has none).
- */
-export function nextStyleFields(kind: OpeningKind, size: OpeningSize, set: (patch: Partial<OpeningSize>) => void): Field<OpeningSize>[] {
-  const style = size.style;
-  if (!style) return [];
-  const as = (s: OpeningSize) => ({ opening: { id: 'next', kind, style: s.style ?? style } }) as unknown as OpeningSolid;
-  // The changes styleFields asks of the "selected" opening, made to the next one's style.
-  const fields = styleFields([as(size)], (_ids, patch) => {
-    const out = typeof patch === 'function' ? patch({ id: 'next', kind, style } as unknown as Opening) : patch;
-    if (out.style) set({ style: out.style });
-  });
-  return fields.flatMap((f): Field<OpeningSize>[] => {
-    if (f.kind === 'note' || f.kind === 'readout' || f.kind === 'action') return [];
-    const when = f.when;
-    const get = f.get as (x: OpeningSolid) => never;
-    return [{ ...f, ...(when ? { when: (items: readonly OpeningSize[]) => when(items.map(as)) } : {}), get: (s: OpeningSize) => get(as(s)) } as unknown as Field<OpeningSize>];
-  });
-}
 
 /** An opening's model as said: the catalog's name, the operation's for one changed by hand, or plain. */
 export function modelName(o: Pick<Opening, 'kind' | 'style'>): string {
@@ -39,7 +18,7 @@ export function modelName(o: Pick<Opening, 'kind' | 'style'>): string {
 }
 
 /** The model from the catalog (style.ts): plain (no style), one of the kind's, or "changed" for one made by hand. */
-export function modelField<T>(list: readonly Pick<Opening, 'kind' | 'style'>[], set: (style: OpeningStyle | undefined) => void, styleOf?: (x: T) => OpeningStyle | undefined): Field<T> {
+export function modelField(list: readonly Pick<Opening, 'kind' | 'style'>[], set: (style: OpeningStyle | undefined) => void): Field<OpeningSolid> {
   const kind = list[0]?.kind ?? 'door';
   const models = OPENING_MODELS.filter((m) => m.kind === kind);
   const valueOf = (o: Pick<Opening, 'kind' | 'style'>) => (o.style ? (modelOf(o)?.id ?? 'custom') : '');
@@ -54,7 +33,7 @@ export function modelField<T>(list: readonly Pick<Opening, 'kind' | 'style'>[], 
       ...models.map((m) => ({ value: m.id, label: t(`model.${m.id}` as MessageKey) })),
       ...(list.some((o) => valueOf(o) === 'custom') ? [{ value: 'custom', label: t('model.custom') }] : []),
     ],
-    get: (x: T) => valueOf(styleOf ? { kind, style: styleOf(x) } : (x as unknown as { opening: Opening }).opening),
+    get: (x) => valueOf(x.opening),
     set: (v) => {
       if (v === 'custom') return;
       set(models.find((m) => m.id === v)?.style);

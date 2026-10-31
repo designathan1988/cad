@@ -34,12 +34,14 @@ export type Field<T> =
       readonly get: (x: T) => number;
       readonly set: (v: number) => void;
       readonly min?: number | ((items: readonly T[]) => number);
+      /** The highest value: one above it is refused in the field, with what it takes (a slope's steepest). */
+      readonly max?: number;
       /** What the value is in, after it: metres unless said ("°" for an angle). */
       readonly unit?: string;
       /** Places shown after the decimal mark (2 unless said; 0 for a count). */
       readonly decimals?: number;
     })
-  | (Common<T> & { readonly kind: 'text'; readonly get: (x: T) => string; readonly set: (v: string) => void; /** Shown while it is empty: what empty means, or an example. */ readonly placeholder?: string })
+  | (Common<T> & { readonly kind: 'text'; readonly get: (x: T) => string; readonly set: (v: string) => void; /** Shown while it is empty: what empty means, or an example. */ readonly placeholder?: string; /** Of several lines (Shift+Enter): a note's text. */ readonly lines?: true })
   | (Common<T> & {
       readonly kind: 'select' | 'segmented' | 'search';
       readonly get: (x: T) => string;

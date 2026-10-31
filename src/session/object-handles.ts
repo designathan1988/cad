@@ -38,8 +38,9 @@ export interface ScreenHandle {
 /** A jamb (the width, the other jamb staying), the head (the height) or a window's sill (the head staying). */
 export type OpeningHandle = 'start' | 'end' | 'head' | 'sill';
 
-/** A handle's reach from its centre (px); 22 (a 44 px target) on touch. */
-const reach = (): number => (matchMedia('(pointer: coarse)').matches ? 22 : 10);
+/** A handle's reach from its centre (px); 22 (a 44 px target) where any pointer is a finger (a laptop's touch
+ * screen too: its primary pointer is the mouse, and the primary one alone gave the finger 10). */
+const reach = (): number => (matchMedia('(any-pointer: coarse)').matches ? 22 : 10);
 
 /** The selected object's handles on screen: one object selected with the select tool. */
 export function objectHandles(app: App): ScreenHandle[] {

@@ -1,6 +1,6 @@
 // Columns (ref/chat.txt:86, 134): a rectangle in plan standing from its level's floor to the level's
-// ceiling (plus an adjustment), turned by an angle. Placed at a point (a grid crossing, a corner), it goes
-// with the grid axes it stands on (elements/grid/carry.ts). Drawn cut in plan, solid in 3D.
+// ceiling (plus an adjustment), turned by an angle. Placed at a point (a grid crossing, a corner). Drawn
+// cut in plan, solid in 3D.
 
 import { add, type Point2, scale } from '../../model/vector';
 import type { LevelId } from '../../project/doc';

@@ -1,7 +1,8 @@
-// A DXF's drawing as lines (phase 11: DXF as a reference under the plan): LINE, LWPOLYLINE, POLYLINE with
-// its VERTEXes, CIRCLE, ARC and ELLIPSE's full turns as short segments, in metres by the file's $INSUNITS
-// (millimetres when it says none and its drawing is larger than a kilometre would be in metres). Texts,
-// hatches and blocks' inserts are not lines: counted and said. From its lowest corner. Pure.
+// A DXF's drawing as lines (phase 11: DXF as a reference under the plan): LINE, LWPOLYLINE and POLYLINE
+// with its VERTEXes (their bulges as arcs), CIRCLE, ARC and ELLIPSE as short segments, in metres by the
+// file's $INSUNITS (millimetres when it says none and its drawing is larger than a kilometre would be in
+// metres). An entity drawn seen from below (its extrusion pointing down) is mirrored as the file means it.
+// Texts, hatches and blocks' inserts are not lines: counted and said. From its lowest corner. Pure.
 
 export interface DxfLines {
   /** x1, y1, x2, y2 of each, in metres, from the drawing's lower left corner. */
@@ -33,14 +34,37 @@ export function readDxfLines(text: string): DxfLines {
   const seg = (x1: number, y1: number, x2: number, y2: number) => {
     if ([x1, y1, x2, y2].every(Number.isFinite) && (x1 !== x2 || y1 !== y2)) raw.push(x1, y1, x2, y2);
   };
-  const arc = (cx: number, cy: number, r: number, a0: number, a1: number) => {
+  // `mirror`: the entity's own axes (its OCS) seen from below, its extrusion's z negative: x the other way.
+  const arc = (cx: number, cy: number, r: number, a0: number, a1: number, mirror = false) => {
     let sweep = a1 - a0;
     while (sweep <= 0) sweep += Math.PI * 2;
+    const n = arcSteps(sweep);
+    const m = mirror ? -1 : 1;
+    for (let k = 0; k < n; k++) {
+      const t0 = a0 + (sweep * k) / n;
+      const t1 = a0 + (sweep * (k + 1)) / n;
+      seg(m * (cx + r * Math.cos(t0)), cy + r * Math.sin(t0), m * (cx + r * Math.cos(t1)), cy + r * Math.sin(t1));
+    }
+  };
+  // A polyline's side from one vertex to the next: straight, or an arc when its bulge is not 0 (the
+  // tangent of a quarter of its sweep, counter-clockwise when positive). Lost before: every arc in a
+  // polyline came in as its chord.
+  const side = (x1: number, y1: number, x2: number, y2: number, bulge: number, mirror: boolean) => {
+    const m = mirror ? -1 : 1;
+    const c = Math.hypot(x2 - x1, y2 - y1);
+    if (!Number.isFinite(bulge) || Math.abs(bulge) < 1e-9 || c < 1e-12) return seg(m * x1, y1, m * x2, y2);
+    const sweep = 4 * Math.atan(bulge);
+    // The centre: off the chord's middle, along its left normal, by half the chord over tan(sweep / 2).
+    const s = c / 2 / Math.tan(sweep / 2);
+    const cx = (x1 + x2) / 2 - ((y2 - y1) / c) * s;
+    const cy = (y1 + y2) / 2 + ((x2 - x1) / c) * s;
+    const r = Math.hypot(x1 - cx, y1 - cy);
+    const a0 = Math.atan2(y1 - cy, x1 - cx);
     const n = arcSteps(sweep);
     for (let k = 0; k < n; k++) {
       const t0 = a0 + (sweep * k) / n;
       const t1 = a0 + (sweep * (k + 1)) / n;
-      seg(cx + r * Math.cos(t0), cy + r * Math.sin(t0), cx + r * Math.cos(t1), cy + r * Math.sin(t1));
+      seg(m * (cx + r * Math.cos(t0)), cy + r * Math.sin(t0), m * (cx + r * Math.cos(t1)), cy + r * Math.sin(t1));
     }
   };
   // The ENTITIES section only: blocks' definitions are not drawn where they are defined.
@@ -60,40 +84,67 @@ export function readDxfLines(text: string): DxfLines {
     at++;
     while (at < pairs.length && pairs[at]![0] !== 0) body.push(pairs[at++]!);
     const g = (c: number) => Number(body.find((p) => p[0] === c)?.[1] ?? Number.NaN);
+    // Seen from below: its extrusion (210, 220, 230) pointing down, 0, 0, −1 by default up.
+    const mirror = g(230) < 0;
+    // A polyline's vertices with their bulges, from one to the next, closed back to the first.
+    const polyline = (pts: readonly { x: number; y: number; bulge: number }[], closed: boolean) => {
+      for (let k = 0; k + 1 < pts.length; k++) side(pts[k]!.x, pts[k]!.y, pts[k + 1]!.x, pts[k + 1]!.y, pts[k]!.bulge, mirror);
+      if (closed && pts.length > 2) side(pts.at(-1)!.x, pts.at(-1)!.y, pts[0]!.x, pts[0]!.y, pts.at(-1)!.bulge, mirror);
+    };
     switch (type) {
       case 'LINE':
         seg(g(10), g(20), g(11), g(21));
         break;
       case 'LWPOLYLINE': {
-        const xs = body.filter((p) => p[0] === 10).map((p) => Number(p[1]));
-        const ys = body.filter((p) => p[0] === 20).map((p) => Number(p[1]));
-        const closed = (g(70) & 1) === 1;
-        for (let k = 0; k + 1 < xs.length; k++) seg(xs[k]!, ys[k]!, xs[k + 1]!, ys[k + 1]!);
-        if (closed && xs.length > 2) seg(xs.at(-1)!, ys.at(-1)!, xs[0]!, ys[0]!);
+        // Each vertex its 10 and 20, and its bulge (42) when it has one, in order.
+        const pts: { x: number; y: number; bulge: number }[] = [];
+        for (const [c, v] of body) {
+          if (c === 10) pts.push({ x: Number(v), y: Number.NaN, bulge: 0 });
+          else if (c === 20 && pts.length > 0) pts.at(-1)!.y = Number(v);
+          else if (c === 42 && pts.length > 0) pts.at(-1)!.bulge = Number(v);
+        }
+        polyline(pts, (g(70) & 1) === 1);
         break;
       }
       case 'POLYLINE': {
         const closed = (g(70) & 1) === 1;
-        const pts: [number, number][] = [];
+        const pts: { x: number; y: number; bulge: number }[] = [];
         // Its vertices follow it, each an entity of its own, up to SEQEND.
         while (at < pairs.length && pairs[at]![1] !== 'SEQEND') {
           if (pairs[at]![0] === 0 && pairs[at]![1] === 'VERTEX') {
             at++;
             const v: [number, string][] = [];
             while (at < pairs.length && pairs[at]![0] !== 0) v.push(pairs[at++]!);
-            pts.push([Number(v.find((p) => p[0] === 10)?.[1]), Number(v.find((p) => p[0] === 20)?.[1])]);
+            const of = (c: number) => Number(v.find((p) => p[0] === c)?.[1] ?? Number.NaN);
+            pts.push({ x: of(10), y: of(20), bulge: of(42) || 0 });
           } else at++;
         }
-        for (let k = 0; k + 1 < pts.length; k++) seg(pts[k]![0], pts[k]![1], pts[k + 1]![0], pts[k + 1]![1]);
-        if (closed && pts.length > 2) seg(pts.at(-1)![0], pts.at(-1)![1], pts[0]![0], pts[0]![1]);
+        polyline(pts, closed);
         break;
       }
       case 'CIRCLE':
-        arc(g(10), g(20), g(40), 0, Math.PI * 2);
+        arc(g(10), g(20), g(40), 0, Math.PI * 2, mirror);
         break;
       case 'ARC':
-        arc(g(10), g(20), g(40), (g(50) * Math.PI) / 180, (g(51) * Math.PI) / 180);
+        arc(g(10), g(20), g(40), (g(50) * Math.PI) / 180, (g(51) * Math.PI) / 180, mirror);
         break;
+      case 'ELLIPSE': {
+        // Its centre and its major axis's end from it (in the drawing's axes), its minor axis `ratio` of
+        // it, square to it on the side the extrusion turns to, from parameter 41 to 42 (radians).
+        const [cx, cy, mx, my, ratio] = [g(10), g(20), g(11), g(21), g(40)];
+        const [nx, ny] = mirror ? [my * ratio, -mx * ratio] : [-my * ratio, mx * ratio];
+        const p0 = Number.isFinite(g(41)) ? g(41) : 0;
+        let p1 = Number.isFinite(g(42)) ? g(42) : Math.PI * 2;
+        while (p1 <= p0) p1 += Math.PI * 2;
+        const n = arcSteps(p1 - p0);
+        const point = (t: number) => [cx + mx * Math.cos(t) + nx * Math.sin(t), cy + my * Math.cos(t) + ny * Math.sin(t)] as const;
+        for (let k = 0; k < n; k++) {
+          const [ax, ay] = point(p0 + ((p1 - p0) * k) / n);
+          const [bx, by] = point(p0 + ((p1 - p0) * (k + 1)) / n);
+          seg(ax, ay, bx, by);
+        }
+        break;
+      }
       case 'SEQEND':
       case 'VERTEX':
         break;

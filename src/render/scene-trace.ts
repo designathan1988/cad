@@ -47,8 +47,26 @@ export function fireflyClamp(view: Scene3D): number {
 }
 
 export function traceStep(view: Scene3D): boolean {
+  if (view.traceUnavailable) return false;
   if (!view.tracer) {
     const t = new WebGLPathTracer(view.renderer);
+    // The library's undocumented inner parts patched below (its shader, its compile, its targets), as
+    // three-gpu-pathtracer 0.0.27 has them (package.json pins it). Missing, the patches would throw or quietly
+    // lose the fixes (fireflies, compile stalls, filtering): the realistic view is drawn and the user told.
+    const inner = (t as unknown as { _pathTracer?: { material?: { setDefine?: unknown; fragmentShader?: unknown }; compileMaterial?: unknown; _primaryTarget?: unknown; _blendTargets?: unknown } })._pathTracer;
+    if (
+      !inner ||
+      typeof inner.material?.setDefine !== 'function' ||
+      typeof inner.material.fragmentShader !== 'string' ||
+      typeof inner.compileMaterial !== 'function' ||
+      !(inner._primaryTarget instanceof THREE.WebGLRenderTarget) ||
+      !Array.isArray(inner._blendTargets)
+    ) {
+      t.dispose();
+      view.traceUnavailable = true;
+      view.onTraceUnavailable();
+      return false;
+    }
     t.bounces = 5;
     t.minSamples = 1;
     t.renderDelay = 0;

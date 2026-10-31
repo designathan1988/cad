@@ -37,6 +37,7 @@ import { pointerHandlers } from './pointer-handlers';
 import * as appPlacing from './app-placing';
 import * as appSettings from './app-settings';
 import { fromOf, pointsOf } from '../elements/tool-draft';
+import * as appView from './app-view';
 
 export function wireInput(app: App): void {
   const { shell, ui } = app;
@@ -60,7 +61,7 @@ export function wireInput(app: App): void {
   app.openProjects = () => showProjectsDialog(app);
   const palette = () => showPalette(appActions(app, openers));
   // The ribbon and the File menu run the same actions the palette lists.
-  app.actionList = () => appActions(app, openers);
+  app.buildActions = () => appActions(app, openers);
   app.openCommands = palette;
   app.openLevels = () => showLevels(app);
   app.openSections = (id) => showSections(app, id);
@@ -157,11 +158,29 @@ export function wireInput(app: App): void {
   const handlers = pointerHandlers(app, { ptr, aim, gestures, tracker, showTracker, showMarquee, contextMenu, toolMenu });
   const { onMove, onDown, onUp } = handlers;
 
+  // A pointer the system took away (an app switch, palm rejection, too many touches) sends no pointerup:
+  // what it was doing is dropped as Esc drops it, not left hanging to end at the next pointerup, at an
+  // unrelated place (a wall moved by an interrupted drag).
+  const onCancel = () => {
+    ptr.rightAt = null;
+    ptr.panning = null;
+    if (ptr.left?.kind === 'box') {
+      appView.setBox(app, ptr.left.box, false);
+      app.boxHot = null;
+    }
+    ptr.left = null;
+    if (ui.drag?.kind === 'handle') ui.drag = null;
+    gestures.cancel();
+    showMarquee();
+    app.refresh();
+  };
+
   for (const c of [shell.planCanvas, shell.glCanvas]) {
     c.tabIndex = 0;
     c.addEventListener('pointermove', onMove);
     c.addEventListener('pointerdown', onDown);
     c.addEventListener('pointerup', onUp);
+    c.addEventListener('pointercancel', onCancel);
     c.addEventListener('pointerleave', () => {
       ui.hover = null;
       ui.cursor = null;
@@ -264,7 +283,6 @@ export function wireInput(app: App): void {
     pointer: ptr,
     gestures,
     guideTools,
-    palette,
     showMarquee,
     // An arrow while drawing: held to x (→) or y (↑), or along (←) or square (↓) to the wall the snap
     // names or the nearest one; the same arrow again lets go.

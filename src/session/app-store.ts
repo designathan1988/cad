@@ -6,8 +6,11 @@ import { settleDimensions } from '../elements/dimension/constraints';
 import type { Dimension } from '../elements/dimension/schema';
 import type { Store } from '../core/store';
 import type { Doc } from '../project/doc';
+import type { App } from './app';
 import { keepRooms } from '../project/carry';
 import { keepOpenings } from '../elements/opening/keep';
+import { elementIds, levelIn } from '../project/doc';
+import { savePrefs, scheduleSave } from '../project/persist';
 
 export function keepingStore(store: Store<Doc>, onRefused: (dim: Dimension) => void): Store<Doc> {
   return {
@@ -20,7 +23,9 @@ export function keepingStore(store: Store<Doc>, onRefused: (dim: Dimension) => v
         label: c.label,
         apply: (before) => {
           const changed = c.apply(before);
-          if (changed === before) return changed;
+          // Another project in place of this one: nothing of it follows from this one's dimensions,
+            // openings or rooms (their ids may well repeat between projects).
+            if (changed === before || c.replaces) return changed;
           const settled = settleDimensions(before, changed);
           if (!settled.ok) {
             refused = settled.dim;
@@ -33,4 +38,20 @@ export function keepingStore(store: Store<Doc>, onRefused: (dim: Dimension) => v
       if (refused) onRefused(refused);
     },
     };
+}
+
+/** What follows every change of the document: saved, said afresh, the selection and the level shown kept to what is there. */
+export function afterChange(app: App, d: Doc): void {
+  scheduleSave(d);
+  app.ui.info = null;
+  // Only what no longer exists leaves the selection: editing a room or a floor keeps it selected.
+  const live = elementIds(d);
+  for (const id of [...app.ui.selection]) if (!live.has(id)) app.ui.selection.delete(id);
+  // The level shown gone (deleted, or its adding undone): the first one, at the project's scale.
+  if (!levelIn(d.levels, app.ui.levelId)) {
+    app.ui.levelId = d.levels[0]!.id;
+    app.ui.viewDen = null;
+    savePrefs({ levelId: app.ui.levelId });
+  }
+  app.refresh();
 }

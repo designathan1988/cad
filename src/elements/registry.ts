@@ -50,6 +50,10 @@ export const levelOfSolid = (k: AnyKind, s: unknown): LevelId | null =>
 /** The level of an element of the document (a door's, its wall's); null for one on every level. */
 export const levelOfElement = (k: AnyKind, e: { readonly levelId?: LevelId }, doc: Doc): string | null => (k.everyLevel ? (e.levelId ?? null) : k.levelIn ? k.levelIn(e, doc) : (e.levelId ?? null));
 
+/** How many registry elements stand on a level (not those on every level, as an axis). */
+export const elementsOnLevel = (doc: Doc, levelId: string): number =>
+  KINDS.reduce((n, k) => (k.everyLevel ? n : n + listOf(doc, k).filter((e) => levelOfElement(k, e, doc) === levelId).length), 0);
+
 /** The document with a kind's list replaced. */
 export const withList = (doc: Doc, k: AnyKind, list: readonly unknown[]): Doc => ({ ...doc, [k.key]: list }) as Doc;
 
@@ -140,8 +144,8 @@ export const hasSolid = (solids: KindSolids, id: string): boolean => {
   return k !== null && (solids.get(k.key)?.has(id) ?? false);
 };
 
-/** The document with the registry elements among `ids` moved by d; the same document when none moves. */
-export function moveKinds(doc: Doc, ids: ReadonlySet<string>, d: { readonly x: number; readonly y: number }): Doc {
+/** The document with the registry elements among `ids` moved by d; the same document when none moves. `g`: the geometry before the move (a hosted guardrail moves from where it is shown). */
+export function moveKinds(doc: Doc, ids: ReadonlySet<string>, d: { readonly x: number; readonly y: number }, g?: DerivedGeometry): Doc {
   if (ids.size === 0 || (d.x === 0 && d.y === 0)) return doc;
   let next = doc;
   for (const k of KINDS) {
@@ -149,7 +153,7 @@ export function moveKinds(doc: Doc, ids: ReadonlySet<string>, d: { readonly x: n
     if (k.walled) continue;
     const list = listOf(doc, k);
     if (!list.some((e) => ids.has(e.id))) continue;
-    next = withList(next, k, list.map((e) => (ids.has(e.id) ? k.moved(e, d) : e)));
+    next = withList(next, k, list.map((e) => (ids.has(e.id) ? k.moved(e, d, g) : e)));
   }
   return next;
 }
@@ -185,7 +189,10 @@ export function dropKinds(doc: Doc, ids: ReadonlySet<string>, g: DerivedGeometry
       const f = k.follows?.(e);
       return f !== null && f !== undefined && ids.has(f) && k.released ? k.released(e, g) : e;
     };
-    const kept = list.filter((e) => !goesWith(k, e, ids)).map(released);
+    const kept = list
+      .filter((e) => !goesWith(k, e, ids))
+      .map(released)
+      .flatMap((e) => (k.shed ? (k.shed(e, ids) ?? []) : [e]));
     if (kept.length !== list.length || kept.some((e, i) => e !== list[i])) next = withList(next, k, kept);
   }
   return next;
@@ -275,10 +282,6 @@ export function appendKinds(onto: Doc, after: Doc, before: Doc): Doc {
   }
   return next;
 }
-
-/** The ids of the registry elements on the axis line `onLine` (every level). */
-export const kindsOnLine = (doc: Doc, onLine: (p: Point2) => boolean): string[] =>
-  KINDS.flatMap((k) => (k.onGrid ? listOf(doc, k).filter((e) => k.onGrid!(e, onLine)).map((e) => e.id) : []));
 
 /** "Select similar" over the registry: the elements on `levelId` like a selected one of their kind. */
 export function similarKinds(doc: Doc, selected: ReadonlySet<string>, levelId: LevelId): string[] {

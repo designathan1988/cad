@@ -12,7 +12,8 @@ import { shownGrids } from './annotation-tools';
 import * as sceneCamera from '../render/scene-camera';
 import * as appView from './app-view';
 import type { LevelId } from '../project/doc';
-import { fromOf, pointsOf } from '../elements/tool-draft';
+import { pointsOf } from '../elements/tool-draft';
+import { pointTape } from './point-tools';
 
 
 export function pointerAim(app: App, isShift: () => boolean) {
@@ -22,10 +23,14 @@ export function pointerAim(app: App, isShift: () => boolean) {
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
   /** Snap for grips: like drawing, without the wall being stretched. */
+  /** The level's floor as the 3D draws it (its elevation, lifted when exploded): where its points are aimed. */
+  const floorZ = () => (levelOf(app.store.get(), ui.levelId)?.elevation ?? 0) + appView.lift(app, ui.levelId);
+  /** Snap for grips: like drawing, without the wall being stretched; its reach in 3D sized at the level's
+   * floor, as drawing's is (at the ground it was too big or too small on an upper level). */
   const snapAt = (p: Point2, exclude: ReadonlySet<WallId>) =>
     snap({
       cursor: p,
-      mpp: ui.view === 'plan' ? 1 / app.plan.scale : sceneCamera.metresPerPixel(app.scene, p, 0),
+      mpp: ui.view === 'plan' ? 1 / app.plan.scale : sceneCamera.metresPerPixel(app.scene, p, floorZ()),
       segments: app.store.get().walls.filter((x) => x.levelId === ui.levelId && !exclude.has(x.id)),
       from: null,
       chainStart: null,
@@ -46,7 +51,7 @@ export function pointerAim(app: App, isShift: () => boolean) {
       const r = shell.planCanvas.getBoundingClientRect();
       return { p: app.plan.toWorld({ x: e.clientX - r.left, y: e.clientY - r.top }), mpp: 1 / app.plan.scale };
     }
-    const z = (levelOf(app.store.get(), ui.levelId)?.elevation ?? 0) + appView.lift(app, ui.levelId);
+    const z = floorZ();
     const p = sceneCamera.groundPoint(app.scene, e.clientX, e.clientY, z);
     return p ? { p, mpp: sceneCamera.metresPerPixel(app.scene, p, z) } : null;
   };
@@ -136,21 +141,7 @@ export function pointerAim(app: App, isShift: () => boolean) {
         ? ui.measure.a
         : ui.tool === 'measure' && ui.measure.kind === 'chain'
           ? ui.measure.points.at(-1)!
-        : ui.tool === 'dimension' && ui.dimension.kind === 'from'
-          ? ui.dimension.a
-          : ui.tool === 'grid'
-            ? fromOf(ui.draft, 'grid')
-            : ui.tool === 'guide'
-              ? fromOf(ui.draft, 'guide')
-            : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain'
-              ? fromOf(ui.draft, 'beam')
-              : ui.tool === 'roof'
-                ? (pointsOf(ui.draft, 'roof').at(-1) ?? null)
-                : ui.tool === 'stair'
-                  ? fromOf(ui.draft, 'stair')
-                  : ui.tool === 'railing'
-                    ? (pointsOf(ui.draft, 'railing').at(-1) ?? null)
-                    : null;
+          : pointTape(app);
     const measuring = ui.tool === 'measure' || ui.tool === 'dimension';
     const modifyFrom = ui.tool === 'modify' && ui.modify && ui.modify.state.step !== 'base' ? ui.modify.state.base : null;
     const faces = measuring ? levelFaces() : [];

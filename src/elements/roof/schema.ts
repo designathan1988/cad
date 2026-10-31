@@ -50,6 +50,8 @@ export const ROOF_COVERING: RoofCovering = { materialId: 'clayTile', thickness: 
 
 /** A new roof's slope (%), overhang, thickness and a flat roof's parapet (m). */
 export const ROOF_GRADE = 30;
+/** The steepest slope taken (%): 1000 % is about 84°. Past it a typo (3000 for 30) raised the ridge tens of metres. */
+export const ROOF_GRADE_MAX = 1000;
 export const ROOF_OVERHANG = 0.5;
 export const ROOF_THICKNESS = 0.12;
 export const ROOF_PARAPET = 0.8;

@@ -13,6 +13,8 @@ import { type MessageKey, t } from '../i18n/messages';
 import { openingSnapshot } from './opening-snapshot';
 import { lengthText } from '../i18n/units';
 import { folderButton, iconButton, storeSearch } from './store-parts';
+import { pictureQueue } from './store-pictures';
+import { fold } from './search';
 
 /** Pictures made once each, by model and size. */
 const pictures = new Map<string, string | null>();
@@ -29,31 +31,8 @@ export function showOpenings(app: App, kind?: OpeningKind): void {
   let chosen = OPENING_MODELS.find((m) => m.kind === (kind ?? 'door'))?.id ?? OPENING_MODELS[0]!.id;
   let query = '';
   let scrolled: number | null = null;
-  let pending: OpeningModel[] = [];
-  let working = false;
-  // Pictures not made yet, made one at a time after the dialog shows.
-  const work = () => {
-    if (working) return;
-    working = true;
-    const step = () => {
-      const m = pending.shift();
-      const host = app.shell.helpBack;
-      if (!m || !host.querySelector('.objs-store')) {
-        working = false;
-        return;
-      }
-      const src = pictureOf(m, true);
-      const img = host.querySelector<HTMLImageElement>(`img[data-picture="${CSS.escape(m.id)}"]`);
-      if (img && src) {
-        img.src = src;
-        img.classList.remove('is-loading');
-      }
-      setTimeout(step, 0);
-    };
-    setTimeout(step, 0);
-  };
+  const queue = pictureQueue<OpeningModel>(() => app.shell.helpBack, (m) => m.id, (m) => pictureOf(m, true));
   const render = (close: () => void): HTMLElement => {
-    const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     const found = OPENING_MODELS.filter((m) => query.trim() === '' || fold(`${nameOf(m)} ${t(m.kind === 'door' ? 'opstore.doors' : 'opstore.windows')}`).includes(fold(query.trim())));
     const shown = folder === 'all' ? found : found.filter((m) => m.kind === folder);
     if (!shown.some((m) => m.id === chosen)) chosen = shown[0]?.id ?? '';
@@ -81,7 +60,7 @@ export function showOpenings(app: App, kind?: OpeningKind): void {
       navItem('window', t('opstore.windows'), found.filter((m) => m.kind === 'window').length),
     );
 
-    pending = [];
+    queue.clear();
     const grid = el('div', { class: 'objs-grid', role: 'group', 'aria-label': t('opstore.title') });
     grid.addEventListener('scroll', () => (scrolled = grid.scrollTop));
     if (scrolled !== null) {
@@ -100,17 +79,19 @@ export function showOpenings(app: App, kind?: OpeningKind): void {
       const src = pictureOf(m, false);
       const img = el('img', { class: `objs-card-img${src ? '' : ' is-loading'}`, alt: '', 'data-picture': m.id });
       if (src) img.src = src;
-      else if (src === undefined) pending.push(m);
+      else if (src === undefined) queue.add(m);
       card.append(
         el('span', { class: 'objs-card-pic' }, img),
         el('span', { class: 'objs-card-name' }, nameOf(m)),
         el('span', { class: 'objs-card-meta' }, `${t(m.kind === 'door' ? 'opstore.door' : 'opstore.window')} · ${lengthText(m.width)} × ${lengthText(m.height)}`),
       );
-      card.addEventListener('click', () => {
+      // The second click of a double click (detail 2) places: the first rebuilt the grid, so the browser's
+      // dblclick, which needs both clicks on one element, never came.
+      card.addEventListener('click', (e) => {
+        if (e.detail >= 2) return place(m);
         chosen = m.id;
         dialog.redraw();
       });
-      card.addEventListener('dblclick', () => place(m));
       grid.append(card);
     }
     if (shown.length === 0) grid.append(el('p', { class: 'objs-empty' }, t('opstore.noMatch')));
@@ -134,7 +115,7 @@ export function showOpenings(app: App, kind?: OpeningKind): void {
       go.addEventListener('click', () => place(model));
       side.append(go, el('p', { class: 'objs-in-project' }, t('opstore.after')));
     }
-    work();
+    queue.work();
     return withLibrary(app, 'openings', close, el('div', { class: 'dialog objs-store', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('opstore.title') }, head, el('div', { class: 'objs-main' }, nav, grid, side)));
   };
   const dialog = openProjectDialog(app, render, () => `model:${chosen}`);

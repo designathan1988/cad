@@ -8,23 +8,30 @@ import { el } from './controls';
 import { openProjectDialog } from './dialog';
 import { t } from '../i18n/messages';
 import * as appSettings from '../session/app-settings';
+import { TOOL_KEYS } from '../session/keymap';
 
 export function showKeys(app: App): void {
   let filter = '';
   let capturing: string | null = null;
   let said = '';
-  // A key pressed while capturing is the new key (Esc gives up); taken before the app's own keys.
+  // A key pressed while capturing is the new key (Esc gives up); taken before the app's own keys and
+  // before the dialog's (listened to first, and stopped there): Esc closed the dialog, Ctrl+Z undid the
+  // last change, and a capture left open by a click on the backdrop ate the app's next key.
   const listen = (e: KeyboardEvent) => {
     if (capturing === null) return;
     const combo = comboOf(e);
     if (combo === null) return;
     e.preventDefault();
-    e.stopPropagation();
+    e.stopImmediatePropagation();
     const id = capturing;
     capturing = null;
-    window.removeEventListener('keydown', listen, true);
     if (combo === 'Esc') {
       said = '';
+      return dialog.redraw();
+    }
+    // A key the tools read themselves stays theirs (keymap.ts: TOOL_KEYS).
+    if (TOOL_KEYS.includes(combo)) {
+      said = t('keys.reserved', { key: combo });
       return dialog.redraw();
     }
     const acts = app.actionList();
@@ -34,6 +41,7 @@ export function showKeys(app: App): void {
     said = taken.length ? t('keys.taken', { key: combo, action: label, from: taken.map((a) => a.label).join(', ') }) : t('keys.set', { key: combo, action: label });
     dialog.redraw();
   };
+  window.addEventListener('keydown', listen, true);
   const dialog = openProjectDialog(app, (close) => {
     const acts = app.actionList().filter((a) => !/^(level|tool\.object|snap\.parts)\./.test(a.id));
     const search = el('input', { type: 'search', class: 'keys-search', placeholder: t('keys.search'), 'aria-label': t('keys.search') });
@@ -55,7 +63,6 @@ export function showKeys(app: App): void {
       key.addEventListener('click', () => {
         capturing = a.id;
         said = t('keys.pressFor', { action: a.label });
-        window.addEventListener('keydown', listen, true);
         dialog.redraw();
       });
       const off = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('keys.off'));
@@ -87,11 +94,7 @@ export function showKeys(app: App): void {
     });
     const done = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
     done.dataset.focus = 'close';
-    done.addEventListener('click', () => {
-      capturing = null;
-      window.removeEventListener('keydown', listen, true);
-      close();
-    });
+    done.addEventListener('click', () => close());
     return el(
       'div',
       { class: 'dialog dialog-wide keys-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('keys.title') },
@@ -100,6 +103,10 @@ export function showKeys(app: App): void {
       list,
       el('div', { class: 'actions' }, reset, el('span', { class: 'spacer' }), done),
     );
+  }, undefined, () => {
+    // However it closes (Close, Esc, the backdrop): no key is captured after it.
+    capturing = null;
+    window.removeEventListener('keydown', listen, true);
   });
   app.shell.helpBack.querySelector<HTMLElement>('[data-focus="search"]')?.focus();
 }

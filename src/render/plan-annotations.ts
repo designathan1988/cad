@@ -8,6 +8,7 @@ import { drawSelectionHandles } from './plan-strokes';
 import { crisp } from './plan-walls';
 import { type PlanOverlay } from './plan-types';
 import type { PlanView } from './plan-view';
+import type { Point2 } from '../model/vector';
 import type { PlanPaint } from '../elements/contract';
 import type { eachSolid } from '../elements/registry';
 
@@ -59,18 +60,28 @@ export function drawAnnotations(view: PlanView, o: PlanOverlay, d: AnnotationDep
   // one it would meet, or up if that runs off the canvas.
   const values = [...view.dimValueBoxes(o.dims ?? []), ...view.labelBoxes];
   for (const tag of o.wallTags ?? []) {
-    const font = planFont(view, '600', '--fs-xs');
+    const font = planFont('600', '--fs-xs');
     const tw = textWidth(view, tag.text, font) + 8;
-    const p = view.toScreen(tag.at);
+    // Off the wall's face by the tag's own half size along the normal (as seen on screen, y down), a gap
+    // beyond: over the wall it hid a short one.
+    const n = tag.normal ?? { x: 0, y: 0 };
+    const off = (tag.clear ?? 0) + (Math.abs(n.x) * tw / 2 + Math.abs(n.y) * 8 + 4) / view.scale;
+    const side = (k: 1 | -1) => ({ x: tag.at.x + n.x * off * k, y: tag.at.y + n.y * off * k });
+    const boxAt = (q: Point2, y: number) => ({ x: q.x - tw / 2, y: q.y + y - 11, w: tw, h: 16 });
+    // On the other side when a value is on this one (the wall's own temporary dimension, say): pushed past
+    // that value, the tag came back over the wall.
+    let at = side(1);
+    if (values.some((v) => overlaps(boxAt(view.toScreen(at), 4), v)) && !values.some((v) => overlaps(boxAt(view.toScreen(side(-1)), 4), v))) at = side(-1);
+    const p = view.toScreen(at);
     let dy = 4;
-    const box = (y: number) => ({ x: p.x - tw / 2, y: p.y + y - 11, w: tw, h: 16 });
+    const box = (y: number) => boxAt(p, y);
     for (let k = 0; k < values.length + 1; k++) {
       const hit = values.find((v) => overlaps(box(dy), v));
       if (!hit) break;
       dy = hit.y + hit.h + 11 + 2 - p.y;
     }
     if (p.y + dy + 5 > view.size.h) dy = 4 - 24;
-    label(view, tag.at, tag.text, color('--wall-sel'), color('--canvas'), font, { x: 0, y: dy });
+    label(view, at, tag.text, color('--wall-sel'), color('--canvas'), font, { x: 0, y: dy });
   }
   drawSelectionHandles(view, o.handles, color('--bg'), color('--wall-sel'));
   if (o.objectHandles) drawObjectHandles(view.ctx, o.objectHandles, color('--bg'), color('--wall-sel'), o.hotHandle ?? null);
@@ -112,7 +123,7 @@ export function drawAnnotations(view: PlanView, o: PlanOverlay, d: AnnotationDep
         ctx.lineTo(p.x + n.x * 4, p.y + n.y * 4);
       }
       ctx.stroke();
-      label(view, { x: (gp.a.x + gp.b.x) / 2, y: (gp.a.y + gp.b.y) / 2 }, gp.text, color('--snap'), color('--canvas'), planFont(view, '600', '--fs-xs'));
+      label(view, { x: (gp.a.x + gp.b.x) / 2, y: (gp.a.y + gp.b.y) / 2 }, gp.text, color('--snap'), color('--canvas'), planFont('600', '--fs-xs'));
     }
     ctx.restore();
   }

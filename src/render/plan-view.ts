@@ -34,20 +34,11 @@ export class PlanView {
   phases: ReadonlyMap<string, 'new' | 'existing' | 'demolish'> = new Map();
   /** Graphic overrides of rooms: a use filled with a colour (app/layer-sets.ts); empty when off. */
   roomOverrides: ReadonlyMap<string, string> = new Map();
-  /**
-   * Drawn for paper (app/print.ts), not for the screen: its size in pen units, device pixels a unit,
-   * the scale printed and the paper's colours. No grid; pens, texts and hatches keep their size on paper.
-   */
-  printing: { readonly w: number; readonly h: number; readonly ratio: number; readonly den: number; readonly color: (name: string) => string } | null = null;
   /** The context drawn on (plan-text.ts and plan-strokes.ts draw on it too). */
   readonly ctx: CanvasRenderingContext2D;
 
-  /** `context`: drawn on it instead of the canvas's own (a vector page, io/pdf-canvas.ts). */
-  constructor(
-    readonly canvas: HTMLCanvasElement,
-    context?: CanvasRenderingContext2D,
-  ) {
-    const ctx = context ?? canvas.getContext('2d');
+  constructor(readonly canvas: HTMLCanvasElement) {
+    const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('2D canvas unavailable');
     this.ctx = ctx;
   }
@@ -61,7 +52,6 @@ export class PlanView {
    * by half the panel's width, a jump the user saw on every panel shown or hidden.
    */
   get size() {
-    if (this.printing) return { w: this.printing.w, h: this.printing.h };
     const w = this.canvas.clientWidth;
     const h = this.canvas.clientHeight;
     if (w > 0 && h > 0 && (w !== this.seen.w || h !== this.seen.h)) {
@@ -120,14 +110,14 @@ export class PlanView {
     return this.drawing.pens[role] / PEN_UNIT_MM;
   }
 
-  /** What the scale shows: the printed one's, or the project's on screen. */
+  /** What the project's scale shows. */
   get detail(): Detail {
-    return detailOf(this.printing?.den ?? this.drawing.scale);
+    return detailOf(this.drawing.scale);
   }
 
   draw(g: DerivedGeometry, o: PlanOverlay): void {
     const { canvas, ctx } = this;
-    const dpr = this.printing?.ratio ?? (window.devicePixelRatio || 1);
+    const dpr = window.devicePixelRatio || 1;
     const { w, h } = this.size;
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
       canvas.width = Math.round(w * dpr);
@@ -135,10 +125,10 @@ export class PlanView {
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const css = getComputedStyle(document.documentElement);
-    const color = this.printing?.color ?? ((name: string) => css.getPropertyValue(name).trim());
+    const color = (name: string) => css.getPropertyValue(name).trim();
     ctx.fillStyle = color('--canvas');
     ctx.fillRect(0, 0, w, h);
-    if (!this.printing) drawGrid(this, color('--grid-minor'), color('--grid-major'), color('--axis-x'), color('--axis-y'));
+    drawGrid(this, color('--grid-minor'), color('--grid-major'), color('--axis-x'), color('--axis-y'));
 
     const solids = [...g.solids.values()];
     const normal = solids.filter((s) => !o.preview.has(s.wall.id));
@@ -158,14 +148,14 @@ export class PlanView {
       ctx.fill('nonzero');
     }
     // The registry's kinds (elements/registry.ts), each drawing itself; lit when selected or under the pointer.
-    const family = (this.printing ? css : getComputedStyle(this.canvas)).getPropertyValue('--font').trim() || 'sans-serif';
+    const family = getComputedStyle(this.canvas).getPropertyValue('--font').trim() || 'sans-serif';
     const paint = {
       ctx,
       toScreen: (v: Point2) => this.toScreen(v),
       color,
       scale: this.scale,
       family,
-      font: (weight: string, size: string) => planFont(this, weight, size),
+      font: (weight: string, size: string) => planFont(weight, size),
       line: (point: Point2, dir: Point2, colour: string, width: number, dash: readonly number[]) => drawLine(this, point, dir, colour, width, dash),
       pen: (role: PenRole) => this.pen(role),
       detail: this.detail,
@@ -250,7 +240,7 @@ export class PlanView {
     if (o.calloutDraft) drawLeader(paint, o.calloutDraft.to, o.calloutDraft.from, color('--wall-sel'));
     if (o.calibrateDraft) {
       dashed(this, o.calibrateDraft.a, o.calibrateDraft.b, color('--snap'));
-      label(this, { x: (o.calibrateDraft.a.x + o.calibrateDraft.b.x) / 2, y: (o.calibrateDraft.a.y + o.calibrateDraft.b.y) / 2 }, o.calibrateDraft.text, color('--snap'), color('--canvas'), planFont(this, '700', '--fs-sm'));
+      label(this, { x: (o.calibrateDraft.a.x + o.calibrateDraft.b.x) / 2, y: (o.calibrateDraft.a.y + o.calibrateDraft.b.y) / 2 }, o.calibrateDraft.text, color('--snap'), color('--canvas'), planFont('700', '--fs-sm'));
     }
     // Guides over the walls, thin (a guide laid on a wall's face is seen there), and texts over all.
     for (const x of kinds) if (x.kind.layer === 'over') x.kind.plan(paint, x.solid, shownLit(x.id));
@@ -268,7 +258,7 @@ export class PlanView {
    * room and wall tags keep off them: one placement for all three.
    */
   dimValueBoxes(dims: readonly DimMark[]): { x: number; y: number; w: number; h: number }[] {
-    const font = planFont(this, '600', '--fs-sm');
+    const font = planFont('600', '--fs-sm');
     const sized = dims.map((d) => ({ ...this.dimLine(d), w: textWidth(this, d.text ?? '0,00', font) + 16, h: 22 }));
     const at = separateLabels(sized);
     return sized.map((s, i) => ({ x: at[i]!.x - s.w / 2, y: at[i]!.y - s.h / 2, w: s.w, h: s.h }));
@@ -283,8 +273,8 @@ export class PlanView {
     keptLines: readonly { a: Point2; b: Point2 }[] = [],
   ): void {
     const { ctx } = this;
-    const nameFont = planFont(this, '600', '--fs-sm');
-    const areaFont = planFont(this, '400', '--fs-sm');
+    const nameFont = planFont('600', '--fs-sm');
+    const areaFont = planFont('400', '--fs-sm');
     const inputs = labels.map((l) => {
       const p = this.toScreen(l.at);
       const outline = l.outline.map((v) => this.toScreen(v));

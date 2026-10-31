@@ -92,6 +92,7 @@ export function renderFrame(app: App): void {
       selected: app.selectedWalls(),
       drawing: ui.tool === 'wall',
       defaults: ui.defaults,
+      levelId: ui.levelId,
       warnings: app.geometry.warnings,
       openings: app.selectedWalls().length === 0 ? app.selectedOpenings() : [],
       levelRooms: [...app.geometry.rooms.values()].filter((r) => r.room.levelId === ui.levelId),
@@ -158,11 +159,12 @@ export function renderFrame(app: App): void {
       ...(() => {
         const ws = app.selectedWalls();
         if (ws.length !== 1) return {};
-        const { start, end } = ws[0]!;
+        const { id, start, end } = ws[0]!;
         const [dx, dy] = [end.x - start.x, end.y - start.y];
         type Side = 'top' | 'bottom' | 'left' | 'right';
         const sides: [Side, Side] = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? ['left', 'right'] : ['right', 'left']) : dy > 0 ? ['bottom', 'top'] : ['top', 'bottom'];
-        return { endSides: sides };
+        const choosable = app.geometry.choosable;
+        return { endSides: sides, endChoosable: [choosable.has(`${id}:start`), choosable.has(`${id}:end`)] as const };
       })(),
       ...(() => {
         const first = [...ui.selection].find((id) => app.store.get().walls.some((w) => w.id === id));
@@ -189,7 +191,10 @@ export function renderFrame(app: App): void {
         setFloorTiling: (ids, tiling) => app.store.dispatch(setFloorTiling(ids, tiling)),
         updateFloor: (ids, patch) => {
           const doc = app.store.get();
-          const next = ids.reduce((d, id) => updateFloor(id, patch).apply(d), doc);
+          const next = ids.reduce((d, id) => {
+            const f = d.floors.find((x) => x.id === id);
+            return f ? updateFloor(id, typeof patch === 'function' ? patch(f) : patch).apply(d) : d;
+          }, doc);
           if (next !== doc) app.store.dispatch({ label: 'cmd.updateFloor', apply: () => next });
         },
       },

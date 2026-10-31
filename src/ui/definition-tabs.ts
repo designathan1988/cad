@@ -1,7 +1,7 @@
 import type { App } from '../session/app';
 import { words } from '../elements/object/fields';
 import { evaluateFormula } from '../elements/object/formula';
-import type { Expr, HandleDef, ObjectDefinition, ParamDef, ParamKind, Part, RuleDef } from '../elements/object/schema';
+import { type Expr, type HandleDef, mapPartFormulas, type ObjectDefinition, type ParamDef, type ParamKind, type Part, type RuleDef } from '../elements/object/schema';
 import { el } from './controls';
 import { materialLabel, type MessageKey, t } from '../i18n/messages';
 import type { EditorState } from './definition-editor';
@@ -75,15 +75,24 @@ export function editorTabs(app: App, d: TabDeps) {
     if (name === old || name === '') return draw();
     const re = new RegExp(`(?<![\\wÀ-ÿ])${old}(?![\\wÀ-ÿ])`, 'g');
     const swap = (e: Expr): Expr => (typeof e === 'string' ? e.replace(re, name) : e);
-    const swapAll = <T>(x: T): T => JSON.parse(JSON.stringify(x), (k, v) => (typeof v === 'string' && ['x', 'y', 'z', 'w', 'd', 'h', 'r', 'r2', 'count', 'dx', 'dy', 'dz', 'when', 'angle', 'formula', 'watts', 'kelvin'].includes(k) ? swap(v) : v)) as T;
+    const swapText = (s: string | undefined) => (s === undefined ? {} : { value: swap(s) as string });
+    // Every formula, walked by what each holds (object/schema.ts: mapPartFormulas), not by a list of
+    // keys that left a profile's corners and a part's leaning with the old name.
     set({
       ...ed.draft,
-      params: ed.draft.params.map((p, k) => (k === i ? { ...p, name } : swapAll(p))),
-      parts: swapAll(ed.draft.parts).map((p) => (p.material === old ? { ...p, material: name } : p)),
+      params: ed.draft.params.map((p, k) => {
+        if (k === i) return { ...p, name };
+        const formula = swapText(p.formula);
+        const when = swapText(p.when);
+        return { ...p, ...('value' in formula ? { formula: formula.value } : {}), ...('value' in when ? { when: when.value } : {}) };
+      }),
+      parts: ed.draft.parts.map((p) => mapPartFormulas(p, swap)).map((p) => (p.material === old ? { ...p, material: name } : p)),
       handles: ed.draft.handles.map((h) => ({ ...h, param: h.param === old ? name : h.param, at: h.at.map(swap) as unknown as HandleDef['at'] })),
       types: ed.draft.types.map((ty) => ({ ...ty, values: Object.fromEntries(Object.entries(ty.values).map(([k, v]) => [k === old ? name : k, v])) })),
       ...(ed.draft.rules ? { rules: ed.draft.rules.map((r) => ({ ...r, when: swap(r.when) as string })) } : {}),
-      ...(ed.draft.light ? { light: swapAll(ed.draft.light) } : {}),
+      ...(ed.draft.light
+        ? { light: { ...ed.draft.light, x: swap(ed.draft.light.x), y: swap(ed.draft.light.y), z: swap(ed.draft.light.z), watts: swap(ed.draft.light.watts), ...(ed.draft.light.kelvin !== undefined ? { kelvin: swap(ed.draft.light.kelvin) } : {}) } }
+        : {}),
     });
   };
 
@@ -246,7 +255,8 @@ export function editorTabs(app: App, d: TabDeps) {
         ...[0, 1, 2].map((k) => input(exprText(h.at[k]), (v) => upd({ at: replaceAt(h.at, k, exprOf(v)) as unknown as HandleDef['at'] }), `h${i}:at${k}`, `${t('ed.at')} ${'xyz'[k]}`, 'ed-names')),
         input(String(h.shift ?? 0), (v) => {
           const n = evaluateFormula(v, {});
-          if (n.ok) upd({ shift: n.value });
+          // Between 0 (the base stays) and 1 (the far face stays), as a file's definition is read (valid.ts).
+          if (n.ok && n.value >= 0 && n.value <= 1) upd({ shift: n.value });
           else draw();
         }, `h${i}:shift`, t('ed.shift')),
         remove(t('ed.removeHandle', { n: i + 1 }), `h${i}:remove`, () => set({ ...ed.draft, handles: ed.draft.handles.filter((_, k) => k !== i) })),
@@ -334,10 +344,11 @@ export function editorTabs(app: App, d: TabDeps) {
 
 export const KINDS: readonly ParamKind[] = ['length', 'number', 'integer', 'bool', 'choice', 'material'];
 
-/** A number or formula as typed: a plain number stays a number, the rest a formula. */
+/** A number or formula as typed: a plain number stays a number (with a point or, as every other field takes
+ * it, a comma: "0,5" was kept as a formula), the rest a formula. */
 export const exprOf = (text: string): Expr => {
   const s = text.trim();
-  return /^-?\d+(\.\d+)?$/.test(s) ? Number(s) : s;
+  return /^-?\d+([.,]\d+)?$/.test(s) ? Number(s.replace(',', '.')) : s;
 };
 
 export const exprText = (e: Expr | undefined): string => (e === undefined ? '' : String(e));

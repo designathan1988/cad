@@ -1,6 +1,6 @@
 // Parametric objects in the registry (contract.ts, phase 3): the instance and its definition evaluated
 // (elements/object/evaluate.ts) into pieces; the plan draws each piece's outline from the lowest up (a
-// table's top over its legs), the 3D each piece in its material, the GLB the same. Kept from one
+// table's top over its legs), the 3D each piece in its material. Kept from one
 // derivation to the next while the object, its level, the definitions and the materials are the same.
 
 import * as THREE from 'three';
@@ -176,6 +176,22 @@ export function creaseEdges(geo: THREE.BufferGeometry, angle = 20): THREE.Buffer
   const faces = new Map<string, { n: THREE.Vector3[]; a: number; b: number }>();
   const d = new THREE.Vector3();
   const q = new THREE.Vector3();
+  // The vertices by x, so an edge tests only those within its box (a point on it is): every vertex for
+  // every edge, a cut piece of 10,000 vertices took some 3·10⁸ tests each time it was derived.
+  const byX = verts.map((_, k) => k).sort((u, w) => verts[u]!.x - verts[w]!.x);
+  const xs = byX.map((k) => verts[k]!.x);
+  const firstAt = (x: number) => {
+    let lo = 0;
+    let hi = xs.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (xs[mid]! < x) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  };
+  // Within 1e-5 of the line (the test below's 1e-10 squared), so within that of the edge's box.
+  const REACH = 1e-5;
   for (let t = 0; t + 2 < pos.count; t += 3) {
     const tri = [ids[t]!, ids[t + 1]!, ids[t + 2]!];
     const [a, b, c] = tri.map((k) => verts[k]!);
@@ -188,12 +204,18 @@ export function creaseEdges(geo: THREE.BufferGeometry, angle = 20): THREE.Buffer
       const len2 = d.lengthSq();
       if (len2 < 1e-16) continue;
       const on: [number, number][] = [[0, i], [1, j]];
-      verts.forEach((v, k) => {
-        if (k === i || k === j) return;
+      const p1 = verts[j]!;
+      const [x0, x1] = [Math.min(p0.x, p1.x) - REACH, Math.max(p0.x, p1.x) + REACH];
+      const [y0, y1] = [Math.min(p0.y, p1.y) - REACH, Math.max(p0.y, p1.y) + REACH];
+      const [z0, z1] = [Math.min(p0.z, p1.z) - REACH, Math.max(p0.z, p1.z) + REACH];
+      for (let r = firstAt(x0); r < xs.length && xs[r]! <= x1; r++) {
+        const k = byX[r]!;
+        const v = verts[k]!;
+        if (k === i || k === j || v.y < y0 || v.y > y1 || v.z < z0 || v.z > z1) continue;
         const s = q.subVectors(v, p0).dot(d) / len2;
-        if (s <= 1e-6 || s >= 1 - 1e-6) return;
+        if (s <= 1e-6 || s >= 1 - 1e-6) continue;
         if (q.subVectors(v, p0).addScaledVector(d, -s).lengthSq() < 1e-10) on.push([s, k]);
-      });
+      }
       on.sort((x, y) => x[0] - y[0]);
       for (let m = 1; m < on.length; m++) {
         const u = on[m - 1]![1];
@@ -228,7 +250,7 @@ export function roundSides(r: number): number {
 }
 
 /** A piece's geometry where it is, in three.js's axes: plan x, y and height z are x, −z and y; a turn in
- * plan (counter-clockwise) is one about y. For the 3D, the GLB and the definition editor alike. */
+ * plan (counter-clockwise) is one about y. For the 3D and the definition editor alike. */
 export function pieceGeometry(piece: Piece): THREE.BufferGeometry {
   if (piece.kind === 'revolve') {
     // Turned about three.js's y (the vertical), its points (r, z) as the lathe's (x, y); closed onto the
@@ -322,8 +344,6 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
     return said.length ? [...new Set(said)].join(' · ') : null;
   },
   dropped: 'fix.droppedObjects',
-  exportName: 'export.object',
-  exportColour: 'structure',
   valid: isObjectInstance,
   derive: (doc, o) => derive(doc, o),
   element: (s) => s.object,
@@ -373,10 +393,5 @@ export const objectKind: ElementKind<ObjectInstance, ObjectSolid> = {
       // Its lights go with its first piece (a luminaire's: contract.ts, lights).
       return { geometry, y: s.floor, material, edges: true, ...(i === 0 && s.eval.lights.length > 0 ? { lights: s.eval.lights } : {}) };
     }),
-  dxfLayers: [{ name: 'A-FURN', colour: 8 }],
-  dxf: (s, out) => {
-    for (const ring of s.rings) out.polyline('A-FURN', ring, true);
-    for (const ring of s.voids) out.polyline('A-FURN', ring, true);
-  },
   fields: (items, { dispatch, doc, floorLocked }) => objectFields(items, doc, dispatch, floorLocked),
 };

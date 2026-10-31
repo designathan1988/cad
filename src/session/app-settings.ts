@@ -34,7 +34,7 @@ export function toggleSnaps(app: App): void {
   savePrefs({ snaps: app.ui.snaps });
   // Said, not only shown by the magnet's state: S is one key, easy to press by mistake, and drawing
   // then stops snapping with nothing else to tell why.
-  app.toast(t(app.ui.snaps ? 'toast.snapsOn' : 'toast.snapsOff'));
+  app.toast(t(app.ui.snaps ? 'toast.snapsOn' : 'toast.snapsOff', { key: app.keyName('settings.snaps') }));
   app.render();
 }
 
@@ -160,7 +160,7 @@ export function togglePanel(app: App, open = app.shell.panel.hidden): void {
 export function showProperties(app: App): void {
   if (!app.ui.panelOpen) togglePanel(app, true);
   app.render();
-  const first = app.shell.panel.querySelector<HTMLElement>('input, select, button:not([disabled])');
+  const first = app.shell.panel.querySelector<HTMLElement>('input, textarea, select, button:not([disabled])');
   (first ?? app.shell.panel).focus();
 }
 

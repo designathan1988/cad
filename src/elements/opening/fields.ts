@@ -1,6 +1,6 @@
 // The fields doors and windows show in the panel, section by section (ui/fields.ts builds the rows):
 // general (kind and size), position (rule and its reference), the door's leaf, the group the
-// selection is in, and arranging several. Also the size of the next opening the tool places.
+// selection is in, and arranging several. Also the next opening the tool places, from the same fields.
 
 import { lengthNum, lengthText } from '../../i18n/units';
 import { type Doc, wallNumber } from '../../project/doc';
@@ -14,7 +14,7 @@ import { type MessageKey, name, t } from '../../i18n/messages';
 import { alignCandidates, alignFits, referenceCandidates } from './commands';
 import { OPENING_MODELS } from './style';
 import { type AlignEdge, type GroupSpacing, hasDistance, type Opening, OPENING_DEFAULTS, type OpeningGroup, type OpeningGroupId, type OpeningId, type OpeningKind, type OpeningStyle, type RuleKind } from './schema';
-import { modelField, nextStyleFields } from './style-fields';
+import { modelField, styleFields } from './style-fields';
 
 export type OpeningSize = { readonly width: number; readonly height: number; readonly sill: number; readonly style?: OpeningStyle | undefined };
 
@@ -57,7 +57,7 @@ export function openingFields(selected: readonly OpeningSolid[], update: Opening
       // A door's make is not a window's: the plain one of the new kind.
       set: (k) => update(ids, { kind: k as OpeningKind, height: OPENING_DEFAULTS[k as OpeningKind].height, sill: OPENING_DEFAULTS[k as OpeningKind].sill, style: undefined }),
     },
-    modelField(selected.map((x) => x.opening), (style) => update(ids, { style })) as Field<OpeningSolid>,
+    modelField(selected.map((x) => x.opening), (style) => update(ids, { style })),
     { id: 'width', label: 'panel.width', kind: 'number', min: 0.01, get: (o) => o.opening.width, set: (v) => update(ids, { width: v }) },
     { id: 'height', label: 'panel.height', kind: 'number', min: 0.01, get: (o) => o.opening.height, set: (v) => update(ids, { height: v }) },
     // Doors have no sill: shown unless every selected opening is a door.
@@ -265,8 +265,16 @@ function hingeOptions(one: OpeningSolid): { value: 'start' | 'end'; label: strin
     .sort((a, b) => (a.label === t('hinge.left') ? -1 : b.label === t('hinge.left') ? 1 : 0));
 }
 
-/** A group's spacing: equal, or a fixed gap with the row centred or measured from one end. */
-export function groupFields(g: OpeningGroup, placed: ReadonlyMap<OpeningId, OpeningSolid>, act: OpeningPanelActions): Field<OpeningGroup>[] {
+/**
+ * A group's spacing: equal, or a fixed gap with the row centred or measured from one end. `stretch`: the part of
+ * its wall the row keeps to (derive.ts: groupStretch), which the distance to an end is measured from.
+ */
+export function groupFields(
+  g: OpeningGroup,
+  placed: ReadonlyMap<OpeningId, OpeningSolid>,
+  act: OpeningPanelActions,
+  stretch: { readonly from: number; readonly to: number },
+): Field<OpeningGroup>[] {
   const sp = g.spacing;
   // Switching to fixed starts from the mean gap there is now, so nothing jumps more than it must.
   const members = g.members.flatMap((id) => placed.get(id) ?? []);
@@ -280,6 +288,13 @@ export function groupFields(g: OpeningGroup, placed: ReadonlyMap<OpeningId, Open
     ...patch,
   });
   const isFixed = () => sp.kind === 'fixed';
+  // A new anchor takes the distance the row is at now from that end: the old distance, measured from the other
+  // end or from nothing (centred), threw the row to that end.
+  const distanceFrom = (anchor: 'start' | 'centered' | 'end'): number | undefined => {
+    if (anchor === 'centered' || members.length === 0) return undefined;
+    const d = anchor === 'start' ? members[0]!.start - stretch.from : stretch.to - members[members.length - 1]!.end;
+    return Math.max(0, Math.round(d * 1000) / 1000);
+  };
   return [
     { id: 'members', label: 'panel.members', kind: 'readout', text: () => t('panel.openings', { n: g.members.length }) },
     {
@@ -299,7 +314,11 @@ export function groupFields(g: OpeningGroup, placed: ReadonlyMap<OpeningId, Open
       when: isFixed,
       options: (['start', 'centered', 'end'] as const).map((v) => ({ value: v, label: t(`anchor.${v}`) })),
       get: (x) => (x.spacing.kind === 'fixed' ? x.spacing.anchor : ''),
-      set: (v) => act.setSpacing(g.id, fixed({ anchor: v as 'start' | 'centered' | 'end' })),
+      set: (v) => {
+        const anchor = v as 'start' | 'centered' | 'end';
+        const distance = distanceFrom(anchor);
+        act.setSpacing(g.id, fixed(distance === undefined ? { anchor } : { anchor, distance }));
+      },
     },
     {
       id: 'anchorDistance',
@@ -331,19 +350,31 @@ export function arrangeFields(doc: Doc, list: readonly Opening[], placed: Readon
   ];
 }
 
-/** The size of the next opening the tool places (one set of values, not elements). */
-export function nextOpeningFields(kind: OpeningKind, set: (patch: Partial<OpeningSize>) => void, size?: OpeningSize): Field<OpeningSize>[] {
-  return [
-    // A model sets the size it is usually made in too.
-    modelField([{ kind, style: undefined }], (style) => {
-      const m = OPENING_MODELS.find((x) => x.kind === kind && x.style === style);
-      set(m ? { style, width: m.width, height: m.height, sill: m.sill } : { style });
-    }, (s) => s.style) as Field<OpeningSize>,
-    { id: 'width', label: 'panel.width', kind: 'number', min: 0.01, get: (s) => s.width, set: (v) => set({ width: v }) },
-    { id: 'height', label: 'panel.height', kind: 'number', min: 0.01, get: (s) => s.height, set: (v) => set({ height: v }) },
-    { id: 'sill', label: 'panel.sill', kind: 'number', min: 0, when: () => kind !== 'door', get: (s) => s.sill, set: (v) => set({ sill: v }) },
-    ...(size ? nextStyleFields(kind, size, set) : []),
-  ];
+/** The fields of a placed opening that one not yet placed has not: its mark, its kind (the tool's), its notes and actions. */
+const notNextOpening = (f: Field<OpeningSolid>) => f.id === 'mark' || f.id === 'kind' || f.kind === 'note' || f.kind === 'readout' || f.kind === 'action';
+
+/**
+ * The next opening the tool places, as an opening (as walls' nextWall and the other kinds' next element,
+ * app/next-element.ts): a template of the tool's size and make, shown with a selected opening's fields
+ * (openingFields; styleFields for one with a make), their changes made to the tool's size. A model chosen
+ * for it brings the size it is usually made in too.
+ */
+export function nextOpening(kind: OpeningKind, size: OpeningSize, set: (patch: Partial<OpeningSize>) => void): { readonly fields: Field<OpeningSolid>[]; readonly item: OpeningSolid } {
+  const opening = { id: '__next__', kind, width: size.width, height: size.height, sill: size.sill, style: size.style } as unknown as Opening;
+  const item = { opening } as unknown as OpeningSolid;
+  const update: OpeningPanelActions['update'] = (_ids, patch) => {
+    const out = typeof patch === 'function' ? patch(opening) : patch;
+    const model = 'style' in out && !('width' in out) ? OPENING_MODELS.find((m) => m.kind === kind && m.style === out.style) : undefined;
+    set({
+      ...(out.width !== undefined ? { width: out.width } : {}),
+      ...(out.height !== undefined ? { height: out.height } : {}),
+      ...(out.sill !== undefined ? { sill: out.sill } : {}),
+      ...('style' in out ? { style: out.style } : {}),
+      ...(model ? { width: model.width, height: model.height, sill: model.sill } : {}),
+    });
+  };
+  const fields = [...openingFields([item], update), ...(size.style ? styleFields([item], update) : [])].filter((f) => !notNextOpening(f));
+  return { fields, item };
 }
 
 /** The reference opening nearest to this one, jamb to jamb: the default for "from another opening". */

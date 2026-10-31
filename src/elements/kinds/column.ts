@@ -8,6 +8,7 @@ import { columnFields } from '../column/fields';
 import { type Column, COLUMN_PREFIX, COLUMN_SHAPES, columnOutline } from '../column/schema';
 import type { ElementKind } from '../contract';
 import { nearSegment, throughElement, trace } from './paint';
+import { levelOf, NO_LEVEL } from '../../project/doc';
 
 export interface ColumnSolid {
   readonly column: Column;
@@ -24,8 +25,8 @@ export const columnKind: ElementKind<Column, ColumnSolid> = {
   one: 'column.title',
   many: 'column.titleMany',
   dropped: 'fix.droppedColumns',
-  exportName: 'export.column',
-  exportColour: 'structure',
+
+
   valid: (c): c is Column =>
     isObject(c) &&
     typeof c.id === 'string' &&
@@ -43,7 +44,7 @@ export const columnKind: ElementKind<Column, ColumnSolid> = {
   // From its level's floor to the level's top (or another level's floor), plus its adjustment. Not
   // memoised by its level alone: up to another level, that one's height moves it too.
   derive: (doc, c) => {
-    const level = doc.levels.find((l) => l.id === c.levelId) ?? { elevation: 0, height: 2.8 };
+    const level = levelOf(doc, c.levelId) ?? NO_LEVEL;
     const bottom = level.elevation;
     const to = c.topLevelId ? doc.levels.find((l) => l.id === c.topLevelId) : undefined;
     const top = (to ? to.elevation : level.elevation + level.height) + (c.topOffset ?? 0);
@@ -61,7 +62,6 @@ export const columnKind: ElementKind<Column, ColumnSolid> = {
     const x = t.map({ x: c.at.x + Math.cos(c.angle), y: c.at.y + Math.sin(c.angle) });
     return { ...c, id, at, angle: Math.atan2(x.y - at.y, x.x - at.x), width: Math.max(0.05, c.width * t.factor), depth: Math.max(0.05, c.depth * t.factor) };
   },
-  onGrid: (c, onLine) => onLine(c.at),
   similar: (a, b) => (a.shape ?? 'rect') === (b.shape ?? 'rect') && Math.abs(a.width - b.width) < 1e-6 && Math.abs(a.depth - b.depth) < 1e-6,
   // Cut, filled as a wall's structure layer is (it is structure), outlined as walls are.
   plan: (p, s, lit) => {
@@ -77,7 +77,7 @@ export const columnKind: ElementKind<Column, ColumnSolid> = {
     geometry.rotateX(-Math.PI / 2);
     return { geometry, y: s.bottom, material: 'side', edges: true };
   },
-  dxfLayers: [{ name: 'S-COLS', colour: 7 }],
-  dxf: (s, out) => out.polyline('S-COLS', s.outline, true),
+
+
   fields: (items, { dispatch, doc }) => throughElement(columnFields(items.map((s) => s.column), { updateColumns: (ids, patch) => dispatch(updateColumns(ids, patch)) }, doc), (s: ColumnSolid) => s.column),
 };

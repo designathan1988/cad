@@ -2,7 +2,7 @@
 // under a point, and the bounds of what is drawn.
 
 import { type Doc, type DocWall, wallHeights } from './doc';
-import { type DerivedGeometry, endsIn, jointsIn, type OpeningSolid, planCutHeight, wallPieces } from './derive';
+import { type DerivedGeometry, jointsAndEnds, type OpeningSolid, planCutHeight, wallPieces } from './derive';
 import { hostsOf } from '../elements/opening/derive';
 import { add, insidePolygon, type Point2, polygonDistance, polylineDistance, scale } from '../model/vector';
 import type { OpeningId } from '../elements/opening/schema';
@@ -19,7 +19,8 @@ import type { RoomId } from '../elements/room/schema';
 export function hostsIn(doc: Doc, walls: readonly DocWall[] = doc.walls) {
   const types = new Map(doc.wallTypes.map((t) => [t.id, t]));
   const pieces = wallPieces(walls, types, (w) => wallHeights(doc, w), (w) => planCutHeight(doc, w)).pieces;
-  return hostsOf(doc, walls, jointsIn(walls, types, pieces), endsIn(walls, types, pieces));
+  const { joints, ends } = jointsAndEnds(walls, types, pieces);
+  return hostsOf(doc, walls, joints, ends);
 }
 
 /** The opening's outline in plan: the jambs across the wall's thickness. */
@@ -30,7 +31,6 @@ export function openingOutline(o: OpeningSolid): Point2[] {
   return [at(f.start, 0), at(f.end, 0), at(f.end, 1), at(f.start, 1)];
 }
 
-/** The opening whose outline contains p, last placed first. */
 /**
  * The door or window under p: inside its outline in the wall, or within `reach` (m) of it or of its
  * symbol (a door's leaf and swing, a window's panes), the nearest winning. Its symbol is what the plan
@@ -81,7 +81,7 @@ export const placedOf = (g: DerivedGeometry, id: ElementId): OpeningSolid | unde
 /** A room's solid by any element's id (a selection's): none when the id is not a room's. */
 export const roomOf = (g: DerivedGeometry, id: ElementId): RoomSolid | undefined => g.rooms.get(id as RoomId);
 
-/** Bounding box of the drawn pieces and openings, or null when there is nothing. */
+/** Bounding box of the rooms and the registry's elements drawn (by id, when given), or null when there is nothing. */
 export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<ElementId>): { min: Point2; max: Point2 } | null {
   let minX = Infinity;
   let minY = Infinity;
@@ -90,7 +90,6 @@ export function boundsOf(g: DerivedGeometry, ids?: ReadonlySet<ElementId>): { mi
   // Rooms and floors: their outlines.
   const outlines = [
     ...[...g.rooms.values()].filter((r) => !ids || ids.has(r.room.id)).map((r) => r.outline),
-    // A guide has no ends: its point only.
     // A guide has no ends: its point only. A door with its swing (contract.ts: extent).
     ...[...eachSolid(g.kinds)]
       .filter((x) => !ids || ids.has(x.id))

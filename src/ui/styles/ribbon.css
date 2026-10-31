@@ -2,19 +2,6 @@
 
 /* The frame (shell.ts), as the interface model: a dark title bar, the ribbon's tabs, the ribbon, the
    views' strip over the drawing, the properties on the right, the status bar. */
-:root {
-  --title-bg: #1f2329;
-  --title-text: #e8eaee;
-  --title-text-2: #a4a9b3;
-  --title-hover: rgb(255 255 255 / 0.09);
-  --title-field: rgb(255 255 255 / 0.08);
-  --title-border: rgb(255 255 255 / 0.14);
-  --saved-ok: #3fb27f;
-  --on-accent: #ffffff;
-}
-:root[data-theme='dark'] {
-  --title-bg: #111215;
-}
 .titlebar {
   grid-row: 1;
   background: var(--title-bg);

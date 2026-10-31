@@ -14,6 +14,9 @@ export interface RoomSolid {
   readonly enclosed: boolean;
   /** Counter-clockwise outline, or [] when not enclosed. */
   readonly outline: readonly Point2[];
+  /** Walls standing free inside it (a shaft, a core, a stub), their outlines counter-clockwise: not its
+   * floor, out of its area. */
+  readonly islands: readonly (readonly Point2[])[];
   readonly area: number;
   readonly perimeter: number;
   /** Where its name goes: the middle of the room as it is now (labelPoint), or its point when not enclosed. */
@@ -85,7 +88,7 @@ const fromRing = (r: Ring): Point2[] => {
 // union leaves hair-thin channels along those seams, and a room's outline runs out along them.
 setPrecision(1e-9);
 
-const cache = new Map<string, Point2[][]>();
+const cache = new Map<string, { readonly holes: Point2[][]; readonly parts: Point2[][] }>();
 
 /**
  * Where a room's name goes (derived, never stored): the point inside the outline farthest from its
@@ -184,15 +187,45 @@ export const spacesOf = (pieces: readonly (readonly Point2[])[]): Point2[][] => 
 
 /** Holes of the union of a level's wall pieces, memoised on the pieces themselves. */
 function holesOf(pieces: readonly (readonly Point2[])[]): Point2[][] {
-  if (pieces.length === 0) return [];
+  return unionOf(pieces).holes;
+}
+
+/**
+ * The union of a level's wall pieces: its holes (where rooms go) and its parts' outer outlines (each a
+ * block of walls), memoised on the pieces themselves. A block of walls standing free in a hole (a shaft)
+ * is one of the parts, its outline inside that hole.
+ */
+function unionOf(pieces: readonly (readonly Point2[])[]): { readonly holes: Point2[][]; readonly parts: Point2[][] } {
+  if (pieces.length === 0) return { holes: [], parts: [] };
   const key = JSON.stringify(pieces);
   const hit = cache.get(key);
   if (hit) return hit;
   const [first, ...rest] = pieces.map((p) => [toRing(p)]);
-  const holes = union(first!, ...rest).flatMap((poly) => poly.slice(1).map(fromRing));
+  const all = union(first!, ...rest);
+  const made = { holes: all.flatMap((poly) => poly.slice(1).map(fromRing)), parts: all.map((poly) => fromRing(poly[0]!)) };
   if (cache.size > 64) cache.clear();
-  cache.set(key, holes);
-  return holes;
+  cache.set(key, made);
+  return made;
+}
+
+/** The blocks of walls standing free inside `hole`: the parts lying in it, counter-clockwise. */
+const islandsIn = (hole: readonly Point2[], parts: readonly Point2[][]): Point2[][] =>
+  parts
+    .filter((part) => part.length >= 3 && Math.abs(signedArea(part)) < Math.abs(signedArea(hole)) && insideRing(hole, part[0]!) && part.every((v) => insideRing(hole, v) || onRing(hole, v)))
+    .map((part) => (signedArea(part) < 0 ? [...part].reverse() : part));
+
+/** Whether p lies on one of a ring's sides (within a micron). */
+function onRing(ring: readonly Point2[], p: Point2): boolean {
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i]!;
+    const b = ring[(i + 1) % ring.length]!;
+    const l = Math.hypot(b.x - a.x, b.y - a.y);
+    if (l < 1e-12) continue;
+    const t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / (l * l);
+    if (t < 0 || t > 1) continue;
+    if (Math.abs((p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x)) / l < 1e-6) return true;
+  }
+  return false;
 }
 
 export function deriveRooms(
@@ -201,22 +234,32 @@ export function deriveRooms(
 ): { solids: Map<RoomId, RoomSolid>; warnings: RoomWarning[] } {
   const solids = new Map<RoomId, RoomSolid>();
   const warnings: RoomWarning[] = [];
-  // Rooms by the hole they are in (the same array from holesOf for one level).
+  // Rooms by the hole they are in: its index in its level's union (unionOf).
   const spaces = new Map<string, RoomId[]>();
+  // Each level's union once: per room, its memo key (the JSON of all the level's pieces) was made again.
+  const unions = new Map<string, ReturnType<typeof unionOf>>();
   for (const room of rooms) {
-    const holes = holesOf(piecesByLevel.get(room.levelId) ?? []);
+    let union = unions.get(room.levelId);
+    if (!union) unions.set(room.levelId, (union = unionOf(piecesByLevel.get(room.levelId) ?? [])));
+    const { holes, parts } = union;
     // The smallest hole holding the point: holes do not overlap, but stay safe if one is nested.
     const hole = holes
       .filter((h) => insideRing(h, room.seed))
       .sort((a, b) => Math.abs(signedArea(a)) - Math.abs(signedArea(b)))[0];
     if (!hole) {
-      solids.set(room.id, { room, enclosed: false, outline: [], area: 0, perimeter: 0, label: room.seed, sharing: [] });
+      solids.set(room.id, { room, enclosed: false, outline: [], islands: [], area: 0, perimeter: 0, label: room.seed, sharing: [] });
       warnings.push({ kind: 'roomNotEnclosed', roomId: room.id });
       continue;
     }
     const outline = signedArea(hole) < 0 ? [...hole].reverse() : hole;
-    solids.set(room.id, { room, enclosed: true, outline, area: Math.abs(signedArea(outline)), perimeter: perimeterOf(outline), label: labelPoint(outline), sharing: [] });
-    const key = `${room.levelId}|${JSON.stringify(hole)}`;
+    // Walls standing free in it (a shaft, a core) are not its floor: out of its area, round them its
+    // perimeter, its name off them. Counted as its own before.
+    const islands = islandsIn(outline, parts);
+    const area = Math.abs(signedArea(outline)) - islands.reduce((s, i) => s + Math.abs(signedArea(i)), 0);
+    const perimeter = perimeterOf(outline) + islands.reduce((s, i) => s + perimeterOf(i), 0);
+    const label = islands.length > 0 ? (middleOfRest(outline, islands) ?? labelPoint(outline)) : labelPoint(outline);
+    solids.set(room.id, { room, enclosed: true, outline, islands, area, perimeter, label, sharing: [] });
+    const key = `${room.levelId}|${holes.indexOf(hole)}`;
     spaces.set(key, [...(spaces.get(key) ?? []), room.id]);
   }
   for (const ids of spaces.values()) {
@@ -234,8 +277,10 @@ export function deriveFloor(floor: Floor, rooms: ReadonlyMap<RoomId, RoomSolid>,
   const raw = floor.source.kind === 'room' ? (rooms.get(floor.source.roomId)?.outline ?? []) : floor.source.points;
   const outline = signedArea(raw) < 0 ? [...raw].reverse() : [...raw];
   const top = elevation(floor.levelId) + floor.offset;
-  // Holes the other way round from the outline, as a shape with holes is traced.
-  const holes = (floor.holes ?? []).filter((h) => h.length >= 3).map((h) => (signedArea(h) > 0 ? [...h].reverse() : [...h]));
+  // Holes the other way round from the outline, as a shape with holes is traced: its own, and a room's
+  // floor the walls standing free in its room (a shaft's floor is not the room's).
+  const islands = floor.source.kind === 'room' ? (rooms.get(floor.source.roomId)?.islands ?? []) : [];
+  const holes = [...(floor.holes ?? []), ...islands].filter((h) => h.length >= 3).map((h) => (signedArea(h) > 0 ? [...h].reverse() : [...h]));
   const area = Math.abs(signedArea(outline)) - holes.reduce((s, h) => s + Math.abs(signedArea(h)), 0);
   // Rising from its lowest corner: how far up each point of it is.
   let rise: FloorSolid['rise'];

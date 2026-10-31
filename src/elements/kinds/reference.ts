@@ -9,22 +9,25 @@ import type { ElementKind, PlanPaint } from '../contract';
 import { isReference, type Reference, referenceCorners, referencePoint } from '../reference/schema';
 import { REFERENCE_PREFIX } from '../reference/schema';
 
-/** Pictures by their data, loaded once. */
-const pictures = new Map<string, HTMLImageElement>();
+/**
+ * Pictures by the reference's source (the same object while the reference is moved or turned), loaded once and
+ * let go with it: by their data in a Map, every picture ever shown stayed for the session.
+ */
+const pictures = new WeakMap<object, HTMLImageElement>();
 /** Called when a picture has loaded, to draw the plan again (set by the app): the one owner. */
 const onLoad = { run: (): void => {} };
 export const onReferenceLoaded = (f: () => void): void => {
   onLoad.run = f;
 };
 
-function picture(data: string): HTMLImageElement | null {
+function picture(source: { readonly data: string }): HTMLImageElement | null {
   if (typeof Image === 'undefined') return null;
-  let img = pictures.get(data);
+  let img = pictures.get(source);
   if (!img) {
     img = new Image();
     img.onload = () => onLoad.run();
-    img.src = data;
-    pictures.set(data, img);
+    img.src = source.data;
+    pictures.set(source, img);
   }
   return img.complete && img.naturalWidth > 0 ? img : null;
 }
@@ -50,8 +53,8 @@ export const referenceKind: ElementKind<Reference, Reference> = {
   title: (items) => ({ icon: 'map', text: items.length === 1 ? items[0]!.name || t('ref.title') : t('ref.titleMany', { n: items.length }) }),
   hint: 'ref.held',
   dropped: 'fix.droppedReferences',
-  exportName: 'ref.title',
-  exportColour: 'structure',
+
+
   valid: (r): r is Reference => isReference(r),
   memo: 'element',
   derive: (_doc, r) => r,
@@ -96,7 +99,7 @@ export function drawReference(p: PlanPaint, r: Reference, lit: boolean): void {
   ctx.save();
   ctx.globalAlpha = r.opacity;
   if (r.source.kind === 'image') {
-    const img = picture(r.source.data);
+    const img = picture(r.source);
     if (img) {
       // The picture's pixel (0, 0) is its top left: its corner (0, h) in its own units, y up.
       const o = p.toScreen(referencePoint(r, 0, r.source.h));

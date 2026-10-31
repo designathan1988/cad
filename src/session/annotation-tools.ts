@@ -17,7 +17,7 @@ import { lengthNum } from '../i18n/units';
 import { arcWallAt } from '../elements/measure/place';
 import { addMeasure } from '../elements/measure/commands';
 import { newMeasureId } from '../elements/measure/schema';
-import { NO_LEVEL } from '../project/doc';
+import { NO_LEVEL_ID } from '../project/doc';
 import { DRAFT_DIMENSION_ID } from '../elements/dimension/schema';
 import { drawFrom, drawPoints, fromOf, pointsOf } from '../elements/tool-draft';
 
@@ -87,7 +87,7 @@ export function dimensionDraft(app: App): (NonNullable<PlanOverlay['dimensionDra
   const a = s.a;
   const b = s.kind === 'placing' ? s.b : at;
   const offset = s.kind === 'placing' ? offsetThrough(a, b, at) : 0;
-  const p = placeDimension(app.store.get(), app.geometry, { id: DRAFT_DIMENSION_ID, levelId: NO_LEVEL, a: { kind: 'point', at: a }, b: { kind: 'point', at: b }, offset });
+  const p = placeDimension(app.store.get(), app.geometry, { id: DRAFT_DIMENSION_ID, levelId: NO_LEVEL_ID, a: { kind: 'point', at: a }, b: { kind: 'point', at: b }, offset });
   return p ? { ...p, text: lengthNum(p.length) } : null;
 }
 

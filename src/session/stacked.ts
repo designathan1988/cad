@@ -10,6 +10,7 @@ import { shapeOf, type WallShape } from '../elements/wall/geometry/shape';
 import type { WallId } from '../elements/wall/schema';
 import type { Doc } from '../project/doc';
 import type { LevelId } from '../project/doc';
+import { COLLINEAR_ANGLE } from '../model/tolerance';
 
 export interface StackedStep {
   /** The wall standing on the other, and the wall below it. */
@@ -20,8 +21,8 @@ export interface StackedStep {
   readonly shift: Point2;
 }
 
-/** Sine of the largest angle two walls may make and still be one over the other (0.6°, the engine's in line). */
-const PARALLEL = Math.sin((0.6 * Math.PI) / 180);
+/** Sine of the largest angle two walls may make and still be one over the other: the engine's in line (COLLINEAR_ANGLE, in degrees). */
+const PARALLEL = Math.sin((COLLINEAR_ANGLE * Math.PI) / 180);
 /** How much of the shorter wall must lie over the other: half of it, and at least 20 cm. */
 const OVERLAP = 0.5;
 const MIN_OVERLAP = 0.2;

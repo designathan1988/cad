@@ -1,5 +1,5 @@
 // The element contract (docs/plano-de-escopo.md, phase 1): what each kind of element tells the app about
-// itself, so selection, moving, copying, deleting, saving, the plan, the 3D, the exports and the panel
+// itself, so selection, moving, copying, deleting, saving, the plan, the 3D and the panel
 // go through the registry (registry.ts) instead of a list written by hand in each of them. A new kind
 // is its own file implementing this, and one line in the registry.
 
@@ -45,19 +45,6 @@ export interface PlanPaint {
   readonly pen: (role: PenRole) => number;
   /** How much the drawing's scale shows: layers at fine, outlines at medium, no furniture at coarse. */
   readonly detail: Detail;
-}
-
-/** What the DXF writer lends a kind. */
-export interface DxfOut {
-  readonly line: (layer: string, a: Point2, b: Point2) => void;
-  readonly polyline: (layer: string, points: readonly Point2[], closed: boolean) => void;
-  /** A TEXT of `height` (m) centred on `at`, turned `angle` degrees. */
-  readonly text: (layer: string, at: Point2, height: number, text: string, angle?: number) => void;
-  /**
-   * An aligned DIMENSION measuring `a` to `b`, its line through `la`–`lb` and its text `value` at `textAt`:
-   * what `draw` writes is its drawing (its anonymous block, as a CAD program shows it).
-   */
-  readonly dimension?: (layer: string, d: { readonly a: Point2; readonly b: Point2; readonly la: Point2; readonly lb: Point2; readonly textAt: Point2; readonly value: string }, draw: () => void) => void;
 }
 
 /** A kind's 3D: a geometry in three.js coordinates, standing `y` up, in one of the scene's materials or
@@ -150,9 +137,6 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   readonly warning?: (items: readonly S[], doc: Doc) => string | null;
   /** The file reader's word for the ones it dropped ({count}). */
   readonly dropped: MessageKey;
-  /** A node's name in the GLB ({n}) and its material's name. */
-  readonly exportName: MessageKey;
-  readonly exportColour: 'structure' | 'floor' | 'roof';
   /** A valid one, read from a file. */
   readonly valid: (x: unknown) => x is E;
   /** As built, from the document (and the walls and doors, for one held by them); null for one that is
@@ -172,6 +156,11 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   readonly follows?: (e: E) => string | null;
   /** On its own when what it follows is deleted (a room's floor keeps the outline it had). */
   readonly released?: (e: E, g: DerivedGeometry) => E;
+  /**
+   * When elements it lists are deleted (a zone's rooms): itself without them, or null to go with the last.
+   * Unlike `holders` (deleted with the first one). Absent: what it lists is not its own.
+   */
+  readonly shed?: (e: E, deleted: ReadonlySet<string>) => E | null;
   /** Its bottom and top (m): framed in 3D, under the ground. */
   readonly span?: (s: S) => { readonly bottom: number; readonly top: number };
   /** A surface the 3D pointer aims at (a floor), as at the walls. */
@@ -191,22 +180,17 @@ export interface ElementKind<E extends { readonly id: string; readonly levelId?:
   /** A handle taken before everything else under the point (an axis's bubble). */
   readonly grab?: (s: S, p: Point2, scale: number) => boolean;
   readonly pick: PickOrder;
-  /** Moved by d (arrows, a drag). */
-  readonly moved: (e: E, d: Point2) => E;
+  /** Moved by d (arrows, a drag); `g`, the geometry before the move, for one whose shown place is derived (a hosted guardrail). */
+  readonly moved: (e: E, d: Point2, g?: DerivedGeometry) => E;
   /** Taken by a Modify tool's transform, under `id` (its own, or its copy's). */
   readonly mapped: (e: E, t: Transform, id: IdOf<E>) => E;
   /** A copy as added after `all` (an axis named on from the last). */
   readonly copied?: (all: readonly E[], e: E) => E;
-  /** Lying on a grid axis's line, so it goes with the axis. */
-  readonly onGrid?: (e: E, onLine: (p: Point2) => boolean) => boolean;
   /** "Select similar": the same as `b`. */
   readonly similar?: (a: E, b: E) => boolean;
   readonly plan: (p: PlanPaint, s: S, lit: boolean) => void;
   /** Its 3D: one solid, or several (an object's parts, each in its material). */
   readonly solid?: (s: S) => KindSolid | readonly KindSolid[] | null;
-  /** Its DXF layers ({name, colour}) and what it writes on them for its level. */
-  readonly dxfLayers?: readonly { readonly name: string; readonly colour: number }[];
-  readonly dxf?: (s: S, out: DxfOut) => void;
   readonly fields: (items: readonly S[], c: KindFieldContext) => Field<S>[];
 }
 

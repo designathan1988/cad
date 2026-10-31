@@ -6,6 +6,8 @@ import { BEFORE_65 } from '../../src/elements/object/library-before65';
 import { BEFORE_66 } from '../../src/elements/object/library-before66';
 import { gid, lid, mid, oid, tid, wid, xid } from '../ids';
 import type { GuideId } from '../../src/elements/guide/schema';
+import { BEFORE_70 } from '../../src/elements/object/library-before70';
+import { BEFORE_69 } from '../../src/elements/object/library-before69';
 
 const wall = (id: string, x: number) => ({
   id,
@@ -106,11 +108,12 @@ describe('version 3', () => {
     expect(r.ok && r.doc).toEqual({ ...doc, version: CURRENT_VERSION });
   });
 
-  it('a wall with a malformed top is dropped and reported, not read', () => {
+  it("a wall with a malformed top is kept without it (its type's top), and reported", () => {
     const doc = { ...newDocument(), walls: [{ ...wall('wall_a', 0), top: { kind: 'level' } }, wall('wall_b', 2)] };
     const r = readProject(JSON.stringify(doc));
-    expect(r.ok && r.doc.walls.map((w) => w.id)).toEqual(['wall_b']);
-    expect(r.ok && r.fixes).toEqual([{ kind: 'droppedWalls', count: 1 }]);
+    expect(r.ok && r.doc.walls.map((w) => w.id)).toEqual(['wall_a', 'wall_b']);
+    expect(r.ok && r.doc.walls[0]).not.toHaveProperty('top');
+    expect(r.ok && r.fixes).toEqual([{ kind: 'repairedFields', count: 1 }]);
   });
 });
 
@@ -126,10 +129,11 @@ describe('version 4', () => {
     expect(v3.ok && v3.doc.openingGroups).toEqual([group]);
   });
 
-  it('a malformed stretch drops the group, reported', () => {
+  it('a malformed stretch is left out, the group kept over the whole wall, reported', () => {
     for (const between of [['c'], [1, null], 'c']) {
       const r = readProject(JSON.stringify({ ...newDocument(), openingGroups: [{ ...group, between }] }));
-      expect(r.ok && r.fixes).toEqual([{ kind: 'droppedGroups', count: 1 }]);
+      expect(r.ok && r.doc.openingGroups).toEqual([group]);
+      expect(r.ok && r.fixes).toEqual([{ kind: 'repairedFields', count: 1 }]);
     }
   });
 });
@@ -268,6 +272,29 @@ describe('version 5', () => {
     const r = readProject(JSON.stringify(old));
     expect(r.ok && r.doc.definitions.find((d) => d.id === bookcase.id)).toEqual(bookcase);
   });
+
+  it('a file of versions 66 to 68 gets the bookcase whose books fill every shelf; one the user changed is kept', () => {
+    const doc = newDocument();
+    const bookcase = doc.definitions.find((d) => d.id === 'def_bookcase')!;
+    const was = BEFORE_69.find((b) => b.id === bookcase.id)!;
+    const old = { ...doc, version: 68, definitions: doc.definitions.map((d) => (d.id === bookcase.id ? was : d)) };
+    const r = readProject(JSON.stringify(old));
+    expect(r.ok && r.doc.definitions.find((d) => d.id === bookcase.id)).toEqual(bookcase);
+    const mine = { ...was, name: { pt: 'Minha estante', en: 'My bookcase' } };
+    const kept = readProject(JSON.stringify({ ...old, definitions: doc.definitions.map((d) => (d.id === bookcase.id ? mine : d)) }));
+    expect(kept.ok && kept.doc.definitions.find((d) => d.id === bookcase.id)).toEqual(mine);
+  });
+
+  it('a file of version 69 gets the meeting table, barbecue, fire pit and reception desk as they are now; one the user changed is kept', () => {
+    const doc = newDocument();
+    const old = { ...doc, version: 69, definitions: doc.definitions.map((d) => BEFORE_70.find((b) => b.id === d.id) ?? d) };
+    const r = readProject(JSON.stringify(old));
+    for (const was of BEFORE_70) expect(r.ok && r.doc.definitions.find((d) => d.id === was.id)).toEqual(doc.definitions.find((d) => d.id === was.id));
+    const bbq = BEFORE_70.find((b) => b.id === 'def_bbq')!;
+    const mine = { ...bbq, name: { pt: 'Minha churrasqueira', en: 'My barbecue' } };
+    const kept = readProject(JSON.stringify({ ...old, definitions: old.definitions.map((d) => (d.id === bbq.id ? mine : d)) }));
+    expect(kept.ok && kept.doc.definitions.find((d) => d.id === bbq.id)).toEqual(mine);
+  });
 });
 
 describe('the areas taken out of the app (version 67)', () => {
@@ -294,5 +321,29 @@ describe('the areas taken out of the app (version 67)', () => {
   it('a layer set hiding the services keeps its other categories', () => {
     const r = readProject(JSON.stringify({ ...newDocument(), version: 66, layerSets: [{ id: 'l1', name: 'A', hidden: ['services', 'walls'] }] }));
     expect(r.ok && r.doc.layerSets).toEqual([{ id: 'l1', name: 'A', hidden: ['walls'] }]);
+  });
+});
+
+describe('version 68', () => {
+  // A window measured from the door beside it, as the tool used to place it: held by its wall where it is.
+  const opening = (id: string, rule: unknown) => ({ id, wallId: 'wall_a', kind: 'window', width: 1, height: 1, sill: 1, hinge: 'start', swing: 'left', rule });
+  const old = (version: number) => ({
+    ...newDocument(),
+    version,
+    walls: [{ ...wall('wall_a', 0), end: { x: 10, y: 0 } }],
+    openings: [opening('opening_d', { kind: 'fromStart', distance: 1 }), opening('opening_w', { kind: 'fromOpening', openingId: 'opening_d', distance: 0.5, toward: 'end' })],
+  });
+
+  it('an older file: an opening measured from another is measured from its wall, in the same place', () => {
+    const r = readProject(JSON.stringify(old(67)));
+    expect(r.ok && r.doc.openings.map((o) => o.rule)).toEqual([
+      { kind: 'fromStart', distance: 1 },
+      { kind: 'fromStart', distance: 2.5 },
+    ]);
+  });
+
+  it('a file of this version keeps a link the user chose', () => {
+    const r = readProject(JSON.stringify(old(68)));
+    expect(r.ok && r.doc.openings[1]!.rule.kind).toBe('fromOpening');
   });
 });

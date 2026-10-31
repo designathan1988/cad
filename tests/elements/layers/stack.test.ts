@@ -1,5 +1,5 @@
-// A stack of layers, the same for wall types now and floor and slab types later: add, remove, move
-// and change a layer, and what makes a stack unusable. Each operation returns a new list.
+// A stack of layers, the same for wall types and floors' build-ups: add, remove, move and change a
+// layer, and what makes a stack unusable. Each operation returns a new list.
 
 import { describe, expect, it } from 'vitest';
 import { addLayer, moveLayer, removeLayer, setLayer, stackProblem } from '../../../src/elements/layers/stack';

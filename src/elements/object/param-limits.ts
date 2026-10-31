@@ -1,7 +1,9 @@
-// The limits an object's parameters are held to (lengths, the size parameters a handle stretches) and a
-// light's colour from its temperature.
+// The limits an object's parameters are held to (lengths, the size parameters a handle stretches), each
+// parameter's value worked out within them, and a light's colour from its temperature.
 
 import type { ObjectDefinition, ParamDef } from './schema';
+import { evaluateFormula } from './formula';
+
 
 /** The least and greatest length any object takes (m): a millimetre, a building's length. */
 export const LENGTH_LIMITS = { min: 0.001, max: 500 } as const;
@@ -51,4 +53,43 @@ export function kelvinColour(k: number): string {
   const b = t >= 66 ? 255 : t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307;
   const hex = (v: number) => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0');
   return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
+/** Each parameter's value: given (instance, then type, then default), held to its range and step. */
+export function values(def: ObjectDefinition, given: Readonly<Record<string, number | string>>, problems: string[]): { env: Record<string, number>; materials: Record<string, string> } {
+  const env: Record<string, number> = {};
+  const materials: Record<string, string> = {};
+  for (const p of def.params) {
+    if (p.formula !== undefined) continue;
+    const raw = given[p.name] ?? p.default;
+    if (p.kind === 'material') {
+      materials[p.name] = typeof raw === 'string' ? raw : String(p.default);
+      continue;
+    }
+    let v = typeof raw === 'number' ? raw : Number(raw);
+    if (!Number.isFinite(v)) {
+      problems.push(`${p.name}: not a number`);
+      v = typeof p.default === 'number' ? p.default : 0;
+    }
+    env[p.name] = held(p, v, def);
+  }
+  // Calculated parameters, each once its names are known: as many rounds as there are of them.
+  const calculated = def.params.filter((p) => p.formula !== undefined);
+  let pending = calculated;
+  for (let round = 0; round <= calculated.length && pending.length > 0; round++) {
+    const next: ParamDef[] = [];
+    for (const p of pending) {
+      const v = evaluateFormula(p.formula!, env);
+      if (v.ok) env[p.name] = p.kind === 'integer' ? Math.round(v.value) : v.value;
+      else next.push(p);
+    }
+    if (next.length === pending.length) break;
+    pending = next;
+  }
+  for (const p of pending) {
+    const v = evaluateFormula(p.formula!, env);
+    problems.push(`${p.name} = ${p.formula}: ${v.ok ? 'circular' : v.error}`);
+    env[p.name] = typeof p.default === 'number' ? p.default : 0;
+  }
+  return { env, materials };
 }

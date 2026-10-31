@@ -1,10 +1,18 @@
 // A roof's faces. Each sloped side i is a plane rising from its side's line at the eaves height:
-// h_i(p) = base + g_i · (distance of p inside that line). The roof is the lowest of those planes, so the
-// face of side i is where its plane is the lowest: the outline cut by the half-planes h_i ≤ h_j, exact
-// (convex.ts). For a convex outline that is the hip roof's straight skeleton. Overhangs push each side's
-// edge out, the plane going on down past the wall line. Sides without a slope are gables: a vertical
-// infill from the eaves up to the roof. A flat roof is one face at the eaves, with its parapet. Pure.
+// h_i(p) = base + g_i · (distance of p inside that line). On a convex outline the roof is the lowest of
+// those planes (a hip at every corner): the face of side i is where its plane is the lowest, the outline
+// cut by the half-planes h_i ≤ h_j, exact (convex.ts). That is the outline's straight skeleton.
+// On an outline with re-entrant corners (an L, a T, a U) a corner going in is a valley, where the roof is
+// the higher of its two sides' planes: a side's plane counts only in front of its line and, at a corner
+// going in, only where it is above its neighbour's. The outline is cut along every side's line and every
+// valley's into convex cells, where which planes count is fixed, and each cell's faces are found as on a
+// convex outline; a side's pieces are joined into its face. For such outlines with the same slope all
+// round (the usual L, T and U plans) that is their straight skeleton too: built flat before, with a note.
+// Overhangs push each side's edge out, the plane going on down past the wall line. Sides without a slope
+// are gables: a vertical infill from the eaves up to the roof. A flat roof is one face at the eaves, with
+// its parapet. Pure.
 
+import { union } from 'polyclip-ts';
 import { type ConvexPolygon, clipHalfPlane, signedArea } from '../wall/geometry/convex';
 import type { Point2 } from '../../model/vector';
 import type { Roof } from './schema';
@@ -30,7 +38,7 @@ export interface RoofSolid {
   /** The eaves' height (m). */
   readonly base: number;
   readonly top: number;
-  /** Sloped sides on an outline that is not convex: built flat, and said. */
+  /** Sloped sides on an outline whose roof could not be found: built flat, and said. */
   readonly notConvex: boolean;
 }
 
@@ -83,9 +91,13 @@ export function roofSolid(roof: Roof, levelTop: number): RoofSolid {
     return crossing(pa, prev.u, sa, s.u) ?? sa;
   });
   const sloped = sides.map((s, i) => ({ ...s, i })).filter((s) => s.grade !== null);
-  const notConvex = sloped.length > 0 && !isConvex(poly);
-  const plane = (s: (typeof sloped)[number]) => (p: Point2) => base + s.grade! * ((p.x - s.a.x) * s.inward.x + (p.y - s.a.y) * s.inward.y);
+  const plane = (s: Sloped) => (p: Point2) => base + s.grade! * ((p.x - s.a.x) * s.inward.x + (p.y - s.a.y) * s.inward.y);
   const flatFace = (): RoofFace => ({ polygon: outline, z: () => base, grade: 0 });
+  const convex = isConvex(poly);
+  // Re-entrant corners: corner i (between side i − 1 and side i) turns right on a counter-clockwise outline.
+  const reflex = poly.map((_, i) => cross(poly[(i + n - 1) % n]!, poly[i]!, poly[(i + 1) % n]!) < -1e-12);
+  const concaveFaces = sloped.length > 0 && !convex ? valleyFaces(outline, sloped, sides, reflex, plane) : null;
+  const notConvex = sloped.length > 0 && !convex && concaveFaces === null;
   if (sloped.length === 0 || notConvex) {
     // A parapet on the walls' line, inward by the roof's thickness, on a flat roof.
     const ph = roof.parapet ?? 0;
@@ -100,21 +112,13 @@ export function roofSolid(roof: Roof, levelTop: number): RoofSolid {
         : [];
     return { roof, outline, faces: [flatFace()], gables: [], parapets, base, top: base + roof.thickness + ph, notConvex };
   }
-  const faces: RoofFace[] = [];
-  for (const s of sloped) {
-    let face: ConvexPolygon = outline;
-    for (const o of sloped) {
-      if (o === s) continue;
-      // h_s − h_o ≤ 0, a half-plane: (g_s·n_s − g_o·n_o)·p ≤ g_s·n_s·a_s − g_o·n_o·a_o.
-      const normal = { x: s.grade! * s.inward.x - o.grade! * o.inward.x, y: s.grade! * s.inward.y - o.grade! * o.inward.y };
-      const offset = s.grade! * (s.inward.x * s.a.x + s.inward.y * s.a.y) - o.grade! * (o.inward.x * o.a.x + o.inward.y * o.a.y);
-      if (Math.hypot(normal.x, normal.y) < 1e-12) continue;
-      face = clipHalfPlane(face, { normal, offset });
-      if (face.length < 3) break;
-    }
-    if (face.length >= 3) faces.push({ polygon: face, z: plane(s), grade: s.grade! });
-  }
-  const zAt = (p: Point2) => Math.min(...sloped.map((s) => plane(s)(p)));
+  const faces: RoofFace[] = concaveFaces ?? lowestFaces(outline, sloped, plane);
+  // Its height at p: the lowest of the planes that count there (all of them on a convex outline).
+  const counts = counting(sloped, sides, reflex, plane, base);
+  const zAt = (p: Point2) => {
+    const heights = sloped.filter((s) => convex || counts(s, p)).map((s) => plane(s)(p));
+    return heights.length > 0 ? Math.min(...heights) : base;
+  };
   // Gables: along each side with no slope, from the eaves up to the roof, broken where the lowest plane changes.
   const gables = sides
     .filter((s) => s.grade === null)
@@ -139,4 +143,124 @@ export function roofSolid(roof: Roof, levelTop: number): RoofSolid {
     .filter((g) => g.length >= 3 && g.some((v) => v.z > base + 1e-6));
   const top = Math.max(base, ...faces.flatMap((f) => f.polygon.map((p) => f.z(p)))) + roof.thickness;
   return { roof, outline, faces, gables, parapets: [], base, top, notConvex: false };
+}
+
+interface Side {
+  readonly a: Point2;
+  readonly b: Point2;
+  readonly u: Point2;
+  readonly inward: Point2;
+  readonly grade: number | null;
+}
+type Sloped = Side & { readonly i: number };
+
+/** Where h_s ≤ h_o, a half-plane: (g_s·n_s − g_o·n_o)·p ≤ g_s·n_s·a_s − g_o·n_o·a_o; null when the planes are parallel. */
+function lowerThan(s: Sloped, o: Sloped): { normal: Point2; offset: number } | null {
+  const normal = { x: s.grade! * s.inward.x - o.grade! * o.inward.x, y: s.grade! * s.inward.y - o.grade! * o.inward.y };
+  if (Math.hypot(normal.x, normal.y) < 1e-12) return null;
+  const offset = s.grade! * (s.inward.x * s.a.x + s.inward.y * s.a.y) - o.grade! * (o.inward.x * o.a.x + o.inward.y * o.a.y);
+  return { normal, offset };
+}
+
+/** Each side's face in a convex region where all of `sloped` count: where its plane is the lowest. */
+function lowestFaces(region: ConvexPolygon, sloped: readonly Sloped[], plane: (s: Sloped) => (p: Point2) => number): (RoofFace & { readonly side: Sloped })[] {
+  const faces: (RoofFace & { readonly side: Sloped })[] = [];
+  for (const s of sloped) {
+    let face: ConvexPolygon = region;
+    for (const o of sloped) {
+      if (o === s) continue;
+      const half = lowerThan(s, o);
+      if (!half) continue;
+      face = clipHalfPlane(face, half);
+      if (face.length < 3) break;
+    }
+    if (face.length >= 3 && Math.abs(signedArea(face)) > 1e-9) faces.push({ polygon: face, z: plane(s), grade: s.grade!, side: s });
+  }
+  return faces;
+}
+
+/**
+ * Whether side s's plane counts at p: in front of its line (not below the eaves), and at each of its ends
+ * that is a corner going in, not below the neighbouring side's plane there (the valley is the higher).
+ */
+function counting(sloped: readonly Sloped[], sides: readonly Side[], reflex: readonly boolean[], plane: (s: Sloped) => (p: Point2) => number, base: number) {
+  const n = sides.length;
+  const byIndex = new Map(sloped.map((s) => [s.i, s]));
+  return (s: Sloped, p: Point2): boolean => {
+    const h = plane(s)(p);
+    if (h < base - 1e-9) return false;
+    // Its start is corner s.i (after side s.i − 1), its end corner s.i + 1 (before side s.i + 1).
+    for (const [corner, other] of [[s.i, (s.i + n - 1) % n], [(s.i + 1) % n, (s.i + 1) % n]] as const) {
+      const o = byIndex.get(other);
+      if (reflex[corner] && o && h < plane(o)(p) - 1e-9) return false;
+    }
+    return true;
+  };
+}
+
+/**
+ * The faces of a roof on an outline with corners going in: the outline cut along every side's line and
+ * every valley's into convex cells, each cell's faces those of the planes that count there, and a side's
+ * pieces joined. Null when no face is found.
+ */
+function valleyFaces(outline: readonly Point2[], sloped: readonly Sloped[], sides: readonly Side[], reflex: readonly boolean[], plane: (s: Sloped) => (p: Point2) => number): RoofFace[] | null {
+  const n = sides.length;
+  const base = plane(sloped[0]!)(sloped[0]!.a);
+  // The lines: each side's, and at each corner going in between two sloped sides, where their planes meet.
+  const lines: { normal: Point2; offset: number }[] = sides.map((s) => ({ normal: s.inward, offset: s.inward.x * s.a.x + s.inward.y * s.a.y }));
+  const byIndex = new Map(sloped.map((s) => [s.i, s]));
+  for (let corner = 0; corner < n; corner++) {
+    if (!reflex[corner]) continue;
+    const before = byIndex.get((corner + n - 1) % n);
+    const after = byIndex.get(corner);
+    const line = before && after ? lowerThan(before, after) : null;
+    if (line) lines.push(line);
+  }
+  // The convex cells of the box round the outline cut by every line; those inside the outline kept.
+  const xs = outline.map((p) => p.x);
+  const ys = outline.map((p) => p.y);
+  const pad = 1 + Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+  const box: ConvexPolygon = [
+    { x: Math.min(...xs) - pad, y: Math.min(...ys) - pad },
+    { x: Math.max(...xs) + pad, y: Math.min(...ys) - pad },
+    { x: Math.max(...xs) + pad, y: Math.max(...ys) + pad },
+    { x: Math.min(...xs) - pad, y: Math.max(...ys) + pad },
+  ];
+  let cells: ConvexPolygon[] = [box];
+  for (const l of lines) {
+    const flip = { normal: { x: -l.normal.x, y: -l.normal.y }, offset: -l.offset };
+    cells = cells.flatMap((c) => [clipHalfPlane(c, l), clipHalfPlane(c, flip)]).filter((c) => c.length >= 3 && Math.abs(signedArea(c)) > 1e-9);
+  }
+  const centre = (c: ConvexPolygon) => ({ x: c.reduce((s, p) => s + p.x, 0) / c.length, y: c.reduce((s, p) => s + p.y, 0) / c.length });
+  const counts = counting(sloped, sides, reflex, plane, base);
+  const pieces = new Map<Sloped, ConvexPolygon[]>();
+  for (const cell of cells) {
+    const mid = centre(cell);
+    if (!insideRing(outline, mid)) continue;
+    const active = sloped.filter((s) => counts(s, mid));
+    for (const f of lowestFaces(cell, active, plane)) pieces.set(f.side, [...(pieces.get(f.side) ?? []), f.polygon]);
+  }
+  // A side's pieces joined into its face (one polygon or more), counter-clockwise.
+  const faces: RoofFace[] = [];
+  for (const [s, polys] of pieces) {
+    const [first, ...rest] = polys.map((p) => [p.map((q): [number, number] => [q.x, q.y])]);
+    if (!first) continue;
+    for (const poly of union(first, ...rest)) {
+      const ring = poly[0]!.map(([x, y]) => ({ x, y }));
+      if (ring.length > 1 && ring[0]!.x === ring.at(-1)!.x && ring[0]!.y === ring.at(-1)!.y) ring.pop();
+      if (ring.length >= 3) faces.push({ polygon: signedArea(ring) < 0 ? ring.reverse() : ring, z: plane(s), grade: s.grade! });
+    }
+  }
+  return faces.length > 0 ? faces : null;
+}
+
+/** Whether p is inside a ring (even–odd). */
+function insideRing(ring: readonly Point2[], p: Point2): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[i]!;
+    const b = ring[j]!;
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
 }

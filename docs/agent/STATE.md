@@ -21,27 +21,13 @@ installed; main checkout stays untouched; work on the worktree only). Full order
 Nothing app-visible may change: 1:1 screenshots, project file format frozen (Doc.kept byte-equal round trip), no visual-quality
 tricks for speed, UI rules (one place per command, compact density, no raw px, styled controls).
 
-## Where it stands
-- Step 0 research DONE → docs/pesquisa/fontes-refatoracao.md (committed).
-- Step 1 inventory DONE (numbers in work.md; raw in .scratchpad/).
-- Step 2 baseline DONE → docs/refatoracao/linha-de-base.md (committed). Headlines: wall drag ~1s/move,
-  keyboard move 1.57s, first 3D frame 34.8s, 4819 draw calls/1504 geometries, undo 208ms/redo 184ms,
-  history ~8MB/step, open big project 1.28s, hover 116ms (first 1582ms). Reference set: 67 stops
-  (pixel-hash + DOM snapshot per stop) in .scratchpad/ref/manifest.json; roteiro committed
-  (scripts/ref-tour.mjs, scripts/ref-steps.mjs).
-- Measurement handle window.__cad2 added in src/app/main.ts (read-only). Commit b197ee4 pushed.
-- Step 3 (read every file): 7 reading agents running over all remaining files (render, app×2, wall+core+io,
-  elements, kinds+tools+ui, io). Their claims to be verified by opening cited lines; gods (app.ts, input.ts)
-  already read whole by me.
-- Step 4 ADR 0004 DRAFTED (docs/adr/0004-arquitetura.md): feature folders + direction gate, 3 truth owners
-  (Projeto/Sessão/Preferências), state machines, branded IDs, keep immutable-Command paradigm (measured),
-  BatchedMesh/InstancedMesh for 3D, incremental derivation for joins/plan, 400-line cap, public API.
-- NOT started: per-file disposition table (docs/refatoracao/inventario.md), ordered plan in work.md,
-  execution steps, gates in scripts/ wired to npm run check.
-- Browser: ONE IAB tab (id iab-tab:487c2668…, http://localhost:5173/, big project loaded), pane hidden for
-  2D / must be VISIBLE for 3D work (hidden pane blocks rAF/WebGL; host screenshots never compose — use
-  canvas pixel-hash instead). Evaluate: real functions only (strings return {}); ONE dispatch per evaluate
-  (multi-dispatch kills the channel). Dev server running in background.
+## Where it stands (2026-10-31)
+- Branch worktree-revisao-interface: the refactor is done (check-architecture 0: direction, mutableLets, oversize, duplications;
+  typed ids per kind; state machines: tool draft, drag, view 3D writer, lifecycle; fixes after the report). Notebook: work.md.
+- Merging main (93 commits: the F-xxxx fixes, file v68-v70, point tools F-0023, per-frame derivation F-0014/F-0011) into it:
+  in progress, see work.md "merge of main". Until it is committed the tree does not build.
+- main's own state before the merge (its STATE.md, 2026-10-28): every S3 finding fixed, 22 S4 open in .whole-review/FINDINGS.md
+  (the skill stopped by the owner); known break: a mirrored wall over a column with no warning.
 
 ## Known traps (from memoria + repo)
 - vigia.json / vigia-log.txt are the guard hook's own files: never touch. .whole-review/ and docs/revisao-interface/audit/ are the

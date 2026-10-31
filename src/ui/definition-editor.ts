@@ -17,12 +17,13 @@ import { Preview } from './definition-preview';
 import { editorKit } from './definition-kit';
 import { editorTabs, withoutKey } from './definition-tabs';
 import { standInObjectId } from '../elements/object/schema';
-import { NO_LEVEL } from '../project/doc';
+import { NO_LEVEL_ID } from '../project/doc';
 
 export type Tab = 'params' | 'parts' | 'handles' | 'types' | 'rules';
 const TABS: readonly Tab[] = ['params', 'parts', 'handles', 'types', 'rules'];
 const CATEGORIES: readonly DefinitionCategory[] = ['furniture', 'casework', 'fixture', 'equipment', 'lighting', 'plant', 'generic'];
-const NAME = /^[A-Za-z_À-ÿ][\wÀ-ÿ]*$/;
+// Letters with accents but not × and ÷, as the formulas read names (formula.ts).
+const NAME = /^[A-Za-z_À-ÖØ-öø-ÿ][\wÀ-ÖØ-öø-ÿ]*$/;
 
 /** The state of one editDefinition run, with one owner (was loose lets of the function). */
 export interface EditorState {
@@ -53,10 +54,20 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
     back.replaceChildren();
     done();
   };
+  // Escape in a field is the field's (it puts its value back, or closes its list of suggestions); out
+  // of the fields it closes the editor, a changed draft only at a second Escape: one Escape meant for an
+  // autocomplete list threw away an hour of parts and formulas, with no undo.
+  let armed = 0;
   const onKey = (e: KeyboardEvent) => {
     if (e.key !== 'Escape') return;
+    if ((e.target as HTMLElement | null)?.closest?.('input, select, textarea')) return;
     e.preventDefault();
     e.stopPropagation();
+    if (JSON.stringify(ed.draft) !== JSON.stringify(start) && Date.now() - armed > 3000) {
+      armed = Date.now();
+      app.toast(t('ed.escAgain'));
+      return;
+    }
     close();
   };
   const set = (next: ObjectDefinition) => {
@@ -76,7 +87,7 @@ export function editDefinition(app: App, start: ObjectDefinition, isNew: boolean
     out.push(...ev.problems, ...ev.warnings.map(words));
     return out;
   };
-  const previewInstance = () => ({ id: standInObjectId('object_editor'), levelId: NO_LEVEL, definitionId: ed.draft.id, typeId: ed.draft.types[0]?.id ?? '', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: ed.flex });
+  const previewInstance = () => ({ id: standInObjectId('object_editor'), levelId: NO_LEVEL_ID, definitionId: ed.draft.id, typeId: ed.draft.types[0]?.id ?? '', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: ed.flex });
 
   const kit = editorKit(app, ed);
   const { input, choose } = kit;

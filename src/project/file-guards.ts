@@ -1,15 +1,18 @@
 // What a project file's records must hold to be read: the checks of levels, materials, wall types, walls
-// and openings (file.ts reads with them; the stores' import uses them too).
+// and openings (file.ts reads with them; the stores' import uses them too), and a record kept without the
+// optional values that fail them.
 
 import type { DocWall, Level } from './doc';
 import { BUILT_IN_MATERIALS, CUT_PATTERNS, isColor, type Material } from '../elements/material/schema';
 import { isPattern } from '../elements/material/pattern';
 import { isPhysics } from '../elements/material/physics';
-import type { WallType } from '../elements/wall/schema';
+import { LAYER_PRIORITY, type WallType } from '../elements/wall/schema';
+import { layerThicknessOk } from '../elements/layers/stack';
 import type { Point2 } from '../model/vector';
 import { MIN_WALL_LENGTH } from '../model/tolerance';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import { isOpeningStyle, operationsOf } from '../elements/opening/style';
+
 
 export const finite = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
 
@@ -58,13 +61,16 @@ export const isMaterial = (m: unknown): m is Material =>
   (m.pattern === undefined || isPattern(m.pattern)) &&
   (m.physics === undefined || isPhysics(m.physics));
 
+/** A layer: a thickness, one of the five functions (another had no join priority: the T walk compared NaN), a material. */
+const isLayer = (l: unknown): boolean => isObject(l) && layerThicknessOk(l.thickness) && Object.hasOwn(LAYER_PRIORITY, l.function as string) && typeof l.materialId === 'string';
+
 export const isWallType = (t: unknown): t is WallType =>
   isObject(t) &&
   typeof t.id === 'string' &&
   typeof t.name === 'string' &&
   Array.isArray(t.layers) &&
   t.layers.length > 0 &&
-  t.layers.every((l: unknown) => isObject(l) && finite(l.thickness) && l.thickness > 0 && typeof l.function === 'string') &&
+  t.layers.every(isLayer) &&
   isTop(t.top) &&
   (t.baseOffset === undefined || finite(t.baseOffset));
 
@@ -119,3 +125,25 @@ export const isOpening = (o: unknown): o is Opening =>
   (o.swing === 'left' || o.swing === 'right') &&
   isRule(o.rule) &&
   (o.style === undefined || (isOpeningStyle(o.style) && operationsOf(o.kind).includes(o.style.operation)));
+
+/**
+ * `x` without the one or two fields its kind refused (a room's use it does not know, a height of 0),
+ * the fewest that make it valid; null when none does. Taking out a field the kind requires never makes
+ * it valid, so only a bad optional one goes. Its id is never taken out.
+ */
+export function withoutBadFields<T>(x: unknown, ok: (x: unknown) => x is T): T | null {
+  if (!isObject(x)) return null;
+  const keys = Object.keys(x).filter((k) => k !== 'id');
+  const omit = (...out: string[]): unknown => Object.fromEntries(Object.entries(x).filter(([k]) => !out.includes(k)));
+  for (const a of keys) {
+    const one = omit(a);
+    if (ok(one)) return one;
+  }
+  for (let i = 0; i < keys.length; i++) {
+    for (let j = i + 1; j < keys.length; j++) {
+      const two = omit(keys[i]!, keys[j]!);
+      if (ok(two)) return two;
+    }
+  }
+  return null;
+}

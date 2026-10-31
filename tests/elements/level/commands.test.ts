@@ -1,10 +1,11 @@
+import type { ColumnId } from '../../../src/elements/column/schema';
 import { describe, expect, it } from 'vitest';
 import { cutHeightOf, type Doc, type DocWall, newDocument, wallHeights } from '../../../src/project/doc';
 import { createStore } from '../../../src/core/store';
 import { vec } from '../../../src/model/vector';
 import { addLevel, deleteBlocker, deleteLevel, levelOverlaps, updateLevel } from '../../../src/elements/level/commands';
 import type { WallId } from '../../../src/elements/wall/schema';
-import { lid, tid, wid } from '../../ids';
+import { lid, tid, wid, xid } from '../../ids';
 import type { LevelId } from '../../../src/project/doc';
 
 const wall = (id: WallId, levelId: LevelId): DocWall => ({
@@ -86,5 +87,22 @@ describe('level checks', () => {
     const two = { ...addLevel(lid('lvl_up'), 'Upper').apply(one), walls: [wall(wid('w'), lid('lvl_up'))] };
     expect(deleteBlocker(two, lid('lvl_up'))).toBe('walls');
     expect(deleteBlocker(two, lid('lvl_ground'))).toBeNull();
+  });
+
+  it('a level with other elements on it (a column) cannot be deleted either: they would be left on no level', () => {
+    const doc = addLevel(lid('lvl_up'), 'Upper').apply(newDocument());
+    const column = { id: xid<ColumnId>('column_a'), levelId: lid('lvl_up'), at: { x: 0, y: 0 }, width: 0.25, depth: 0.25, angle: 0 };
+    expect(deleteBlocker({ ...doc, columns: [column] }, lid('lvl_up'))).toBe('elements');
+    expect(deleteLevel(lid('lvl_up')).apply({ ...doc, columns: [column] }).levels).toHaveLength(2);
+  });
+
+  it('a column up to a deleted level keeps its top, now from its own level', () => {
+    const doc = addLevel(lid('lvl_up'), 'Upper').apply(newDocument());
+    const column = { id: xid<ColumnId>('column_a'), levelId: lid('lvl_ground'), at: { x: 0, y: 0 }, width: 0.25, depth: 0.25, angle: 0, topLevelId: lid('lvl_up'), topOffset: 0.1 };
+    const next = deleteLevel(lid('lvl_up')).apply({ ...doc, columns: [column] });
+    const c = next.columns[0]!;
+    expect(c.topLevelId).toBeUndefined();
+    // Upper's floor at 2.80 + 0.10, from the ground's top at 2.80: 0.10.
+    expect(c.topOffset).toBeCloseTo(0.1, 12);
   });
 });

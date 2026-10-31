@@ -1,29 +1,26 @@
 // The drawing's keys (input.ts): shortcuts, the tools' keys, the arrows, Escape, Enter, Delete, Alt for
 // a guide. What the pointer side shares with them comes in `k`.
 
-import { comboOf, resolveKey } from './keymap';
+import { comboOf } from './keymap';
 import { t } from '../i18n/messages';
 import { viewKey } from './view-keys';
 import type { App } from './app';
-import { showHelp } from '../ui/help-dialog';
 import { selectGestures } from './drag';
 import { arrowStep } from '../tools/nudge';
 import { guideBaseAt } from '../elements/guide/tool';
-import { saveFile } from '../project/files';
-import { copySelection, deleteSelection, hideTemporarily, nudgeSelection, paste, selectAllShown, stepSelectionHere } from './selection';
-import { frameSelection, keyView, setView } from './view-ui';
+import { nudgeSelection } from './selection';
+import { keyView } from './view-ui';
 import { cancelGuide, startGuide } from '../elements/guide/tool-ui';
-import { mergeSelection, selectionCentre, seriesReady, startModify, toggleModifyCopy, toggleModifyDisjoin } from './modify';
-import { gridEscape } from './annotation-tools';
-import { sectionEscape } from './section-tools';
-import { railingFinish, roofFinish } from './kind-tools';
+import { selectionCentre, seriesReady, toggleModifyCopy, toggleModifyDisjoin } from './modify';
 import { toggleWallFlip, wallEvent } from '../elements/wall/tool-ui';
 import { floorFinish } from './room-tool';
 import { dropPress, type PointerState } from './pointer-state';
 import * as appPlacing from './app-placing';
-import * as appSettings from './app-settings';
 import * as appEdit from './app-edit';
-import { drawFrom, drawPoints, fromOf, pointsOf } from '../elements/tool-draft';
+import { drawPoints, fromOf, pointsOf } from '../elements/tool-draft';
+import { pointTool } from './point-tools';
+import { pointBusy } from './point-tools';
+import { actionOfKey } from './keymap';
 
 /** What the keys share with the pointer (input.ts). */
 export interface KeyContext {
@@ -31,7 +28,6 @@ export interface KeyContext {
   pointer: PointerState;
   readonly gestures: ReturnType<typeof selectGestures>;
   guideTools(): boolean;
-  palette(): void;
   showMarquee(): void;
   /** Tab: the next snap under the pointer; false when no tool is snapping there. */
   nextSnap(): boolean;
@@ -62,50 +58,19 @@ export function wireKeys(app: App, k: KeyContext): void {
       e.preventDefault();
       return;
     }
-    // The user's keys first (app/keymap.ts): a key given to an action runs it; an action's own key,
-    // once it has another or none, does nothing.
-    const combo = Object.keys(app.keymap).length > 0 ? comboOf(e) : null;
-    if (combo) {
-      const found = resolveKey(combo, app.actionList(), app.keymap);
-      if (found.run) {
-        e.preventDefault();
-        if (found.run.enabled) found.run.run();
-        return;
-      }
-      if (found.blocked) return;
-    }
-    if (ctrl && key === 'z') {
+    // An action's key, as the user has it now (the action list, app/actions.ts, the one place keys are
+    // written; keymap.ts): it runs the action, even greyed out, which then says why it cannot
+    // (hint.modifyNothing, hint.copyNothing). An action's own key, once it has another or none, runs nothing.
+    const byKey = (): boolean => {
+      const combo = comboOf(e);
+      const action = combo ? actionOfKey(combo, app.actionList()) : undefined;
+      if (!action) return false;
       e.preventDefault();
-      return e.shiftKey ? appEdit.redo(app) : appEdit.undo(app);
-    }
-    if (ctrl && key === 'o') {
-      e.preventDefault();
-      return shell.fileInput.click();
-    }
-    if (ctrl && key === 's') {
-      e.preventDefault();
-      return saveFile(app);
-    }
-    if (ctrl && key === 'y') {
-      e.preventDefault();
-      return appEdit.redo(app);
-    }
-    if (ctrl && key === 'c' && !e.shiftKey && ui.selection.size > 0) {
-      e.preventDefault();
-      return copySelection(app);
-    }
-    if (ctrl && key === 'v') {
-      e.preventDefault();
-      return paste(app);
-    }
-    if (ctrl && key === 'a') {
-      e.preventDefault();
-      return selectAllShown(app);
-    }
-    if (ctrl && key === 'k') {
-      e.preventDefault();
-      return k.palette();
-    }
+      action.run();
+      return true;
+    };
+    // Ctrl keys before the drawing's own (Ctrl+Z while a wall is being drawn); the rest after them.
+    if (ctrl && byKey()) return;
     // The view by keyboard (view-keys.ts): + and − zoom, Shift+arrows move or turn it (the tester's K4).
     const typingNow = ui.tool === 'wall' || ui.tool === 'floor' || ui.tool === 'room' || ui.tool === 'measure' || ui.tool === 'dimension' || ui.tool === 'grid' || ui.tool === 'modify' || app.openingKind() !== null;
     const view = viewKey(e.key, { shift: e.shiftKey, ctrl, alt: e.altKey, typing: typingNow });
@@ -202,48 +167,10 @@ export function wireKeys(app: App, k: KeyContext): void {
       }
       if (ui.tool === 'room' || ui.tool === 'floor') return app.setTool('select');
       if (ui.tool === 'measure') return ui.measure.kind !== 'idle' ? app.measureEvent({ kind: 'escape' }) : app.setTool('select');
-      if (ui.tool === 'dimension') return ui.dimension.kind !== 'idle' ? app.dimensionEvent({ kind: 'escape' }) : app.setTool('select');
-      if (ui.tool === 'grid') return gridEscape(app);
-      if (ui.tool === 'section') return sectionEscape(app);
-      if (ui.tool === 'calibrate') {
-        ui.calibrate = null;
-        return app.setTool('select');
-      }
-      if (ui.tool === 'callout') {
-        if (!fromOf(ui.draft, 'callout')) return app.setTool('select');
-        ui.draft = drawFrom('callout', null);
-        return app.render();
-      }
-      if (ui.tool === 'column' || ui.tool === 'object' || ui.tool === 'note' || ui.tool === 'levelMark') return app.setTool('select');
-      if (ui.tool === 'guide') {
-        if (!fromOf(ui.draft, 'guide')) return app.setTool('select');
-        ui.draft = drawFrom('guide', null);
-        return app.render();
-      }
-      if (ui.tool === 'railing') {
-        if (pointsOf(ui.draft, 'railing').length === 0) return app.setTool('select');
-        return railingFinish(app);
-      }
-      if (ui.tool === 'stair') {
-        if (!fromOf(ui.draft, 'stair')) return app.setTool('select');
-        ui.draft = drawFrom('stair', null);
-        return app.render();
-      }
-      if (ui.tool === 'roof') {
-        if (pointsOf(ui.draft, 'roof').length === 0) return app.setTool('select');
-        ui.draft = drawPoints(ui.draft, 'roof', []);
-        return app.render();
-      }
-      if (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') {
-        if (!fromOf(ui.draft, 'beam')) return app.setTool('select');
-        ui.draft = drawFrom('beam', null);
-        return app.render();
-      }
-      if (ui.tool === 'mark') {
-        if (pointsOf(ui.draft, 'mark').length === 0) return app.setTool('select');
-        ui.draft = drawPoints(ui.draft, 'mark', pointsOf(ui.draft, 'mark').slice(0, -1));
-        return app.render();
-      }
+      if (ui.tool === 'object') return app.setTool('select');
+      // The tools drawn by points: a beam, a roof, an axis, a section, a guide… (point-tools.ts).
+      const drawing = pointTool(app);
+      if (drawing) return !pointBusy(app, drawing) ? app.setTool('select') : drawing.escape(app);
       if (ui.tool === 'wall') return ui.wall.kind !== 'idle' ? wallEvent(app, { kind: 'escape' }) : app.setTool('select');
       if (ui.tool === 'split') return app.setTool('select');
       // The Corner tool lets go of its first wall first (below), then of itself.
@@ -264,78 +191,39 @@ export function wireKeys(app: App, k: KeyContext): void {
     if (e.key === 'Enter' && ui.tool === 'measure') return app.measureEvent({ kind: 'enter' });
     if (key === 'c' && !ctrl && !e.shiftKey && ui.tool === 'measure') return appEdit.toggleMeasureMode(app);
     // Enter ends what is being drawn by points: a roof's outline, a guardrail's path, a beam chain.
-    if (e.key === 'Enter' && ui.tool === 'roof' && pointsOf(ui.draft, 'roof').length > 0) return roofFinish(app);
-    if (e.key === 'Enter' && ui.tool === 'railing' && pointsOf(ui.draft, 'railing').length > 0) return railingFinish(app);
-    if (e.key === 'Enter' && (ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain') && fromOf(ui.draft, 'beam')) {
-      ui.draft = drawFrom('beam', null);
-      return app.render();
-    }
+    const drawing = pointTool(app);
+    if (e.key === 'Enter' && drawing?.enter && drawing.points(app).length > 0) return drawing.enter(app);
     // Enter places the opening where it is aimed, as a click there does.
     if (e.key === 'Enter' && app.openingKind() && ui.opening.kind === 'aiming') return app.openingEvent({ kind: 'click' });
     // Backspace while drawing a chain takes its last wall back and goes on from its start (ArchiCAD).
     if (e.key === 'Backspace' && appEdit.undoChainStep(app)) return;
-    // Delete only: Backspace, pressed to correct typing, deleted the selection (docs/revisao-interface.md, M8).
-    if (e.key === 'Delete') return deleteSelection(app);
-    if (e.key === 'Home') return app.frameAll();
-    if (e.key === '?') return showHelp(app);
-    if (e.shiftKey && key === 'l') return appSettings.setLanguage(app, appSettings.otherLanguage());
-    if (e.shiftKey && key === 'w') return app.setTool('window');
-    if (e.shiftKey && key === 'n') return stepSelectionHere(app, -1);
-    // The Modify tools, on the selection (Revit's MV, CO, RO, SC, MM; SketchUp's M, Q, S).
-    if (e.shiftKey && key === 'm') return startModify(app, 'move');
-    if (e.shiftKey && key === 'c') return startModify(app, 'copy');
-    if (e.shiftKey && key === 'r') return startModify(app, 'rotate');
-    if (e.shiftKey && key === 'e') return startModify(app, 'scale');
-    if (e.shiftKey && key === 'x') return startModify(app, 'mirror');
-    if (e.shiftKey && key === 'o') return startModify(app, 'offset');
-    if (e.shiftKey && key === 's') return app.setTool('split');
-    if (e.shiftKey && key === 't') return app.setTool('corner');
-    if (e.shiftKey && key === 'd') return app.setTool('dimension');
-    if (e.shiftKey && key === 'g') return app.setTool('grid');
-    if (e.shiftKey && key === 'j') return mergeSelection(app);
-    if (e.shiftKey && key === 'h') return hideTemporarily(app, 'hide');
-    if (e.shiftKey && key === 'i') return hideTemporarily(app, 'isolate');
-    if (e.shiftKey) return;
-    if (key === 'c' && ui.tool === 'modify') return toggleModifyCopy(app);
-    if (key === 'u' && ui.tool === 'modify') return toggleModifyDisjoin(app);
-    if (key === 'w') return app.setTool('wall');
-    if (key === 'a' && ui.tool === 'wall') return wallEvent(app, { kind: 'arc' });
-    // Q: rectangles of four walls, two corners (Revit's and ArchiCAD's rectangle).
-    if (key === 'q' && ui.tool === 'wall') return wallEvent(app, { kind: 'rect' });
-    // Space while drawing walls: the body to the other side of the line (Revit's flip).
-    if (e.key === ' ' && ui.tool === 'wall') {
-      e.preventDefault();
-      return toggleWallFlip(app);
+    // The tools' own keys, not actions: they mean something only in that tool, before the actions' keys.
+    if (!e.shiftKey) {
+      if (key === 'c' && ui.tool === 'modify') return toggleModifyCopy(app);
+      if (key === 'u' && ui.tool === 'modify') return toggleModifyDisjoin(app);
+      // A (arc) and Q (rectangles of four walls, two corners: Revit's and ArchiCAD's) in the wall tool,
+      // the second key of the "W, A" and "W, Q" actions.
+      if (key === 'a' && ui.tool === 'wall') return wallEvent(app, { kind: 'arc' });
+      if (key === 'q' && ui.tool === 'wall') return wallEvent(app, { kind: 'rect' });
+      // Space while drawing walls: the body to the other side of the line (Revit's flip).
+      if (e.key === ' ' && ui.tool === 'wall') {
+        e.preventDefault();
+        return toggleWallFlip(app);
+      }
+      // Space with the object tool: the next object a quarter turn on.
+      if (e.key === ' ' && ui.tool === 'object') {
+        e.preventDefault();
+        return appPlacing.turnObject(app);
+      }
+      // A selected door, flipped from the keyboard: Space sends the leaf to the other side, as in Revit
+      // (H, the hinge to the other jamb, is the edit.flipHinge action).
+      if (e.key === ' ' && ui.tool === 'select' && appPlacing.flipDoor(app, 'swing')) return e.preventDefault();
+      // And the door about to be placed, the same keys: chosen before the click, seen in its preview.
+      if (e.key === ' ' && appPlacing.flipPlacing(app, 'swing')) return e.preventDefault();
+      if (key === 'h' && appPlacing.flipPlacing(app, 'hinge')) return;
     }
-    // Space with the object tool: the next object a quarter turn on.
-    if (e.key === ' ' && ui.tool === 'object') {
-      e.preventDefault();
-      return appPlacing.turnObject(app);
-    }
-    // A selected door, flipped from the keyboard: Space sends the leaf to the other side, as in Revit,
-    // H the hinge to the other jamb.
-    if (e.key === ' ' && ui.tool === 'select' && appPlacing.flipDoor(app, 'swing')) return e.preventDefault();
-    // And the door about to be placed, the same keys: chosen before the click, seen in its preview.
-    if (e.key === ' ' && appPlacing.flipPlacing(app, 'swing')) return e.preventDefault();
-    if (key === 'h' && appPlacing.flipPlacing(app, 'hinge')) return;
-    if (key === 'h' && ui.tool === 'select' && appPlacing.flipDoor(app, 'hinge')) return;
-    if (key === 'd') return app.setTool('door');
-    if (key === 'r') return app.setTool('room');
-    if (key === 'l') return app.setTool('floor');
-    if (key === 'm') return app.setTool('measure');
-    if (key === 'p') return app.setTool('column');
-    if (key === 'b') return app.setTool('beam');
-    if (key === 't') return app.setTool('roof');
-    if (key === 'e') return app.setTool('stair');
-    if (key === 'g') return app.setTool('railing');
-    if (key === 'v') return app.setTool('select');
-    if (key === 'f') return frameSelection(app);
-    // Choosing and moving elements without a mouse: N / Shift+N go through the level's elements;
-    // the arrows move the selection by 5 cm (the snap grid), 1 cm with Alt (tools/nudge.ts).
-    if (key === 'n') return stepSelectionHere(app, e.shiftKey ? -1 : 1);
-    if (key === 's') return appSettings.toggleSnaps(app);
-    if (key === 'k' && !ctrl && !e.shiftKey) return appSettings.toggleCollisions(app);
-    if (key === '1') return setView(app, '3d');
-    if (key === '2') return setView(app, 'plan');
+    // Every other key is an action's (tools, Modify, views, N / Shift+N through the level's elements,
+    // Del and Backspace, Home, ?, snaps, collisions, 1 and 2).
+    byKey();
   });
 }

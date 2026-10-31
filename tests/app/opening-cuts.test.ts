@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { type Doc, type DocWall, newDocument } from '../../src/project/doc';
 import { deriveGeometry } from '../../src/project/derive';
-import { tempDims } from '../../src/session/temp-dims';
+import { tempDims } from '../../src/project/temp-dims';
 import { newOpening } from '../../src/elements/opening/schema';
 import { lid, oid, tid, wid } from '../ids';
 import type { WallId } from '../../src/elements/wall/schema';

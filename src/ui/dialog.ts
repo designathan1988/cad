@@ -16,8 +16,32 @@ export interface ProjectDialog {
   readonly close: () => void;
 }
 
-export function openProjectDialog(app: App, render: (close: () => void) => HTMLElement, fallback: () => string | null = () => null): ProjectDialog {
+/**
+ * What a dialog made inert behind it: the rest of the window but the toasts, so Tab and a screen reader stay
+ * in the dialog (it says it is modal) and what it says still reaches them. One dialog layer: one list.
+ */
+const shut = { list: [] as HTMLElement[] };
+const reopen = () => {
+  for (const x of shut.list) x.inert = false;
+  shut.list = [];
+};
+function shutBehind(back: HTMLElement, toast: HTMLElement): void {
+  reopen();
+  for (const s of [...(back.parentElement?.children ?? [])] as HTMLElement[]) {
+    if (s === back) continue;
+    const inside = s.contains(toast) ? ([...s.children] as HTMLElement[]).filter((c) => c !== toast) : [s];
+    for (const x of inside) if (!x.inert) {
+      x.inert = true;
+      shut.list.push(x);
+    }
+  }
+}
+
+/** `closed`: told when it closes, however (Close, Esc, a click on the backdrop), to let go of what it set up. */
+export function openProjectDialog(app: App, render: (close: () => void) => HTMLElement, fallback: () => string | null = () => null, closed?: () => void): ProjectDialog {
   const back = app.shell.helpBack;
+  // Where the focus goes back when it closes (APG): what opened it, when it is still there to take it.
+  const opener = document.activeElement instanceof HTMLElement && !back.contains(document.activeElement) ? document.activeElement : null;
   let stale = false;
   const typing = () => {
     const a = document.activeElement;
@@ -73,6 +97,8 @@ export function openProjectDialog(app: App, render: (close: () => void) => HTMLE
   const onKey = (e: KeyboardEvent) => {
     const ctrl = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
+    // Esc in a menu opened over the dialog closes the menu only (menu.ts), not the dialog.
+    if (e.key === 'Escape' && document.activeElement instanceof HTMLElement && document.activeElement.closest('.menu')) return;
     if (e.key === 'Escape') {
       e.preventDefault();
       // After the field's own Esc has put its text back: closing blurs it, and a blur commits. Not a
@@ -98,7 +124,10 @@ export function openProjectDialog(app: App, render: (close: () => void) => HTMLE
     back.removeEventListener('focusout', onFocusOut);
     back.removeEventListener('click', onClick);
     back.hidden = true;
-    app.shell.planCanvas.focus();
+    reopen();
+    if (opener && opener.isConnected && opener !== document.body) opener.focus();
+    else app.shell.planCanvas.focus();
+    closed?.();
   }
   // Captured on the window: Esc and undo work wherever the focus went, even off the dialog. What an
   // earlier dialog in the same layer set on it goes.
@@ -109,5 +138,6 @@ export function openProjectDialog(app: App, render: (close: () => void) => HTMLE
   back.addEventListener('click', onClick);
   back.replaceChildren(render(close));
   back.hidden = false;
+  shutBehind(back, app.shell.toast);
   return { redraw, close };
 }

@@ -22,6 +22,19 @@ describe('door and window marks', () => {
     expect(Object.fromEntries(marks)).toEqual({ a: 'P1', b: 'J2', c: 'J1', d: 'J3' });
   });
 
+  it('one make one type: standing open, or its style written in another order, is the same door; another operation is not', () => {
+    const style = { operation: 'swing', leaves: 1, frame: 0.05, casing: 0.06, transom: 0, threshold: false } as const;
+    const { leaves, ...rest } = style;
+    const a = { ...door(oid('a'), 0.9), style };
+    const b = { ...door(oid('b'), 0.9), style: { ...style, open: 0.5 } };
+    const c = { ...door(oid('c'), 0.9), style: { ...rest, leaves } };
+    const d = { ...door(oid('d'), 0.9), style: { ...style, operation: 'sliding' as const } };
+    const marks = Object.fromEntries(openingMarks([a, b, c, d], prefix));
+    expect(marks.b).toBe(marks.a);
+    expect(marks.c).toBe(marks.a);
+    expect(marks.d).not.toBe(marks.a);
+  });
+
   it('the same marks whatever the order the openings were drawn in', () => {
     const list = [door(oid('a'), 0.9), door(oid('b'), 0.8), window(oid('c'), 1.2)];
     expect(openingMarks([...list].reverse(), prefix)).toEqual(openingMarks(list, prefix));

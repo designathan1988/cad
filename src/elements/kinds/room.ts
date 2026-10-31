@@ -16,8 +16,8 @@ export const ROOM_PREFIX = 'room';
 /** A room as built, at its level's floor (where the 3D window takes it). */
 export type RoomItem = RoomSolid & { readonly elevation: number };
 
-/** The next number on a level, after those in `all`. */
-const nextNumber = (all: readonly Room[], levelId: LevelId): string =>
+/** The next number on a level, after those in `all` (the highest + 1: a count repeated one after a deletion). */
+export const nextNumber = (all: readonly Room[], levelId: LevelId): string =>
   String(all.filter((r) => r.levelId === levelId).reduce((n, r) => Math.max(n, Number.parseInt(r.number, 10) || 0), 0) + 1);
 
 export const roomKind: ElementKind<Room, RoomItem> = {
@@ -42,8 +42,8 @@ export const roomKind: ElementKind<Room, RoomItem> = {
     return one.sharing.length > 0 ? t('warn.roomShared', { rooms: one.sharing.map(tag).join(', ') }) : null;
   },
   dropped: 'fix.droppedRooms',
-  exportName: 'room.title',
-  exportColour: 'floor',
+
+
   valid: (r): r is Room =>
     isObject(r) &&
     typeof r.id === 'string' &&
@@ -56,7 +56,7 @@ export const roomKind: ElementKind<Room, RoomItem> = {
     (r.finishes === undefined || (isObject(r.finishes) && (r.finishes.base === undefined || (finite(r.finishes.base) && r.finishes.base >= 0)))),
   derive: (doc, r, g) => {
     const elevation = doc.levels.find((l) => l.id === r.levelId)?.elevation ?? 0;
-    const solid = g.rooms.get(r.id) ?? { room: r, enclosed: false, outline: [], area: 0, perimeter: 0, label: r.seed, sharing: [] };
+    const solid = g.rooms.get(r.id) ?? { room: r, enclosed: false, outline: [], islands: [], area: 0, perimeter: 0, label: r.seed, sharing: [] };
     return { ...solid, elevation };
   },
   element: (s) => s.room,
@@ -75,14 +75,17 @@ export const roomKind: ElementKind<Room, RoomItem> = {
     if (!s.enclosed || !lit) return;
     const { ctx } = p;
     ctx.beginPath();
-    s.outline.forEach((v: Point2, i) => {
-      const q = p.toScreen(v);
-      if (i === 0) ctx.moveTo(q.x, q.y);
-      else ctx.lineTo(q.x, q.y);
-    });
-    ctx.closePath();
+    // Its outline, and the walls standing free in it left out (even-odd).
+    for (const ring of [s.outline, ...s.islands]) {
+      ring.forEach((v: Point2, i) => {
+        const q = p.toScreen(v);
+        if (i === 0) ctx.moveTo(q.x, q.y);
+        else ctx.lineTo(q.x, q.y);
+      });
+      ctx.closePath();
+    }
     ctx.fillStyle = p.color('--accent-soft');
-    ctx.fill();
+    ctx.fill('evenodd');
   },
   span: (s) => ({ bottom: s.elevation, top: s.elevation }),
   fields: (items, c) =>

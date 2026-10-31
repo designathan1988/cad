@@ -6,14 +6,17 @@
 import type { Doc, DocWall } from '../project/doc';
 import { hostsIn } from '../project/derived-queries';
 import { MIN_WALL_LENGTH } from '../model/tolerance';
-import { cross, distance, dot, intersectLines, normalize, type Point2, sub } from '../model/vector';
+import { cross, distance, dot, normalize, type Point2, sub } from '../model/vector';
 import { deriveOpenings, referenceLength } from '../elements/opening/derive';
 import type { Opening, PositionRule } from '../elements/opening/schema';
+import type { EndJoin } from '../elements/wall/schema';
+import type { DimAnchor } from '../elements/dimension/schema';
 import { arcOf, pointAt } from '../elements/wall/geometry/arc';
 import { stretchEnd } from '../elements/wall/edit';
 import { GRID_STEP } from '../session/snap';
 import type { WallId } from '../elements/wall/schema';
 import type { ElementId } from '../core/id';
+import { meet } from '../elements/wall/edit';
 
 /** A part shorter than the snap grid's step is a slip of the pointer, not a wall: no split leaves one. */
 const MIN_PART = GRID_STEP;
@@ -67,6 +70,9 @@ export function splitWall(doc: Doc, wallId: WallId, at: Point2, newId: WallId): 
     first = { ...w, end: cut };
     second = { ...w, id: newId, start: cut };
   }
+  // Each part keeps only the join chosen for its outer end: at the cut the two parts simply meet.
+  first = withEndJoins(first, w.joins?.start, undefined);
+  second = withEndJoins(second, undefined, w.joins?.end);
 
   // Which part each opening of the wall goes to; a group whose openings fall on both is undone.
   const onSecond = new Set(mine.filter((o) => (placed.get(o.id)?.start ?? 0) >= s).map((o) => o.id));
@@ -97,7 +103,20 @@ export function splitWall(doc: Doc, wallId: WallId, at: Point2, newId: WallId): 
     });
   // The new part goes after the others, as a new wall does: every other wall keeps its number.
   const walls = [...doc.walls.map((x) => (x.id === w.id ? first : x)), second];
-  return { ...doc, walls, openings, openingGroups };
+  // A dimension held from the wall's end is the second part's now (the same end, the same distance);
+  // one from its start stays on the first. An arc's measure goes to the part it lies on.
+  const onPart = (x: DimAnchor): DimAnchor => (x.kind === 'wall' && x.wallId === w.id && x.end === 'end' ? { ...x, wallId: newId } : x);
+  const dimensions = doc.dimensions.map((d) => (onPart(d.a) === d.a && onPart(d.b) === d.b ? d : { ...d, a: onPart(d.a), b: onPart(d.b) }));
+  const f = s / len;
+  const measures = doc.measures.map((m) => ('wallId' in m && m.wallId === w.id ? (m.t <= f ? { ...m, t: m.t / f } : { ...m, wallId: newId, t: (m.t - f) / (1 - f) }) : m));
+  return { ...doc, walls, openings, openingGroups, dimensions, measures };
+}
+
+/** The wall with these end joins only (an end without one: automatic), no joins key when it has none. */
+function withEndJoins(w: DocWall, start: EndJoin | undefined, end: EndJoin | undefined): DocWall {
+  const { joins: _old, ...rest } = w;
+  const joins = { ...(start ? { start } : {}), ...(end ? { end } : {}) };
+  return start || end ? { ...rest, joins } : rest;
 }
 
 /** Whether two walls can be joined into one: straight, in line, end to end, of one type, line and height. */
@@ -135,7 +154,27 @@ export function mergeWalls(doc: Doc, a: string, b: string): Doc | null {
   // measured from the merged start (turned round when b ran the other way).
   const lenA = distance(wa.start, wa.end);
   const lenB = distance(wb.start, wb.end);
-  const merged: DocWall = { ...wa, start: m.start, end: m.end };
+  // Each outer end keeps the join chosen for it, from the wall that owned it (b's ends swapped when it
+  // ran the other way); where the two met there is no end any more.
+  const bOuter = m.aFirst ? (m.flipB ? wb.joins?.start : wb.joins?.end) : m.flipB ? wb.joins?.end : wb.joins?.start;
+  const merged: DocWall = withEndJoins({ ...wa, start: m.start, end: m.end }, m.aFirst ? wa.joins?.start : bOuter, m.aFirst ? bOuter : wa.joins?.end);
+  // A dimension held by either wall is held by the merged one, at the same point: from the end that
+  // is still an end, else from the merged start; across b's other way round, its offset turns over.
+  const onMerged = (x: DimAnchor): DimAnchor => {
+    if (x.kind !== 'wall' || (x.wallId !== a && x.wallId !== b)) return x;
+    if (x.wallId === a) {
+      if (m.aFirst ? x.end === 'start' : x.end === 'end') return x;
+      const t = x.end === 'start' ? x.along : lenA - x.along;
+      return { ...x, end: 'start', along: m.aFirst ? t : lenB + t };
+    }
+    // b's end that is an end of the merged wall: its merged end, the same distance in.
+    const bEnd = m.flipB ? (x.end === 'start' ? 'end' : 'start') : x.end;
+    const offset = m.flipB ? -x.offset : x.offset;
+    if (m.aFirst ? bEnd === 'end' : bEnd === 'start') return { ...x, wallId: a, end: bEnd, offset };
+    const t = bEnd === 'start' ? x.along : lenB - x.along;
+    return { ...x, wallId: a, end: 'start', along: m.aFirst ? lenA + t : t, offset };
+  };
+  const dimensions = doc.dimensions.map((d) => (onMerged(d.a) === d.a && onMerged(d.b) === d.b ? d : { ...d, a: onMerged(d.a), b: onMerged(d.b) }));
   const station = (o: Opening): number => {
     const p = placed.get(o.id);
     if (!p) return 0;
@@ -162,19 +201,21 @@ export function mergeWalls(doc: Doc, a: string, b: string): Doc | null {
     walls: doc.walls.filter((w) => w.id !== b).map((w) => (w.id === a ? merged : w)),
     openings,
     openingGroups: doc.openingGroups.filter((g) => !groups.has(g.id)),
+    dimensions,
   };
 }
 
 /**
  * Two walls made to meet at a corner (Revit's Trim/Extend to Corner): each one's end nearer where
- * their lines cross goes there, the walls joined at those ends following. Null when they are parallel
- * or either is an arc.
+ * their lines cross goes there, the walls joined at those ends following. Null when they are about
+ * parallel (edit.ts meet) or either is an arc.
  */
 export function cornerWalls(doc: Doc, a: ElementId, b: ElementId): DocWall[] | null {
   const wa = doc.walls.find((w) => w.id === a);
   const wb = doc.walls.find((w) => w.id === b);
   if (!wa || !wb || wa.bulge || wb.bulge || a === b) return null;
-  const x = intersectLines(wa.start, sub(wa.end, wa.start), wb.start, sub(wb.end, wb.start));
+  // About parallel (meet's guard): their lines cross far off, and both would stretch there.
+  const x = meet(wa.start, sub(wa.end, wa.start), wb.start, sub(wb.end, wb.start));
   if (!x) return null;
   const nearer = (w: DocWall) => (distance(w.start, x) <= distance(w.end, x) ? 'start' : 'end');
   const ea = nearer(wa);

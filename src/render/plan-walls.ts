@@ -83,7 +83,7 @@ export function wallPainters(view: PlanView, d: WallPaintDeps) {
   // the walls are one colour, as before.
   const thick = (s: (typeof solids)[number]) => s.layers.reduce((t, l) => t + l.thickness, 0);
   // And only where the scale draws them (1:50 and larger): at 1:100 a wall is its outline, filled.
-  const detail = view.detail === 'fine' && (view.printing !== null || byLayers(normal.filter((s) => s.layers.length > 0 && s.plan === 'cut').map(thick), view.scale));
+  const detail = view.detail === 'fine' && (byLayers(normal.filter((s) => s.layers.length > 0 && s.plan === 'cut').map(thick), view.scale));
   // An overridden wall is its colour alone: no layers, no hatches.
   // A wall's own id (an arc's segments are "id#k", geometry/arc.ts) and its phase's colour, if phases are drawn.
   const phaseOf = (s: (typeof solids)[number]) => view.phases.get(s.wall.id.split('#')[0]!);

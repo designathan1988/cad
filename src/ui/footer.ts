@@ -15,12 +15,15 @@ import { measureHint } from './float-bar';
 import { guideOffset } from '../elements/guide/tool-ui';
 import * as appPlacing from '../session/app-placing';
 import * as appView from '../session/app-view';
-import { ceilingOf, fromOf, holeOf, pointsOf } from '../elements/tool-draft';
+import { ceilingOf, holeOf, pointsOf } from '../elements/tool-draft';
+import { pointBusy, pointTool } from '../session/point-tools';
 
 export function renderFooter(app: App): void {
   const { ui, shell } = app;
   // Footer: what to do now, the keys that work now, and the measure field.
   const drawing = ui.tool === 'wall';
+  // A beam, a separator, a curtain wall, a guardrail, a roof, a stair: their line and keys (point-tools.ts).
+  const pointing = pointTool(app);
   const w = ui.wall;
   const arc = w.kind !== 'rect' && w.arc === true;
   const rect = w.kind === 'rect' || (w.kind === 'idle' && w.rect === true);
@@ -88,44 +91,14 @@ export function renderFooter(app: App): void {
           ? t('hint.holeStart')
           : ceilingOf(ui.draft)
             ? t(pointsOf(ui.draft, 'floor').length > 0 ? 'hint.floorNext' : 'hint.ceilingPlace')
-            : t(pointsOf(ui.draft, 'floor').length > 0 ? 'hint.floorNext' : 'hint.floorPlace')
+            : t(pointsOf(ui.draft, 'floor').length > 0 ? 'hint.floorNext' : 'hint.floorPlace', { key: app.keyName('tool.floor') })
         : ui.tool === 'measure'
           ? measureHint(app)
-          : ui.tool === 'dimension'
-            ? t(ui.dimension.kind === 'idle' ? 'hint.dimensionStart' : ui.dimension.kind === 'from' ? 'hint.dimensionEnd' : 'hint.dimensionPlace')
-            : ui.tool === 'grid'
-              ? t(fromOf(ui.draft, 'grid') ? 'hint.gridEnd' : 'hint.gridStart')
-              : ui.tool === 'section'
-              ? t(fromOf(ui.draft, 'section') ? 'hint.sectionEnd' : 'hint.sectionStart')
-              : ui.tool === 'callout'
-              ? t(fromOf(ui.draft, 'callout') ? 'hint.calloutText' : 'hint.calloutPoint')
-              : ui.tool === 'calibrate'
-              ? t(ui.calibrate?.a ? 'hint.calibrateSecond' : 'hint.calibrateFirst')
-              : ui.tool === 'guide'
-                ? t(ui.guideMode === 'point' ? 'hint.guidePoint' : ui.guideMode === 'circle' ? (fromOf(ui.draft, 'guide') ? 'hint.guideRadius' : 'hint.guideCentre') : fromOf(ui.draft, 'guide') ? 'hint.guideSecond' : 'hint.guideFirst')
-              : ui.tool === 'column'
-                ? t('hint.columnPlace')
-                : ui.tool === 'object'
-                  ? t('hint.object', { name: objectName(app) })
-                : ui.tool === 'beam'
-                  ? t(fromOf(ui.draft, 'beam') ? 'hint.beamEnd' : 'hint.beamStart')
-                : ui.tool === 'separator'
-                  ? t(fromOf(ui.draft, 'beam') ? 'hint.separatorEnd' : 'hint.separatorStart')
-                : ui.tool === 'mark'
-                  ? t(ui.markMode === 'radius' ? 'hint.markRadius' : ui.markMode === 'coord' ? (pointsOf(ui.draft, 'mark').length === 0 ? 'hint.markCoordPoint' : 'hint.markCoordLabel') : pointsOf(ui.draft, 'mark').length === 0 ? 'hint.markAngleVertex' : pointsOf(ui.draft, 'mark').length === 1 ? 'hint.markAngleArm1' : 'hint.markAngleArm2')
-                : ui.tool === 'curtain'
-                  ? t(fromOf(ui.draft, 'beam') ? 'hint.curtainEnd' : 'hint.curtainStart')
-                : ui.tool === 'note'
-                  ? t('hint.notePlace')
-                : ui.tool === 'levelMark'
-                  ? t('hint.levelMarkPlace')
-                  : ui.tool === 'roof'
-                    ? t(pointsOf(ui.draft, 'roof').length > 0 ? 'hint.roofNext' : 'hint.roofStart')
-                    : ui.tool === 'stair'
-                      ? t(fromOf(ui.draft, 'stair') ? 'hint.stairDirection' : 'hint.stairStart')
-                      : ui.tool === 'railing'
-                        ? t(pointsOf(ui.draft, 'railing').length > 0 ? 'hint.railingNext' : 'hint.railingStart')
-                        : null;
+          : ui.tool === 'object'
+            ? t('hint.object', { name: objectName(app) })
+            : pointing
+              ? t(pointing.hint(app))
+              : null;
   const guideHint = ui.guide
     ? t('hint.guide', {
         d: lengthText(guideOffset(app) ?? 0),
@@ -142,7 +115,15 @@ export function renderFooter(app: App): void {
   // seemed impossible to turn off.
   // While a point is drawn from another: the arrows lock its direction.
   const lockKeys = ui.drawFrom ? [keyHint('→ ↑', t('key.lockAxis')), keyHint('← ↓', t('key.lockWall'))] : [];
-  const snapKey = keyHint('S', t(ui.snaps ? 'key.snapsOn' : 'key.snapsOff'));
+  // An action's key as the user has it (actions.ts, keymap.ts): a key changed in the keys dialog is taught
+  // here too; one turned off is not offered. The tools' own keys (C, Q, A, Enter, Esc in a tool…) are no
+  // actions and cannot be changed.
+  const actionKeys = new Map(app.actionList().flatMap((a) => (a.keys ? [[a.id, a.keys] as const] : [])));
+  const actionHint = (id: string, what: string) => {
+    const key = actionKeys.get(id);
+    return key ? [keyHint(key, what)] : [];
+  };
+  const snapKeys = actionHint('settings.snaps', t(ui.snaps ? 'key.snapsOn' : 'key.snapsOff'));
   const keys = ui.guide
     ? [keyHint('Enter', t('key.placeGuide')), keyHint('Esc', t('key.cancel'))]
     : ui.tool === 'split' || ui.tool === 'corner'
@@ -154,52 +135,35 @@ export function renderFooter(app: App): void {
         // Offset has no centre and no angle: its distance is square to the wall.
         ...(mod.state.step === 'base' && mod.kind !== 'move' && mod.kind !== 'copy' && mod.kind !== 'offset' ? [keyHint('Enter', t('key.centre'))] : []),
         ...(mod.kind !== 'offset' ? [keyHint('Shift', t('key.straight')), ...lockKeys] : []),
-        snapKey,
+        ...snapKeys,
         keyHint('Esc', t(mod.state.step === 'base' ? 'key.exit' : 'key.back')),
       ]
     : placing && appPlacing.placesLeaf(app, placing)
     ? [keyHint(t('key.spaceKey'), t('key.flipSwing')), keyHint('H', t('key.flipHinge')), keyHint('Esc', t('key.exit'))]
     : placing || ui.tool === 'room'
     ? [keyHint('Esc', t('key.exit'))]
-    : ui.tool === 'dimension'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(ui.dimension.kind === 'idle' ? 'key.exit' : 'key.back'))]
-    : ui.tool === 'grid'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(fromOf(ui.draft, 'grid') ? 'key.back' : 'key.exit'))]
-    : ui.tool === 'section'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(fromOf(ui.draft, 'section') ? 'key.back' : 'key.exit'))]
-    : ui.tool === 'callout'
-    ? [snapKey, keyHint('Esc', t(fromOf(ui.draft, 'callout') ? 'key.back' : 'key.exit'))]
-    : ui.tool === 'calibrate'
-    ? [snapKey, keyHint('Esc', t('key.exit'))]
-    : ui.tool === 'column'
-    ? [snapKey, keyHint('Esc', t('key.exit'))]
-    : ui.tool === 'guide'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(fromOf(ui.draft, 'guide') ? 'key.back' : 'key.exit'))]
     : ui.tool === 'object'
-    ? [keyHint(t('key.spaceKey'), t('key.turn90')), snapKey, keyHint('Esc', t('key.exit'))]
-    : ui.tool === 'beam' || ui.tool === 'separator' || ui.tool === 'curtain'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(fromOf(ui.draft, 'beam') ? 'key.finish' : 'key.exit'))]
-    : ui.tool === 'mark'
-    ? [snapKey, keyHint('Esc', t(pointsOf(ui.draft, 'mark').length > 0 ? 'key.back' : 'key.exit'))]
-    : ui.tool === 'stair'
-    ? [keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(fromOf(ui.draft, 'stair') ? 'key.back' : 'key.exit'))]
-    : ui.tool === 'railing'
-    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(pointsOf(ui.draft, 'railing').length > 0 ? 'key.finish' : 'key.exit'))]
-    : ui.tool === 'roof'
-    ? [keyHint('Enter', t('key.finish')), keyHint('Shift', t('key.straight')), ...lockKeys, snapKey, keyHint('Esc', t(pointsOf(ui.draft, 'roof').length > 0 ? 'key.back' : 'key.exit'))]
+    ? [keyHint(t('key.spaceKey'), t('key.turn90')), ...snapKeys, keyHint('Esc', t('key.exit'))]
+    : pointing
+    ? [
+        ...(pointing.enterShown ? [keyHint('Enter', t('key.finish'))] : []),
+        ...(pointing.straight !== false ? [keyHint('Shift', t('key.straight')), ...lockKeys] : []),
+        ...snapKeys,
+        keyHint('Esc', t(pointBusy(app, pointing) ? pointing.escapeIs : 'key.exit')),
+      ]
     : ui.tool === 'measure'
     ? [
         keyHint('C', t(ui.measureMode === 'chain' ? 'key.measureDistance' : 'key.measureChain')),
         ...(ui.measure.kind === 'chain' ? [keyHint('Enter', t('key.finish'))] : []),
         keyHint('Shift', t('key.straight')), ...lockKeys,
         ...altGuide,
-        snapKey,
+        ...snapKeys,
         keyHint('Esc', t(ui.measure.kind === 'idle' ? 'key.exit' : 'key.clearMeasure')),
       ]
     : ui.tool === 'floor'
-    ? [keyHint('Enter', t('key.finish')), ...altGuide, snapKey, keyHint('Esc', t('key.exit'))]
+    ? [keyHint('Enter', t('key.finish')), ...altGuide, ...snapKeys, keyHint('Esc', t('key.exit'))]
     : drawing && w.kind === 'rect'
-    ? [keyHint('Q', t('key.rectOff')), keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')), snapKey, keyHint('Esc', t('key.back'))]
+    ? [keyHint('Q', t('key.rectOff')), keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')), ...snapKeys, keyHint('Esc', t('key.back'))]
     : drawing
     ? w.kind !== 'idle'
       ? [
@@ -210,7 +174,7 @@ export function renderFooter(app: App): void {
           keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')),
           keyHint('Shift', t('key.straight')), ...lockKeys,
           ...altGuide,
-          snapKey,
+          ...snapKeys,
           keyHint('Esc', t('key.finish')),
         ]
       : [
@@ -219,7 +183,7 @@ export function renderFooter(app: App): void {
           keyHint('Q', t(rect ? 'key.rectOff' : 'key.rect')),
           keyHint(t('key.spaceKey'), t(ui.wallFlip ? 'key.flipSideOn' : 'key.flipSide')),
           ...altGuide,
-          snapKey,
+          ...snapKeys,
           keyHint('Esc', t('key.exit')),
         ]
     : ui.selection.size > 0
@@ -227,15 +191,15 @@ export function renderFooter(app: App): void {
           keyHint('Shift', t('key.addRemove')),
           // Said before the drag, where it is decided: during it was too late to be found.
           ...(app.selectedWalls().length > 0 ? [keyHint('Alt', t('key.dragAlone'))] : []),
-          ...(appPlacing.selectedDoor(app) ? [keyHint(t('key.spaceKey'), t('key.flipSwing')), keyHint('H', t('key.flipHinge'))] : []),
-          keyHint('Del', t('key.delete')),
-          keyHint('F', t('key.frame')),
-          keyHint('Esc', t('key.clear')),
+          ...(appPlacing.selectedDoor(app) ? [keyHint(t('key.spaceKey'), t('key.flipSwing')), ...actionHint('edit.flipHinge', t('key.flipHinge'))] : []),
+          ...actionHint('edit.delete', t('key.delete')),
+          ...actionHint('view.frameSelection', t('key.frame')),
+          ...actionHint('edit.clearSelection', t('key.clear')),
         ]
       : ui.view === '3d'
         ? // In 3D a left drag selects by window, as in plan: how to turn the view was nowhere on screen.
-          [keyHint(t('key.rightDrag'), t('key.orbit')), keyHint(t('key.middleDrag'), t('key.pan')), keyHint('Ctrl K', t('key.commands')), keyHint('?', t('key.shortcuts'))]
-        : [keyHint('Ctrl K', t('key.commands')), keyHint('Ctrl A', t('key.selectAll')), keyHint('?', t('key.shortcuts'))];
+          [keyHint(t('key.rightDrag'), t('key.orbit')), keyHint(t('key.middleDrag'), t('key.pan')), ...actionHint('help.commands', t('key.commands')), ...actionHint('help.shortcuts', t('key.shortcuts'))]
+        : [...actionHint('help.commands', t('key.commands')), ...actionHint('edit.selectAll', t('key.selectAll')), ...actionHint('help.shortcuts', t('key.shortcuts'))];
   shell.keys.replaceChildren(...keys);
   const lengthMode = drawing && w.kind === 'drawing';
   // Where a point is asked for: the wall's start, a floor's corners, a room's point.

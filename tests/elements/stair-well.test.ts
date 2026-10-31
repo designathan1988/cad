@@ -36,8 +36,9 @@ describe('a stair well', () => {
     const s = stairSolid(stair('u'), 2.8, 0);
     const well = stairWell(s);
     expect(signedArea(well)).toBeGreaterThan(0);
-    // 16 risers: 8 steps up, the landing, 7 back: two flights of 1 m, 8 × 0.28 + 1 long, less one step on one side.
-    expect(Math.abs(signedArea(well))).toBeCloseTo(2 * (8 * 0.28 + 1) - 0.28, 6);
+    // 16 risers: 8 steps up, the landing, 6 back (the last riser lands on the floor above): two flights of
+    // 1 m, 8 × 0.28 + 1 long, less two steps on one side.
+    expect(Math.abs(signedArea(well))).toBeCloseTo(2 * (8 * 0.28 + 1) - 2 * 0.28, 6);
   });
 
   it('cuts the floor it reaches (and only that one): its area less the well', () => {
@@ -47,7 +48,8 @@ describe('a stair well', () => {
     expect(wellsReaching(doc, 2.0)).toHaveLength(0);
     const f = deriveGeometry(doc).kinds.get('floors')!.get('floor_f') as FloorSolid;
     expect(f.holes).toHaveLength(1);
-    expect(f.area).toBeCloseTo(8 * 7 - 16 * 0.28 * 1, 6);
+    // 16 risers, 15 treads: the last riser lands on this floor.
+    expect(f.area).toBeCloseTo(8 * 7 - 15 * 0.28 * 1, 6);
     // Its own setting closes it.
     const closed = deriveGeometry(docOf(stair('straight', { well: false }))).kinds.get('floors')!.get('floor_f') as FloorSolid;
     expect(closed.holes).toHaveLength(0);
@@ -64,8 +66,9 @@ describe('winders', () => {
   it("turn an L's corner by three steps and a U's by six, each a riser, none a landing", () => {
     const l = stairSolid(stair('l', { winders: true }), 2.8, 0);
     const u = stairSolid(stair('u', { winders: true }), 2.8, 0);
-    expect(l.parts).toHaveLength(16);
-    expect(u.parts).toHaveLength(16);
+    // 16 risers, 15 parts: the last riser lands on the floor above.
+    expect(l.parts).toHaveLength(15);
+    expect(u.parts).toHaveLength(15);
     expect(l.parts.every((p) => !p.landing) && u.parts.every((p) => !p.landing)).toBe(true);
     // Each part one riser above the one before, from the first to the last.
     for (const s of [l, u]) s.parts.forEach((p, i) => expect(p.top).toBeCloseTo((i + 1) * s.riser, 9));

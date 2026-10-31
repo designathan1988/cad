@@ -6,16 +6,17 @@ import type { Field } from '../fields';
 import { t } from '../../i18n/messages';
 import type { CurtainPatch } from './commands';
 import type { CurtainSolid } from './geometry';
-import type { GridRule } from './schema';
+import { type Curtain, type GridRule, panelsThatFit } from './schema';
 
 export interface CurtainFieldActions {
-  readonly updateCurtains: (ids: readonly string[], patch: CurtainPatch) => void;
+  readonly updateCurtains: (ids: readonly string[], patch: CurtainPatch | ((c: Curtain) => CurtainPatch)) => void;
 }
 
 const MODES = ['spacing', 'count', 'max'] as const;
 
 export function curtainFields(items: readonly CurtainSolid[], act: CurtainFieldActions): Field<CurtainSolid>[] {
   const ids = items.map((s) => s.curtain.id);
+  const byId = new Map(items.map((s) => [s.curtain.id, s]));
   const same = (f: (s: CurtainSolid) => string) => (xs: readonly CurtainSolid[]) => (xs.every((x) => f(x) === f(xs[0]!)) ? f(xs[0]!) : t('panel.varies'));
   // A direction's division: its way (a select) and its value, a length or a number of panels.
   const grid = (key: 'vertical' | 'horizontal'): Field<CurtainSolid>[] => [
@@ -26,16 +27,17 @@ export function curtainFields(items: readonly CurtainSolid[], act: CurtainFieldA
       icon: key === 'vertical' ? 'width' : 'height',
       options: MODES.map((m) => ({ value: m, label: t(`curtain.mode.${m}`) })),
       get: (s) => s.curtain[key].mode,
-      // A number of panels from a spacing keeps about the same panels, and back.
+      // A number of panels from a spacing keeps about the same panels, and back: each from its own size and
+      // panels (from the first one's, every other one took its count).
       set: (v) =>
-        act.updateCurtains(ids, {
-          [key]: ((): GridRule => {
-            const c = items[0]!;
-            const total = key === 'vertical' ? c.length : c.top - c.bottom;
-            const lines = key === 'vertical' ? c.verticals : c.horizontals;
-            const panels = Math.max(1, lines.length - 1);
-            return v === 'count' ? { mode: 'count', value: panels } : { mode: v as GridRule['mode'], value: Math.round((total / panels) * 100) / 100 };
-          })(),
+        act.updateCurtains(ids, (cur) => {
+          const c = byId.get(cur.id);
+          if (!c) return {};
+          const total = key === 'vertical' ? c.length : c.top - c.bottom;
+          const lines = key === 'vertical' ? c.verticals : c.horizontals;
+          const panels = Math.max(1, lines.length - 1);
+          const rule: GridRule = v === 'count' ? { mode: 'count', value: panels } : { mode: v as GridRule['mode'], value: Math.round((total / panels) * 100) / 100 };
+          return { [key]: rule };
         }),
     },
     {
@@ -46,7 +48,8 @@ export function curtainFields(items: readonly CurtainSolid[], act: CurtainFieldA
       min: 0.1,
       when: (xs) => xs.every((s) => s.curtain[key].mode !== 'count'),
       get: (s) => s.curtain[key].value,
-      set: (v) => act.updateCurtains(ids, { [key]: { mode: items[0]!.curtain[key].mode, value: v } }),
+      // Each keeps its own way (a spacing or a maximum): from the first one's, the others changed theirs.
+      set: (v) => act.updateCurtains(ids, (c) => ({ [key]: { mode: c[key].mode, value: v } })),
     },
     {
       id: `${key}Count`,
@@ -58,7 +61,11 @@ export function curtainFields(items: readonly CurtainSolid[], act: CurtainFieldA
       min: 1,
       when: (xs) => xs.every((s) => s.curtain[key].mode === 'count'),
       get: (s) => s.curtain[key].value,
-      set: (v) => act.updateCurtains(ids, { [key]: { mode: 'count', value: Math.max(1, Math.round(v)) } }),
+      // No more than the shortest selected one can take (schema.ts: panelsThatFit), so the field says what is drawn.
+      set: (v) => {
+        const fit = Math.min(...items.map((s) => panelsThatFit(key === 'vertical' ? s.length : s.top - s.bottom)));
+        act.updateCurtains(ids, { [key]: { mode: 'count', value: Math.min(Math.max(1, Math.round(v)), fit) } });
+      },
     },
   ];
   return [

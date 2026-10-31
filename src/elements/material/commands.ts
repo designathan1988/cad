@@ -9,6 +9,7 @@ import type { Command } from '../../core/store';
 import { isPattern } from './pattern';
 import { isPhysics } from './physics';
 import { CUT_PATTERNS, isColor, type Material, type MaterialId } from './schema';
+import { ROOF_COVERING } from '../roof/schema';
 
 const unit = (n: number) => Number.isFinite(n) && n >= 0 && n <= 1;
 const usable = (m: Material): boolean => isColor(m.color) && unit(m.roughness) && unit(m.metalness) && CUT_PATTERNS.includes(m.cut) && (m.pattern === undefined || isPattern(m.pattern)) && (m.physics === undefined || isPhysics(m.physics));
@@ -38,14 +39,15 @@ export const updateMaterial = (id: MaterialId, patch: MaterialPatch): Command<Do
 });
 
 /**
- * How many things are made of it: wall type layers, floor layers, rooms' finishes and object
- * definitions. Counting only the walls' layers showed a floor's tiles or a table's wood as unused,
- * and let them be deleted.
+ * How many things are made of it: wall type layers, floor layers, rooms' finishes, roofs' coverings
+ * (one with none is drawn in the default's) and object definitions. Counting only the walls' layers
+ * showed a floor's tiles, a roof's tiles or a table's wood as unused, and let them be deleted.
  */
 export const materialUses = (doc: Doc, id: MaterialId): number =>
   doc.wallTypes.reduce((n, t) => n + t.layers.filter((l) => l.materialId === id).length, 0) +
   doc.floors.reduce((n, f) => n + (f.layers ?? []).filter((l) => l.materialId === id).length, 0) +
   doc.rooms.reduce((n, r) => n + [r.finishes?.floor, r.finishes?.wall, r.finishes?.ceiling].filter((m) => m === id).length, 0) +
+  doc.roofs.filter((r) => (r.covering ?? ROOF_COVERING).materialId === id).length +
   doc.definitions.filter((d) => definitionMaterials([d]).has(id)).length;
 
 /** Why a material cannot be deleted: layers use it, or it is the last one. Null when it can be. */

@@ -23,8 +23,8 @@ export const guideKind: ElementKind<Guide, Guide> = {
   one: 'guide.title',
   many: 'guide.titleMany',
   dropped: 'fix.droppedGuides',
-  exportName: 'guide.title',
-  exportColour: 'structure',
+
+
   valid: (g): g is Guide =>
     isObject(g) &&
     typeof g.id === 'string' &&

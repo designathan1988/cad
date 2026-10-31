@@ -13,6 +13,7 @@ import { deriveGeometry } from '../project/derive';
 import { roomOf } from '../project/derived-queries';
 import { DRAFT_SECTION_ID } from '../elements/section/schema';
 import { drawFrom, fromOf } from '../elements/tool-draft';
+import { inEveryLanguage } from '../i18n/messages';
 
 /** How deep a new section sees: the far side of the model from its line, and a metre past it; 10 m with nothing. */
 export function depthFrom(app: App, start: Point2, end: Point2): number {
@@ -76,10 +77,12 @@ export function addElevations(app: App): void {
     app.toast(t('section.nothing'));
     return;
   }
-  const have = new Set(doc.sections.filter((m) => m.kind === 'elevation').map((m) => m.name));
+  // A side is made when an elevation round the model (one with no level) has its name in any language:
+  // by the name in the language on now, switching it made four more beside them.
+  const have = new Set(doc.sections.filter((m) => m.kind === 'elevation' && m.levelId === undefined).map((m) => m.name));
   const marks = elevationsAround(box, 3)
-    .map((e): SectionMark => ({ id: newSectionId(), name: t(`section.side.${e.side}`), kind: 'elevation', start: e.start, end: e.end, depth: e.depth }))
-    .filter((m) => !have.has(m.name));
+    .filter((e) => !inEveryLanguage(`section.side.${e.side}`).some((n) => have.has(n)))
+    .map((e): SectionMark => ({ id: newSectionId(), name: t(`section.side.${e.side}`), kind: 'elevation', start: e.start, end: e.end, depth: e.depth }));
   if (marks.length === 0) {
     app.toast(t('section.allMade'));
     return;

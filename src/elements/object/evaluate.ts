@@ -6,9 +6,9 @@
 
 import { type Material, materialIn } from '../material/schema';
 import { type Env, evaluateFormula, type Value } from './formula';
-import type { Expr, HandleDef, MeshData, ObjectDefinition, ObjectInstance, ParamDef, Part, Words } from './schema';
+import type { Expr, HandleDef, MeshData, ObjectDefinition, ObjectInstance, Part, Words } from './schema';
 import { pieceSpan } from './piece-shape';
-import { held, kelvinColour } from './param-limits';
+import { kelvinColour, values } from './param-limits';
 
 /** A piece in the world: a box (its centre, size and turn) or an upright cylinder (its base's centre); `cut`, a void
  * taken out of the solid pieces. */
@@ -68,6 +68,13 @@ export interface ObjectContext {
 
 const MAX_REPEAT = 500;
 const MAX_DEPTH = 4;
+/**
+ * The most pieces one object makes, its nested objects' included: each part may repeat 500 times and
+ * nest four deep, so a shelf of boxes of items (from a file or a library link), or a count mistyped,
+ * reached 10⁴ to 10⁸ pieces and froze the page. Past it the object stops growing, and says so.
+ */
+const MAX_PIECES = 5000;
+type Budget = { left: number; said: boolean };
 
 type Frame = { readonly x: number; readonly y: number; readonly z: number; readonly angle: number };
 
@@ -76,45 +83,6 @@ const apply = (f: Frame, p: { x: number; y: number; z: number }) => {
   const s = Math.sin(f.angle);
   return { x: f.x + p.x * c - p.y * s, y: f.y + p.x * s + p.y * c, z: f.z + p.z };
 };
-
-/** Each parameter's value: given (instance, then type, then default), held to its range and step. */
-function values(def: ObjectDefinition, given: Readonly<Record<string, number | string>>, problems: string[]): { env: Record<string, number>; materials: Record<string, string> } {
-  const env: Record<string, number> = {};
-  const materials: Record<string, string> = {};
-  for (const p of def.params) {
-    if (p.formula !== undefined) continue;
-    const raw = given[p.name] ?? p.default;
-    if (p.kind === 'material') {
-      materials[p.name] = typeof raw === 'string' ? raw : String(p.default);
-      continue;
-    }
-    let v = typeof raw === 'number' ? raw : Number(raw);
-    if (!Number.isFinite(v)) {
-      problems.push(`${p.name}: not a number`);
-      v = typeof p.default === 'number' ? p.default : 0;
-    }
-    env[p.name] = held(p, v, def);
-  }
-  // Calculated parameters, each once its names are known: as many rounds as there are of them.
-  const calculated = def.params.filter((p) => p.formula !== undefined);
-  let pending = calculated;
-  for (let round = 0; round <= calculated.length && pending.length > 0; round++) {
-    const next: ParamDef[] = [];
-    for (const p of pending) {
-      const v = evaluateFormula(p.formula!, env);
-      if (v.ok) env[p.name] = p.kind === 'integer' ? Math.round(v.value) : v.value;
-      else next.push(p);
-    }
-    if (next.length === pending.length) break;
-    pending = next;
-  }
-  for (const p of pending) {
-    const v = evaluateFormula(p.formula!, env);
-    problems.push(`${p.name} = ${p.formula}: ${v.ok ? 'circular' : v.error}`);
-    env[p.name] = typeof p.default === 'number' ? p.default : 0;
-  }
-  return { env, materials };
-}
 
 /**
  * An object as it stands. A length made smaller than its type's so far that parts of the object vanish
@@ -161,8 +129,20 @@ export function evaluateObject(def: ObjectDefinition, o: ObjectInstance, c: Obje
   return { ...out, warnings: [...notes, ...out.warnings] };
 }
 
-function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number | string>>, frame: Frame, c: ObjectContext, depth: number): ObjectEval {
+function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number | string>>, frame: Frame, c: ObjectContext, depth: number, budget: Budget = { left: MAX_PIECES, said: false }): ObjectEval {
   const problems: string[] = [];
+  // A piece more, while the whole object has room for it; past that, said once.
+  const take = (): boolean => {
+    if (budget.left > 0) {
+      budget.left--;
+      return true;
+    }
+    if (!budget.said) {
+      budget.said = true;
+      problems.push(`at most ${MAX_PIECES} pieces in one object`);
+    }
+    return false;
+  };
   const { env, materials } = values(def, given, problems);
   const pieces: Piece[] = [];
   const lights: PlacedLight[] = [];
@@ -214,6 +194,7 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
           continue;
         }
         const centre = apply(frame, { x: ox + w / 2, y: oy + d / 2, z: oz });
+        if (!take()) break;
         pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'mesh', cx: centre.x, cy: centre.y, z: centre.z, w, d, h, angle: frame.angle, mesh, material: materialOf(part) });
       } else if (part.kind === 'box') {
         const w = num(part.w, at, `${label} width`);
@@ -238,6 +219,7 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         const [ux, uy] = [rx - w / 2, ty - d / 2];
         const centre = apply(frame, { x: ox + w / 2 + ux * Math.cos(turn) - uy * Math.sin(turn), y: oy + d / 2 + ux * Math.sin(turn) + uy * Math.cos(turn), z: oz + rz });
         const leaning = { ...(Math.abs(tilt) > 1e-9 ? { tilt } : {}), ...(Math.abs(roll) > 1e-9 ? { roll } : {}) };
+        if (!take()) break;
         pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'box', cx: centre.x, cy: centre.y, z: centre.z, w, d, h, angle: frame.angle + turn, material: materialOf(part), round: Math.max(0, Math.min(round, Math.min(w, d, h) / 2 - 1e-4)), ...leaning });
       } else if (part.kind === 'cylinder') {
         const r = num(part.r, at, `${label} radius`);
@@ -253,6 +235,7 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         const roll = ((part.roll === undefined ? 0 : (num(part.roll, at, `${label} roll`) ?? 0)) * Math.PI) / 180;
         const turn = ((part.turn === undefined ? 0 : (num(part.turn, at, `${label} turn`) ?? 0)) * Math.PI) / 180;
         const leaning = Math.abs(tilt) > 1e-9 || Math.abs(roll) > 1e-9 ? { tilt, roll, angle: frame.angle + turn } : {};
+        if (!take()) break;
         pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'cylinder', cx: centre.x, cy: centre.y, z: centre.z, r: Math.max(0, r), r2: Math.max(0, r2), h, material: materialOf(part), ...leaning });
       } else if (part.kind === 'revolve') {
         const raw = part.points.map(([pr, pz], k) => ({ r: num(pr, at, `${label} r${k + 1}`), z: num(pz, at, `${label} z${k + 1}`) }));
@@ -267,6 +250,7 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
           continue;
         }
         const centre = apply(frame, { x: ox, y: oy, z: oz + low });
+        if (!take()) break;
         pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'revolve', cx: centre.x, cy: centre.y, z: centre.z, h, r, profile, material: materialOf(part) });
       } else if (part.kind === 'profile') {
         const h = num(part.h, at, `${label} height`);
@@ -285,6 +269,7 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         }
         if (area < 0) points = [...points].reverse();
         const base = apply(frame, { x: ox, y: oy, z: oz });
+        if (!take()) break;
         pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'profile', cx: base.x, cy: base.y, z: base.z, h, points, material: materialOf(part) });
       } else if (part.kind === 'sphere') {
         const r = num(part.r, at, `${label} radius`);
@@ -300,6 +285,7 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
         const [tilt, roll, turn] = [deg(part.tilt, 'tilt'), deg(part.roll, 'roll'), deg(part.turn, 'turn')];
         // An ellipsoid or a leaning one keeps its shape's own axes; a plain one is as it was.
         const shaped = Math.abs(ry - r) > 1e-9 || Math.abs(tilt) > 1e-9 || Math.abs(roll) > 1e-9 || Math.abs(turn) > 1e-9 ? { ry: Math.max(1e-4, ry), tilt, roll, angle: frame.angle + turn } : {};
+        if (!take()) break;
         pieces.push({ ...(part.cut ? { cut: true } : {}), kind: 'sphere', cx: centre.x, cy: centre.y, z: centre.z, r, h, material: materialOf(part), ...shaped });
       } else {
         const inner = c.definitions.find((d) => d.id === part.definition);
@@ -322,7 +308,7 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
           }
         }
         const origin = apply(frame, { x: ox, y: oy, z: oz });
-        const inside = evaluateIn(inner, childValues, { ...origin, angle: frame.angle + (turn * Math.PI) / 180 }, c, depth + 1);
+        const inside = evaluateIn(inner, childValues, { ...origin, angle: frame.angle + (turn * Math.PI) / 180 }, c, depth + 1, budget);
         pieces.push(...inside.pieces);
         lights.push(...inside.lights);
         lost += inside.lost;
@@ -330,7 +316,15 @@ function evaluateIn(def: ObjectDefinition, given: Readonly<Record<string, number
       }
     }
   });
-  const handles = depth === 0 ? def.handles.flatMap((h) => placeHandle(h, env, frame, problems)) : [];
+  // A handle drags its parameter: none while that parameter is not shown (its `when` false). A kettle
+  // barbecue showed the brick one's width handle, which changed nothing on it.
+  const shown = (name: string): boolean => {
+    const when = def.params.find((p) => p.name === name)?.when;
+    if (when === undefined) return true;
+    const v = evaluateFormula(when, env);
+    return !v.ok || v.value !== 0;
+  };
+  const handles = depth === 0 ? def.handles.filter((h) => shown(h.param)).flatMap((h) => placeHandle(h, env, frame, problems)) : [];
   // A length or a number outside its usual range: said, not changed.
   const outside: Words[] =
     depth === 0

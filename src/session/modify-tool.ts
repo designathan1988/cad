@@ -68,7 +68,8 @@ export function previewTransform(kind: ModifyKind, state: ModifyState, cursor: P
   if (!cursor || state.step === 'base') return null;
   const { base } = state;
   if (state.step === 'second') {
-    if (kind === 'move' || kind === 'copy') return translation(sub(cursor, base));
+    // No step under a millimetre, as the other tools: a copy clicked back on its base lay on the originals.
+    if (kind === 'move' || kind === 'copy') return distance(cursor, base) >= MIN_WALL_LENGTH ? translation(sub(cursor, base)) : null;
     if (kind === 'mirror') return distance(cursor, base) >= MIN_WALL_LENGTH ? reflection(base, cursor) : null;
     return null;
   }

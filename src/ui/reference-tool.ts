@@ -39,16 +39,22 @@ async function pdfPicture(file: File): Promise<string> {
   const worker = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
   pdfjs.GlobalWorkerOptions.workerSrc = worker;
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
-  const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: PDF_DPI / 72 });
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.ceil(viewport.width);
-  canvas.height = Math.ceil(viewport.height);
-  const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  await page.render({ canvasContext: ctx, viewport }).promise;
-  return canvas.toDataURL('image/png');
+  // Its document and worker let go once the page is a picture, read or not (pdfjs-dist 4.10:
+  // destroy "terminates the worker"): every PDF imported left one alive.
+  try {
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: PDF_DPI / 72 });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    return canvas.toDataURL('image/png');
+  } finally {
+    await pdf.destroy();
+  }
 }
 
 /** A file as a reference on the current level: its middle at the plan's, a DXF where its own coordinates put it. */
@@ -68,10 +74,13 @@ export async function importReference(app: App, file: File): Promise<void> {
       app.store.dispatch(addReference(r));
       app.toast(left ? t('ref.dxfSome', { n: d.lines.length / 4, left }) : t('ref.dxfMade', { n: d.lines.length / 4 }));
     } else {
-      const data = /\.pdf$/i.test(name) || file.type === 'application/pdf' ? await pdfPicture(file) : await dataUrl(file);
+      // A PDF by its name or its type, the same for its picture and its scale: by the name alone, one with no
+      // .pdf came in at a picture's scale, about six times too large.
+      const pdf = /\.pdf$/i.test(name) || file.type === 'application/pdf';
+      const data = pdf ? await pdfPicture(file) : await dataUrl(file);
       const { w, h } = await pictureSize(data);
       // A PDF page: a pixel of it at 1:100 on paper (calibrated after); a picture: a pixel a centimetre.
-      const scale = /\.pdf$/i.test(name) ? (0.0254 / PDF_DPI) * 100 : IMAGE_SCALE;
+      const scale = pdf ? (0.0254 / PDF_DPI) * 100 : IMAGE_SCALE;
       const mid = app.plan.center;
       r = { ...base, source: { kind: 'image', data, w, h }, at: { x: mid.x - (w * scale) / 2, y: mid.y - (h * scale) / 2 }, scale };
       app.store.dispatch(addReference(r));

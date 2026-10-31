@@ -6,7 +6,7 @@ import { POINT_TOLERANCE } from '../../model/tolerance';
 import { add, distance, dot, normalize, type Point2, scale, sub } from '../../model/vector';
 import { arcOf } from '../wall/geometry/arc';
 import type { WallId } from '../wall/schema';
-import type { Opening, OpeningGroup, OpeningGroupId, OpeningId } from './schema';
+import type { AlignEdge, Opening, OpeningGroup, OpeningGroupId, OpeningId } from './schema';
 
 /** What an opening needs of its wall: the reference line's length, the wall's height, and the line itself when straight. */
 export interface HostInfo {
@@ -83,6 +83,26 @@ export function groupStretch(g: OpeningGroup, host: HostInfo | undefined): { fro
   return from < to ? { from, to } : { from: 0, to: length };
 }
 
+/** Station along `onto`'s line of a point at station s along `from`'s line (both straight). */
+const across = (from: HostInfo, s: number, onto: HostInfo): number => {
+  const f = from.line!;
+  const t = onto.line!;
+  const p = add(f.start, scale(normalize(sub(f.end, f.start)), s));
+  return dot(sub(p, t.start), normalize(sub(t.end, t.start)));
+};
+
+/**
+ * Where an opening `width` wide starts on `onto` aligned by `edge` with one at `refStart`, `refWidth`
+ * wide, on `from`: the other's jambs carried square across onto its wall.
+ */
+export function alignedStart(from: HostInfo, refStart: number, refWidth: number, onto: HostInfo, width: number, edge: AlignEdge): number {
+  const a = across(from, refStart, onto);
+  const b = across(from, refStart + refWidth, onto);
+  const lo = Math.min(a, b);
+  const hi = Math.max(a, b);
+  return edge === 'start' ? lo : edge === 'end' ? hi - width : (lo + hi - width) / 2;
+}
+
 export function deriveOpenings(
   openings: readonly Opening[],
   hosts: ReadonlyMap<WallId, HostInfo>,
@@ -153,14 +173,6 @@ export function deriveOpenings(
     return starts;
   };
 
-  // Station along `onto`'s line of a point at station s along `from`'s line.
-  const across = (from: HostInfo, s: number, onto: HostInfo): number => {
-    const f = from.line!;
-    const t = onto.line!;
-    const p = add(f.start, scale(normalize(sub(f.end, f.start)), s));
-    return dot(sub(p, t.start), normalize(sub(t.end, t.start)));
-  };
-
   const starts = new Map<OpeningId, number>();
   const startOf = (o: Opening): number => {
     const known = starts.get(o.id);
@@ -175,14 +187,7 @@ export function deriveOpenings(
     else if (r.kind === 'inGroup') s = startsInGroup(groupById.get(r.groupId)!).get(o.id)!;
     else if (r.kind === 'aligned') {
       const ref = byId.get(r.openingId)!;
-      const refStart = startOf(ref);
-      const from = hosts.get(ref.wallId)!;
-      const onto = hosts.get(o.wallId)!;
-      const a = across(from, refStart, onto);
-      const b = across(from, refStart + ref.width, onto);
-      const lo = Math.min(a, b);
-      const hi = Math.max(a, b);
-      s = r.edge === 'start' ? lo : r.edge === 'end' ? hi - o.width : (lo + hi - o.width) / 2;
+      s = alignedStart(hosts.get(ref.wallId)!, startOf(ref), ref.width, hosts.get(o.wallId)!, o.width, r.edge);
     } else {
       const ref = byId.get(r.openingId)!;
       const refStart = startOf(ref);

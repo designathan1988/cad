@@ -13,6 +13,8 @@ import { kindOfId, levelOfSolid } from '../elements/registry';
 import { placeBarY } from './bar-place';
 import * as appView from '../session/app-view';
 import { placedOf, solidOf } from '../project/derived-queries';
+import { tipOf } from '../session/actions';
+import { GRID_BUBBLE_PX } from '../elements/kinds/grid';
 
 /** The footer for the measure tool: what to click, or what the tape read. */
 export function measureHint(app: App): string {
@@ -29,7 +31,7 @@ export function measureHint(app: App): string {
     return t(angle === null ? 'hint.chainSoFar' : 'hint.chainSoFarAngle', { total: lengthText(chainLength(pts, false)), n: n - 1, last: lengthText(distance(pts[n - 2]!, pts[n - 1]!)), a: angleNum(angle ?? 0) });
   }
   if (m.kind === 'chainDone') {
-    if (m.closed) return t('hint.areaDone', { area: areaText(chainArea(m.points)), p: lengthText(chainLength(m.points, true)), n: m.points.length });
+    if (m.closed) return t('hint.areaDone', { area: ((a) => (a === null ? t('meas.crosses') : areaText(a)))(chainArea(m.points)), p: lengthText(chainLength(m.points, true)), n: m.points.length });
     return t('hint.chainDone', { total: lengthText(chainLength(m.points, false)), n: m.points.length - 1 });
   }
   const r = reading(m.a, m.b);
@@ -39,7 +41,8 @@ export function measureHint(app: App): string {
 export function placeFloatBar(app: App): void {
   const bar = app.shell.floatBar;
   const entries = app.ui.selection.size > 0 ? contextEntries(app, () => app.openCommands()) : [];
-  const key = `${getLang()}|${entries.map((e) => e.id).join(',')}`;
+  // The keys too: one the user changes (the keys dialog) shows in the buttons' tips at once.
+  const key = `${getLang()}|${entries.map((e) => `${e.id}:${e.keys ?? ''}`).join(',')}`;
   if (key !== app.floatKey) {
     app.floatKey = key;
     bar.replaceChildren(
@@ -48,7 +51,7 @@ export function placeFloatBar(app: App): void {
         b.type = 'button';
         b.className = 'icon-btn';
         b.innerHTML = icon(e.icon);
-        b.title = e.keys ? `${e.label} (${e.keys})` : e.label;
+        b.title = tipOf(e);
         b.setAttribute('aria-label', b.title);
         // The buttons outlive the selection they were made for (they are rebuilt only when the set of
         // actions changes): the action is looked up at the click, for what is selected then. Kept from
@@ -71,6 +74,18 @@ export function placeFloatBar(app: App): void {
     x = (a.x + b.x) / 2;
     yTop = a.y;
     yBottom = b.y;
+    // An axis is drawn past its ends, with a bubble at each (kinds/grid.ts): the bar lay on one.
+    for (const g of app.store.get().grids.filter((x) => app.ui.selection.has(x.id))) {
+      const s = app.plan.toScreen(g.start);
+      const e = app.plan.toScreen(g.end);
+      const len = Math.hypot(e.x - s.x, e.y - s.y) || 1;
+      const u = { x: (e.x - s.x) / len, y: (e.y - s.y) / len };
+      for (const [q, k] of [[s, -1], [e, 1]] as const) {
+        const cy = q.y + u.y * GRID_BUBBLE_PX * k;
+        yTop = Math.min(yTop, cy - GRID_BUBBLE_PX);
+        yBottom = Math.max(yBottom, cy + GRID_BUBBLE_PX);
+      }
+    }
   } else {
     // The selection's screen box: every vertex of its pieces, at the bottom and at the top.
     const xs: number[] = [];
@@ -126,9 +141,10 @@ export function placeFloatBar(app: App): void {
   // on a phone after F it sat on the handle at an arc's end (the tester's R04).
   const h0 = appView.handles(app);
   const grip = (p: Point2) => ({ top: p.y - 12, bottom: p.y + 12, left: p.x - 12, right: p.x + 12 });
+  // Nor over the views' card in the corner (plan/3D, level, browser): it covered the level list.
   const boxes = [
     ...[...h0.squares, ...h0.arrows, ...(h0.bulge ? [h0.bulge] : []), ...(h0.rotate ? [h0.rotate] : [])].map((x) => grip(x.at)),
-    ...[...app.shell.dims.children].map((c) => c.getBoundingClientRect()).map((r) => ({ top: r.top - vp.top, bottom: r.bottom - vp.top, left: r.left - vp.left, right: r.right - vp.left })),
+    ...[...app.shell.dims.children, app.shell.viewCorner].map((c) => c.getBoundingClientRect()).map((r) => ({ top: r.top - vp.top, bottom: r.bottom - vp.top, left: r.left - vp.left, right: r.right - vp.left })),
     ...(app.ui.view === 'plan' ? app.plan.labelBoxes.map((b) => ({ top: b.y, bottom: b.y + b.h, left: b.x, right: b.x + b.w })) : []),
   ];
   const y = placeBarY({ left, w, h }, { top: yTop, bottom: yBottom }, boxes, { h: covered });

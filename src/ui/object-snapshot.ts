@@ -11,7 +11,7 @@ import { cutGeometries } from '../elements/kinds/object';
 import { evaluateObject } from '../elements/object/evaluate';
 import type { ObjectDefinition } from '../elements/object/schema';
 import { standInObjectId } from '../elements/object/schema';
-import { NO_LEVEL } from '../project/doc';
+import { NO_LEVEL_ID } from '../project/doc';
 
 type Stage = { renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; group: THREE.Group; sun: THREE.DirectionalLight; ground: THREE.Mesh };
 const shared = { stage: null as Stage | null };
@@ -21,8 +21,10 @@ const SUPERSAMPLE = 2;
 /** The stage, or null where the browser has no WebGL (the picture is then left out). */
 function stageOf(): Stage | null {
   if (shared.stage) return shared.stage;
+  // WebGL asked of a canvas of its own: a canvas keeps its first context, so asked of the renderer's one it
+  // was the probe's, without the renderer's options (the drawing buffer not kept).
+  if (!document.createElement('canvas').getContext('webgl2')) return null;
   const canvas = document.createElement('canvas');
-  if (!canvas.getContext('webgl2')) return null;
   // Read back as an image right after drawing: the buffer kept until then.
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
   // Lit as the realistic 3D view: filmic tone mapping, so whites are not flat and blown out.
@@ -58,7 +60,7 @@ function stageOf(): Stage | null {
 
 /** The picture as a data URL, w × h device pixels, at the given type (its first by default); null with nothing to draw or no WebGL. */
 export function objectSnapshot(def: ObjectDefinition, doc: Doc, w: number, h: number, typeId = def.types[0]?.id ?? ''): string | null {
-  const ev = evaluateObject(def, { id: standInObjectId('snapshot'), levelId: NO_LEVEL, definitionId: def.id, typeId, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
+  const ev = evaluateObject(def, { id: standInObjectId('snapshot'), levelId: NO_LEVEL_ID, definitionId: def.id, typeId, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
   if (ev.pieces.length === 0) return null;
   // Glass seen through, as in the 3D view (scene-3d.ts).
   return meshSnapshot(cutGeometries(ev.pieces).map(({ piece: p, geometry }) => previewMesh(geometry, p.material, SEE_THROUGH[p.material.id])), w, h);

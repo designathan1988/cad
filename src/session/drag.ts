@@ -15,7 +15,6 @@ import type { DocWall } from '../project/doc';
 import { detachedFrom, ungroupOpenings, wallRule } from '../elements/opening/commands';
 import type { Opening, OpeningGroup } from '../elements/opening/schema';
 import { offsetThrough, placeDimension } from '../elements/dimension/anchor';
-import { wallsOnGrids } from '../elements/grid/carry';
 import { eachSolid, kindIds, kindLists, moveKinds } from '../elements/registry';
 import { setDimensionOffset } from '../elements/dimension/commands';
 import { ruleAt } from '../elements/opening/tool';
@@ -27,6 +26,7 @@ import { wallsIn } from '../elements/wall/schema';
 import type { ElementId } from '../core/id';
 import type { OpeningId } from '../elements/opening/schema';
 import type { HandleDrag } from './object-handles';
+import { geometryOf } from '../project/carry';
 
 // The select tool's gestures. Click: select (Shift adds or removes). Drag a wall: move the selection,
 // with joins kept and a live preview (the rooms all of whose walls go, go too); with Alt the walls move
@@ -111,7 +111,7 @@ function smartBoxes(app: App, selected: ReadonlySet<string>): { box: Box; others
   const add = (id: string, pts: readonly Point2[]) => {
     const b = boxOf(pts);
     if (!b) return;
-    if (selected.has(id)) mine.push(...pts);
+    if (selected.has(id)) for (const p of pts) mine.push(p);
     else others.push(b);
   };
   for (const s of g.solids.values()) add(s.wall.id, s.pieces.flatMap((p) => p.polygon));
@@ -122,7 +122,7 @@ function smartBoxes(app: App, selected: ReadonlySet<string>): { box: Box; others
 /** An arc's middle let go this near its chord (px) makes the wall straight, with snaps on. */
 const STRAIGHT_PX = 8;
 /** Reach of an end grip from its centre: larger than the 9 px square drawn; 22 px (a 44 px target) on touch. */
-const gripPx = (): number => (matchMedia('(pointer: coarse)').matches ? 22 : 8);
+const gripPx = (): number => (matchMedia('(any-pointer: coarse)').matches ? 22 : 8);
 
 export interface SelectGestures {
   readonly down: (screen: Point2, world: Point2 | null, hit: ElementId | null, shift: boolean) => void;
@@ -174,13 +174,12 @@ export function selectGestures(app: App): SelectGestures {
       if (pending && !drag) {
         if (distance(screen, pending.screen) < THRESHOLD_PX) return;
         const doc = app.store.get();
-        // The walls on a selected axis go with it (elements/grid/carry.ts).
-        const moving = [...doc.walls.filter((w) => ui.selection.has(w.id)).map((w) => w.id), ...wallsOnGrids(doc, [...ui.selection])];
-        const carried = new Set(wallsOnGrids(doc, [...ui.selection]));
+        // An axis moves alone: the walls and columns on its line are not tied to it (no link the user made).
+        const moving = doc.walls.filter((w) => ui.selection.has(w.id)).map((w) => w.id);
         const going = () => roomsGoingWith(doc, app.geometry, ui.selection);
         const rooms = new Set([...going(), ...doc.rooms.filter((r) => ui.selection.has(r.id)).map((r) => r.id)]);
         // The rooms go as a drag takes them (a turn too: `rooms`), not again as the registry's.
-        const kinds = new Set([...kindIds(doc, [...ui.selection, ...carried])].filter((id) => !rooms.has(id)));
+        const kinds = new Set([...kindIds(doc, [...ui.selection])].filter((id) => !rooms.has(id)));
         const only = ui.selection.size === 1 ? [...ui.selection][0]! : null;
         const sliding = only !== null ? doc.openings.find((o) => o.id === only) : undefined;
         const placed = sliding ? app.geometry.openings.get(sliding.id) : undefined;
@@ -301,8 +300,7 @@ export function selectGestures(app: App): SelectGestures {
     up(shift) {
       collide = null;
       const d = ui.drag;
-      const clicked = pending?.kind === 'wall' && !d;
-      pending = null;
+      const clicked = pending?.kind === 'wall' && !d;      pending = null;
       ui.drag = null;
       ui.snap = null;
       ui.smart = null;
@@ -311,7 +309,7 @@ export function selectGestures(app: App): SelectGestures {
         // The rooms whose walls all went along go too (carry.ts): one undo step for both.
         const before = app.store.get();
         const rooms = moveRooms(before.rooms, d.rooms, dragTransform(d));
-        const kinds = d.kind === 'move' ? moveKinds(before, d.kinds, d.delta) : before;
+        const kinds = d.kind === 'move' ? moveKinds(before, d.kinds, d.delta, geometryOf(before)) : before;
         const walls = setWalls(d.walls);
         // One undo step for the walls and what went with them; a room, a floor, a guide or a note alone is a move too.
         const moved = rooms.some((r, i) => r !== before.rooms[i]) || kinds !== before;

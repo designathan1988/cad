@@ -13,9 +13,12 @@ import type { EndJoin, HeightRule, ReferenceLine, WallTypeId } from './schema';
 import { canAlignWalls, canDistributeWalls } from './arrange';
 import type { LevelId } from '../../project/doc';
 import { levelIn } from '../../project/doc';
+import type { WallPatch } from './commands';
+import { withLiveType } from './types';
+import type { WallId } from './schema';
 
 export interface WallFieldActions {
-  readonly updateWalls: (patch: Partial<Omit<DocWall, 'id'>>) => void;
+  readonly updateWalls: (patch: WallPatch) => void;
   /** Another reference line for the selected walls, their bodies kept where they are. */
   readonly setReferenceLine: (line: ReferenceLine) => void;
   /** Another type for the selected walls: the face against their room kept, or their reference line (keepClear). */
@@ -36,6 +39,9 @@ export interface WallFieldActions {
   readonly endSides?: readonly ['top' | 'bottom' | 'left' | 'right', 'top' | 'bottom' | 'left' | 'right'];
   /** The first selected wall, the reference for aligning: its number on the plan. */
   readonly firstWall?: string;
+  /** Whether each end of the one selected wall is in an L of two straight walls (start, end): elsewhere a
+   * chosen miter, through, stop or square does nothing (footprint.ts), so only automatic and off are offered. */
+  readonly endChoosable?: readonly [boolean, boolean];
 }
 
 const REFS: readonly { value: ReferenceLine; key: MessageKey; short: MessageKey; icon: 'refCenter' | 'refExterior' | 'refInterior' }[] = [
@@ -124,7 +130,7 @@ export function wallFields(
         kind: 'select',
         options: topOptions(doc),
         get: (w) => top(w).kind,
-        set: (v) => act.updateWalls({ top: topRule(v, levelAbove(doc, sel()[0]?.levelId)) }),
+        set: (v) => act.updateWalls((w, d) => ({ top: topRule(d, w, v, levelAbove(d, sel()[0]?.levelId)) })),
         own: (ws) => ws.some((w) => wallOverrides(doc, w).top),
         reset: () => act.resetToType(['top']),
       },
@@ -254,7 +260,15 @@ export function wallFields(
           label: act.endSides ? (`panel.join.${act.endSides[end === 'start' ? 0 : 1]}` as const) : end === 'start' ? 'panel.joinStart' : 'panel.joinEnd',
           kind: 'select',
           when: one,
-          options: JOINS.map((j) => ({ value: j, label: t(`join.${j}`) })),
+          // Not at an L: automatic and off only, and a choice kept from an L said to do nothing here.
+          options: (() => {
+            if (act.endChoosable?.[end === 'start' ? 0 : 1] ?? true) return JOINS.map((j) => ({ value: j, label: t(`join.${j}`) }));
+            const kept = selected[0]?.joins?.[end];
+            return JOINS.filter((j) => j === 'auto' || j === 'off' || j === kept).map((j) => ({
+              value: j,
+              label: j === 'auto' || j === 'off' ? t(`join.${j}`) : t('join.noEffect', { join: t(`join.${j}`) }),
+            }));
+          })(),
           get: (w) => w.joins?.[end] ?? 'auto',
           set: (v) => act.setEndJoin(end, v as EndJoin | 'auto'),
         }),
@@ -285,77 +299,67 @@ function levelAbove(doc: Doc, levelId: LevelId | undefined): LevelId | undefined
   return (own ? others.find((l) => l.elevation > own.elevation) : undefined)?.id ?? others[others.length - 1]?.id;
 }
 
-/** A new top of the kind chosen; up to a level, the one given (the one above the walls'). */
-function topRule(kind: string, above: LevelId | undefined): HeightRule {
-  if (kind === 'fixed') return { kind: 'fixed', height: 2.8 };
+/**
+ * A new top of the kind chosen for a wall, from its top now: a fixed height is the height it has; at its
+ * level's height or up to a level (the one given, above the walls'), the offset a level top had carries
+ * over (Revit's Top Offset), and from a fixed or roof top the offset keeps the wall's top where it is.
+ * Built from constants, a 3.20 m wall made "fixed" dropped to 2.80 m and an offset was lost.
+ */
+function topRule(doc: Doc, wall: DocWall, kind: string, above: LevelId | undefined): HeightRule {
+  const now = wallTop(doc, wall);
+  const h = wallHeights(doc, wall);
+  if (kind === now.kind) return now;
+  if (kind === 'fixed') return { kind: 'fixed', height: h.top - h.bottom };
   if (kind === 'roof') return { kind: 'roof' };
-  if (kind === 'toLevel' && above) return { kind: 'toLevel', levelId: above, offset: 0 };
-  return { kind: 'level', offset: 0 };
+  const level = doc.levels.find((l) => l.id === (kind === 'toLevel' && above ? above : wall.levelId));
+  const kept = now.kind === 'level' || now.kind === 'toLevel' ? now.offset : level ? h.top - (kind === 'toLevel' ? level.elevation : level.elevation + level.height) : 0;
+  if (kind === 'toLevel' && above) return { kind: 'toLevel', levelId: above, offset: kept };
+  return { kind: 'level', offset: kept };
 }
 
 /** The text when all agree, else "varies". */
 const sameText = (texts: readonly string[]) => (texts.every((x) => x === texts[0]) ? texts[0]! : t('panel.varies'));
 
-/** The settings of the next walls the tool draws: the same choices as a wall's, from the same fields. */
-export function nextWallFields(doc: Doc, update: (patch: Partial<WallDefaults>) => void): Field<WallDefaults>[] {
-  const types = doc.wallTypes.map((w) => ({ value: w.id, label: name(w.name), keywords: w.name, thumb: layerSwatch(w.layers, doc.materials) }));
-  return [
-    { id: 'type', label: 'panel.type', kind: 'search', options: types, get: (d) => d.wallTypeId, set: (v) => {
-      const type = doc.wallTypes.find((x) => x.id === v);
-      if (type) update({ wallTypeId: type.id });
-    } },
-    {
-      id: 'reference',
-      label: 'panel.reference',
-      kind: 'segmented',
-      options: REFS.map((r) => ({ value: r.value, label: t(r.key), short: t(r.short), icon: r.icon })),
-        // The icons alone did not say which line each was: their names beside them, across the panel.
-        labelled: true,
-        wide: true,
-      get: (d) => d.referenceLine,
-      set: (v) => update({ referenceLine: v as ReferenceLine }),
-    },
-    { id: 'baseOffset', label: 'panel.baseOffset', kind: 'number', get: (d) => d.baseOffset, set: (v) => update({ baseOffset: v }) },
-    {
-      id: 'top',
-      label: 'panel.top',
-      kind: 'select',
-      // The next walls go on the level shown: up to a level, the highest other one.
-      options: topOptions(doc),
-      get: (d) => d.top.kind,
-      set: (v) => update({ top: topRule(v, levelAbove(doc, undefined)) }),
-    },
-    {
-      id: 'topLevelId',
-      label: 'panel.topToWhich',
-      kind: 'select',
-      sub: true,
-      when: (ds) => ds[0]!.top.kind === 'toLevel',
-      options: doc.levels.map((l) => ({ value: l.id, label: name(l.name) })),
-      get: (d) => (d.top.kind === 'toLevel' ? d.top.levelId : ''),
-      set: (v) => {
-        const levelId = levelIn(doc.levels, v);
-        if (levelId) update({ top: { kind: 'toLevel', levelId, offset: 0 } });
-      },
-    },
-    {
-      id: 'topOffset',
-      label: 'panel.offset',
-      kind: 'number',
-      sub: true,
-      when: (ds) => ds[0]!.top.kind === 'level',
-      get: (d) => (d.top.kind === 'level' ? d.top.offset : 0),
-      set: (v) => update({ top: { kind: 'level', offset: v } }),
-    },
-    {
-      id: 'topHeight',
-      label: 'panel.height',
-      kind: 'number',
-      sub: true,
-      min: 0.01,
-      when: (ds) => ds[0]!.top.kind === 'fixed',
-      get: (d) => (d.top.kind === 'fixed' ? d.top.height : 0),
-      set: (v) => update({ top: { kind: 'fixed', height: v } }),
-    },
-  ];
+/** The template's id: never a wall's (theirs start with "wall_"), as next-element.ts's NEXT_ID. */
+const NEXT_WALL_ID = '__next__' as WallId;
+
+/** The fields a wall not yet drawn has: its type, line, base and top (its level is the one shown; its phase, joins and measures are a placed wall's). */
+const NEXT_WALL = new Set(['type', 'reference', 'baseOffset', 'top', 'topLevelId', 'topLevelOffset', 'topOffset', 'topHeight']);
+
+/**
+ * The next walls the tool draws, as a wall (Revit's type and instance properties before the click; the
+ * other kinds' next element, app/next-element.ts): a template wall made of the tool's settings on the
+ * level shown, with the same fields as a selected wall (wallFields), those a placed wall alone has left
+ * out. A change to the template is a change to the settings.
+ */
+export function nextWall(doc: Doc, chosen: WallDefaults, levelId: LevelId, update: (patch: Partial<WallDefaults>) => void): { readonly fields: Field<DocWall>[]; readonly item: DocWall } {
+  // Its type as the wall tool will draw it (types.ts: withLiveType), not one deleted since.
+  const defaults = withLiveType(doc, chosen);
+  const item: DocWall = { id: NEXT_WALL_ID, wallTypeId: defaults.wallTypeId, referenceLine: defaults.referenceLine, start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, levelId, baseOffset: defaults.baseOffset, top: defaults.top };
+  // The type's own base and top: what "back to the type's" sets.
+  const { baseOffset: _b, top: _t, ...bare } = item;
+  const settings = (set: WallPatch) => {
+    const patch = typeof set === 'function' ? set(item, doc) : set;
+    update({
+      ...(patch.wallTypeId !== undefined ? { wallTypeId: patch.wallTypeId } : {}),
+      ...(patch.referenceLine !== undefined ? { referenceLine: patch.referenceLine } : {}),
+      ...(patch.baseOffset !== undefined ? { baseOffset: patch.baseOffset } : {}),
+      ...(patch.top !== undefined ? { top: patch.top } : {}),
+    });
+  };
+  const act: WallFieldActions = {
+    updateWalls: settings,
+    setReferenceLine: (line) => update({ referenceLine: line }),
+    setWallType: (typeId) => update({ wallTypeId: typeId }),
+    keepClear: false,
+    setKeepClear: () => undefined,
+    resetToType: (fields) => update(Object.fromEntries(fields.map((f) => [f, f === 'top' ? wallTop(doc, bare) : wallBase(doc, bare)]))),
+    editType: () => undefined,
+    updateRadius: () => undefined,
+    arrangeWalls: () => undefined,
+    setEndJoin: () => undefined,
+  };
+  const all = wallFields(doc, act, [item]);
+  const fields = [...all.general, ...all.constraints].filter((f) => NEXT_WALL.has(f.id));
+  return { fields, item };
 }

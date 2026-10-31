@@ -19,15 +19,22 @@ export type CurtainPatch = {
   readonly panel?: 'glass' | 'opaque';
 };
 
-export const updateCurtains = (ids: readonly string[], patch: CurtainPatch): Command<Doc> => ({
+/** Whether a patch's values are ones a curtain wall may take. */
+const validPatch = (patch: CurtainPatch): boolean =>
+  ![patch.height, patch.mullion, patch.depth].some((v) => v !== undefined && !(Number.isFinite(v) && v > 0)) &&
+  (patch.baseOffset === undefined || Number.isFinite(patch.baseOffset)) &&
+  ![patch.vertical, patch.horizontal].some((r) => r !== undefined && !isGridRule(r));
+
+/** The same patch on each, or one worked out from each (its own division kept, say). One bad patch: no change. */
+export const updateCurtains = (ids: readonly string[], patchOf: CurtainPatch | ((c: Curtain) => CurtainPatch)): Command<Doc> => ({
   label: 'cmd.updateCurtain',
   apply: (doc) => {
-    if ([patch.height, patch.mullion, patch.depth].some((v) => v !== undefined && !(Number.isFinite(v) && v > 0))) return doc;
-    if (patch.baseOffset !== undefined && !Number.isFinite(patch.baseOffset)) return doc;
-    if ([patch.vertical, patch.horizontal].some((r) => r !== undefined && !isGridRule(r))) return doc;
+    const patches = new Map(doc.curtains.filter((c) => ids.includes(c.id)).map((c) => [c.id, typeof patchOf === 'function' ? patchOf(c) : patchOf]));
+    if ([...patches.values()].some((p) => !validPatch(p))) return doc;
     let changed = false;
     const curtains = doc.curtains.map((c) => {
-      if (!ids.includes(c.id)) return c;
+      const patch = patches.get(c.id);
+      if (!patch) return c;
       const next = { ...c, ...patch };
       if (JSON.stringify(next) === JSON.stringify(c)) return c;
       changed = true;

@@ -20,6 +20,7 @@ import { currentDims } from '../ui/temp-dims';
 import * as sceneCamera from '../render/scene-camera';
 import * as sceneCut from '../render/scene-cut';
 import * as appView from './app-view';
+import { NO_LEVEL } from '../project/doc';
 
 /** The section box on, around what the 3D shows, or off. */
 export function toggleBox(app: App): void {
@@ -186,9 +187,9 @@ export function keepSelectionInView(app: App): boolean {
   // Larger than the free part (a phone's): zoomed out about its middle first, then measured again,
   // since the dimensions stand off by pixels (the tester's P07: the view only panned and cut it).
   let screen = onScreen();
-  // Larger than the whole window at this zoom (the terrain, a long wall seen up close): the user is
-  // looking at part of it on purpose. A new selection of it moves nothing: at 880 px a click on the
-  // terrain zoomed the plan out to the whole lot.
+  // Larger than the whole window at this zoom (a long wall seen up close): the user is looking at part
+  // of it on purpose. A new selection of it moves nothing: at 880 px a click on it zoomed the plan out
+  // to the whole of it.
   if (!resized && !reshaped && (screen.right - screen.left > view.w || screen.bottom - screen.top > view.h)) return false;
   const k = fitFactor(screen, view, cover, room);
   if (k < 1) {
@@ -216,9 +217,9 @@ export function keepSelectionInView3d(app: App): boolean {
   if (cover.right === 0 && cover.bottom === 0 && !cover.left) return false;
   const box = boundsOf(app.geometry, app.ui.selection);
   if (!box) return false;
-  const level = levelOf(app.store.get(), app.ui.levelId);
-  const z0 = (level?.elevation ?? 0) + appView.lift(app, app.ui.levelId);
-  const z1 = z0 + (level?.height ?? 2.8);
+  const level = levelOf(app.store.get(), app.ui.levelId) ?? NO_LEVEL;
+  const z0 = level.elevation + appView.lift(app, app.ui.levelId);
+  const z1 = z0 + level.height;
   const pts = [box.min, box.max, { x: box.min.x, y: box.max.y }, { x: box.max.x, y: box.min.y }].flatMap((p) => [appView.projectAt(app, p, z0), appView.projectAt(app, p, z1)]).filter((p): p is Point2 => p !== null);
   if (pts.length === 0) return false;
   const vp = app.shell.viewport.getBoundingClientRect();
@@ -301,7 +302,7 @@ export function sectionAtGuide(app: App, flip = false): void {
   app.framed['3d'] = true;
   // From the cut side, looking across the line at what it keeps.
   sceneCamera.frame(app.scene, boundsOf(app.visibleGeometry()), appView.height(app), new THREE.Vector3(-n.x, 0, n.y));
-  app.toast(t('toast.section'));
+  app.toast(t('toast.section', { key: app.keyName('help.commands') }));
   app.render();
 }
 

@@ -15,6 +15,7 @@ import { EDIT_LEVELS } from '../session/state';
 import { renderRibbon } from './ribbon';
 import { renderFooter } from './footer';
 import { placeFloatBar } from './float-bar';
+import { tipOf } from '../session/actions';
 
 /** The parts the snaps divide a segment into, as the palette's (actions.ts). */
 const SNAP_PARTS = [2, 3, 4, 5, 6, 8, 10];
@@ -49,6 +50,33 @@ export function renderChrome(app: App): void {
   shell.redo.disabled = !store.canRedo();
   shell.view3d.setAttribute('aria-pressed', String(ui.view === '3d'));
   shell.viewPlan.setAttribute('aria-pressed', String(ui.view === 'plan'));
+  // The title bar's, the view buttons' and the snaps button's tips: each its action's name and key as the
+  // user has it (a key changed in the keys dialog shows here as in the palette); the command search's key cap
+  // too. Written only when they change.
+  const byId = new Map(app.actionList().map((a) => [a.id, a]));
+  const tipFrom = (b: HTMLElement, id: string, label = true) => {
+    const a = byId.get(id);
+    if (!a || b.title === tipOf(a)) return;
+    b.title = tipOf(a);
+    if (label) b.setAttribute('aria-label', tipOf(a));
+  };
+  tipFrom(shell.undo, 'edit.undo');
+  tipFrom(shell.redo, 'edit.redo');
+  tipFrom(shell.commands, 'help.commands');
+  tipFrom(shell.shortcuts, 'help.shortcuts');
+  tipFrom(shell.lang, 'settings.language');
+  tipFrom(shell.save, 'file.save');
+  tipFrom(shell.open, 'file.open');
+  tipFrom(shell.snapBtn, 'settings.snaps');
+  // Their visible words name them: the key in the tip only.
+  tipFrom(shell.view3d, 'view.3d', false);
+  tipFrom(shell.viewPlan, 'view.plan', false);
+  const commandsKey = byId.get('help.commands')?.keys ?? '';
+  const cap = shell.commands.querySelector<HTMLElement>('.kbd');
+  if (cap && cap.textContent !== commandsKey) {
+    cap.textContent = commandsKey;
+    cap.hidden = commandsKey === '';
+  }
   renderRibbon(app);
   shell.lang.textContent = getLang().toUpperCase();
   // Rewritten only when it changes: replacing the icon under the pointer between press and release
@@ -139,6 +167,11 @@ export function renderChrome(app: App): void {
   // Gone once the wall tool is on: "press W" no longer applies, and the footer says what to click.
   // Only on an empty project: a column, a roof or a note drawn first is under it otherwise.
   shell.emptyHint.hidden = doc.walls.length > 0 || elementIds(doc).size > 0 || ui.tool !== 'select';
+  // With the wall tool's key as the user has it.
+  if (!shell.emptyHint.hidden) {
+    const empty = t('empty.hint', { key: app.keyName('tool.wall') });
+    if (shell.emptyHint.textContent !== empty) shell.emptyHint.textContent = empty;
+  }
   // Hidden or isolated for a while: the drawing framed, and a way back, as Revit's cyan frame says.
   shell.viewport.classList.toggle('temp-view', ui.temp !== null);
   shell.tempChip.hidden = ui.temp === null;

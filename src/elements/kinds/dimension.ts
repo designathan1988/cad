@@ -27,8 +27,6 @@ export interface DimensionSolid {
   readonly at: Placed | null;
 }
 
-/** Text height of a dimension's value in the DXF (m). */
-const DXF_H = 0.12;
 
 const isAnchor = (a: unknown): boolean =>
   isObject(a) &&
@@ -46,8 +44,8 @@ export const dimensionKind: ElementKind<Dimension, DimensionSolid> = {
   many: 'dim.titleMany',
   hint: 'dim.held',
   dropped: 'fix.droppedDimensions',
-  exportName: 'dim.title',
-  exportColour: 'structure',
+
+
   valid: (d): d is Dimension =>
     isObject(d) &&
     typeof d.id === 'string' &&
@@ -117,34 +115,7 @@ export const dimensionKind: ElementKind<Dimension, DimensionSolid> = {
   keepOut: (p, s) => (s.at ? { boxes: [valueBox(p, s.at, valueText(s))], lines: [{ a: p.toScreen(s.at.la), b: p.toScreen(s.at.lb) }] } : null),
   // As lines and a text, as R12 readers all draw them: the extension lines, the dimension line, a tick at
   // each end, the value over the middle.
-  dxf: (s, out) => {
-    const d = s.at;
-    if (!d) return;
-    const ux = (d.lb.x - d.la.x) / d.length;
-    const uy = (d.lb.y - d.la.y) / d.length;
-    const off = Math.hypot(d.la.x - d.a.x, d.la.y - d.a.y);
-    const nx = off > 1e-9 ? (d.la.x - d.a.x) / off : -uy;
-    const ny = off > 1e-9 ? (d.la.y - d.a.y) / off : ux;
-    const past = (q: Point2, k: number) => ({ x: q.x + nx * k, y: q.y + ny * k });
-    let angle = (Math.atan2(uy, ux) * 180) / Math.PI;
-    if (angle > 90) angle -= 180;
-    if (angle <= -90) angle += 180;
-    const textAt = { x: (d.la.x + d.lb.x) / 2 + nx * DXF_H, y: (d.la.y + d.lb.y) / 2 + ny * DXF_H };
-    // A DIMENSION a CAD program edits as one, its drawing this one (the lines and text below), when the
-    // writer can; else the drawing alone.
-    const drawing = () => {
-      if (off > 1e-9) {
-        out.line('A-ANNO-DIMS', past(d.a, Math.min(0.05, off)), past(d.la, 0.1));
-        out.line('A-ANNO-DIMS', past(d.b, Math.min(0.05, off)), past(d.lb, 0.1));
-      }
-      out.line('A-ANNO-DIMS', d.la, d.lb);
-      const k = 0.08;
-      for (const q of [d.la, d.lb]) out.line('A-ANNO-DIMS', { x: q.x - (ux + nx) * k, y: q.y - (uy + ny) * k }, { x: q.x + (ux + nx) * k, y: q.y + (uy + ny) * k });
-      out.text('A-ANNO-DIMS', textAt, DXF_H, valueText(s), angle);
-    };
-    if (out.dimension) out.dimension('A-ANNO-DIMS', { a: d.a, b: d.b, la: d.la, lb: d.lb, textAt, value: valueText(s) }, drawing);
-    else drawing();
-  },
+
   // What each measures now: null when an end's element is gone.
   fields: (items, { dispatch }) =>
     throughElement(

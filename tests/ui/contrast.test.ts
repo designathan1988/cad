@@ -53,6 +53,8 @@ const pairs: [string, string, number, string][] = [
   ['--wall-sel', '--canvas', 3, 'selection on the drawing'],
   ['--accent', '--bg', 3, 'focus ring and pressed tools'],
   ['--border-strong', '--bg', 3, 'dialog edges'],
+  ['--title-text', '--title-bg', 4.5, 'text on the title bar'],
+  ['--title-text-2', '--title-bg', 4.5, 'quiet text on the title bar'],
   // Walls in plan by layer: the outline and the lines between layers on every layer's colour. A line
   // is 1 px and antialiasing takes some of it (the tester measured 2.95 on a pixel at a 3.1 token
   // pair): 4.5 between the tokens keeps it above 3 on screen.

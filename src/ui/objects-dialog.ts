@@ -13,7 +13,7 @@ import { pieceOutline, pieceSpan } from '../elements/object/piece-shape';
 import { words } from '../elements/object/fields';
 import { type ObjectDefinition } from '../elements/object/schema';
 import { libraryOf, mergeLibrary } from '../io/library-file';
-import { el } from './controls';
+import { blockedBy, el } from './controls';
 import { openProjectDialog } from './dialog';
 import { editDefinition } from './definition-editor';
 import { getLang, type MessageKey, t } from '../i18n/messages';
@@ -23,8 +23,13 @@ import { download, fileBase } from '../project/files';
 import * as appPlacing from '../session/app-placing';
 import { folderButton, iconButton, storeSearch, textButton } from './store-parts';
 import { standInObjectId } from '../elements/object/schema';
-import { NO_LEVEL } from '../project/doc';
+import { NO_LEVEL_ID } from '../project/doc';
 import { newDefinitionId } from '../elements/object/schema';
+import { nextCopy } from '../i18n/messages';
+import { pictureQueue } from './store-pictures';
+import { fold } from './search';
+import { showMenu } from './menu';
+import { defaultName } from '../i18n/messages';
 
 /** A new definition: one box, its width, depth and height, handles on them, one type. */
 export function blankDefinition(n: number): ObjectDefinition {
@@ -47,9 +52,6 @@ export function blankDefinition(n: number): ObjectDefinition {
 /** The folder a definition is kept in: its own, or its category's name. */
 export const folderOf = (d: ObjectDefinition): string => d.folder?.trim() || t(`ed.cat.${d.category}` as MessageKey);
 
-/** Text for comparing: no accents, no case. */
-const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-
 /** Whether a definition answers a search: by its name in either language or its folder. */
 export const answers = (d: ObjectDefinition, query: string): boolean => {
   const q = fold(query.trim());
@@ -58,7 +60,7 @@ export const answers = (d: ObjectDefinition, query: string): boolean => {
 
 /** A definition's thumbnail: its pieces in plan at its first type, the highest drawn last, in their materials' colours. */
 export function thumbnailSvg(def: ObjectDefinition, doc: Doc): string | null {
-  const ev = evaluateObject(def, { id: standInObjectId('thumb'), levelId: NO_LEVEL, definitionId: def.id, typeId: def.types[0]?.id ?? '', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
+  const ev = evaluateObject(def, { id: standInObjectId('thumb'), levelId: NO_LEVEL_ID, definitionId: def.id, typeId: def.types[0]?.id ?? '', at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
   const rings = [...ev.pieces].filter((p) => !p.cut).sort((a, b) => a.z + a.h - (b.z + b.h)).map((p) => ({ ring: pieceOutline(p), color: /^#[0-9a-f]{3,8}$/i.test(p.material.color) ? p.material.color : 'none' }));
   const all = rings.flatMap((r) => r.ring);
   if (all.length === 0) return null;
@@ -87,7 +89,7 @@ function pictureOf(doc: Doc, def: ObjectDefinition, typeId: string, make: boolea
 
 /** An object's size at a type, from its pieces: across, deep and high (m). */
 function sizeOf(def: ObjectDefinition, doc: Doc, typeId: string): { w: number; d: number; h: number } | null {
-  const ev = evaluateObject(def, { id: standInObjectId('size'), levelId: NO_LEVEL, definitionId: def.id, typeId, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
+  const ev = evaluateObject(def, { id: standInObjectId('size'), levelId: NO_LEVEL_ID, definitionId: def.id, typeId, at: { x: 0, y: 0 }, angle: 0, elevation: 0, values: {} }, { definitions: doc.definitions, materials: doc.materials });
   const solid = ev.pieces.filter((p) => !p.cut);
   if (solid.length === 0) return null;
   const pts = solid.flatMap((p) => pieceOutline(p));
@@ -111,7 +113,6 @@ export function showObjects(app: App, first?: string): void {
   let chosen = first ?? app.store.get().definitions[0]?.id ?? '';
   let query = '';
   let folder = ALL;
-  let menu = false;
   // Where the cards were scrolled: kept as the dialog redraws (a type chosen, a card), back to the top for
   // another folder or search; null until drawn (the chosen card is brought into view then).
   let scrolled: number | null = null;
@@ -122,31 +123,7 @@ export function showObjects(app: App, first?: string): void {
     fileInput.value = '';
     if (file) void importLibrary(app, file).then((said) => app.toast(said));
   });
-  // Pictures not made yet, made one at a time after the dialog is drawn, each put in its card when ready.
-  let pending: ObjectDefinition[] = [];
-  let working = false;
-  const work = () => {
-    if (working) return;
-    working = true;
-    const step = () => {
-      const def = pending.shift();
-      const host = app.shell.helpBack;
-      if (!def || !host.querySelector('.objs-store')) {
-        working = false;
-        return;
-      }
-      const doc = app.store.get();
-      const typeId = def.types[0]?.id ?? '';
-      const src = pictureOf(doc, def, typeId, true);
-      const img = host.querySelector<HTMLImageElement>(`img[data-picture="${CSS.escape(def.id)}"]`);
-      if (img && src) {
-        img.src = src;
-        img.classList.remove('is-loading');
-      }
-      setTimeout(step, 0);
-    };
-    setTimeout(step, 0);
-  };
+  const queue = pictureQueue<ObjectDefinition>(() => app.shell.helpBack, (d) => d.id, (d) => pictureOf(app.store.get(), d, d.types[0]?.id ?? '', true));
   const render = (close: () => void): HTMLElement => {
     const doc = app.store.get();
     const lang = getLang() === 'pt' ? 'pt-BR' : 'en';
@@ -171,45 +148,46 @@ export function showObjects(app: App, first?: string): void {
       dialog.redraw();
     });
     const more = iconButton('more', t('objs.more'), 'more', () => {
-      menu = !menu;
-      dialog.redraw();
+      // The library's actions in the app's menu (menu.ts), under the button: arrows, Home, End and letters move
+      // in it, Esc closes it alone, a click elsewhere too. A list of its own had none of that, and Esc closed
+      // the whole store.
+      const r = more.getBoundingClientRect();
+      more.setAttribute('aria-expanded', 'true');
+      showMenu(
+        [
+          {
+            label: t('objs.new'),
+            run: () => {
+              const fresh = blankDefinition(doc.definitions.length + 1);
+              close();
+              editDefinition(app, fresh, true, () => showObjects(app, fresh.id));
+            },
+          },
+          { label: t('objs.import'), run: () => fileInput.click() },
+          // The file: every definition with the materials they use (io/library-file.ts).
+          {
+            label: t('objs.export'),
+            run: () => {
+              const text = JSON.stringify(libraryOf(app.store.get(), null), null, 2);
+              download(app, `${fileBase(app)}-objetos.json`, new Blob([text], { type: 'application/json' }), 'application/json');
+            },
+          },
+        ],
+        { x: r.left, y: r.bottom + 4 },
+        t('objs.more'),
+        0,
+        () => more.setAttribute('aria-expanded', 'false'),
+      );
     });
-    more.setAttribute('aria-expanded', String(menu));
-    // Its tip stood over the menu it opens: none while it is open.
-    if (menu) more.removeAttribute('title');
-    const menuItem = (label: string, focus: string, run: () => void) => {
-      const b = el('button', { type: 'button', class: 'objs-menu-item', role: 'menuitem' }, label);
-      b.dataset.focus = focus;
-      b.addEventListener('click', () => {
-        menu = false;
-        run();
-      });
-      return b;
-    };
-    const libraryMenu = el(
-      'div',
-      { class: 'objs-menu', role: 'menu', 'aria-label': t('objs.more') },
-      menuItem(t('objs.new'), 'new', () => {
-        const fresh = blankDefinition(doc.definitions.length + 1);
-        close();
-        editDefinition(app, fresh, true, () => showObjects(app, fresh.id));
-      }),
-      menuItem(t('objs.import'), 'import', () => fileInput.click()),
-      // The file: every definition with the materials they use (io/library-file.ts).
-      menuItem(t('objs.export'), 'export', () => {
-        const text = JSON.stringify(libraryOf(app.store.get(), null), null, 2);
-        download(app, `${fileBase(app)}-objetos.json`, new Blob([text], { type: 'application/json' }), 'application/json')
-        dialog.redraw();
-      }),
-    );
-    libraryMenu.hidden = !menu;
+    more.setAttribute('aria-haspopup', 'menu');
+    more.setAttribute('aria-expanded', 'false');
     const head = el(
       'div',
       { class: 'objs-head' },
       el('h2', {}, t('objs.title')),
       search,
       el('span', { class: 'objs-total' }, t('objs.countAll', { n: found.length })),
-      el('div', { class: 'objs-menu-wrap' }, more, libraryMenu),
+      el('div', { class: 'objs-menu-wrap' }, more),
       iconButton('close', t('help.close'), 'close', close),
       fileInput,
     );
@@ -226,7 +204,7 @@ export function showObjects(app: App, first?: string): void {
     for (const name of [...counts.keys()].sort((x, y) => x.localeCompare(y, lang))) nav.append(navItem(name, name, counts.get(name)!));
 
     // The cards.
-    pending = [];
+    queue.clear();
     const grid = el('div', { class: 'objs-grid', role: 'group', 'aria-label': t('objs.list') });
     grid.addEventListener('scroll', () => (scrolled = grid.scrollTop));
     if (scrolled !== null) {
@@ -239,20 +217,22 @@ export function showObjects(app: App, first?: string): void {
       const src = pictureOf(doc, d, d.types[0]?.id ?? '', false);
       const img = el('img', { class: `objs-card-img${src ? '' : ' is-loading'}`, alt: '', 'data-picture': d.id });
       if (src) img.src = src;
-      else if (src === undefined) pending.push(d);
+      else if (src === undefined) queue.add(d);
       const n = placed(d.id);
       card.append(
         el('span', { class: 'objs-card-pic' }, img, ...(n > 0 ? [el('span', { class: 'objs-badge' }, t('objs.badge', { n }))] : [])),
         el('span', { class: 'objs-card-name' }, words(d.name)),
         el('span', { class: 'objs-card-meta' }, `${folderOf(d)} · ${d.types.length === 1 ? t('objs.typeOne') : t('objs.types', { n: d.types.length })}`),
       );
-      card.addEventListener('click', () => {
+      // The second click of a double click (detail 2) places: the first rebuilt the grid, so the browser's
+      // dblclick, which needs both clicks on one element, never came.
+      card.addEventListener('click', (e) => {
+        if (e.detail >= 2) {
+          close();
+          return appPlacing.placeObject(app, d.id, typeOf.get(d.id) ?? d.types[0]?.id);
+        }
         chosen = d.id;
         dialog.redraw();
-      });
-      card.addEventListener('dblclick', () => {
-        close();
-        appPlacing.placeObject(app, d.id, typeOf.get(d.id) ?? d.types[0]?.id);
       });
       grid.append(card);
     }
@@ -292,7 +272,11 @@ export function showObjects(app: App, first?: string): void {
       // Editing opens the editor in this dialog's place; it comes back here when closed.
       const edit = textButton(t('objs.edit'), 'edit', () => (close(), editDefinition(app, def, false, () => showObjects(app, def.id))));
       const dup = textButton(t('objs.duplicate'), 'duplicate', () => {
-        const copy: ObjectDefinition = { ...def, id: newDefinitionId(), name: { pt: `${def.name.pt} (2)`, en: `${def.name.en} (2)` } };
+        const defs = app.store.get().definitions;
+        const pt = nextCopy(def.name.pt, defs.map((x) => x.name.pt));
+        const en = nextCopy(def.name.en, defs.map((x) => x.name.en));
+        const n = Math.max(pt.n, en.n);
+        const copy: ObjectDefinition = { ...def, id: newDefinitionId(), name: { pt: defaultName.copy(pt.base, n), en: defaultName.copy(en.base, n) } };
         chosen = copy.id;
         app.store.dispatch(addDefinition(copy));
       });
@@ -302,17 +286,16 @@ export function showObjects(app: App, first?: string): void {
       const action = t('objs.deleteNamed', { name: words(def.name) });
       const why = blocker === 'inUse' ? t('objs.cantDeleteInUse') : blocker === 'nested' ? t('objs.cantDeleteNested') : null;
       const del = iconButton('trash', action, 'delete', () => app.store.dispatch(deleteDefinition(def.id)));
-      del.disabled = why !== null;
-      del.title = why ? `${action}: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : action;
+      const whyNode = blockedBy(del, action, why, 'objs-why');
       const n = placed(def.id);
       side.append(
         place,
         el('p', { class: 'objs-in-project' }, n === 0 ? t('objs.none') : n === 1 ? t('objs.placedOne') : t('objs.placed', { n })),
-        el('div', { class: 'objs-side-actions' }, edit, dup, link, el('span', { class: 'spacer' }), del),
+        el('div', { class: 'objs-side-actions' }, edit, dup, link, el('span', { class: 'spacer' }), del, ...(whyNode ? [whyNode] : [])),
         el('p', { class: 'objs-summary' }, t('objs.summary', { p: def.params.length, k: def.parts.length, h: def.handles.length, t: def.types.length })),
       );
     }
-    work();
+    queue.work();
     return withLibrary(
       app,
       'objects',

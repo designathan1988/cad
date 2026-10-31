@@ -269,7 +269,7 @@ aqui fica a decisão por arquivo.
 | (movido no passo 4) src/session/keyboard-select.ts | juntar | session/selection.ts | 11 linhas |
 | (movido no passo 4) src/session/handles.ts | mover | wall/handles.ts | alças de parede |
 | (movido no passo 4) src/session/object-handles.ts | mover | library/handles.ts | jambRate deriveGeometry por arrasto → cache |
-| (movido no passo 4) src/session/temp-dims.ts | mover | canvas/plan/temp-dims.ts | thicknessOf duplicado sai |
+| (movido no passo 4) src/project/temp-dims.ts | mover | project/temp-dims.ts | thicknessOf duplicado sai; função pura do documento e da geometria, lida por elements/wall/tool-ui (merge do main) |
 | (movido no passo 4) src/session/next.ts | mover | session/next.ts | notNext (lista negra) → contrato por kind |
 | (movido no passo 4) src/session/modify.ts | mover | session/modify.ts |  |
 | (movido no passo 4) src/session/modify-tool.ts | mover | session/modify-tool.ts |  |
@@ -408,3 +408,11 @@ aqui fica a decisão por arquivo.
 | (movido no passo 4) src/main.ts | mover | main.ts (raiz src/) — monta session/app |
 | src/assets.d.ts | manter | fica (declarações de tipos) |
 | index.html | manter | fica (fonte do Google → decisões de F-0001 ficam para outra tarefa) |
+| (novo no merge do main) src/elements/object/library-before69.ts | manter | elements/object/library-before69.ts | as definições como os arquivos v68 as têm, trocadas na leitura (F-0065, do main) |
+| (novo no merge do main) src/elements/object/library-before70.ts | manter | elements/object/library-before70.ts | as definições como os arquivos v69 as têm (do main), juntadas das três partes abaixo |
+| (novo no merge do main) src/elements/object/library-before70-a.ts | manter | elements/object/library-before70-a.ts | parte A dos dados de library-before70 (dividido no limite de 600 linhas) |
+| (novo no merge do main) src/elements/object/library-before70-b.ts | manter | elements/object/library-before70-b.ts | parte B dos dados de library-before70 |
+| (novo no merge do main) src/elements/object/library-before70-c.ts | manter | elements/object/library-before70-c.ts | parte C dos dados de library-before70 |
+| (novo no merge do main) src/session/action-list.ts | manter | session/action-list.ts | as ações construídas uma vez por quadro e a tecla de cada uma (F-0011, do main) |
+| (novo no merge do main) src/session/point-tools.ts | manter | session/point-tools.ts | as ferramentas de pontos num lugar só (F-0023, do main), sobre o rascunho ui.draft |
+| (novo no merge do main) src/ui/store-pictures.ts | manter | ui/store-pictures.ts | a fila de imagens das cinco lojas (F-0126, do main) |

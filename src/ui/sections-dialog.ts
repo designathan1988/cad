@@ -1,5 +1,5 @@
 // Sections and elevations (phase 10; elements/section, app/section-drawing.ts): the marks listed, the one
-// picked drawn as it prints, from the model as it is now (app/section-view.ts); the four elevations made
+// picked drawn at the drawing's scale, from the model as it is now (app/section-view.ts); the four elevations made
 // round the building in one go, and a section drawn in plan with its tool. A room's interior elevations
 // are made from its panel and listed here with their level.
 
@@ -32,17 +32,19 @@ export function showSections(app: App, first?: string): void {
       const doc = app.store.get();
       if (!doc.sections.some((m) => m.id === current)) current = doc.sections[0]?.id ?? null;
       const mark = doc.sections.find((m) => m.id === current) ?? null;
+      // A list of buttons: each item holds a button, which keeps its role (given role="listitem", it was heard
+      // as a list item, not as something to press) and says which one is open (aria-pressed).
       const list = el(
-        'div',
-        { class: 'sheet-list', role: 'list', 'aria-label': t('section.dialog') },
+        'ul',
+        { class: 'section-list', 'aria-label': t('section.dialog') },
         ...doc.sections.map((m) => {
-          const b = el('button', { type: 'button', class: 'sheet-item', 'aria-pressed': String(m.id === current), role: 'listitem' }, el('strong', {}, m.name), el('span', {}, markKind(doc, m)));
+          const b = el('button', { type: 'button', class: 'section-item', 'aria-pressed': String(m.id === current) }, el('strong', {}, m.name), el('span', {}, markKind(doc, m)));
           b.dataset.focus = `mark:${m.id}`;
           b.addEventListener('click', () => {
             current = m.id;
             dialog.redraw();
           });
-          return b;
+          return el('li', {}, b);
         }),
       );
       const elevations = el('button', { type: 'button', class: 'btn' }, t('section.makeElevations'));
@@ -55,7 +57,7 @@ export function showSections(app: App, first?: string): void {
         app.setTool('section');
       });
       let main: HTMLElement;
-      if (!mark) main = el('p', { class: 'tour-empty' }, t('section.empty'));
+      if (!mark) main = el('p', { class: 'dialog-empty' }, t('section.empty'));
       else {
         const d = sectionOf(app, mark);
         // Fitted to the preview: the drawing's box and the level marks' room at its right.
@@ -70,16 +72,16 @@ export function showSections(app: App, first?: string): void {
         canvas.className = 'section-preview';
         canvas.setAttribute('role', 'img');
         canvas.setAttribute('aria-label', t(mark.kind === 'section' ? 'section.titleOne' : 'section.elevationOne', { name: mark.name }));
-        main = el('div', { class: 'section-main' }, el('div', { class: 'print-page' }, canvas), el('p', { class: 'mat-note' }, t('section.note')));
+        main = el('div', { class: 'section-main' }, el('div', { class: 'section-page' }, canvas), el('p', { class: 'mat-note' }, t('section.note')));
       }
       const done = el('button', { type: 'button', class: 'icon-btn text-btn' }, t('help.close'));
       done.dataset.focus = 'close';
       done.addEventListener('click', close);
       return el(
         'div',
-        { class: 'dialog dialog-xl sheets-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('section.dialog') },
+        { class: 'dialog dialog-xl sections-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('section.dialog') },
         el('h2', {}, t('section.dialog')),
-        el('div', { class: 'sheet-body' }, el('div', { class: 'sheet-side' }, list, elevations, draw), main),
+        el('div', { class: 'section-body' }, el('div', { class: 'section-side' }, list, elevations, draw), main),
         el('div', { class: 'actions' }, el('span', { class: 'spacer' }), done),
       );
     },

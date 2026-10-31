@@ -161,6 +161,10 @@ export class Scene3D {
   onChange: () => void = () => {};
   /** Told when the photorealistic view starts or stops preparing (its scene built, its shader compiled). */
   onTracePreparing: (preparing: boolean) => void = () => {};
+  /** Told once when the path tracer lacks the inner parts this view patches: the realistic view stays. */
+  onTraceUnavailable: () => void = () => {};
+  /** The path tracer is not the one its patches were written for: it is not tried again (scene-trace.ts). */
+  traceUnavailable = false;
   preparing = false;
   /** Whether the photorealistic view has shown a traced picture yet. */
   traceShown = false;

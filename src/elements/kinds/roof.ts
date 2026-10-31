@@ -12,6 +12,8 @@ import { materialIn, type Material } from '../material/schema';
 import { insideRing } from '../room/derive';
 import { trace } from './paint';
 import { wallBand, wallTop } from '../../project/doc';
+import { NO_LEVEL } from '../../project/doc';
+import { levelOf } from '../../project/doc';
 
 export const roofKind: ElementKind<Roof, RoofSolid & { readonly covering: Material }> = {
   key: 'roofs',
@@ -21,8 +23,6 @@ export const roofKind: ElementKind<Roof, RoofSolid & { readonly covering: Materi
   one: 'roof.title',
   many: 'roof.titleMany',
   dropped: 'fix.droppedRoofs',
-  exportName: 'export.roof',
-  exportColour: 'roof',
   valid: (r): r is Roof =>
     isObject(r) &&
     typeof r.id === 'string' &&
@@ -41,7 +41,7 @@ export const roofKind: ElementKind<Roof, RoofSolid & { readonly covering: Materi
     (r.covering === undefined || (isObject(r.covering) && typeof r.covering.materialId === 'string' && finite(r.covering.thickness) && r.covering.thickness > 0)),
   // On its level's top; not memoised: a wall put under it (its top on the roof) closes its gable.
   derive: (doc, r) => {
-    const level = doc.levels.find((l) => l.id === r.levelId) ?? { elevation: 0, height: 2.8 };
+    const level = levelOf(doc, r.levelId) ?? NO_LEVEL;
     // Drawn in its covering's material (the tiles, the metal sheet, the slab), as the project has it.
     const s = { ...roofSolid(r, level.elevation + level.height), covering: materialIn(doc.materials, (r.covering ?? ROOF_COVERING).materialId) };
     // A gable a wall under the roof already closes (its top on the roof) is that wall: the infill
@@ -98,10 +98,5 @@ export const roofKind: ElementKind<Roof, RoofSolid & { readonly covering: Materi
     ctx.restore();
   },
   solid: (s) => ({ geometry: roofGeometry(s.faces, s.gables, s.parapets, s.roof.thickness), y: 0, material: s.covering, edges: true }),
-  dxfLayers: [{ name: 'A-ROOF', colour: 6 }],
-  dxf: (s, out) => {
-    out.polyline('A-ROOF', s.outline, true);
-    if (s.faces.length > 1) for (const f of s.faces) out.polyline('A-ROOF', f.polygon, true);
-  },
   fields: (items, { dispatch, doc }) => roofFields(items, { updateRoofs: (ids, patch) => dispatch(updateRoofs(ids, patch)), materials: doc.materials.map((m) => ({ id: m.id, label: materialLabel(m) })) }),
 };

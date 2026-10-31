@@ -140,3 +140,25 @@ Owner's order 2026-10-31 "ENTÃO CORRIJA TUDO!!!!" (fix all that the report left
 - wall/guide tool-ui stay in elements: inventory rows 84/153 and ADR put a tool in its element's folder (my earlier note was wrong).
 - Checked headless: levels add/delete/undo, saved view scale reset, footer scale, wall + column drag, marquee, Esc, box face,
   Distribute two windows + undo, file opened without IndexedDB (NODB=1 driver profile) + undo, photoreal picture unchanged.
+
+## 2026-10-31, merge of main (owner: "Sim, trazer o main")
+main had 93 commits since 4d41084 (the F-xxxx fixes of the reviewing skill, file v68-v70, point-tools F-0023, F-0014/F-0011 per-frame
+derivation). `git merge --no-commit main`: 70 files both changed, 12 split here and changed there (src/app/app.ts, chrome, context-menu,
+frame, input-buttons, input, kind-tools, main, ribbon-tabs, section-drawing, io/project-db, ui/i18n), grid/carry.ts deleted there.
+Each of main's changes to a split file is carried to where its code lives now (git diff 4d41084..main -- <old path>).
+Merge progress (uncommitted, merge in progress; tools in .scratchpad: hunks.py, take.py FILE LINE ours|theirs|both|@snippet, resolve-imports.py):
+- Resolved: docs/agent/*; import-only hunks (resolve-imports.py); core/id (main newId + brands), core/measure; elements/* (reference WeakMap
+  + onLoad owner, room nextNumber exported LevelId, object no dxf keeps floorLocked, opening nextOpening in fields.ts + style-fields
+  without nextStyleFields, wall topRule(doc,wall,..) + nextWall template, makeWall withLiveType, measure chainArea null on crossing);
+  project/* (boot repaired+local() no db/projectId, files showProject+repaired+replaces+key toasts, doc levels line, file-guards
+  isLayer F-0096, derive jointsAndEnds F-0016 + no levelPieces, derived-queries/filters CATEGORIES + F-0007 comments);
+  render/* (printing mode out F-0095, wall tag beside wall F-0140 in plan-annotations/plan-types, F-0099 trace check in scene-trace).
+- Pending: session/* (main: keys only from actions byKey + keyName; point-tools F-0023 at src/app/point-tools.ts to move into session),
+  ui/*, tests/*, styles.css; the 12 DU files (port main diff 4d41084..main of each old path), grid/carry.ts (main deleted:
+  axis moves alone, drop wallsOnGrids use), i18n messages (main removed 121/lang, added keys), main.ts failed boot, app.ts
+  onTraceUnavailable wiring; then tsc, gates, round trip, headless, commit, push.
+- Done since: session/actions (flipHinge, CATEGORIES, vars), input-keys (main byKey + point tools), session/point-tools.ts (main F-0023
+  adapted to ui.draft), app.ts/main.ts port (replaces, boot failed/repaired, traceUnavailable, action-list.ts F-0011 cache + keyName,
+  LEVEL_HEIGHT, moveKinds g), input.ts port (floorZ, pointTape, pointTool click/rightClick, wallUnderRay lift, onCancel F-0024,
+  showHelp from actions in ui/help-dialog), kind-tools/section-drawing small ports. src/app/point-tools.ts removed.
+  Next: context-menu, chrome, frame, i18n, project-db, ui/* hunks, tests, styles.css, grid/carry; app.ts is 411 lines (cap 400).

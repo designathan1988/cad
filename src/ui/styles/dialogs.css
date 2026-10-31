@@ -4,7 +4,7 @@
 .dialog-wide {
   width: min(var(--dialog-w-lg), calc(100vw - 2 * var(--sp-4)));
 }
-/* Quantity schedules: tabs, a table that scrolls inside (sideways on a phone), the totals kept in view. */
+/* The widest dialogs (the object editor, sections and elevations). */
 .dialog-xl {
   width: min(var(--dialog-w-xl), calc(100vw - 2 * var(--sp-4)));
 }
@@ -196,7 +196,7 @@
   padding-top: var(--sp-3);
   border-top: var(--line) solid var(--border);
 }
-.print-page {
+.section-page {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -210,17 +210,16 @@
   color: var(--text-2);
   font-size: var(--fs-sm);
 }
-/* Sheets and sections (sheets-dialog.ts, sections-dialog.ts): the set listed on the left, the open one
-   beside it with its page; one above the other on a narrow window. The page's overlay lies exactly over
-   it, for the views to be picked and dragged. */
-.sheets-dialog {
+/* Sections and elevations (sections-dialog.ts): the set listed on the left, the open one beside it with
+   its drawing; one above the other on a narrow window. */
+.sections-dialog {
   /* As any dialog's: under its top (--dialog-top), not the window's; with 2 sp-4 it ran --dialog-top
-     past the bottom and its PDF and Close buttons were out of reach on a short window. */
+     past the bottom and its Close button was out of reach on a short window. */
   max-height: calc(100vh - var(--dialog-top) - var(--sp-4));
   display: flex;
   flex-direction: column;
 }
-.sheet-body {
+.section-body {
   display: grid;
   grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
   gap: var(--sp-4);
@@ -228,17 +227,21 @@
   overflow: auto;
   min-height: 0;
 }
-.sheet-side {
+.section-side {
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
 }
-.sheet-list {
+.section-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
 }
-.sheet-item {
+.section-item {
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -251,11 +254,11 @@
   text-align: left;
   cursor: pointer;
 }
-.sheet-item span {
+.section-item span {
   color: var(--text-2);
   font-size: var(--fs-sm);
 }
-.sheet-item[aria-pressed='true'] {
+.section-item[aria-pressed='true'] {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
@@ -272,7 +275,7 @@
   box-shadow: 0 0 0 var(--line) var(--border);
 }
 @media (max-width: 720px) {
-  .sheet-body {
+  .section-body {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -400,26 +403,6 @@
   color: var(--text-2);
   font-size: var(--fs-sm);
 }
-/* The norms dialog (rules-dialog.ts): on, what, minimum, maximum, source; then what is outside them. */
-.rules {
-  display: grid;
-  /* On, what (and its uses), minimum, maximum, source, article, weight, delete. */
-  grid-template-columns: max-content minmax(0, 1.3fr) var(--levels-col) var(--levels-col) minmax(0, 1fr) minmax(0, 0.7fr) max-content max-content;
-  gap: var(--sp-2) var(--sp-2);
-  align-items: center;
-  padding: var(--sp-3) var(--sp-4);
-}
-@media (max-width: 720px) {
-  .rules {
-    grid-template-columns: max-content minmax(0, 1.2fr) repeat(2, minmax(0, 1fr)) minmax(0, 1fr) minmax(0, 0.7fr) max-content max-content;
-  }
-}
-.rules input[type='checkbox'] {
-  justify-self: center;
-  width: var(--sp-4);
-  height: var(--sp-4);
-  accent-color: var(--accent);
-}
 .text-field {
   height: var(--field-h);
   padding: 0 var(--sp-2);
@@ -432,6 +415,11 @@ textarea.text-field {
   height: auto;
   padding: var(--sp-1) var(--sp-2);
   resize: vertical;
+}
+/* A panel field of several lines (a note's text): as wide as the others, in the panel's font. */
+.num-field textarea.text-field {
+  width: 100%;
+  font: inherit;
 }
 .text-field:focus {
   border-color: var(--accent);

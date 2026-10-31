@@ -1,9 +1,13 @@
 // One tooltip for the whole interface (ref/chat.txt:247): any element with a title shows it in a
 // small card near it, after a short pause on hover or at once on keyboard focus, in the design's
 // colours, inside the window. The title moves to data-tip the first time, so the browser's own
-// tooltip never shows as well; elements keep their accessible name (aria-label) as set.
+// tooltip never shows as well; elements keep their accessible name (aria-label) as set, and the text
+// moved stays theirs for assistive technology (aria-description). The card can be hovered: the pointer
+// moved onto it keeps it (WCAG 1.4.13), a moment given to cross the gap.
 
 const DELAY_MS = 450;
+/** How long a card waits after the pointer leaves its element or itself, for the pointer to reach the other. */
+const GRACE_MS = 200;
 
 export function installTooltips(root: HTMLElement = document.body): void {
   const tip = document.createElement('div');
@@ -12,12 +16,16 @@ export function installTooltips(root: HTMLElement = document.body): void {
   tip.hidden = true;
   document.body.append(tip);
   let timer = 0;
+  let leaving = 0;
   let current: HTMLElement | null = null;
 
   const textOf = (el: HTMLElement): string | null => {
     if (el.title) {
       el.dataset.tip = el.title;
       el.removeAttribute('title');
+      // Taken off the title, it was gone for screen readers (the reason a button cannot act, a full name cut
+      // short): kept as the element's description, unless it has its own, or the text is its name already.
+      if (!el.hasAttribute('aria-describedby') && el.getAttribute('aria-label') !== el.dataset.tip) el.setAttribute('aria-description', el.dataset.tip);
     }
     return el.dataset.tip ?? null;
   };
@@ -47,23 +55,48 @@ export function installTooltips(root: HTMLElement = document.body): void {
   };
   const hide = () => {
     clearTimeout(timer);
+    clearTimeout(leaving);
     tip.hidden = true;
     current = null;
   };
+  const hideSoon = () => {
+    clearTimeout(leaving);
+    leaving = window.setTimeout(hide, GRACE_MS);
+  };
+  tip.addEventListener('pointerenter', () => clearTimeout(leaving));
+  // Over another control under the card (a tool bar's card lies over the next tools): the card gives way,
+  // so that control is reached and clicked, not the card.
+  tip.addEventListener('pointermove', (e) => {
+    const under = document.elementsFromPoint(e.clientX, e.clientY).find((x) => !tip.contains(x)) ?? null;
+    const other = owner(under);
+    if (other && other !== current) hide();
+  });
+  tip.addEventListener('pointerleave', (e) => {
+    if (current && e.relatedTarget instanceof Node && current.contains(e.relatedTarget)) return;
+    hideSoon();
+  });
   const owner = (target: EventTarget | null): HTMLElement | null =>
     target instanceof Element ? (target.closest('[title], [data-tip]') as HTMLElement | null) : null;
 
   root.addEventListener('pointerover', (e) => {
+    // Over the card itself: it stays (its own pointerenter keeps it).
+    if (e.target instanceof Node && tip.contains(e.target)) return;
     const el = owner(e.target);
-    if (el === current) return;
+    if (el === current) {
+      clearTimeout(leaving);
+      return;
+    }
     hide();
     if (!el) return;
     textOf(el);
     timer = window.setTimeout(() => show(el), DELAY_MS);
   });
   root.addEventListener('pointerout', (e) => {
-    if (current && e.relatedTarget instanceof Node && current.contains(e.relatedTarget)) return;
-    hide();
+    if (e.target instanceof Node && tip.contains(e.target)) return;
+    if (current && e.relatedTarget instanceof Node && (current.contains(e.relatedTarget) || tip.contains(e.relatedTarget))) return;
+    // A moment to reach the card; leaving for anything else hides it then.
+    if (current) hideSoon();
+    else hide();
   });
   root.addEventListener('pointerdown', hide);
   root.addEventListener('focusin', (e) => {

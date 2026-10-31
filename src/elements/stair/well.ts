@@ -6,10 +6,12 @@ import type { Point2 } from '../../model/vector';
 import { type StairSolid, stairSolid, stairWell } from './geometry';
 import { type Stair, WELL_REACH } from './schema';
 import type { LevelId } from '../../project/doc';
+import { NO_LEVEL } from '../../project/doc';
+import { levelOf } from '../../project/doc';
 
 /** The stair as built, from its level. */
 export function solidOfStair(doc: Doc, s: Stair) {
-  const level = doc.levels.find((l) => l.id === s.levelId) ?? { elevation: 0, height: 2.8 };
+  const level = levelOf(doc, s.levelId) ?? NO_LEVEL;
   return stairSolid(s, level.height, level.elevation);
 }
 

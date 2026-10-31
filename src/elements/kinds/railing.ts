@@ -8,7 +8,7 @@ import { railingGeometry } from '../prisms';
 import type { ElementKind } from '../contract';
 import { updateRailings } from '../railing/commands';
 import { railingFields } from '../railing/fields';
-import { BALUSTER_SIZE, BALUSTER_SPACING, postsOf, RAIL_SIZE, type Railing, RAILING_PREFIX, wellPath } from '../railing/schema';
+import { BALUSTER_SIZE, BALUSTER_SPACING, MAX_RAILING_GAP, postsOf, RAIL_SIZE, type Railing, railingGap, RAILING_PREFIX, wellPath } from '../railing/schema';
 import type { KindSolid } from '../contract';
 import { type Material, materialIn } from '../material/schema';
 import { stairWell } from '../stair/geometry';
@@ -16,6 +16,8 @@ import { RAIL_HEIGHT } from '../stair/schema';
 import { arrivalOf, solidOfStair } from '../stair/well';
 import { deriveFloor } from '../room/derive';
 import { nearSegment, throughElement, trace } from './paint';
+import type { DerivedGeometry } from '../../project/derive';
+import { num, t } from '../../i18n/messages';
 
 /** A guardrail as it stands: its foot's height and its path (its well's, when a stair holds it). */
 export interface RailingSolid {
@@ -28,6 +30,10 @@ export interface RailingSolid {
   readonly glass: Material;
 }
 
+/** Where it stands as shown: a hosted one's path taken from its host in `g`; its own points otherwise. */
+const shownPath = (r: Railing, g: DerivedGeometry | undefined): readonly Point2[] =>
+  (r.host ? (g?.kinds.get('railings')?.get(r.id) as RailingSolid | undefined)?.points : undefined) ?? r.points;
+
 export const railingKind: ElementKind<Railing, RailingSolid> = {
   key: 'railings',
   prefix: RAILING_PREFIX,
@@ -35,9 +41,16 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
   icon: 'railing',
   one: 'railing.title',
   many: 'railing.titleMany',
+  // A gap a child could pass through, over the 11 cm NBR 14718 allows: a mid rail alone leaves about
+  // half its height open, offered beside balusters and glass with nothing said.
+  warning: (items) => {
+    const wide = items.filter((s) => railingGap(s.railing) > MAX_RAILING_GAP);
+    if (wide.length === 0) return null;
+    return t('warn.railingGap', { gap: num(Math.max(...wide.map((s) => railingGap(s.railing))) * 100, 0), max: num(MAX_RAILING_GAP * 100, 0) });
+  },
   dropped: 'fix.droppedRailings',
-  exportName: 'export.railing',
-  exportColour: 'structure',
+
+
   valid: (r): r is Railing =>
     isObject(r) &&
     typeof r.id === 'string' &&
@@ -95,14 +108,23 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
   hit: (s, p, near) => s.points.slice(1).some((q, i) => nearSegment(p, s.points[i]!, q, near)),
   pick: 'beforeWalls',
   span: (s) => ({ bottom: s.bottom, top: s.bottom + Math.max(0, ...(s.rise ?? [])) + s.railing.height }),
-  // Moved on its own, it lets go of its stair: it stays where it was put.
-  moved: (r, d) => {
+  // Moved on its own, it lets go of its stair or floor and stays where it was put: from the path it
+  // showed, taken from its host. Its stored points are those it was made with; a stair changed since
+  // (turned, widened) sent it back to them, away from where it stood.
+  moved: (r, d, g) => {
     const { host: _host, ...rest } = r;
-    return { ...rest, points: r.points.map((p) => ({ x: p.x + d.x, y: p.y + d.y })) };
+    return { ...rest, points: shownPath(r, g).map((p) => ({ x: p.x + d.x, y: p.y + d.y })) };
   },
   mapped: (r, t, id) => {
     const { host: _host, ...rest } = r;
     return { ...rest, id, points: r.points.map(t.map) };
+  },
+  // By a Modify tool: the same, from the path it showed; one only there while its stair goes is left as
+  // it is (it follows the stair).
+  transformed: (r, c) => {
+    if (!c.selected) return null;
+    const { host: _host, ...rest } = r;
+    return { ...rest, id: c.to(r.id), points: shownPath(r, c.geometry).map(c.t.map) };
   },
   // Its path, with a tick at each post.
   plan: (p, s, lit) => {
@@ -125,8 +147,8 @@ export const railingKind: ElementKind<Railing, RailingSolid> = {
     const frame: KindSolid = { geometry: g.frame, y: s.bottom, material: 'side', edges: false };
     return g.glass ? [frame, { geometry: g.glass, y: s.bottom, material: s.glass, edges: false }] : frame;
   },
-  dxfLayers: [{ name: 'A-FLOR-HRAL', colour: 4 }],
-  dxf: (s, out) => out.polyline('A-FLOR-HRAL', s.points, false),
+
+
   fields: (items, { dispatch }) =>
     throughElement(
       railingFields(

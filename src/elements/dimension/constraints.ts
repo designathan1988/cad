@@ -9,7 +9,6 @@ import type { Doc } from '../../project/doc';
 import { deriveGeometry } from '../../project/derive';
 import { add, distance, dot, normalize, type Point2, scale, sub } from '../../model/vector';
 import { moveWalls, stretchEnd } from '../wall/edit';
-import { ruleKeepingPosition } from '../opening/commands';
 import type { PositionRule } from '../opening/schema';
 import { placeDimension, resolve } from './anchor';
 import type { DimAnchor, Dimension } from './schema';
@@ -63,9 +62,10 @@ function shiftEnd(doc: Doc, g: ReturnType<typeof deriveGeometry>, d: Dimension, 
   const ds = dot(delta, normalize(sub(w.end, w.start)));
   // Square to its wall it cannot go.
   if (Math.abs(Math.abs(ds) - Math.hypot(delta.x, delta.y)) > 1e-6) return null;
-  let rule: PositionRule | null = o.rule;
-  if (rule.kind === 'centered' || rule.kind === 'aligned' || rule.kind === 'inGroup') rule = ruleKeepingPosition(doc, o.id, 'fromStart');
-  if (!rule) return null;
+  // Centred, aligned with another or in a group: that is the user's own rule, and moving the opening
+  // would undo it. The lock cannot be kept, and the change is refused and said, never the rule replaced.
+  const rule = o.rule;
+  if (rule.kind === 'centered' || rule.kind === 'aligned' || rule.kind === 'inGroup') return null;
   const moved: PositionRule | null =
     rule.kind === 'fromStart'
       ? { ...rule, distance: rule.distance + ds }
