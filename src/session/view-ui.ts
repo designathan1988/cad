@@ -17,6 +17,8 @@ import { shownLevels, type View3D } from './view/view-3d';
 import { ROTATE_OFFSET } from './handles';
 import type { App } from './app';
 import { currentDims } from '../ui/temp-dims';
+import * as sceneCamera from '../render/scene-camera';
+import * as sceneCut from '../render/scene-cut';
 
 /** The section box on, around what the 3D shows, or off. */
 export function toggleBox(app: App): void {
@@ -218,7 +220,7 @@ export function keepSelectionInView3d(app: App): boolean {
   const screen = { left: Math.min(...pts.map((p) => p.x)), right: Math.max(...pts.map((p) => p.x)), top: Math.min(...pts.map((p) => p.y)), bottom: Math.max(...pts.map((p) => p.y)) };
   const { dx, dy } = keepInView(screen, { w: vp.width, h: vp.height }, cover, { margin: 16, above: 48 });
   if (dx === 0 && dy === 0) return false;
-  app.scene.panScreen(dx, dy);
+  sceneCamera.panScreen(app.scene, dx, dy);
   return true;
 }
 
@@ -240,9 +242,9 @@ export function frameAll(app: App): void {
   if (r.width === 0 || r.height === 0) return;
   app.framed[app.ui.view] = true;
   const box = boundsOf(app.visibleGeometry());
-  app.scene.setCovered(covered(app));
+  sceneCamera.setCovered(app.scene, covered(app));
   if (app.ui.view === 'plan') app.plan.frame(box, covered(app));
-  else app.scene.frame(box, app.height());
+  else sceneCamera.frame(app.scene, box, app.height());
   app.render();
 }
 
@@ -253,11 +255,11 @@ export function frameAll(app: App): void {
 export function elevation(app: App, side: 'north' | 'south' | 'east' | 'west'): void {
   setView(app, '3d');
   setView3D(app, { ortho: true });
-  app.scene.setOrtho(true);
+  sceneCut.setOrtho(app.scene, true);
   const dir = { north: new THREE.Vector3(0, 0, -1), south: new THREE.Vector3(0, 0, 1), east: new THREE.Vector3(1, 0, 0), west: new THREE.Vector3(-1, 0, 0) }[side];
-  app.scene.setCovered(covered(app));
+  sceneCamera.setCovered(app.scene, covered(app));
   app.framed['3d'] = true;
-  app.scene.frame(boundsOf(app.visibleGeometry()), app.height(), dir);
+  sceneCamera.frame(app.scene, boundsOf(app.visibleGeometry()), app.height(), dir);
   app.render();
 }
 
@@ -280,13 +282,13 @@ export function sectionAtGuide(app: App, flip = false): void {
   const section = { point: g.point, dir: along };
   setView(app, '3d');
   setView3D(app, { section, ortho: true });
-  app.scene.setOrtho(true);
-  app.scene.setSection(section);
+  sceneCut.setOrtho(app.scene, true);
+  sceneCut.setSection(app.scene, section);
   const n = sectionLooks(section);
-  app.scene.setCovered(covered(app));
+  sceneCamera.setCovered(app.scene, covered(app));
   app.framed['3d'] = true;
   // From the cut side, looking across the line at what it keeps.
-  app.scene.frame(boundsOf(app.visibleGeometry()), app.height(), new THREE.Vector3(-n.x, 0, n.y));
+  sceneCamera.frame(app.scene, boundsOf(app.visibleGeometry()), app.height(), new THREE.Vector3(-n.x, 0, n.y));
   app.toast(t('toast.section'));
   app.render();
 }
@@ -300,9 +302,9 @@ export function frameSelection(app: App): void {
   const box = boundsOf(app.geometry, app.ui.selection);
   // Nothing selected, or nothing with an extent (a guide has no ends): the whole drawing.
   if (box === null) return app.frameAll();
-  app.scene.setCovered(covered(app));
+  sceneCamera.setCovered(app.scene, covered(app));
   if (app.ui.view === 'plan') app.plan.frame(box, covered(app));
-  else app.scene.frame(box, app.height());
+  else sceneCamera.frame(app.scene, box, app.height());
   app.render();
 }
 
@@ -319,7 +321,7 @@ export function keyView(app: App, action: ViewKey): void {
     else app.plan.panBy(action.pan.x, action.pan.y);
     return app.render();
   }
-  if ('zoom' in action) app.scene.zoomBy(action.zoom);
-  else app.scene.orbit((action.pan.x / 80) * (Math.PI / 18), (action.pan.y / 80) * (Math.PI / 18));
+  if ('zoom' in action) sceneCamera.zoomBy(app.scene, action.zoom);
+  else sceneCamera.orbit(app.scene, (action.pan.x / 80) * (Math.PI / 18), (action.pan.y / 80) * (Math.PI / 18));
   app.render();
 }

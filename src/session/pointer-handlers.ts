@@ -13,6 +13,7 @@ import { PICK_PX, type pointerAim } from './pointer-aim';
 import type { PointerState } from './pointer-state';
 import type { SelectGestures } from './drag';
 import { pointerRelease } from './pointer-release';
+import * as sceneCamera from '../render/scene-camera';
 
 
 /** What the handlers use of the input wired around them. */
@@ -127,7 +128,7 @@ export function pointerHandlers(app: App, d: PointerDeps) {
     if (app.openingKind()) {
       // In 3D, on the wall itself (its own hole does not let the aim through): opening-ui.ts, wallUnderRay.
       const onWall = ui.view === 'plan' ? null : wallUnderRay(app.store.get(), new Set([ui.levelId]), app.scene.rayAt(e.clientX, e.clientY));
-      const seen = onWall ? { p: onWall.p, mpp: app.scene.metresPerPixel(onWall.p, onWall.height) } : aimAt3d(e);
+      const seen = onWall ? { p: onWall.p, mpp: sceneCamera.metresPerPixel(app.scene, onWall.p, onWall.height) } : aimAt3d(e);
       return app.openingEvent({ kind: 'hover', aim: seen ? aimAt(app.store.get(), app.geometry, ui.levelId, seen.p, seen.mpp, OPENING_PREVIEW_ID) : null });
     }
     if (ui.handleDrag) {

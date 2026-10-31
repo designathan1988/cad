@@ -9,6 +9,7 @@ import type { PickOrder } from '../elements/contract';
 import { outerSides } from '../elements/wall/geometry/seams';
 import { guideShapes, levelGuides } from '../elements/guide/tool-ui';
 import { shownGrids } from './annotation-tools';
+import * as sceneCamera from '../render/scene-camera';
 
 
 export function pointerAim(app: App, isShift: () => boolean) {
@@ -21,7 +22,7 @@ export function pointerAim(app: App, isShift: () => boolean) {
   const snapAt = (p: Point2, exclude: ReadonlySet<WallId>) =>
     snap({
       cursor: p,
-      mpp: ui.view === 'plan' ? 1 / app.plan.scale : app.scene.metresPerPixel(p, 0),
+      mpp: ui.view === 'plan' ? 1 / app.plan.scale : sceneCamera.metresPerPixel(app.scene, p, 0),
       segments: app.store.get().walls.filter((x) => x.levelId === ui.levelId && !exclude.has(x.id)),
       from: null,
       chainStart: null,
@@ -43,8 +44,8 @@ export function pointerAim(app: App, isShift: () => boolean) {
       return { p: app.plan.toWorld({ x: e.clientX - r.left, y: e.clientY - r.top }), mpp: 1 / app.plan.scale };
     }
     const z = (levelOf(app.store.get(), ui.levelId)?.elevation ?? 0) + app.lift(ui.levelId);
-    const p = app.scene.groundPoint(e.clientX, e.clientY, z);
-    return p ? { p, mpp: app.scene.metresPerPixel(p, z) } : null;
+    const p = sceneCamera.groundPoint(app.scene, e.clientX, e.clientY, z);
+    return p ? { p, mpp: sceneCamera.metresPerPixel(app.scene, p, z) } : null;
   };
 
   /**
@@ -65,7 +66,7 @@ export function pointerAim(app: App, isShift: () => boolean) {
     const walls = new Set(doc.walls.filter((w) => levels.has(w.levelId)).map((w) => w.id));
     for (const o of doc.openings) if (walls.has(o.wallId)) onLevel.add(o.id);
     const hit = app.scene.surfacePoint(e.clientX, e.clientY, (id) => onLevel.has(id));
-    return hit ? { p: hit.p, mpp: app.scene.metresPerPixel(hit.p, hit.height) } : worldAt(e);
+    return hit ? { p: hit.p, mpp: sceneCamera.metresPerPixel(app.scene, hit.p, hit.height) } : worldAt(e);
   };
 
   // The walls' faces on the level, for the tape: the outline of their pieces, once per geometry. Every
@@ -212,7 +213,7 @@ export function pointerAim(app: App, isShift: () => boolean) {
 
   /** The element under the pointer: an opening before the wall that hosts it. */
   const pickAt = (e: PointerEvent, at: { p: Point2 } | null) =>
-    ui.view === 'plan' ? (at ? planPick(at.p) : null) : app.scene.pick(e.clientX, e.clientY);
+    ui.view === 'plan' ? (at ? planPick(at.p) : null) : sceneCamera.pick(app.scene, e.clientX, e.clientY);
   /** In plan: what is under the point, in the order a click takes it: an opening, its wall, rooms, floors. */
   const planHits = (p: Point2): string[] => {
     const g = app.visibleGeometry();

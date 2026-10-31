@@ -16,6 +16,7 @@ import { cornerClick, splitAt } from './modify';
 import { calibrateClick } from '../ui/reference-tool';
 import { PICK_PX } from './pointer-aim';
 import type { PointerDeps } from './pointer-handlers';
+import * as sceneCamera from '../render/scene-camera';
 
 export function pointerRelease(app: App, d: PointerDeps) {
   const { ui } = app;
@@ -157,7 +158,7 @@ export function pointerRelease(app: App, d: PointerDeps) {
     }
     if (ui.tool === 'corner') {
       const at = worldAt(e);
-      if (at) cornerClick(app, ui.view === 'plan' ? wallAt(app.visibleGeometry(), at.p, undefined, PICK_PX / app.plan.scale) : app.scene.pick(e.clientX, e.clientY));
+      if (at) cornerClick(app, ui.view === 'plan' ? wallAt(app.visibleGeometry(), at.p, undefined, PICK_PX / app.plan.scale) : sceneCamera.pick(app.scene, e.clientX, e.clientY));
       return;
     }
     if (ui.tool === 'measure') {

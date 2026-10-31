@@ -105,6 +105,8 @@ import { previewWall } from '../elements/wall/tool-ui';
 import { addFloorToRoom } from './room-tool';
 import { guideOffset } from '../elements/guide/tool-ui';
 import { currentDims } from '../ui/temp-dims';
+import * as sceneCamera from '../render/scene-camera';
+import * as sceneLook from '../render/scene-look';
 
 export { PREVIEW_ID };
 /** A message going after a colon in another ("Cannot place it here: overlaps…"): lower case first. */
@@ -255,8 +257,8 @@ export class App {
     };
     this.overlay3d = new Overlay3D(this.shell.overlay3d);
     this.cube = new ViewCube(
-      (dir) => this.scene.frame(boundsOf(this.geometry), this.height(), dir),
-      () => this.scene.frame(boundsOf(this.geometry), this.height()),
+      (dir) => sceneCamera.frame(this.scene, boundsOf(this.geometry), this.height(), dir),
+      () => sceneCamera.frame(this.scene, boundsOf(this.geometry), this.height()),
     );
     this.shell.viewCorner.prepend(this.cube.root);
     this.scene.onChange = () => {
@@ -868,7 +870,7 @@ export class App {
   private applyTheme(): void {
     document.documentElement.dataset.theme = this.ui.theme;
     const css = getComputedStyle(document.documentElement);
-    this.scene.setTheme(this.ui.theme === 'dark', (name) => css.getPropertyValue(name).trim());
+    sceneLook.setTheme(this.scene, this.ui.theme === 'dark', (name) => css.getPropertyValue(name).trim());
   }
 
   /** Opens the sections and elevations (ui/sections-dialog.ts), on one if given; set by the input layer. */
@@ -945,7 +947,7 @@ export class App {
       return this.plan.toWorld({ x: this.pointer.x - r.left, y: this.pointer.y - r.top });
     }
     const z = (levelOf(this.store.get(), this.ui.levelId)?.elevation ?? 0) + this.lift(this.ui.levelId);
-    return this.scene.groundPoint(this.pointer.x, this.pointer.y, z);
+    return sceneCamera.groundPoint(this.scene, this.pointer.x, this.pointer.y, z);
   }
 
   private renderFrame(): void {
