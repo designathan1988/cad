@@ -27,7 +27,11 @@ tricks for speed, UI rules (one place per command, compact density, no raw px, s
 - main merged in (2595317): its 93 commits (F-xxxx fixes, file v68-v70, point tools F-0023 now session/point-tools.ts on ui.draft,
   per-frame derivation F-0014/F-0011) carried into the split files. tsc 0, gates 0, inventory 366/366, the file written byte-identical
   to main's for both test projects. main is fully contained in this branch (0 commits ahead of it).
-- Known, from main (not fixed here): 22 S4 findings open in .whole-review/FINDINGS.md; a mirrored wall over a column with no warning.
+- The interface of the owner's prototype (fixed bar of general commands, tools' rail, the tool's floating panel, view header,
+  one right panel at a time, dark tokens) is in: 8e59330, ada446b, c345ff4, pushed. Checked headless at 1920 and 1280; console
+  clean. Desktop only: never 880 or phone widths (owner, 2026-10-31).
+- Not done: the general app test redone in the new frame; main's open F-0072, F-0089, F-0091 and a mirrored wall over a column
+  with no warning. F-0097 is another session's (main checkout), not here. Progress notes: work.md.
 - Console in photorealistic mode: THREE.Clock, WebGLPathTracer deprecation, X4000 shader notes (library-level, latest versions).
 
 ## Known traps (from memoria + repo)
