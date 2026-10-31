@@ -28,6 +28,7 @@ import * as walls from '../elements/wall/tool-ui';
 import * as chrome from '../ui/chrome';
 import * as floatBar from '../ui/float-bar';
 import * as frame from '../ui/frame';
+import * as tempDims from '../ui/temp-dims';
 import * as modify from './modify';
 import * as roomsUi from './room-tool';
 import * as guides from '../elements/guide/tool-ui';
@@ -1463,7 +1464,7 @@ export class App {
    * parallel to it, as they become).
    */
   currentDims(): TempDim[] {
-    return frame.currentDims(this);
+    return tempDims.currentDims(this);
   }
 
   /**
@@ -1471,15 +1472,15 @@ export class App {
    * edited is a field. Elements are kept between renders so a field being typed in keeps its focus.
    */
   placeDims(dims: readonly TempDim[]): void {
-    return frame.placeDims(this, dims);
+    return tempDims.placeDims(this, dims);
   }
 
   dimButton(d: TempDim): HTMLButtonElement {
-    return frame.dimButton(this, d);
+    return tempDims.dimButton(this, d);
   }
 
   dimField(d: TempDim): HTMLInputElement {
-    return frame.dimField(this, d);
+    return tempDims.dimField(this, d);
   }
 
   /**

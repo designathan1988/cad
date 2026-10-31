@@ -342,6 +342,8 @@ aqui fica a decisão por arquivo.
 | (novo no passo 6) src/ui/float-bar.ts | manter | ui/float-bar.ts | a barra flutuante sobre a seleção e a dica de medida, antes em chrome.ts |
 | (novo no passo 6) src/ui/ribbon.ts | manter | ui/ribbon.ts | a faixa desenhada a cada quadro e a tira da ferramenta, antes em chrome.ts |
 | (movido no passo 4) src/ui/frame.ts | dividir | ui/frame/*.ts | rótulos O(rooms²); nextFields por quadro → memo |
+| (novo no passo 6) src/ui/plan-overlay.ts | manter | ui/plan-overlay.ts | a planta a cada quadro: prévias, medidas, encaixe, guias, marcas (drawPlanOverlay), antes em frame.ts |
+| (novo no passo 6) src/ui/temp-dims.ts | manter | ui/temp-dims.ts | as cotas temporárias da seleção e seus campos, antes em frame.ts |
 | src/app/section-view (ver acima) |  |  |  |
 
 ## apagar — mortos (verificados)
